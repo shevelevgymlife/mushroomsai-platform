@@ -31,7 +31,7 @@ async def dashboard(request: Request):
     plan_info = PLANS.get(plan, PLANS["free"])
     ref_stats = await get_referral_stats(user["id"])
     from config import settings
-    ref_link = f"https://t.me/MushroomsAIbot?start={user.get('referral_code', '')}"
+    ref_link = f"https://t.me/mushrooms_ai_bot?start={user.get('referral_code', '')}"
 
     recent_messages = await database.fetch_all(
         messages.select()
