@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Маркетплейс — MushroomsAI Admin{% endblock %}
+
+{% block content %}
+<div class="pt-24 pb-16">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex gap-2 mb-8 overflow-x-auto pb-2">
+      {% for label, href in [('Dashboard','/admin'),('Аналитика','/admin/analytics'),('Пользователи','/admin/users'),('AI','/admin/ai'),('Рассылки','/admin/broadcast'),('Маркетплейс','/admin/marketplace'),('Конструктор','/admin/constructor')] %}
+      <a href="{{ href }}" class="px-4 py-2 rounded-lg text-sm whitespace-nowrap border transition-all duration-300 {{ 'bg-gold text-bg border-gold' if request.url.path == href else 'border-border text-muted hover:border-gold hover:text-gold' }}">{{ label }}</a>
+      {% endfor %}
+    </div>
+
+    <h1 class="text-3xl font-light text-text mb-8">Маркетплейс</h1>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
+      <div class="lg:col-span-1">
+        <form action="/admin/marketplace/add" method="post">
+          <div class="p-6 rounded-2xl bg-surface border border-border space-y-4">
+            <h2 class="font-semibold text-text">Добавить товар</h2>
+            {% for fname, ftype, placeholder in [('name','text','Название'),('description','text','Описание'),('price','number','Цена (руб.)'),('category','text','Категория'),('stock','number','Остаток'),('image_url','url','URL изображения')] %}
+            <input type="{{ ftype }}" name="{{ fname }}" placeholder="{{ placeholder }}"
+              {% if fname in ['name','price'] %}required{% endif %}
+              step="{{ '0.01' if ftype == 'number' and fname == 'price' else '1' }}"
+              class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text placeholder-muted text-sm focus:outline-none focus:border-gold/60 transition-colors" />
+            {% endfor %}
+            <button type="submit"
+              class="w-full py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-all duration-300">
+              Добавить
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div class="lg:col-span-2">
+        <div class="rounded-2xl bg-surface border border-border overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead>
+                <tr class="border-b border-border">
+                  <th class="px-4 py-3 text-left text-xs font-medium text-muted">Название</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-muted">Цена</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-muted">Кат.</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-muted">Статус</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-muted">Действия</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for p in products %}
+                <tr class="border-b border-border last:border-0">
+                  <td class="px-4 py-3 text-sm text-text">{{ p.name }}</td>
+                  <td class="px-4 py-3 text-sm text-text">{{ p.price | int }} руб.</td>
+                  <td class="px-4 py-3 text-xs text-muted">{{ p.category or '—' }}</td>
+                  <td class="px-4 py-3">
+                    <span class="text-xs px-2 py-0.5 rounded {{ 'text-green-400 bg-green-500/10' if p.active else 'text-muted bg-border' }}">
+                      {{ 'Активен' if p.active else 'Скрыт' }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3">
+                    <button onclick="toggleProduct({{ p.id }})" class="text-xs text-gold hover:underline">
+                      {{ 'Скрыть' if p.active else 'Показать' }}
+                    </button>
+                  </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="px-4 py-6 text-center text-sm text-muted">Товаров нет</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+async function toggleProduct(id) {
+  await fetch(`/admin/marketplace/toggle/${id}`, { method: 'POST' });
+  location.reload();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,41 @@
+<nav class="fixed top-0 left-0 right-0 z-50 border-b border-border bg-bg/80 backdrop-blur-xl">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-16">
+      <a href="/" class="flex items-center gap-3 group">
+        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-gold to-gold-light flex items-center justify-center">
+          <span class="text-bg font-bold text-sm">M</span>
+        </div>
+        <span class="font-semibold text-text group-hover:text-gold transition-colors duration-300">MushroomsAI</span>
+      </a>
+
+      <div class="hidden md:flex items-center gap-8">
+        <a href="/chat" class="text-sm text-muted hover:text-gold transition-colors duration-300">AI Консультант</a>
+        <a href="/shop" class="text-sm text-muted hover:text-gold transition-colors duration-300">Магазин</a>
+        <a href="/community" class="text-sm text-muted hover:text-gold transition-colors duration-300">Сообщество</a>
+      </div>
+
+      <div class="flex items-center gap-3">
+        {% if user %}
+          <a href="/dashboard" class="flex items-center gap-2 text-sm text-muted hover:text-gold transition-colors duration-300">
+            {% if user.avatar %}
+              <img src="{{ user.avatar }}" class="w-7 h-7 rounded-full object-cover" alt="" />
+            {% else %}
+              <div class="w-7 h-7 rounded-full bg-gold/20 flex items-center justify-center">
+                <span class="text-gold text-xs font-semibold">{{ (user.name or 'U')[0].upper() }}</span>
+              </div>
+            {% endif %}
+            <span class="hidden sm:inline">{{ user.name or 'Кабинет' }}</span>
+          </a>
+          <a href="/logout" class="text-xs text-muted hover:text-red-400 transition-colors duration-300">Выйти</a>
+        {% else %}
+          <a href="/login" class="text-sm px-4 py-2 rounded-lg border border-border text-muted hover:border-gold hover:text-gold transition-all duration-300">
+            Войти
+          </a>
+          <a href="https://t.me/MushroomsAIbot" target="_blank" class="text-sm px-4 py-2 rounded-lg bg-gold text-bg font-medium hover:bg-gold-light transition-all duration-300">
+            Открыть бот
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</nav>

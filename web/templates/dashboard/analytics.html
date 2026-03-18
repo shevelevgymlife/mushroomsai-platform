@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Аналитика — MushroomsAI Admin{% endblock %}
+
+{% block content %}
+<div class="pt-24 pb-16">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex gap-2 mb-8 overflow-x-auto pb-2">
+      {% for label, href in [('Dashboard','/admin'),('Аналитика','/admin/analytics'),('Пользователи','/admin/users'),('AI','/admin/ai'),('Рассылки','/admin/broadcast'),('Маркетплейс','/admin/marketplace'),('Конструктор','/admin/constructor')] %}
+      <a href="{{ href }}" class="px-4 py-2 rounded-lg text-sm whitespace-nowrap border transition-all duration-300 {{ 'bg-gold text-bg border-gold' if request.url.path == href else 'border-border text-muted hover:border-gold hover:text-gold' }}">{{ label }}</a>
+      {% endfor %}
+    </div>
+
+    <h1 class="text-3xl font-light text-text mb-8">Аналитика</h1>
+
+    <div class="p-6 rounded-2xl bg-surface border border-border mb-6">
+      <h2 class="font-semibold text-text mb-6">Новые пользователи (30 дней)</h2>
+      <div class="flex items-end gap-1 h-40">
+        {% set max_count = days | map(attribute='count') | max %}
+        {% for day in days %}
+        <div class="flex-1 flex flex-col items-center gap-1 group">
+          <div class="w-full rounded-t-sm bg-gold/20 hover:bg-gold/40 transition-colors duration-300 cursor-default"
+               style="height: {{ ((day.count / (max_count if max_count > 0 else 1)) * 100) | int }}%; min-height: 2px;"
+               title="{{ day.date }}: {{ day.count }}">
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="flex justify-between mt-2">
+        <span class="text-xs text-muted">{{ days[0].date }}</span>
+        <span class="text-xs text-muted">{{ days[-1].date }}</span>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      {% for day in days[-7:] %}
+      <div class="p-4 rounded-xl bg-surface border border-border flex justify-between items-center">
+        <span class="text-sm text-muted">{{ day.date }}</span>
+        <span class="text-sm font-semibold text-text">{{ day.count }} польз.</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

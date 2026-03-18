@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}MushroomsAI — Персональный AI-консультант по функциональным грибам{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+<section class="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
+  <div class="absolute inset-0 bg-gradient-radial from-gold/5 via-transparent to-transparent"></div>
+  <div class="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gold/5 rounded-full blur-3xl"></div>
+
+  <div class="relative z-10 max-w-4xl mx-auto px-4 text-center">
+    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-gold/30 bg-gold/5 text-gold text-xs font-medium mb-8">
+      AI-платформа по фунготерапии
+    </div>
+
+    <h1 class="text-5xl sm:text-6xl lg:text-7xl font-light text-text leading-tight mb-6">
+      Грибы, которые<br />
+      <span class="text-transparent bg-clip-text bg-gradient-to-r from-gold to-gold-light font-semibold">меняют здоровье</span>
+    </h1>
+
+    <p class="text-lg text-muted max-w-2xl mx-auto mb-10 leading-relaxed">
+      Персональный AI-консультант Евгения Шевелева. Подберём протокол из функциональных грибов под ваши задачи — иммунитет, энергия, восстановление.
+    </p>
+
+    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+      <a href="https://t.me/MushroomsAIbot" target="_blank"
+         class="px-8 py-4 rounded-xl bg-gold text-bg font-semibold hover:bg-gold-light transition-all duration-300 shadow-lg shadow-gold/20 hover:shadow-gold/30">
+        Открыть в Telegram
+      </a>
+      <a href="/chat"
+         class="px-8 py-4 rounded-xl border border-border text-text hover:border-gold hover:text-gold transition-all duration-300">
+        Начать консультацию
+      </a>
+    </div>
+  </div>
+
+  <div class="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
+    <div class="w-5 h-8 rounded-full border border-border flex items-start justify-center pt-1.5">
+      <div class="w-1 h-2 bg-muted rounded-full"></div>
+    </div>
+  </div>
+</section>
+
+<!-- Features -->
+<section class="py-24">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="text-center mb-16">
+      <h2 class="text-3xl sm:text-4xl font-light text-text mb-4">Что умеет <span class="text-gold">AI</span></h2>
+      <p class="text-muted max-w-xl mx-auto">Персональный подход, основанный на научных данных и опыте Евгения Шевелева</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {% set features = [
+        ('Подбор протокола', 'Анализирует ваши симптомы и подбирает оптимальный гриб с дозировками'),
+        ('Анализ крови', 'Интерпретирует лабораторные показатели и рекомендует коррекцию'),
+        ('PDF-рецепты', 'Генерирует персональный протокол в PDF с точными схемами'),
+        ('История диалогов', 'Помнит ваш анамнез и динамику изменений'),
+      ] %}
+      {% for title, desc in features %}
+      <div class="p-6 rounded-2xl bg-surface border border-border hover:border-gold/30 transition-all duration-300 group">
+        <div class="w-10 h-10 rounded-xl bg-gold/10 flex items-center justify-center mb-4 group-hover:bg-gold/20 transition-colors duration-300">
+          <div class="w-4 h-4 rounded-full bg-gold"></div>
+        </div>
+        <h3 class="font-semibold text-text mb-2">{{ title }}</h3>
+        <p class="text-sm text-muted leading-relaxed">{{ desc }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- Products -->
+{% if products %}
+<section class="py-24 bg-surface/30">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-end justify-between mb-12">
+      <div>
+        <h2 class="text-3xl sm:text-4xl font-light text-text mb-2">Продукты</h2>
+        <p class="text-muted">Функциональные грибы и протоколы</p>
+      </div>
+      <a href="/shop" class="text-sm text-gold hover:text-gold-light transition-colors">Весь каталог</a>
+    </div>
+    {% from "components/cards.html" import product_card %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {% for product in products %}
+        {{ product_card(product) }}
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- Tariffs -->
+<section class="py-24">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="text-center mb-16">
+      <h2 class="text-3xl sm:text-4xl font-light text-text mb-4">Тарифы</h2>
+      <p class="text-muted">Выберите подходящий план</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+      <!-- Free -->
+      <div class="p-6 rounded-2xl bg-surface border border-border">
+        <h3 class="font-semibold text-text mb-1">Бесплатный</h3>
+        <p class="text-3xl font-light text-text mb-6">0 <span class="text-base text-muted">руб/мес</span></p>
+        <ul class="space-y-3 mb-8">
+          {% for item in ['5 вопросов в день', '1 рецепт в день', 'База знаний о грибах'] %}
+          <li class="flex items-center gap-2 text-sm text-muted">
+            <span class="w-1.5 h-1.5 rounded-full bg-muted flex-shrink-0"></span>{{ item }}
+          </li>
+          {% endfor %}
+        </ul>
+        <a href="/login" class="block text-center px-4 py-2.5 rounded-lg border border-border text-muted hover:border-gold hover:text-gold transition-all duration-300 text-sm">
+          Начать бесплатно
+        </a>
+      </div>
+
+      <!-- Start -->
+      <div class="p-6 rounded-2xl bg-surface border border-gold/40 relative">
+        <div class="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gold text-bg text-xs font-semibold">Популярный</div>
+        <h3 class="font-semibold text-text mb-1">Старт</h3>
+        <p class="text-3xl font-light text-text mb-6">990 <span class="text-base text-muted">руб/мес</span></p>
+        <ul class="space-y-3 mb-8">
+          {% for item in ['Безлимитные консультации', 'PDF-рецепты', 'История 1 месяц', 'Приоритетные ответы'] %}
+          <li class="flex items-center gap-2 text-sm text-muted">
+            <span class="w-1.5 h-1.5 rounded-full bg-gold flex-shrink-0"></span>{{ item }}
+          </li>
+          {% endfor %}
+        </ul>
+        <a href="/dashboard" class="block text-center px-4 py-2.5 rounded-lg bg-gold text-bg font-medium hover:bg-gold-light transition-all duration-300 text-sm">
+          Подключить
+        </a>
+      </div>
+
+      <!-- Pro -->
+      <div class="p-6 rounded-2xl bg-surface border border-border">
+        <h3 class="font-semibold text-text mb-1">Про</h3>
+        <p class="text-3xl font-light text-text mb-6">1990 <span class="text-base text-muted">руб/мес</span></p>
+        <ul class="space-y-3 mb-8">
+          {% for item in ['Всё из Старт', 'История 3 месяца', 'Глубокий разбор грибов', 'Анализ анализов крови'] %}
+          <li class="flex items-center gap-2 text-sm text-muted">
+            <span class="w-1.5 h-1.5 rounded-full bg-gold-light flex-shrink-0"></span>{{ item }}
+          </li>
+          {% endfor %}
+        </ul>
+        <a href="/dashboard" class="block text-center px-4 py-2.5 rounded-lg border border-gold/40 text-gold hover:bg-gold hover:text-bg transition-all duration-300 text-sm">
+          Подключить
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Community preview -->
+{% if posts %}
+<section class="py-24 bg-surface/30">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-end justify-between mb-12">
+      <div>
+        <h2 class="text-3xl sm:text-4xl font-light text-text mb-2">Сообщество</h2>
+        <p class="text-muted">Опыт участников платформы</p>
+      </div>
+      <a href="/community" class="text-sm text-gold hover:text-gold-light transition-colors">Все посты</a>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {% for post in posts %}
+      <div class="p-6 rounded-2xl bg-surface border border-border hover:border-gold/20 transition-all duration-300">
+        <p class="text-sm text-text leading-relaxed mb-4">{{ post.content[:200] }}{% if post.content|length > 200 %}...{% endif %}</p>
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-muted">{{ post.created_at.strftime('%d.%m.%Y') if post.created_at else '' }}</span>
+          <span class="text-xs text-muted">{{ post.likes }} лайков</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

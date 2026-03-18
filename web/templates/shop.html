@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Магазин — MushroomsAI{% endblock %}
+
+{% block content %}
+<div class="pt-24 pb-16">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="mb-12">
+      <h1 class="text-4xl font-light text-text mb-3">Магазин</h1>
+      <p class="text-muted">Функциональные грибы, протоколы и консультации</p>
+    </div>
+
+    <!-- Filters -->
+    <div class="flex gap-3 mb-8 flex-wrap">
+      <a href="/shop"
+        class="px-4 py-2 rounded-lg text-sm transition-all duration-300 {{ 'bg-gold text-bg font-medium' if not selected_category else 'border border-border text-muted hover:border-gold hover:text-gold' }}">
+        Все
+      </a>
+      {% for cat in categories %}
+        {% if cat.category %}
+        <a href="/shop?category={{ cat.category }}"
+          class="px-4 py-2 rounded-lg text-sm transition-all duration-300 {{ 'bg-gold text-bg font-medium' if selected_category == cat.category else 'border border-border text-muted hover:border-gold hover:text-gold' }}">
+          {{ cat.category }}
+        </a>
+        {% endif %}
+      {% endfor %}
+    </div>
+
+    {% if products %}
+    {% from "components/cards.html" import product_card %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      {% for product in products %}
+        {{ product_card(product) }}
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-24">
+      <div class="w-16 h-16 rounded-2xl bg-surface border border-border flex items-center justify-center mx-auto mb-6">
+        <div class="w-6 h-6 rounded-full bg-gold/20"></div>
+      </div>
+      <h3 class="text-lg font-medium text-text mb-2">Товары загружаются</h3>
+      <p class="text-sm text-muted">Каталог скоро появится</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

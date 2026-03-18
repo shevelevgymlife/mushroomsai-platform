@@ -1,0 +1,110 @@
+import asyncio
+import logging
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
+
+from config import settings
+from db.database import database, metadata, engine
+from web.routes.public import router as public_router
+from web.routes.auth_routes import router as auth_router
+from web.routes.user import router as user_router
+from web.routes.admin import router as admin_router
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+bot_app = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    await database.connect()
+    logger.info("Database connected")
+
+    # Create tables
+    try:
+        metadata.create_all(engine)
+        logger.info("Tables created")
+    except Exception as e:
+        logger.warning(f"Table creation: {e}")
+
+    # Ensure default AI settings exist
+    try:
+        from db.models import ai_settings
+        count = await database.fetch_val(
+            __import__("sqlalchemy", fromlist=["select"]).select(
+                __import__("sqlalchemy", fromlist=["func"]).func.count()
+            ).select_from(ai_settings)
+        )
+        if not count:
+            from ai.system_prompt import DEFAULT_SYSTEM_PROMPT
+            await database.execute(ai_settings.insert().values(system_prompt=DEFAULT_SYSTEM_PROMPT))
+    except Exception as e:
+        logger.warning(f"AI settings init: {e}")
+
+    # Start Telegram bot
+    global bot_app
+    if settings.TELEGRAM_TOKEN:
+        try:
+            from bot.main_bot import create_bot
+            bot_app = create_bot()
+            await bot_app.initialize()
+            await bot_app.start()
+            await bot_app.updater.start_polling(drop_pending_updates=True)
+            logger.info("Telegram bot started")
+
+            # Start scheduler
+            from services.scheduler import start_scheduler
+            start_scheduler(bot_app.bot)
+        except Exception as e:
+            logger.error(f"Bot startup error: {e}")
+
+    yield
+
+    # Shutdown
+    if bot_app:
+        try:
+            await bot_app.updater.stop()
+            await bot_app.stop()
+            await bot_app.shutdown()
+        except Exception as e:
+            logger.error(f"Bot shutdown error: {e}")
+
+    await database.disconnect()
+    logger.info("Database disconnected")
+
+
+app = FastAPI(
+    title="MushroomsAI Platform",
+    description="AI-платформа по функциональным грибам",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+# Middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+app.add_middleware(SessionMiddleware, secret_key=settings.JWT_SECRET)
+
+# Static files
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Routers
+app.include_router(public_router)
+app.include_router(auth_router)
+app.include_router(user_router)
+app.include_router(admin_router)
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok", "service": "mushroomsai"}

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Конструктор — MushroomsAI Admin{% endblock %}
+
+{% block content %}
+<div class="pt-24 pb-16">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex gap-2 mb-8 overflow-x-auto pb-2">
+      {% for label, href in [('Dashboard','/admin'),('Аналитика','/admin/analytics'),('Пользователи','/admin/users'),('AI','/admin/ai'),('Рассылки','/admin/broadcast'),('Маркетплейс','/admin/marketplace'),('Конструктор','/admin/constructor')] %}
+      <a href="{{ href }}" class="px-4 py-2 rounded-lg text-sm whitespace-nowrap border transition-all duration-300 {{ 'bg-gold text-bg border-gold' if request.url.path == href else 'border-border text-muted hover:border-gold hover:text-gold' }}">{{ label }}</a>
+      {% endfor %}
+    </div>
+
+    <h1 class="text-3xl font-light text-text mb-3">Конструктор страниц</h1>
+    <p class="text-muted mb-8">Редактируйте тексты главной страницы</p>
+
+    <div class="p-6 rounded-2xl bg-surface border border-border max-w-2xl">
+      <p class="text-sm text-muted leading-relaxed mb-6">
+        Конструктор позволяет изменять тексты на главной странице через панель администратора.
+        Для полного редактирования используйте файл <code class="text-gold">web/templates/index.html</code>.
+      </p>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-muted mb-2">Hero заголовок</label>
+          <input type="text" value="Грибы, которые меняют здоровье" placeholder="Заголовок"
+            class="w-full px-4 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-muted mb-2">Hero подзаголовок</label>
+          <textarea rows="3" placeholder="Подзаголовок"
+            class="w-full px-4 py-3 rounded-xl bg-bg border border-border text-text text-sm resize-none focus:outline-none focus:border-gold/60 transition-colors">Персональный AI-консультант Евгения Шевелева.</textarea>
+        </div>
+        <button class="px-6 py-3 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-all duration-300">
+          Сохранить (в разработке)
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

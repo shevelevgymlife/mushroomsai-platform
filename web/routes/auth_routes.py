@@ -1,0 +1,139 @@
+from fastapi import APIRouter, Request, Form, Response
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
+from starlette.responses import JSONResponse
+from auth.telegram_auth import verify_telegram_auth
+from auth.google_auth import oauth
+from auth.email_auth import authenticate_user, register_user
+from auth.session import create_access_token
+from db.database import database
+from db.models import users
+import secrets
+import string
+
+router = APIRouter()
+templates = Jinja2Templates(directory="web/templates")
+
+
+@router.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    from auth.session import get_user_from_request
+    user = await get_user_from_request(request)
+    if user:
+        return RedirectResponse("/dashboard")
+    from config import settings
+    return templates.TemplateResponse(
+        "login.html",
+        {"request": request, "user": None, "site_url": settings.SITE_URL},
+    )
+
+
+@router.post("/login/email")
+async def login_email(
+    request: Request,
+    response: Response,
+    email: str = Form(...),
+    password: str = Form(...),
+):
+    user = await authenticate_user(email, password)
+    if not user:
+        return templates.TemplateResponse(
+            "login.html",
+            {"request": request, "user": None, "error": "Неверный email или пароль"},
+        )
+    token = create_access_token(user["id"])
+    resp = RedirectResponse("/dashboard", status_code=302)
+    resp.set_cookie("access_token", token, httponly=True, max_age=30 * 24 * 3600)
+    return resp
+
+
+@router.post("/register/email")
+async def register_email(
+    request: Request,
+    email: str = Form(...),
+    password: str = Form(...),
+    name: str = Form(...),
+):
+    user = await register_user(email, password, name)
+    if not user:
+        return templates.TemplateResponse(
+            "login.html",
+            {"request": request, "user": None, "error": "Email уже зарегистрирован"},
+        )
+    token = create_access_token(user["id"])
+    resp = RedirectResponse("/dashboard", status_code=302)
+    resp.set_cookie("access_token", token, httponly=True, max_age=30 * 24 * 3600)
+    return resp
+
+
+@router.get("/auth/telegram")
+async def telegram_auth(request: Request):
+    data = dict(request.query_params)
+    if not verify_telegram_auth(data.copy()):
+        return JSONResponse({"error": "Invalid auth"}, status_code=400)
+
+    tg_id = int(data.get("id"))
+    name = f"{data.get('first_name', '')} {data.get('last_name', '')}".strip()
+    username = data.get("username", "")
+    photo = data.get("photo_url", "")
+
+    row = await database.fetch_one(users.select().where(users.c.tg_id == tg_id))
+    if row:
+        user_id = row["id"]
+        await database.execute(
+            users.update().where(users.c.tg_id == tg_id).values(name=name, avatar=photo)
+        )
+    else:
+        ref_code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
+        user_id = await database.execute(
+            users.insert().values(tg_id=tg_id, name=name, avatar=photo, referral_code=ref_code)
+        )
+
+    token = create_access_token(user_id)
+    resp = RedirectResponse("/dashboard", status_code=302)
+    resp.set_cookie("access_token", token, httponly=True, max_age=30 * 24 * 3600)
+    return resp
+
+
+@router.get("/auth/google")
+async def google_login(request: Request):
+    from config import settings
+    redirect_uri = f"{settings.SITE_URL}/auth/google/callback"
+    return await oauth.google.authorize_redirect(request, redirect_uri)
+
+
+@router.get("/auth/google/callback")
+async def google_callback(request: Request):
+    token = await oauth.google.authorize_access_token(request)
+    user_info = token.get("userinfo")
+
+    google_id = user_info["sub"]
+    email = user_info.get("email", "")
+    name = user_info.get("name", "")
+    avatar = user_info.get("picture", "")
+
+    row = await database.fetch_one(users.select().where(users.c.google_id == google_id))
+    if row:
+        user_id = row["id"]
+        await database.execute(
+            users.update().where(users.c.google_id == google_id).values(name=name, avatar=avatar)
+        )
+    else:
+        ref_code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
+        user_id = await database.execute(
+            users.insert().values(
+                google_id=google_id, email=email, name=name, avatar=avatar, referral_code=ref_code
+            )
+        )
+
+    token_str = create_access_token(user_id)
+    resp = RedirectResponse("/dashboard", status_code=302)
+    resp.set_cookie("access_token", token_str, httponly=True, max_age=30 * 24 * 3600)
+    return resp
+
+
+@router.get("/logout")
+async def logout():
+    resp = RedirectResponse("/", status_code=302)
+    resp.delete_cookie("access_token")
+    return resp

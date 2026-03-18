@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Пользователи — MushroomsAI Admin{% endblock %}
+
+{% block content %}
+<div class="pt-24 pb-16">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex gap-2 mb-8 overflow-x-auto pb-2">
+      {% for label, href in [('Dashboard','/admin'),('Аналитика','/admin/analytics'),('Пользователи','/admin/users'),('AI','/admin/ai'),('Рассылки','/admin/broadcast'),('Маркетплейс','/admin/marketplace'),('Конструктор','/admin/constructor')] %}
+      <a href="{{ href }}" class="px-4 py-2 rounded-lg text-sm whitespace-nowrap border transition-all duration-300 {{ 'bg-gold text-bg border-gold' if request.url.path == href else 'border-border text-muted hover:border-gold hover:text-gold' }}">{{ label }}</a>
+      {% endfor %}
+    </div>
+
+    <div class="flex items-center justify-between mb-8">
+      <h1 class="text-3xl font-light text-text">Пользователи</h1>
+    </div>
+
+    <form class="mb-6">
+      <input type="text" name="search" value="{{ search }}" placeholder="Поиск по имени или email..."
+        class="w-full max-w-sm px-4 py-2.5 rounded-xl bg-surface border border-border text-text placeholder-muted text-sm focus:outline-none focus:border-gold/60 transition-colors" />
+    </form>
+
+    <div class="rounded-2xl bg-surface border border-border overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-border">
+              {% for col in ['ID','Имя','Email/TG','Подписка','Регистрация','Роль'] %}
+              <th class="px-4 py-3 text-left text-xs font-medium text-muted">{{ col }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for u in users %}
+            <tr class="border-b border-border last:border-0 hover:bg-border/30 transition-colors">
+              <td class="px-4 py-3 text-xs text-muted">{{ u.id }}</td>
+              <td class="px-4 py-3 text-sm text-text">{{ u.name or '—' }}</td>
+              <td class="px-4 py-3 text-xs text-muted">{{ u.email or ('@tg:' ~ u.tg_id if u.tg_id else '—') }}</td>
+              <td class="px-4 py-3">
+                <span class="px-2 py-0.5 rounded text-xs {{ 'text-gold bg-gold/10' if u.subscription_plan != 'free' else 'text-muted bg-border' }}">
+                  {{ u.subscription_plan }}
+                </span>
+              </td>
+              <td class="px-4 py-3 text-xs text-muted">{{ u.created_at.strftime('%d.%m.%Y') if u.created_at else '—' }}</td>
+              <td class="px-4 py-3 text-xs text-muted">{{ u.role }}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="6" class="px-4 py-8 text-center text-sm text-muted">Пользователи не найдены</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

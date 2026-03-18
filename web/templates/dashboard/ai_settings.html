@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}AI Настройки — MushroomsAI Admin{% endblock %}
+
+{% block content %}
+<div class="pt-24 pb-16">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex gap-2 mb-8 overflow-x-auto pb-2">
+      {% for label, href in [('Dashboard','/admin'),('Аналитика','/admin/analytics'),('Пользователи','/admin/users'),('AI','/admin/ai'),('Рассылки','/admin/broadcast'),('Маркетплейс','/admin/marketplace'),('Конструктор','/admin/constructor')] %}
+      <a href="{{ href }}" class="px-4 py-2 rounded-lg text-sm whitespace-nowrap border transition-all duration-300 {{ 'bg-gold text-bg border-gold' if request.url.path == href else 'border-border text-muted hover:border-gold hover:text-gold' }}">{{ label }}</a>
+      {% endfor %}
+    </div>
+
+    <h1 class="text-3xl font-light text-text mb-8">Настройки AI</h1>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="lg:col-span-2">
+        <form action="/admin/ai" method="post">
+          <div class="p-6 rounded-2xl bg-surface border border-border mb-4">
+            <h2 class="font-semibold text-text mb-4">Системный промт</h2>
+            <p class="text-xs text-muted mb-4">Редактируйте промт напрямую. Изменения применяются немедленно для всех новых диалогов.</p>
+            <textarea name="system_prompt" rows="20"
+              class="w-full px-4 py-3 rounded-xl bg-bg border border-border text-text text-sm font-mono resize-none focus:outline-none focus:border-gold/60 transition-colors leading-relaxed">{{ current_prompt }}</textarea>
+          </div>
+          <button type="submit"
+            class="px-6 py-3 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-all duration-300">
+            Сохранить и применить
+          </button>
+        </form>
+      </div>
+
+      <div>
+        <div class="p-6 rounded-2xl bg-surface border border-border">
+          <h2 class="font-semibold text-text mb-4">История изменений</h2>
+          {% if history %}
+          <div class="space-y-3">
+            {% for item in history %}
+            <div class="p-3 rounded-lg bg-bg border border-border">
+              <p class="text-xs text-muted mb-1">{{ item.updated_at.strftime('%d.%m.%Y %H:%M') if item.updated_at else '' }}</p>
+              <p class="text-xs text-text line-clamp-2">{{ item.system_prompt[:80] }}...</p>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="text-sm text-muted">История пуста</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

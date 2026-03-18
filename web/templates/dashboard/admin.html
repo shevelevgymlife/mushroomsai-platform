@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard — MushroomsAI{% endblock %}
+
+{% block content %}
+<div class="pt-24 pb-16">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+    <!-- Admin nav -->
+    <div class="flex gap-2 mb-8 overflow-x-auto pb-2">
+      {% for label, href in [('Dashboard','/admin'),('Аналитика','/admin/analytics'),('Пользователи','/admin/users'),('AI','/admin/ai'),('Рассылки','/admin/broadcast'),('Маркетплейс','/admin/marketplace'),('Конструктор','/admin/constructor')] %}
+      <a href="{{ href }}" class="px-4 py-2 rounded-lg text-sm whitespace-nowrap border transition-all duration-300 {{ 'bg-gold text-bg border-gold' if request.url.path == href else 'border-border text-muted hover:border-gold hover:text-gold' }}">
+        {{ label }}
+      </a>
+      {% endfor %}
+    </div>
+
+    <h1 class="text-3xl font-light text-text mb-8">Dashboard</h1>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
+      {% for label, value, sub in [
+        ('Новых сегодня', users_today, 'пользователей'),
+        ('За неделю', users_week, 'пользователей'),
+        ('За месяц', users_month, 'пользователей'),
+        ('Новые лиды', new_leads, 'заявок'),
+        ('Выручка сегодня', revenue_today|int ~ ' руб.', ''),
+        ('Выручка за месяц', revenue_month|int ~ ' руб.', ''),
+      ] %}
+      <div class="p-5 rounded-2xl bg-surface border border-border">
+        <p class="text-xs text-muted mb-1">{{ label }}</p>
+        <p class="text-2xl font-semibold text-text">{{ value }}</p>
+        {% if sub %}<p class="text-xs text-muted mt-0.5">{{ sub }}</p>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Recent messages -->
+    <div class="p-6 rounded-2xl bg-surface border border-border">
+      <h2 class="font-semibold text-text mb-5">Последние сообщения</h2>
+      {% if recent_msgs %}
+      <div class="space-y-4">
+        {% for msg in recent_msgs %}
+        <div class="flex gap-3 items-start py-3 border-b border-border last:border-0">
+          <span class="px-2 py-0.5 rounded text-xs font-medium {{ 'bg-gold/10 text-gold' if msg.role == 'user' else 'bg-surface border border-border text-muted' }}">
+            {{ 'User' if msg.role == 'user' else 'AI' }}
+          </span>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm text-text truncate">{{ msg.content[:120] }}{% if msg.content|length > 120 %}...{% endif %}</p>
+            <p class="text-xs text-muted mt-0.5">{{ msg.created_at.strftime('%d.%m %H:%M') if msg.created_at else '' }}</p>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-sm text-muted text-center py-6">Сообщений пока нет</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

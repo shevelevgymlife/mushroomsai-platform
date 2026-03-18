@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}Личный кабинет — MushroomsAI{% endblock %}
+
+{% block content %}
+<div class="pt-24 pb-16">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <!-- Header -->
+    <div class="flex items-center gap-5 mb-10">
+      {% if user.avatar %}
+        <img src="{{ user.avatar }}" class="w-16 h-16 rounded-2xl object-cover" alt="" />
+      {% else %}
+        <div class="w-16 h-16 rounded-2xl bg-gold/20 flex items-center justify-center">
+          <span class="text-gold text-2xl font-semibold">{{ (user.name or 'U')[0].upper() }}</span>
+        </div>
+      {% endif %}
+      <div>
+        <h1 class="text-2xl font-semibold text-text">{{ user.name or 'Пользователь' }}</h1>
+        <p class="text-sm text-muted">{{ user.email or ('Telegram' if user.tg_id else 'Google') }}</p>
+      </div>
+      <div class="ml-auto hidden sm:block">
+        <span class="px-3 py-1.5 rounded-lg text-xs font-medium {{ 'bg-gold/20 text-gold border border-gold/30' if plan == 'pro' else ('bg-gold/10 text-gold border border-gold/20' if plan == 'start' else 'bg-surface border border-border text-muted') }}">
+          {{ plan_info.name }}
+        </span>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Left: subscription + referral + language -->
+      <div class="space-y-6">
+        <!-- Subscription -->
+        <div class="p-6 rounded-2xl bg-surface border border-border">
+          <h3 class="font-semibold text-text mb-4">Подписка</h3>
+          <div class="mb-4">
+            <p class="text-2xl font-light text-text">{{ plan_info.name }}</p>
+            {% if user.subscription_end %}
+            <p class="text-xs text-muted mt-1">до {{ user.subscription_end.strftime('%d.%m.%Y') }}</p>
+            {% endif %}
+          </div>
+          {% if plan == 'free' %}
+          <div class="space-y-2">
+            <a href="#" class="block text-center py-2.5 px-4 rounded-lg bg-gold text-bg text-sm font-medium hover:bg-gold-light transition-all duration-300">
+              Старт — 990 руб/мес
+            </a>
+            <a href="#" class="block text-center py-2.5 px-4 rounded-lg border border-gold/30 text-gold text-sm hover:bg-gold hover:text-bg transition-all duration-300">
+              Про — 1990 руб/мес
+            </a>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Referral -->
+        <div class="p-6 rounded-2xl bg-surface border border-border">
+          <h3 class="font-semibold text-text mb-4">Реферальная программа</h3>
+          <p class="text-xs text-muted mb-3">Приглашайте друзей — оба получите скидку 50% на следующий месяц</p>
+          <div class="flex gap-2 mb-4">
+            <input type="text" value="{{ ref_link }}" readonly id="refLink"
+              class="flex-1 px-3 py-2 rounded-lg bg-bg border border-border text-xs text-muted focus:outline-none" />
+            <button onclick="copyRef()" class="px-3 py-2 rounded-lg bg-gold/10 text-gold text-xs border border-gold/20 hover:bg-gold hover:text-bg transition-all duration-300">
+              Копировать
+            </button>
+          </div>
+          <div class="flex gap-4 text-center">
+            <div class="flex-1 p-3 rounded-lg bg-bg border border-border">
+              <p class="text-lg font-semibold text-text">{{ ref_stats.total }}</p>
+              <p class="text-xs text-muted">Приглашено</p>
+            </div>
+            <div class="flex-1 p-3 rounded-lg bg-bg border border-border">
+              <p class="text-lg font-semibold text-gold">{{ ref_stats.bonus_applied }}</p>
+              <p class="text-xs text-muted">Бонусов</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Language -->
+        <div class="p-6 rounded-2xl bg-surface border border-border">
+          <h3 class="font-semibold text-text mb-4">Язык AI</h3>
+          <form action="/dashboard/language" method="post">
+            <select name="language"
+              class="w-full px-3 py-2.5 rounded-lg bg-bg border border-border text-text text-sm mb-3 focus:outline-none focus:border-gold/60 transition-colors">
+              {% set languages = [('ru','Русский'),('en','English'),('de','Deutsch'),('fr','Francais'),('es','Espanol'),('zh','Zhongwen'),('ja','Nihongo')] %}
+              {% for code, name in languages %}
+              <option value="{{ code }}" {{ 'selected' if user.language == code else '' }}>{{ name }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="w-full py-2 rounded-lg bg-gold/10 text-gold text-sm border border-gold/20 hover:bg-gold hover:text-bg transition-all duration-300">
+              Сохранить
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Right: chat history + orders -->
+      <div class="lg:col-span-2 space-y-6">
+        <!-- Chat history -->
+        <div class="p-6 rounded-2xl bg-surface border border-border">
+          <h3 class="font-semibold text-text mb-4">История диалогов</h3>
+          {% if messages %}
+          <div class="space-y-3 max-h-80 overflow-y-auto custom-scroll">
+            {% for msg in messages %}
+            <div class="flex gap-3 {{ 'justify-end' if msg.role == 'user' else '' }}">
+              {% if msg.role == 'assistant' %}
+              <div class="w-6 h-6 rounded-full bg-gold/20 flex-shrink-0 flex items-center justify-center">
+                <span class="text-gold text-xs font-bold">AI</span>
+              </div>
+              {% endif %}
+              <div class="max-w-sm px-3 py-2 rounded-xl text-sm leading-relaxed {{ 'bg-gold/10 text-text border border-gold/20' if msg.role == 'user' else 'bg-bg border border-border text-muted' }}">
+                {{ msg.content[:200] }}{% if msg.content|length > 200 %}...{% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="mt-4 pt-4 border-t border-border">
+            <a href="/chat" class="text-sm text-gold hover:text-gold-light transition-colors">Продолжить диалог</a>
+          </div>
+          {% else %}
+          <div class="text-center py-8">
+            <p class="text-sm text-muted mb-3">Диалогов пока нет</p>
+            <a href="/chat" class="text-sm text-gold hover:underline">Начать консультацию</a>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Orders -->
+        <div class="p-6 rounded-2xl bg-surface border border-border">
+          <h3 class="font-semibold text-text mb-4">Мои заказы</h3>
+          {% if orders %}
+          <div class="space-y-3">
+            {% for order in orders %}
+            <div class="flex items-center justify-between py-3 border-b border-border last:border-0">
+              <div>
+                <p class="text-sm text-text">Заказ #{{ order.id }}</p>
+                <p class="text-xs text-muted">{{ order.created_at.strftime('%d.%m.%Y') if order.created_at else '' }}</p>
+              </div>
+              <div class="text-right">
+                <p class="text-sm font-medium text-text">{{ order.amount | int }} руб.</p>
+                <span class="text-xs px-2 py-0.5 rounded-full {{ 'bg-green-500/10 text-green-400' if order.status == 'paid' else 'bg-muted/10 text-muted' }}">
+                  {{ order.status }}
+                </span>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="text-sm text-muted text-center py-6">Заказов пока нет</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function copyRef() {
+  const input = document.getElementById('refLink');
+  navigator.clipboard.writeText(input.value).then(() => {
+    const btn = event.currentTarget;
+    btn.textContent = 'Скопировано';
+    setTimeout(() => btn.textContent = 'Копировать', 2000);
+  });
+}
+</script>
+{% endblock %}
