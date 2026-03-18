@@ -119,7 +119,15 @@ async function loginWithTelegram() {
 
 function detectPlatform() {
   const tg = window.Telegram?.WebApp;
-  const isTelegram = tg && tg.initData && tg.initData.length > 0;
+  const initData = tg?.initData || '';
+  const platform = tg?.platform || 'unknown';
+  
+  // Показываем Telegram кнопку если:
+  // 1. Есть initData ИЛИ
+  // 2. Platform не unknown/web
+  const isTelegram = initData.length > 0 || 
+    (platform !== 'unknown' && platform !== 'web' && platform !== '');
+  
   if (isTelegram) {
     tg.ready();
     document.getElementById('tg-login').classList.remove('hidden');
