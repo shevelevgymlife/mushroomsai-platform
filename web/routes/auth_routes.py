@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request, Form, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.responses import JSONResponse
-from auth.telegram_auth import verify_telegram_auth
+from auth.telegram_auth import verify_telegram_auth, verify_telegram_miniapp
 from auth.google_auth import oauth
 from auth.email_auth import authenticate_user, register_user
 from auth.session import create_access_token
@@ -93,6 +93,41 @@ async def telegram_auth(request: Request):
     resp = RedirectResponse("/dashboard", status_code=302)
     resp.set_cookie("access_token", token, httponly=True, max_age=30 * 24 * 3600)
     return resp
+
+
+@router.post("/auth/telegram/miniapp")
+async def telegram_miniapp_auth(request: Request):
+    try:
+        body = await request.json()
+        init_data = body.get("init_data", "")
+
+        user_data = verify_telegram_miniapp(init_data)
+        if not user_data:
+            return JSONResponse({"error": "Invalid Telegram data"}, status_code=400)
+
+        tg_id = int(user_data.get("id"))
+        name = f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip()
+        avatar = user_data.get("photo_url", "")
+
+        row = await database.fetch_one(users.select().where(users.c.tg_id == tg_id))
+        if row:
+            user_id = row["id"]
+            await database.execute(
+                users.update().where(users.c.tg_id == tg_id).values(name=name, avatar=avatar)
+            )
+        else:
+            ref_code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
+            user_id = await database.execute(
+                users.insert().values(tg_id=tg_id, name=name, avatar=avatar, referral_code=ref_code)
+            )
+
+        token = create_access_token(user_id)
+        resp = JSONResponse({"redirect": "/dashboard"})
+        resp.set_cookie("access_token", token, httponly=True, max_age=30 * 24 * 3600)
+        return resp
+
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 
 @router.get("/auth/google")
