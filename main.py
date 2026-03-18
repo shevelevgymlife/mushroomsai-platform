@@ -93,7 +93,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.add_middleware(SessionMiddleware, secret_key=settings.JWT_SECRET)
+app.add_middleware(SessionMiddleware, secret_key=settings.JWT_SECRET, https_only=True, same_site="none")
 
 # Static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
