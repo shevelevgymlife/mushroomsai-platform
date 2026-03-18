@@ -93,6 +93,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(
+    SessionMiddleware, 
+    secret_key=settings.JWT_SECRET,
+    max_age=3600,
+    https_only=False,
+    same_site="lax",
+)
 app.add_middleware(SessionMiddleware, secret_key=settings.JWT_SECRET, max_age=3600)
 
 # Static files
