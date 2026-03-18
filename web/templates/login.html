@@ -18,9 +18,16 @@
     </div>
     {% endif %}
 
-    <!-- Telegram загрузка -->
-    <div id="tg-loading" class="text-center py-8">
-      <p class="text-muted text-sm">Входим через Telegram...</p>
+    <!-- Telegram кнопка -->
+    <div id="tg-login" class="hidden">
+      <button onclick="loginWithTelegram()" id="tg-btn"
+        class="flex items-center justify-center gap-3 w-full p-3.5 rounded-xl border border-border bg-surface text-text text-sm font-medium hover:border-gold/40 transition-all duration-300 mb-4">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="#2AABEE">
+          <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-2.04 9.607c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.48 14.618l-2.95-.924c-.642-.2-.655-.642.136-.953l11.532-4.448c.536-.194 1.006.131.364.955z"/>
+        </svg>
+        Войти через Telegram
+      </button>
+      <p id="tg-status" class="text-center text-xs text-muted mb-4"></p>
     </div>
 
     <!-- Браузер вход -->
@@ -81,31 +88,42 @@
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script>
-async function detectPlatform() {
+async function loginWithTelegram() {
+  const btn = document.getElementById('tg-btn');
+  const status = document.getElementById('tg-status');
+  btn.disabled = true;
+  btn.textContent = 'Входим...';
+  status.textContent = '';
+
+  try {
+    const tg = window.Telegram.WebApp;
+    const response = await fetch('/auth/telegram/miniapp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ init_data: tg.initData })
+    });
+    const data = await response.json();
+    if (data.redirect) {
+      window.location.href = data.redirect;
+    } else {
+      status.textContent = 'Ошибка: ' + (data.error || 'попробуйте ещё раз');
+      btn.disabled = false;
+      btn.textContent = 'Войти через Telegram';
+    }
+  } catch(e) {
+    status.textContent = 'Ошибка соединения';
+    btn.disabled = false;
+    btn.textContent = 'Войти через Telegram';
+  }
+}
+
+function detectPlatform() {
   const tg = window.Telegram?.WebApp;
   const isTelegram = tg && tg.initData && tg.initData.length > 0;
-
   if (isTelegram) {
     tg.ready();
-    try {
-      const response = await fetch('/auth/telegram/miniapp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ init_data: tg.initData })
-      });
-      const data = await response.json();
-      if (data.redirect) {
-        window.location.href = data.redirect;
-      } else {
-        document.getElementById('tg-loading').classList.add('hidden');
-        document.getElementById('browser-login').classList.remove('hidden');
-      }
-    } catch(e) {
-      document.getElementById('tg-loading').classList.add('hidden');
-      document.getElementById('browser-login').classList.remove('hidden');
-    }
+    document.getElementById('tg-login').classList.remove('hidden');
   } else {
-    document.getElementById('tg-loading').classList.add('hidden');
     document.getElementById('browser-login').classList.remove('hidden');
   }
 }
@@ -115,6 +133,6 @@ function toggleRegister() {
   document.getElementById('registerForm').classList.toggle('hidden');
 }
 
-setTimeout(detectPlatform, 300);
+setTimeout(detectPlatform, 500);
 </script>
 {% endblock %}
