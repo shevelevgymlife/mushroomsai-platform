@@ -98,7 +98,6 @@
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-      <!-- Free -->
       <div class="p-6 rounded-2xl bg-surface border border-border">
         <h3 class="font-semibold text-text mb-1">Бесплатный</h3>
         <p class="text-3xl font-light text-text mb-6">0 <span class="text-base text-muted">руб/мес</span></p>
@@ -114,7 +113,6 @@
         </a>
       </div>
 
-      <!-- Start -->
       <div class="p-6 rounded-2xl bg-surface border border-gold/40 relative">
         <div class="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gold text-bg text-xs font-semibold">Популярный</div>
         <h3 class="font-semibold text-text mb-1">Старт</h3>
@@ -131,7 +129,6 @@
         </a>
       </div>
 
-      <!-- Pro -->
       <div class="p-6 rounded-2xl bg-surface border border-border">
         <h3 class="font-semibold text-text mb-1">Про</h3>
         <p class="text-3xl font-light text-text mb-6">1990 <span class="text-base text-muted">руб/мес</span></p>
@@ -150,7 +147,6 @@
   </div>
 </section>
 
-<!-- Community preview -->
 {% if posts %}
 <section class="py-24 bg-surface/30">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -175,4 +171,17 @@
   </div>
 </section>
 {% endif %}
+
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script>
+window.addEventListener('load', function() {
+  const tg = window.Telegram?.WebApp;
+  if (tg && tg.platform && tg.platform !== 'unknown' && tg.platform !== '') {
+    tg.ready();
+    tg.expand();
+    window.location.href = '/chat';
+  }
+});
+</script>
+
 {% endblock %}
