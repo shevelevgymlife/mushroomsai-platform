@@ -73,4 +73,43 @@
 
       <form action="/register/email" method="post" class="space-y-4 mt-6 hidden" id="registerForm">
         <div>
-          <in
+          <input type="text" name="name" placeholder="Ваше имя" required
+            class="w-full px-4 py-3 rounded-xl bg-surface border border-border text-text placeholder-muted text-sm focus:outline-none focus:border-gold/60 transition-colors duration-300" />
+        </div>
+        <div>
+          <input type="email" name="email" placeholder="Email" required
+            class="w-full px-4 py-3 rounded-xl bg-surface border border-border text-text placeholder-muted text-sm focus:outline-none focus:border-gold/60 transition-colors duration-300" />
+        </div>
+        <div>
+          <input type="password" name="password" placeholder="Пароль (мин. 8 символов)" minlength="8" required
+            class="w-full px-4 py-3 rounded-xl bg-surface border border-border text-text placeholder-muted text-sm focus:outline-none focus:border-gold/60 transition-colors duration-300" />
+        </div>
+        <button type="submit"
+          class="w-full py-3 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-all duration-300">
+          Создать аккаунт
+        </button>
+        <button type="button" onclick="toggleRegister()" class="w-full text-sm text-muted hover:text-gold transition-colors">
+          Назад к входу
+        </button>
+      </form>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// Определяем где открыт сайт
+if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) {
+  // Telegram Mini App
+  document.getElementById('tg-login').classList.remove('hidden');
+} else {
+  // Обычный браузер
+  document.getElementById('browser-login').classList.remove('hidden');
+}
+
+function toggleRegister() {
+  document.getElementById('loginForm').classList.toggle('hidden');
+  document.getElementById('registerForm').classList.toggle('hidden');
+}
+</script>
+{% endblock %}
