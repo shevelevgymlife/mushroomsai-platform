@@ -3,13 +3,14 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.responses import JSONResponse
 from auth.telegram_auth import verify_telegram_auth, verify_telegram_miniapp
-from auth.google_auth import oauth
 from auth.email_auth import authenticate_user, register_user
 from auth.session import create_access_token
 from db.database import database
 from db.models import users
 import secrets
 import string
+import httpx
+import urllib.parse
 
 router = APIRouter()
 templates = Jinja2Templates(directory="web/templates")
@@ -132,43 +133,63 @@ async def telegram_miniapp_auth(request: Request):
 @router.get("/auth/google")
 async def google_login(request: Request):
     from config import settings
-    redirect_uri = f"{settings.SITE_URL}/auth/google/callback"
-    return await oauth.google.authorize_redirect(request, redirect_uri)
+    params = {
+        "client_id": settings.GOOGLE_CLIENT_ID,
+        "redirect_uri": f"{settings.SITE_URL}/auth/google/callback",
+        "response_type": "code",
+        "scope": "openid email profile",
+        "access_type": "offline",
+    }
+    url = "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(params)
+    return RedirectResponse(url)
 
 
 @router.get("/auth/google/callback")
 async def google_callback(request: Request):
     try:
-        token = await oauth.google.authorize_access_token(request)
-        user_info = token.get("userinfo")
+        from config import settings
+        code = request.query_params.get("code")
+        if not code:
+            raise Exception("Нет кода авторизации")
 
-        google_id = str(user_info["sub"])
+        async with httpx.AsyncClient() as client:
+            token_resp = await client.post(
+                "https://oauth2.googleapis.com/token",
+                data={
+                    "code": code,
+                    "client_id": settings.GOOGLE_CLIENT_ID,
+                    "client_secret": settings.GOOGLE_CLIENT_SECRET,
+                    "redirect_uri": f"{settings.SITE_URL}/auth/google/callback",
+                    "grant_type": "authorization_code",
+                }
+            )
+            token_data = token_resp.json()
+            access_token = token_data.get("access_token")
+            if not access_token:
+                raise Exception(f"Не удалось получить токен: {token_data}")
+
+            user_resp = await client.get(
+                "https://www.googleapis.com/oauth2/v3/userinfo",
+                headers={"Authorization": f"Bearer {access_token}"}
+            )
+            user_info = user_resp.json()
+
+        google_id = str(user_info.get("sub", ""))
         email = user_info.get("email", "")
         name = user_info.get("name", "")
         avatar = user_info.get("picture", "")
 
-        row = await database.fetch_one(
-            users.select().where(users.c.google_id == google_id)
-        )
+        row = await database.fetch_one(users.select().where(users.c.google_id == google_id))
         if row:
             user_id = row["id"]
             await database.execute(
-                users.update()
-                .where(users.c.google_id == google_id)
-                .values(name=name, avatar=avatar)
+                users.update().where(users.c.google_id == google_id).values(name=name, avatar=avatar)
             )
         else:
-            ref_code = "".join(
-                secrets.choice(string.ascii_uppercase + string.digits)
-                for _ in range(8)
-            )
+            ref_code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
             user_id = await database.execute(
                 users.insert().values(
-                    google_id=google_id,
-                    email=email,
-                    name=name,
-                    avatar=avatar,
-                    referral_code=ref_code,
+                    google_id=google_id, email=email, name=name, avatar=avatar, referral_code=ref_code
                 )
             )
 
