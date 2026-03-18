@@ -1,6 +1,6 @@
 import secrets
 import string
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, WebAppInfo
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import ContextTypes
 from db.database import database
 from db.models import users
@@ -36,7 +36,7 @@ def main_keyboard(site_url: str):
 def main_inline_keyboard(site_url: str):
     return InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("📱 Открыть приложение", web_app=WebAppInfo(url="https://mushroomsai.onrender.com")),
+            InlineKeyboardButton("📱 Открыть приложение", url="https://mushroomsai.onrender.com"),
         ],
         [
             InlineKeyboardButton("Личный кабинет", url=f"{site_url}/dashboard"),
