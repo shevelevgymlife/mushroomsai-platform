@@ -1,13 +1,11 @@
 {% extends "base.html" %}
 {% block title %}AI Консультант — MushroomsAI{% endblock %}
-
 {% block extra_head %}
 <style>
   .chat-message { animation: fadeInUp 0.3s ease; }
   @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 {% endblock %}
-
 {% block content %}
 <div class="pt-16 h-screen flex flex-col">
   <div class="border-b border-border bg-bg/80 backdrop-blur-xl px-4 py-4">
@@ -19,13 +17,19 @@
         <h1 class="font-semibold text-text text-sm">AI-консультант Евгения Шевелева</h1>
         <p class="text-xs text-muted">Эксперт по фунготерапии</p>
       </div>
-      {% if not user %}
-      <div class="ml-auto">
-        <a href="/login" class="text-xs px-3 py-1.5 rounded-lg bg-gold/10 text-gold border border-gold/20 hover:bg-gold hover:text-bg transition-all duration-300">
-          Войти для сохранения истории
+      <div class="ml-auto flex items-center gap-2">
+        <!-- Кнопка личного кабинета для Mini App -->
+        <button id="cabinet-btn" onclick="openCabinet()"
+          class="hidden text-xs px-3 py-1.5 rounded-lg bg-gold text-bg font-medium hover:bg-gold-light transition-all duration-300">
+          👤 Личный кабинет
+        </button>
+        {% if not user %}
+        <a href="/login" id="login-btn"
+          class="text-xs px-3 py-1.5 rounded-lg bg-gold/10 text-gold border border-gold/20 hover:bg-gold hover:text-bg transition-all duration-300">
+          Войти
         </a>
+        {% endif %}
       </div>
-      {% endif %}
     </div>
   </div>
 
@@ -65,13 +69,43 @@
       {% if user %}
         Информация носит образовательный характер.
       {% else %}
-        Доступно 3 сообщения без регистрации. <a href="/login" class="text-gold hover:underline">Войдите</a> для полного доступа.
+        <span id="limit-text">Доступно 3 сообщения без регистрации. <a href="/login" class="text-gold hover:underline">Войдите</a> для полного доступа.</span>
       {% endif %}
     </p>
   </div>
 </div>
-{% endblock %}
 
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script>
+// Определяем Mini App и показываем кнопку кабинета
+window.addEventListener('load', function() {
+  const tg = window.Telegram?.WebApp;
+  if (tg && tg.platform && tg.platform !== 'unknown' && tg.platform !== '') {
+    tg.ready();
+    tg.expand();
+    // Показываем кнопку кабинета
+    document.getElementById('cabinet-btn').classList.remove('hidden');
+    // Скрываем обычную кнопку входа
+    const loginBtn = document.getElementById('login-btn');
+    if (loginBtn) loginBtn.classList.add('hidden');
+    // Меняем текст внизу
+    const limitText = document.getElementById('limit-text');
+    if (limitText) {
+      limitText.innerHTML = 'Хотите сохранить историю? <button onclick="openCabinet()" class="text-gold hover:underline">Войти в кабинет</button>';
+    }
+  }
+});
+
+function openCabinet() {
+  const tg = window.Telegram?.WebApp;
+  if (tg) {
+    tg.openLink('https://mushroomsai.ru/login');
+  } else {
+    window.open('https://mushroomsai.ru/login', '_blank');
+  }
+}
+</script>
+{% endblock %}
 {% block extra_scripts %}
 <script src="/static/js/chat.js"></script>
 {% endblock %}
