@@ -18,16 +18,9 @@
     </div>
     {% endif %}
 
-    <!-- Telegram Mini App вход -->
-    <div id="tg-login" class="hidden">
-      <button onclick="loginWithTelegram()"
-        class="flex items-center justify-center gap-3 w-full p-3.5 rounded-xl border border-border bg-surface text-text text-sm font-medium hover:border-gold/40 transition-all duration-300 mb-6">
-        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="#2AABEE">
-          <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-2.04 9.607c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.48 14.618l-2.95-.924c-.642-.2-.655-.642.136-.953l11.532-4.448c.536-.194 1.006.131.364.955z"/>
-        </svg>
-        Войти через Telegram
-      </button>
-      <p class="text-center text-xs text-muted">Безопасный вход через ваш аккаунт Telegram</p>
+    <!-- Telegram загрузка -->
+    <div id="tg-loading" class="text-center py-8">
+      <p class="text-muted text-sm">Входим через Telegram...</p>
     </div>
 
     <!-- Браузер вход -->
@@ -88,40 +81,32 @@
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script>
-function detectPlatform() {
+async function detectPlatform() {
   const tg = window.Telegram?.WebApp;
   const isTelegram = tg && tg.initData && tg.initData.length > 0;
-  
-  if (isTelegram) {
-    document.getElementById('tg-login').classList.remove('hidden');
-  } else {
-    document.getElementById('browser-login').classList.remove('hidden');
-  }
-}
 
-async function loginWithTelegram() {
-  const tg = window.Telegram.WebApp;
-  const initData = tg.initData;
-  
-  try {
-    const response = await fetch('/auth/telegram/miniapp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ init_data: initData })
-    });
-    
-    if (response.ok) {
+  if (isTelegram) {
+    tg.ready();
+    try {
+      const response = await fetch('/auth/telegram/miniapp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ init_data: tg.initData })
+      });
       const data = await response.json();
       if (data.redirect) {
         window.location.href = data.redirect;
       } else {
-        window.location.href = '/dashboard';
+        document.getElementById('tg-loading').classList.add('hidden');
+        document.getElementById('browser-login').classList.remove('hidden');
       }
-    } else {
-      alert('Ошибка входа. Попробуйте ещё раз.');
+    } catch(e) {
+      document.getElementById('tg-loading').classList.add('hidden');
+      document.getElementById('browser-login').classList.remove('hidden');
     }
-  } catch(e) {
-    alert('Ошибка соединения.');
+  } else {
+    document.getElementById('tg-loading').classList.add('hidden');
+    document.getElementById('browser-login').classList.remove('hidden');
   }
 }
 
@@ -130,6 +115,6 @@ function toggleRegister() {
   document.getElementById('registerForm').classList.toggle('hidden');
 }
 
-setTimeout(detectPlatform, 100);
+setTimeout(detectPlatform, 300);
 </script>
 {% endblock %}
