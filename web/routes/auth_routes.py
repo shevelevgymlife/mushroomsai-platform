@@ -74,7 +74,6 @@ async def telegram_auth(request: Request):
 
     tg_id = int(data.get("id"))
     name = f"{data.get('first_name', '')} {data.get('last_name', '')}".strip()
-    username = data.get("username", "")
     photo = data.get("photo_url", "")
 
     row = await database.fetch_one(users.select().where(users.c.tg_id == tg_id))
@@ -139,32 +138,50 @@ async def google_login(request: Request):
 
 @router.get("/auth/google/callback")
 async def google_callback(request: Request):
-    token = await oauth.google.authorize_access_token(request)
-    user_info = token.get("userinfo")
+    try:
+        token = await oauth.google.authorize_access_token(request)
+        user_info = token.get("userinfo")
 
-    google_id = user_info["sub"]
-    email = user_info.get("email", "")
-    name = user_info.get("name", "")
-    avatar = user_info.get("picture", "")
+        google_id = str(user_info["sub"])
+        email = user_info.get("email", "")
+        name = user_info.get("name", "")
+        avatar = user_info.get("picture", "")
 
-    row = await database.fetch_one(users.select().where(users.c.google_id == google_id))
-    if row:
-        user_id = row["id"]
-        await database.execute(
-            users.update().where(users.c.google_id == google_id).values(name=name, avatar=avatar)
+        row = await database.fetch_one(
+            users.select().where(users.c.google_id == google_id)
         )
-    else:
-        ref_code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
-        user_id = await database.execute(
-            users.insert().values(
-                google_id=google_id, email=email, name=name, avatar=avatar, referral_code=ref_code
+        if row:
+            user_id = row["id"]
+            await database.execute(
+                users.update()
+                .where(users.c.google_id == google_id)
+                .values(name=name, avatar=avatar)
             )
-        )
+        else:
+            ref_code = "".join(
+                secrets.choice(string.ascii_uppercase + string.digits)
+                for _ in range(8)
+            )
+            user_id = await database.execute(
+                users.insert().values(
+                    google_id=google_id,
+                    email=email,
+                    name=name,
+                    avatar=avatar,
+                    referral_code=ref_code,
+                )
+            )
 
-    token_str = create_access_token(user_id)
-    resp = RedirectResponse("/dashboard", status_code=302)
-    resp.set_cookie("access_token", token_str, httponly=True, max_age=30 * 24 * 3600)
-    return resp
+        token_str = create_access_token(user_id)
+        resp = RedirectResponse("/dashboard", status_code=302)
+        resp.set_cookie("access_token", token_str, httponly=True, max_age=30 * 24 * 3600)
+        return resp
+
+    except Exception as e:
+        return templates.TemplateResponse(
+            "login.html",
+            {"request": request, "user": None, "error": f"Ошибка входа: {str(e)}"},
+        )
 
 
 @router.get("/logout")
