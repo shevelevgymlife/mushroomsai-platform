@@ -18,7 +18,6 @@
     </div>
     {% endif %}
 
-    <!-- Telegram кнопка -->
     <div id="tg-login" class="hidden">
       <button onclick="loginWithTelegram()" id="tg-btn"
         class="flex items-center justify-center gap-3 w-full p-3.5 rounded-xl border border-border bg-surface text-text text-sm font-medium hover:border-gold/40 transition-all duration-300 mb-4">
@@ -30,7 +29,6 @@
       <p id="tg-status" class="text-center text-xs text-muted mb-4"></p>
     </div>
 
-    <!-- Браузер вход -->
     <div id="browser-login" class="hidden">
       <a href="/auth/google"
          class="flex items-center justify-center gap-3 w-full p-3.5 rounded-xl border border-border bg-surface text-text text-sm font-medium hover:border-gold/40 transition-all duration-300 mb-6">
@@ -93,7 +91,6 @@ async function loginWithTelegram() {
   const status = document.getElementById('tg-status');
   btn.disabled = true;
   btn.textContent = 'Входим...';
-  status.textContent = '';
 
   try {
     const tg = window.Telegram.WebApp;
@@ -121,13 +118,10 @@ function detectPlatform() {
   const tg = window.Telegram?.WebApp;
   const initData = tg?.initData || '';
   const platform = tg?.platform || 'unknown';
-  
-  // Показываем Telegram кнопку если:
-  // 1. Есть initData ИЛИ
-  // 2. Platform не unknown/web
-  const isTelegram = initData.length > 0 || 
+
+  const isTelegram = initData.length > 0 ||
     (platform !== 'unknown' && platform !== 'web' && platform !== '');
-  
+
   if (isTelegram) {
     tg.ready();
     document.getElementById('tg-login').classList.remove('hidden');
@@ -141,6 +135,6 @@ function toggleRegister() {
   document.getElementById('registerForm').classList.toggle('hidden');
 }
 
-setTimeout(detectPlatform, 500);
+setTimeout(detectPlatform, 800);
 </script>
 {% endblock %}
