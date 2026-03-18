@@ -77,4 +77,5 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Также доступны:",
         reply_markup=main_inline_keyboard(site_url),
+        parse_mode="HTML",
     )
