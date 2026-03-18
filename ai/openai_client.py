@@ -3,10 +3,10 @@ from config import settings
 from db.database import database
 from db.models import ai_settings, messages
 from ai.system_prompt import DEFAULT_SYSTEM_PROMPT
+from ai.knowledge_base import search_knowledge
 from typing import Optional
 
 client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-
 
 async def get_system_prompt() -> str:
     try:
@@ -19,7 +19,6 @@ async def get_system_prompt() -> str:
         pass
     return DEFAULT_SYSTEM_PROMPT
 
-
 async def chat_with_ai(
     user_message: str,
     user_id: Optional[int] = None,
@@ -27,7 +26,12 @@ async def chat_with_ai(
     history_limit: int = 10,
 ) -> str:
     system_prompt = await get_system_prompt()
-
+    
+    # Ищем релевантную информацию из базы знаний
+    knowledge_context = search_knowledge(user_message, top_k=3)
+    if knowledge_context:
+        system_prompt += f"\n\nРЕЛЕВАНТНАЯ ИНФОРМАЦИЯ ИЗ БАЗЫ ЗНАНИЙ:\n{knowledge_context}"
+    
     history = []
     try:
         if user_id:
@@ -46,7 +50,6 @@ async def chat_with_ai(
             )
         else:
             rows = []
-
         for row in reversed(rows):
             history.append({"role": row["role"], "content": row["content"]})
     except Exception:
@@ -60,7 +63,6 @@ async def chat_with_ai(
         max_tokens=1500,
         temperature=0.7,
     )
-
     answer = response.choices[0].message.content
 
     try:
