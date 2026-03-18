@@ -84,5 +84,5 @@ static/          # CSS, JS
 
 ## Разработка
 
-- Telegram бот username в шаблонах: `MushroomsAIbot` — замените на ваш
+- Telegram бот username в шаблонах: `mushrooms_ai_bot` — замените на ваш
 - Домен в конфигах: `mushroomsai.ru` — замените на ваш
