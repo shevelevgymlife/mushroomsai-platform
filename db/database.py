@@ -1,22 +1,16 @@
 import asyncio
 from typing import Any, List, Optional
-
 import sqlalchemy
 from sqlalchemy import text
-
 from config import settings
 
-
 def _sync_url(url: str) -> str:
-    """Convert async-driver URL to psycopg2-compatible sync URL."""
     return (
         url.replace("postgresql+asyncpg://", "postgresql://")
            .replace("postgresql+psycopg2://", "postgresql://")
     )
 
-
 metadata = sqlalchemy.MetaData()
-
 engine = sqlalchemy.create_engine(
     _sync_url(settings.DATABASE_URL),
     pool_pre_ping=True,
@@ -24,14 +18,7 @@ engine = sqlalchemy.create_engine(
     max_overflow=10,
 )
 
-
 class AsyncDatabase:
-    """
-    Drop-in async wrapper around SQLAlchemy sync engine (psycopg2).
-    Replicates the databases.Database API used throughout the codebase.
-    All operations run in a thread pool via asyncio.to_thread().
-    """
-
     async def connect(self):
         def _ping():
             with engine.connect() as conn:
@@ -45,9 +32,12 @@ class AsyncDatabase:
         def _run():
             with engine.begin() as conn:
                 result = conn.execute(query)
-                pk = result.inserted_primary_key
-                if pk is not None:
-                    return pk[0] if pk else None
+                try:
+                    pk = result.inserted_primary_key
+                    if pk is not None:
+                        return pk[0] if pk else None
+                except Exception:
+                    pass
                 return result.rowcount
         return await asyncio.to_thread(_run)
 
@@ -73,6 +63,5 @@ class AsyncDatabase:
                 row = result.fetchone()
                 return row[0] if row is not None else None
         return await asyncio.to_thread(_run)
-
 
 database = AsyncDatabase()
