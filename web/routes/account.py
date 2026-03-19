@@ -1,3 +1,6 @@
+import logging
+import urllib.parse
+
 from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -6,7 +9,8 @@ from auth.session import get_user_from_request
 from auth.telegram_auth import verify_telegram_auth
 from db.database import database
 from db.models import users, messages
-import urllib.parse
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/account")
 templates = Jinja2Templates(directory="web/templates")
@@ -72,38 +76,57 @@ async def link_telegram_callback(request: Request):
     if not user:
         return RedirectResponse("/login")
 
-    data = dict(request.query_params)
-    if not verify_telegram_auth(data.copy()):
-        return RedirectResponse("/dashboard?error=tg_auth_failed")
+    try:
+        data = dict(request.query_params)
+        if not verify_telegram_auth(data.copy()):
+            logger.warning("Telegram auth verification failed for user_id=%s", user["id"])
+            return RedirectResponse("/dashboard?error=tg_auth_failed")
 
-    tg_id = int(data.get("id"))
-    name = f"{data.get('first_name', '')} {data.get('last_name', '')}".strip()
-    photo = data.get("photo_url", "")
+        raw_id = data.get("id")
+        if not raw_id:
+            logger.error("Missing 'id' in Telegram callback params: %s", data)
+            return RedirectResponse("/dashboard?error=tg_auth_failed")
 
-    tg_user = await database.fetch_one(users.select().where(users.c.tg_id == tg_id))
+        tg_id = int(raw_id)
+        name = f"{data.get('first_name', '')} {data.get('last_name', '')}".strip()
+        photo = data.get("photo_url", "")
 
-    if tg_user and tg_user["id"] != user["id"]:
-        # Existing separate TG account — merge it into current user
-        await merge_accounts(primary_id=user["id"], secondary_id=tg_user["id"])
-    elif not tg_user:
-        # No TG account — link tg_id directly to current user
-        await database.execute(
-            users.update().where(users.c.id == user["id"]).values(
-                tg_id=tg_id, linked_tg_id=tg_id
+        tg_user = await database.fetch_one(users.select().where(users.c.tg_id == tg_id))
+
+        if tg_user and tg_user["id"] != user["id"]:
+            # Existing separate TG account — merge it into current user
+            logger.info(
+                "Merging accounts: primary_id=%s, secondary_id=%s (tg_id=%s)",
+                user["id"], tg_user["id"], tg_id,
             )
+            await merge_accounts(primary_id=user["id"], secondary_id=tg_user["id"])
+        elif not tg_user:
+            # No TG account — link tg_id directly to current user
+            await database.execute(
+                users.update().where(users.c.id == user["id"]).values(
+                    tg_id=tg_id, linked_tg_id=tg_id
+                )
+            )
+            # Update name/avatar from Telegram if missing
+            if not user.get("avatar") and photo:
+                await database.execute(
+                    users.update().where(users.c.id == user["id"]).values(avatar=photo)
+                )
+            if not user.get("name") and name:
+                await database.execute(
+                    users.update().where(users.c.id == user["id"]).values(name=name)
+                )
+        # else: tg_user["id"] == user["id"] → already linked, nothing to do
+
+        logger.info("Telegram linked successfully: user_id=%s, tg_id=%s", user["id"], tg_id)
+        return RedirectResponse("/dashboard?linked=telegram")
+
+    except Exception as exc:
+        logger.exception(
+            "Unexpected error in link_telegram_callback for user_id=%s: %s",
+            user["id"], exc,
         )
-        # Update name/avatar from Telegram if missing
-        if not user.get("avatar") and photo:
-            await database.execute(
-                users.update().where(users.c.id == user["id"]).values(avatar=photo)
-            )
-        if not user.get("name") and name:
-            await database.execute(
-                users.update().where(users.c.id == user["id"]).values(name=name)
-            )
-    # else: tg_user["id"] == user["id"] → already linked, nothing to do
-
-    return RedirectResponse("/dashboard?linked=telegram")
+        return RedirectResponse("/dashboard?error=tg_link_failed")
 
 
 @router.get("/link-google")
