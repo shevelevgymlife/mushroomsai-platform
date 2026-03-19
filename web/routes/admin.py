@@ -269,6 +269,37 @@ async def users_list(request: Request, search: str = ""):
     )
 
 
+SUPER_ADMIN_TG_ID = 742166400
+
+
+@router.post("/users/set-role")
+async def set_user_role(request: Request, user_id: int = Form(...), role: str = Form(...)):
+    admin = await require_admin(request)
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+
+    # Only the super-admin can change roles
+    is_super = (
+        admin.get("tg_id") == SUPER_ADMIN_TG_ID
+        or admin.get("linked_tg_id") == SUPER_ADMIN_TG_ID
+    )
+    if not is_super:
+        return JSONResponse({"error": "Только главный администратор может назначать роли"}, status_code=403)
+
+    if role not in ("admin", "user"):
+        return JSONResponse({"error": "invalid role"}, status_code=400)
+
+    # Cannot demote the super-admin
+    target = await database.fetch_one(users.select().where(users.c.id == user_id))
+    if not target:
+        return JSONResponse({"error": "user not found"}, status_code=404)
+    if target.get("tg_id") == SUPER_ADMIN_TG_ID or target.get("linked_tg_id") == SUPER_ADMIN_TG_ID:
+        return JSONResponse({"error": "Нельзя изменить роль главного администратора"}, status_code=403)
+
+    await database.execute(users.update().where(users.c.id == user_id).values(role=role))
+    return JSONResponse({"ok": True, "user_id": user_id, "role": role})
+
+
 @router.post("/users/{user_id}/subscription")
 async def change_subscription(request: Request, user_id: int, plan: str = Form(...)):
     admin = await require_admin(request)

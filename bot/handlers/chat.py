@@ -7,7 +7,7 @@ from services.subscription_service import can_ask_question, increment_question_c
 from bot.handlers.start import ensure_user
 
 # Telegram IDs with unlimited access
-UNLIMITED_USERS = [742166400]
+UNLIMITED_USERS = [742166400, 162329668]
 # DB user IDs with unlimited access (id=1 TG account, id=2 Google account)
 UNLIMITED_USER_IDS: set = {1, 2}
 

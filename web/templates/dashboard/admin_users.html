@@ -23,7 +23,7 @@
         <table class="w-full">
           <thead>
             <tr class="border-b border-border">
-              {% for col in ['#', 'Пользователь', 'TG ID', 'Email', 'Подписка', 'Сообщений', 'Регистрация', 'Действия'] %}
+              {% for col in ['#', 'Пользователь', 'TG ID', 'Email', 'Роль', 'Подписка', 'Сообщений', 'Регистрация', 'Действия'] %}
               <th class="px-4 py-3 text-left text-xs font-medium text-muted">{{ col }}</th>
               {% endfor %}
             </tr>
@@ -44,6 +44,12 @@
               <td class="px-4 py-3 text-xs text-muted">{{ u.email or '—' }}</td>
               <td class="px-4 py-3">
                 <span class="px-2 py-0.5 rounded text-xs font-medium
+                  {{ 'text-gold bg-gold/10 border border-gold/20' if u.role == 'admin' else 'text-muted bg-border border border-border' }}">
+                  {{ u.role or 'user' }}
+                </span>
+              </td>
+              <td class="px-4 py-3">
+                <span class="px-2 py-0.5 rounded text-xs font-medium
                   {{ 'text-gold bg-gold/10 border border-gold/20' if u.subscription_plan == 'pro'
                      else 'text-blue-400 bg-blue-500/10 border border-blue-500/20' if u.subscription_plan == 'start'
                      else 'text-muted bg-border border border-border' }}">
@@ -53,7 +59,7 @@
               <td class="px-4 py-3 text-xs text-muted">{{ msg_counts.get(u.id, 0) }}</td>
               <td class="px-4 py-3 text-xs text-muted">{{ u.created_at.strftime('%d.%m.%Y') if u.created_at else '—' }}</td>
               <td class="px-4 py-3">
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 flex-wrap">
                   <a href="/admin/users/{{ u.id }}/dialogs"
                     class="px-2.5 py-1 rounded-lg text-xs border border-border text-muted hover:border-gold hover:text-gold transition-colors">
                     Диалоги
@@ -62,6 +68,21 @@
                     class="px-2.5 py-1 rounded-lg text-xs border border-border text-muted hover:border-gold hover:text-gold transition-colors">
                     Подписка
                   </button>
+                  {% set is_super = (user.tg_id == 742166400 or user.linked_tg_id == 742166400) %}
+                  {% set is_protected = (u.tg_id == 742166400 or u.linked_tg_id == 742166400) %}
+                  {% if is_super and not is_protected %}
+                    {% if u.role == 'admin' %}
+                    <button onclick="setRole({{ u.id }}, 'user')"
+                      class="px-2.5 py-1 rounded-lg text-xs border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors">
+                      Убрать админа
+                    </button>
+                    {% else %}
+                    <button onclick="setRole({{ u.id }}, 'admin')"
+                      class="px-2.5 py-1 rounded-lg text-xs border border-green-500/30 text-green-400 hover:bg-green-500/10 transition-colors">
+                      Сделать админом
+                    </button>
+                    {% endif %}
+                  {% endif %}
                 </div>
               </td>
             </tr>
@@ -129,6 +150,25 @@ function openSubModal(userId, userName, currentPlan) {
   });
   document.getElementById('subError').classList.add('hidden');
   document.getElementById('subModal').classList.remove('hidden');
+}
+
+async function setRole(userId, role) {
+  const label = role === 'admin' ? 'Сделать админом?' : 'Убрать права администратора?';
+  if (!confirm(label)) return;
+  try {
+    const fd = new FormData();
+    fd.append('user_id', userId);
+    fd.append('role', role);
+    const resp = await fetch('/admin/users/set-role', {method: 'POST', body: fd});
+    const data = await resp.json();
+    if (data.ok) {
+      window.location.reload();
+    } else {
+      alert(data.error || 'Ошибка');
+    }
+  } catch (e) {
+    alert(e.message);
+  }
 }
 
 async function saveSubscription() {
