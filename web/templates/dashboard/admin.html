@@ -7,6 +7,46 @@
 
     {% include "components/admin_nav.html" %}
 
+    {% if user_permissions is defined and not user_permissions.get('can_dashboard', False) %}
+    <!-- Partial admin: show accessible sections list -->
+    <h1 class="text-3xl font-light text-text mb-8">Панель администратора</h1>
+
+    {% set section_map = [
+      ('can_ai', 'AI управление', '/admin/ai', 'Управление системным промптом и тестирование AI'),
+      ('can_shop', 'Магазин', '/admin/shop', 'Управление товарами и продуктами'),
+      ('can_users', 'Пользователи', '/admin/users', 'Просмотр и управление пользователями'),
+      ('can_feedback', 'Обратная связь', '/admin/feedback', 'Обращения пользователей'),
+      ('can_broadcast', 'Рассылки', '/admin/broadcast', 'Отправка сообщений пользователям'),
+      ('can_knowledge', 'База знаний', '/admin/knowledge', 'Управление базой знаний'),
+    ] %}
+
+    {% set accessible = [] %}
+    {% for perm_key, title, href, desc in section_map %}
+      {% if user_permissions.get(perm_key, False) %}
+        {% set _ = accessible.append(1) %}
+      {% endif %}
+    {% endfor %}
+
+    {% if accessible|length == 0 %}
+    <div class="p-8 rounded-2xl bg-surface border border-border text-center">
+      <p class="text-muted text-sm">У вас нет доступа ни к одному разделу.</p>
+      <p class="text-muted text-xs mt-2">Обратитесь к главному администратору для получения прав.</p>
+    </div>
+    {% else %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% for perm_key, title, href, desc in section_map %}
+      {% if user_permissions.get(perm_key, False) %}
+      <a href="{{ href }}" class="p-5 rounded-2xl bg-surface border border-border hover:border-gold/40 transition-colors group">
+        <p class="font-semibold text-text group-hover:text-gold transition-colors mb-1">{{ title }}</p>
+        <p class="text-xs text-muted">{{ desc }}</p>
+      </a>
+      {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <!-- Full dashboard (super-admin or can_dashboard) -->
     <h1 class="text-3xl font-light text-text mb-8">Admin Dashboard</h1>
 
     <!-- Stats cards -->
@@ -56,6 +96,7 @@
       </div>
 
       <!-- Recent feedback -->
+      {% if user_permissions is not defined or user_permissions.get('can_feedback', True) %}
       <div class="p-6 rounded-2xl bg-surface border border-border">
         <div class="flex items-center justify-between mb-5">
           <h2 class="font-semibold text-text">Последние обращения</h2>
@@ -83,8 +124,11 @@
         <p class="text-sm text-muted text-center py-6">Обращений пока нет</p>
         {% endif %}
       </div>
+      {% endif %}
 
     </div>
+    {% endif %}
+
   </div>
 </div>
 {% endblock %}

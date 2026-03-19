@@ -65,57 +65,77 @@ async def require_permission(request: Request, perm: str):
     return None
 
 
+async def get_user_permissions(user: dict) -> dict:
+    """Return a dict of all permission booleans for an admin user."""
+    if is_super_admin(user):
+        return {k: True for k in PERM_KEYS}
+    try:
+        row = await database.fetch_one(
+            admin_permissions.select().where(admin_permissions.c.user_id == user["id"])
+        )
+        if row:
+            return {k: bool(row.get(k, False)) for k in PERM_KEYS}
+    except Exception:
+        pass
+    return {k: False for k in PERM_KEYS}
+
+
 # ─── Dashboard ────────────────────────────────────────────────────────────────
 
 @router.get("", response_class=HTMLResponse)
 async def admin_dashboard(request: Request):
-    admin = await require_permission(request, "can_dashboard")
+    # Any admin can visit /admin — content is filtered by permissions
+    admin = await require_admin(request)
     if not admin:
         return RedirectResponse("/login")
 
-    today = datetime.utcnow().date()
+    perms = await get_user_permissions(admin)
 
-    total_users = await database.fetch_val(
-        sqlalchemy.select(sqlalchemy.func.count()).select_from(users)
-    )
-    users_today = await database.fetch_val(
-        sqlalchemy.select(sqlalchemy.func.count()).select_from(users).where(
-            sqlalchemy.cast(users.c.created_at, sqlalchemy.Date) == today
-        )
-    )
-    messages_today = await database.fetch_val(
-        sqlalchemy.select(sqlalchemy.func.count()).select_from(messages).where(
-            sqlalchemy.cast(messages.c.created_at, sqlalchemy.Date) == today
-        )
-    )
-    active_subs = await database.fetch_val(
-        sqlalchemy.select(sqlalchemy.func.count()).select_from(users).where(
-            users.c.subscription_plan != "free"
-        )
-    )
-    recent_msgs = await database.fetch_all(
-        messages.select()
-        .where(messages.c.role == "user")
-        .order_by(messages.c.created_at.desc())
-        .limit(10)
-    )
-
+    total_users = users_today = messages_today = active_subs = 0
     msgs_with_users = []
-    for msg in recent_msgs:
-        u = None
-        if msg["user_id"]:
-            u = await database.fetch_one(users.select().where(users.c.id == msg["user_id"]))
-        msgs_with_users.append({"msg": msg, "msg_user": u})
-
-    recent_feedback = await database.fetch_all(
-        feedback.select().order_by(feedback.c.created_at.desc()).limit(5)
-    )
     fb_with_users = []
-    for fb_row in recent_feedback:
-        u = None
-        if fb_row["user_id"]:
-            u = await database.fetch_one(users.select().where(users.c.id == fb_row["user_id"]))
-        fb_with_users.append({"fb": fb_row, "fb_user": u})
+
+    if perms.get("can_dashboard"):
+        today = datetime.utcnow().date()
+        total_users = await database.fetch_val(
+            sqlalchemy.select(sqlalchemy.func.count()).select_from(users)
+        ) or 0
+        users_today = await database.fetch_val(
+            sqlalchemy.select(sqlalchemy.func.count()).select_from(users).where(
+                sqlalchemy.cast(users.c.created_at, sqlalchemy.Date) == today
+            )
+        ) or 0
+        messages_today = await database.fetch_val(
+            sqlalchemy.select(sqlalchemy.func.count()).select_from(messages).where(
+                sqlalchemy.cast(messages.c.created_at, sqlalchemy.Date) == today
+            )
+        ) or 0
+        active_subs = await database.fetch_val(
+            sqlalchemy.select(sqlalchemy.func.count()).select_from(users).where(
+                users.c.subscription_plan != "free"
+            )
+        ) or 0
+        recent_msgs = await database.fetch_all(
+            messages.select()
+            .where(messages.c.role == "user")
+            .order_by(messages.c.created_at.desc())
+            .limit(10)
+        )
+        for msg in recent_msgs:
+            u = None
+            if msg["user_id"]:
+                u = await database.fetch_one(users.select().where(users.c.id == msg["user_id"]))
+            msgs_with_users.append({"msg": msg, "msg_user": u})
+
+        if perms.get("can_feedback"):
+            recent_feedback = await database.fetch_all(
+                feedback.select().order_by(feedback.c.created_at.desc()).limit(5)
+            )
+            for fb_row in recent_feedback:
+                u = None
+                if fb_row["user_id"]:
+                    u = await database.fetch_one(users.select().where(users.c.id == fb_row["user_id"]))
+                fb_with_users.append({"fb": fb_row, "fb_user": u})
 
     return templates.TemplateResponse(
         "dashboard/admin.html",
@@ -123,10 +143,11 @@ async def admin_dashboard(request: Request):
             "request": request,
             "user": admin,
             "nav": ADMIN_NAV,
-            "total_users": total_users or 0,
-            "users_today": users_today or 0,
-            "messages_today": messages_today or 0,
-            "active_subs": active_subs or 0,
+            "user_permissions": perms,
+            "total_users": total_users,
+            "users_today": users_today,
+            "messages_today": messages_today,
+            "active_subs": active_subs,
             "recent_msgs": msgs_with_users,
             "recent_feedback": fb_with_users,
         },
@@ -156,6 +177,7 @@ async def ai_settings_page(request: Request):
             "request": request,
             "user": admin,
             "nav": ADMIN_NAV,
+            "user_permissions": await get_user_permissions(admin),
             "current_prompt": current_prompt,
             "history": history,
         },
@@ -201,7 +223,7 @@ async def shop_page(request: Request):
     )
     return templates.TemplateResponse(
         "dashboard/admin_shop.html",
-        {"request": request, "user": admin, "nav": ADMIN_NAV, "products": all_products},
+        {"request": request, "user": admin, "nav": ADMIN_NAV, "user_permissions": await get_user_permissions(admin), "products": all_products},
     )
 
 
@@ -294,6 +316,7 @@ async def users_list(request: Request, search: str = ""):
             "request": request,
             "user": admin,
             "nav": ADMIN_NAV,
+            "user_permissions": await get_user_permissions(admin),
             "users": all_users,
             "search": search,
             "msg_counts": msg_counts,
@@ -324,7 +347,7 @@ async def set_user_role(request: Request, user_id: int = Form(...), role: str = 
 
 
 @router.get("/users/{user_id}/permissions")
-async def get_user_permissions(request: Request, user_id: int):
+async def get_user_perms_route(request: Request, user_id: int):
     admin = await require_permission(request, "can_users")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
@@ -453,7 +476,7 @@ async def feedback_page(request: Request):
 
     return templates.TemplateResponse(
         "dashboard/admin_feedback.html",
-        {"request": request, "user": admin, "nav": ADMIN_NAV, "feedbacks": fb_with_users},
+        {"request": request, "user": admin, "nav": ADMIN_NAV, "user_permissions": await get_user_permissions(admin), "feedbacks": fb_with_users},
     )
 
 
@@ -506,7 +529,7 @@ async def broadcast_page(request: Request):
 
     return templates.TemplateResponse(
         "dashboard/admin_broadcast.html",
-        {"request": request, "user": admin, "nav": ADMIN_NAV},
+        {"request": request, "user": admin, "nav": ADMIN_NAV, "user_permissions": await get_user_permissions(admin)},
     )
 
 
@@ -548,6 +571,7 @@ async def broadcast_send(
             "request": request,
             "user": admin,
             "nav": ADMIN_NAV,
+            "user_permissions": await get_user_permissions(admin),
             "success": f"Отправлено: {sent} из {len(all_users_list)}",
         },
     )
@@ -566,7 +590,7 @@ async def knowledge_page(request: Request):
     )
     return templates.TemplateResponse(
         "dashboard/admin_knowledge.html",
-        {"request": request, "user": admin, "nav": ADMIN_NAV, "entries": entries},
+        {"request": request, "user": admin, "nav": ADMIN_NAV, "user_permissions": await get_user_permissions(admin), "entries": entries},
     )
 
 
