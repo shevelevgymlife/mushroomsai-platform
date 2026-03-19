@@ -25,7 +25,7 @@
         <h4 class="text-sm font-semibold text-text mb-4">Контакты</h4>
         <ul class="space-y-2">
           <li><a href="https://t.me/mushrooms_ai_bot" target="_blank" class="text-sm text-muted hover:text-gold transition-colors">Telegram бот</a></li>
-          <li><span class="text-sm text-muted">mushroomsai.ru</span></li>
+          <li><a href="https://mushroomsai.ru" onclick="openInBrowser(event)" class="text-sm text-muted hover:text-gold transition-colors">mushroomsai.ru</a></li>
         </ul>
       </div>
     </div>
@@ -35,3 +35,13 @@
     </div>
   </div>
 </footer>
+
+<script>
+function openInBrowser(e) {
+  const tg = window.Telegram?.WebApp;
+  if (tg && tg.openLink) {
+    e.preventDefault();
+    tg.openLink('https://mushroomsai.ru');
+  }
+}
+</script>
