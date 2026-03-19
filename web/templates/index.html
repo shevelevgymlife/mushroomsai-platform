@@ -133,10 +133,11 @@ window.addEventListener('load', function() {
   if (tg && tg.platform && tg.platform !== 'unknown' && tg.platform !== '') {
     tg.ready();
     tg.expand();
-    // Редиректим только если открыли Mini App первый раз (не через навигацию)
     if (!document.referrer || !document.referrer.includes('mushroomsai')) {
       window.location.href = '/chat';
     }
   }
 });
 </script>
+
+{% endblock %}
