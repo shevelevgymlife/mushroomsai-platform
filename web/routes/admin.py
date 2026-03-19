@@ -486,17 +486,37 @@ async def sync_knowledge(request: Request):
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
 
-    import subprocess
+    import asyncio
+    import json as _json
+    import os as _os
+    from load_knowledge import sync_drive_to_db, get_credentials_dict
+
     try:
-        result = subprocess.run(
-            ["python", "load_knowledge.py"],
-            capture_output=True,
-            text=True,
-            timeout=120,
+        # Credentials: env var first (Render), then local file
+        creds_env = _os.getenv("GOOGLE_SERVICE_ACCOUNT", "")
+        if not creds_env:
+            return JSONResponse(
+                {"error": "Переменная GOOGLE_SERVICE_ACCOUNT не задана на сервере. "
+                           "Добавьте её в Environment Variables на Render."},
+                status_code=500,
+            )
+        creds_dict = _json.loads(creds_env)
+
+        from config import settings
+        result = await asyncio.to_thread(
+            sync_drive_to_db,
+            settings.DATABASE_URL,
+            creds_dict,
         )
-        return JSONResponse({"ok": True, "output": result.stdout[-2000:], "stderr": result.stderr[-500:]})
-    except subprocess.TimeoutExpired:
-        return JSONResponse({"error": "timeout"}, status_code=500)
+        return JSONResponse({
+            "ok": True,
+            "loaded": result["loaded"],
+            "updated": result["updated"],
+            "errors": result["errors"],
+            "log": result["log"][-30:],  # last 30 lines to keep response small
+        })
+    except _json.JSONDecodeError as e:
+        return JSONResponse({"error": f"GOOGLE_SERVICE_ACCOUNT содержит невалидный JSON: {e}"}, status_code=500)
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 

@@ -1,11 +1,16 @@
 """
 Скрипт загрузки базы знаний из Google Drive в PostgreSQL.
 Использование: python load_knowledge.py
+
+Credentials приоритет:
+  1. Переменная окружения GOOGLE_SERVICE_ACCOUNT (JSON-строка) — используется на Render
+  2. Файл service_account.json — для локального запуска
 """
 
 import os
 import io
 import sys
+import json
 import tempfile
 from pathlib import Path
 
@@ -73,13 +78,30 @@ CREATE TABLE IF NOT EXISTS shop_products (
 """
 
 
-def get_drive_service():
-    if not Path(SERVICE_ACCOUNT_FILE).exists():
-        print(f"[ERROR] Файл {SERVICE_ACCOUNT_FILE} не найден в текущей папке.")
-        sys.exit(1)
+def get_credentials_dict() -> dict:
+    """Read service account credentials from env var or file."""
+    env_json = os.getenv("GOOGLE_SERVICE_ACCOUNT", "")
+    if env_json:
+        try:
+            return json.loads(env_json)
+        except json.JSONDecodeError as e:
+            raise RuntimeError(f"GOOGLE_SERVICE_ACCOUNT содержит невалидный JSON: {e}")
 
-    credentials = service_account.Credentials.from_service_account_file(
-        SERVICE_ACCOUNT_FILE,
+    if Path(SERVICE_ACCOUNT_FILE).exists():
+        with open(SERVICE_ACCOUNT_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+    raise RuntimeError(
+        f"Credentials не найдены: задайте переменную GOOGLE_SERVICE_ACCOUNT "
+        f"или положите файл {SERVICE_ACCOUNT_FILE}"
+    )
+
+
+def get_drive_service(creds_dict: dict = None):
+    if creds_dict is None:
+        creds_dict = get_credentials_dict()
+    credentials = service_account.Credentials.from_service_account_info(
+        creds_dict,
         scopes=["https://www.googleapis.com/auth/drive.readonly"],
     )
     return build("drive", "v3", credentials=credentials)
@@ -112,7 +134,7 @@ def list_files(service, folder_id):
 
 
 def download_file(service, file_id, file_name, mime_type):
-    """Скачивает файл из Google Drive в временный файл, возвращает путь."""
+    """Скачивает файл из Google Drive во временный файл, возвращает путь."""
     ext = SUPPORTED_MIME_TYPES.get(mime_type, "")
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
 
@@ -198,37 +220,43 @@ def guess_category(file_name):
     return "общее"
 
 
-def main():
-    database_url = os.getenv("DATABASE_URL")
+def sync_drive_to_db(database_url: str = None, creds_dict: dict = None) -> dict:
+    """
+    Callable entry point for the admin sync route.
+    Returns {"loaded": N, "updated": N, "errors": N, "log": [...]}
+    """
+    if database_url is None:
+        database_url = os.getenv("DATABASE_URL", "")
     if not database_url:
-        print("[ERROR] DATABASE_URL не задан в .env файле.")
-        sys.exit(1)
+        raise RuntimeError("DATABASE_URL не задан")
 
-    # Приводим asyncpg URL к обычному psycopg2
     pg_url = database_url.replace("postgresql+asyncpg://", "postgresql://")
 
-    print("Подключение к Google Drive...")
-    service = get_drive_service()
+    if creds_dict is None:
+        creds_dict = get_credentials_dict()
 
-    print(f"Получение списка файлов из папки {DRIVE_FOLDER_ID}...")
+    log = []
+
+    log.append("Подключение к Google Drive...")
+    service = get_drive_service(creds_dict)
+
+    log.append(f"Получение файлов из папки {DRIVE_FOLDER_ID}...")
     files = list_files(service, DRIVE_FOLDER_ID)
 
     if not files:
-        print("Папка пуста или нет файлов поддерживаемых форматов.")
-        return
+        log.append("Папка пуста или нет файлов поддерживаемых форматов.")
+        return {"loaded": 0, "updated": 0, "errors": 0, "log": log}
 
-    print(f"Найдено файлов: {len(files)}")
+    log.append(f"Найдено файлов: {len(files)}")
 
-    print("Подключение к PostgreSQL...")
     conn = psycopg2.connect(pg_url)
     cur = conn.cursor()
-
-    print("Создание таблиц...")
     cur.execute(CREATE_KNOWLEDGE_BASE)
     cur.execute(CREATE_SHOP_PRODUCTS)
     conn.commit()
 
     loaded = 0
+    updated = 0
     errors = 0
 
     for i, file in enumerate(files, 1):
@@ -236,20 +264,17 @@ def main():
         file_name = file["name"]
         mime_type = file["mimeType"]
 
-        print(f"[{i}/{len(files)}] Скачивание: {file_name} ...", end=" ")
-
         tmp_path = None
         try:
             tmp_path = download_file(service, file_id, file_name, mime_type)
             text = extract_text(tmp_path, mime_type)
 
             if not text.strip():
-                print("пропущен (пустой текст)")
+                log.append(f"[{i}] {file_name} — пропущен (пустой текст)")
                 continue
 
             category = guess_category(file_name)
 
-            # Проверяем, не загружен ли уже этот файл
             cur.execute(
                 "SELECT id FROM knowledge_base WHERE source_file = %s LIMIT 1",
                 (file_name,),
@@ -261,19 +286,20 @@ def main():
                     "UPDATE knowledge_base SET title=%s, content=%s, category=%s WHERE source_file=%s",
                     (file_name, text, category, file_name),
                 )
-                print("обновлён")
+                log.append(f"[{i}] {file_name} — обновлён")
+                updated += 1
             else:
                 cur.execute(
                     "INSERT INTO knowledge_base (title, content, category, source_file) VALUES (%s, %s, %s, %s)",
                     (file_name, text, category, file_name),
                 )
-                print("загружен")
+                log.append(f"[{i}] {file_name} — загружен")
+                loaded += 1
 
             conn.commit()
-            loaded += 1
 
         except Exception as e:
-            print(f"ОШИБКА: {e}")
+            log.append(f"[{i}] {file_name} — ОШИБКА: {e}")
             conn.rollback()
             errors += 1
         finally:
@@ -283,8 +309,14 @@ def main():
     cur.close()
     conn.close()
 
-    print(f"\nГотово! Загружено: {loaded}, ошибок: {errors}")
-    print("Таблицы knowledge_base и shop_products готовы к использованию.")
+    log.append(f"Готово! Загружено: {loaded}, обновлено: {updated}, ошибок: {errors}")
+    return {"loaded": loaded, "updated": updated, "errors": errors, "log": log}
+
+
+def main():
+    result = sync_drive_to_db()
+    for line in result["log"]:
+        print(line)
 
 
 if __name__ == "__main__":
