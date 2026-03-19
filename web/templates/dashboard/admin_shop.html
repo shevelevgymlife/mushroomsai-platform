@@ -1,6 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Магазин — MushroomsAI Admin{% endblock %}
 
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" />
+{% endblock %}
+
 {% block content %}
 <div class="pt-24 pb-16">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -9,7 +13,7 @@
 
     <div class="flex items-center justify-between mb-8">
       <h1 class="text-3xl font-light text-text">Управление магазином</h1>
-      <button onclick="document.getElementById('addModal').classList.remove('hidden')"
+      <button onclick="openAddModal()"
         class="px-5 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-all duration-300">
         + Добавить товар
       </button>
@@ -30,14 +34,22 @@
         </div>
         {% endif %}
 
-        <div class="flex items-start justify-between gap-2 mb-2">
+        <div class="flex items-start justify-between gap-2 mb-1">
           <h3 class="font-semibold text-text text-sm leading-tight">{{ p.name or '—' }}</h3>
-          <span class="text-gold font-semibold text-sm whitespace-nowrap">{{ p.price }} ₽</span>
+          <span class="text-gold font-semibold text-sm whitespace-nowrap">{% if p.price %}{{ p.price }} ₽{% else %}—{% endif %}</span>
         </div>
 
-        {% if p.mushroom_type %}
-        <span class="inline-block px-2 py-0.5 rounded-full text-xs bg-gold/10 text-gold mb-2">{{ p.mushroom_type }}</span>
-        {% endif %}
+        <div class="flex flex-wrap gap-1.5 mb-2">
+          {% if p.mushroom_type %}
+          <span class="px-2 py-0.5 rounded-full text-xs bg-gold/10 text-gold">{{ p.mushroom_type }}</span>
+          {% endif %}
+          {% if p.category %}
+          <span class="px-2 py-0.5 rounded-full text-xs bg-border text-muted">{{ p.category }}</span>
+          {% endif %}
+          {% if p.in_stock == false %}
+          <span class="px-2 py-0.5 rounded-full text-xs bg-red-500/10 text-red-400">Нет в наличии</span>
+          {% endif %}
+        </div>
 
         <p class="text-xs text-muted line-clamp-2 mb-4">{{ p.description or '' }}</p>
 
@@ -46,7 +58,16 @@
         {% endif %}
 
         <div class="flex gap-2">
-          <button onclick="openEditModal({{ p.id }}, '{{ p.name | e }}', '{{ p.description | e }}', {{ p.price or 0 }}, '{{ p.url | e }}', '{{ p.mushroom_type | e }}', '{{ p.image_url | e }}')"
+          <button onclick="openEditModal(
+              {{ p.id }},
+              {{ p.name | tojson }},
+              {{ p.description | tojson if p.description else '""' }},
+              {{ p.price or 0 }},
+              {{ p.url | tojson if p.url else '""' }},
+              {{ p.mushroom_type | tojson if p.mushroom_type else '""' }},
+              {{ p.image_url | tojson if p.image_url else '""' }},
+              {{ p.category | tojson if p.category else '""' }},
+              {{ 'true' if p.in_stock != false else 'false' }})"
             class="flex-1 px-3 py-1.5 rounded-lg text-xs border border-border text-muted hover:border-gold hover:text-gold transition-colors">
             Редактировать
           </button>
@@ -67,12 +88,12 @@
   </div>
 </div>
 
-<!-- Add Modal -->
+<!-- ══ ADD MODAL ══ -->
 <div id="addModal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
   <div class="bg-surface border border-border rounded-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
     <div class="flex items-center justify-between mb-6">
       <h2 class="font-semibold text-text text-lg">Добавить товар</h2>
-      <button onclick="document.getElementById('addModal').classList.add('hidden')" class="text-muted hover:text-text text-xl">×</button>
+      <button onclick="document.getElementById('addModal').classList.add('hidden')" class="text-muted hover:text-text text-xl leading-none">×</button>
     </div>
     <form action="/admin/shop/add" method="post" class="space-y-4">
       <div>
@@ -88,13 +109,36 @@
       <div class="grid grid-cols-2 gap-4">
         <div>
           <label class="block text-xs text-muted mb-1.5">Цена (₽)</label>
-          <input type="number" name="price" value="0"
+          <input type="number" name="price" value="0" min="0"
             class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors" />
         </div>
         <div>
-          <label class="block text-xs text-muted mb-1.5">Тип гриба</label>
-          <input type="text" name="mushroom_type" placeholder="рейши, чага..."
-            class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors" />
+          <label class="block text-xs text-muted mb-1.5">Вид гриба</label>
+          <select name="mushroom_type"
+            class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors">
+            <option value="">— выбрать —</option>
+            {% for mt in ['Рейши','Шиитаке','Кордицепс','Ежовик','Красный мухомор','Пантерный мухомор','Королевский мухомор'] %}
+            <option value="{{ mt }}">{{ mt }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs text-muted mb-1.5">Форма</label>
+          <select name="category"
+            class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors">
+            <option value="">— выбрать —</option>
+            {% for cat in ['Экстракт','Плодовое тело','Капсулы','Порошок'] %}
+            <option value="{{ cat }}">{{ cat }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="flex items-end pb-2">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" name="in_stock" value="true" checked class="accent-gold w-4 h-4" />
+            <span class="text-sm text-text">В наличии</span>
+          </label>
         </div>
       </div>
       <div>
@@ -102,27 +146,22 @@
         <input type="text" name="url" placeholder="https://..."
           class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors" />
       </div>
-
-      <!-- Photo upload -->
+      <!-- Photo upload with crop -->
       <div>
         <label class="block text-xs text-muted mb-1.5">Фото товара</label>
-        <!-- Preview -->
         <div id="addPreviewBox" class="hidden w-full h-36 rounded-xl overflow-hidden mb-2 bg-bg border border-border">
           <img id="addPreviewImg" src="" alt="preview" class="w-full h-full object-cover" />
         </div>
-        <!-- Upload button -->
-        <label class="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-bg border border-border border-dashed text-muted text-sm cursor-pointer hover:border-gold/60 hover:text-gold transition-colors">
+        <label class="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-bg border border-dashed border-border text-muted text-sm cursor-pointer hover:border-gold/60 hover:text-gold transition-colors">
           <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
           </svg>
           <span id="addFileLabel">Выбрать файл (JPEG, PNG, WebP — до 5 МБ)</span>
-          <input type="file" accept="image/*" class="hidden" onchange="uploadProductImage(this, 'add')" />
+          <input type="file" accept="image/*" class="hidden" onchange="initCrop(this, 'add')" />
         </label>
         <p id="addUploadError" class="hidden mt-1 text-xs text-red-400"></p>
-        <!-- Hidden field populated after upload -->
         <input type="hidden" name="image_url" id="addImageUrl" />
       </div>
-
       <div class="flex gap-3 pt-2">
         <button type="submit"
           class="flex-1 px-4 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-all duration-300">
@@ -137,12 +176,12 @@
   </div>
 </div>
 
-<!-- Edit Modal -->
+<!-- ══ EDIT MODAL ══ -->
 <div id="editModal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
   <div class="bg-surface border border-border rounded-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
     <div class="flex items-center justify-between mb-6">
       <h2 class="font-semibold text-text text-lg">Редактировать товар</h2>
-      <button onclick="document.getElementById('editModal').classList.add('hidden')" class="text-muted hover:text-text text-xl">×</button>
+      <button onclick="document.getElementById('editModal').classList.add('hidden')" class="text-muted hover:text-text text-xl leading-none">×</button>
     </div>
     <form id="editForm" method="post" class="space-y-4">
       <div>
@@ -158,38 +197,65 @@
       <div class="grid grid-cols-2 gap-4">
         <div>
           <label class="block text-xs text-muted mb-1.5">Цена (₽)</label>
-          <input type="number" name="price" id="editPrice"
+          <input type="number" name="price" id="editPrice" min="0"
             class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors" />
         </div>
         <div>
-          <label class="block text-xs text-muted mb-1.5">Тип гриба</label>
-          <input type="text" name="mushroom_type" id="editMushroomType"
-            class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors" />
+          <label class="block text-xs text-muted mb-1.5">Вид гриба</label>
+          <select name="mushroom_type" id="editMushroomType"
+            class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors">
+            <option value="">— выбрать —</option>
+            {% for mt in ['Рейши','Шиитаке','Кордицепс','Ежовик','Красный мухомор','Пантерный мухомор','Королевский мухомор'] %}
+            <option value="{{ mt }}">{{ mt }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs text-muted mb-1.5">Форма</label>
+          <select name="category" id="editCategory"
+            class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors">
+            <option value="">— выбрать —</option>
+            {% for cat in ['Экстракт','Плодовое тело','Капсулы','Порошок'] %}
+            <option value="{{ cat }}">{{ cat }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="flex items-end pb-2">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" name="in_stock" id="editInStock" value="true" class="accent-gold w-4 h-4" />
+            <span class="text-sm text-text">В наличии</span>
+          </label>
         </div>
       </div>
       <div>
         <label class="block text-xs text-muted mb-1.5">Ссылка на товар</label>
-        <input type="text" name="url" id="editUrl"
-          class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors" />
+        <div class="flex gap-2">
+          <input type="text" name="url" id="editUrl"
+            class="flex-1 px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors" />
+          <a id="editUrlLink" href="#" target="_blank"
+            class="hidden px-3 py-2.5 rounded-xl bg-gold/10 border border-gold/20 text-gold text-sm hover:bg-gold/20 transition-colors" title="Открыть">
+            ↗
+          </a>
+        </div>
       </div>
-
-      <!-- Photo upload -->
+      <!-- Photo upload with crop -->
       <div>
         <label class="block text-xs text-muted mb-1.5">Фото товара</label>
         <div id="editPreviewBox" class="hidden w-full h-36 rounded-xl overflow-hidden mb-2 bg-bg border border-border">
           <img id="editPreviewImg" src="" alt="preview" class="w-full h-full object-cover" />
         </div>
-        <label class="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-bg border border-border border-dashed text-muted text-sm cursor-pointer hover:border-gold/60 hover:text-gold transition-colors">
+        <label class="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-bg border border-dashed border-border text-muted text-sm cursor-pointer hover:border-gold/60 hover:text-gold transition-colors">
           <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
           </svg>
           <span id="editFileLabel">Заменить фото</span>
-          <input type="file" accept="image/*" class="hidden" onchange="uploadProductImage(this, 'edit')" />
+          <input type="file" accept="image/*" class="hidden" onchange="initCrop(this, 'edit')" />
         </label>
         <p id="editUploadError" class="hidden mt-1 text-xs text-red-400"></p>
         <input type="hidden" name="image_url" id="editImageUrl" />
       </div>
-
       <div class="flex gap-3 pt-2">
         <button type="submit"
           class="flex-1 px-4 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-all duration-300">
@@ -203,81 +269,160 @@
     </form>
   </div>
 </div>
+
+<!-- ══ CROP MODAL ══ -->
+<div id="cropModal" class="hidden fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4">
+  <div class="bg-surface border border-border rounded-2xl w-full max-w-lg p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-semibold text-text">Обрезать фото</h3>
+      <button onclick="cancelCrop()" class="text-muted hover:text-text text-xl leading-none">×</button>
+    </div>
+    <div class="w-full max-h-80 overflow-hidden rounded-xl bg-bg mb-4">
+      <img id="cropImage" src="" alt="" style="max-width:100%;display:block" />
+    </div>
+    <div class="flex gap-3">
+      <button onclick="applyCrop()"
+        class="flex-1 px-4 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-all duration-300">
+        Обрезать и загрузить
+      </button>
+      <button onclick="cancelCrop()"
+        class="px-4 py-2.5 rounded-xl border border-border text-muted text-sm hover:border-gold hover:text-gold transition-colors">
+        Отмена
+      </button>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
 <script>
-function openEditModal(id, name, desc, price, url, mushType, imgUrl) {
+var cropperInstance = null;
+var cropPrefix = null;
+
+function openAddModal() {
+  document.getElementById('addImageUrl').value = '';
+  document.getElementById('addPreviewBox').classList.add('hidden');
+  document.getElementById('addPreviewImg').src = '';
+  document.getElementById('addFileLabel').textContent = 'Выбрать файл (JPEG, PNG, WebP — до 5 МБ)';
+  document.getElementById('addUploadError').classList.add('hidden');
+  document.getElementById('addModal').classList.remove('hidden');
+}
+
+function openEditModal(id, name, desc, price, url, mushType, imgUrl, category, inStock) {
   document.getElementById('editForm').action = '/admin/shop/edit/' + id;
   document.getElementById('editName').value = name;
   document.getElementById('editDescription').value = desc;
   document.getElementById('editPrice').value = price;
   document.getElementById('editUrl').value = url;
   document.getElementById('editMushroomType').value = mushType;
+  document.getElementById('editCategory').value = category;
+  document.getElementById('editInStock').checked = inStock;
   document.getElementById('editImageUrl').value = imgUrl;
 
-  // Show existing image preview
-  const previewBox = document.getElementById('editPreviewBox');
-  const previewImg = document.getElementById('editPreviewImg');
-  if (imgUrl) {
-    previewImg.src = imgUrl;
-    previewBox.classList.remove('hidden');
-    document.getElementById('editFileLabel').textContent = 'Заменить фото';
-  } else {
-    previewBox.classList.add('hidden');
-    document.getElementById('editFileLabel').textContent = 'Загрузить фото';
-  }
+  // URL link button
+  var linkBtn = document.getElementById('editUrlLink');
+  if (url) { linkBtn.href = url; linkBtn.classList.remove('hidden'); }
+  else { linkBtn.classList.add('hidden'); }
+
+  // Preview
+  var pb = document.getElementById('editPreviewBox');
+  var pi = document.getElementById('editPreviewImg');
+  if (imgUrl) { pi.src = imgUrl; pb.classList.remove('hidden'); }
+  else { pb.classList.add('hidden'); }
+
+  document.getElementById('editFileLabel').textContent = imgUrl ? 'Заменить фото' : 'Загрузить фото';
   document.getElementById('editUploadError').classList.add('hidden');
   document.getElementById('editModal').classList.remove('hidden');
 }
 
-async function uploadProductImage(input, prefix) {
-  const file = input.files[0];
-  if (!file) return;
+// Show URL link button live in edit modal
+document.addEventListener('DOMContentLoaded', function() {
+  var editUrlInput = document.getElementById('editUrl');
+  if (editUrlInput) {
+    editUrlInput.addEventListener('input', function() {
+      var linkBtn = document.getElementById('editUrlLink');
+      if (this.value) { linkBtn.href = this.value; linkBtn.classList.remove('hidden'); }
+      else { linkBtn.classList.add('hidden'); }
+    });
+  }
+});
 
-  const errEl = document.getElementById(prefix + 'UploadError');
-  const labelEl = document.getElementById(prefix + 'FileLabel');
-  const previewBox = document.getElementById(prefix + 'PreviewBox');
-  const previewImg = document.getElementById(prefix + 'PreviewImg');
-  const urlInput = document.getElementById(prefix + 'ImageUrl');
+// ── Cropper ──────────────────────────────────────────────────────────────────
+function initCrop(input, prefix) {
+  var file = input.files[0];
+  if (!file) return;
+  cropPrefix = prefix;
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var img = document.getElementById('cropImage');
+    img.src = e.target.result;
+    document.getElementById('cropModal').classList.remove('hidden');
+
+    if (cropperInstance) { cropperInstance.destroy(); cropperInstance = null; }
+    cropperInstance = new Cropper(img, {
+      aspectRatio: 1,
+      viewMode: 1,
+      autoCropArea: 0.9,
+      responsive: true,
+    });
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
+function cancelCrop() {
+  document.getElementById('cropModal').classList.add('hidden');
+  if (cropperInstance) { cropperInstance.destroy(); cropperInstance = null; }
+}
+
+async function applyCrop() {
+  if (!cropperInstance) return;
+  var canvas = cropperInstance.getCroppedCanvas({ width: 800, height: 800 });
+  cancelCrop();
+
+  var prefix = cropPrefix;
+  var errEl = document.getElementById(prefix + 'UploadError');
+  var labelEl = document.getElementById(prefix + 'FileLabel');
+  var previewBox = document.getElementById(prefix + 'PreviewBox');
+  var previewImg = document.getElementById(prefix + 'PreviewImg');
+  var urlInput = document.getElementById(prefix + 'ImageUrl');
 
   errEl.classList.add('hidden');
   labelEl.textContent = 'Загрузка...';
 
-  const fd = new FormData();
-  fd.append('file', file);
-
-  try {
-    const resp = await fetch('/admin/shop/upload-image', { method: 'POST', body: fd });
-    const data = await resp.json();
-
-    if (data.ok) {
-      urlInput.value = data.url;
-      previewImg.src = data.url;
-      previewBox.classList.remove('hidden');
-      labelEl.textContent = 'Заменить фото';
-    } else {
-      errEl.textContent = data.error || 'Ошибка загрузки';
+  canvas.toBlob(async function(blob) {
+    var fd = new FormData();
+    fd.append('file', blob, 'photo.jpg');
+    try {
+      var resp = await fetch('/admin/shop/upload-image', { method: 'POST', body: fd });
+      var data = await resp.json();
+      if (data.ok) {
+        urlInput.value = data.url;
+        previewImg.src = data.url + '?t=' + Date.now();
+        previewBox.classList.remove('hidden');
+        labelEl.textContent = 'Заменить фото';
+      } else {
+        errEl.textContent = data.error || 'Ошибка загрузки';
+        errEl.classList.remove('hidden');
+        labelEl.textContent = 'Выбрать файл';
+      }
+    } catch(e) {
+      errEl.textContent = 'Ошибка сети: ' + e.message;
       errEl.classList.remove('hidden');
-      labelEl.textContent = prefix === 'add' ? 'Выбрать файл (JPEG, PNG, WebP — до 5 МБ)' : 'Заменить фото';
+      labelEl.textContent = 'Выбрать файл';
     }
-  } catch (e) {
-    errEl.textContent = 'Ошибка сети: ' + e.message;
-    errEl.classList.remove('hidden');
-    labelEl.textContent = prefix === 'add' ? 'Выбрать файл (JPEG, PNG, WebP — до 5 МБ)' : 'Заменить фото';
-  }
+  }, 'image/jpeg', 0.9);
 }
 
+// ── Delete ────────────────────────────────────────────────────────────────────
 async function deleteProduct(id, btn) {
   if (!confirm('Удалить товар?')) return;
   btn.disabled = true;
-  const resp = await fetch('/admin/shop/delete/' + id, { method: 'POST' });
-  if (resp.ok) {
-    btn.closest('.rounded-2xl').remove();
-  } else {
-    btn.disabled = false;
-    alert('Ошибка удаления');
-  }
+  var resp = await fetch('/admin/shop/delete/' + id, { method: 'POST' });
+  if (resp.ok) btn.closest('.rounded-2xl').remove();
+  else { btn.disabled = false; alert('Ошибка удаления'); }
 }
 </script>
 {% endblock %}

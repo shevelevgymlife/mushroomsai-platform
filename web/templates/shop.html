@@ -4,41 +4,139 @@
 {% block content %}
 <div class="pt-24 pb-16">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="mb-12">
-      <h1 class="text-4xl font-light text-text mb-3">Магазин</h1>
-      <p class="text-muted">Функциональные грибы, протоколы и консультации</p>
+
+    <!-- Header -->
+    <div class="mb-10">
+      <h1 class="text-4xl font-light text-text mb-2">Магазин</h1>
+      <p class="text-muted text-sm">Функциональные грибы — экстракты, капсулы, порошки</p>
     </div>
 
-    <!-- Filters -->
-    <div class="flex gap-3 mb-8 flex-wrap">
-      <a href="/shop"
-        class="px-4 py-2 rounded-lg text-sm transition-all duration-300 {{ 'bg-gold text-bg font-medium' if not selected_category else 'border border-border text-muted hover:border-gold hover:text-gold' }}">
-        Все
-      </a>
-      {% for cat in categories %}
-        {% if cat.category %}
-        <a href="/shop?category={{ cat.category }}"
-          class="px-4 py-2 rounded-lg text-sm transition-all duration-300 {{ 'bg-gold text-bg font-medium' if selected_category == cat.category else 'border border-border text-muted hover:border-gold hover:text-gold' }}">
-          {{ cat.category }}
-        </a>
-        {% endif %}
-      {% endfor %}
-    </div>
+    <!-- Search + Sort -->
+    <form method="get" action="/shop" id="filterForm">
+      <div class="flex flex-col sm:flex-row gap-3 mb-6">
+        <div class="relative flex-1">
+          <input type="text" name="search" value="{{ search }}" placeholder="Поиск по названию..."
+            class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface border border-border text-text text-sm placeholder-muted focus:outline-none focus:border-gold/60 transition-colors" />
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+        </div>
+        <select name="sort" onchange="document.getElementById('filterForm').submit()"
+          class="px-4 py-2.5 rounded-xl bg-surface border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors min-w-[180px]">
+          <option value="newest" {{ 'selected' if sort == 'newest' }}>Новинки</option>
+          <option value="price_asc" {{ 'selected' if sort == 'price_asc' }}>По цене ↑</option>
+          <option value="price_desc" {{ 'selected' if sort == 'price_desc' }}>По цене ↓</option>
+        </select>
+        <!-- preserve other filters -->
+        {% if sel_mushroom %}<input type="hidden" name="mushroom_type" value="{{ sel_mushroom }}" />{% endif %}
+        {% if sel_category %}<input type="hidden" name="category" value="{{ sel_category }}" />{% endif %}
+      </div>
 
+      <!-- Mushroom type filter -->
+      <div class="mb-4">
+        <p class="text-xs text-muted uppercase tracking-wider mb-2">Вид гриба</p>
+        <div class="flex flex-wrap gap-2">
+          <a href="/shop?{{ ('category=' + sel_category + '&') if sel_category else '' }}sort={{ sort }}{{ ('&search=' + search) if search else '' }}"
+            class="px-3 py-1.5 rounded-lg text-xs transition-all duration-200 {{ 'bg-gold text-bg font-medium' if not sel_mushroom else 'border border-border text-muted hover:border-gold/60 hover:text-text' }}">
+            Все
+          </a>
+          {% for mt in mushroom_types %}
+          <a href="/shop?mushroom_type={{ mt | urlencode }}{{ ('&category=' + sel_category) if sel_category else '' }}&sort={{ sort }}{{ ('&search=' + search) if search else '' }}"
+            class="px-3 py-1.5 rounded-lg text-xs transition-all duration-200 {{ 'bg-gold text-bg font-medium' if sel_mushroom == mt else 'border border-border text-muted hover:border-gold/60 hover:text-text' }}">
+            {{ mt }}
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Category (form) filter -->
+      <div class="mb-8">
+        <p class="text-xs text-muted uppercase tracking-wider mb-2">Форма</p>
+        <div class="flex flex-wrap gap-2">
+          <a href="/shop?{{ ('mushroom_type=' + sel_mushroom + '&') if sel_mushroom else '' }}sort={{ sort }}{{ ('&search=' + search) if search else '' }}"
+            class="px-3 py-1.5 rounded-lg text-xs transition-all duration-200 {{ 'bg-gold/20 text-gold border border-gold/40 font-medium' if not sel_category else 'border border-border text-muted hover:border-gold/60 hover:text-text' }}">
+            Все формы
+          </a>
+          {% for cat in categories %}
+          <a href="/shop?{{ ('mushroom_type=' + sel_mushroom + '&') if sel_mushroom else '' }}category={{ cat | urlencode }}&sort={{ sort }}{{ ('&search=' + search) if search else '' }}"
+            class="px-3 py-1.5 rounded-lg text-xs transition-all duration-200 {{ 'bg-gold/20 text-gold border border-gold/40 font-medium' if sel_category == cat else 'border border-border text-muted hover:border-gold/60 hover:text-text' }}">
+            {{ cat }}
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+    </form>
+
+    <!-- Active filter summary -->
+    {% if sel_mushroom or sel_category or search %}
+    <div class="flex items-center gap-2 mb-6 text-xs text-muted">
+      <span>Фильтры:</span>
+      {% if search %}<span class="px-2 py-1 rounded-full bg-surface border border-border">«{{ search }}»</span>{% endif %}
+      {% if sel_mushroom %}<span class="px-2 py-1 rounded-full bg-surface border border-gold/30 text-gold">{{ sel_mushroom }}</span>{% endif %}
+      {% if sel_category %}<span class="px-2 py-1 rounded-full bg-surface border border-gold/30 text-gold">{{ sel_category }}</span>{% endif %}
+      <a href="/shop" class="text-muted hover:text-red-400 transition-colors ml-1">× Сбросить</a>
+    </div>
+    {% endif %}
+
+    <!-- Products grid -->
     {% if products %}
-    {% from "components/cards.html" import product_card %}
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-      {% for product in products %}
-        {{ product_card(product) }}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+      {% for p in products %}
+      <a href="/shop/{{ p.id }}" class="group block p-0 rounded-2xl bg-surface border border-border hover:border-gold/40 transition-all duration-300 overflow-hidden">
+        <!-- Image -->
+        <div class="relative w-full aspect-square bg-bg overflow-hidden">
+          {% if p.image_url %}
+          <img src="{{ p.image_url }}" alt="{{ p.name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+          {% else %}
+          <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gold/10 to-transparent">
+            <span class="text-5xl opacity-60">🍄</span>
+          </div>
+          {% endif %}
+          <!-- Stock badge -->
+          {% if p.in_stock == false %}
+          <div class="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-black/60 text-muted text-xs">Нет в наличии</div>
+          {% endif %}
+          <!-- Category badge -->
+          {% if p.category %}
+          <div class="absolute bottom-2 left-2 px-2 py-0.5 rounded-full bg-black/60 text-gold text-xs">{{ p.category }}</div>
+          {% endif %}
+        </div>
+
+        <!-- Info -->
+        <div class="p-4">
+          {% if p.mushroom_type %}
+          <p class="text-xs text-gold/80 mb-1">{{ p.mushroom_type }}</p>
+          {% endif %}
+          <h3 class="font-medium text-text text-sm leading-snug mb-2 group-hover:text-gold transition-colors">{{ p.name or '—' }}</h3>
+
+          <!-- Rating -->
+          {% if ratings.get(p.id) %}
+          <div class="flex items-center gap-1 mb-2">
+            {% set r = ratings.get(p.id) %}
+            {% for i in range(1, 6) %}
+            <svg class="w-3 h-3 {{ 'text-gold' if i <= r else 'text-border' }}" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+            </svg>
+            {% endfor %}
+            <span class="text-xs text-muted ml-1">{{ r }}</span>
+          </div>
+          {% endif %}
+
+          <div class="flex items-center justify-between">
+            <span class="text-gold font-semibold">{% if p.price %}{{ p.price }} ₽{% else %}—{% endif %}</span>
+            <span class="text-xs text-muted group-hover:text-gold transition-colors">Подробнее →</span>
+          </div>
+        </div>
+      </a>
       {% endfor %}
     </div>
+    <p class="text-xs text-muted mt-6 text-center">Найдено: {{ products | length }} товар(ов)</p>
     {% else %}
     <div class="text-center py-24">
-      <div class="w-16 h-16 rounded-2xl bg-surface border border-border flex items-center justify-center mx-auto mb-6">
-        <div class="w-6 h-6 rounded-full bg-gold/20"></div>
-      </div>
-      <h3 class="text-lg font-medium text-text mb-2">Товары загружаются</h3>
-      <p class="text-sm text-muted">Каталог скоро появится</p>
+      <span class="text-6xl block mb-6 opacity-40">🍄</span>
+      <h3 class="text-lg font-medium text-text mb-2">Товары не найдены</h3>
+      <p class="text-sm text-muted mb-4">Попробуйте изменить фильтры или поисковый запрос</p>
+      <a href="/shop" class="text-sm text-gold hover:underline">Сбросить фильтры</a>
     </div>
     {% endif %}
   </div>

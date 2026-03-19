@@ -8,7 +8,7 @@ from db.database import database
 from db.models import (
     users, messages, leads, products, orders, posts,
     page_views, ai_settings, subscriptions, knowledge_base,
-    shop_products, feedback, admin_permissions,
+    shop_products, feedback, admin_permissions, product_reviews,
 )
 import sqlalchemy
 from datetime import datetime, timedelta, date
@@ -238,6 +238,8 @@ async def add_shop_product(
     url: str = Form(""),
     mushroom_type: str = Form(""),
     image_url: str = Form(""),
+    category: str = Form(""),
+    in_stock: str = Form(""),
 ):
     admin = await require_permission(request, "can_shop")
     if not admin:
@@ -245,8 +247,10 @@ async def add_shop_product(
 
     await database.execute(
         shop_products.insert().values(
-            name=name, description=description, price=price,
-            url=url, mushroom_type=mushroom_type, image_url=image_url,
+            name=name, description=description, price=price or None,
+            url=url or None, mushroom_type=mushroom_type or None,
+            image_url=image_url or None, category=category or None,
+            in_stock=(in_stock == "true"),
         )
     )
     return RedirectResponse("/admin/shop", status_code=302)
@@ -262,6 +266,8 @@ async def edit_shop_product(
     url: str = Form(""),
     mushroom_type: str = Form(""),
     image_url: str = Form(""),
+    category: str = Form(""),
+    in_stock: str = Form(""),
 ):
     admin = await require_permission(request, "can_shop")
     if not admin:
@@ -269,8 +275,10 @@ async def edit_shop_product(
 
     await database.execute(
         shop_products.update().where(shop_products.c.id == product_id).values(
-            name=name, description=description, price=price,
-            url=url, mushroom_type=mushroom_type, image_url=image_url,
+            name=name, description=description, price=price or None,
+            url=url or None, mushroom_type=mushroom_type or None,
+            image_url=image_url or None, category=category or None,
+            in_stock=(in_stock == "true"),
         )
     )
     return RedirectResponse("/admin/shop", status_code=302)

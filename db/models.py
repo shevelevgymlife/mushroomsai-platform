@@ -186,6 +186,19 @@ shop_products = sqlalchemy.Table(
     sqlalchemy.Column("url", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("mushroom_type", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("image_url", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("category", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("in_stock", sqlalchemy.Boolean, default=True, server_default="true"),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+product_reviews = sqlalchemy.Table(
+    "product_reviews",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("product_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("shop_products.id"), nullable=True),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=True),
+    sqlalchemy.Column("rating", sqlalchemy.Integer, nullable=False),
+    sqlalchemy.Column("text", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
 
