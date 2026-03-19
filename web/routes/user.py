@@ -161,9 +161,10 @@ async def create_post(
                 image_url = f"/media/community/{filename}"
 
     fid = int(folder_id) if folder_id.strip().isdigit() else None
+    effective_uid = user.get("primary_user_id") or user["id"]
     await database.execute(
         community_posts.insert().values(
-            user_id=user["id"],
+            user_id=effective_uid,
             content=content.strip(),
             image_url=image_url,
             folder_id=fid,
@@ -179,16 +180,17 @@ async def like_post(request: Request, post_id: int):
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
 
+    uid = user.get("primary_user_id") or user["id"]
     existing = await database.fetch_one(
         community_likes.select()
         .where(community_likes.c.post_id == post_id)
-        .where(community_likes.c.user_id == user["id"])
+        .where(community_likes.c.user_id == uid)
     )
     if existing:
         await database.execute(
             community_likes.delete()
             .where(community_likes.c.post_id == post_id)
-            .where(community_likes.c.user_id == user["id"])
+            .where(community_likes.c.user_id == uid)
         )
         await database.execute(
             community_posts.update().where(community_posts.c.id == post_id)
@@ -201,7 +203,7 @@ async def like_post(request: Request, post_id: int):
     else:
         try:
             await database.execute(
-                community_likes.insert().values(post_id=post_id, user_id=user["id"])
+                community_likes.insert().values(post_id=post_id, user_id=uid)
             )
             await database.execute(
                 community_posts.update().where(community_posts.c.id == post_id)
@@ -225,9 +227,10 @@ async def add_comment(request: Request, post_id: int, content: str = Form(...)):
     if not post:
         return JSONResponse({"error": "not found"}, status_code=404)
 
+    uid = user.get("primary_user_id") or user["id"]
     comment_id = await database.execute(
         community_comments.insert().values(
-            post_id=post_id, user_id=user["id"], content=content.strip()
+            post_id=post_id, user_id=uid, content=content.strip()
         )
     )
     await database.execute(
@@ -235,7 +238,7 @@ async def add_comment(request: Request, post_id: int, content: str = Form(...)):
         .values(comments_count=community_posts.c.comments_count + 1)
     )
     rep_count = await database.fetch_val(
-        sa.select(sa.func.count()).select_from(community_posts).where(community_posts.c.user_id == user["id"])
+        sa.select(sa.func.count()).select_from(community_posts).where(community_posts.c.user_id == uid)
     ) or 0
     rep = _reputation(rep_count)
     return JSONResponse({
@@ -289,8 +292,9 @@ async def create_folder(request: Request, name: str = Form(...)):
         return JSONResponse({"error": "auth required"}, status_code=401)
     if not name.strip():
         return JSONResponse({"error": "empty name"}, status_code=400)
+    uid = user.get("primary_user_id") or user["id"]
     fid = await database.execute(
-        community_folders.insert().values(user_id=user["id"], name=name.strip())
+        community_folders.insert().values(user_id=uid, name=name.strip())
     )
     return JSONResponse({"ok": True, "id": fid, "name": name.strip()})
 

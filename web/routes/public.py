@@ -212,6 +212,14 @@ async def community(request: Request):
         )
 
     # Authenticated: full social network
+    # Always use primary account for all identity operations
+    effective_user_id = current_user.get("primary_user_id") or current_user["id"]
+    display_user = current_user
+    if current_user.get("primary_user_id"):
+        primary = await database.fetch_one(users.select().where(users.c.id == effective_user_id))
+        if primary:
+            display_user = dict(primary)
+
     folder_id = request.query_params.get("folder")
     folder_id = int(folder_id) if folder_id and folder_id.isdigit() else None
 
@@ -225,18 +233,26 @@ async def community(request: Request):
     for p in raw_posts:
         author = None
         if p["user_id"]:
-            author = await database.fetch_one(users.select().where(users.c.id == p["user_id"]))
+            raw_author = await database.fetch_one(users.select().where(users.c.id == p["user_id"]))
+            if raw_author:
+                # If post author is a secondary account, show primary's profile
+                if raw_author["primary_user_id"]:
+                    primary_author = await database.fetch_one(
+                        users.select().where(users.c.id == raw_author["primary_user_id"])
+                    )
+                    author = dict(primary_author) if primary_author else dict(raw_author)
+                else:
+                    author = dict(raw_author)
         post_count = 0
         if author:
             post_count = await database.fetch_val(
                 sa.select(sa.func.count()).select_from(community_posts)
                 .where(community_posts.c.user_id == author["id"])
             ) or 0
-        liked = False
         lk = await database.fetch_one(
             community_likes.select()
             .where(community_likes.c.post_id == p["id"])
-            .where(community_likes.c.user_id == current_user["id"])
+            .where(community_likes.c.user_id == effective_user_id)
         )
         liked = lk is not None
         folder_name = None
@@ -255,23 +271,23 @@ async def community(request: Request):
     all_folders = await database.fetch_all(
         community_folders.select().order_by(community_folders.c.name.asc())
     )
-    # User's own folders for post creation
+    # User's own folders for post creation (by effective/primary account)
     my_folders = await database.fetch_all(
         community_folders.select()
-        .where(community_folders.c.user_id == current_user["id"])
+        .where(community_folders.c.user_id == effective_user_id)
         .order_by(community_folders.c.created_at.asc())
     )
-    # User post count for reputation
+    # User post count for reputation (by primary account)
     my_post_count = await database.fetch_val(
         sa.select(sa.func.count()).select_from(community_posts)
-        .where(community_posts.c.user_id == current_user["id"])
+        .where(community_posts.c.user_id == effective_user_id)
     ) or 0
 
     return templates.TemplateResponse(
         "community.html",
         {
             "request": request,
-            "user": current_user,
+            "user": display_user,
             "feed": feed,
             "folders": all_folders,
             "my_folders": my_folders,
@@ -286,8 +302,14 @@ async def community_user_profile(request: Request, user_id: int):
     u = await database.fetch_one(users.select().where(users.c.id == user_id))
     if not u:
         return JSONResponse({"error": "not found"}, status_code=404)
+    # If secondary account — show primary's profile
+    if u["primary_user_id"]:
+        primary = await database.fetch_one(users.select().where(users.c.id == u["primary_user_id"]))
+        if primary:
+            u = primary
+    profile_id = u["id"]
     post_count = await database.fetch_val(
-        sa.select(sa.func.count()).select_from(community_posts).where(community_posts.c.user_id == user_id)
+        sa.select(sa.func.count()).select_from(community_posts).where(community_posts.c.user_id == profile_id)
     ) or 0
     return JSONResponse({
         "name": u["name"],
