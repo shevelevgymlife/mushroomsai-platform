@@ -185,9 +185,13 @@ async def community(request: Request):
         )
         member_count = await database.fetch_val(
             sa.select(sa.func.count()).select_from(users)
+            .where(users.c.primary_user_id == None)
         )
         recent_members = await database.fetch_all(
-            users.select().order_by(users.c.created_at.desc()).limit(10)
+            users.select()
+            .where(users.c.primary_user_id == None)
+            .order_by(users.c.created_at.desc())
+            .limit(10)
         )
         preview_posts = await database.fetch_all(
             community_posts.select()

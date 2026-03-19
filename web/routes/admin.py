@@ -103,11 +103,12 @@ async def admin_dashboard(request: Request):
         today = datetime.utcnow().date()
         total_users = await database.fetch_val(
             sqlalchemy.select(sqlalchemy.func.count()).select_from(users)
+            .where(users.c.primary_user_id == None)
         ) or 0
         users_today = await database.fetch_val(
             sqlalchemy.select(sqlalchemy.func.count()).select_from(users).where(
                 sqlalchemy.cast(users.c.created_at, sqlalchemy.Date) == today
-            )
+            ).where(users.c.primary_user_id == None)
         ) or 0
         messages_today = await database.fetch_val(
             sqlalchemy.select(sqlalchemy.func.count()).select_from(messages).where(
@@ -333,7 +334,7 @@ async def users_list(request: Request, search: str = ""):
     if not admin:
         return RedirectResponse("/login")
 
-    query = users.select().order_by(users.c.created_at.desc())
+    query = users.select().where(users.c.primary_user_id == None).order_by(users.c.created_at.desc())
     if search:
         query = query.where(
             (users.c.name.ilike(f"%{search}%"))

@@ -30,6 +30,19 @@ async def dashboard(request: Request):
     if not user:
         return RedirectResponse("/login")
 
+    # If this is a secondary (linked) account, redirect to primary so the
+    # user always sees one unified profile instead of a duplicate.
+    if user.get("primary_user_id"):
+        primary = await database.fetch_one(
+            users.select().where(users.c.id == user["primary_user_id"])
+        )
+        if primary:
+            from auth.session import create_access_token
+            token = create_access_token(primary["id"])
+            response = RedirectResponse("/dashboard", status_code=302)
+            response.set_cookie("access_token", token, httponly=True, samesite="lax", max_age=60*60*24*30)
+            return response
+
     # Use primary account's ID so linked accounts see the same history
     effective_user_id = user.get("primary_user_id") or user["id"]
 
