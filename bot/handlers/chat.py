@@ -6,6 +6,8 @@ from ai.openai_client import chat_with_ai
 from services.subscription_service import can_ask_question, increment_question_count
 from bot.handlers.start import ensure_user
 
+UNLIMITED_USERS = [742166400]
+
 LIMIT_TEXT = (
     "Вы исчерпали дневной лимит бесплатных вопросов (5 в день).\n\n"
     "Для безлимитных консультаций подключите подписку:\n"
@@ -112,10 +114,11 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tg_user = update.effective_user
     user = await ensure_user(tg_user)
 
-    allowed = await can_ask_question(user["id"])
-    if not allowed:
-        await update.message.reply_text(LIMIT_TEXT)
-        return
+    if tg_user.id not in UNLIMITED_USERS:
+        allowed = await can_ask_question(user["id"])
+        if not allowed:
+            await update.message.reply_text(LIMIT_TEXT)
+            return
 
     await update.message.chat.send_action("typing")
 
