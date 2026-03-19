@@ -117,24 +117,49 @@ async def link_telegram_callback(request: Request):
         )
 
         if tg_user and tg_user["id"] != current_user_id:
-            # Existing separate TG account — merge it into current user
-            print(f"MERGING: primary_id={current_user_id}, secondary_id={tg_user['id']}")
-            logger.info("Merging accounts: primary_id=%s, secondary_id=%s (tg_id=%s)", current_user_id, tg_user["id"], tg_id)
-            await merge_accounts(primary_id=current_user_id, secondary_id=tg_user["id"])
-            print("MERGE COMPLETE")
+            # TG account exists separately — soft-link without touching tg_id (UNIQUE field)
+            # Google account stays primary, TG account becomes secondary
+            google_id = user.get("google_id")
+            print(f"SOFT LINK: Google user_id={current_user_id} (google_id={google_id}) <-> TG user_id={tg_user['id']} (tg_id={tg_id})")
+            logger.info("Soft-linking: primary(google) user_id=%s, secondary(tg) user_id=%s, tg_id=%s", current_user_id, tg_user["id"], tg_id)
+
+            # 1. Record tg_id reference on Google account (no tg_id write — would violate UNIQUE)
+            r1 = await database.execute(
+                users.update().where(users.c.id == current_user_id).values(linked_tg_id=tg_id)
+            )
+            print(f"UPDATE linked_tg_id on Google account: rowcount={r1}")
+
+            # 2. Record google_id reference on TG account and mark it as secondary
+            tg_updates = {"primary_user_id": current_user_id}
+            if google_id:
+                tg_updates["linked_google_id"] = google_id
+            r2 = await database.execute(
+                users.update().where(users.c.id == tg_user["id"]).values(**tg_updates)
+            )
+            print(f"UPDATE TG account (primary_user_id + linked_google_id): rowcount={r2}")
+
+            # 3. Transfer chat messages from TG account to Google account
+            r3 = await database.execute(
+                messages.update().where(messages.c.user_id == tg_user["id"]).values(user_id=current_user_id)
+            )
+            print(f"TRANSFER messages from TG to Google account: rowcount={r3}")
+
+            # Verify
+            updated = await database.fetch_one(users.select().where(users.c.id == current_user_id))
+            print(f"POST-UPDATE CHECK: user_id={current_user_id} linked_tg_id={updated.get('linked_tg_id') if updated else 'NOT_FOUND'}")
+
         elif not tg_user:
-            # No TG account — link tg_id directly to current user
-            print(f"LINKING tg_id={tg_id} directly to user_id={current_user_id}")
+            # No TG account row — just store linked_tg_id reference (do NOT write tg_id, it belongs to TG account)
+            print(f"NO TG USER FOUND — storing linked_tg_id={tg_id} on user_id={current_user_id}")
             rowcount = await database.execute(
-                users.update().where(users.c.id == current_user_id).values(tg_id=tg_id, linked_tg_id=tg_id)
+                users.update().where(users.c.id == current_user_id).values(linked_tg_id=tg_id)
             )
             print(f"UPDATE RESULT: {rowcount}")
-            logger.info("UPDATE tg_id rowcount=%s for user_id=%s", rowcount, current_user_id)
+            logger.info("UPDATE linked_tg_id rowcount=%s for user_id=%s", rowcount, current_user_id)
 
             # Verify the update was saved
             updated = await database.fetch_one(users.select().where(users.c.id == current_user_id))
-            print(f"POST-UPDATE CHECK: tg_id={updated.get('tg_id') if updated else 'NOT_FOUND'}, linked_tg_id={updated.get('linked_tg_id') if updated else 'NOT_FOUND'}")
-            logger.info("Post-update: user_id=%s tg_id=%s", current_user_id, updated.get("tg_id") if updated else "NOT_FOUND")
+            print(f"POST-UPDATE CHECK: user_id={current_user_id} linked_tg_id={updated.get('linked_tg_id') if updated else 'NOT_FOUND'}")
 
             # Update name/avatar from Telegram if missing
             if not user.get("avatar") and photo:
