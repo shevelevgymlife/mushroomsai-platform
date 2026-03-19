@@ -68,27 +68,6 @@
   </div>
 </section>
 
-<!-- Products -->
-{% if products %}
-<section class="py-24 bg-surface/30">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="flex items-end justify-between mb-12">
-      <div>
-        <h2 class="text-3xl sm:text-4xl font-light text-text mb-2">Продукты</h2>
-        <p class="text-muted">Функциональные грибы и протоколы</p>
-      </div>
-      <a href="/shop" class="text-sm text-gold hover:text-gold-light transition-colors">Весь каталог</a>
-    </div>
-    {% from "components/cards.html" import product_card %}
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-      {% for product in products %}
-        {{ product_card(product) }}
-      {% endfor %}
-    </div>
-  </div>
-</section>
-{% endif %}
-
 <!-- Tariffs -->
 <section class="py-24">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -147,29 +126,4 @@
   </div>
 </section>
 
-{% if posts %}
-<section class="py-24 bg-surface/30">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="flex items-end justify-between mb-12">
-      <div>
-        <h2 class="text-3xl sm:text-4xl font-light text-text mb-2">Сообщество</h2>
-        <p class="text-muted">Опыт участников платформы</p>
-      </div>
-      <a href="/community" class="text-sm text-gold hover:text-gold-light transition-colors">Все посты</a>
-    </div>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      {% for post in posts %}
-      <div class="p-6 rounded-2xl bg-surface border border-border hover:border-gold/20 transition-all duration-300">
-        <p class="text-sm text-text leading-relaxed mb-4">{{ post.content[:200] }}{% if post.content|length > 200 %}...{% endif %}</p>
-        <div class="flex items-center justify-between">
-          <span class="text-xs text-muted">{{ post.created_at.strftime('%d.%m.%Y') if post.created_at else '' }}</span>
-          <span class="text-xs text-muted">{{ post.likes }} лайков</span>
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-</section>
-{% endif %}
 {% endblock %}
-
