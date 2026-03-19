@@ -22,7 +22,7 @@
     </p>
 
     <div class="flex flex-col sm:flex-row gap-4 justify-center">
-      <a href="https://t.me/mushrooms_ai_bot" onclick="openBot(event)" target="_blank"
+      <a href="https://t.me/mushrooms_ai_bot" target="_blank" onclick="openBotLink(event)"
          class="px-8 py-4 rounded-xl bg-gold text-bg font-semibold hover:bg-gold-light transition-all duration-300 shadow-lg shadow-gold/20 hover:shadow-gold/30">
         Открыть в Telegram
       </a>
@@ -136,9 +136,9 @@ window.addEventListener('load', function() {
   }
 });
 
-function openBot(e) {
+function openBotLink(e) {
   const tg = window.Telegram?.WebApp;
-  if (tg && tg.close) {
+  if (tg && tg.platform && tg.platform !== 'unknown' && tg.platform !== '') {
     e.preventDefault();
     tg.close();
   }
