@@ -117,13 +117,18 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tg_user = update.effective_user
     user = await ensure_user(tg_user)
 
+    # If this TG account is linked to a primary (Google) account,
+    # use the primary account's ID for all history/limits operations.
+    effective_user_id = user["primary_user_id"] or user["id"]
+
     is_unlimited = (
         tg_user.id in UNLIMITED_USERS
         or user["id"] in UNLIMITED_USER_IDS
+        or effective_user_id in UNLIMITED_USER_IDS
         or user.get("linked_tg_id") in UNLIMITED_USERS
     )
     if not is_unlimited:
-        allowed = await can_ask_question(user["id"])
+        allowed = await can_ask_question(effective_user_id)
         if not allowed:
             await update.message.reply_text(LIMIT_TEXT)
             return
@@ -139,9 +144,9 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         answer = await chat_with_ai(
             user_message=enriched_message,
-            user_id=user["id"],
+            user_id=effective_user_id,
         )
-        await increment_question_count(user["id"])
+        await increment_question_count(effective_user_id)
 
         # Добавляем карточку товара если упомянут гриб
         product_card = await find_mushroom_product(text)
@@ -160,13 +165,13 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         existing = await database.fetch_all(
             followups.select()
-            .where(followups.c.user_id == user["id"])
+            .where(followups.c.user_id == effective_user_id)
             .where(followups.c.sent == False)
         )
         if not existing:
             await database.execute(
                 followups.insert().values(
-                    user_id=user["id"],
+                    user_id=effective_user_id,
                     scheduled_at=scheduled,
                     message=followup_msg,
                 )

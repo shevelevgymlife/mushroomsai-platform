@@ -27,7 +27,10 @@ async def dashboard(request: Request):
     if not user:
         return RedirectResponse("/login")
 
-    plan = await check_subscription(user["id"])
+    # Use primary account's ID so linked accounts see the same history
+    effective_user_id = user.get("primary_user_id") or user["id"]
+
+    plan = await check_subscription(effective_user_id)
     plan_info = PLANS.get(plan, PLANS["free"])
     ref_stats = await get_referral_stats(user["id"])
     from config import settings
@@ -35,7 +38,7 @@ async def dashboard(request: Request):
 
     recent_messages = await database.fetch_all(
         messages.select()
-        .where(messages.c.user_id == user["id"])
+        .where(messages.c.user_id == effective_user_id)
         .order_by(messages.c.created_at.desc())
         .limit(20)
     )
@@ -68,6 +71,9 @@ async def api_chat(request: Request):
         return JSONResponse({"error": "Empty message"}, status_code=400)
 
     if user:
+        # Use primary account's ID for history/limits (covers Mini App + linked accounts)
+        effective_user_id = user.get("primary_user_id") or user["id"]
+
         UNLIMITED_TG_IDS = {742166400}
         is_unlimited = (
             user.get("role") == "admin"
@@ -75,11 +81,11 @@ async def api_chat(request: Request):
             or user.get("linked_tg_id") in UNLIMITED_TG_IDS
         )
         if not is_unlimited:
-            allowed = await can_ask_question(user["id"])
+            allowed = await can_ask_question(effective_user_id)
             if not allowed:
                 return JSONResponse({"error": "limit", "message": "Дневной лимит исчерпан. Подключите подписку для безлимитного доступа."}, status_code=429)
-        answer = await chat_with_ai(user_message=user_message, user_id=user["id"])
-        await increment_question_count(user["id"])
+        answer = await chat_with_ai(user_message=user_message, user_id=effective_user_id)
+        await increment_question_count(effective_user_id)
     else:
         session_key = request.cookies.get("guest_session")
         if not session_key:
