@@ -38,6 +38,14 @@ async def lifespan(app: FastAPI):
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS linked_tg_id BIGINT",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS linked_google_id VARCHAR(128)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS primary_user_id INTEGER REFERENCES users(id)",
+        "ALTER TABLE shop_products ADD COLUMN IF NOT EXISTS image_url TEXT",
+        """CREATE TABLE IF NOT EXISTS feedback (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id),
+            message TEXT NOT NULL,
+            status VARCHAR(20) DEFAULT 'new',
+            created_at TIMESTAMP DEFAULT NOW()
+        )""",
     ]
     for sql in new_columns:
         try:

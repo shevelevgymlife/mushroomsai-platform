@@ -1,0 +1,17 @@
+<div class="flex gap-2 mb-8 overflow-x-auto pb-2">
+  {% set nav_links = [
+    ('Dashboard', '/admin'),
+    ('AI', '/admin/ai'),
+    ('Магазин', '/admin/shop'),
+    ('Пользователи', '/admin/users'),
+    ('Обратная связь', '/admin/feedback'),
+    ('Рассылки', '/admin/broadcast'),
+    ('База знаний', '/admin/knowledge'),
+  ] %}
+  {% for label, href in nav_links %}
+  <a href="{{ href }}"
+     class="px-4 py-2 rounded-lg text-sm whitespace-nowrap border transition-all duration-300 {{ 'bg-gold text-bg border-gold font-medium' if request.url.path == href else 'border-border text-muted hover:border-gold hover:text-gold' }}">
+    {{ label }}
+  </a>
+  {% endfor %}
+</div>

@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}Пользователи — MushroomsAI Admin{% endblock %}
+
+{% block content %}
+<div class="pt-24 pb-16">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+    {% include "components/admin_nav.html" %}
+
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-3xl font-light text-text">Пользователи</h1>
+      <span class="text-sm text-muted">{{ users|length }} найдено</span>
+    </div>
+
+    <form class="mb-6">
+      <input type="text" name="search" value="{{ search }}"
+        placeholder="Поиск по имени, email или tg_id..."
+        class="w-full max-w-md px-4 py-2.5 rounded-xl bg-surface border border-border text-text placeholder-muted text-sm focus:outline-none focus:border-gold/60 transition-colors" />
+    </form>
+
+    <div class="rounded-2xl bg-surface border border-border overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-border">
+              {% for col in ['#', 'Пользователь', 'TG ID', 'Email', 'Подписка', 'Сообщений', 'Регистрация', 'Действия'] %}
+              <th class="px-4 py-3 text-left text-xs font-medium text-muted">{{ col }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for u in users %}
+            <tr class="border-b border-border last:border-0 hover:bg-border/20 transition-colors">
+              <td class="px-4 py-3 text-xs text-muted">{{ u.id }}</td>
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-2">
+                  <div class="w-7 h-7 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center text-xs text-gold font-medium flex-shrink-0">
+                    {{ (u.name or 'U')[0]|upper }}
+                  </div>
+                  <span class="text-sm text-text">{{ u.name or '—' }}</span>
+                </div>
+              </td>
+              <td class="px-4 py-3 text-xs text-muted font-mono">{{ u.tg_id or '—' }}</td>
+              <td class="px-4 py-3 text-xs text-muted">{{ u.email or '—' }}</td>
+              <td class="px-4 py-3">
+                <span class="px-2 py-0.5 rounded text-xs font-medium
+                  {{ 'text-gold bg-gold/10 border border-gold/20' if u.subscription_plan == 'pro'
+                     else 'text-blue-400 bg-blue-500/10 border border-blue-500/20' if u.subscription_plan == 'start'
+                     else 'text-muted bg-border border border-border' }}">
+                  {{ u.subscription_plan }}
+                </span>
+              </td>
+              <td class="px-4 py-3 text-xs text-muted">{{ msg_counts.get(u.id, 0) }}</td>
+              <td class="px-4 py-3 text-xs text-muted">{{ u.created_at.strftime('%d.%m.%Y') if u.created_at else '—' }}</td>
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-2">
+                  <a href="/admin/users/{{ u.id }}/dialogs"
+                    class="px-2.5 py-1 rounded-lg text-xs border border-border text-muted hover:border-gold hover:text-gold transition-colors">
+                    Диалоги
+                  </a>
+                  <button onclick="openSubModal({{ u.id }}, '{{ u.name | e }}', '{{ u.subscription_plan }}')"
+                    class="px-2.5 py-1 rounded-lg text-xs border border-border text-muted hover:border-gold hover:text-gold transition-colors">
+                    Подписка
+                  </button>
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="8" class="px-4 py-12 text-center text-sm text-muted">
+                {% if search %}Пользователи не найдены по запросу "{{ search }}"{% else %}Пользователей нет{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Subscription Modal -->
+<div id="subModal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+  <div class="bg-surface border border-border rounded-2xl w-full max-w-sm p-6">
+    <div class="flex items-center justify-between mb-5">
+      <h2 class="font-semibold text-text">Изменить подписку</h2>
+      <button onclick="document.getElementById('subModal').classList.add('hidden')" class="text-muted hover:text-text text-xl">×</button>
+    </div>
+    <p class="text-sm text-muted mb-4">Пользователь: <span id="subUserName" class="text-text font-medium"></span></p>
+    <div class="space-y-2 mb-5">
+      {% for plan, label, desc in [
+        ('free', 'Free', 'Бесплатный, 5 вопросов/день'),
+        ('start', 'Start', '990 ₽/мес, безлимит'),
+        ('pro', 'Pro', '1990 ₽/мес, безлимит + приоритет'),
+      ] %}
+      <label class="flex items-center gap-3 p-3 rounded-xl border border-border hover:border-gold/40 cursor-pointer transition-colors">
+        <input type="radio" name="plan" value="{{ plan }}" class="accent-gold" />
+        <div>
+          <p class="text-sm text-text font-medium">{{ label }}</p>
+          <p class="text-xs text-muted">{{ desc }}</p>
+        </div>
+      </label>
+      {% endfor %}
+    </div>
+    <div id="subError" class="hidden mb-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs"></div>
+    <div class="flex gap-3">
+      <button onclick="saveSubscription()"
+        class="flex-1 px-4 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-all duration-300">
+        Сохранить
+      </button>
+      <button onclick="document.getElementById('subModal').classList.add('hidden')"
+        class="px-4 py-2.5 rounded-xl border border-border text-muted text-sm hover:border-gold hover:text-gold transition-colors">
+        Отмена
+      </button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let currentUserId = null;
+
+function openSubModal(userId, userName, currentPlan) {
+  currentUserId = userId;
+  document.getElementById('subUserName').textContent = userName || 'ID ' + userId;
+  document.querySelectorAll('input[name="plan"]').forEach(r => {
+    r.checked = r.value === currentPlan;
+  });
+  document.getElementById('subError').classList.add('hidden');
+  document.getElementById('subModal').classList.remove('hidden');
+}
+
+async function saveSubscription() {
+  const plan = document.querySelector('input[name="plan"]:checked')?.value;
+  if (!plan || !currentUserId) return;
+
+  const errEl = document.getElementById('subError');
+  errEl.classList.add('hidden');
+
+  try {
+    const formData = new FormData();
+    formData.append('plan', plan);
+    const resp = await fetch('/admin/users/' + currentUserId + '/subscription', {
+      method: 'POST',
+      body: formData,
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      document.getElementById('subModal').classList.add('hidden');
+      window.location.reload();
+    } else {
+      errEl.textContent = data.error || 'Ошибка';
+      errEl.classList.remove('hidden');
+    }
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.classList.remove('hidden');
+  }
+}
+</script>
+{% endblock %}

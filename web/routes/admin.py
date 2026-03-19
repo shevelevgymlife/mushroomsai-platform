@@ -1,22 +1,40 @@
-from fastapi import APIRouter, Request, Form, Depends
+from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from auth.session import get_user_from_request
 from db.database import database
-from db.models import users, messages, leads, products, orders, posts, page_views, ai_settings, subscriptions
+from db.models import (
+    users, messages, leads, products, orders, posts,
+    page_views, ai_settings, subscriptions, knowledge_base,
+    shop_products, feedback,
+)
 import sqlalchemy
 from datetime import datetime, timedelta, date
 
 router = APIRouter(prefix="/admin")
 templates = Jinja2Templates(directory="web/templates")
 
+ADMIN_TG_ID = 742166400
+
+ADMIN_NAV = [
+    ("Dashboard", "/admin"),
+    ("AI", "/admin/ai"),
+    ("Магазин", "/admin/shop"),
+    ("Пользователи", "/admin/users"),
+    ("Обратная связь", "/admin/feedback"),
+    ("Рассылки", "/admin/broadcast"),
+    ("База знаний", "/admin/knowledge"),
+]
+
 
 async def require_admin(request: Request):
     user = await get_user_from_request(request)
-    if not user or user.get("role") != "admin":
+    if not user or user.get("tg_id") != ADMIN_TG_ID:
         return None
     return user
 
+
+# ─── Dashboard ────────────────────────────────────────────────────────────────
 
 @router.get("", response_class=HTMLResponse)
 async def admin_dashboard(request: Request):
@@ -25,52 +43,467 @@ async def admin_dashboard(request: Request):
         return RedirectResponse("/login")
 
     today = datetime.utcnow().date()
-    week_ago = datetime.utcnow() - timedelta(days=7)
-    month_ago = datetime.utcnow() - timedelta(days=30)
 
+    total_users = await database.fetch_val(
+        sqlalchemy.select(sqlalchemy.func.count()).select_from(users)
+    )
     users_today = await database.fetch_val(
         sqlalchemy.select(sqlalchemy.func.count()).select_from(users).where(
             sqlalchemy.cast(users.c.created_at, sqlalchemy.Date) == today
         )
     )
-    users_week = await database.fetch_val(
-        sqlalchemy.select(sqlalchemy.func.count()).select_from(users).where(users.c.created_at >= week_ago)
-    )
-    users_month = await database.fetch_val(
-        sqlalchemy.select(sqlalchemy.func.count()).select_from(users).where(users.c.created_at >= month_ago)
-    )
-    new_leads = await database.fetch_val(
-        sqlalchemy.select(sqlalchemy.func.count()).select_from(leads).where(leads.c.status == "new")
-    )
-    revenue_today = await database.fetch_val(
-        sqlalchemy.select(sqlalchemy.func.coalesce(sqlalchemy.func.sum(orders.c.amount), 0)).where(
-            sqlalchemy.cast(orders.c.created_at, sqlalchemy.Date) == today
+    messages_today = await database.fetch_val(
+        sqlalchemy.select(sqlalchemy.func.count()).select_from(messages).where(
+            sqlalchemy.cast(messages.c.created_at, sqlalchemy.Date) == today
         )
     )
-    revenue_month = await database.fetch_val(
-        sqlalchemy.select(sqlalchemy.func.coalesce(sqlalchemy.func.sum(orders.c.amount), 0)).where(
-            orders.c.created_at >= month_ago
+    active_subs = await database.fetch_val(
+        sqlalchemy.select(sqlalchemy.func.count()).select_from(users).where(
+            users.c.subscription_plan != "free"
         )
     )
     recent_msgs = await database.fetch_all(
-        messages.select().order_by(messages.c.created_at.desc()).limit(10)
+        messages.select()
+        .where(messages.c.role == "user")
+        .order_by(messages.c.created_at.desc())
+        .limit(10)
     )
+
+    # Enrich messages with user names
+    msgs_with_users = []
+    for msg in recent_msgs:
+        u = None
+        if msg["user_id"]:
+            u = await database.fetch_one(users.select().where(users.c.id == msg["user_id"]))
+        msgs_with_users.append({"msg": msg, "msg_user": u})
+
+    recent_feedback = await database.fetch_all(
+        feedback.select().order_by(feedback.c.created_at.desc()).limit(5)
+    )
+    fb_with_users = []
+    for fb_row in recent_feedback:
+        u = None
+        if fb_row["user_id"]:
+            u = await database.fetch_one(users.select().where(users.c.id == fb_row["user_id"]))
+        fb_with_users.append({"fb": fb_row, "fb_user": u})
 
     return templates.TemplateResponse(
         "dashboard/admin.html",
         {
             "request": request,
             "user": admin,
+            "nav": ADMIN_NAV,
+            "total_users": total_users or 0,
             "users_today": users_today or 0,
-            "users_week": users_week or 0,
-            "users_month": users_month or 0,
-            "new_leads": new_leads or 0,
-            "revenue_today": revenue_today or 0,
-            "revenue_month": revenue_month or 0,
-            "recent_msgs": recent_msgs,
+            "messages_today": messages_today or 0,
+            "active_subs": active_subs or 0,
+            "recent_msgs": msgs_with_users,
+            "recent_feedback": fb_with_users,
         },
     )
 
+
+# ─── AI Settings ──────────────────────────────────────────────────────────────
+
+@router.get("/ai", response_class=HTMLResponse)
+async def ai_settings_page(request: Request):
+    admin = await require_admin(request)
+    if not admin:
+        return RedirectResponse("/login")
+
+    from ai.system_prompt import DEFAULT_SYSTEM_PROMPT
+    row = await database.fetch_one(
+        ai_settings.select().order_by(ai_settings.c.updated_at.desc()).limit(1)
+    )
+    current_prompt = row["system_prompt"] if row else DEFAULT_SYSTEM_PROMPT
+    history = await database.fetch_all(
+        ai_settings.select().order_by(ai_settings.c.updated_at.desc()).limit(5)
+    )
+
+    return templates.TemplateResponse(
+        "dashboard/admin_ai.html",
+        {
+            "request": request,
+            "user": admin,
+            "nav": ADMIN_NAV,
+            "current_prompt": current_prompt,
+            "history": history,
+        },
+    )
+
+
+@router.post("/ai")
+async def update_ai_settings(request: Request, system_prompt: str = Form(...)):
+    admin = await require_admin(request)
+    if not admin:
+        return RedirectResponse("/login")
+
+    await database.execute(
+        ai_settings.insert().values(system_prompt=system_prompt, updated_by=admin["id"])
+    )
+    return RedirectResponse("/admin/ai", status_code=302)
+
+
+@router.post("/ai/test")
+async def test_ai(request: Request, question: str = Form(...)):
+    admin = await require_admin(request)
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+
+    from ai.openai_client import chat_with_ai
+    try:
+        answer = await chat_with_ai(user_message=question, user_id=None)
+        return JSONResponse({"answer": answer})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+# ─── Shop ─────────────────────────────────────────────────────────────────────
+
+@router.get("/shop", response_class=HTMLResponse)
+async def shop_page(request: Request):
+    admin = await require_admin(request)
+    if not admin:
+        return RedirectResponse("/login")
+
+    all_products = await database.fetch_all(
+        shop_products.select().order_by(shop_products.c.id.desc())
+    )
+    return templates.TemplateResponse(
+        "dashboard/admin_shop.html",
+        {"request": request, "user": admin, "nav": ADMIN_NAV, "products": all_products},
+    )
+
+
+@router.post("/shop/add")
+async def add_shop_product(
+    request: Request,
+    name: str = Form(...),
+    description: str = Form(""),
+    price: int = Form(0),
+    url: str = Form(""),
+    mushroom_type: str = Form(""),
+    image_url: str = Form(""),
+):
+    admin = await require_admin(request)
+    if not admin:
+        return RedirectResponse("/login")
+
+    await database.execute(
+        shop_products.insert().values(
+            name=name, description=description, price=price,
+            url=url, mushroom_type=mushroom_type, image_url=image_url,
+        )
+    )
+    return RedirectResponse("/admin/shop", status_code=302)
+
+
+@router.post("/shop/edit/{product_id}")
+async def edit_shop_product(
+    request: Request,
+    product_id: int,
+    name: str = Form(...),
+    description: str = Form(""),
+    price: int = Form(0),
+    url: str = Form(""),
+    mushroom_type: str = Form(""),
+    image_url: str = Form(""),
+):
+    admin = await require_admin(request)
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+
+    await database.execute(
+        shop_products.update().where(shop_products.c.id == product_id).values(
+            name=name, description=description, price=price,
+            url=url, mushroom_type=mushroom_type, image_url=image_url,
+        )
+    )
+    return RedirectResponse("/admin/shop", status_code=302)
+
+
+@router.post("/shop/delete/{product_id}")
+async def delete_shop_product(request: Request, product_id: int):
+    admin = await require_admin(request)
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+
+    await database.execute(shop_products.delete().where(shop_products.c.id == product_id))
+    return JSONResponse({"ok": True})
+
+
+# ─── Users ────────────────────────────────────────────────────────────────────
+
+@router.get("/users", response_class=HTMLResponse)
+async def users_list(request: Request, search: str = ""):
+    admin = await require_admin(request)
+    if not admin:
+        return RedirectResponse("/login")
+
+    query = users.select().order_by(users.c.created_at.desc())
+    if search:
+        query = query.where(
+            (users.c.name.ilike(f"%{search}%"))
+            | (users.c.email.ilike(f"%{search}%"))
+            | (sqlalchemy.cast(users.c.tg_id, sqlalchemy.String).ilike(f"%{search}%"))
+        )
+    all_users = await database.fetch_all(query.limit(100))
+
+    msg_counts = {}
+    for u in all_users:
+        count = await database.fetch_val(
+            sqlalchemy.select(sqlalchemy.func.count())
+            .select_from(messages)
+            .where(messages.c.user_id == u["id"])
+        )
+        msg_counts[u["id"]] = count or 0
+
+    return templates.TemplateResponse(
+        "dashboard/admin_users.html",
+        {
+            "request": request,
+            "user": admin,
+            "nav": ADMIN_NAV,
+            "users": all_users,
+            "search": search,
+            "msg_counts": msg_counts,
+        },
+    )
+
+
+@router.post("/users/{user_id}/subscription")
+async def change_subscription(request: Request, user_id: int, plan: str = Form(...)):
+    admin = await require_admin(request)
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+
+    if plan not in ("free", "start", "pro"):
+        return JSONResponse({"error": "invalid plan"}, status_code=400)
+
+    end_date = datetime.utcnow() + timedelta(days=30) if plan != "free" else None
+    await database.execute(
+        users.update().where(users.c.id == user_id).values(
+            subscription_plan=plan, subscription_end=end_date
+        )
+    )
+    return JSONResponse({"ok": True, "plan": plan})
+
+
+@router.get("/users/{user_id}/dialogs", response_class=HTMLResponse)
+async def user_dialogs(request: Request, user_id: int):
+    admin = await require_admin(request)
+    if not admin:
+        return RedirectResponse("/login")
+
+    target_user = await database.fetch_one(users.select().where(users.c.id == user_id))
+    if not target_user:
+        return RedirectResponse("/admin/users")
+
+    dialogs = await database.fetch_all(
+        messages.select()
+        .where(messages.c.user_id == user_id)
+        .order_by(messages.c.created_at.desc())
+        .limit(50)
+    )
+
+    return templates.TemplateResponse(
+        "dashboard/admin_user_dialogs.html",
+        {
+            "request": request,
+            "user": admin,
+            "nav": ADMIN_NAV,
+            "target_user": target_user,
+            "dialogs": dialogs,
+        },
+    )
+
+
+# ─── Feedback ─────────────────────────────────────────────────────────────────
+
+@router.get("/feedback", response_class=HTMLResponse)
+async def feedback_page(request: Request):
+    admin = await require_admin(request)
+    if not admin:
+        return RedirectResponse("/login")
+
+    all_feedback = await database.fetch_all(
+        feedback.select().order_by(feedback.c.created_at.desc())
+    )
+    fb_with_users = []
+    for fb_row in all_feedback:
+        u = None
+        if fb_row["user_id"]:
+            u = await database.fetch_one(users.select().where(users.c.id == fb_row["user_id"]))
+        fb_with_users.append({"fb": fb_row, "fb_user": u})
+
+    return templates.TemplateResponse(
+        "dashboard/admin_feedback.html",
+        {"request": request, "user": admin, "nav": ADMIN_NAV, "feedbacks": fb_with_users},
+    )
+
+
+@router.post("/feedback/{feedback_id}/status")
+async def update_feedback_status(request: Request, feedback_id: int, status: str = Form(...)):
+    admin = await require_admin(request)
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+
+    await database.execute(
+        feedback.update().where(feedback.c.id == feedback_id).values(status=status)
+    )
+    return JSONResponse({"ok": True})
+
+
+@router.post("/feedback/{feedback_id}/reply")
+async def reply_to_feedback(request: Request, feedback_id: int, reply_text: str = Form(...)):
+    admin = await require_admin(request)
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+
+    fb_row = await database.fetch_one(feedback.select().where(feedback.c.id == feedback_id))
+    if not fb_row or not fb_row["user_id"]:
+        return JSONResponse({"error": "not found"}, status_code=404)
+
+    target_user = await database.fetch_one(users.select().where(users.c.id == fb_row["user_id"]))
+    if not target_user or not target_user["tg_id"]:
+        return JSONResponse({"error": "no telegram"}, status_code=400)
+
+    from config import settings
+    from telegram import Bot
+    bot = Bot(token=settings.TELEGRAM_TOKEN)
+    try:
+        await bot.send_message(chat_id=target_user["tg_id"], text=f"💬 Ответ от команды MushroomsAI:\n\n{reply_text}")
+        await database.execute(
+            feedback.update().where(feedback.c.id == feedback_id).values(status="replied")
+        )
+        return JSONResponse({"ok": True})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+# ─── Broadcast ────────────────────────────────────────────────────────────────
+
+@router.get("/broadcast", response_class=HTMLResponse)
+async def broadcast_page(request: Request):
+    admin = await require_admin(request)
+    if not admin:
+        return RedirectResponse("/login")
+
+    return templates.TemplateResponse(
+        "dashboard/admin_broadcast.html",
+        {"request": request, "user": admin, "nav": ADMIN_NAV},
+    )
+
+
+@router.post("/broadcast/send")
+async def broadcast_send(
+    request: Request,
+    message_text: str = Form(...),
+    segment: str = Form("all"),
+):
+    admin = await require_admin(request)
+    if not admin:
+        return RedirectResponse("/login")
+
+    query = users.select().where(users.c.tg_id != None)
+    if segment == "pro":
+        query = query.where(users.c.subscription_plan == "pro")
+    elif segment == "start":
+        query = query.where(users.c.subscription_plan == "start")
+    elif segment == "free":
+        query = query.where(users.c.subscription_plan == "free")
+
+    all_users = await database.fetch_all(query)
+
+    from config import settings
+    from telegram import Bot
+    bot = Bot(token=settings.TELEGRAM_TOKEN)
+
+    sent = 0
+    for u in all_users:
+        try:
+            await bot.send_message(chat_id=u["tg_id"], text=message_text)
+            sent += 1
+        except Exception:
+            pass
+
+    return templates.TemplateResponse(
+        "dashboard/admin_broadcast.html",
+        {
+            "request": request,
+            "user": admin,
+            "nav": ADMIN_NAV,
+            "success": f"Отправлено: {sent} из {len(all_users)}",
+        },
+    )
+
+
+# ─── Knowledge Base ───────────────────────────────────────────────────────────
+
+@router.get("/knowledge", response_class=HTMLResponse)
+async def knowledge_page(request: Request):
+    admin = await require_admin(request)
+    if not admin:
+        return RedirectResponse("/login")
+
+    entries = await database.fetch_all(
+        knowledge_base.select().order_by(knowledge_base.c.id.desc())
+    )
+    return templates.TemplateResponse(
+        "dashboard/admin_knowledge.html",
+        {"request": request, "user": admin, "nav": ADMIN_NAV, "entries": entries},
+    )
+
+
+@router.post("/knowledge/add")
+async def add_knowledge(
+    request: Request,
+    title: str = Form(...),
+    content: str = Form(...),
+    category: str = Form(""),
+):
+    admin = await require_admin(request)
+    if not admin:
+        return RedirectResponse("/login")
+
+    await database.execute(
+        knowledge_base.insert().values(title=title, content=content, category=category)
+    )
+    return RedirectResponse("/admin/knowledge", status_code=302)
+
+
+@router.post("/knowledge/delete/{entry_id}")
+async def delete_knowledge(request: Request, entry_id: int):
+    admin = await require_admin(request)
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+
+    await database.execute(knowledge_base.delete().where(knowledge_base.c.id == entry_id))
+    return JSONResponse({"ok": True})
+
+
+@router.post("/knowledge/sync")
+async def sync_knowledge(request: Request):
+    admin = await require_admin(request)
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+
+    import subprocess
+    try:
+        result = subprocess.run(
+            ["python", "load_knowledge.py"],
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        return JSONResponse({"ok": True, "output": result.stdout[-2000:], "stderr": result.stderr[-500:]})
+    except subprocess.TimeoutExpired:
+        return JSONResponse({"error": "timeout"}, status_code=500)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+# ─── Legacy routes (kept for backward compatibility) ──────────────────────────
 
 @router.get("/analytics", response_class=HTMLResponse)
 async def analytics(request: Request):
@@ -91,107 +524,6 @@ async def analytics(request: Request):
     return templates.TemplateResponse(
         "dashboard/analytics.html",
         {"request": request, "user": admin, "days": days},
-    )
-
-
-@router.get("/users", response_class=HTMLResponse)
-async def users_list(request: Request, search: str = ""):
-    admin = await require_admin(request)
-    if not admin:
-        return RedirectResponse("/login")
-
-    query = users.select().order_by(users.c.created_at.desc())
-    if search:
-        query = query.where(
-            (users.c.name.ilike(f"%{search}%")) |
-            (users.c.email.ilike(f"%{search}%"))
-        )
-    all_users = await database.fetch_all(query.limit(100))
-
-    return templates.TemplateResponse(
-        "dashboard/users_list.html",
-        {"request": request, "user": admin, "users": all_users, "search": search},
-    )
-
-
-@router.get("/ai", response_class=HTMLResponse)
-async def ai_settings_page(request: Request):
-    admin = await require_admin(request)
-    if not admin:
-        return RedirectResponse("/login")
-
-    from ai.system_prompt import DEFAULT_SYSTEM_PROMPT
-    row = await database.fetch_one(
-        ai_settings.select().order_by(ai_settings.c.updated_at.desc()).limit(1)
-    )
-    current_prompt = row["system_prompt"] if row else DEFAULT_SYSTEM_PROMPT
-    history = await database.fetch_all(
-        ai_settings.select().order_by(ai_settings.c.updated_at.desc()).limit(10)
-    )
-
-    return templates.TemplateResponse(
-        "dashboard/ai_settings.html",
-        {"request": request, "user": admin, "current_prompt": current_prompt, "history": history},
-    )
-
-
-@router.post("/ai")
-async def update_ai_settings(request: Request, system_prompt: str = Form(...)):
-    admin = await require_admin(request)
-    if not admin:
-        return RedirectResponse("/login")
-
-    await database.execute(
-        ai_settings.insert().values(system_prompt=system_prompt, updated_by=admin["id"])
-    )
-    return RedirectResponse("/admin/ai", status_code=302)
-
-
-@router.get("/broadcast", response_class=HTMLResponse)
-async def broadcast_page(request: Request):
-    admin = await require_admin(request)
-    if not admin:
-        return RedirectResponse("/login")
-
-    return templates.TemplateResponse(
-        "dashboard/broadcast.html",
-        {"request": request, "user": admin},
-    )
-
-
-@router.post("/broadcast/send")
-async def broadcast_send(
-    request: Request,
-    message_text: str = Form(...),
-    segment: str = Form("all"),
-):
-    admin = await require_admin(request)
-    if not admin:
-        return RedirectResponse("/login")
-
-    query = users.select().where(users.c.tg_id != None)
-    if segment == "subscribers":
-        query = query.where(users.c.subscription_plan != "free")
-    elif segment == "free":
-        query = query.where(users.c.subscription_plan == "free")
-
-    all_users = await database.fetch_all(query)
-
-    from config import settings
-    from telegram import Bot
-    bot = Bot(token=settings.TELEGRAM_TOKEN)
-
-    sent = 0
-    for u in all_users:
-        try:
-            await bot.send_message(chat_id=u["tg_id"], text=message_text)
-            sent += 1
-        except Exception:
-            pass
-
-    return templates.TemplateResponse(
-        "dashboard/broadcast.html",
-        {"request": request, "user": admin, "success": f"Отправлено: {sent}"},
     )
 
 

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Диалоги пользователя — MushroomsAI Admin{% endblock %}
+
+{% block content %}
+<div class="pt-24 pb-16">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+
+    {% include "components/admin_nav.html" %}
+
+    <div class="flex items-center gap-4 mb-8">
+      <a href="/admin/users" class="text-muted hover:text-gold transition-colors text-sm">← Пользователи</a>
+      <h1 class="text-2xl font-light text-text">
+        Диалоги: {{ target_user.name or ('TG ' ~ target_user.tg_id if target_user.tg_id else 'ID ' ~ target_user.id) }}
+      </h1>
+    </div>
+
+    <!-- User info card -->
+    <div class="p-5 rounded-2xl bg-surface border border-border mb-6 flex flex-wrap gap-6">
+      {% for label, value in [
+        ('ID', target_user.id),
+        ('TG ID', target_user.tg_id or '—'),
+        ('Email', target_user.email or '—'),
+        ('Подписка', target_user.subscription_plan),
+        ('Регистрация', target_user.created_at.strftime('%d.%m.%Y') if target_user.created_at else '—'),
+      ] %}
+      <div>
+        <p class="text-xs text-muted mb-0.5">{{ label }}</p>
+        <p class="text-sm text-text font-medium">{{ value }}</p>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Messages -->
+    <div class="space-y-3">
+      {% if dialogs %}
+      {% for msg in dialogs %}
+      <div class="flex gap-3 {{ 'justify-end' if msg.role == 'user' else '' }}">
+        {% if msg.role == 'assistant' %}
+        <div class="w-7 h-7 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center text-xs flex-shrink-0 mt-1">🤖</div>
+        {% endif %}
+        <div class="max-w-[80%] p-4 rounded-2xl {{ 'bg-gold/10 border border-gold/20' if msg.role == 'user' else 'bg-surface border border-border' }}">
+          <p class="text-sm text-text whitespace-pre-wrap leading-relaxed">{{ msg.content }}</p>
+          <p class="text-xs text-muted mt-2">{{ msg.created_at.strftime('%d.%m.%Y %H:%M') if msg.created_at else '' }}</p>
+        </div>
+        {% if msg.role == 'user' %}
+        <div class="w-7 h-7 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center text-xs flex-shrink-0 mt-1 text-gold font-medium">
+          {{ (target_user.name or 'U')[0]|upper }}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+      {% else %}
+      <div class="text-center py-16 text-muted">
+        <p class="text-4xl mb-4">💬</p>
+        <p class="text-sm">Диалогов пока нет</p>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+{% endblock %}

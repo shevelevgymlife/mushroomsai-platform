@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% block title %}Магазин — MushroomsAI Admin{% endblock %}
+
+{% block content %}
+<div class="pt-24 pb-16">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+    {% include "components/admin_nav.html" %}
+
+    <div class="flex items-center justify-between mb-8">
+      <h1 class="text-3xl font-light text-text">Управление магазином</h1>
+      <button onclick="document.getElementById('addModal').classList.remove('hidden')"
+        class="px-5 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-all duration-300">
+        + Добавить товар
+      </button>
+    </div>
+
+    <!-- Products grid -->
+    {% if products %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      {% for p in products %}
+      <div class="p-5 rounded-2xl bg-surface border border-border hover:border-gold/30 transition-colors group">
+        {% if p.image_url %}
+        <div class="w-full h-40 rounded-xl overflow-hidden mb-4 bg-bg">
+          <img src="{{ p.image_url }}" alt="{{ p.name }}" class="w-full h-full object-cover" />
+        </div>
+        {% else %}
+        <div class="w-full h-40 rounded-xl mb-4 bg-bg border border-border flex items-center justify-center">
+          <span class="text-4xl">🍄</span>
+        </div>
+        {% endif %}
+
+        <div class="flex items-start justify-between gap-2 mb-2">
+          <h3 class="font-semibold text-text text-sm leading-tight">{{ p.name or '—' }}</h3>
+          <span class="text-gold font-semibold text-sm whitespace-nowrap">{{ p.price }} ₽</span>
+        </div>
+
+        {% if p.mushroom_type %}
+        <span class="inline-block px-2 py-0.5 rounded-full text-xs bg-gold/10 text-gold mb-2">{{ p.mushroom_type }}</span>
+        {% endif %}
+
+        <p class="text-xs text-muted line-clamp-2 mb-4">{{ p.description or '' }}</p>
+
+        {% if p.url %}
+        <a href="{{ p.url }}" target="_blank" class="text-xs text-gold hover:underline block mb-4 truncate">{{ p.url }}</a>
+        {% endif %}
+
+        <div class="flex gap-2">
+          <button onclick="openEditModal({{ p.id }}, '{{ p.name | e }}', '{{ p.description | e }}', {{ p.price or 0 }}, '{{ p.url | e }}', '{{ p.mushroom_type | e }}', '{{ p.image_url | e }}')"
+            class="flex-1 px-3 py-1.5 rounded-lg text-xs border border-border text-muted hover:border-gold hover:text-gold transition-colors">
+            Редактировать
+          </button>
+          <button onclick="deleteProduct({{ p.id }}, this)"
+            class="px-3 py-1.5 rounded-lg text-xs border border-red-500/20 text-red-400 hover:bg-red-500/10 transition-colors">
+            Удалить
+          </button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-16 text-muted">
+      <p class="text-4xl mb-4">🍄</p>
+      <p class="text-sm">Товаров пока нет. Добавьте первый!</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Add Modal -->
+<div id="addModal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+  <div class="bg-surface border border-border rounded-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="font-semibold text-text text-lg">Добавить товар</h2>
+      <button onclick="document.getElementById('addModal').classList.add('hidden')" class="text-muted hover:text-text text-xl">×</button>
+    </div>
+    <form action="/admin/shop/add" method="post" class="space-y-4">
+      <div>
+        <label class="block text-xs text-muted mb-1.5">Название *</label>
+        <input type="text" name="name" required
+          class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors" />
+      </div>
+      <div>
+        <label class="block text-xs text-muted mb-1.5">Описание</label>
+        <textarea name="description" rows="3"
+          class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm resize-none focus:outline-none focus:border-gold/60 transition-colors"></textarea>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs text-muted mb-1.5">Цена (₽)</label>
+          <input type="number" name="price" value="0"
+            class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors" />
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1.5">Тип гриба</label>
+          <input type="text" name="mushroom_type" placeholder="рейши, чага..."
+            class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors" />
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs text-muted mb-1.5">Ссылка на товар</label>
+        <input type="text" name="url" placeholder="https://..."
+          class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors" />
+      </div>
+      <div>
+        <label class="block text-xs text-muted mb-1.5">URL фото</label>
+        <input type="text" name="image_url" placeholder="https://..."
+          class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors" />
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button type="submit"
+          class="flex-1 px-4 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-all duration-300">
+          Добавить
+        </button>
+        <button type="button" onclick="document.getElementById('addModal').classList.add('hidden')"
+          class="px-4 py-2.5 rounded-xl border border-border text-muted text-sm hover:border-gold hover:text-gold transition-colors">
+          Отмена
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div id="editModal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+  <div class="bg-surface border border-border rounded-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="font-semibold text-text text-lg">Редактировать товар</h2>
+      <button onclick="document.getElementById('editModal').classList.add('hidden')" class="text-muted hover:text-text text-xl">×</button>
+    </div>
+    <form id="editForm" method="post" class="space-y-4">
+      <div>
+        <label class="block text-xs text-muted mb-1.5">Название *</label>
+        <input type="text" name="name" id="editName" required
+          class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors" />
+      </div>
+      <div>
+        <label class="block text-xs text-muted mb-1.5">Описание</label>
+        <textarea name="description" id="editDescription" rows="3"
+          class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm resize-none focus:outline-none focus:border-gold/60 transition-colors"></textarea>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs text-muted mb-1.5">Цена (₽)</label>
+          <input type="number" name="price" id="editPrice"
+            class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors" />
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1.5">Тип гриба</label>
+          <input type="text" name="mushroom_type" id="editMushroomType"
+            class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors" />
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs text-muted mb-1.5">Ссылка на товар</label>
+        <input type="text" name="url" id="editUrl"
+          class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors" />
+      </div>
+      <div>
+        <label class="block text-xs text-muted mb-1.5">URL фото</label>
+        <input type="text" name="image_url" id="editImageUrl"
+          class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors" />
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button type="submit"
+          class="flex-1 px-4 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-all duration-300">
+          Сохранить
+        </button>
+        <button type="button" onclick="document.getElementById('editModal').classList.add('hidden')"
+          class="px-4 py-2.5 rounded-xl border border-border text-muted text-sm hover:border-gold hover:text-gold transition-colors">
+          Отмена
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function openEditModal(id, name, desc, price, url, mushType, imgUrl) {
+  document.getElementById('editForm').action = '/admin/shop/edit/' + id;
+  document.getElementById('editName').value = name;
+  document.getElementById('editDescription').value = desc;
+  document.getElementById('editPrice').value = price;
+  document.getElementById('editUrl').value = url;
+  document.getElementById('editMushroomType').value = mushType;
+  document.getElementById('editImageUrl').value = imgUrl;
+  document.getElementById('editModal').classList.remove('hidden');
+}
+
+async function deleteProduct(id, btn) {
+  if (!confirm('Удалить товар?')) return;
+  btn.disabled = true;
+  const resp = await fetch('/admin/shop/delete/' + id, { method: 'POST' });
+  if (resp.ok) {
+    btn.closest('.rounded-2xl').remove();
+  } else {
+    btn.disabled = false;
+    alert('Ошибка удаления');
+  }
+}
+</script>
+{% endblock %}

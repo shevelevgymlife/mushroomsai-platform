@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}AI Настройки — MushroomsAI Admin{% endblock %}
+
+{% block content %}
+<div class="pt-24 pb-16">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+    {% include "components/admin_nav.html" %}
+
+    <h1 class="text-3xl font-light text-text mb-8">Управление AI</h1>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- Prompt editor -->
+      <div class="lg:col-span-2 space-y-6">
+        <form action="/admin/ai" method="post">
+          <div class="p-6 rounded-2xl bg-surface border border-border mb-4">
+            <h2 class="font-semibold text-text mb-1">Системный промт</h2>
+            <p class="text-xs text-muted mb-4">Изменения применяются немедленно для всех новых диалогов.</p>
+            <textarea name="system_prompt" rows="22"
+              class="w-full px-4 py-3 rounded-xl bg-bg border border-border text-text text-sm font-mono resize-none focus:outline-none focus:border-gold/60 transition-colors leading-relaxed">{{ current_prompt }}</textarea>
+          </div>
+          <button type="submit"
+            class="px-6 py-3 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-all duration-300">
+            Сохранить и применить
+          </button>
+        </form>
+
+        <!-- Test question -->
+        <div class="p-6 rounded-2xl bg-surface border border-border">
+          <h2 class="font-semibold text-text mb-4">Тестировать промт</h2>
+          <div class="space-y-3">
+            <textarea id="testQuestion" rows="3" placeholder="Введите тестовый вопрос..."
+              class="w-full px-4 py-3 rounded-xl bg-bg border border-border text-text text-sm resize-none focus:outline-none focus:border-gold/60 transition-colors"></textarea>
+            <button onclick="testAI()"
+              class="px-5 py-2.5 rounded-xl bg-surface border border-gold/40 text-gold text-sm font-medium hover:bg-gold/10 transition-all duration-300 flex items-center gap-2">
+              <span id="testBtnText">Проверить</span>
+              <span id="testSpinner" class="hidden">⏳</span>
+            </button>
+          </div>
+          <div id="testResult" class="hidden mt-4 p-4 rounded-xl bg-bg border border-border">
+            <p class="text-xs text-muted mb-2 font-medium">Ответ бота:</p>
+            <p id="testResultText" class="text-sm text-text whitespace-pre-wrap leading-relaxed"></p>
+          </div>
+          <div id="testError" class="hidden mt-4 p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+            <p id="testErrorText" class="text-sm text-red-400"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- History -->
+      <div>
+        <div class="p-6 rounded-2xl bg-surface border border-border">
+          <h2 class="font-semibold text-text mb-4">История изменений</h2>
+          {% if history %}
+          <div class="space-y-3">
+            {% for item in history %}
+            <div class="p-3 rounded-lg bg-bg border border-border cursor-pointer hover:border-gold/30 transition-colors"
+                 onclick="loadHistoryItem(this)"
+                 data-prompt="{{ item.system_prompt | e }}">
+              <p class="text-xs text-muted mb-1">{{ item.updated_at.strftime('%d.%m.%Y %H:%M') if item.updated_at else '' }}</p>
+              <p class="text-xs text-text line-clamp-2">{{ item.system_prompt[:100] }}...</p>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="text-sm text-muted">История пуста</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+async function testAI() {
+  const question = document.getElementById('testQuestion').value.trim();
+  if (!question) return;
+
+  const btn = document.getElementById('testBtnText');
+  const spinner = document.getElementById('testSpinner');
+  const result = document.getElementById('testResult');
+  const error = document.getElementById('testError');
+
+  btn.textContent = 'Проверяю...';
+  spinner.classList.remove('hidden');
+  result.classList.add('hidden');
+  error.classList.add('hidden');
+
+  try {
+    const formData = new FormData();
+    formData.append('question', question);
+    const resp = await fetch('/admin/ai/test', { method: 'POST', body: formData });
+    const data = await resp.json();
+
+    if (data.answer) {
+      document.getElementById('testResultText').textContent = data.answer;
+      result.classList.remove('hidden');
+    } else {
+      document.getElementById('testErrorText').textContent = data.error || 'Ошибка';
+      error.classList.remove('hidden');
+    }
+  } catch (e) {
+    document.getElementById('testErrorText').textContent = e.message;
+    error.classList.remove('hidden');
+  } finally {
+    btn.textContent = 'Проверить';
+    spinner.classList.add('hidden');
+  }
+}
+
+function loadHistoryItem(el) {
+  const prompt = el.getAttribute('data-prompt');
+  document.querySelector('textarea[name="system_prompt"]').value = prompt;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+{% endblock %}

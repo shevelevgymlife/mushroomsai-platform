@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}Обратная связь — MushroomsAI Admin{% endblock %}
+
+{% block content %}
+<div class="pt-24 pb-16">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+
+    {% include "components/admin_nav.html" %}
+
+    <div class="flex items-center justify-between mb-8">
+      <h1 class="text-3xl font-light text-text">Обратная связь</h1>
+      <span class="text-sm text-muted">{{ feedbacks|length }} обращений</span>
+    </div>
+
+    {% if feedbacks %}
+    <div class="space-y-4">
+      {% for item in feedbacks %}
+      <div class="p-5 rounded-2xl bg-surface border border-border hover:border-gold/20 transition-colors" id="fb-{{ item.fb.id }}">
+        <div class="flex items-start gap-4">
+
+          <!-- Avatar -->
+          <div class="w-9 h-9 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center text-sm text-gold font-medium flex-shrink-0">
+            {{ (item.fb_user.name or 'U')[0]|upper if item.fb_user else 'U' }}
+          </div>
+
+          <div class="flex-1 min-w-0">
+            <!-- Header -->
+            <div class="flex items-center gap-3 mb-2 flex-wrap">
+              <span class="text-sm font-medium text-text">
+                {{ item.fb_user.name if item.fb_user else 'Аноним' }}
+              </span>
+              {% if item.fb_user and item.fb_user.tg_id %}
+              <span class="text-xs text-muted font-mono">TG: {{ item.fb_user.tg_id }}</span>
+              {% endif %}
+              <span class="px-2 py-0.5 rounded text-xs font-medium
+                {{ 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20' if item.fb.status == 'new'
+                   else 'bg-blue-500/10 text-blue-400 border border-blue-500/20' if item.fb.status == 'read'
+                   else 'bg-green-500/10 text-green-400 border border-green-500/20' }}">
+                {{ {'new': 'Новое', 'read': 'Прочитано', 'replied': 'Отвечено'}.get(item.fb.status, item.fb.status) }}
+              </span>
+              <span class="text-xs text-muted ml-auto">
+                {{ item.fb.created_at.strftime('%d.%m.%Y %H:%M') if item.fb.created_at else '' }}
+              </span>
+            </div>
+
+            <!-- Message -->
+            <p class="text-sm text-text leading-relaxed mb-4">{{ item.fb.message }}</p>
+
+            <!-- Actions -->
+            <div class="flex items-center gap-3 flex-wrap">
+              {% if item.fb.status == 'new' %}
+              <button onclick="markRead({{ item.fb.id }})"
+                class="px-3 py-1.5 rounded-lg text-xs border border-border text-muted hover:border-blue-500/50 hover:text-blue-400 transition-colors">
+                Отметить прочитанным
+              </button>
+              {% endif %}
+
+              {% if item.fb_user and item.fb_user.tg_id %}
+              <button onclick="openReplyModal({{ item.fb.id }}, '{{ (item.fb_user.name or 'Пользователь') | e }}')"
+                class="px-3 py-1.5 rounded-lg text-xs bg-gold/10 border border-gold/30 text-gold hover:bg-gold/20 transition-colors font-medium">
+                Ответить в Telegram
+              </button>
+              {% else %}
+              <span class="text-xs text-muted">Нет Telegram для ответа</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-20 text-muted">
+      <p class="text-5xl mb-4">📬</p>
+      <p class="text-sm">Обращений пока нет</p>
+      <p class="text-xs mt-2">Они появятся когда пользователи нажмут "Написать нам" в боте</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Reply Modal -->
+<div id="replyModal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+  <div class="bg-surface border border-border rounded-2xl w-full max-w-md p-6">
+    <div class="flex items-center justify-between mb-5">
+      <h2 class="font-semibold text-text">Ответить пользователю</h2>
+      <button onclick="document.getElementById('replyModal').classList.add('hidden')" class="text-muted hover:text-text text-xl">×</button>
+    </div>
+    <p class="text-sm text-muted mb-4">Кому: <span id="replyUserName" class="text-text font-medium"></span></p>
+    <textarea id="replyText" rows="5" placeholder="Текст ответа..."
+      class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm resize-none focus:outline-none focus:border-gold/60 transition-colors mb-4"></textarea>
+    <div id="replyError" class="hidden mb-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs"></div>
+    <div id="replySuccess" class="hidden mb-3 p-3 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 text-xs">Сообщение отправлено!</div>
+    <div class="flex gap-3">
+      <button onclick="sendReply()"
+        class="flex-1 px-4 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-all duration-300">
+        Отправить
+      </button>
+      <button onclick="document.getElementById('replyModal').classList.add('hidden')"
+        class="px-4 py-2.5 rounded-xl border border-border text-muted text-sm hover:border-gold hover:text-gold transition-colors">
+        Отмена
+      </button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let currentFbId = null;
+
+function openReplyModal(fbId, userName) {
+  currentFbId = fbId;
+  document.getElementById('replyUserName').textContent = userName;
+  document.getElementById('replyText').value = '';
+  document.getElementById('replyError').classList.add('hidden');
+  document.getElementById('replySuccess').classList.add('hidden');
+  document.getElementById('replyModal').classList.remove('hidden');
+}
+
+async function sendReply() {
+  const text = document.getElementById('replyText').value.trim();
+  if (!text || !currentFbId) return;
+
+  const errEl = document.getElementById('replyError');
+  const okEl = document.getElementById('replySuccess');
+  errEl.classList.add('hidden');
+  okEl.classList.add('hidden');
+
+  try {
+    const formData = new FormData();
+    formData.append('reply_text', text);
+    const resp = await fetch('/admin/feedback/' + currentFbId + '/reply', {
+      method: 'POST',
+      body: formData,
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      okEl.classList.remove('hidden');
+      setTimeout(() => {
+        document.getElementById('replyModal').classList.add('hidden');
+        window.location.reload();
+      }, 1000);
+    } else {
+      errEl.textContent = data.error || 'Ошибка отправки';
+      errEl.classList.remove('hidden');
+    }
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.classList.remove('hidden');
+  }
+}
+
+async function markRead(fbId) {
+  const formData = new FormData();
+  formData.append('status', 'read');
+  const resp = await fetch('/admin/feedback/' + fbId + '/status', {
+    method: 'POST',
+    body: formData,
+  });
+  if (resp.ok) window.location.reload();
+}
+</script>
+{% endblock %}

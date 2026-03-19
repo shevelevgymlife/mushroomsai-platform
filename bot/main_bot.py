@@ -17,6 +17,7 @@ from bot.handlers.subscriptions import subscriptions_handler, show_tariffs_callb
 from bot.handlers.referral import referral_handler
 from bot.handlers.language import show_language_selector, handle_language_callback
 from bot.handlers.lead import lead_start, lead_name, lead_phone, lead_question, lead_cancel, ASK_NAME, ASK_PHONE, ASK_QUESTION
+from bot.handlers.feedback_handler import get_feedback_conversation
 
 
 def create_bot() -> Application:
@@ -39,6 +40,9 @@ def create_bot() -> Application:
         fallbacks=[CommandHandler("cancel", lead_cancel)],
     )
     app.add_handler(lead_conv)
+
+    # Feedback conversation
+    app.add_handler(get_feedback_conversation())
 
     # Menu text handlers
     app.add_handler(MessageHandler(filters.Regex("^Консультация$"), consult_handler))
