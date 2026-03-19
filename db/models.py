@@ -198,3 +198,18 @@ feedback = sqlalchemy.Table(
     sqlalchemy.Column("status", sqlalchemy.String(20), default="new", server_default="new"),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
+
+admin_permissions = sqlalchemy.Table(
+    "admin_permissions",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), unique=True),
+    sqlalchemy.Column("can_dashboard", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column("can_ai", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column("can_shop", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column("can_users", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column("can_feedback", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column("can_broadcast", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column("can_knowledge", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)

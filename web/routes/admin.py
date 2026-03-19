@@ -6,13 +6,15 @@ from db.database import database
 from db.models import (
     users, messages, leads, products, orders, posts,
     page_views, ai_settings, subscriptions, knowledge_base,
-    shop_products, feedback,
+    shop_products, feedback, admin_permissions,
 )
 import sqlalchemy
 from datetime import datetime, timedelta, date
 
 router = APIRouter(prefix="/admin")
 templates = Jinja2Templates(directory="web/templates")
+
+SUPER_ADMIN_TG_ID = 742166400
 
 ADMIN_NAV = [
     ("Dashboard", "/admin"),
@@ -24,19 +26,50 @@ ADMIN_NAV = [
     ("База знаний", "/admin/knowledge"),
 ]
 
+PERM_KEYS = [
+    "can_dashboard", "can_ai", "can_shop", "can_users",
+    "can_feedback", "can_broadcast", "can_knowledge",
+]
+
+
+def is_super_admin(user: dict) -> bool:
+    return (
+        user.get("tg_id") == SUPER_ADMIN_TG_ID
+        or user.get("linked_tg_id") == SUPER_ADMIN_TG_ID
+    )
+
 
 async def require_admin(request: Request):
+    """Basic admin check — role=admin. Super-admins pass automatically."""
     user = await get_user_from_request(request)
     if not user or user.get("role") != "admin":
         return None
     return user
 
 
+async def require_permission(request: Request, perm: str):
+    """Return user only if they have admin role AND the given permission (or are super-admin)."""
+    user = await get_user_from_request(request)
+    if not user or user.get("role") != "admin":
+        return None
+    if is_super_admin(user):
+        return user
+    try:
+        row = await database.fetch_one(
+            admin_permissions.select().where(admin_permissions.c.user_id == user["id"])
+        )
+        if row and row.get(perm):
+            return user
+    except Exception:
+        pass
+    return None
+
+
 # ─── Dashboard ────────────────────────────────────────────────────────────────
 
 @router.get("", response_class=HTMLResponse)
 async def admin_dashboard(request: Request):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_dashboard")
     if not admin:
         return RedirectResponse("/login")
 
@@ -67,7 +100,6 @@ async def admin_dashboard(request: Request):
         .limit(10)
     )
 
-    # Enrich messages with user names
     msgs_with_users = []
     for msg in recent_msgs:
         u = None
@@ -105,7 +137,7 @@ async def admin_dashboard(request: Request):
 
 @router.get("/ai", response_class=HTMLResponse)
 async def ai_settings_page(request: Request):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_ai")
     if not admin:
         return RedirectResponse("/login")
 
@@ -132,9 +164,9 @@ async def ai_settings_page(request: Request):
 
 @router.post("/ai")
 async def update_ai_settings(request: Request, system_prompt: str = Form(...)):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_ai")
     if not admin:
-        return RedirectResponse("/login")
+        return JSONResponse({"error": "forbidden"}, status_code=403)
 
     await database.execute(
         ai_settings.insert().values(system_prompt=system_prompt, updated_by=admin["id"])
@@ -144,7 +176,7 @@ async def update_ai_settings(request: Request, system_prompt: str = Form(...)):
 
 @router.post("/ai/test")
 async def test_ai(request: Request, question: str = Form(...)):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_ai")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
 
@@ -160,7 +192,7 @@ async def test_ai(request: Request, question: str = Form(...)):
 
 @router.get("/shop", response_class=HTMLResponse)
 async def shop_page(request: Request):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_shop")
     if not admin:
         return RedirectResponse("/login")
 
@@ -183,9 +215,9 @@ async def add_shop_product(
     mushroom_type: str = Form(""),
     image_url: str = Form(""),
 ):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_shop")
     if not admin:
-        return RedirectResponse("/login")
+        return JSONResponse({"error": "forbidden"}, status_code=403)
 
     await database.execute(
         shop_products.insert().values(
@@ -207,7 +239,7 @@ async def edit_shop_product(
     mushroom_type: str = Form(""),
     image_url: str = Form(""),
 ):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_shop")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
 
@@ -222,7 +254,7 @@ async def edit_shop_product(
 
 @router.post("/shop/delete/{product_id}")
 async def delete_shop_product(request: Request, product_id: int):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_shop")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
 
@@ -234,7 +266,7 @@ async def delete_shop_product(request: Request, product_id: int):
 
 @router.get("/users", response_class=HTMLResponse)
 async def users_list(request: Request, search: str = ""):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_users")
     if not admin:
         return RedirectResponse("/login")
 
@@ -269,40 +301,94 @@ async def users_list(request: Request, search: str = ""):
     )
 
 
-SUPER_ADMIN_TG_ID = 742166400
-
-
 @router.post("/users/set-role")
 async def set_user_role(request: Request, user_id: int = Form(...), role: str = Form(...)):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_users")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
 
-    # Only the super-admin can change roles
-    is_super = (
-        admin.get("tg_id") == SUPER_ADMIN_TG_ID
-        or admin.get("linked_tg_id") == SUPER_ADMIN_TG_ID
-    )
-    if not is_super:
+    if not is_super_admin(admin):
         return JSONResponse({"error": "Только главный администратор может назначать роли"}, status_code=403)
 
     if role not in ("admin", "user"):
         return JSONResponse({"error": "invalid role"}, status_code=400)
 
-    # Cannot demote the super-admin
     target = await database.fetch_one(users.select().where(users.c.id == user_id))
     if not target:
         return JSONResponse({"error": "user not found"}, status_code=404)
-    if target.get("tg_id") == SUPER_ADMIN_TG_ID or target.get("linked_tg_id") == SUPER_ADMIN_TG_ID:
+    if is_super_admin(target):
         return JSONResponse({"error": "Нельзя изменить роль главного администратора"}, status_code=403)
 
     await database.execute(users.update().where(users.c.id == user_id).values(role=role))
     return JSONResponse({"ok": True, "user_id": user_id, "role": role})
 
 
+@router.get("/users/{user_id}/permissions")
+async def get_user_permissions(request: Request, user_id: int):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+
+    target = await database.fetch_one(users.select().where(users.c.id == user_id))
+    if not target:
+        return JSONResponse({"error": "not found"}, status_code=404)
+
+    row = await database.fetch_one(
+        admin_permissions.select().where(admin_permissions.c.user_id == user_id)
+    )
+    perms = {k: bool(row.get(k)) if row else False for k in PERM_KEYS}
+    return JSONResponse({"ok": True, "permissions": perms, "role": target.get("role")})
+
+
+@router.post("/users/{user_id}/permissions")
+async def set_user_permissions(request: Request, user_id: int):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+
+    if not is_super_admin(admin):
+        return JSONResponse({"error": "Только главный администратор может назначать права"}, status_code=403)
+
+    target = await database.fetch_one(users.select().where(users.c.id == user_id))
+    if not target:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    if is_super_admin(target):
+        return JSONResponse({"error": "Нельзя изменить права главного администратора"}, status_code=403)
+
+    body = await request.json()
+
+    if body.get("revoke_all"):
+        await database.execute(
+            admin_permissions.delete().where(admin_permissions.c.user_id == user_id)
+        )
+        await database.execute(
+            users.update().where(users.c.id == user_id).values(role="user")
+        )
+        return JSONResponse({"ok": True, "action": "revoked"})
+
+    perms = {k: bool(body.get(k, False)) for k in PERM_KEYS}
+    existing = await database.fetch_one(
+        admin_permissions.select().where(admin_permissions.c.user_id == user_id)
+    )
+    if existing:
+        await database.execute(
+            admin_permissions.update()
+            .where(admin_permissions.c.user_id == user_id)
+            .values(**perms)
+        )
+    else:
+        await database.execute(
+            admin_permissions.insert().values(user_id=user_id, **perms)
+        )
+    await database.execute(
+        users.update().where(users.c.id == user_id).values(role="admin")
+    )
+    return JSONResponse({"ok": True, "permissions": perms})
+
+
 @router.post("/users/{user_id}/subscription")
 async def change_subscription(request: Request, user_id: int, plan: str = Form(...)):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_users")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
 
@@ -320,7 +406,7 @@ async def change_subscription(request: Request, user_id: int, plan: str = Form(.
 
 @router.get("/users/{user_id}/dialogs", response_class=HTMLResponse)
 async def user_dialogs(request: Request, user_id: int):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_users")
     if not admin:
         return RedirectResponse("/login")
 
@@ -351,7 +437,7 @@ async def user_dialogs(request: Request, user_id: int):
 
 @router.get("/feedback", response_class=HTMLResponse)
 async def feedback_page(request: Request):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_feedback")
     if not admin:
         return RedirectResponse("/login")
 
@@ -373,7 +459,7 @@ async def feedback_page(request: Request):
 
 @router.post("/feedback/{feedback_id}/status")
 async def update_feedback_status(request: Request, feedback_id: int, status: str = Form(...)):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_feedback")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
 
@@ -385,7 +471,7 @@ async def update_feedback_status(request: Request, feedback_id: int, status: str
 
 @router.post("/feedback/{feedback_id}/reply")
 async def reply_to_feedback(request: Request, feedback_id: int, reply_text: str = Form(...)):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_feedback")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
 
@@ -414,7 +500,7 @@ async def reply_to_feedback(request: Request, feedback_id: int, reply_text: str 
 
 @router.get("/broadcast", response_class=HTMLResponse)
 async def broadcast_page(request: Request):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_broadcast")
     if not admin:
         return RedirectResponse("/login")
 
@@ -430,9 +516,9 @@ async def broadcast_send(
     message_text: str = Form(...),
     segment: str = Form("all"),
 ):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_broadcast")
     if not admin:
-        return RedirectResponse("/login")
+        return JSONResponse({"error": "forbidden"}, status_code=403)
 
     query = users.select().where(users.c.tg_id != None)
     if segment == "pro":
@@ -442,14 +528,14 @@ async def broadcast_send(
     elif segment == "free":
         query = query.where(users.c.subscription_plan == "free")
 
-    all_users = await database.fetch_all(query)
+    all_users_list = await database.fetch_all(query)
 
     from config import settings
     from telegram import Bot
     bot = Bot(token=settings.TELEGRAM_TOKEN)
 
     sent = 0
-    for u in all_users:
+    for u in all_users_list:
         try:
             await bot.send_message(chat_id=u["tg_id"], text=message_text)
             sent += 1
@@ -462,7 +548,7 @@ async def broadcast_send(
             "request": request,
             "user": admin,
             "nav": ADMIN_NAV,
-            "success": f"Отправлено: {sent} из {len(all_users)}",
+            "success": f"Отправлено: {sent} из {len(all_users_list)}",
         },
     )
 
@@ -471,7 +557,7 @@ async def broadcast_send(
 
 @router.get("/knowledge", response_class=HTMLResponse)
 async def knowledge_page(request: Request):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_knowledge")
     if not admin:
         return RedirectResponse("/login")
 
@@ -491,9 +577,9 @@ async def add_knowledge(
     content: str = Form(...),
     category: str = Form(""),
 ):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_knowledge")
     if not admin:
-        return RedirectResponse("/login")
+        return JSONResponse({"error": "forbidden"}, status_code=403)
 
     await database.execute(
         knowledge_base.insert().values(title=title, content=content, category=category)
@@ -503,7 +589,7 @@ async def add_knowledge(
 
 @router.post("/knowledge/delete/{entry_id}")
 async def delete_knowledge(request: Request, entry_id: int):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_knowledge")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
 
@@ -513,46 +599,40 @@ async def delete_knowledge(request: Request, entry_id: int):
 
 @router.post("/knowledge/sync")
 async def sync_knowledge(request: Request):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_knowledge")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
 
     import asyncio
     import json as _json
     import os as _os
-    from load_knowledge import sync_drive_to_db, get_credentials_dict
+    from load_knowledge import sync_drive_to_db
 
     try:
-        # Credentials: env var first (Render), then local file
         creds_env = _os.getenv("GOOGLE_SERVICE_ACCOUNT", "")
         if not creds_env:
             return JSONResponse(
-                {"error": "Переменная GOOGLE_SERVICE_ACCOUNT не задана на сервере. "
-                           "Добавьте её в Environment Variables на Render."},
+                {"error": "Переменная GOOGLE_SERVICE_ACCOUNT не задана на сервере."},
                 status_code=500,
             )
         creds_dict = _json.loads(creds_env)
 
         from config import settings
-        result = await asyncio.to_thread(
-            sync_drive_to_db,
-            settings.DATABASE_URL,
-            creds_dict,
-        )
+        result = await asyncio.to_thread(sync_drive_to_db, settings.DATABASE_URL, creds_dict)
         return JSONResponse({
             "ok": True,
             "loaded": result["loaded"],
             "updated": result["updated"],
             "errors": result["errors"],
-            "log": result["log"][-30:],  # last 30 lines to keep response small
+            "log": result["log"][-30:],
         })
     except _json.JSONDecodeError as e:
-        return JSONResponse({"error": f"GOOGLE_SERVICE_ACCOUNT содержит невалидный JSON: {e}"}, status_code=500)
+        return JSONResponse({"error": f"GOOGLE_SERVICE_ACCOUNT невалидный JSON: {e}"}, status_code=500)
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
-# ─── Legacy routes (kept for backward compatibility) ──────────────────────────
+# ─── Legacy routes ────────────────────────────────────────────────────────────
 
 @router.get("/analytics", response_class=HTMLResponse)
 async def analytics(request: Request):
@@ -603,7 +683,7 @@ async def add_product(
 ):
     admin = await require_admin(request)
     if not admin:
-        return RedirectResponse("/login")
+        return JSONResponse({"error": "forbidden"}, status_code=403)
 
     await database.execute(
         products.insert().values(

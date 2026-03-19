@@ -30,6 +30,7 @@
           </thead>
           <tbody>
             {% for u in users %}
+            {% set is_protected = (u.tg_id == 742166400 or u.linked_tg_id == 742166400) %}
             <tr class="border-b border-border last:border-0 hover:bg-border/20 transition-colors">
               <td class="px-4 py-3 text-xs text-muted">{{ u.id }}</td>
               <td class="px-4 py-3">
@@ -45,7 +46,7 @@
               <td class="px-4 py-3">
                 <span class="px-2 py-0.5 rounded text-xs font-medium
                   {{ 'text-gold bg-gold/10 border border-gold/20' if u.role == 'admin' else 'text-muted bg-border border border-border' }}">
-                  {{ u.role or 'user' }}
+                  {{ u.role or 'user' }}{% if is_protected %} ★{% endif %}
                 </span>
               </td>
               <td class="px-4 py-3">
@@ -69,26 +70,18 @@
                     Подписка
                   </button>
                   {% set is_super = (user.tg_id == 742166400 or user.linked_tg_id == 742166400) %}
-                  {% set is_protected = (u.tg_id == 742166400 or u.linked_tg_id == 742166400) %}
                   {% if is_super and not is_protected %}
-                    {% if u.role == 'admin' %}
-                    <button onclick="setRole({{ u.id }}, 'user')"
-                      class="px-2.5 py-1 rounded-lg text-xs border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors">
-                      Убрать админа
-                    </button>
-                    {% else %}
-                    <button onclick="setRole({{ u.id }}, 'admin')"
-                      class="px-2.5 py-1 rounded-lg text-xs border border-green-500/30 text-green-400 hover:bg-green-500/10 transition-colors">
-                      Сделать админом
-                    </button>
-                    {% endif %}
+                  <button onclick="openPermModal({{ u.id }}, '{{ u.name | e }}')"
+                    class="px-2.5 py-1 rounded-lg text-xs border border-gold/30 text-gold hover:bg-gold/10 transition-colors">
+                    Права
+                  </button>
                   {% endif %}
                 </div>
               </td>
             </tr>
             {% else %}
             <tr>
-              <td colspan="8" class="px-4 py-12 text-center text-sm text-muted">
+              <td colspan="9" class="px-4 py-12 text-center text-sm text-muted">
                 {% if search %}Пользователи не найдены по запросу "{{ search }}"{% else %}Пользователей нет{% endif %}
               </td>
             </tr>
@@ -126,12 +119,57 @@
     <div id="subError" class="hidden mb-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs"></div>
     <div class="flex gap-3">
       <button onclick="saveSubscription()"
-        class="flex-1 px-4 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-all duration-300">
+        class="flex-1 px-4 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:opacity-90 transition-all duration-300">
         Сохранить
       </button>
       <button onclick="document.getElementById('subModal').classList.add('hidden')"
         class="px-4 py-2.5 rounded-xl border border-border text-muted text-sm hover:border-gold hover:text-gold transition-colors">
         Отмена
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Permissions Modal -->
+<div id="permModal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+  <div class="bg-surface border border-border rounded-2xl w-full max-w-sm p-6">
+    <div class="flex items-center justify-between mb-5">
+      <h2 class="font-semibold text-text">Права доступа</h2>
+      <button onclick="closePermModal()" class="text-muted hover:text-text text-xl">×</button>
+    </div>
+    <p class="text-sm text-muted mb-4">Пользователь: <span id="permUserName" class="text-text font-medium"></span></p>
+
+    <div class="space-y-2 mb-5" id="permCheckboxes">
+      {% for key, label in [
+        ('can_dashboard', 'Dashboard'),
+        ('can_ai', 'AI управление'),
+        ('can_shop', 'Магазин'),
+        ('can_users', 'Пользователи'),
+        ('can_feedback', 'Обратная связь'),
+        ('can_broadcast', 'Рассылки'),
+        ('can_knowledge', 'База знаний'),
+      ] %}
+      <label class="flex items-center gap-3 p-2.5 rounded-xl border border-border hover:border-gold/40 cursor-pointer transition-colors">
+        <input type="checkbox" name="{{ key }}" id="perm_{{ key }}" class="accent-gold w-4 h-4" />
+        <span class="text-sm text-text">{{ label }}</span>
+      </label>
+      {% endfor %}
+    </div>
+
+    <div id="permError" class="hidden mb-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs"></div>
+
+    <div class="flex gap-2">
+      <button onclick="savePermissions()"
+        class="flex-1 px-4 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:opacity-90 transition-all duration-300">
+        Сохранить права
+      </button>
+      <button onclick="revokeAllPerms()"
+        class="px-4 py-2.5 rounded-xl border border-red-500/30 text-red-400 text-sm hover:bg-red-500/10 transition-colors">
+        Убрать все
+      </button>
+      <button onclick="closePermModal()"
+        class="px-4 py-2.5 rounded-xl border border-border text-muted text-sm hover:border-gold hover:text-gold transition-colors">
+        ✕
       </button>
     </div>
   </div>
@@ -142,6 +180,7 @@
 <script>
 let currentUserId = null;
 
+// ── Subscription modal ──────────────────────────────────────────────────────
 function openSubModal(userId, userName, currentPlan) {
   currentUserId = userId;
   document.getElementById('subUserName').textContent = userName || 'ID ' + userId;
@@ -152,39 +191,15 @@ function openSubModal(userId, userName, currentPlan) {
   document.getElementById('subModal').classList.remove('hidden');
 }
 
-async function setRole(userId, role) {
-  const label = role === 'admin' ? 'Сделать админом?' : 'Убрать права администратора?';
-  if (!confirm(label)) return;
-  try {
-    const fd = new FormData();
-    fd.append('user_id', userId);
-    fd.append('role', role);
-    const resp = await fetch('/admin/users/set-role', {method: 'POST', body: fd});
-    const data = await resp.json();
-    if (data.ok) {
-      window.location.reload();
-    } else {
-      alert(data.error || 'Ошибка');
-    }
-  } catch (e) {
-    alert(e.message);
-  }
-}
-
 async function saveSubscription() {
   const plan = document.querySelector('input[name="plan"]:checked')?.value;
   if (!plan || !currentUserId) return;
-
   const errEl = document.getElementById('subError');
   errEl.classList.add('hidden');
-
   try {
-    const formData = new FormData();
-    formData.append('plan', plan);
-    const resp = await fetch('/admin/users/' + currentUserId + '/subscription', {
-      method: 'POST',
-      body: formData,
-    });
+    const fd = new FormData();
+    fd.append('plan', plan);
+    const resp = await fetch('/admin/users/' + currentUserId + '/subscription', {method: 'POST', body: fd});
     const data = await resp.json();
     if (data.ok) {
       document.getElementById('subModal').classList.add('hidden');
@@ -194,6 +209,90 @@ async function saveSubscription() {
       errEl.classList.remove('hidden');
     }
   } catch (e) {
+    errEl.textContent = e.message;
+    errEl.classList.remove('hidden');
+  }
+}
+
+// ── Permissions modal ───────────────────────────────────────────────────────
+const PERM_KEYS = ['can_dashboard','can_ai','can_shop','can_users','can_feedback','can_broadcast','can_knowledge'];
+
+async function openPermModal(userId, userName) {
+  currentUserId = userId;
+  document.getElementById('permUserName').textContent = userName || 'ID ' + userId;
+  document.getElementById('permError').classList.add('hidden');
+
+  // Reset checkboxes while loading
+  PERM_KEYS.forEach(k => { document.getElementById('perm_' + k).checked = false; });
+
+  try {
+    const resp = await fetch('/admin/users/' + userId + '/permissions');
+    const data = await resp.json();
+    if (data.ok) {
+      PERM_KEYS.forEach(k => {
+        document.getElementById('perm_' + k).checked = !!data.permissions[k];
+      });
+    }
+  } catch(e) {}
+
+  document.getElementById('permModal').classList.remove('hidden');
+}
+
+function closePermModal() {
+  document.getElementById('permModal').classList.add('hidden');
+}
+
+async function savePermissions() {
+  if (!currentUserId) return;
+  const errEl = document.getElementById('permError');
+  errEl.classList.add('hidden');
+
+  const body = {};
+  PERM_KEYS.forEach(k => {
+    body[k] = document.getElementById('perm_' + k).checked;
+  });
+
+  try {
+    const resp = await fetch('/admin/users/' + currentUserId + '/permissions', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body),
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      closePermModal();
+      window.location.reload();
+    } else {
+      errEl.textContent = data.error || 'Ошибка';
+      errEl.classList.remove('hidden');
+    }
+  } catch(e) {
+    errEl.textContent = e.message;
+    errEl.classList.remove('hidden');
+  }
+}
+
+async function revokeAllPerms() {
+  if (!currentUserId) return;
+  if (!confirm('Убрать все права администратора у этого пользователя?')) return;
+  const errEl = document.getElementById('permError');
+  errEl.classList.add('hidden');
+
+  try {
+    const resp = await fetch('/admin/users/' + currentUserId + '/permissions', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({revoke_all: true}),
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      closePermModal();
+      window.location.reload();
+    } else {
+      errEl.textContent = data.error || 'Ошибка';
+      errEl.classList.remove('hidden');
+    }
+  } catch(e) {
     errEl.textContent = e.message;
     errEl.classList.remove('hidden');
   }
