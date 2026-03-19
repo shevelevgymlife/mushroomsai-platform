@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Привязать Telegram — MushroomsAI{% endblock %}
+
+{% block content %}
+<div class="pt-24 pb-16 flex items-center justify-center min-h-[80vh]">
+  <div class="max-w-md w-full mx-auto px-4">
+    <div class="p-8 rounded-2xl bg-surface border border-border text-center">
+      <div class="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center mx-auto mb-4">
+        <svg class="w-8 h-8 text-blue-400" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.941z"/>
+        </svg>
+      </div>
+      <h1 class="text-2xl font-semibold text-text mb-2">Привязать Telegram</h1>
+      <p class="text-sm text-muted mb-8">
+        Войдите через Telegram, чтобы объединить аккаунты.<br>
+        История чатов и подписка будут сохранены.
+      </p>
+
+      <div class="flex justify-center mb-6">
+        <script async src="https://telegram.org/js/telegram-widget.js?22"
+          data-telegram-login="{{ bot_username }}"
+          data-size="large"
+          data-auth-url="{{ site_url }}/account/link-telegram-callback"
+          data-request-access="write">
+        </script>
+      </div>
+
+      <p class="text-xs text-muted mb-6">
+        Нажимая кнопку, вы разрешаете боту получить ваши данные Telegram
+      </p>
+
+      <a href="/dashboard" class="text-sm text-muted hover:text-text transition-colors">← Назад в личный кабинет</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -79,7 +79,7 @@ async def telegram_auth(request: Request):
 
     row = await database.fetch_one(users.select().where(users.c.tg_id == tg_id))
     if row:
-        user_id = row["id"]
+        user_id = row["primary_user_id"] or row["id"]
         await database.execute(
             users.update().where(users.c.tg_id == tg_id).values(name=name, avatar=photo)
         )
@@ -111,7 +111,7 @@ async def telegram_miniapp_auth(request: Request):
 
         row = await database.fetch_one(users.select().where(users.c.tg_id == tg_id))
         if row:
-            user_id = row["id"]
+            user_id = row["primary_user_id"] or row["id"]
             await database.execute(
                 users.update().where(users.c.tg_id == tg_id).values(name=name, avatar=avatar)
             )
@@ -179,9 +179,34 @@ async def google_callback(request: Request):
         name = user_info.get("name", "")
         avatar = user_info.get("picture", "")
 
+        # Check if this is an account-linking request
+        link_user_id = request.session.pop("link_user_id", None)
+        state = request.query_params.get("state", "")
+        if link_user_id and state == "link":
+            from web.routes.account import merge_accounts
+            existing_google_user = await database.fetch_one(
+                users.select().where(users.c.google_id == google_id)
+            )
+            if existing_google_user and existing_google_user["id"] != link_user_id:
+                # Separate Google account exists — merge into current user
+                await merge_accounts(primary_id=link_user_id, secondary_id=existing_google_user["id"])
+            elif not existing_google_user:
+                # Link google_id directly to current user
+                await database.execute(
+                    users.update().where(users.c.id == link_user_id).values(
+                        google_id=google_id,
+                        linked_google_id=google_id,
+                        email=email,
+                    )
+                )
+            token_str = create_access_token(link_user_id)
+            resp = RedirectResponse("/dashboard?linked=google", status_code=302)
+            resp.set_cookie("access_token", token_str, httponly=True, max_age=30 * 24 * 3600)
+            return resp
+
         row = await database.fetch_one(users.select().where(users.c.google_id == google_id))
         if row:
-            user_id = row["id"]
+            user_id = row["primary_user_id"] or row["id"]
             await database.execute(
                 users.update().where(users.c.google_id == google_id).values(name=name, avatar=avatar)
             )

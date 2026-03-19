@@ -12,6 +12,7 @@ from web.routes.public import router as public_router
 from web.routes.auth_routes import router as auth_router
 from web.routes.user import router as user_router
 from web.routes.admin import router as admin_router
+from web.routes.account import router as account_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -31,6 +32,18 @@ async def lifespan(app: FastAPI):
         logger.info("Tables created")
     except Exception as e:
         logger.warning(f"Table creation: {e}")
+
+    # Add new columns to existing tables if they don't exist
+    new_columns = [
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS linked_tg_id BIGINT",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS linked_google_id VARCHAR(128)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS primary_user_id INTEGER REFERENCES users(id)",
+    ]
+    for sql in new_columns:
+        try:
+            await database.execute(sql)
+        except Exception as e:
+            logger.warning(f"Column migration: {e}")
 
     # Ensure default AI settings exist
     try:
@@ -110,6 +123,7 @@ app.include_router(public_router)
 app.include_router(auth_router)
 app.include_router(user_router)
 app.include_router(admin_router)
+app.include_router(account_router)
 
 
 @app.get("/health")

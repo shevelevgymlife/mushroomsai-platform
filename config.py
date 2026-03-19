@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     JWT_SECRET: str = "change-me-in-production"
     ADMIN_TG_ID: int = 0
     SITE_URL: str = "https://mushroomsai.ru"
+    TELEGRAM_BOT_USERNAME: str = "mushrooms_ai_bot"
 
     class Config:
         env_file = ".env"
