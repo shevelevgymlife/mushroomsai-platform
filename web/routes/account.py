@@ -74,12 +74,23 @@ async def link_telegram_page(request: Request):
 async def link_telegram_callback(request: Request):
     user = await get_user_from_request(request)
     if not user:
+        logger.warning("link-telegram-callback: no session user, redirecting to login")
         return RedirectResponse("/login")
+
+    logger.info(
+        "link-telegram-callback: user_id=%s email=%s tg_id_before=%s params=%s",
+        user["id"], user.get("email"), user.get("tg_id"), dict(request.query_params),
+    )
 
     try:
         data = dict(request.query_params)
-        if not verify_telegram_auth(data.copy()):
-            logger.warning("Telegram auth verification failed for user_id=%s", user["id"])
+
+        # verify_telegram_auth mutates data (pops 'hash'), so pass a copy
+        data_for_verify = data.copy()
+        auth_ok = verify_telegram_auth(data_for_verify)
+        logger.info("Telegram auth verification result: %s for user_id=%s", auth_ok, user["id"])
+        if not auth_ok:
+            logger.warning("Telegram auth verification failed for user_id=%s data=%s", user["id"], data)
             return RedirectResponse("/dashboard?error=tg_auth_failed")
 
         raw_id = data.get("id")
@@ -90,8 +101,14 @@ async def link_telegram_callback(request: Request):
         tg_id = int(raw_id)
         name = f"{data.get('first_name', '')} {data.get('last_name', '')}".strip()
         photo = data.get("photo_url", "")
+        logger.info("Parsed tg_id=%s name=%r photo=%r for user_id=%s", tg_id, name, photo, user["id"])
 
+        # Check if this tg_id already belongs to another account
         tg_user = await database.fetch_one(users.select().where(users.c.tg_id == tg_id))
+        logger.info(
+            "Existing tg_user for tg_id=%s: %s",
+            tg_id, {"id": tg_user["id"], "email": tg_user.get("email")} if tg_user else None,
+        )
 
         if tg_user and tg_user["id"] != user["id"]:
             # Existing separate TG account — merge it into current user
@@ -100,26 +117,42 @@ async def link_telegram_callback(request: Request):
                 user["id"], tg_user["id"], tg_id,
             )
             await merge_accounts(primary_id=user["id"], secondary_id=tg_user["id"])
+            logger.info("Merge complete for user_id=%s", user["id"])
         elif not tg_user:
             # No TG account — link tg_id directly to current user
-            await database.execute(
+            logger.info("Linking tg_id=%s directly to user_id=%s", tg_id, user["id"])
+            rowcount = await database.execute(
                 users.update().where(users.c.id == user["id"]).values(
                     tg_id=tg_id, linked_tg_id=tg_id
                 )
             )
+            logger.info("UPDATE tg_id rowcount=%s for user_id=%s", rowcount, user["id"])
+
+            # Verify the update was saved
+            updated = await database.fetch_one(users.select().where(users.c.id == user["id"]))
+            logger.info(
+                "Post-update check: user_id=%s tg_id=%s linked_tg_id=%s",
+                user["id"], updated.get("tg_id") if updated else "NOT_FOUND",
+                updated.get("linked_tg_id") if updated else "NOT_FOUND",
+            )
+
             # Update name/avatar from Telegram if missing
             if not user.get("avatar") and photo:
                 await database.execute(
                     users.update().where(users.c.id == user["id"]).values(avatar=photo)
                 )
+                logger.info("Updated avatar for user_id=%s", user["id"])
             if not user.get("name") and name:
                 await database.execute(
                     users.update().where(users.c.id == user["id"]).values(name=name)
                 )
-        # else: tg_user["id"] == user["id"] → already linked, nothing to do
+                logger.info("Updated name for user_id=%s", user["id"])
+        else:
+            # tg_user["id"] == user["id"] → already linked
+            logger.info("tg_id=%s already linked to user_id=%s — no action needed", tg_id, user["id"])
 
         logger.info("Telegram linked successfully: user_id=%s, tg_id=%s", user["id"], tg_id)
-        return RedirectResponse("/dashboard?linked=telegram")
+        return RedirectResponse("/dashboard?success=linked")
 
     except Exception as exc:
         logger.exception(
@@ -129,8 +162,20 @@ async def link_telegram_callback(request: Request):
         return RedirectResponse("/dashboard?error=tg_link_failed")
 
 
-@router.get("/link-google")
-async def link_google(request: Request):
+@router.get("/link-google", response_class=HTMLResponse)
+async def link_google_page(request: Request):
+    user = await get_user_from_request(request)
+    if not user:
+        return RedirectResponse("/login")
+    from config import settings
+    return templates.TemplateResponse(
+        "account/link_google.html",
+        {"request": request, "user": user, "site_url": settings.SITE_URL},
+    )
+
+
+@router.get("/link-google-start")
+async def link_google_start(request: Request):
     user = await get_user_from_request(request)
     if not user:
         return RedirectResponse("/login")
