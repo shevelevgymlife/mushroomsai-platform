@@ -29,19 +29,13 @@
 
       <!-- Shown in Telegram WebApp -->
       <div id="telegram-webview-block" class="hidden">
-        <div class="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 mb-6 text-left">
-          <p class="text-sm text-yellow-300 font-medium mb-1">Откройте в обычном браузере</p>
-          <p class="text-xs text-yellow-200/80">
-            Google не разрешает авторизацию внутри Telegram. Скопируйте ссылку и откройте её в браузере вашего устройства.
+        <div class="p-5 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-left">
+          <p class="text-sm text-yellow-300 font-semibold mb-2">Привязка Google недоступна в Telegram</p>
+          <p class="text-sm text-yellow-200/80">
+            Привязка Google доступна только через браузер.<br><br>
+            Откройте <span class="font-medium text-yellow-200">mushroomsai.ru/dashboard</span> на компьютере или в браузере телефона.
           </p>
         </div>
-
-        <button id="copy-btn"
-                onclick="copyLink()"
-                class="inline-block w-full px-6 py-3 rounded-xl bg-accent text-white font-semibold text-sm hover:opacity-90 transition-opacity">
-          Скопировать ссылку
-        </button>
-        <p id="copy-ok" class="hidden mt-3 text-xs text-green-400">Ссылка скопирована!</p>
       </div>
 
       <div class="mt-6">
@@ -61,39 +55,5 @@
       document.getElementById("telegram-webview-block").classList.remove("hidden");
     }
   })();
-
-  function copyLink() {
-    var url = "{{ site_url }}/account/link-google";
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(url).then(showCopied).catch(fallbackCopy.bind(null, url));
-    } else {
-      fallbackCopy(url);
-    }
-  }
-
-  function fallbackCopy(url) {
-    var ta = document.createElement("textarea");
-    ta.value = url;
-    ta.style.position = "fixed";
-    ta.style.opacity = "0";
-    document.body.appendChild(ta);
-    ta.focus();
-    ta.select();
-    try { document.execCommand("copy"); } catch (e) {}
-    document.body.removeChild(ta);
-    showCopied();
-  }
-
-  function showCopied() {
-    var btn = document.getElementById("copy-btn");
-    var ok = document.getElementById("copy-ok");
-    btn.textContent = "Скопировано!";
-    btn.disabled = true;
-    ok.classList.remove("hidden");
-    setTimeout(function () {
-      btn.textContent = "Скопировать ссылку";
-      btn.disabled = false;
-    }, 3000);
-  }
 </script>
 {% endblock %}
