@@ -9,6 +9,7 @@ from db.models import (
     users, messages, leads, products, orders, posts,
     page_views, ai_settings, subscriptions, knowledge_base,
     shop_products, feedback, admin_permissions, product_reviews,
+    community_posts, community_comments, community_likes, community_folders,
 )
 import sqlalchemy
 from datetime import datetime, timedelta, date
@@ -26,6 +27,7 @@ ADMIN_NAV = [
     ("Обратная связь", "/admin/feedback"),
     ("Рассылки", "/admin/broadcast"),
     ("База знаний", "/admin/knowledge"),
+    ("Сообщество", "/admin/community"),
 ]
 
 PERM_KEYS = [
@@ -693,6 +695,93 @@ async def sync_knowledge(request: Request):
         return JSONResponse({"error": f"GOOGLE_SERVICE_ACCOUNT невалидный JSON: {e}"}, status_code=500)
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
+
+
+# ─── Community ────────────────────────────────────────────────────────────────
+
+@router.get("/community", response_class=HTMLResponse)
+async def community_admin(request: Request):
+    admin = await require_admin(request)
+    if not admin:
+        return RedirectResponse("/login")
+
+    today = datetime.utcnow().date()
+
+    total_posts = await database.fetch_val(
+        sqlalchemy.select(sqlalchemy.func.count()).select_from(community_posts)
+    ) or 0
+    posts_today = await database.fetch_val(
+        sqlalchemy.select(sqlalchemy.func.count()).select_from(community_posts).where(
+            sqlalchemy.cast(community_posts.c.created_at, sqlalchemy.Date) == today
+        )
+    ) or 0
+    active_users = await database.fetch_val(
+        sqlalchemy.select(sqlalchemy.func.count(sqlalchemy.distinct(community_posts.c.user_id)))
+        .select_from(community_posts)
+        .where(sqlalchemy.cast(community_posts.c.created_at, sqlalchemy.Date) >= (datetime.utcnow() - timedelta(days=7)).date())
+    ) or 0
+    total_comments = await database.fetch_val(
+        sqlalchemy.select(sqlalchemy.func.count()).select_from(community_comments)
+    ) or 0
+
+    all_posts = await database.fetch_all(
+        community_posts.select()
+        .order_by(community_posts.c.pinned.desc(), community_posts.c.created_at.desc())
+        .limit(50)
+    )
+    feed = []
+    for p in all_posts:
+        author = None
+        if p["user_id"]:
+            author = await database.fetch_one(users.select().where(users.c.id == p["user_id"]))
+        feed.append({"post": p, "author": author})
+
+    community_users = await database.fetch_all(
+        users.select()
+        .where(sqlalchemy.select(sqlalchemy.func.count()).select_from(community_posts).where(community_posts.c.user_id == users.c.id).scalar_subquery() > 0)
+        .order_by(users.c.created_at.desc())
+        .limit(30)
+    )
+
+    return templates.TemplateResponse(
+        "dashboard/admin_community.html",
+        {
+            "request": request,
+            "user": admin,
+            "nav": ADMIN_NAV,
+            "user_permissions": await get_user_permissions(admin),
+            "total_posts": total_posts,
+            "posts_today": posts_today,
+            "active_users": active_users,
+            "total_comments": total_comments,
+            "feed": feed,
+            "community_users": community_users,
+        },
+    )
+
+
+@router.post("/community/posts/{post_id}/delete")
+async def delete_community_post(request: Request, post_id: int):
+    admin = await require_admin(request)
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    await database.execute(community_posts.delete().where(community_posts.c.id == post_id))
+    return JSONResponse({"ok": True})
+
+
+@router.post("/community/posts/{post_id}/pin")
+async def pin_community_post(request: Request, post_id: int):
+    admin = await require_admin(request)
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    post = await database.fetch_one(community_posts.select().where(community_posts.c.id == post_id))
+    if not post:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    await database.execute(
+        community_posts.update().where(community_posts.c.id == post_id)
+        .values(pinned=not post["pinned"])
+    )
+    return JSONResponse({"ok": True, "pinned": not post["pinned"]})
 
 
 # ─── Legacy routes ────────────────────────────────────────────────────────────

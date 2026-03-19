@@ -28,7 +28,8 @@ def main_keyboard(site_url: str):
     keyboard = [
         [KeyboardButton("Консультация"), KeyboardButton("Рецепты")],
         [KeyboardButton("Магазин"), KeyboardButton("О грибах")],
-        [KeyboardButton("Тарифы и подписки"), KeyboardButton("Написать нам")],
+        [KeyboardButton("Сообщество"), KeyboardButton("Тарифы и подписки")],
+        [KeyboardButton("Написать нам")],
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 

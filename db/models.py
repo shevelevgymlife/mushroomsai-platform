@@ -202,6 +202,48 @@ product_reviews = sqlalchemy.Table(
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
 
+community_folders = sqlalchemy.Table(
+    "community_folders",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=True),
+    sqlalchemy.Column("name", sqlalchemy.Text, nullable=False),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+community_posts = sqlalchemy.Table(
+    "community_posts",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=True),
+    sqlalchemy.Column("content", sqlalchemy.Text, nullable=False),
+    sqlalchemy.Column("image_url", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("folder_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("community_folders.id"), nullable=True),
+    sqlalchemy.Column("likes_count", sqlalchemy.Integer, default=0, server_default="0"),
+    sqlalchemy.Column("comments_count", sqlalchemy.Integer, default=0, server_default="0"),
+    sqlalchemy.Column("pinned", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column("approved", sqlalchemy.Boolean, default=True, server_default="true"),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+community_comments = sqlalchemy.Table(
+    "community_comments",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("post_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("community_posts.id"), nullable=False),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=True),
+    sqlalchemy.Column("content", sqlalchemy.Text, nullable=False),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+community_likes = sqlalchemy.Table(
+    "community_likes",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("post_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("community_posts.id"), nullable=False),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=False),
+)
+
 feedback = sqlalchemy.Table(
     "feedback",
     metadata,

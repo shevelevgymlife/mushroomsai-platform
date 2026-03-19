@@ -18,6 +18,19 @@ from bot.handlers.referral import referral_handler
 from bot.handlers.language import show_language_selector, handle_language_callback
 from bot.handlers.lead import lead_start, lead_name, lead_phone, lead_question, lead_cancel, ASK_NAME, ASK_PHONE, ASK_QUESTION
 from bot.handlers.feedback_handler import get_feedback_conversation
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ContextTypes
+
+
+async def community_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = InlineKeyboardMarkup([[
+        InlineKeyboardButton("🍄 Открыть сообщество", url="https://mushroomsai.ru/community")
+    ]])
+    await update.message.reply_text(
+        "Присоединяйтесь к сообществу MushroomsAI!\n\n"
+        "Делитесь опытом, читайте посты участников, задавайте вопросы.",
+        reply_markup=keyboard,
+    )
 
 
 def create_bot() -> Application:
@@ -50,6 +63,7 @@ def create_bot() -> Application:
     app.add_handler(MessageHandler(filters.Regex("^Магазин$"), shop_handler))
     app.add_handler(MessageHandler(filters.Regex("^О грибах$"), mushrooms_handler))
     app.add_handler(MessageHandler(filters.Regex("^Тарифы и подписки$"), subscriptions_handler))
+    app.add_handler(MessageHandler(filters.Regex("^Сообщество$"), community_handler))
 
     # Callback handlers
     app.add_handler(CallbackQueryHandler(recipe_callback, pattern="^recipe_basic$"))

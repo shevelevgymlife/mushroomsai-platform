@@ -5,7 +5,7 @@ from fastapi import APIRouter, Request, Depends, UploadFile, File, Form
 from web.templates_utils import Jinja2Templates
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from db.database import database
-from db.models import products, posts, users, shop_products, product_reviews
+from db.models import products, posts, users, shop_products, product_reviews, community_posts, community_likes, community_folders
 from auth.session import get_user_from_request
 
 router = APIRouter()
@@ -181,20 +181,18 @@ async def community(request: Request):
     if not current_user:
         # Preview for unauthenticated users
         post_count = await database.fetch_val(
-            sa.select(sa.func.count()).select_from(posts).where(posts.c.approved == True)
+            sa.select(sa.func.count()).select_from(community_posts).where(community_posts.c.approved == True)
         )
         member_count = await database.fetch_val(
             sa.select(sa.func.count()).select_from(users)
         )
         recent_members = await database.fetch_all(
-            users.select()
-            .order_by(users.c.created_at.desc())
-            .limit(10)
+            users.select().order_by(users.c.created_at.desc()).limit(10)
         )
         preview_posts = await database.fetch_all(
-            posts.select()
-            .where(posts.c.approved == True)
-            .order_by(posts.c.created_at.desc())
+            community_posts.select()
+            .where(community_posts.c.approved == True)
+            .order_by(community_posts.c.pinned.desc(), community_posts.c.created_at.desc())
             .limit(5)
         )
         return templates.TemplateResponse(
@@ -209,16 +207,90 @@ async def community(request: Request):
             },
         )
 
-    all_posts = await database.fetch_all(
-        posts.select()
-        .where(posts.c.approved == True)
-        .order_by(posts.c.created_at.desc())
-        .limit(20)
+    # Authenticated: full social network
+    folder_id = request.query_params.get("folder")
+    folder_id = int(folder_id) if folder_id and folder_id.isdigit() else None
+
+    query = community_posts.select().where(community_posts.c.approved == True)
+    if folder_id:
+        query = query.where(community_posts.c.folder_id == folder_id)
+    query = query.order_by(community_posts.c.pinned.desc(), community_posts.c.created_at.desc()).limit(30)
+    raw_posts = await database.fetch_all(query)
+
+    feed = []
+    for p in raw_posts:
+        author = None
+        if p["user_id"]:
+            author = await database.fetch_one(users.select().where(users.c.id == p["user_id"]))
+        post_count = 0
+        if author:
+            post_count = await database.fetch_val(
+                sa.select(sa.func.count()).select_from(community_posts)
+                .where(community_posts.c.user_id == author["id"])
+            ) or 0
+        liked = False
+        lk = await database.fetch_one(
+            community_likes.select()
+            .where(community_likes.c.post_id == p["id"])
+            .where(community_likes.c.user_id == current_user["id"])
+        )
+        liked = lk is not None
+        folder_name = None
+        if p["folder_id"]:
+            fl = await database.fetch_one(community_folders.select().where(community_folders.c.id == p["folder_id"]))
+            folder_name = fl["name"] if fl else None
+        feed.append({
+            "post": p,
+            "author": author,
+            "author_post_count": post_count,
+            "liked": liked,
+            "folder_name": folder_name,
+        })
+
+    # Folders for filter
+    all_folders = await database.fetch_all(
+        community_folders.select().order_by(community_folders.c.name.asc())
     )
+    # User's own folders for post creation
+    my_folders = await database.fetch_all(
+        community_folders.select()
+        .where(community_folders.c.user_id == current_user["id"])
+        .order_by(community_folders.c.created_at.asc())
+    )
+    # User post count for reputation
+    my_post_count = await database.fetch_val(
+        sa.select(sa.func.count()).select_from(community_posts)
+        .where(community_posts.c.user_id == current_user["id"])
+    ) or 0
+
     return templates.TemplateResponse(
         "community.html",
-        {"request": request, "user": current_user, "posts": all_posts},
+        {
+            "request": request,
+            "user": current_user,
+            "feed": feed,
+            "folders": all_folders,
+            "my_folders": my_folders,
+            "sel_folder": folder_id,
+            "my_post_count": my_post_count,
+        },
     )
+
+
+@router.get("/community/user-profile/{user_id}")
+async def community_user_profile(request: Request, user_id: int):
+    u = await database.fetch_one(users.select().where(users.c.id == user_id))
+    if not u:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    post_count = await database.fetch_val(
+        sa.select(sa.func.count()).select_from(community_posts).where(community_posts.c.user_id == user_id)
+    ) or 0
+    return JSONResponse({
+        "name": u["name"],
+        "avatar": u["avatar"],
+        "wallet": u["wallet_address"] if "wallet_address" in u.keys() else None,
+        "post_count": post_count,
+    })
 
 
 _COMMUNITY_ALLOWED = {"image/jpeg", "image/png", "image/webp", "image/gif"}

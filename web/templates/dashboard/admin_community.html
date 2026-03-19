@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Сообщество — Admin{% endblock %}
+
+{% block content %}
+<div class="pt-20 pb-16">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6">
+    {% include "components/admin_nav.html" ignore missing %}
+
+    <div class="mb-8">
+      <h1 class="text-3xl font-light text-text mb-1">Сообщество</h1>
+      <p class="text-sm text-muted">Управление постами и участниками</p>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+      <div class="p-5 rounded-2xl bg-surface border border-border">
+        <p class="text-2xl font-light text-gold">{{ total_posts }}</p>
+        <p class="text-xs text-muted mt-1">Всего постов</p>
+      </div>
+      <div class="p-5 rounded-2xl bg-surface border border-border">
+        <p class="text-2xl font-light text-gold">{{ posts_today }}</p>
+        <p class="text-xs text-muted mt-1">Постов сегодня</p>
+      </div>
+      <div class="p-5 rounded-2xl bg-surface border border-border">
+        <p class="text-2xl font-light text-gold">{{ active_users }}</p>
+        <p class="text-xs text-muted mt-1">Активных за 7 дней</p>
+      </div>
+      <div class="p-5 rounded-2xl bg-surface border border-border">
+        <p class="text-2xl font-light text-gold">{{ total_comments }}</p>
+        <p class="text-xs text-muted mt-1">Всего комментариев</p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- Posts list -->
+      <div class="lg:col-span-2">
+        <h2 class="text-lg font-medium text-text mb-4">Последние посты</h2>
+        <div class="space-y-3">
+          {% for item in feed %}
+          {% set p = item.post %}
+          {% set author = item.author %}
+          <div class="p-4 rounded-2xl bg-surface border {% if p.pinned %}border-gold/30{% else %}border-border{% endif %}" id="apost-{{ p.id }}">
+            <div class="flex items-start justify-between gap-3 mb-2">
+              <div class="flex items-center gap-2 min-w-0">
+                {% if author and author.avatar %}
+                  <img src="{{ author.avatar }}" alt="" class="w-7 h-7 rounded-full object-cover flex-shrink-0" />
+                {% else %}
+                  <div class="w-7 h-7 rounded-full bg-gold/20 flex items-center justify-center flex-shrink-0">
+                    <span class="text-gold text-xs">{{ (author.name if author and author.name else 'A')[0].upper() }}</span>
+                  </div>
+                {% endif %}
+                <div class="min-w-0">
+                  <span class="text-sm font-medium text-text">{{ author.name if author and author.name else 'Участник' }}</span>
+                  <span class="text-xs text-muted ml-2">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}</span>
+                  {% if p.pinned %}<span class="ml-2 text-xs text-gold">📌 закреплён</span>{% endif %}
+                </div>
+              </div>
+              <div class="flex items-center gap-2 flex-shrink-0">
+                <button onclick="togglePin({{ p.id }}, this)"
+                  class="px-2.5 py-1 rounded-lg text-xs {% if p.pinned %}bg-gold/20 text-gold{% else %}bg-border/50 text-muted hover:text-gold{% endif %} transition-colors">
+                  📌
+                </button>
+                <button onclick="deletePost({{ p.id }})"
+                  class="px-2.5 py-1 rounded-lg text-xs bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors">
+                  Удалить
+                </button>
+              </div>
+            </div>
+            <p class="text-sm text-muted leading-relaxed line-clamp-3">{{ p.content }}</p>
+            {% if p.image_url %}
+            <img src="{{ p.image_url }}" alt="" class="mt-2 rounded-xl h-24 object-cover" />
+            {% endif %}
+            <div class="flex items-center gap-4 mt-2 text-xs text-muted">
+              <span>❤️ {{ p.likes_count }}</span>
+              <span>💬 {{ p.comments_count }}</span>
+            </div>
+          </div>
+          {% else %}
+          <p class="text-sm text-muted">Постов пока нет</p>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Users list -->
+      <div>
+        <h2 class="text-lg font-medium text-text mb-4">Участники сообщества</h2>
+        <div class="space-y-2">
+          {% for u in community_users %}
+          <div class="flex items-center gap-3 p-3 rounded-xl bg-surface border border-border">
+            {% if u.avatar %}
+              <img src="{{ u.avatar }}" alt="" class="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+            {% else %}
+              <div class="w-8 h-8 rounded-full bg-gold/20 flex items-center justify-center flex-shrink-0">
+                <span class="text-gold text-xs font-semibold">{{ (u.name or 'A')[0].upper() }}</span>
+              </div>
+            {% endif %}
+            <div class="min-w-0 flex-1">
+              <p class="text-sm text-text truncate">{{ u.name or 'Участник' }}</p>
+              <p class="text-xs text-muted truncate">
+                {% if u.email %}{{ u.email }}{% elif u.tg_id %}tg:{{ u.tg_id }}{% endif %}
+              </p>
+            </div>
+          </div>
+          {% else %}
+          <p class="text-sm text-muted">Участников нет</p>
+          {% endfor %}
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+async function deletePost(id) {
+  if (!confirm('Удалить пост?')) return;
+  const res = await fetch('/admin/community/posts/' + id + '/delete', { method: 'POST' });
+  if (res.ok) document.getElementById('apost-' + id)?.remove();
+}
+async function togglePin(id, btn) {
+  const res = await fetch('/admin/community/posts/' + id + '/pin', { method: 'POST' });
+  const data = await res.json();
+  if (data.ok) {
+    btn.classList.toggle('bg-gold/20', data.pinned);
+    btn.classList.toggle('text-gold', data.pinned);
+    btn.classList.toggle('bg-border/50', !data.pinned);
+    btn.classList.toggle('text-muted', !data.pinned);
+    const card = document.getElementById('apost-' + id);
+    if (card) card.classList.toggle('border-gold/30', data.pinned);
+  }
+}
+</script>
+{% endblock %}
