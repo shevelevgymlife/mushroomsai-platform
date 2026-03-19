@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request, Form, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
+from web.templates_utils import Jinja2Templates
 from starlette.responses import JSONResponse
 from auth.telegram_auth import verify_telegram_auth, verify_telegram_miniapp
 from auth.email_auth import authenticate_user, register_user

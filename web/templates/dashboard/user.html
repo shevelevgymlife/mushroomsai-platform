@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Личный кабинет — MushroomsAI{% endblock %}
+{% block title %}{{ t.nav_cabinet }} — MushroomsAI{% endblock %}
 
 {% block content %}
 <div class="pt-24 pb-16">
@@ -14,7 +14,7 @@
         </div>
       {% endif %}
       <div>
-        <h1 class="text-2xl font-semibold text-text">{{ user.name or 'Пользователь' }}</h1>
+        <h1 class="text-2xl font-semibold text-text">{{ user.name or t.nav_cabinet }}</h1>
         <p class="text-sm text-muted">{{ user.email or ('Telegram' if user.tg_id else 'Google') }}</p>
       </div>
       <div class="ml-auto hidden sm:block">
@@ -29,20 +29,20 @@
       <div class="space-y-6">
         <!-- Subscription -->
         <div class="p-6 rounded-2xl bg-surface border border-border">
-          <h3 class="font-semibold text-text mb-4">Подписка</h3>
+          <h3 class="font-semibold text-text mb-4">{{ t.dash_subscription }}</h3>
           <div class="mb-4">
             <p class="text-2xl font-light text-text">{{ plan_info.name }}</p>
             {% if user.subscription_end %}
-            <p class="text-xs text-muted mt-1">до {{ user.subscription_end.strftime('%d.%m.%Y') }}</p>
+            <p class="text-xs text-muted mt-1">{{ t.dash_until }} {{ user.subscription_end.strftime('%d.%m.%Y') }}</p>
             {% endif %}
           </div>
           {% if plan == 'free' %}
           <div class="space-y-2">
             <a href="#" class="block text-center py-2.5 px-4 rounded-lg bg-gold text-bg text-sm font-medium hover:bg-gold-light transition-all duration-300">
-              Старт — 990 руб/мес
+              {{ t.dash_start_price }}
             </a>
             <a href="#" class="block text-center py-2.5 px-4 rounded-lg border border-gold/30 text-gold text-sm hover:bg-gold hover:text-bg transition-all duration-300">
-              Про — 1990 руб/мес
+              {{ t.dash_pro_price }}
             </a>
           </div>
           {% endif %}
@@ -50,30 +50,31 @@
 
         <!-- Referral -->
         <div class="p-6 rounded-2xl bg-surface border border-border">
-          <h3 class="font-semibold text-text mb-4">Реферальная программа</h3>
-          <p class="text-xs text-muted mb-3">Приглашайте друзей — оба получите скидку 50% на следующий месяц</p>
+          <h3 class="font-semibold text-text mb-4">{{ t.dash_referral }}</h3>
+          <p class="text-xs text-muted mb-3">{{ t.dash_referral_desc }}</p>
           <div class="flex gap-2 mb-4">
             <input type="text" value="{{ ref_link }}" readonly id="refLink"
               class="flex-1 px-3 py-2 rounded-lg bg-bg border border-border text-xs text-muted focus:outline-none" />
-            <button onclick="copyRef()" class="px-3 py-2 rounded-lg bg-gold/10 text-gold text-xs border border-gold/20 hover:bg-gold hover:text-bg transition-all duration-300">
-              Копировать
+            <button onclick="copyRef()" id="copyRefBtn"
+              class="px-3 py-2 rounded-lg bg-gold/10 text-gold text-xs border border-gold/20 hover:bg-gold hover:text-bg transition-all duration-300">
+              {{ t.btn_copy }}
             </button>
           </div>
           <div class="flex gap-4 text-center">
             <div class="flex-1 p-3 rounded-lg bg-bg border border-border">
               <p class="text-lg font-semibold text-text">{{ ref_stats.total }}</p>
-              <p class="text-xs text-muted">Приглашено</p>
+              <p class="text-xs text-muted">{{ t.dash_invited }}</p>
             </div>
             <div class="flex-1 p-3 rounded-lg bg-bg border border-border">
               <p class="text-lg font-semibold text-gold">{{ ref_stats.bonus_applied }}</p>
-              <p class="text-xs text-muted">Бонусов</p>
+              <p class="text-xs text-muted">{{ t.dash_bonuses }}</p>
             </div>
           </div>
         </div>
 
         <!-- Account Linking -->
         <div class="p-6 rounded-2xl bg-surface border border-border">
-          <h3 class="font-semibold text-text mb-4">Привязка аккаунтов</h3>
+          <h3 class="font-semibold text-text mb-4">{{ t.dash_account_linking }}</h3>
           {% set has_tg = user.tg_id or user.linked_tg_id %}
           {% set has_google = user.google_id or user.linked_google_id %}
           {% if has_tg and has_google %}
@@ -81,23 +82,23 @@
               <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
               </svg>
-              Аккаунты объединены
+              {{ t.dash_accounts_merged }}
             </div>
             <div class="mt-3 space-y-1.5 text-xs text-muted">
               <div class="flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full bg-blue-400"></span> Telegram привязан
+                <span class="w-2 h-2 rounded-full bg-blue-400"></span> {{ t.dash_tg_linked }}
               </div>
               <div class="flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full bg-red-400"></span> Google привязан
+                <span class="w-2 h-2 rounded-full bg-red-400"></span> {{ t.dash_google_linked }}
               </div>
             </div>
             {% if user.linked_tg_id or user.linked_google_id %}
             <button id="sync-history-btn"
                     onclick="syncHistory()"
                     class="mt-4 w-full py-2 px-4 rounded-lg bg-accent/10 text-accent text-xs border border-accent/20 hover:bg-accent/20 transition-all duration-300">
-              Синхронизировать историю
+              {{ t.dash_sync_history }}
             </button>
-            <p id="sync-history-ok" class="hidden mt-2 text-xs text-green-400">История синхронизирована ✓</p>
+            <p id="sync-history-ok" class="hidden mt-2 text-xs text-green-400">{{ t.dash_history_synced }}</p>
             {% endif %}
           {% else %}
             {% if not has_tg %}
@@ -106,7 +107,7 @@
               <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.941z"/>
               </svg>
-              Привязать Telegram
+              {{ t.dash_link_tg }}
             </a>
             {% endif %}
             {% if not has_google %}
@@ -118,14 +119,14 @@
                 <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
                 <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
               </svg>
-              Привязать Google
+              {{ t.dash_link_google }}
             </a>
             {% endif %}
-            <p class="text-xs text-muted mt-3">Объедините аккаунты для входа любым способом</p>
+            <p class="text-xs text-muted mt-3">{{ t.dash_link_desc }}</p>
           {% endif %}
           {% if request.query_params.get('linked') %}
           <div class="mt-3 p-2 rounded-lg bg-green-500/10 border border-green-500/20 text-xs text-green-400">
-            Аккаунт успешно привязан!
+            {{ t.dash_account_linked_ok }}
           </div>
           {% endif %}
         </div>
@@ -133,26 +134,26 @@
         {% if user.role == "admin" %}
         <!-- Admin panel link -->
         <div class="p-6 rounded-2xl bg-surface border border-border">
-          <h3 class="font-semibold text-text mb-4">Управление</h3>
+          <h3 class="font-semibold text-text mb-4">{{ t.dash_management }}</h3>
           <a href="/admin" class="block text-center px-4 py-2.5 rounded-lg bg-gold text-bg font-medium text-sm hover:opacity-90 transition-opacity">
-            Админ панель
+            {{ t.dash_admin_panel }}
           </a>
         </div>
         {% endif %}
 
         <!-- Language -->
         <div class="p-6 rounded-2xl bg-surface border border-border">
-          <h3 class="font-semibold text-text mb-4">Язык AI</h3>
+          <h3 class="font-semibold text-text mb-4">{{ t.dash_ai_language }}</h3>
           <form action="/dashboard/language" method="post">
             <select name="language"
               class="w-full px-3 py-2.5 rounded-lg bg-bg border border-border text-text text-sm mb-3 focus:outline-none focus:border-gold/60 transition-colors">
-              {% set languages = [('ru','Русский'),('en','English'),('de','Deutsch'),('fr','Francais'),('es','Espanol'),('zh','Zhongwen'),('ja','Nihongo')] %}
+              {% set languages = [('ru','Русский'),('en','English'),('de','Deutsch'),('fr','Français'),('es','Español'),('zh','中文'),('ar','العربية'),('pt','Português'),('it','Italiano'),('ja','日本語')] %}
               {% for code, name in languages %}
               <option value="{{ code }}" {{ 'selected' if user.language == code else '' }}>{{ name }}</option>
               {% endfor %}
             </select>
             <button type="submit" class="w-full py-2 rounded-lg bg-gold/10 text-gold text-sm border border-gold/20 hover:bg-gold hover:text-bg transition-all duration-300">
-              Сохранить
+              {{ t.btn_save }}
             </button>
           </form>
         </div>
@@ -162,7 +163,7 @@
       <div class="lg:col-span-2 space-y-6">
         <!-- Chat history -->
         <div class="p-6 rounded-2xl bg-surface border border-border">
-          <h3 class="font-semibold text-text mb-4">История диалогов</h3>
+          <h3 class="font-semibold text-text mb-4">{{ t.dash_chat_history }}</h3>
           {% if messages %}
           <div class="space-y-3 max-h-80 overflow-y-auto custom-scroll">
             {% for msg in messages %}
@@ -179,29 +180,29 @@
             {% endfor %}
           </div>
           <div class="mt-4 pt-4 border-t border-border">
-            <a href="/chat" class="text-sm text-gold hover:text-gold-light transition-colors">Продолжить диалог</a>
+            <a href="/chat" class="text-sm text-gold hover:text-gold-light transition-colors">{{ t.dash_continue_dialog }}</a>
           </div>
           {% else %}
           <div class="text-center py-8">
-            <p class="text-sm text-muted mb-3">Диалогов пока нет</p>
-            <a href="/chat" class="text-sm text-gold hover:underline">Начать консультацию</a>
+            <p class="text-sm text-muted mb-3">{{ t.dash_no_dialogs }}</p>
+            <a href="/chat" class="text-sm text-gold hover:underline">{{ t.dash_start_consultation }}</a>
           </div>
           {% endif %}
         </div>
 
         <!-- Orders -->
         <div class="p-6 rounded-2xl bg-surface border border-border">
-          <h3 class="font-semibold text-text mb-4">Мои заказы</h3>
+          <h3 class="font-semibold text-text mb-4">{{ t.dash_orders }}</h3>
           {% if orders %}
           <div class="space-y-3">
             {% for order in orders %}
             <div class="flex items-center justify-between py-3 border-b border-border last:border-0">
               <div>
-                <p class="text-sm text-text">Заказ #{{ order.id }}</p>
+                <p class="text-sm text-text">{{ t.dash_order }} #{{ order.id }}</p>
                 <p class="text-xs text-muted">{{ order.created_at.strftime('%d.%m.%Y') if order.created_at else '' }}</p>
               </div>
               <div class="text-right">
-                <p class="text-sm font-medium text-text">{{ order.amount | int }} руб.</p>
+                <p class="text-sm font-medium text-text">{{ order.amount | int }} {{ t.dash_rub }}</p>
                 <span class="text-xs px-2 py-0.5 rounded-full {{ 'bg-green-500/10 text-green-400' if order.status == 'paid' else 'bg-muted/10 text-muted' }}">
                   {{ order.status }}
                 </span>
@@ -210,7 +211,7 @@
             {% endfor %}
           </div>
           {% else %}
-          <p class="text-sm text-muted text-center py-6">Заказов пока нет</p>
+          <p class="text-sm text-muted text-center py-6">{{ t.dash_no_orders }}</p>
           {% endif %}
         </div>
       </div>
@@ -219,12 +220,17 @@
 </div>
 
 <script>
+var _t_copy = {{ t.btn_copy | tojson }};
+var _t_copied = {{ t.btn_copied | tojson }};
+var _t_syncing = {{ t.dash_syncing | tojson }};
+var _t_sync = {{ t.dash_sync_history | tojson }};
+
 function copyRef() {
   const input = document.getElementById('refLink');
+  const btn = document.getElementById('copyRefBtn');
   navigator.clipboard.writeText(input.value).then(() => {
-    const btn = event.currentTarget;
-    btn.textContent = 'Скопировано';
-    setTimeout(() => btn.textContent = 'Копировать', 2000);
+    btn.textContent = _t_copied;
+    setTimeout(() => btn.textContent = _t_copy, 2000);
   });
 }
 
@@ -232,7 +238,7 @@ function syncHistory() {
   var btn = document.getElementById('sync-history-btn');
   var ok = document.getElementById('sync-history-ok');
   btn.disabled = true;
-  btn.textContent = 'Синхронизация...';
+  btn.textContent = _t_syncing;
   fetch('/account/sync-history', {method: 'POST', headers: {'Content-Type': 'application/json'}})
     .then(function(r) { return r.json(); })
     .then(function(data) {
@@ -241,12 +247,12 @@ function syncHistory() {
         ok.classList.remove('hidden');
       } else {
         btn.disabled = false;
-        btn.textContent = 'Синхронизировать историю';
+        btn.textContent = _t_sync;
       }
     })
     .catch(function() {
       btn.disabled = false;
-      btn.textContent = 'Синхронизировать историю';
+      btn.textContent = _t_sync;
     });
 }
 </script>

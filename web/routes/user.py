@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
+from web.templates_utils import Jinja2Templates
 from auth.session import get_user_from_request
 from db.database import database
 from db.models import users, messages, orders, posts, post_likes

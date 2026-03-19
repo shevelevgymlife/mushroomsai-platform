@@ -8,11 +8,36 @@
         <span class="font-semibold text-text group-hover:text-gold transition-colors duration-300">MushroomsAI</span>
       </a>
       <div class="hidden md:flex items-center gap-8">
-        <a href="/chat" class="text-sm text-muted hover:text-gold transition-colors duration-300">AI Консультант</a>
-        <a href="/shop" class="text-sm text-muted hover:text-gold transition-colors duration-300">Магазин</a>
-        <a href="/community" class="text-sm text-muted hover:text-gold transition-colors duration-300">Сообщество</a>
+        <a href="/chat" class="text-sm text-muted hover:text-gold transition-colors duration-300">{{ t.nav_consultation }}</a>
+        <a href="/shop" class="text-sm text-muted hover:text-gold transition-colors duration-300">{{ t.nav_shop }}</a>
+        <a href="/community" class="text-sm text-muted hover:text-gold transition-colors duration-300">{{ t.nav_community }}</a>
       </div>
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2">
+
+        <!-- Language switcher -->
+        <div class="relative" id="lang-switcher">
+          <button onclick="toggleLangMenu(event)"
+            class="flex items-center gap-1 px-2 py-1.5 rounded-lg border border-border text-muted hover:border-gold/60 hover:text-text transition-all duration-300 text-sm select-none"
+            title="{{ t.lang_label }}">
+            <span>{{ t.langs[lang] if lang in t.langs else '🌐' }}</span>
+            <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+          <div id="lang-menu"
+            class="hidden absolute right-0 top-full mt-1 w-44 bg-surface border border-border rounded-xl shadow-2xl z-50 overflow-hidden py-1">
+            {% for code, name in t.langs.items() %}
+            <form action="/set-language" method="post" style="margin:0;padding:0">
+              <input type="hidden" name="lang" value="{{ code }}" />
+              <button type="submit"
+                class="w-full text-left px-3 py-2 text-xs hover:bg-border/40 transition-colors duration-150 {{ 'text-gold font-medium' if code == lang else 'text-muted' }}">
+                {{ name }}
+              </button>
+            </form>
+            {% endfor %}
+          </div>
+        </div>
+
         {% if user %}
           <a href="/dashboard" class="flex items-center gap-2 text-sm text-muted hover:text-gold transition-colors duration-300">
             {% if user.avatar %}
@@ -22,18 +47,31 @@
                 <span class="text-gold text-xs font-semibold">{{ (user.name or 'U')[0].upper() }}</span>
               </div>
             {% endif %}
-            <span class="hidden sm:inline">{{ user.name or 'Кабинет' }}</span>
+            <span class="hidden sm:inline">{{ user.name or t.nav_cabinet }}</span>
           </a>
-          <a href="/logout" class="text-xs text-muted hover:text-red-400 transition-colors duration-300">Выйти</a>
+          <a href="/logout" class="text-xs text-muted hover:text-red-400 transition-colors duration-300">{{ t.nav_logout }}</a>
         {% else %}
-          <a href="/login" class="text-sm px-4 py-2 rounded-lg border border-border text-muted hover:border-gold hover:text-gold transition-all duration-300">
-            Войти
+          <a href="/login"
+            class="text-sm px-4 py-2 rounded-lg border border-border text-muted hover:border-gold hover:text-gold transition-all duration-300">
+            {{ t.nav_login }}
           </a>
-          <a href="https://t.me/mushrooms_ai_bot" target="_blank" onclick="openBotLink(event)" class="text-sm px-4 py-2 rounded-lg bg-gold text-bg font-medium hover:bg-gold-light transition-all duration-300">
-            Открыть бот
+          <a href="https://t.me/mushrooms_ai_bot" target="_blank" onclick="openBotLink(event)"
+            class="text-sm px-4 py-2 rounded-lg bg-gold text-bg font-medium hover:bg-gold-light transition-all duration-300">
+            {{ t.nav_open_bot }}
           </a>
         {% endif %}
       </div>
     </div>
   </div>
 </nav>
+
+<script>
+function toggleLangMenu(e) {
+  e.stopPropagation();
+  document.getElementById('lang-menu').classList.toggle('hidden');
+}
+document.addEventListener('click', function() {
+  var m = document.getElementById('lang-menu');
+  if (m) m.classList.add('hidden');
+});
+</script>

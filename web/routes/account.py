@@ -3,7 +3,7 @@ import urllib.parse
 
 from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
+from web.templates_utils import Jinja2Templates
 from starlette.responses import JSONResponse
 from auth.session import get_user_from_request
 from auth.telegram_auth import verify_telegram_auth

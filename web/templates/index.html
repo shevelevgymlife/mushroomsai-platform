@@ -9,26 +9,26 @@
 
   <div class="relative z-10 max-w-4xl mx-auto px-4 text-center">
     <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-gold/30 bg-gold/5 text-gold text-xs font-medium mb-8">
-      AI-платформа по фунготерапии
+      {{ t.hero_badge }}
     </div>
 
     <h1 class="text-5xl sm:text-6xl lg:text-7xl font-light text-text leading-tight mb-6">
-      Грибы, которые<br />
-      <span class="text-transparent bg-clip-text bg-gradient-to-r from-gold to-gold-light font-semibold">меняют здоровье</span>
+      {{ t.hero_h1_line1 }}<br />
+      <span class="text-transparent bg-clip-text bg-gradient-to-r from-gold to-gold-light font-semibold">{{ t.hero_h1_line2 }}</span>
     </h1>
 
     <p class="text-lg text-muted max-w-2xl mx-auto mb-10 leading-relaxed">
-      Персональный AI-консультант Евгения Шевелева. Подберём протокол из функциональных грибов под ваши задачи — иммунитет, энергия, восстановление.
+      {{ t.hero_desc }}
     </p>
 
     <div class="flex flex-col sm:flex-row gap-4 justify-center">
       <a href="https://t.me/mushrooms_ai_bot" target="_blank" onclick="openBotLink(event)"
          class="px-8 py-4 rounded-xl bg-gold text-bg font-semibold hover:bg-gold-light transition-all duration-300 shadow-lg shadow-gold/20 hover:shadow-gold/30">
-        Открыть в Telegram
+        {{ t.btn_open_telegram }}
       </a>
       <a href="/chat"
          class="px-8 py-4 rounded-xl border border-border text-text hover:border-gold hover:text-gold transition-all duration-300">
-        Начать консультацию
+        {{ t.btn_start_consultation }}
       </a>
     </div>
   </div>
@@ -44,16 +44,16 @@
 <section class="py-24">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="text-center mb-16">
-      <h2 class="text-3xl sm:text-4xl font-light text-text mb-4">Что умеет <span class="text-gold">AI</span></h2>
-      <p class="text-muted max-w-xl mx-auto">Персональный подход, основанный на научных данных и опыте Евгения Шевелева</p>
+      <h2 class="text-3xl sm:text-4xl font-light text-text mb-4">{{ t.features_title }}</h2>
+      <p class="text-muted max-w-xl mx-auto">{{ t.features_subtitle }}</p>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       {% set features = [
-        ('Подбор протокола', 'Анализирует ваши симптомы и подбирает оптимальный гриб с дозировками'),
-        ('Анализ крови', 'Интерпретирует лабораторные показатели и рекомендует коррекцию'),
-        ('PDF-рецепты', 'Генерирует персональный протокол в PDF с точными схемами'),
-        ('История диалогов', 'Помнит ваш анамнез и динамику изменений'),
+        (t.feature_1_title, t.feature_1_desc),
+        (t.feature_2_title, t.feature_2_desc),
+        (t.feature_3_title, t.feature_3_desc),
+        (t.feature_4_title, t.feature_4_desc),
       ] %}
       {% for title, desc in features %}
       <div class="p-6 rounded-2xl bg-surface border border-border hover:border-gold/30 transition-all duration-300 group">
@@ -72,54 +72,57 @@
 <section class="py-24">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="text-center mb-16">
-      <h2 class="text-3xl sm:text-4xl font-light text-text mb-4">Тарифы</h2>
-      <p class="text-muted">Выберите подходящий план</p>
+      <h2 class="text-3xl sm:text-4xl font-light text-text mb-4">{{ t.tariffs_title }}</h2>
+      <p class="text-muted">{{ t.tariffs_subtitle }}</p>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+      <!-- Free -->
       <div class="p-6 rounded-2xl bg-surface border border-border">
-        <h3 class="font-semibold text-text mb-1">Бесплатный</h3>
-        <p class="text-3xl font-light text-text mb-6">0 <span class="text-base text-muted">руб/мес</span></p>
+        <h3 class="font-semibold text-text mb-1">{{ t.plan_free }}</h3>
+        <p class="text-3xl font-light text-text mb-6">0 <span class="text-base text-muted">{{ t.plan_per_month }}</span></p>
         <ul class="space-y-3 mb-8">
-          {% for item in ['5 вопросов в день', '1 рецепт в день', 'База знаний о грибах'] %}
+          {% for item in [t.free_f1, t.free_f2, t.free_f3] %}
           <li class="flex items-center gap-2 text-sm text-muted">
             <span class="w-1.5 h-1.5 rounded-full bg-muted flex-shrink-0"></span>{{ item }}
           </li>
           {% endfor %}
         </ul>
         <a href="/login" class="block text-center px-4 py-2.5 rounded-lg border border-border text-muted hover:border-gold hover:text-gold transition-all duration-300 text-sm">
-          Начать бесплатно
+          {{ t.btn_start_free }}
         </a>
       </div>
 
+      <!-- Start -->
       <div class="p-6 rounded-2xl bg-surface border border-gold/40 relative">
-        <div class="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gold text-bg text-xs font-semibold">Популярный</div>
-        <h3 class="font-semibold text-text mb-1">Старт</h3>
-        <p class="text-3xl font-light text-text mb-6">990 <span class="text-base text-muted">руб/мес</span></p>
+        <div class="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gold text-bg text-xs font-semibold">{{ t.plan_popular }}</div>
+        <h3 class="font-semibold text-text mb-1">{{ t.plan_start }}</h3>
+        <p class="text-3xl font-light text-text mb-6">990 <span class="text-base text-muted">{{ t.plan_per_month }}</span></p>
         <ul class="space-y-3 mb-8">
-          {% for item in ['Безлимитные консультации', 'PDF-рецепты', 'История 1 месяц', 'Приоритетные ответы'] %}
+          {% for item in [t.start_f1, t.start_f2, t.start_f3, t.start_f4] %}
           <li class="flex items-center gap-2 text-sm text-muted">
             <span class="w-1.5 h-1.5 rounded-full bg-gold flex-shrink-0"></span>{{ item }}
           </li>
           {% endfor %}
         </ul>
         <a href="/dashboard" class="block text-center px-4 py-2.5 rounded-lg bg-gold text-bg font-medium hover:bg-gold-light transition-all duration-300 text-sm">
-          Подключить
+          {{ t.btn_connect }}
         </a>
       </div>
 
+      <!-- Pro -->
       <div class="p-6 rounded-2xl bg-surface border border-border">
-        <h3 class="font-semibold text-text mb-1">Про</h3>
-        <p class="text-3xl font-light text-text mb-6">1990 <span class="text-base text-muted">руб/мес</span></p>
+        <h3 class="font-semibold text-text mb-1">{{ t.plan_pro }}</h3>
+        <p class="text-3xl font-light text-text mb-6">1990 <span class="text-base text-muted">{{ t.plan_per_month }}</span></p>
         <ul class="space-y-3 mb-8">
-          {% for item in ['Всё из Старт', 'История 3 месяца', 'Глубокий разбор грибов', 'Анализ анализов крови'] %}
+          {% for item in [t.pro_f1, t.pro_f2, t.pro_f3, t.pro_f4] %}
           <li class="flex items-center gap-2 text-sm text-muted">
             <span class="w-1.5 h-1.5 rounded-full bg-gold-light flex-shrink-0"></span>{{ item }}
           </li>
           {% endfor %}
         </ul>
         <a href="/dashboard" class="block text-center px-4 py-2.5 rounded-lg border border-gold/40 text-gold hover:bg-gold hover:text-bg transition-all duration-300 text-sm">
-          Подключить
+          {{ t.btn_connect }}
         </a>
       </div>
     </div>

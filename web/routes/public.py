@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Request, Depends
-from fastapi.templating import Jinja2Templates
+from web.templates_utils import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from db.database import database
 from db.models import products, posts, users
