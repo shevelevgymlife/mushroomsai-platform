@@ -344,6 +344,8 @@ async def users_list(request: Request, search: str = ""):
     all_users = await database.fetch_all(query.limit(100))
 
     msg_counts = {}
+    # Build enriched user list with display_tg_id = tg_id OR linked_tg_id
+    enriched_users = []
     for u in all_users:
         count = await database.fetch_val(
             sqlalchemy.select(sqlalchemy.func.count())
@@ -351,6 +353,9 @@ async def users_list(request: Request, search: str = ""):
             .where(messages.c.user_id == u["id"])
         )
         msg_counts[u["id"]] = count or 0
+        d = dict(u)
+        d["display_tg_id"] = u["tg_id"] or u["linked_tg_id"]
+        enriched_users.append(d)
 
     return templates.TemplateResponse(
         "dashboard/admin_users.html",
@@ -359,7 +364,7 @@ async def users_list(request: Request, search: str = ""):
             "user": admin,
             "nav": ADMIN_NAV,
             "user_permissions": await get_user_permissions(admin),
-            "users": all_users,
+            "users": enriched_users,
             "search": search,
             "msg_counts": msg_counts,
         },
@@ -467,6 +472,30 @@ async def change_subscription(request: Request, user_id: int, plan: str = Form(.
         )
     )
     return JSONResponse({"ok": True, "plan": plan})
+
+
+@router.post("/users/{user_id}/send-message")
+async def send_message_to_user(request: Request, user_id: int, text: str = Form(...)):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+
+    target = await database.fetch_one(users.select().where(users.c.id == user_id))
+    if not target:
+        return JSONResponse({"error": "not found"}, status_code=404)
+
+    tg_id = target.get("tg_id") or target.get("linked_tg_id")
+    if not tg_id:
+        return JSONResponse({"error": "У пользователя нет Telegram ID"}, status_code=400)
+
+    from config import settings
+    from telegram import Bot
+    bot = Bot(token=settings.TELEGRAM_TOKEN)
+    try:
+        await bot.send_message(chat_id=tg_id, text=text)
+        return JSONResponse({"ok": True})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 
 @router.get("/users/{user_id}/dialogs", response_class=HTMLResponse)
