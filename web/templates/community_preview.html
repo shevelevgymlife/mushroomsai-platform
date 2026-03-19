@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Сообщество — MushroomsAI{% endblock %}
+
+{% block content %}
+<div class="pt-24 pb-16">
+  <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+
+    <!-- Header -->
+    <div class="text-center mb-12">
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gold/10 border border-gold/20 text-gold text-xs mb-6">
+        <span class="w-1.5 h-1.5 rounded-full bg-gold animate-pulse inline-block"></span>
+        Живое сообщество
+      </div>
+      <h1 class="text-4xl font-light text-text mb-3">Сообщество MushroomsAI</h1>
+      <p class="text-muted mb-8">Личный опыт участников платформы — делитесь, общайтесь, учитесь</p>
+
+      <!-- Stats -->
+      <div class="inline-flex items-center gap-8 px-8 py-4 rounded-2xl bg-surface border border-border">
+        <div class="text-center">
+          <p class="text-2xl font-light text-gold">{{ member_count }}</p>
+          <p class="text-xs text-muted mt-0.5">участников</p>
+        </div>
+        <div class="w-px h-8 bg-border"></div>
+        <div class="text-center">
+          <p class="text-2xl font-light text-gold">{{ post_count }}</p>
+          <p class="text-xs text-muted mt-0.5">публикаций</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent members -->
+    {% if recent_members %}
+    <div class="mb-10">
+      <h2 class="text-sm font-medium text-muted uppercase tracking-wider mb-4">Последние участники</h2>
+      <div class="flex flex-wrap gap-3">
+        {% for member in recent_members %}
+        <div class="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-surface border border-border">
+          {% if member.avatar %}
+            <img src="{{ member.avatar }}" alt="" class="w-7 h-7 rounded-full object-cover" />
+          {% else %}
+            <div class="w-7 h-7 rounded-full bg-gold/20 flex items-center justify-center flex-shrink-0">
+              <span class="text-gold text-xs font-semibold">{{ (member.name or 'A')[0].upper() }}</span>
+            </div>
+          {% endif %}
+          <span class="text-sm text-text">{{ member.name or 'Участник' }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Blurred posts with overlay -->
+    <div class="relative mb-10">
+      <h2 class="text-sm font-medium text-muted uppercase tracking-wider mb-4">Последние публикации</h2>
+
+      <!-- Posts list (blurred) -->
+      <div class="space-y-4" style="filter: blur(6px); pointer-events: none; user-select: none;">
+        {% if preview_posts %}
+          {% for post in preview_posts %}
+          <div class="p-6 rounded-2xl bg-surface border border-border">
+            <p class="text-sm text-text leading-relaxed mb-4">{{ post.content }}</p>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-muted">{{ post.created_at.strftime('%d %B %Y') if post.created_at else '' }}</span>
+              <div class="flex items-center gap-1.5 text-xs text-muted">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+                <span>{{ post.likes }}</span>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          {% for _ in range(3) %}
+          <div class="p-6 rounded-2xl bg-surface border border-border">
+            <div class="h-4 bg-border/50 rounded mb-2 w-3/4"></div>
+            <div class="h-4 bg-border/50 rounded mb-2 w-full"></div>
+            <div class="h-4 bg-border/50 rounded w-1/2"></div>
+          </div>
+          {% endfor %}
+        {% endif %}
+      </div>
+
+      <!-- Overlay -->
+      <div class="absolute inset-0 flex flex-col items-center justify-center rounded-2xl"
+           style="background: linear-gradient(to bottom, transparent 0%, rgba(8,8,8,0.6) 30%, rgba(8,8,8,0.92) 70%, #080808 100%);">
+        <div class="text-center px-6 py-8">
+          <div class="w-14 h-14 rounded-2xl bg-gold/10 border border-gold/20 flex items-center justify-center mx-auto mb-4">
+            <svg class="w-7 h-7 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+            </svg>
+          </div>
+          <p class="text-text font-medium mb-1.5">Войдите, чтобы читать посты</p>
+          <p class="text-sm text-muted mb-6">и общаться с участниками сообщества</p>
+          <a href="/login"
+             class="inline-flex items-center gap-2 px-8 py-3 rounded-xl bg-gold text-bg font-semibold hover:bg-gold-light transition-all duration-300">
+            Присоединиться
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+            </svg>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer CTA -->
+    <div class="text-center">
+      <p class="text-sm text-muted">
+        Уже есть аккаунт?
+        <a href="/login" class="text-gold hover:underline ml-1">Войти</a>
+      </p>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

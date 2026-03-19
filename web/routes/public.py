@@ -177,6 +177,38 @@ async def chat_page(request: Request):
 @router.get("/community", response_class=HTMLResponse)
 async def community(request: Request):
     current_user = await get_user_from_request(request)
+
+    if not current_user:
+        # Preview for unauthenticated users
+        post_count = await database.fetch_val(
+            sa.select(sa.func.count()).select_from(posts).where(posts.c.approved == True)
+        )
+        member_count = await database.fetch_val(
+            sa.select(sa.func.count()).select_from(users)
+        )
+        recent_members = await database.fetch_all(
+            users.select()
+            .order_by(users.c.created_at.desc())
+            .limit(10)
+        )
+        preview_posts = await database.fetch_all(
+            posts.select()
+            .where(posts.c.approved == True)
+            .order_by(posts.c.created_at.desc())
+            .limit(5)
+        )
+        return templates.TemplateResponse(
+            "community_preview.html",
+            {
+                "request": request,
+                "user": None,
+                "post_count": post_count or 0,
+                "member_count": member_count or 0,
+                "recent_members": recent_members,
+                "preview_posts": preview_posts,
+            },
+        )
+
     all_posts = await database.fetch_all(
         posts.select()
         .where(posts.c.approved == True)
