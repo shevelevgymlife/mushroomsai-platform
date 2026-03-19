@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Request, Form
+import os
+import uuid
+from fastapi import APIRouter, Request, Form, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from web.templates_utils import Jinja2Templates
 from auth.session import get_user_from_request
@@ -282,6 +284,35 @@ async def delete_shop_product(request: Request, product_id: int):
 
     await database.execute(shop_products.delete().where(shop_products.c.id == product_id))
     return JSONResponse({"ok": True})
+
+
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5 MB
+
+
+@router.post("/shop/upload-image")
+async def upload_product_image(request: Request, file: UploadFile = File(...)):
+    admin = await require_permission(request, "can_shop")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+
+    if file.content_type not in ALLOWED_IMAGE_TYPES:
+        return JSONResponse({"error": "Допустимые форматы: JPEG, PNG, WebP, GIF"}, status_code=400)
+
+    data = await file.read()
+    if len(data) > MAX_IMAGE_SIZE:
+        return JSONResponse({"error": "Файл слишком большой (макс. 5 МБ)"}, status_code=400)
+
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else "jpg"
+    filename = f"{uuid.uuid4().hex}.{ext}"
+
+    base = "/data" if os.path.exists("/data") else "./media"
+    save_path = os.path.join(base, "products", filename)
+
+    with open(save_path, "wb") as f:
+        f.write(data)
+
+    return JSONResponse({"ok": True, "url": f"/media/products/{filename}"})
 
 
 # ─── Users ────────────────────────────────────────────────────────────────────

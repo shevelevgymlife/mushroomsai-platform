@@ -102,11 +102,27 @@
         <input type="text" name="url" placeholder="https://..."
           class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors" />
       </div>
+
+      <!-- Photo upload -->
       <div>
-        <label class="block text-xs text-muted mb-1.5">URL фото</label>
-        <input type="text" name="image_url" placeholder="https://..."
-          class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors" />
+        <label class="block text-xs text-muted mb-1.5">Фото товара</label>
+        <!-- Preview -->
+        <div id="addPreviewBox" class="hidden w-full h-36 rounded-xl overflow-hidden mb-2 bg-bg border border-border">
+          <img id="addPreviewImg" src="" alt="preview" class="w-full h-full object-cover" />
+        </div>
+        <!-- Upload button -->
+        <label class="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-bg border border-border border-dashed text-muted text-sm cursor-pointer hover:border-gold/60 hover:text-gold transition-colors">
+          <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>
+          <span id="addFileLabel">Выбрать файл (JPEG, PNG, WebP — до 5 МБ)</span>
+          <input type="file" accept="image/*" class="hidden" onchange="uploadProductImage(this, 'add')" />
+        </label>
+        <p id="addUploadError" class="hidden mt-1 text-xs text-red-400"></p>
+        <!-- Hidden field populated after upload -->
+        <input type="hidden" name="image_url" id="addImageUrl" />
       </div>
+
       <div class="flex gap-3 pt-2">
         <button type="submit"
           class="flex-1 px-4 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-all duration-300">
@@ -156,11 +172,24 @@
         <input type="text" name="url" id="editUrl"
           class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors" />
       </div>
+
+      <!-- Photo upload -->
       <div>
-        <label class="block text-xs text-muted mb-1.5">URL фото</label>
-        <input type="text" name="image_url" id="editImageUrl"
-          class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors" />
+        <label class="block text-xs text-muted mb-1.5">Фото товара</label>
+        <div id="editPreviewBox" class="hidden w-full h-36 rounded-xl overflow-hidden mb-2 bg-bg border border-border">
+          <img id="editPreviewImg" src="" alt="preview" class="w-full h-full object-cover" />
+        </div>
+        <label class="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-bg border border-border border-dashed text-muted text-sm cursor-pointer hover:border-gold/60 hover:text-gold transition-colors">
+          <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>
+          <span id="editFileLabel">Заменить фото</span>
+          <input type="file" accept="image/*" class="hidden" onchange="uploadProductImage(this, 'edit')" />
+        </label>
+        <p id="editUploadError" class="hidden mt-1 text-xs text-red-400"></p>
+        <input type="hidden" name="image_url" id="editImageUrl" />
       </div>
+
       <div class="flex gap-3 pt-2">
         <button type="submit"
           class="flex-1 px-4 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-all duration-300">
@@ -186,7 +215,57 @@ function openEditModal(id, name, desc, price, url, mushType, imgUrl) {
   document.getElementById('editUrl').value = url;
   document.getElementById('editMushroomType').value = mushType;
   document.getElementById('editImageUrl').value = imgUrl;
+
+  // Show existing image preview
+  const previewBox = document.getElementById('editPreviewBox');
+  const previewImg = document.getElementById('editPreviewImg');
+  if (imgUrl) {
+    previewImg.src = imgUrl;
+    previewBox.classList.remove('hidden');
+    document.getElementById('editFileLabel').textContent = 'Заменить фото';
+  } else {
+    previewBox.classList.add('hidden');
+    document.getElementById('editFileLabel').textContent = 'Загрузить фото';
+  }
+  document.getElementById('editUploadError').classList.add('hidden');
   document.getElementById('editModal').classList.remove('hidden');
+}
+
+async function uploadProductImage(input, prefix) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const errEl = document.getElementById(prefix + 'UploadError');
+  const labelEl = document.getElementById(prefix + 'FileLabel');
+  const previewBox = document.getElementById(prefix + 'PreviewBox');
+  const previewImg = document.getElementById(prefix + 'PreviewImg');
+  const urlInput = document.getElementById(prefix + 'ImageUrl');
+
+  errEl.classList.add('hidden');
+  labelEl.textContent = 'Загрузка...';
+
+  const fd = new FormData();
+  fd.append('file', file);
+
+  try {
+    const resp = await fetch('/admin/shop/upload-image', { method: 'POST', body: fd });
+    const data = await resp.json();
+
+    if (data.ok) {
+      urlInput.value = data.url;
+      previewImg.src = data.url;
+      previewBox.classList.remove('hidden');
+      labelEl.textContent = 'Заменить фото';
+    } else {
+      errEl.textContent = data.error || 'Ошибка загрузки';
+      errEl.classList.remove('hidden');
+      labelEl.textContent = prefix === 'add' ? 'Выбрать файл (JPEG, PNG, WebP — до 5 МБ)' : 'Заменить фото';
+    }
+  } catch (e) {
+    errEl.textContent = 'Ошибка сети: ' + e.message;
+    errEl.classList.remove('hidden');
+    labelEl.textContent = prefix === 'add' ? 'Выбрать файл (JPEG, PNG, WebP — до 5 МБ)' : 'Заменить фото';
+  }
 }
 
 async function deleteProduct(id, btn) {

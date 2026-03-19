@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
@@ -39,6 +40,13 @@ async def lifespan(app: FastAPI):
     # Startup
     await database.connect()
     logger.info("Database connected")
+
+    # Ensure persistent storage directories exist (Render Disk at /data or local ./media)
+    _base = "/data" if os.path.exists("/data") else "./media"
+    os.makedirs(f"{_base}/products", exist_ok=True)
+    os.makedirs(f"{_base}/community", exist_ok=True)
+    os.makedirs(f"{_base}/avatars", exist_ok=True)
+    logger.info(f"Media dirs ready under {_base}")
 
     # Create tables
     try:
@@ -139,6 +147,13 @@ app.add_middleware(LanguageMiddleware)
 
 # Static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Persistent media (Render Disk at /data, fallback to ./media locally)
+if os.path.exists("/data"):
+    app.mount("/media", StaticFiles(directory="/data"), name="media")
+else:
+    os.makedirs("./media", exist_ok=True)
+    app.mount("/media", StaticFiles(directory="./media"), name="media")
 
 # Routers
 app.include_router(public_router)
