@@ -212,6 +212,42 @@ async def link_google_start(request: Request):
     return RedirectResponse(url)
 
 
+@router.post("/sync-history")
+async def sync_history(request: Request):
+    """Transfer messages from all secondary (linked) accounts to the current primary account."""
+    user = await get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    primary_id = user["id"]
+
+    # Find all secondary accounts that point to this user as primary
+    secondary_accounts = await database.fetch_all(
+        users.select().where(users.c.primary_user_id == primary_id)
+    )
+
+    if not secondary_accounts:
+        print(f"SYNC HISTORY: no secondary accounts for user_id={primary_id}")
+        return JSONResponse({"ok": True, "transferred": 0, "secondaries": 0})
+
+    total_transferred = 0
+    for secondary in secondary_accounts:
+        secondary_id = secondary["id"]
+        rowcount = await database.execute(
+            messages.update()
+            .where(messages.c.user_id == secondary_id)
+            .values(user_id=primary_id)
+        )
+        print(f"SYNC HISTORY: transferred {rowcount} messages from secondary_id={secondary_id} to primary_id={primary_id}")
+        total_transferred += (rowcount or 0)
+
+    return JSONResponse({
+        "ok": True,
+        "transferred": total_transferred,
+        "secondaries": len(secondary_accounts),
+    })
+
+
 @router.post("/merge")
 async def manual_merge(
     request: Request,

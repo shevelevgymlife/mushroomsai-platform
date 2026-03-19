@@ -68,9 +68,16 @@ async def api_chat(request: Request):
         return JSONResponse({"error": "Empty message"}, status_code=400)
 
     if user:
-        allowed = await can_ask_question(user["id"])
-        if not allowed:
-            return JSONResponse({"error": "limit", "message": "Дневной лимит исчерпан. Подключите подписку для безлимитного доступа."}, status_code=429)
+        UNLIMITED_TG_IDS = {742166400}
+        is_unlimited = (
+            user.get("role") == "admin"
+            or user.get("tg_id") in UNLIMITED_TG_IDS
+            or user.get("linked_tg_id") in UNLIMITED_TG_IDS
+        )
+        if not is_unlimited:
+            allowed = await can_ask_question(user["id"])
+            if not allowed:
+                return JSONResponse({"error": "limit", "message": "Дневной лимит исчерпан. Подключите подписку для безлимитного доступа."}, status_code=429)
         answer = await chat_with_ai(user_message=user_message, user_id=user["id"])
         await increment_question_count(user["id"])
     else:

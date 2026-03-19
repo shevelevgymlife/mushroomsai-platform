@@ -6,7 +6,10 @@ from ai.openai_client import chat_with_ai
 from services.subscription_service import can_ask_question, increment_question_count
 from bot.handlers.start import ensure_user
 
+# Telegram IDs with unlimited access
 UNLIMITED_USERS = [742166400]
+# DB user IDs with unlimited access (add Google-linked account IDs here)
+UNLIMITED_USER_IDS: set = set()
 
 LIMIT_TEXT = (
     "Вы исчерпали дневной лимит бесплатных вопросов (5 в день).\n\n"
@@ -114,7 +117,12 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tg_user = update.effective_user
     user = await ensure_user(tg_user)
 
-    if tg_user.id not in UNLIMITED_USERS:
+    is_unlimited = (
+        tg_user.id in UNLIMITED_USERS
+        or user["id"] in UNLIMITED_USER_IDS
+        or user.get("linked_tg_id") in UNLIMITED_USERS
+    )
+    if not is_unlimited:
         allowed = await can_ask_question(user["id"])
         if not allowed:
             await update.message.reply_text(LIMIT_TEXT)
