@@ -161,3 +161,26 @@ ai_settings = sqlalchemy.Table(
     sqlalchemy.Column("updated_by", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=True),
     sqlalchemy.Column("updated_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
+
+knowledge_base = sqlalchemy.Table(
+    "knowledge_base",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("title", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("content", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("category", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("source_file", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+shop_products = sqlalchemy.Table(
+    "shop_products",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("name", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("description", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("price", sqlalchemy.Integer, nullable=True),
+    sqlalchemy.Column("url", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("mushroom_type", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
