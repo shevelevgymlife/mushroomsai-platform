@@ -6,16 +6,40 @@
   <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
     <!-- Header -->
     <div class="flex items-center gap-5 mb-10">
-      {% if user.avatar %}
-        <img src="{{ user.avatar }}" class="w-16 h-16 rounded-2xl object-cover" alt="" />
-      {% else %}
-        <div class="w-16 h-16 rounded-2xl bg-gold/20 flex items-center justify-center">
-          <span class="text-gold text-2xl font-semibold">{{ (user.name or 'U')[0].upper() }}</span>
+      <!-- Avatar with hover-to-change -->
+      <div class="relative group flex-shrink-0 cursor-pointer" onclick="document.getElementById('avatarInput').click()" title="Изменить фото">
+        <!-- Avatar image or letter placeholder -->
+        {% if user.avatar %}
+          <img id="avatarImg" src="{{ user.avatar }}" class="w-16 h-16 rounded-2xl object-cover" alt="" />
+        {% else %}
+          <div id="avatarPlaceholder" class="w-16 h-16 rounded-2xl bg-gold/20 flex items-center justify-center">
+            <span class="text-gold text-2xl font-semibold">{{ (user.name or 'U')[0].upper() }}</span>
+          </div>
+          <img id="avatarImg" src="" class="w-16 h-16 rounded-2xl object-cover hidden" alt="" />
+        {% endif %}
+        <!-- Hover overlay with pencil icon -->
+        <div class="absolute inset-0 rounded-2xl bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+          </svg>
         </div>
-      {% endif %}
+        <!-- Upload spinner (hidden by default) -->
+        <div id="avatarSpinner" class="hidden absolute inset-0 rounded-2xl bg-black/60 flex items-center justify-center">
+          <svg class="w-5 h-5 text-gold animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+          </svg>
+        </div>
+        <!-- Hidden file input -->
+        <input id="avatarInput" type="file" accept="image/jpeg,image/png,image/webp" class="hidden"
+               onchange="uploadAvatar(this)" />
+      </div>
+
       <div>
         <h1 class="text-2xl font-semibold text-text">{{ user.name or t.nav_cabinet }}</h1>
         <p class="text-sm text-muted">{{ user.email or ('Telegram' if user.tg_id else 'Google') }}</p>
+        <p id="avatarError" class="hidden text-xs text-red-400 mt-1"></p>
       </div>
       <div class="ml-auto hidden sm:block">
         <span class="px-3 py-1.5 rounded-lg text-xs font-medium {{ 'bg-gold/20 text-gold border border-gold/30' if plan == 'pro' else ('bg-gold/10 text-gold border border-gold/20' if plan == 'start' else 'bg-surface border border-border text-muted') }}">
@@ -224,6 +248,47 @@ var _t_copy = {{ t.btn_copy | tojson }};
 var _t_copied = {{ t.btn_copied | tojson }};
 var _t_syncing = {{ t.dash_syncing | tojson }};
 var _t_sync = {{ t.dash_sync_history | tojson }};
+
+async function uploadAvatar(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const spinner = document.getElementById('avatarSpinner');
+  const errEl = document.getElementById('avatarError');
+  const imgEl = document.getElementById('avatarImg');
+  const placeholder = document.getElementById('avatarPlaceholder');
+
+  errEl.classList.add('hidden');
+  spinner.classList.remove('hidden');
+
+  const fd = new FormData();
+  fd.append('file', file);
+
+  try {
+    const resp = await fetch('/profile/upload-avatar', { method: 'POST', body: fd });
+    const data = await resp.json();
+
+    if (data.ok) {
+      // Update avatar image, hide placeholder if visible
+      imgEl.src = data.url + '?t=' + Date.now();
+      imgEl.classList.remove('hidden');
+      if (placeholder) placeholder.classList.add('hidden');
+      // Also update navbar avatar if present
+      document.querySelectorAll('img[src*="/media/avatars/"], nav img').forEach(function(el) {
+        if (el !== imgEl) el.src = data.url + '?t=' + Date.now();
+      });
+    } else {
+      errEl.textContent = data.error || 'Ошибка загрузки';
+      errEl.classList.remove('hidden');
+    }
+  } catch (e) {
+    errEl.textContent = 'Ошибка сети';
+    errEl.classList.remove('hidden');
+  } finally {
+    spinner.classList.add('hidden');
+    input.value = '';
+  }
+}
 
 function copyRef() {
   const input = document.getElementById('refLink');

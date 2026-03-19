@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Request, Form
+import os
+import uuid
+from fastapi import APIRouter, Request, Form, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from web.templates_utils import Jinja2Templates
 from auth.session import get_user_from_request
@@ -153,3 +155,37 @@ async def update_language(request: Request, language: str = Form(...)):
         users.update().where(users.c.id == user["id"]).values(language=language)
     )
     return RedirectResponse("/dashboard", status_code=302)
+
+
+_AVATAR_ALLOWED = {"image/jpeg", "image/png", "image/webp"}
+_AVATAR_MAX_SIZE = 3 * 1024 * 1024  # 3 MB
+
+
+@router.post("/profile/upload-avatar")
+async def upload_avatar(request: Request, file: UploadFile = File(...)):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+
+    if file.content_type not in _AVATAR_ALLOWED:
+        return JSONResponse({"error": "Допустимые форматы: JPEG, PNG, WebP"}, status_code=400)
+
+    data = await file.read()
+    if len(data) > _AVATAR_MAX_SIZE:
+        return JSONResponse({"error": "Файл слишком большой (макс. 3 МБ)"}, status_code=400)
+
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else "jpg"
+    filename = f"{user['id']}.{ext}"
+
+    base = "/data" if os.path.exists("/data") else "./media"
+    save_path = os.path.join(base, "avatars", filename)
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
+    with open(save_path, "wb") as f:
+        f.write(data)
+
+    url = f"/media/avatars/{filename}"
+    await database.execute(
+        users.update().where(users.c.id == user["id"]).values(avatar=url)
+    )
+    return JSONResponse({"ok": True, "url": url})
