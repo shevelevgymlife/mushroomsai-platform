@@ -14,8 +14,6 @@ from datetime import datetime, timedelta, date
 router = APIRouter(prefix="/admin")
 templates = Jinja2Templates(directory="web/templates")
 
-ADMIN_TG_ID = 742166400
-
 ADMIN_NAV = [
     ("Dashboard", "/admin"),
     ("AI", "/admin/ai"),
@@ -29,7 +27,7 @@ ADMIN_NAV = [
 
 async def require_admin(request: Request):
     user = await get_user_from_request(request)
-    if not user or user.get("tg_id") != ADMIN_TG_ID:
+    if not user or user.get("role") != "admin":
         return None
     return user
 
