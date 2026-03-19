@@ -97,12 +97,7 @@ window.addEventListener('load', function() {
 });
 
 function openCabinet() {
-  const tg = window.Telegram?.WebApp;
-  if (tg) {
-    tg.openLink('https://mushroomsai.ru/login');
-  } else {
-    window.open('https://mushroomsai.ru/login', '_blank');
-  }
+  window.location.href = '/login';
 }
 </script>
 {% endblock %}
