@@ -23,6 +23,10 @@ users = sqlalchemy.Table(
     sqlalchemy.Column("daily_questions", sqlalchemy.Integer, default=0, server_default="0"),
     sqlalchemy.Column("daily_recipes", sqlalchemy.Integer, default=0, server_default="0"),
     sqlalchemy.Column("last_reset", sqlalchemy.Date, nullable=True),
+    sqlalchemy.Column("bio", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("followers_count", sqlalchemy.Integer, default=0, server_default="0"),
+    sqlalchemy.Column("following_count", sqlalchemy.Integer, default=0, server_default="0"),
+    sqlalchemy.Column("wallet_address", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
 
@@ -221,6 +225,8 @@ community_posts = sqlalchemy.Table(
     sqlalchemy.Column("folder_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("community_folders.id"), nullable=True),
     sqlalchemy.Column("likes_count", sqlalchemy.Integer, default=0, server_default="0"),
     sqlalchemy.Column("comments_count", sqlalchemy.Integer, default=0, server_default="0"),
+    sqlalchemy.Column("saves_count", sqlalchemy.Integer, default=0, server_default="0"),
+    sqlalchemy.Column("tags", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("pinned", sqlalchemy.Boolean, default=False, server_default="false"),
     sqlalchemy.Column("approved", sqlalchemy.Boolean, default=True, server_default="true"),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
@@ -266,5 +272,34 @@ admin_permissions = sqlalchemy.Table(
     sqlalchemy.Column("can_feedback", sqlalchemy.Boolean, default=False, server_default="false"),
     sqlalchemy.Column("can_broadcast", sqlalchemy.Boolean, default=False, server_default="false"),
     sqlalchemy.Column("can_knowledge", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+community_follows = sqlalchemy.Table(
+    "community_follows",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("follower_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("following_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+community_saved = sqlalchemy.Table(
+    "community_saved",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("post_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("community_posts.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+community_messages = sqlalchemy.Table(
+    "community_messages",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("sender_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
+    sqlalchemy.Column("recipient_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
+    sqlalchemy.Column("text", sqlalchemy.Text, nullable=False),
+    sqlalchemy.Column("is_read", sqlalchemy.Boolean, default=False, server_default="false"),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )

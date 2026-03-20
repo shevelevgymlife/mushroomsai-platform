@@ -5,8 +5,9 @@ from fastapi import APIRouter, Request, Depends, UploadFile, File, Form
 from web.templates_utils import Jinja2Templates
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from db.database import database
-from db.models import products, posts, users, shop_products, product_reviews, community_posts, community_likes, community_folders
+from db.models import products, posts, users, shop_products, product_reviews, community_posts, community_likes, community_folders, community_follows, community_saved
 from auth.session import get_user_from_request
+from config import settings
 
 router = APIRouter()
 templates = Jinja2Templates(directory="web/templates")
@@ -212,7 +213,6 @@ async def community(request: Request):
         )
 
     # Authenticated: full social network
-    # Always use primary account for all identity operations
     effective_user_id = current_user.get("primary_user_id") or current_user["id"]
     display_user = current_user
     if current_user.get("primary_user_id"):
@@ -220,14 +220,52 @@ async def community(request: Request):
         if primary:
             display_user = dict(primary)
 
+    tab = request.query_params.get("tab", "all")  # all | following | popular | saved
     folder_id = request.query_params.get("folder")
     folder_id = int(folder_id) if folder_id and folder_id.isdigit() else None
+    search = request.query_params.get("q", "").strip()
 
-    query = community_posts.select().where(community_posts.c.approved == True)
+    base_query = community_posts.select().where(community_posts.c.approved == True)
     if folder_id:
-        query = query.where(community_posts.c.folder_id == folder_id)
-    query = query.order_by(community_posts.c.pinned.desc(), community_posts.c.created_at.desc()).limit(30)
-    raw_posts = await database.fetch_all(query)
+        base_query = base_query.where(community_posts.c.folder_id == folder_id)
+    if search:
+        base_query = base_query.where(community_posts.c.content.ilike(f"%{search}%"))
+
+    raw_posts = None
+    if tab == "following":
+        followed_ids_rows = await database.fetch_all(
+            community_follows.select().where(community_follows.c.follower_id == effective_user_id)
+        )
+        followed_ids = [r["following_id"] for r in followed_ids_rows]
+        if followed_ids:
+            query = base_query.where(community_posts.c.user_id.in_(followed_ids))
+            query = query.order_by(community_posts.c.pinned.desc(), community_posts.c.created_at.desc()).limit(30)
+            raw_posts = await database.fetch_all(query)
+        else:
+            raw_posts = []
+    elif tab == "popular":
+        query = base_query.order_by(community_posts.c.likes_count.desc(), community_posts.c.created_at.desc()).limit(30)
+        raw_posts = await database.fetch_all(query)
+    elif tab == "saved":
+        saved_rows_tab = await database.fetch_all(
+            community_saved.select().where(community_saved.c.user_id == effective_user_id)
+        )
+        saved_post_ids = [r["post_id"] for r in saved_rows_tab]
+        if saved_post_ids:
+            query = base_query.where(community_posts.c.id.in_(saved_post_ids))
+            query = query.order_by(community_posts.c.pinned.desc(), community_posts.c.created_at.desc()).limit(30)
+            raw_posts = await database.fetch_all(query)
+        else:
+            raw_posts = []
+    else:
+        query = base_query.order_by(community_posts.c.pinned.desc(), community_posts.c.created_at.desc()).limit(30)
+        raw_posts = await database.fetch_all(query)
+
+    # Get saved post IDs for this user
+    saved_rows = await database.fetch_all(
+        community_saved.select().where(community_saved.c.user_id == effective_user_id)
+    )
+    saved_post_ids_set = {r["post_id"] for r in saved_rows}
 
     feed = []
     for p in raw_posts:
@@ -235,7 +273,6 @@ async def community(request: Request):
         if p["user_id"]:
             raw_author = await database.fetch_one(users.select().where(users.c.id == p["user_id"]))
             if raw_author:
-                # If post author is a secondary account, show primary's profile
                 if raw_author["primary_user_id"]:
                     primary_author = await database.fetch_one(
                         users.select().where(users.c.id == raw_author["primary_user_id"])
@@ -255,6 +292,16 @@ async def community(request: Request):
             .where(community_likes.c.user_id == effective_user_id)
         )
         liked = lk is not None
+        saved = p["id"] in saved_post_ids_set
+        # Check if we follow the author
+        is_following = False
+        if author and author["id"] != effective_user_id:
+            fol = await database.fetch_one(
+                community_follows.select()
+                .where(community_follows.c.follower_id == effective_user_id)
+                .where(community_follows.c.following_id == author["id"])
+            )
+            is_following = fol is not None
         folder_name = None
         if p["folder_id"]:
             fl = await database.fetch_one(community_folders.select().where(community_folders.c.id == p["folder_id"]))
@@ -264,24 +311,28 @@ async def community(request: Request):
             "author": author,
             "author_post_count": post_count,
             "liked": liked,
+            "saved": saved,
+            "is_following": is_following,
             "folder_name": folder_name,
         })
 
-    # Folders for filter
     all_folders = await database.fetch_all(
         community_folders.select().order_by(community_folders.c.name.asc())
     )
-    # User's own folders for post creation (by effective/primary account)
     my_folders = await database.fetch_all(
         community_folders.select()
         .where(community_folders.c.user_id == effective_user_id)
         .order_by(community_folders.c.created_at.asc())
     )
-    # User post count for reputation (by primary account)
     my_post_count = await database.fetch_val(
         sa.select(sa.func.count()).select_from(community_posts)
         .where(community_posts.c.user_id == effective_user_id)
     ) or 0
+
+    # Get display_user's full profile data (bio, followers_count, following_count)
+    full_profile = await database.fetch_one(users.select().where(users.c.id == effective_user_id))
+    if full_profile:
+        display_user = dict(full_profile)
 
     return templates.TemplateResponse(
         "community.html",
@@ -293,16 +344,19 @@ async def community(request: Request):
             "my_folders": my_folders,
             "sel_folder": folder_id,
             "my_post_count": my_post_count,
+            "tab": tab,
+            "search": search,
+            "shevelev_token": settings.SHEVELEV_TOKEN_ADDRESS,
         },
     )
 
 
 @router.get("/community/user-profile/{user_id}")
 async def community_user_profile(request: Request, user_id: int):
+    current_user = await get_user_from_request(request)
     u = await database.fetch_one(users.select().where(users.c.id == user_id))
     if not u:
         return JSONResponse({"error": "not found"}, status_code=404)
-    # If secondary account — show primary's profile
     if u["primary_user_id"]:
         primary = await database.fetch_one(users.select().where(users.c.id == u["primary_user_id"]))
         if primary:
@@ -311,11 +365,26 @@ async def community_user_profile(request: Request, user_id: int):
     post_count = await database.fetch_val(
         sa.select(sa.func.count()).select_from(community_posts).where(community_posts.c.user_id == profile_id)
     ) or 0
+    is_following = False
+    if current_user:
+        viewer_id = current_user.get("primary_user_id") or current_user["id"]
+        if viewer_id != profile_id:
+            fol = await database.fetch_one(
+                community_follows.select()
+                .where(community_follows.c.follower_id == viewer_id)
+                .where(community_follows.c.following_id == profile_id)
+            )
+            is_following = fol is not None
     return JSONResponse({
+        "id": profile_id,
         "name": u["name"],
         "avatar": u["avatar"],
+        "bio": u["bio"] if "bio" in u.keys() else None,
         "wallet": u["wallet_address"] if "wallet_address" in u.keys() else None,
         "post_count": post_count,
+        "followers_count": u["followers_count"] if "followers_count" in u.keys() else 0,
+        "following_count": u["following_count"] if "following_count" in u.keys() else 0,
+        "is_following": is_following,
     })
 
 
