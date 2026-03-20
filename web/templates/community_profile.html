@@ -1,0 +1,362 @@
+{% extends "base.html" %}
+{% block title %}{{ profile.name or 'Профиль' }} — Сообщество MushroomsAI{% endblock %}
+
+{% block content %}
+<style>
+.pp-wrap{max-width:860px;margin:0 auto;padding:88px 16px 40px}
+.pp-hero{background:linear-gradient(135deg,rgba(201,168,76,.12) 0%,rgba(8,8,8,0) 70%);border:1px solid rgba(201,168,76,.2);border-radius:20px;padding:28px;margin-bottom:20px}
+.card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px}
+.avg{border:2px solid #C9A84C;border-radius:50%;object-fit:cover}
+.avph{border:2px solid #C9A84C;border-radius:50%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:32px}
+.btn-g{background:#C9A84C;color:#000;font-weight:700;border-radius:10px;padding:10px 20px;border:none;cursor:pointer;transition:background .2s;font-size:14px;display:inline-flex;align-items:center;gap:6px}
+.btn-g:hover{background:#E8C96B}
+.btn-o{border:1.5px solid #C9A84C;color:#C9A84C;background:transparent;border-radius:10px;padding:9px 18px;cursor:pointer;font-weight:600;transition:all .2s;font-size:14px;display:inline-flex;align-items:center;gap:6px}
+.btn-o:hover,.btn-o.on{background:rgba(201,168,76,.12)}
+.btn-muted{border:1px solid rgba(255,255,255,.12);color:#888;background:transparent;border-radius:10px;padding:9px 18px;cursor:pointer;font-size:14px;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+.btn-muted:hover{border-color:rgba(201,168,76,.4);color:#C9A84C}
+.stat-pill{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:10px 16px;text-align:center;min-width:80px}
+.pcard{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:18px;margin-bottom:14px;transition:border-color .2s}
+.pcard:hover{border-color:rgba(255,255,255,.13)}
+.abt{background:none;border:none;cursor:pointer;color:#666;font-size:14px;display:inline-flex;align-items:center;gap:5px;transition:color .2s;padding:5px 8px;border-radius:8px}
+.abt:hover{color:#C9A84C;background:rgba(201,168,76,.08)}
+.abt.on{color:#C9A84C}
+.csec{display:none;margin-top:14px;border-top:1px solid rgba(255,255,255,.06);padding-top:14px}
+.sinp{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#e8e8e8;border-radius:12px;padding:10px 16px;font-size:14px;outline:none;width:100%;box-sizing:border-box;transition:border-color .2s}
+.sinp:focus{border-color:rgba(201,168,76,.5)}
+.dm-badge{background:rgba(201,168,76,.15);color:#C9A84C;border:1px solid rgba(201,168,76,.3);font-size:11px;padding:2px 8px;border-radius:20px;font-weight:700}
+.mover{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.mover.open{display:flex}
+.mbox{background:#111;border:1px solid #2a2a2a;border-radius:20px;padding:26px;width:100%;max-width:480px;max-height:88vh;overflow-y:auto;position:relative}
+.dmmsg{padding:8px 14px;border-radius:14px;max-width:80%;font-size:14px;line-height:1.5}
+.dmmsg.me{background:rgba(201,168,76,.15);border:1px solid rgba(201,168,76,.25);align-self:flex-end}
+.dmmsg.them{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);align-self:flex-start}
+.privacy-notice{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:10px 14px;font-size:12px;color:#444;display:flex;align-items:center;gap:8px}
+</style>
+
+<div class="pp-wrap">
+
+  <!-- Back link -->
+  <div style="margin-bottom:16px">
+    <a href="/community" style="color:#666;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:color .2s" onmouseover="this.style.color='#C9A84C'" onmouseout="this.style.color='#666'">← Назад в сообщество</a>
+  </div>
+
+  <!-- HERO CARD -->
+  <div class="pp-hero">
+    <div style="display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap">
+
+      <!-- Avatar -->
+      <div style="flex-shrink:0">
+        {% if profile.avatar %}
+        <img src="{{ profile.avatar }}" class="avg" style="width:96px;height:96px" alt="{{ profile.name }}">
+        {% else %}
+        <div class="avph" style="width:96px;height:96px">🍄</div>
+        {% endif %}
+      </div>
+
+      <!-- Info -->
+      <div style="flex:1;min-width:200px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+          <h1 style="font-size:22px;font-weight:700;color:#e8e8e8;margin:0">{{ profile.name or 'Участник' }}</h1>
+          {% if profile.role == 'admin' %}
+          <span style="background:rgba(248,113,113,.12);color:#f87171;border:1px solid rgba(248,113,113,.25);font-size:11px;padding:2px 9px;border-radius:20px;font-weight:700">🛡️ Админ</span>
+          {% endif %}
+          <span style="background:rgba(201,168,76,.12);color:#C9A84C;border:1px solid rgba(201,168,76,.25);font-size:12px;padding:3px 10px;border-radius:20px">{{ rep_emoji }} {{ rep_level }}</span>
+        </div>
+
+        {% if profile.bio %}
+        <p style="font-size:14px;color:#aaa;margin:0 0 14px;line-height:1.65;max-width:520px">{{ profile.bio }}</p>
+        {% else %}
+        <p style="font-size:14px;color:#444;margin:0 0 14px;font-style:italic">Описание не добавлено</p>
+        {% endif %}
+
+        <!-- Stats row -->
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px">
+          <div class="stat-pill">
+            <div style="font-size:20px;font-weight:700;color:#e8e8e8">{{ post_count }}</div>
+            <div style="font-size:11px;color:#666;margin-top:2px">постов</div>
+          </div>
+          <div class="stat-pill">
+            <div style="font-size:20px;font-weight:700;color:#e8e8e8">{{ profile.followers_count }}</div>
+            <div style="font-size:11px;color:#666;margin-top:2px">подписчиков</div>
+          </div>
+          <div class="stat-pill">
+            <div style="font-size:20px;font-weight:700;color:#e8e8e8">{{ profile.following_count }}</div>
+            <div style="font-size:11px;color:#666;margin-top:2px">подписок</div>
+          </div>
+          <div class="stat-pill" id="profileLikesStat">
+            <div style="font-size:20px;font-weight:700;color:#C9A84C">{{ profile_likes_count }}</div>
+            <div style="font-size:11px;color:#666;margin-top:2px">лайков</div>
+          </div>
+          {% if profile.wallet_address %}
+          <div class="stat-pill" id="walletBalancePill" style="min-width:110px">
+            <div style="font-size:13px;font-weight:700;color:#C9A84C" id="walletBalVal">⚗ —</div>
+            <div style="font-size:11px;color:#666;margin-top:2px">SHEVELEV</div>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Action buttons -->
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          {% if is_own %}
+          <a href="/dashboard#profile" class="btn-g">✏️ Редактировать профиль</a>
+          <a href="/community" class="btn-muted">← К ленте</a>
+          {% else %}
+          <button class="btn-g {{ '' }}" id="followBtn" onclick="doFollow()">
+            <span id="followBtnText">{{ '✓ Подписан' if is_following else '+ Подписаться' }}</span>
+          </button>
+          <button class="btn-o {{ 'on' if viewer_liked_profile }}" id="profileLikeBtn" onclick="doProfileLike()">
+            <span>{{ '❤️' if viewer_liked_profile else '🤍' }}</span>
+            <span id="profileLikeBtnText">Нравится</span>
+          </button>
+          <button class="btn-muted" onclick="openDM()">✉️ Написать</button>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Privacy notice -->
+  <div class="privacy-notice" style="margin-bottom:20px">
+    <span>🔒</span>
+    <span>Публичный профиль. История чатов, заказы и данные подписки скрыты и не отображаются.</span>
+  </div>
+
+  <!-- POSTS FEED -->
+  <div style="font-size:16px;font-weight:700;color:#e8e8e8;margin-bottom:14px">
+    Посты
+    {% if not feed %}<span style="font-size:13px;font-weight:400;color:#555;margin-left:8px">— нет публикаций</span>{% endif %}
+  </div>
+
+  {% if not feed %}
+  <div class="card" style="text-align:center;padding:50px">
+    <div style="font-size:40px;margin-bottom:10px">🍄</div>
+    <div style="color:#444">Пользователь ещё не публиковал посты</div>
+    {% if is_own %}
+    <button class="btn-g" style="margin-top:16px" onclick="location.href='/community'">Написать первый пост</button>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% for item in feed %}
+  {% set p = item.post %}
+  <div class="pcard" id="pc-{{ p.id }}">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+      <div style="font-size:12px;color:#555;display:flex;align-items:center;gap:8px">
+        {% if p.pinned %}<span style="color:#C9A84C">📌 Закреплён</span>{% endif %}
+        <span>{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}</span>
+        {% if item.folder_name %}<span style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);padding:2px 8px;border-radius:20px">📁 {{ item.folder_name }}</span>{% endif %}
+      </div>
+      {% if is_own %}
+      <span style="font-size:12px;color:#333">ID {{ p.id }}</span>
+      {% endif %}
+    </div>
+
+    <div style="font-size:15px;color:#ddd;line-height:1.65;white-space:pre-wrap;word-break:break-word">{{ p.content }}</div>
+
+    {% if p.image_url %}
+    <img src="{{ p.image_url }}" style="width:100%;max-height:400px;object-fit:cover;border-radius:12px;margin-top:12px" loading="lazy" alt="">
+    {% endif %}
+
+    <!-- Actions -->
+    <div style="display:flex;gap:4px;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.05);flex-wrap:wrap">
+      <button class="abt {{ 'on' if item.liked }}" id="lk-{{ p.id }}" onclick="doLike({{ p.id }},this)">
+        {{ '❤️' if item.liked else '🤍' }}&nbsp;<span id="lkc-{{ p.id }}">{{ p.likes_count }}</span>
+      </button>
+      <button class="abt" onclick="togCmt({{ p.id }})">
+        💬&nbsp;<span id="cmc-{{ p.id }}">{{ p.comments_count }}</span>
+      </button>
+      <button class="abt {{ 'on' if item.saved }}" id="sv-{{ p.id }}" onclick="doSave({{ p.id }},this)">
+        {{ '🔖' if item.saved else '🏷️' }}&nbsp;<span id="svc-{{ p.id }}">{{ p.saves_count }}</span>
+      </button>
+    </div>
+
+    <!-- Comments section -->
+    <div class="csec" id="cs-{{ p.id }}">
+      <div id="cl-{{ p.id }}"></div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <input type="text" id="ci-{{ p.id }}" class="sinp" style="flex:1" placeholder="Комментарий...">
+        <button class="btn-g" style="padding:8px 14px;font-size:13px" onclick="submitCmt({{ p.id }})">→</button>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
+</div><!-- /pp-wrap -->
+
+<!-- DM MODAL -->
+<div class="mover" id="dmModal">
+  <div class="mbox" style="display:flex;flex-direction:column;height:70vh;padding:18px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-shrink:0">
+      {% if profile.avatar %}
+      <img src="{{ profile.avatar }}" class="avg" style="width:36px;height:36px" alt="">
+      {% else %}
+      <div class="avph" style="width:36px;height:36px;font-size:14px">🍄</div>
+      {% endif %}
+      <span style="font-weight:700;flex:1">{{ profile.name or 'Участник' }}</span>
+      <button onclick="closeM('dmModal')" style="background:none;border:none;color:#666;font-size:20px;cursor:pointer">✕</button>
+    </div>
+    <div id="dmMsgs" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding-right:4px"></div>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-shrink:0">
+      <input type="text" id="dmInp" class="sinp" style="flex:1" placeholder="Сообщение..." onkeydown="if(event.key==='Enter')sendMsg()">
+      <button class="btn-g" style="padding:10px 14px" onclick="sendMsg()">→</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const PROFILE_ID = {{ profile_id }};
+const IS_OWN = {{ 'true' if is_own else 'false' }};
+const SHEVELEV_TOKEN = "{{ shevelev_token or '' }}";
+const ERC20_ABI = [
+  {"constant":true,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"type":"function"},
+  {"constant":true,"inputs":[],"name":"decimals","outputs":[{"name":"","type":"uint8"}],"type":"function"}
+];
+
+function openM(id){document.getElementById(id).classList.add('open')}
+function closeM(id){document.getElementById(id).classList.remove('open')}
+document.querySelectorAll('.mover').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open')}));
+
+// ── Load SHEVELEV balance ──
+{% if profile.wallet_address and shevelev_token %}
+window.addEventListener('load', async()=>{
+  if(!window.Web3)return;
+  try{
+    const w3=new window.Web3('https://node.decimalchain.com/web3');
+    const ctr=new w3.eth.Contract(ERC20_ABI,SHEVELEV_TOKEN);
+    const dec=await ctr.methods.decimals().call();
+    const raw=await ctr.methods.balanceOf("{{ profile.wallet_address }}").call();
+    const bal=(Number(raw)/Math.pow(10,dec)).toFixed(2);
+    const el=document.getElementById('walletBalVal');
+    if(el)el.textContent='⚗ '+bal;
+  }catch(e){}
+});
+{% endif %}
+
+// ── Follow ──
+async function doFollow(){
+  if(IS_OWN)return;
+  const btn=document.getElementById('followBtn');
+  const txt=document.getElementById('followBtnText');
+  btn.disabled=true;
+  const r=await fetch(`/community/follow/${PROFILE_ID}`,{method:'POST'});
+  const d=await r.json();
+  btn.disabled=false;
+  if(d.following){
+    txt.textContent='✓ Подписан';
+    btn.style.background='rgba(201,168,76,.3)';
+  }else{
+    txt.textContent='+ Подписаться';
+    btn.style.background='';
+  }
+}
+
+// ── Profile like ──
+async function doProfileLike(){
+  if(IS_OWN)return;
+  const btn=document.getElementById('profileLikeBtn');
+  const txt=document.getElementById('profileLikeBtnText');
+  const stat=document.getElementById('profileLikesStat');
+  btn.disabled=true;
+  const r=await fetch(`/community/profile/${PROFILE_ID}/like`,{method:'POST'});
+  const d=await r.json();
+  btn.disabled=false;
+  if(d.liked){
+    btn.querySelector('span').textContent='❤️';
+    btn.classList.add('on');
+  }else{
+    btn.querySelector('span').textContent='🤍';
+    btn.classList.remove('on');
+  }
+  if(stat){stat.querySelector('div').textContent=d.count}
+}
+
+// ── Post like ──
+async function doLike(id,btn){
+  const r=await fetch(`/community/like/${id}`,{method:'POST'});
+  const d=await r.json();
+  const c=document.getElementById(`lkc-${id}`);
+  const n=parseInt(c.textContent);
+  if(d.liked){btn.classList.add('on');btn.innerHTML=`❤️&nbsp;<span id="lkc-${id}">${n+1}</span>`}
+  else{btn.classList.remove('on');btn.innerHTML=`🤍&nbsp;<span id="lkc-${id}">${Math.max(0,n-1)}</span>`}
+}
+
+// ── Save ──
+async function doSave(id,btn){
+  const r=await fetch(`/community/save/${id}`,{method:'POST'});
+  const d=await r.json();
+  const c=document.getElementById(`svc-${id}`);
+  const n=parseInt(c.textContent);
+  if(d.saved){btn.classList.add('on');btn.innerHTML=`🔖&nbsp;<span id="svc-${id}">${n+1}</span>`}
+  else{btn.classList.remove('on');btn.innerHTML=`🏷️&nbsp;<span id="svc-${id}">${Math.max(0,n-1)}</span>`}
+}
+
+// ── Comments ──
+function togCmt(id){
+  const s=document.getElementById(`cs-${id}`);
+  if(s.style.display==='block'){s.style.display='none';return}
+  s.style.display='block';loadCmts(id);
+}
+async function loadCmts(id){
+  const r=await fetch(`/community/comments/${id}`);
+  const d=await r.json();
+  document.getElementById(`cl-${id}`).innerHTML=d.comments.map(cmtHtml).join('');
+}
+function cmtHtml(c){
+  const isMe = false; // determined server-side; deletion via own-check
+  const av=c.author_avatar?`<img src="${c.author_avatar}" class="avg" style="width:28px;height:28px" alt="">`:`<div class="avph" style="width:28px;height:28px;font-size:12px">🍄</div>`;
+  return `<div id="cmt-${c.id}" style="display:flex;gap:8px;margin-bottom:10px">${av}<div style="flex:1;background:rgba(255,255,255,.04);border-radius:10px;padding:7px 11px"><div style="font-size:11px;color:#555;display:flex;justify-content:space-between"><span>${esc(c.author_emoji)} ${esc(c.author_name)} · ${c.created_at}</span><button onclick="delCmt(${c.id},this)" style="background:none;border:none;color:#333;font-size:11px;cursor:pointer" title="Удалить (только свой)">✕</button></div><div style="font-size:13px;color:#ddd;margin-top:2px">${esc(c.content)}</div></div></div>`;
+}
+async function submitCmt(id){
+  const inp=document.getElementById(`ci-${id}`);
+  const t=inp.value.trim();if(!t)return;
+  const fd=new FormData();fd.append('content',t);
+  const r=await fetch(`/community/comment/${id}`,{method:'POST',body:fd});
+  const d=await r.json();
+  if(d.ok){
+    inp.value='';
+    const list=document.getElementById(`cl-${id}`);
+    list.insertAdjacentHTML('beforeend',cmtHtml(d.comment));
+    const cc=document.getElementById(`cmc-${id}`);cc.textContent=parseInt(cc.textContent)+1;
+    list.lastElementChild?.scrollIntoView({behavior:'smooth'});
+  }
+}
+async function delCmt(cmtId, btn){
+  const r=await fetch(`/community/comment/${cmtId}`,{method:'DELETE'});
+  const d=await r.json();
+  if(d.ok){
+    const el=document.getElementById(`cmt-${cmtId}`);
+    if(el)el.remove();
+  }else if(d.error==='forbidden'){
+    btn.title='Нельзя удалить чужой комментарий';
+    btn.style.color='#f87171';
+    setTimeout(()=>btn.style.color='#333',1500);
+  }
+}
+
+// ── DM ──
+async function openDM(){
+  openM('dmModal');
+  await loadThread();
+}
+async function loadThread(){
+  const r=await fetch(`/community/messages/${PROFILE_ID}`);
+  const d=await r.json();
+  const box=document.getElementById('dmMsgs');
+  box.innerHTML=d.messages.map(m=>`<div class="dmmsg ${m.is_mine?'me':'them'}">${esc(m.text)}<span style="font-size:10px;color:#555;display:block;margin-top:2px">${m.created_at}</span></div>`).join('');
+  box.scrollTop=box.scrollHeight;
+}
+async function sendMsg(){
+  const inp=document.getElementById('dmInp');
+  const t=inp.value.trim();if(!t)return;
+  inp.value='';
+  const r=await fetch(`/community/message/${PROFILE_ID}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t})});
+  if(r.ok)await loadThread();
+}
+
+function esc(t){return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+</script>
+
+{% if shevelev_token %}
+<script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+{% endif %}
+{% endblock %}

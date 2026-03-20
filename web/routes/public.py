@@ -5,9 +5,24 @@ from fastapi import APIRouter, Request, Depends, UploadFile, File, Form
 from web.templates_utils import Jinja2Templates
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from db.database import database
-from db.models import products, posts, users, shop_products, product_reviews, community_posts, community_likes, community_folders, community_follows, community_saved
+from db.models import products, posts, users, shop_products, product_reviews, community_posts, community_likes, community_folders, community_follows, community_saved, community_comments, profile_likes
 from auth.session import get_user_from_request
 from config import settings
+
+
+def get_public_user_data(row: dict) -> dict:
+    """Return only privacy-safe fields from a user row."""
+    return {
+        "id": row["id"],
+        "name": row["name"],
+        "avatar": row["avatar"],
+        "bio": row.get("bio"),
+        "role": row["role"],
+        "wallet_address": row.get("wallet_address"),
+        "followers_count": row.get("followers_count") or 0,
+        "following_count": row.get("following_count") or 0,
+        "created_at": row.get("created_at"),
+    }
 
 router = APIRouter()
 templates = Jinja2Templates(directory="web/templates")
@@ -415,3 +430,123 @@ async def community_upload_photo(request: Request, file: UploadFile = File(...))
         f.write(data)
 
     return JSONResponse({"ok": True, "url": f"/media/community/{filename}"})
+
+
+def _rep_level(n: int) -> tuple[str, str]:
+    if n >= 100:
+        return ("👑", "Легенда")
+    if n >= 51:
+        return ("🔥", "Мастер")
+    if n >= 21:
+        return ("⚡", "Адепт")
+    if n >= 6:
+        return ("🍄", "Участник")
+    return ("🌱", "Зерно")
+
+
+@router.get("/community/profile/{user_id}", response_class=HTMLResponse)
+async def community_profile(request: Request, user_id: int):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return RedirectResponse(f"/login?next=/community/profile/{user_id}")
+
+    viewer_id = current_user.get("primary_user_id") or current_user["id"]
+
+    # Resolve to primary account
+    raw = await database.fetch_one(users.select().where(users.c.id == user_id))
+    if not raw:
+        return HTMLResponse("Пользователь не найден", status_code=404)
+    if raw["primary_user_id"]:
+        primary = await database.fetch_one(users.select().where(users.c.id == raw["primary_user_id"]))
+        if primary:
+            raw = primary
+    profile_id = raw["id"]
+
+    # Public-safe profile data only
+    profile = get_public_user_data(dict(raw))
+
+    # Post count & reputation
+    post_count = await database.fetch_val(
+        sa.select(sa.func.count()).select_from(community_posts)
+        .where(community_posts.c.user_id == profile_id)
+        .where(community_posts.c.approved == True)
+    ) or 0
+    rep_emoji, rep_level = _rep_level(post_count)
+
+    # Profile likes count
+    profile_likes_count = await database.fetch_val(
+        sa.select(sa.func.count()).select_from(profile_likes)
+        .where(profile_likes.c.liked_user_id == profile_id)
+    ) or 0
+
+    # Has current viewer liked this profile?
+    viewer_liked_profile = False
+    is_following = False
+    is_own = viewer_id == profile_id
+    if not is_own:
+        pl = await database.fetch_one(
+            profile_likes.select()
+            .where(profile_likes.c.user_id == viewer_id)
+            .where(profile_likes.c.liked_user_id == profile_id)
+        )
+        viewer_liked_profile = pl is not None
+        fol = await database.fetch_one(
+            community_follows.select()
+            .where(community_follows.c.follower_id == viewer_id)
+            .where(community_follows.c.following_id == profile_id)
+        )
+        is_following = fol is not None
+
+    # User's posts
+    raw_posts = await database.fetch_all(
+        community_posts.select()
+        .where(community_posts.c.user_id == profile_id)
+        .where(community_posts.c.approved == True)
+        .order_by(community_posts.c.pinned.desc(), community_posts.c.created_at.desc())
+        .limit(30)
+    )
+
+    # Check liked/saved for each post by viewer
+    saved_rows = await database.fetch_all(
+        community_saved.select().where(community_saved.c.user_id == viewer_id)
+    )
+    saved_ids = {r["post_id"] for r in saved_rows}
+
+    feed = []
+    for p in raw_posts:
+        lk = await database.fetch_one(
+            community_likes.select()
+            .where(community_likes.c.post_id == p["id"])
+            .where(community_likes.c.user_id == viewer_id)
+        )
+        folder_name = None
+        if p["folder_id"]:
+            fl = await database.fetch_one(
+                community_folders.select().where(community_folders.c.id == p["folder_id"])
+            )
+            folder_name = fl["name"] if fl else None
+        feed.append({
+            "post": p,
+            "liked": lk is not None,
+            "saved": p["id"] in saved_ids,
+            "folder_name": folder_name,
+        })
+
+    return templates.TemplateResponse(
+        "community_profile.html",
+        {
+            "request": request,
+            "current_user": current_user,
+            "profile": profile,
+            "profile_id": profile_id,
+            "post_count": post_count,
+            "rep_emoji": rep_emoji,
+            "rep_level": rep_level,
+            "profile_likes_count": profile_likes_count,
+            "viewer_liked_profile": viewer_liked_profile,
+            "is_following": is_following,
+            "is_own": is_own,
+            "feed": feed,
+            "shevelev_token": settings.SHEVELEV_TOKEN_ADDRESS,
+        },
+    )

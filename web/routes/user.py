@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from web.templates_utils import Jinja2Templates
 from auth.session import get_user_from_request
 from db.database import database
-from db.models import users, messages, orders, posts, post_likes, community_posts, community_likes, community_comments, community_folders, community_follows, community_saved, community_messages
+from db.models import users, messages, orders, posts, post_likes, community_posts, community_likes, community_comments, community_folders, community_follows, community_saved, community_messages, profile_likes
 from services.referral_service import get_referral_stats
 from services.subscription_service import check_subscription, PLANS
 from ai.openai_client import chat_with_ai
@@ -629,3 +629,67 @@ async def get_conversations(request: Request):
         })
     convos.sort(key=lambda x: x["last_at"], reverse=True)
     return JSONResponse({"conversations": convos})
+
+
+@router.delete("/community/comment/{comment_id}")
+async def delete_comment(request: Request, comment_id: int):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = user.get("primary_user_id") or user["id"]
+    row = await database.fetch_one(
+        community_comments.select().where(community_comments.c.id == comment_id)
+    )
+    if not row:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    if row["user_id"] != uid:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    await database.execute(
+        community_comments.delete().where(community_comments.c.id == comment_id)
+    )
+    await database.execute(
+        community_posts.update().where(community_posts.c.id == row["post_id"])
+        .values(comments_count=sa.case(
+            (community_posts.c.comments_count > 0, community_posts.c.comments_count - 1),
+            else_=0
+        ))
+    )
+    return JSONResponse({"ok": True})
+
+
+@router.post("/community/profile/{target_id}/like")
+async def like_profile(request: Request, target_id: int):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = user.get("primary_user_id") or user["id"]
+    if uid == target_id:
+        return JSONResponse({"error": "cannot like yourself"}, status_code=400)
+    existing = await database.fetch_one(
+        profile_likes.select()
+        .where(profile_likes.c.user_id == uid)
+        .where(profile_likes.c.liked_user_id == target_id)
+    )
+    if existing:
+        await database.execute(
+            profile_likes.delete()
+            .where(profile_likes.c.user_id == uid)
+            .where(profile_likes.c.liked_user_id == target_id)
+        )
+        count = await database.fetch_val(
+            sa.select(sa.func.count()).select_from(profile_likes)
+            .where(profile_likes.c.liked_user_id == target_id)
+        ) or 0
+        return JSONResponse({"liked": False, "count": count})
+    else:
+        try:
+            await database.execute(
+                profile_likes.insert().values(user_id=uid, liked_user_id=target_id)
+            )
+        except Exception:
+            pass
+        count = await database.fetch_val(
+            sa.select(sa.func.count()).select_from(profile_likes)
+            .where(profile_likes.c.liked_user_id == target_id)
+        ) or 0
+        return JSONResponse({"liked": True, "count": count})

@@ -129,12 +129,12 @@
     <div class="pcard" id="pc-{{ p.id }}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
         <div style="display:flex;gap:10px;align-items:center">
-          <div onclick="openUserModal({{ a.id if a else 0 }})" style="cursor:pointer">
+          <a href="{{ '/community/profile/' + (a.id|string) if a else '#' }}" style="text-decoration:none">
             {% if a and a.avatar %}<img src="{{ a.avatar }}" class="avg" style="width:40px;height:40px" alt="">
             {% else %}<div class="avp" style="width:40px;height:40px">🍄</div>{% endif %}
-          </div>
+          </a>
           <div>
-            <div style="font-weight:600;font-size:14px;cursor:pointer" onclick="openUserModal({{ a.id if a else 0 }})">{{ a.name if a else 'Участник' }}</div>
+            <a href="{{ '/community/profile/' + (a.id|string) if a else '#' }}" style="font-weight:600;font-size:14px;color:#e8e8e8;text-decoration:none;display:block" onmouseover="this.style.color='#C9A84C'" onmouseout="this.style.color='#e8e8e8'">{{ a.name if a else 'Участник' }}</a>
             <div style="font-size:12px;color:#666">{{ rep(item.author_post_count) }} · {{ p.created_at.strftime('%d.%m %H:%M') if p.created_at else '' }}</div>
           </div>
         </div>
@@ -417,7 +417,8 @@ async function openUserModal(uid){
   const sendBtn=d.wallet&&curWallet?`<button class="bout" style="font-size:12px;padding:6px 12px;margin-top:8px" onclick="openSendTok('${d.wallet}')">⚗ SHEVELEV</button>`:'';
   const fBtn=`<button class="bout" id="mflw-${d.id}" onclick="doFollow(${d.id},this);doFollow(${d.id},document.getElementById('flw-${d.id}'))" style="font-size:12px;padding:6px 12px">${d.is_following?'Отписаться':'+ Подписаться'}</button>`;
   const dmBtn=`<button class="abt" onclick="closeM('userModal');openDM(${d.id},'${esc2(d.name||'Участник')}','${esc2(d.avatar||'')}')" style="font-size:13px">✉️ Написать</button>`;
-  document.getElementById('userModalBody').innerHTML=`${av}<div style="font-weight:700;font-size:18px;margin-top:12px">${esc(d.name||'Участник')}</div>${d.bio?`<div style="font-size:13px;color:#888;margin-top:6px">${esc(d.bio)}</div>`:''}<div style="display:flex;gap:18px;justify-content:center;margin:14px 0;font-size:12px"><div style="text-align:center"><span style="color:#fff;font-weight:700">${d.followers_count||0}</span><br><span style="color:#666">подписчиков</span></div><div style="text-align:center"><span style="color:#fff;font-weight:700">${d.following_count||0}</span><br><span style="color:#666">подписок</span></div><div style="text-align:center"><span style="color:#fff;font-weight:700">${d.post_count||0}</span><br><span style="color:#666">постов</span></div></div>${wl}${sendBtn}<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px">${fBtn}${dmBtn}</div>`;
+  const profLink=`<a href="/community/profile/${d.id}" style="font-size:12px;color:#C9A84C;text-decoration:none;display:block;margin-top:12px">Открыть профиль →</a>`;
+  document.getElementById('userModalBody').innerHTML=`${av}<div style="font-weight:700;font-size:18px;margin-top:12px">${esc(d.name||'Участник')}</div>${d.bio?`<div style="font-size:13px;color:#888;margin-top:6px">${esc(d.bio)}</div>`:''}<div style="display:flex;gap:18px;justify-content:center;margin:14px 0;font-size:12px"><div style="text-align:center"><span style="color:#fff;font-weight:700">${d.followers_count||0}</span><br><span style="color:#666">подписчиков</span></div><div style="text-align:center"><span style="color:#fff;font-weight:700">${d.following_count||0}</span><br><span style="color:#666">подписок</span></div><div style="text-align:center"><span style="color:#fff;font-weight:700">${d.post_count||0}</span><br><span style="color:#666">постов</span></div></div>${wl}${sendBtn}<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px">${fBtn}${dmBtn}</div>${profLink}`;
 }
 
 // ---- DM ----
