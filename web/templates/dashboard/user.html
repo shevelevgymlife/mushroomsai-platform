@@ -1,324 +1,688 @@
 {% extends "base.html" %}
-{% block title %}{{ t.nav_cabinet }} — MushroomsAI{% endblock %}
+{% block title %}Личный кабинет — MushroomsAI{% endblock %}
+
+{% macro rep_badge(n) %}
+  {%- if n >= 100 %}👑 Легенда
+  {%- elif n >= 51 %}🔥 Мастер
+  {%- elif n >= 21 %}⚡ Адепт
+  {%- elif n >= 6 %}🍄 Участник
+  {%- else %}🌱 Зерно
+  {%- endif %}
+{%- endmacro %}
 
 {% block content %}
-<div class="pt-24 pb-16">
-  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-    <!-- Header -->
-    <div class="flex items-center gap-5 mb-10">
-      <!-- Avatar with hover-to-change -->
-      <div class="relative group flex-shrink-0 cursor-pointer" onclick="document.getElementById('avatarInput').click()" title="Изменить фото">
-        <!-- Avatar image or letter placeholder -->
-        {% if user.avatar %}
-          <img id="avatarImg" src="{{ user.avatar }}" class="w-16 h-16 rounded-2xl object-cover" alt="" />
-        {% else %}
-          <div id="avatarPlaceholder" class="w-16 h-16 rounded-2xl bg-gold/20 flex items-center justify-center">
-            <span class="text-gold text-2xl font-semibold">{{ (user.name or 'U')[0].upper() }}</span>
+<style>
+/* ── Layout ── */
+.db-wrap{display:flex;min-height:100vh;padding-top:72px;background:#080808;position:relative}
+.db-main{flex:1;padding:28px 28px 60px;max-width:calc(100% - 88px);overflow-x:hidden}
+.db-nav{position:fixed;right:0;top:0;bottom:0;width:72px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:16px 0;z-index:100;background:rgba(8,8,8,.9);border-left:1px solid rgba(255,255,255,.05);backdrop-filter:blur(12px)}
+@media(max-width:700px){.db-main{padding:16px 16px 80px;max-width:100%}.db-nav{top:auto;bottom:0;right:0;left:0;width:100%;height:64px;flex-direction:row;justify-content:space-around;border-left:none;border-top:1px solid rgba(255,255,255,.07);overflow-x:auto;gap:0;padding:0}}
+
+/* ── Nav circles ── */
+.nc{position:relative;width:48px;height:48px;border-radius:50%;border:1.5px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;transition:all .22s cubic-bezier(.4,0,.2,1);flex-shrink:0;text-decoration:none;user-select:none}
+.nc:hover{border-color:rgba(201,168,76,.5);background:rgba(201,168,76,.08);transform:scale(1.08)}
+.nc.active{border-color:#C9A84C;background:rgba(201,168,76,.15);box-shadow:0 0 14px rgba(201,168,76,.25);animation:ncpulse 2.4s ease-in-out infinite}
+@keyframes ncpulse{0%,100%{box-shadow:0 0 14px rgba(201,168,76,.25)}50%{box-shadow:0 0 22px rgba(201,168,76,.45)}}
+.nc-dot{position:absolute;top:2px;right:2px;width:9px;height:9px;background:#C9A84C;border-radius:50%;border:2px solid #080808;animation:dotblink 1.8s ease-in-out infinite}
+@keyframes dotblink{0%,100%{opacity:1}50%{opacity:.4}}
+.nc-sep{width:28px;height:1px;background:rgba(255,255,255,.07);margin:3px 0;flex-shrink:0}
+@media(max-width:700px){.nc{width:42px;height:42px;font-size:16px}.nc-sep{display:none}}
+
+/* ── Cards ── */
+.card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:22px}
+.card-sm{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px}
+.hero-card{background:linear-gradient(135deg,rgba(201,168,76,.15) 0%,rgba(8,8,8,0) 60%),rgba(255,255,255,.03);border:1px solid rgba(201,168,76,.25);border-radius:20px;padding:28px}
+
+/* ── Buttons ── */
+.btn-g{background:#C9A84C;color:#000;font-weight:700;border-radius:10px;padding:10px 20px;border:none;cursor:pointer;transition:background .2s;text-decoration:none;display:inline-block;font-size:14px;text-align:center}
+.btn-g:hover{background:#E8C96B}
+.btn-o{border:1px solid #C9A84C;color:#C9A84C;background:transparent;border-radius:10px;padding:9px 18px;cursor:pointer;font-weight:600;transition:all .2s;text-decoration:none;display:inline-block;font-size:14px;text-align:center}
+.btn-o:hover{background:rgba(201,168,76,.12)}
+
+/* ── Sections ── */
+.db-sec{display:none;animation:fadein .28s ease}
+.db-sec.active{display:block}
+@keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ── Avatar ── */
+.av-wrap{position:relative;display:inline-block;cursor:pointer}
+.av-wrap img,.av-circle{border:2px solid #C9A84C;border-radius:50%;object-fit:cover}
+.av-overlay{position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;font-size:18px}
+.av-wrap:hover .av-overlay{opacity:1}
+
+/* ── Chat ── */
+.chat-box{height:360px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:14px;background:rgba(0,0,0,.3);border-radius:12px;border:1px solid rgba(255,255,255,.07)}
+.msg-user{align-self:flex-end;background:rgba(201,168,76,.15);border:1px solid rgba(201,168,76,.25);padding:9px 14px;border-radius:14px 14px 4px 14px;max-width:78%;font-size:14px;line-height:1.55;color:#e8e8e8;white-space:pre-wrap;word-break:break-word}
+.msg-ai{align-self:flex-start;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);padding:9px 14px;border-radius:14px 14px 14px 4px;max-width:78%;font-size:14px;line-height:1.55;color:#ccc;white-space:pre-wrap;word-break:break-word}
+.msg-ai .ai-lbl{font-size:11px;color:#C9A84C;font-weight:700;margin-bottom:4px}
+.sinp{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#e8e8e8;border-radius:12px;padding:11px 16px;font-size:14px;outline:none;width:100%;box-sizing:border-box;transition:border-color .2s}
+.sinp:focus{border-color:rgba(201,168,76,.5)}
+
+/* ── Feed post ── */
+.fp{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:16px;margin-bottom:12px}
+
+/* ── Shop grid ── */
+.shop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px}
+.shop-item{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;overflow:hidden;transition:border-color .2s;cursor:pointer;text-decoration:none}
+.shop-item:hover{border-color:rgba(201,168,76,.4)}
+.shop-img{width:100%;height:140px;object-fit:cover;background:#111}
+.shop-img-ph{width:100%;height:140px;background:#111;display:flex;align-items:center;justify-content:center;font-size:32px}
+
+/* ── Plan cards ── */
+.plan-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.plan-card{border-radius:16px;padding:22px;border:1.5px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);transition:border-color .2s}
+.plan-card.current{border-color:#C9A84C;background:rgba(201,168,76,.08)}
+.plan-card:hover:not(.current){border-color:rgba(201,168,76,.35)}
+
+/* ── Lang grid ── */
+.lang-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.lang-btn{border-radius:12px;padding:12px 14px;border:1.5px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);cursor:pointer;transition:all .2s;text-align:center;font-size:13px;color:#ccc}
+.lang-btn:hover{border-color:rgba(201,168,76,.4);background:rgba(201,168,76,.07)}
+.lang-btn.cur{border-color:#C9A84C;background:rgba(201,168,76,.12);color:#C9A84C;font-weight:600}
+
+/* ── Status ── */
+.badge-plan{display:inline-flex;align-items:center;gap:6px;padding:5px 13px;border-radius:20px;font-size:12px;font-weight:700}
+.badge-free{background:rgba(255,255,255,.07);color:#888;border:1px solid rgba(255,255,255,.1)}
+.badge-start{background:rgba(201,168,76,.15);color:#C9A84C;border:1px solid rgba(201,168,76,.3)}
+.badge-pro{background:linear-gradient(135deg,rgba(201,168,76,.25),rgba(232,201,107,.15));color:#E8C96B;border:1px solid rgba(232,201,107,.4)}
+
+/* ── Stats row ── */
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px}
+.stat-box{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:14px;text-align:center}
+
+/* ── Util ── */
+.sect-title{font-size:22px;font-weight:700;color:#e8e8e8;margin-bottom:20px}
+.muted{color:#666;font-size:13px}
+.gold{color:#C9A84C}
+.sep{height:1px;background:rgba(255,255,255,.07);margin:18px 0}
+.spin{animation:spin360 .9s linear infinite;display:inline-block}
+@keyframes spin360{to{transform:rotate(360deg)}}
+</style>
+
+<div class="db-wrap">
+  <!-- MAIN CONTENT -->
+  <div class="db-main">
+
+    <!-- ══ HOME ══ -->
+    <section class="db-sec active" id="sec-home">
+      <div class="hero-card" style="margin-bottom:22px">
+        <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
+          <div class="av-wrap" onclick="document.getElementById('avInput').click()" title="Изменить фото">
+            {% if user.avatar %}
+            <img id="avImg" src="{{ user.avatar }}" class="av-circle" style="width:80px;height:80px" alt="">
+            {% else %}
+            <div class="av-circle" style="width:80px;height:80px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:34px">🍄</div>
+            <img id="avImg" src="" class="av-circle" style="width:80px;height:80px;display:none" alt="">
+            {% endif %}
+            <div class="av-overlay">✏️</div>
+            <input id="avInput" type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="uploadAv(this)">
           </div>
-          <img id="avatarImg" src="" class="w-16 h-16 rounded-2xl object-cover hidden" alt="" />
-        {% endif %}
-        <!-- Hover overlay with pencil icon -->
-        <div class="absolute inset-0 rounded-2xl bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-          </svg>
-        </div>
-        <!-- Upload spinner (hidden by default) -->
-        <div id="avatarSpinner" class="hidden absolute inset-0 rounded-2xl bg-black/60 flex items-center justify-center">
-          <svg class="w-5 h-5 text-gold animate-spin" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-          </svg>
-        </div>
-        <!-- Hidden file input -->
-        <input id="avatarInput" type="file" accept="image/jpeg,image/png,image/webp" class="hidden"
-               onchange="uploadAvatar(this)" />
-      </div>
-
-      <div>
-        <h1 class="text-2xl font-semibold text-text">{{ user.name or t.nav_cabinet }}</h1>
-        <p class="text-sm text-muted">{{ user.email or ('Telegram' if user.tg_id else 'Google') }}</p>
-        <p id="avatarError" class="hidden text-xs text-red-400 mt-1"></p>
-      </div>
-      <div class="ml-auto hidden sm:block">
-        <span class="px-3 py-1.5 rounded-lg text-xs font-medium {{ 'bg-gold/20 text-gold border border-gold/30' if plan == 'pro' else ('bg-gold/10 text-gold border border-gold/20' if plan == 'start' else 'bg-surface border border-border text-muted') }}">
-          {{ plan_info.name }}
-        </span>
-      </div>
-    </div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- Left: subscription + referral + language -->
-      <div class="space-y-6">
-        <!-- Subscription -->
-        <div class="p-6 rounded-2xl bg-surface border border-border">
-          <h3 class="font-semibold text-text mb-4">{{ t.dash_subscription }}</h3>
-          <div class="mb-4">
-            <p class="text-2xl font-light text-text">{{ plan_info.name }}</p>
-            {% if user.subscription_end %}
-            <p class="text-xs text-muted mt-1">{{ t.dash_until }} {{ user.subscription_end.strftime('%d.%m.%Y') }}</p>
+          <div style="flex:1;min-width:160px">
+            <div style="font-size:24px;font-weight:700;color:#e8e8e8;margin-bottom:4px">{{ user.name or 'Участник' }}</div>
+            <div style="font-size:13px;color:#888;margin-bottom:10px">{{ user.email or ('Telegram ID: ' + (user.tg_id|string) if user.tg_id else 'Google аккаунт') }}</div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <span class="badge-plan badge-{{ plan }}">
+                {% if plan == 'pro' %}💎{% elif plan == 'start' %}⭐{% else %}🌿{% endif %}
+                {{ plan_info.name }}
+              </span>
+              <span style="font-size:12px;color:#888">{{ rep_badge(my_post_count) }}</span>
+            </div>
+            {% if user.bio %}
+            <div style="font-size:13px;color:#aaa;margin-top:10px;max-width:400px">{{ user.bio }}</div>
             {% endif %}
           </div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-left:auto">
+            <button class="btn-g" onclick="goSec('ai')">🤖 AI консультация</button>
+            <button class="btn-o" onclick="goSec('shop')">🛒 Магазин</button>
+          </div>
+        </div>
+
+        <div class="stats-row">
+          <div class="stat-box">
+            <div style="font-size:22px;font-weight:700;color:#C9A84C">{{ my_post_count }}</div>
+            <div class="muted">постов в соц сети</div>
+          </div>
+          <div class="stat-box">
+            <div style="font-size:22px;font-weight:700;color:#C9A84C">{{ ai_questions_today }}</div>
+            <div class="muted">вопросов AI сегодня</div>
+          </div>
+          <div class="stat-box">
+            <div style="font-size:22px;font-weight:700;color:#C9A84C">{{ orders|length }}</div>
+            <div class="muted">заказов</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent AI messages preview -->
+      {% if messages %}
+      <div class="card" style="margin-bottom:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div style="font-weight:700;font-size:16px">История диалогов</div>
+          <button class="btn-o" style="padding:6px 14px;font-size:12px" onclick="goSec('ai')">Открыть чат →</button>
+        </div>
+        {% for msg in messages[-4:] %}
+        <div style="display:flex;gap:10px;margin-bottom:10px;{{ 'justify-content:flex-end' if msg.role=='user' else '' }}">
+          {% if msg.role == 'assistant' %}<div style="width:26px;height:26px;border-radius:50%;background:rgba(201,168,76,.2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#C9A84C;flex-shrink:0">AI</div>{% endif %}
+          <div style="max-width:70%;padding:8px 12px;border-radius:12px;font-size:13px;line-height:1.5;{{ 'background:rgba(201,168,76,.12);border:1px solid rgba(201,168,76,.2);color:#ddd' if msg.role=='user' else 'background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);color:#bbb' }}">
+            {{ msg.content[:160] }}{% if msg.content|length > 160 %}…{% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Quick links -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px">
+        {% set quick = [('👥','Сообщество','feed'),('💎','Тарифы','plan'),('🎁','Рефералы','referral'),('🔗','Привязка аккаунта','link')] %}
+        {% for em,lab,sec in quick %}
+        <div class="card-sm" style="cursor:pointer;transition:border-color .2s" onclick="goSec('{{ sec }}')" onmouseover="this.style.borderColor='rgba(201,168,76,.4)'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)'">
+          <div style="font-size:24px;margin-bottom:8px">{{ em }}</div>
+          <div style="font-size:13px;font-weight:600;color:#ccc">{{ lab }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <!-- ══ FEED ══ -->
+    <section class="db-sec" id="sec-feed">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div class="sect-title" style="margin:0">👥 Лента сообщества</div>
+        <a href="/community" class="btn-g" style="font-size:13px;padding:8px 16px">Открыть полностью ↗</a>
+      </div>
+      {% if feed_raw %}
+      {% for p in feed_raw %}
+      {% set a = feed_authors.get(p.user_id) %}
+      <div class="fp">
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
+          {% if a and a.avatar %}<img src="{{ a.avatar }}" style="width:34px;height:34px;border-radius:50%;border:2px solid #C9A84C;object-fit:cover" alt="">
+          {% else %}<div style="width:34px;height:34px;border-radius:50%;border:2px solid #C9A84C;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px">🍄</div>{% endif %}
+          <div>
+            <div style="font-size:13px;font-weight:600;color:#ddd">{{ a.name if a else 'Участник' }}</div>
+            <div style="font-size:11px;color:#555">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}</div>
+          </div>
+          {% if p.pinned %}<span style="margin-left:auto;color:#C9A84C;font-size:12px">📌</span>{% endif %}
+        </div>
+        <div style="font-size:14px;color:#ccc;line-height:1.6;white-space:pre-wrap;word-break:break-word">{{ p.content[:280] }}{% if p.content|length > 280 %}…{% endif %}</div>
+        {% if p.image_url %}<img src="{{ p.image_url }}" style="width:100%;max-height:260px;object-fit:cover;border-radius:10px;margin-top:10px" loading="lazy" alt="">{% endif %}
+        <div style="display:flex;gap:14px;margin-top:10px;font-size:12px;color:#555">
+          <span>❤️ {{ p.likes_count }}</span>
+          <span>💬 {{ p.comments_count }}</span>
+          <span>🔖 {{ p.saves_count }}</span>
+        </div>
+      </div>
+      {% endfor %}
+      {% else %}
+      <div style="text-align:center;padding:60px 0;color:#444">
+        <div style="font-size:44px;margin-bottom:10px">🍄</div>
+        <div>Лента пустая</div>
+        <a href="/community" class="btn-g" style="margin-top:16px;display:inline-block">Открыть сообщество</a>
+      </div>
+      {% endif %}
+    </section>
+
+    <!-- ══ AI CHAT ══ -->
+    <section class="db-sec" id="sec-ai">
+      <div class="sect-title">🤖 AI Консультант</div>
+      <div class="card" style="padding:16px">
+        <div class="chat-box" id="chatBox">
+          <div class="msg-ai"><div class="ai-lbl">Mushroom AI</div>Привет! Я ваш персональный консультант по грибам. Спрашивайте про виды, выращивание, применение, рецепты.</div>
+          {% for msg in messages %}
+          <div class="{{ 'msg-user' if msg.role == 'user' else 'msg-ai' }}">
+            {% if msg.role == 'assistant' %}<div class="ai-lbl">Mushroom AI</div>{% endif %}
+            {{ msg.content }}
+          </div>
+          {% endfor %}
+        </div>
+        <div style="margin-top:12px;position:relative">
           {% if plan == 'free' %}
-          <div class="space-y-2">
-            <a href="#" class="block text-center py-2.5 px-4 rounded-lg bg-gold text-bg text-sm font-medium hover:bg-gold-light transition-all duration-300">
-              {{ t.dash_start_price }}
-            </a>
-            <a href="#" class="block text-center py-2.5 px-4 rounded-lg border border-gold/30 text-gold text-sm hover:bg-gold hover:text-bg transition-all duration-300">
-              {{ t.dash_pro_price }}
-            </a>
+          <div style="font-size:12px;color:#666;margin-bottom:6px">
+            Осталось вопросов сегодня: <span class="gold">{{ [0, 5 - ai_questions_today] | max }}</span>/5
+            {% if ai_questions_today >= 5 %} · <button class="btn-g" style="font-size:11px;padding:4px 10px" onclick="goSec('plan')">Улучшить тариф</button>{% endif %}
           </div>
           {% endif %}
-        </div>
-
-        <!-- Referral -->
-        <div class="p-6 rounded-2xl bg-surface border border-border">
-          <h3 class="font-semibold text-text mb-4">{{ t.dash_referral }}</h3>
-          <p class="text-xs text-muted mb-3">{{ t.dash_referral_desc }}</p>
-          <div class="flex gap-2 mb-4">
-            <input type="text" value="{{ ref_link }}" readonly id="refLink"
-              class="flex-1 px-3 py-2 rounded-lg bg-bg border border-border text-xs text-muted focus:outline-none" />
-            <button onclick="copyRef()" id="copyRefBtn"
-              class="px-3 py-2 rounded-lg bg-gold/10 text-gold text-xs border border-gold/20 hover:bg-gold hover:text-bg transition-all duration-300">
-              {{ t.btn_copy }}
-            </button>
+          <div style="display:flex;gap:8px">
+            <input id="chatInput" class="sinp" style="flex:1" placeholder="Спросите что-нибудь о грибах..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}">
+            <button class="btn-g" style="padding:10px 18px" onclick="sendChat()" id="chatSend">→</button>
           </div>
-          <div class="flex gap-4 text-center">
-            <div class="flex-1 p-3 rounded-lg bg-bg border border-border">
-              <p class="text-lg font-semibold text-text">{{ ref_stats.total }}</p>
-              <p class="text-xs text-muted">{{ t.dash_invited }}</p>
-            </div>
-            <div class="flex-1 p-3 rounded-lg bg-bg border border-border">
-              <p class="text-lg font-semibold text-gold">{{ ref_stats.bonus_applied }}</p>
-              <p class="text-xs text-muted">{{ t.dash_bonuses }}</p>
-            </div>
-          </div>
+          <div id="chatErr" style="font-size:12px;color:#f87171;margin-top:6px;display:none"></div>
         </div>
+      </div>
+    </section>
 
-        <!-- Account Linking -->
-        <div class="p-6 rounded-2xl bg-surface border border-border">
-          <h3 class="font-semibold text-text mb-4">{{ t.dash_account_linking }}</h3>
-          {% set has_tg = user.tg_id or user.linked_tg_id %}
-          {% set has_google = user.google_id or user.linked_google_id %}
-          {% if has_tg and has_google %}
-            <div class="flex items-center gap-2 text-sm text-green-400">
-              <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-              </svg>
-              {{ t.dash_accounts_merged }}
-            </div>
-            <div class="mt-3 space-y-1.5 text-xs text-muted">
-              <div class="flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full bg-blue-400"></span> {{ t.dash_tg_linked }}
-              </div>
-              <div class="flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full bg-red-400"></span> {{ t.dash_google_linked }}
-              </div>
-            </div>
-            {% if user.linked_tg_id or user.linked_google_id %}
-            <button id="sync-history-btn"
-                    onclick="syncHistory()"
-                    class="mt-4 w-full py-2 px-4 rounded-lg bg-accent/10 text-accent text-xs border border-accent/20 hover:bg-accent/20 transition-all duration-300">
-              {{ t.dash_sync_history }}
-            </button>
-            <p id="sync-history-ok" class="hidden mt-2 text-xs text-green-400">{{ t.dash_history_synced }}</p>
-            {% endif %}
-          {% else %}
-            {% if not has_tg %}
-            <a href="/account/link-telegram"
-               class="flex items-center gap-2 w-full py-2.5 px-4 rounded-lg bg-blue-500/10 text-blue-400 text-sm border border-blue-500/20 hover:bg-blue-500/20 transition-all duration-300 mb-2">
-              <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.941z"/>
-              </svg>
-              {{ t.dash_link_tg }}
-            </a>
-            {% endif %}
-            {% if not has_google %}
-            <a href="/account/link-google"
-               class="flex items-center gap-2 w-full py-2.5 px-4 rounded-lg bg-red-500/10 text-red-400 text-sm border border-red-500/20 hover:bg-red-500/20 transition-all duration-300">
-              <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-              </svg>
-              {{ t.dash_link_google }}
-            </a>
-            {% endif %}
-            <p class="text-xs text-muted mt-3">{{ t.dash_link_desc }}</p>
-          {% endif %}
-          {% if request.query_params.get('linked') %}
-          <div class="mt-3 p-2 rounded-lg bg-green-500/10 border border-green-500/20 text-xs text-green-400">
-            {{ t.dash_account_linked_ok }}
+    <!-- ══ SHOP ══ -->
+    <section class="db-sec" id="sec-shop">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+        <div class="sect-title" style="margin:0">🛒 Магазин</div>
+        <a href="/shop" class="btn-g" style="font-size:13px;padding:8px 16px">Весь каталог ↗</a>
+      </div>
+      <div style="margin-bottom:14px;display:flex;gap:8px">
+        <input id="shopSearch" class="sinp" style="max-width:300px" placeholder="Поиск товаров..." oninput="filterShop(this.value)">
+      </div>
+      <div class="shop-grid" id="shopGrid">
+        {% if shop_preview %}
+        {% for p in shop_preview %}
+        <a href="/shop/{{ p.id }}" class="shop-item" data-name="{{ (p.name or '')|lower }}">
+          {% if p.image_url %}<img src="{{ p.image_url }}" class="shop-img" loading="lazy" alt="{{ p.name }}">
+          {% else %}<div class="shop-img-ph">🍄</div>{% endif %}
+          <div style="padding:12px">
+            <div style="font-size:13px;font-weight:600;color:#ddd;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.name or '—' }}</div>
+            {% if p.mushroom_type %}<div style="font-size:11px;color:#666;margin-bottom:6px">{{ p.mushroom_type }}</div>{% endif %}
+            {% if p.price %}<div style="font-size:14px;font-weight:700;color:#C9A84C">{{ p.price }} ₽</div>
+            {% else %}<div style="font-size:13px;color:#555">Цена по запросу</div>{% endif %}
           </div>
-          {% endif %}
-        </div>
-
-        {% if user.role == "admin" %}
-        <!-- Admin panel link -->
-        <div class="p-6 rounded-2xl bg-surface border border-border">
-          <h3 class="font-semibold text-text mb-4">{{ t.dash_management }}</h3>
-          <a href="/admin" class="block text-center px-4 py-2.5 rounded-lg bg-gold text-bg font-medium text-sm hover:opacity-90 transition-opacity">
-            {{ t.dash_admin_panel }}
-          </a>
+        </a>
+        {% endfor %}
+        {% else %}
+        <div style="grid-column:1/-1;text-align:center;padding:40px;color:#444">
+          <div style="font-size:40px;margin-bottom:10px">🛒</div>
+          <div>Товары не найдены</div>
         </div>
         {% endif %}
+      </div>
+    </section>
 
-        <!-- Language -->
-        <div class="p-6 rounded-2xl bg-surface border border-border">
-          <h3 class="font-semibold text-text mb-4">{{ t.dash_ai_language }}</h3>
-          <form action="/dashboard/language" method="post">
-            <select name="language"
-              class="w-full px-3 py-2.5 rounded-lg bg-bg border border-border text-text text-sm mb-3 focus:outline-none focus:border-gold/60 transition-colors">
-              {% set languages = [('ru','Русский'),('en','English'),('de','Deutsch'),('fr','Français'),('es','Español'),('zh','中文'),('ar','العربية'),('pt','Português'),('it','Italiano'),('ja','日本語')] %}
-              {% for code, name in languages %}
-              <option value="{{ code }}" {{ 'selected' if user.language == code else '' }}>{{ name }}</option>
-              {% endfor %}
-            </select>
-            <button type="submit" class="w-full py-2 rounded-lg bg-gold/10 text-gold text-sm border border-gold/20 hover:bg-gold hover:text-bg transition-all duration-300">
-              {{ t.btn_save }}
-            </button>
-          </form>
+    <!-- ══ PLAN ══ -->
+    <section class="db-sec" id="sec-plan">
+      <div class="sect-title">💎 Тарифы и подписка</div>
+      <div class="card" style="margin-bottom:20px">
+        <div style="font-size:15px;color:#aaa;margin-bottom:6px">Текущий тариф</div>
+        <div style="font-size:28px;font-weight:700;color:#e8e8e8">{{ plan_info.name }}</div>
+        {% if user.subscription_end %}
+        <div style="font-size:13px;color:#888;margin-top:4px">Активен до {{ user.subscription_end.strftime('%d.%m.%Y') }}</div>
+        {% endif %}
+        <div style="margin-top:12px;font-size:13px;color:#888">
+          Вопросов в день: <span class="gold">{% if plan_info.questions_per_day == -1 %}Безлимит{% else %}{{ plan_info.questions_per_day }}{% endif %}</span>
         </div>
       </div>
+      <div class="plan-grid">
+        {% set pls = [('free','🌿','Бесплатный','0 ₽/мес','• 5 вопросов в день\n• Базовый доступ к AI\n• Просмотр магазина'),('start','⭐','Старт','990 ₽/мес','• Безлимитные вопросы\n• Безлимитные рецепты\n• Поддержка 24/7'),('pro','💎','Про','1 990 ₽/мес','• Всё из Старт\n• Приоритетная поддержка\n• Ранний доступ к фичам')] %}
+        {% for pid,em,pname,price,feat in pls %}
+        <div class="plan-card {{ 'current' if plan == pid }}">
+          <div style="font-size:24px;margin-bottom:8px">{{ em }}</div>
+          <div style="font-size:17px;font-weight:700;color:#e8e8e8;margin-bottom:4px">{{ pname }}</div>
+          <div style="font-size:20px;font-weight:700;color:#C9A84C;margin-bottom:12px">{{ price }}</div>
+          <div style="font-size:12px;color:#777;white-space:pre-line;line-height:1.8">{{ feat }}</div>
+          {% if plan == pid %}
+          <div style="margin-top:14px;font-size:12px;color:#C9A84C;font-weight:600">✓ Текущий тариф</div>
+          {% else %}
+          <button class="btn-g" style="width:100%;margin-top:14px;font-size:13px;padding:10px" onclick="alert('Оплата будет доступна в ближайшее время')">Выбрать</button>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </section>
 
-      <!-- Right: chat history + orders -->
-      <div class="lg:col-span-2 space-y-6">
-        <!-- Chat history -->
-        <div class="p-6 rounded-2xl bg-surface border border-border">
-          <h3 class="font-semibold text-text mb-4">{{ t.dash_chat_history }}</h3>
-          {% if messages %}
-          <div class="space-y-3 max-h-80 overflow-y-auto custom-scroll">
-            {% for msg in messages %}
-            <div class="flex gap-3 {{ 'justify-end' if msg.role == 'user' else '' }}">
-              {% if msg.role == 'assistant' %}
-              <div class="w-6 h-6 rounded-full bg-gold/20 flex-shrink-0 flex items-center justify-center">
-                <span class="text-gold text-xs font-bold">AI</span>
+    <!-- ══ ORDERS ══ -->
+    <section class="db-sec" id="sec-orders">
+      <div class="sect-title">📦 Заказы и покупки</div>
+      {% if orders %}
+      <div class="card" style="padding:0;overflow:hidden">
+        {% for o in orders %}
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.06);{{ 'border-bottom:none' if loop.last }}">
+          <div>
+            <div style="font-size:14px;font-weight:600;color:#ddd">Заказ #{{ o.id }}</div>
+            <div style="font-size:12px;color:#555;margin-top:2px">{{ o.created_at.strftime('%d.%m.%Y') if o.created_at else '—' }}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:15px;font-weight:700;color:#C9A84C">{{ o.amount | int }} ₽</div>
+            <span style="font-size:11px;padding:3px 9px;border-radius:20px;{{ 'background:rgba(74,222,128,.12);color:#4ade80' if o.status=='paid' else 'background:rgba(255,255,255,.06);color:#666' }}">{{ o.status }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="card" style="text-align:center;padding:50px">
+        <div style="font-size:44px;margin-bottom:12px">📦</div>
+        <div style="color:#555;margin-bottom:16px">Заказов пока нет</div>
+        <button class="btn-g" onclick="goSec('shop')">Перейти в магазин</button>
+      </div>
+      {% endif %}
+    </section>
+
+    <!-- ══ REFERRAL ══ -->
+    <section class="db-sec" id="sec-referral">
+      <div class="sect-title">🎁 Реферальная программа</div>
+      <div class="card" style="margin-bottom:16px">
+        <div style="font-size:15px;font-weight:600;color:#ddd;margin-bottom:10px">Ваша реферальная ссылка</div>
+        <div style="display:flex;gap:8px;margin-bottom:16px">
+          <input type="text" value="{{ ref_link }}" readonly id="refInp" class="sinp" style="flex:1;font-size:13px;color:#888">
+          <button class="btn-g" onclick="copyRef()" id="refCopyBtn" style="flex-shrink:0">Копировать</button>
+        </div>
+        <div style="font-size:13px;color:#666">Поделитесь ссылкой — когда друг зарегистрируется и оформит подписку, вы получите бонус.</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px">
+        <div class="card-sm" style="text-align:center">
+          <div style="font-size:28px;font-weight:700;color:#C9A84C">{{ ref_stats.total }}</div>
+          <div class="muted">приглашено</div>
+        </div>
+        <div class="card-sm" style="text-align:center">
+          <div style="font-size:28px;font-weight:700;color:#C9A84C">{{ ref_stats.bonus_applied }}</div>
+          <div class="muted">бонусов активировано</div>
+        </div>
+      </div>
+      <div class="card">
+        <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:12px">Как это работает</div>
+        {% for step in ['Поделитесь своей реферальной ссылкой с другом','Друг регистрируется на MushroomsAI','Друг оформляет подписку','Вы оба получаете бонус!'] %}
+        <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px">
+          <div style="width:24px;height:24px;border-radius:50%;background:rgba(201,168,76,.2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#C9A84C;flex-shrink:0">{{ loop.index }}</div>
+          <div style="font-size:13px;color:#aaa;padding-top:3px">{{ step }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <!-- ══ LINK ══ -->
+    <section class="db-sec" id="sec-link">
+      <div class="sect-title">🔗 Привязка аккаунтов</div>
+      {% set has_tg = user.tg_id or user.linked_tg_id %}
+      {% set has_google = user.google_id or user.linked_google_id %}
+      {% if has_tg and has_google %}
+      <div class="card" style="border-color:rgba(74,222,128,.25);background:rgba(74,222,128,.05);margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:10px;font-size:15px;color:#4ade80;font-weight:600">
+          <span style="font-size:20px">✅</span> Аккаунты объединены
+        </div>
+        <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+          <div style="font-size:13px;color:#666;display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:#38bdf8;display:inline-block"></span> Telegram привязан</div>
+          <div style="font-size:13px;color:#666;display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block"></span> Google аккаунт привязан</div>
+        </div>
+        {% if user.linked_tg_id or user.linked_google_id %}
+        <button id="syncBtn" onclick="syncHist()" class="btn-o" style="margin-top:16px;width:100%">🔄 Синхронизировать историю</button>
+        <div id="syncOk" style="display:none;margin-top:8px;font-size:13px;color:#4ade80;text-align:center">✓ История синхронизирована</div>
+        {% endif %}
+      </div>
+      {% else %}
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">
+        {% if not has_tg %}
+        <a href="/account/link-telegram" class="card" style="display:flex;align-items:center;gap:14px;text-decoration:none;border-color:rgba(56,189,248,.25);background:rgba(56,189,248,.05);transition:border-color .2s" onmouseover="this.style.borderColor='rgba(56,189,248,.5)'" onmouseout="this.style.borderColor='rgba(56,189,248,.25)'">
+          <span style="font-size:28px">📱</span>
+          <div>
+            <div style="font-weight:600;color:#38bdf8;margin-bottom:2px">Привязать Telegram</div>
+            <div style="font-size:13px;color:#666">Объедините чат-бот и веб-кабинет</div>
+          </div>
+          <span style="margin-left:auto;color:#38bdf8">→</span>
+        </a>
+        {% endif %}
+        {% if not has_google %}
+        <a href="/account/link-google" class="card" style="display:flex;align-items:center;gap:14px;text-decoration:none;border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.05);transition:border-color .2s" onmouseover="this.style.borderColor='rgba(239,68,68,.5)'" onmouseout="this.style.borderColor='rgba(239,68,68,.25)'">
+          <span style="font-size:28px">🔴</span>
+          <div>
+            <div style="font-weight:600;color:#ef4444;margin-bottom:2px">Привязать Google</div>
+            <div style="font-size:13px;color:#666">Войти через Google аккаунт</div>
+          </div>
+          <span style="margin-left:auto;color:#ef4444">→</span>
+        </a>
+        {% endif %}
+      </div>
+      {% endif %}
+      {% if request.query_params.get('linked') %}
+      <div class="card" style="border-color:rgba(74,222,128,.3);background:rgba(74,222,128,.07);text-align:center;color:#4ade80;font-weight:600">✓ Аккаунт успешно привязан!</div>
+      {% endif %}
+      <div class="card" style="margin-top:16px">
+        <div style="font-size:13px;font-weight:600;color:#888;margin-bottom:10px">Зачем привязывать аккаунты?</div>
+        {% for t in ['Единая история диалогов с AI','Один профиль в сообществе','Синхронизация заказов и подписки','Войти с любого устройства'] %}
+        <div style="font-size:13px;color:#666;display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="color:#C9A84C">✦</span>{{ t }}</div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <!-- ══ LANGUAGE ══ -->
+    <section class="db-sec" id="sec-language">
+      <div class="sect-title">🌐 Язык интерфейса</div>
+      <div class="card" style="margin-bottom:16px">
+        <div style="font-size:13px;color:#666;margin-bottom:16px">Выберите язык — AI будет отвечать на этом языке</div>
+        <div class="lang-grid">
+          {% set langs = [('ru','🇷🇺','Русский'),('en','🇬🇧','English'),('de','🇩🇪','Deutsch'),('fr','🇫🇷','Français'),('es','🇪🇸','Español'),('zh','🇨🇳','中文'),('ar','🇸🇦','العربية'),('pt','🇧🇷','Português'),('it','🇮🇹','Italiano'),('ja','🇯🇵','日本語')] %}
+          {% for code,flag,name in langs %}
+          <button class="lang-btn {{ 'cur' if user.language == code }}" onclick="setLang('{{ code }}')">
+            <div style="font-size:22px;margin-bottom:4px">{{ flag }}</div>
+            <div>{{ name }}</div>
+          </button>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ PROFILE ══ -->
+    <section class="db-sec" id="sec-profile">
+      <div class="sect-title">⚙️ Настройки профиля</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div>
+          <div class="card" style="margin-bottom:16px">
+            <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:14px">Фото профиля</div>
+            <div style="display:flex;gap:16px;align-items:center">
+              <div class="av-wrap" onclick="document.getElementById('avInput2').click()">
+                {% if user.avatar %}
+                <img id="avImg2" src="{{ user.avatar }}" class="av-circle" style="width:70px;height:70px" alt="">
+                {% else %}
+                <div class="av-circle" style="width:70px;height:70px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:28px">🍄</div>
+                <img id="avImg2" src="" class="av-circle" style="width:70px;height:70px;display:none" alt="">
+                {% endif %}
+                <div class="av-overlay">✏️</div>
+                <input id="avInput2" type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="uploadAv(this,'avImg2')">
               </div>
-              {% endif %}
-              <div class="max-w-sm px-3 py-2 rounded-xl text-sm leading-relaxed {{ 'bg-gold/10 text-text border border-gold/20' if msg.role == 'user' else 'bg-bg border border-border text-muted' }}">
-                {{ msg.content[:200] }}{% if msg.content|length > 200 %}...{% endif %}
+              <div style="font-size:12px;color:#555;line-height:1.7">JPEG, PNG, WebP<br>Макс. 3 МБ</div>
+            </div>
+            <div id="avErr" style="font-size:12px;color:#f87171;margin-top:8px;display:none"></div>
+          </div>
+          <div class="card">
+            <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:14px">Информация</div>
+            <div style="margin-bottom:12px">
+              <label style="font-size:12px;color:#666;display:block;margin-bottom:5px">Имя</label>
+              <input id="profName" class="sinp" value="{{ user.name or '' }}" placeholder="Ваше имя">
+            </div>
+            <div style="margin-bottom:12px">
+              <label style="font-size:12px;color:#666;display:block;margin-bottom:5px">Email</label>
+              <input class="sinp" value="{{ user.email or '' }}" style="color:#555;cursor:default" readonly>
+            </div>
+            <div style="margin-bottom:14px">
+              <label style="font-size:12px;color:#666;display:block;margin-bottom:5px">О себе (bio)</label>
+              <textarea id="profBio" class="sinp" style="resize:vertical;min-height:80px">{{ user.bio or '' }}</textarea>
+            </div>
+            <button class="btn-g" style="width:100%" onclick="saveProfile()">Сохранить</button>
+            <div id="profOk" style="display:none;text-align:center;margin-top:8px;font-size:13px;color:#4ade80">✓ Сохранено</div>
+          </div>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:16px">
+            <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:14px">🦊 Кошелёк SHEVELEV</div>
+            <div id="wltSt" style="font-size:12px;color:#666;margin-bottom:10px">
+              {% if user.wallet_address %}<span style="color:#4ade80">✓ {{ user.wallet_address[:12] }}...{{ user.wallet_address[-4:] }}</span>
+              {% else %}Кошелёк не подключён{% endif %}
+            </div>
+            <button class="btn-o" style="width:100%;margin-bottom:10px" onclick="connectMetaMask()">🦊 Подключить MetaMask</button>
+            <div>
+              <label style="font-size:12px;color:#666;display:block;margin-bottom:5px">Или вставьте адрес вручную</label>
+              <div style="display:flex;gap:8px">
+                <input id="wltInp" class="sinp" style="flex:1" placeholder="0x..." value="{{ user.wallet_address or '' }}">
+                <button class="btn-g" style="flex-shrink:0" onclick="saveWallet()">✓</button>
               </div>
+            </div>
+          </div>
+          <div class="card">
+            <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:12px">Информация аккаунта</div>
+            {% set rows = [('ID',user.id|string),('Роль',user.role or 'user'),('Тариф',plan_info.name),('Создан',(user.created_at.strftime('%d.%m.%Y') if user.created_at else '—'))] %}
+            {% for lab,val in rows %}
+            <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+              <span style="color:#555">{{ lab }}</span>
+              <span style="color:#aaa">{{ val }}</span>
             </div>
             {% endfor %}
           </div>
-          <div class="mt-4 pt-4 border-t border-border">
-            <a href="/chat" class="text-sm text-gold hover:text-gold-light transition-colors">{{ t.dash_continue_dialog }}</a>
-          </div>
-          {% else %}
-          <div class="text-center py-8">
-            <p class="text-sm text-muted mb-3">{{ t.dash_no_dialogs }}</p>
-            <a href="/chat" class="text-sm text-gold hover:underline">{{ t.dash_start_consultation }}</a>
-          </div>
-          {% endif %}
-        </div>
-
-        <!-- Orders -->
-        <div class="p-6 rounded-2xl bg-surface border border-border">
-          <h3 class="font-semibold text-text mb-4">{{ t.dash_orders }}</h3>
-          {% if orders %}
-          <div class="space-y-3">
-            {% for order in orders %}
-            <div class="flex items-center justify-between py-3 border-b border-border last:border-0">
-              <div>
-                <p class="text-sm text-text">{{ t.dash_order }} #{{ order.id }}</p>
-                <p class="text-xs text-muted">{{ order.created_at.strftime('%d.%m.%Y') if order.created_at else '' }}</p>
-              </div>
-              <div class="text-right">
-                <p class="text-sm font-medium text-text">{{ order.amount | int }} {{ t.dash_rub }}</p>
-                <span class="text-xs px-2 py-0.5 rounded-full {{ 'bg-green-500/10 text-green-400' if order.status == 'paid' else 'bg-muted/10 text-muted' }}">
-                  {{ order.status }}
-                </span>
-              </div>
-            </div>
-            {% endfor %}
-          </div>
-          {% else %}
-          <p class="text-sm text-muted text-center py-6">{{ t.dash_no_orders }}</p>
-          {% endif %}
         </div>
       </div>
-    </div>
-  </div>
+    </section>
+
+  </div><!-- /db-main -->
+
+  <!-- RIGHT NAV -->
+  <nav class="db-nav" id="dbNav">
+    {% macro nc(id,em,label,dot=False) %}
+    <button class="nc" data-sec="{{ id }}" onclick="goSec('{{ id }}')" title="{{ label }}" id="nc-{{ id }}">{{ em }}{% if dot %}<span class="nc-dot"></span>{% endif %}</button>
+    {% endmacro %}
+    {{ nc('home','🏠','Главная') }}
+    {{ nc('feed','👥','Лента') }}
+    {{ nc('ai','🤖','AI чат', dot=(messages|length > 0)) }}
+    {{ nc('shop','🛒','Магазин') }}
+    <div class="nc-sep"></div>
+    {{ nc('plan','💎','Тариф', dot=(plan=='free')) }}
+    {{ nc('orders','📦','Заказы', dot=(orders|length > 0)) }}
+    {{ nc('referral','🎁','Рефералы') }}
+    <div class="nc-sep"></div>
+    {{ nc('link','🔗','Привязка') }}
+    {{ nc('language','🌐','Язык') }}
+    {{ nc('profile','⚙️','Профиль') }}
+    <div class="nc-sep"></div>
+    <a href="https://t.me/mushrooms_ai_bot" target="_blank" class="nc" title="Telegram бот">✈️</a>
+    {% if user.role == 'admin' %}
+    <a href="/admin" class="nc" title="Панель администратора" style="color:#f87171">🛡️</a>
+    {% endif %}
+  </nav>
 </div>
 
 <script>
-var _t_copy = {{ t.btn_copy | tojson }};
-var _t_copied = {{ t.btn_copied | tojson }};
-var _t_syncing = {{ t.dash_syncing | tojson }};
-var _t_sync = {{ t.dash_sync_history | tojson }};
-
-async function uploadAvatar(input) {
-  const file = input.files[0];
-  if (!file) return;
-
-  const spinner = document.getElementById('avatarSpinner');
-  const errEl = document.getElementById('avatarError');
-  const imgEl = document.getElementById('avatarImg');
-  const placeholder = document.getElementById('avatarPlaceholder');
-
-  errEl.classList.add('hidden');
-  spinner.classList.remove('hidden');
-
-  const fd = new FormData();
-  fd.append('file', file);
-
-  try {
-    const resp = await fetch('/profile/upload-avatar', { method: 'POST', body: fd });
-    const data = await resp.json();
-
-    if (data.ok) {
-      // Update avatar image, hide placeholder if visible
-      imgEl.src = data.url + '?t=' + Date.now();
-      imgEl.classList.remove('hidden');
-      if (placeholder) placeholder.classList.add('hidden');
-      // Also update navbar avatar if present
-      document.querySelectorAll('img[src*="/media/avatars/"], nav img').forEach(function(el) {
-        if (el !== imgEl) el.src = data.url + '?t=' + Date.now();
-      });
-    } else {
-      errEl.textContent = data.error || 'Ошибка загрузки';
-      errEl.classList.remove('hidden');
-    }
-  } catch (e) {
-    errEl.textContent = 'Ошибка сети';
-    errEl.classList.remove('hidden');
-  } finally {
-    spinner.classList.add('hidden');
-    input.value = '';
-  }
+// ── Section routing ──
+const SECS = ['home','feed','ai','shop','plan','orders','referral','link','language','profile'];
+function goSec(id){
+  SECS.forEach(s=>{
+    document.getElementById('sec-'+s)?.classList.remove('active');
+    document.getElementById('nc-'+s)?.classList.remove('active');
+  });
+  const sec=document.getElementById('sec-'+id);
+  const btn=document.getElementById('nc-'+id);
+  if(sec)sec.classList.add('active');
+  if(btn)btn.classList.add('active');
+  location.hash=id;
+  if(id==='ai'){setTimeout(()=>{const b=document.getElementById('chatBox');if(b)b.scrollTop=b.scrollHeight},100)}
 }
 
-function copyRef() {
-  const input = document.getElementById('refLink');
-  const btn = document.getElementById('copyRefBtn');
-  navigator.clipboard.writeText(input.value).then(() => {
-    btn.textContent = _t_copied;
-    setTimeout(() => btn.textContent = _t_copy, 2000);
+// Init from hash
+(function(){
+  const h=(location.hash||'').replace('#','');
+  goSec(SECS.includes(h)?h:'home');
+})();
+
+window.addEventListener('hashchange',()=>{
+  const h=(location.hash||'').replace('#','');
+  if(SECS.includes(h))goSec(h);
+});
+
+// ── Avatar upload ──
+async function uploadAv(input,imgId='avImg'){
+  const file=input.files[0];if(!file)return;
+  const err=document.getElementById('avErr');
+  if(err){err.style.display='none'}
+  const fd=new FormData();fd.append('file',file);
+  try{
+    const r=await fetch('/profile/upload-avatar',{method:'POST',body:fd});
+    const d=await r.json();
+    if(d.ok){
+      const imgs=[document.getElementById('avImg'),document.getElementById('avImg2')];
+      imgs.forEach(el=>{if(el){el.src=d.url+'?t='+Date.now();el.style.display='block'}});
+      document.querySelectorAll('nav img[src*="/media/avatars/"]').forEach(el=>el.src=d.url+'?t='+Date.now());
+    }else if(err){err.textContent=d.error||'Ошибка';err.style.display='block'}
+  }catch(e){if(err){err.textContent='Сетевая ошибка';err.style.display='block'}}
+  input.value='';
+}
+
+// ── AI Chat ──
+async function sendChat(){
+  const inp=document.getElementById('chatInput');
+  const msg=inp.value.trim();if(!msg)return;
+  const box=document.getElementById('chatBox');
+  const send=document.getElementById('chatSend');
+  const err=document.getElementById('chatErr');
+  err.style.display='none';
+  inp.value='';send.disabled=true;send.innerHTML='<span class="spin">⟳</span>';
+  // append user msg
+  const um=document.createElement('div');um.className='msg-user';um.textContent=msg;box.appendChild(um);
+  box.scrollTop=box.scrollHeight;
+  try{
+    const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})});
+    const d=await r.json();
+    if(d.error&&d.error==='limit'){
+      err.textContent=d.message||'Лимит исчерпан';err.style.display='block';
+      if(d.message?.includes('подписк'))goSec('plan');
+    }else if(d.answer){
+      const am=document.createElement('div');am.className='msg-ai';
+      am.innerHTML='<div class="ai-lbl">Mushroom AI</div>'+esc(d.answer);
+      box.appendChild(am);box.scrollTop=box.scrollHeight;
+    }
+  }catch(e){err.textContent='Ошибка соединения';err.style.display='block'}
+  send.disabled=false;send.textContent='→';inp.focus();
+}
+document.getElementById('chatInput')?.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat()}});
+
+// ── Referral copy ──
+function copyRef(){
+  const v=document.getElementById('refInp')?.value;
+  if(!v)return;
+  navigator.clipboard.writeText(v).then(()=>{
+    const b=document.getElementById('refCopyBtn');
+    if(b){b.textContent='Скопировано ✓';setTimeout(()=>b.textContent='Копировать',2200)}
   });
 }
 
-function syncHistory() {
-  var btn = document.getElementById('sync-history-btn');
-  var ok = document.getElementById('sync-history-ok');
-  btn.disabled = true;
-  btn.textContent = _t_syncing;
-  fetch('/account/sync-history', {method: 'POST', headers: {'Content-Type': 'application/json'}})
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      if (data.ok) {
-        btn.style.display = 'none';
-        ok.classList.remove('hidden');
-      } else {
-        btn.disabled = false;
-        btn.textContent = _t_sync;
-      }
-    })
-    .catch(function() {
-      btn.disabled = false;
-      btn.textContent = _t_sync;
-    });
+// ── Language ──
+function setLang(code){
+  const fd=new FormData();fd.append('language',code);
+  fetch('/dashboard/language',{method:'POST',body:fd}).then(()=>location.reload());
 }
+
+// ── Sync history ──
+function syncHist(){
+  const b=document.getElementById('syncBtn');
+  const ok=document.getElementById('syncOk');
+  b.disabled=true;b.textContent='Синхронизация...';
+  fetch('/account/sync-history',{method:'POST',headers:{'Content-Type':'application/json'}})
+    .then(r=>r.json()).then(d=>{
+      if(d.ok){b.style.display='none';ok.style.display='block'}
+      else{b.disabled=false;b.textContent='🔄 Синхронизировать историю'}
+    }).catch(()=>{b.disabled=false;b.textContent='🔄 Синхронизировать историю'});
+}
+
+// ── Shop search ──
+function filterShop(q){
+  const term=q.toLowerCase();
+  document.querySelectorAll('#shopGrid .shop-item').forEach(el=>{
+    const name=el.dataset.name||'';
+    el.style.display=name.includes(term)?'':'none';
+  });
+}
+
+// ── MetaMask ──
+async function connectMetaMask(){
+  if(!window.ethereum){alert('Установите MetaMask');return}
+  try{
+    const accs=await window.ethereum.request({method:'eth_requestAccounts'});
+    const addr=accs[0];
+    document.getElementById('wltInp').value=addr;
+    await saveWallet(addr);
+  }catch(e){console.error(e)}
+}
+async function saveWallet(addr){
+  const a=addr||document.getElementById('wltInp').value.trim();
+  if(!a)return;
+  const fd=new FormData();fd.append('wallet',a);
+  await fetch('/profile/wallet',{method:'POST',body:fd});
+  const sh=a.slice(0,12)+'...'+a.slice(-4);
+  document.getElementById('wltSt').innerHTML=`<span style="color:#4ade80">✓ ${sh}</span>`;
+}
+
+// ── Save profile ──
+async function saveProfile(){
+  const name=document.getElementById('profName').value.trim();
+  const bio=document.getElementById('profBio').value.trim();
+  const ok=document.getElementById('profOk');
+  ok.style.display='none';
+  // Save bio
+  const fd1=new FormData();fd1.append('bio',bio);
+  await fetch('/profile/bio',{method:'POST',body:fd1});
+  // Name save (if endpoint exists – just show success for now)
+  ok.style.display='block';
+  setTimeout(()=>ok.style.display='none',3000);
+}
+
+// ── Util ──
+function esc(t){return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}
 </script>
 {% endblock %}

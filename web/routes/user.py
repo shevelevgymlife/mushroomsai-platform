@@ -62,6 +62,38 @@ async def dashboard(request: Request):
         orders.select().where(orders.c.user_id == user["id"]).order_by(orders.c.created_at.desc())
     )
 
+    # Stats for home screen
+    from db.models import shop_products as shop_products_table
+    my_post_count = await database.fetch_val(
+        sa.select(sa.func.count()).select_from(community_posts)
+        .where(community_posts.c.user_id == effective_user_id)
+    ) or 0
+    ai_questions_today = user.get("daily_questions") or 0
+
+    # Recent community feed (10 posts)
+    feed_raw = await database.fetch_all(
+        community_posts.select()
+        .where(community_posts.c.approved == True)
+        .order_by(community_posts.c.pinned.desc(), community_posts.c.created_at.desc())
+        .limit(10)
+    )
+    feed_authors = {}
+    for p in feed_raw:
+        if p["user_id"] and p["user_id"] not in feed_authors:
+            a = await database.fetch_one(users.select().where(users.c.id == p["user_id"]))
+            if a:
+                feed_authors[p["user_id"]] = dict(a)
+
+    # Shop products preview
+    shop_preview = await database.fetch_all(
+        shop_products_table.select().order_by(shop_products_table.c.created_at.desc()).limit(12)
+    )
+
+    # Full user profile (with bio/followers etc)
+    full_profile = await database.fetch_one(users.select().where(users.c.id == effective_user_id))
+    if full_profile:
+        user = dict(full_profile)
+
     return templates.TemplateResponse(
         "dashboard/user.html",
         {
@@ -73,6 +105,11 @@ async def dashboard(request: Request):
             "ref_link": ref_link,
             "messages": list(reversed(recent_messages)),
             "orders": my_orders,
+            "my_post_count": my_post_count,
+            "ai_questions_today": ai_questions_today,
+            "feed_raw": feed_raw,
+            "feed_authors": feed_authors,
+            "shop_preview": shop_preview,
         },
     )
 
