@@ -235,7 +235,10 @@ async def api_chat(request: Request):
             allowed = await can_ask_question(effective_user_id)
             if not allowed:
                 return JSONResponse({"error": "limit", "message": "Дневной лимит исчерпан. Подключите подписку для безлимитного доступа."}, status_code=429)
-        answer = await chat_with_ai(user_message=user_message, user_id=effective_user_id)
+        try:
+            answer = await chat_with_ai(user_message=user_message, user_id=effective_user_id)
+        except Exception as e:
+            return JSONResponse({"error": "ai_error", "message": "Ошибка AI сервиса. Попробуйте позже."}, status_code=500)
         await increment_question_count(effective_user_id)
     else:
         session_key = request.cookies.get("guest_session")
@@ -246,7 +249,10 @@ async def api_chat(request: Request):
         )
         if len(count_rows) >= 6:  # 3 user + 3 assistant
             return JSONResponse({"error": "limit", "message": "Зарегистрируйтесь для продолжения диалога."}, status_code=429)
-        answer = await chat_with_ai(user_message=user_message, session_key=session_key)
+        try:
+            answer = await chat_with_ai(user_message=user_message, session_key=session_key)
+        except Exception as e:
+            return JSONResponse({"error": "ai_error", "message": "Ошибка AI сервиса. Попробуйте позже."}, status_code=500)
 
     return JSONResponse({"answer": answer})
 

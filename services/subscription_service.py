@@ -69,7 +69,7 @@ async def can_ask_question(user_id: int) -> bool:
         )
         return True
 
-    return row["daily_questions"] < 5
+    return (row["daily_questions"] or 0) < 5
 
 
 async def increment_question_count(user_id: int):

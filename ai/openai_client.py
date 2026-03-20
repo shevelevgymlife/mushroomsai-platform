@@ -72,13 +72,16 @@ async def chat_with_ai(
 
     history.append({"role": "user", "content": user_message})
 
-    response = await client.chat.completions.create(
-        model="gpt-4o",
-        messages=[{"role": "system", "content": system_prompt}] + history,
-        max_tokens=2000,
-        temperature=0.7,
-    )
-    answer = response.choices[0].message.content
+    try:
+        response = await client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "system", "content": system_prompt}] + history,
+            max_tokens=2000,
+            temperature=0.7,
+        )
+        answer = response.choices[0].message.content
+    except Exception as e:
+        raise RuntimeError(f"OpenAI API error: {e}") from e
 
     try:
         await database.execute(
