@@ -68,12 +68,16 @@
               {{ p.image_url | tojson if p.image_url else '""' }},
               {{ p.category | tojson if p.category else '""' }},
               {{ 'true' if p.in_stock != false else 'false' }})"
-            class="flex-1 px-3 py-1.5 rounded-lg text-xs border border-border text-muted hover:border-gold hover:text-gold transition-colors">
-            Редактировать
+            style="min-height:44px;flex:1;padding:10px 14px;border-radius:10px;font-size:13px;border:1px solid rgba(255,255,255,.15);color:#aaa;background:none;cursor:pointer;transition:all .2s;touch-action:manipulation"
+            onmouseover="this.style.borderColor='#C9A84C';this.style.color='#C9A84C'"
+            onmouseout="this.style.borderColor='rgba(255,255,255,.15)';this.style.color='#aaa'">
+            ✏️ Редактировать
           </button>
           <button onclick="deleteProduct({{ p.id }}, this)"
-            class="px-3 py-1.5 rounded-lg text-xs border border-red-500/20 text-red-400 hover:bg-red-500/10 transition-colors">
-            Удалить
+            style="min-height:44px;min-width:44px;padding:10px 14px;border-radius:10px;font-size:13px;border:1px solid rgba(239,68,68,.3);color:#f87171;background:none;cursor:pointer;transition:all .2s;touch-action:manipulation"
+            onmouseover="this.style.background='rgba(239,68,68,.1)'"
+            onmouseout="this.style.background='none'">
+            🗑️
           </button>
         </div>
       </div>

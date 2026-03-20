@@ -1,7 +1,7 @@
 from openai import AsyncOpenAI
 from config import settings
 from db.database import database
-from db.models import ai_settings, messages
+from db.models import ai_settings, messages, ai_training_posts
 from ai.system_prompt import DEFAULT_SYSTEM_PROMPT
 from ai.knowledge_base import search_knowledge
 from typing import Optional
@@ -13,11 +13,26 @@ async def get_system_prompt() -> str:
         row = await database.fetch_one(
             ai_settings.select().order_by(ai_settings.c.updated_at.desc()).limit(1)
         )
-        if row:
-            return row["system_prompt"]
+        base_prompt = row["system_prompt"] if row else DEFAULT_SYSTEM_PROMPT
+    except Exception:
+        base_prompt = DEFAULT_SYSTEM_PROMPT
+
+    try:
+        posts = await database.fetch_all(
+            ai_training_posts.select()
+            .where(ai_training_posts.c.is_active == True)
+            .order_by(ai_training_posts.c.created_at.asc())
+        )
+        if posts:
+            blocks = []
+            for p in posts:
+                cat = f"[{p['category']}] " if p["category"] else ""
+                blocks.append(f"{cat}{p['title']}:\n{p['content']}")
+            base_prompt += "\n\nДОПОЛНИТЕЛЬНЫЕ ЗНАНИЯ:\n" + "\n\n".join(blocks)
     except Exception:
         pass
-    return DEFAULT_SYSTEM_PROMPT
+
+    return base_prompt
 
 async def chat_with_ai(
     user_message: str,

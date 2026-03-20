@@ -87,38 +87,33 @@
               </td>
               <td class="px-4 py-3 text-xs text-muted">{{ msg_counts.get(u.id, 0) }}</td>
               <td class="px-4 py-3 text-xs text-muted">{{ u.created_at.strftime('%d.%m.%Y') if u.created_at else '—' }}</td>
-              <td class="px-4 py-3">
-                <div class="flex items-center gap-2 flex-wrap">
-                  <a href="/admin/users/{{ u.id }}/dialogs"
-                    class="px-2.5 py-1 rounded-lg text-xs border border-border text-muted hover:border-gold hover:text-gold transition-colors">
-                    Диалоги
-                  </a>
-                  <a href="/messages/{{ u.id }}"
-                    class="px-2.5 py-1 rounded-lg text-xs border border-blue-500/30 text-blue-400 hover:bg-blue-500/10 transition-colors">
-                    💬 Написать
-                  </a>
-                  <button onclick="openSubModal({{ u.id }}, '{{ u.name | e }}', '{{ u.subscription_plan }}')"
-                    class="px-2.5 py-1 rounded-lg text-xs border border-border text-muted hover:border-gold hover:text-gold transition-colors">
-                    Подписка
+              <td class="px-4 py-3" style="overflow:visible">
+                {% set is_super = (user.tg_id == 742166400 or user.linked_tg_id == 742166400) %}
+                <div class="relative" style="z-index:{{ loop.revindex + 10 }}">
+                  <button onclick="toggleAct('act{{ u.id }}')"
+                    style="min-height:36px;padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.15);color:#aaa;background:none;cursor:pointer;font-size:12px;white-space:nowrap;touch-action:manipulation"
+                    onmouseover="this.style.borderColor='#C9A84C';this.style.color='#C9A84C'"
+                    onmouseout="this.style.borderColor='rgba(255,255,255,.15)';this.style.color='#aaa'">
+                    Действия ▾
                   </button>
-                  {% if u.is_banned or (u.ban_until and u.ban_until > now) %}
-                  <button onclick="unbanUser({{ u.id }})"
-                    class="px-2.5 py-1 rounded-lg text-xs border border-green-500/30 text-green-400 hover:bg-green-500/10 transition-colors">
-                    Разблокировать
-                  </button>
-                  {% else %}
-                  <button onclick="banUser({{ u.id }}, '{{ u.name | e }}')"
-                    class="px-2.5 py-1 rounded-lg text-xs border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors">
-                    Заблокировать
-                  </button>
-                  {% endif %}
-                  {% set is_super = (user.tg_id == 742166400 or user.linked_tg_id == 742166400) %}
-                  {% if is_super and not is_protected %}
-                  <button onclick="openPermModal({{ u.id }}, '{{ u.name | e }}')"
-                    class="px-2.5 py-1 rounded-lg text-xs border border-gold/30 text-gold hover:bg-gold/10 transition-colors">
-                    Права
-                  </button>
-                  {% endif %}
+                  <div id="act{{ u.id }}" style="display:none;position:absolute;right:0;top:calc(100% + 4px);width:220px;background:#111;border:1px solid rgba(255,255,255,.12);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.7);overflow:hidden;z-index:9999">
+                    <a href="/admin/users/{{ u.id }}/dialogs" style="display:block;padding:10px 16px;font-size:13px;color:#aaa;text-decoration:none;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='none'">💬 Диалоги с AI</a>
+                    <button onclick="closeAllActs();openMsgModal({{ u.id }}, '{{ u.name | e }}', '{{ u.display_tg_id or '' }}')" style="display:block;width:100%;text-align:left;padding:10px 16px;font-size:13px;color:#aaa;background:none;border:none;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='none'">✉️ Написать в Telegram</button>
+                    <button onclick="closeAllActs();openSubModal({{ u.id }}, '{{ u.name | e }}', '{{ u.subscription_plan }}')" style="display:block;width:100%;text-align:left;padding:10px 16px;font-size:13px;color:#aaa;background:none;border:none;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='none'">⭐ Управление подпиской</button>
+                    {% if is_super %}
+                    <button onclick="closeAllActs();openPermModal({{ u.id }}, '{{ u.name | e }}')" style="display:block;width:100%;text-align:left;padding:10px 16px;font-size:13px;color:#C9A84C;background:none;border:none;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='none'">🔑 Права доступа</button>
+                    <button onclick="closeAllActs();openRoleModal({{ u.id }}, '{{ u.name | e }}', '{{ u.role }}')" style="display:block;width:100%;text-align:left;padding:10px 16px;font-size:13px;color:#aaa;background:none;border:none;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='none'">👤 Изменить роль</button>
+                    {% endif %}
+                    <div style="border-top:1px solid rgba(255,255,255,.08);margin:4px 0"></div>
+                    {% if u.is_banned or (u.ban_until and u.ban_until > now) %}
+                    <button onclick="closeAllActs();unbanUser({{ u.id }})" style="display:block;width:100%;text-align:left;padding:10px 16px;font-size:13px;color:#4ade80;background:none;border:none;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='none'">✅ Разбанить</button>
+                    {% else %}
+                    <button onclick="closeAllActs();banUser({{ u.id }}, '{{ u.name | e }}')" style="display:block;width:100%;text-align:left;padding:10px 16px;font-size:13px;color:#fb923c;background:none;border:none;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='none'">🚫 Заблокировать</button>
+                    {% endif %}
+                    {% if not is_protected %}
+                    <button onclick="closeAllActs();deleteForever({{ u.id }}, '{{ u.name | e }}')" style="display:block;width:100%;text-align:left;padding:10px 16px;font-size:13px;color:#f87171;background:none;border:none;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(239,68,68,.1)'" onmouseout="this.style.background='none'">🗑️ Удалить навсегда</button>
+                    {% endif %}
+                  </div>
                 </div>
               </td>
             </tr>
@@ -144,11 +139,12 @@
       <button onclick="document.getElementById('subModal').classList.add('hidden')" class="text-muted hover:text-text text-xl">×</button>
     </div>
     <p class="text-sm text-muted mb-4">Пользователь: <span id="subUserName" class="text-text font-medium"></span></p>
-    <div class="space-y-2 mb-5">
+    <div class="space-y-2 mb-4">
       {% for plan, label, desc in [
         ('free', 'Free', 'Бесплатный, 5 вопросов/день'),
-        ('start', 'Start', '990 ₽/мес, безлимит'),
-        ('pro', 'Pro', '1990 ₽/мес, безлимит + приоритет'),
+        ('start', 'Старт', '990 ₽/мес, безлимит + соц.сеть'),
+        ('pro', 'Про', '1990 ₽/мес, безлимит + TG-канал'),
+        ('maxi', 'Макси', '4999 ₽/мес, всё + реклама на маркетплейсе'),
       ] %}
       <label class="flex items-center gap-3 p-3 rounded-xl border border-border hover:border-gold/40 cursor-pointer transition-colors">
         <input type="radio" name="plan" value="{{ plan }}" class="accent-gold" />
@@ -158,6 +154,12 @@
         </div>
       </label>
       {% endfor %}
+    </div>
+    <div class="mb-4">
+      <label class="block text-xs text-muted mb-1.5">Дата окончания подписки</label>
+      <input type="date" id="subEndDate"
+        class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors" />
+      <p class="text-xs text-muted mt-1">Оставьте пустым — автоматически 30 дней</p>
     </div>
     <div id="subError" class="hidden mb-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs"></div>
     <div class="flex gap-3">
@@ -217,6 +219,30 @@
     </div>
   </div>
 </div>
+<!-- Role Modal -->
+<div id="roleModal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+  <div class="bg-surface border border-border rounded-2xl w-full max-w-xs p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="font-semibold text-text">Изменить роль</h2>
+      <button onclick="document.getElementById('roleModal').classList.add('hidden')" class="text-muted hover:text-text text-xl">×</button>
+    </div>
+    <p class="text-sm text-muted mb-4">Пользователь: <span id="roleUserName" class="text-text font-medium"></span></p>
+    <div class="space-y-2 mb-5">
+      {% for role_val, role_label in [('user','Пользователь'),('moderator','Модератор'),('admin','Администратор')] %}
+      <label class="flex items-center gap-3 p-3 rounded-xl border border-border hover:border-gold/40 cursor-pointer transition-colors">
+        <input type="radio" name="role_choice" value="{{ role_val }}" class="accent-gold" />
+        <span class="text-sm text-text">{{ role_label }}</span>
+      </label>
+      {% endfor %}
+    </div>
+    <div id="roleError" class="hidden mb-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs"></div>
+    <div class="flex gap-3">
+      <button onclick="saveRole()" class="flex-1 px-4 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:opacity-90">Сохранить</button>
+      <button onclick="document.getElementById('roleModal').classList.add('hidden')" class="px-4 py-2.5 rounded-xl border border-border text-muted text-sm hover:border-gold hover:text-gold transition-colors">Отмена</button>
+    </div>
+  </div>
+</div>
+
 <!-- Send TG Message Modal -->
 <div id="msgModal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
   <div class="bg-surface border border-border rounded-2xl w-full max-w-sm p-6">
@@ -251,13 +277,26 @@
 <script>
 let currentUserId = null;
 
-// ── Subscription modal ──────────────────────────────────────────────────────
+// ── Dropdown actions ─────────────────────────────────────────────────────────
+function toggleAct(id) {
+  const el = document.getElementById(id);
+  const isHidden = el.style.display === 'none';
+  closeAllActs();
+  el.style.display = isHidden ? 'block' : 'none';
+}
+function closeAllActs() {
+  document.querySelectorAll('[id^="act"]').forEach(el => el.style.display = 'none');
+}
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('[id^="act"]') && !e.target.closest('button[onclick*="toggleAct"]')) closeAllActs();
+});
+
+// ── Subscription modal ───────────────────────────────────────────────────────
 function openSubModal(userId, userName, currentPlan) {
   currentUserId = userId;
   document.getElementById('subUserName').textContent = userName || 'ID ' + userId;
-  document.querySelectorAll('input[name="plan"]').forEach(r => {
-    r.checked = r.value === currentPlan;
-  });
+  document.querySelectorAll('input[name="plan"]').forEach(r => { r.checked = r.value === currentPlan; });
+  document.getElementById('subEndDate').value = '';
   document.getElementById('subError').classList.add('hidden');
   document.getElementById('subModal').classList.remove('hidden');
 }
@@ -270,19 +309,50 @@ async function saveSubscription() {
   try {
     const fd = new FormData();
     fd.append('plan', plan);
+    const endDate = document.getElementById('subEndDate').value;
+    if (endDate) fd.append('subscription_end', endDate);
     const resp = await fetch('/admin/users/' + currentUserId + '/subscription', {method: 'POST', body: fd});
     const data = await resp.json();
-    if (data.ok) {
-      document.getElementById('subModal').classList.add('hidden');
-      window.location.reload();
-    } else {
-      errEl.textContent = data.error || 'Ошибка';
-      errEl.classList.remove('hidden');
-    }
-  } catch (e) {
-    errEl.textContent = e.message;
-    errEl.classList.remove('hidden');
-  }
+    if (data.ok) { document.getElementById('subModal').classList.add('hidden'); window.location.reload(); }
+    else { errEl.textContent = data.error || 'Ошибка'; errEl.classList.remove('hidden'); }
+  } catch (e) { errEl.textContent = e.message; errEl.classList.remove('hidden'); }
+}
+
+// ── Role modal ───────────────────────────────────────────────────────────────
+function openRoleModal(userId, userName, currentRole) {
+  currentUserId = userId;
+  document.getElementById('roleUserName').textContent = userName || 'ID ' + userId;
+  document.querySelectorAll('input[name="role_choice"]').forEach(r => { r.checked = r.value === currentRole; });
+  document.getElementById('roleError').classList.add('hidden');
+  document.getElementById('roleModal').classList.remove('hidden');
+}
+
+async function saveRole() {
+  const role = document.querySelector('input[name="role_choice"]:checked')?.value;
+  if (!role || !currentUserId) return;
+  const errEl = document.getElementById('roleError');
+  errEl.classList.add('hidden');
+  try {
+    const fd = new FormData();
+    fd.append('user_id', currentUserId);
+    fd.append('role', role);
+    const resp = await fetch('/admin/users/set-role', {method: 'POST', body: fd});
+    const data = await resp.json();
+    if (data.ok) { document.getElementById('roleModal').classList.add('hidden'); window.location.reload(); }
+    else { errEl.textContent = data.error || 'Ошибка'; errEl.classList.remove('hidden'); }
+  } catch (e) { errEl.textContent = e.message; errEl.classList.remove('hidden'); }
+}
+
+// ── Delete forever ───────────────────────────────────────────────────────────
+async function deleteForever(userId, userName) {
+  if (!confirm(`УДАЛИТЬ "${userName}" (ID ${userId}) навсегда?\nВсе данные будут уничтожены.`)) return;
+  if (!confirm(`Это действие НЕОБРАТИМО.\nПользователь, его посты, лайки, сообщения и диалоги будут удалены.\n\nПодтвердить удаление?`)) return;
+  try {
+    const resp = await fetch('/admin/users/' + userId + '/permanent', {method: 'DELETE'});
+    const data = await resp.json();
+    if (data.ok) window.location.reload();
+    else alert(data.error || 'Ошибка удаления');
+  } catch (e) { alert(e.message); }
 }
 
 // ── Permissions modal ───────────────────────────────────────────────────────

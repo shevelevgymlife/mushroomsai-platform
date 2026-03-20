@@ -381,7 +381,7 @@ async def set_user_role(request: Request, user_id: int = Form(...), role: str = 
     if not is_super_admin(admin):
         return JSONResponse({"error": "Только главный администратор может назначать роли"}, status_code=403)
 
-    if role not in ("admin", "user"):
+    if role not in ("admin", "user", "moderator"):
         return JSONResponse({"error": "invalid role"}, status_code=400)
 
     target = await database.fetch_one(users.select().where(users.c.id == user_id))
@@ -487,10 +487,26 @@ async def change_subscription(request: Request, user_id: int, plan: str = Form(.
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
 
-    if plan not in ("free", "start", "pro"):
+    if plan not in ("free", "start", "pro", "maxi"):
         return JSONResponse({"error": "invalid plan"}, status_code=400)
 
-    end_date = datetime.utcnow() + timedelta(days=30) if plan != "free" else None
+    sub_end_str: str = None
+    try:
+        form = await request.form()
+        sub_end_str = form.get("subscription_end")
+    except Exception:
+        pass
+
+    if plan == "free":
+        end_date = None
+    elif sub_end_str:
+        try:
+            end_date = datetime.strptime(sub_end_str, "%Y-%m-%d")
+        except ValueError:
+            end_date = datetime.utcnow() + timedelta(days=30)
+    else:
+        end_date = datetime.utcnow() + timedelta(days=30)
+
     await database.execute(
         users.update().where(users.c.id == user_id).values(
             subscription_plan=plan, subscription_end=end_date
@@ -925,6 +941,109 @@ async def constructor(request: Request):
         "dashboard/constructor.html",
         {"request": request, "user": admin},
     )
+
+
+@router.delete("/users/{user_id}/permanent")
+async def delete_user_permanent(request: Request, user_id: int):
+    admin = await require_admin(request)
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+
+    target = await database.fetch_one(users.select().where(users.c.id == user_id))
+    if not target:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    if target.get("tg_id") == SUPER_ADMIN_TG_ID or target.get("linked_tg_id") == SUPER_ADMIN_TG_ID:
+        return JSONResponse({"error": "protected"}, status_code=403)
+
+    import sqlalchemy as sa_
+    for sql in [
+        "DELETE FROM direct_messages WHERE sender_id=:uid OR recipient_id=:uid",
+        "DELETE FROM moderation_log WHERE user_id=:uid",
+        "DELETE FROM community_likes WHERE user_id=:uid",
+        "DELETE FROM community_saved WHERE user_id=:uid",
+        "DELETE FROM community_comments WHERE user_id=:uid",
+        "DELETE FROM community_follows WHERE follower_id=:uid OR following_id=:uid",
+        "DELETE FROM profile_likes WHERE user_id=:uid OR liked_user_id=:uid",
+        "DELETE FROM community_posts WHERE user_id=:uid",
+        "DELETE FROM messages WHERE user_id=:uid",
+        "DELETE FROM sessions WHERE user_id=:uid",
+        "DELETE FROM orders WHERE user_id=:uid",
+        "UPDATE users SET primary_user_id=NULL WHERE primary_user_id=:uid",
+        "UPDATE users SET referred_by=NULL WHERE referred_by=:uid",
+    ]:
+        try:
+            await database.execute(sa_.text(sql), {"uid": user_id})
+        except Exception:
+            pass
+
+    await database.execute(users.delete().where(users.c.id == user_id))
+    return JSONResponse({"ok": True})
+
+
+# ─── AI Training Posts ─────────────────────────────────────────────────────────
+
+@router.get("/ai-posts", response_class=HTMLResponse)
+async def ai_posts_page(request: Request):
+    admin = await require_permission(request, "can_ai")
+    if not admin:
+        return RedirectResponse("/login")
+    try:
+        from db.models import ai_training_posts
+        posts_list = await database.fetch_all(
+            ai_training_posts.select().order_by(ai_training_posts.c.created_at.desc())
+        )
+    except Exception:
+        posts_list = []
+    return templates.TemplateResponse(
+        "dashboard/admin_ai_posts.html",
+        {"request": request, "user": admin, "posts": posts_list},
+    )
+
+
+@router.post("/ai-posts")
+async def add_ai_post(request: Request, title: str = Form(...), content: str = Form(...), category: str = Form("")):
+    admin = await require_permission(request, "can_ai")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    try:
+        from db.models import ai_training_posts
+        await database.execute(
+            ai_training_posts.insert().values(title=title.strip(), content=content.strip(), category=category.strip() or None)
+        )
+        return JSONResponse({"ok": True})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@router.delete("/ai-posts/{post_id}")
+async def delete_ai_post(request: Request, post_id: int):
+    admin = await require_permission(request, "can_ai")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    try:
+        from db.models import ai_training_posts
+        await database.execute(ai_training_posts.delete().where(ai_training_posts.c.id == post_id))
+        return JSONResponse({"ok": True})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@router.patch("/ai-posts/{post_id}/toggle")
+async def toggle_ai_post(request: Request, post_id: int):
+    admin = await require_permission(request, "can_ai")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    try:
+        from db.models import ai_training_posts
+        row = await database.fetch_one(ai_training_posts.select().where(ai_training_posts.c.id == post_id))
+        if not row:
+            return JSONResponse({"error": "not found"}, status_code=404)
+        await database.execute(
+            ai_training_posts.update().where(ai_training_posts.c.id == post_id).values(is_active=not row["is_active"])
+        )
+        return JSONResponse({"ok": True, "is_active": not row["is_active"]})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 
 @router.post("/posts/{post_id}/approve")

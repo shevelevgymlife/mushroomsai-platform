@@ -354,3 +354,14 @@ moderation_log = sqlalchemy.Table(
     sqlalchemy.Column("action_taken", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
+
+ai_training_posts = sqlalchemy.Table(
+    "ai_training_posts",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("title", sqlalchemy.Text, nullable=False),
+    sqlalchemy.Column("content", sqlalchemy.Text, nullable=False),
+    sqlalchemy.Column("category", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("is_active", sqlalchemy.Boolean, default=True, server_default="true"),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
