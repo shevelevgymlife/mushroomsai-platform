@@ -12,7 +12,31 @@
         <a href="/shop" class="text-sm text-muted hover:text-gold transition-colors duration-300">{{ t.nav_shop }}</a>
         <a href="/community" class="text-sm text-muted hover:text-gold transition-colors duration-300">{{ t.nav_community }}</a>
       </div>
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-3">
+
+        {% if user %}
+          <!-- Авторизован: профиль -->
+          <a href="/dashboard" style="display:flex;align-items:center;gap:10px;text-decoration:none;padding:4px 10px 4px 4px;border-radius:40px;border:2px solid #C9A84C;box-shadow:0 0 10px rgba(201,168,76,.2);background:rgba(201,168,76,.05);cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(201,168,76,.12)'" onmouseout="this.style.background='rgba(201,168,76,.05)'">
+            {% if user.avatar %}
+              <img src="{{ user.avatar }}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0" alt="" />
+            {% else %}
+              <div style="width:44px;height:44px;border-radius:50%;background:rgba(201,168,76,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <span style="color:#C9A84C;font-size:16px;font-weight:700">{{ (user.name or 'U')[0].upper() }}</span>
+              </div>
+            {% endif %}
+            <span style="font-size:13px;font-weight:500;color:#e8e8e8;white-space:nowrap" class="hidden sm:inline">Личный кабинет</span>
+          </a>
+        {% else %}
+          <!-- Гость: войти -->
+          <a href="/login" style="display:flex;align-items:center;gap:10px;text-decoration:none;padding:4px 14px 4px 4px;border-radius:40px;border:2px solid rgba(201,168,76,.4);box-shadow:0 0 8px rgba(201,168,76,.1);background:rgba(201,168,76,.03);cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='#C9A84C';this.style.background='rgba(201,168,76,.1)'" onmouseout="this.style.borderColor='rgba(201,168,76,.4)';this.style.background='rgba(201,168,76,.03)'">
+            <div style="width:44px;height:44px;border-radius:50%;background:rgba(201,168,76,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="20" height="20" fill="none" stroke="#C9A84C" stroke-width="1.8" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"/>
+              </svg>
+            </div>
+            <span style="font-size:13px;font-weight:500;color:#e8e8e8;white-space:nowrap" class="hidden sm:inline">Войти</span>
+          </a>
+        {% endif %}
 
         <!-- Language switcher -->
         <div class="relative" id="lang-switcher">
@@ -39,26 +63,7 @@
         </div>
 
         {% if user %}
-          <a href="/dashboard" class="flex items-center gap-2 text-sm text-muted hover:text-gold transition-colors duration-300">
-            {% if user.avatar %}
-              <img src="{{ user.avatar }}" class="w-7 h-7 rounded-full object-cover" alt="" />
-            {% else %}
-              <div class="w-7 h-7 rounded-full bg-gold/20 flex items-center justify-center">
-                <span class="text-gold text-xs font-semibold">{{ (user.name or 'U')[0].upper() }}</span>
-              </div>
-            {% endif %}
-            <span class="hidden sm:inline">{{ user.name or t.nav_cabinet }}</span>
-          </a>
-          <a href="/logout" class="text-xs text-muted hover:text-red-400 transition-colors duration-300">{{ t.nav_logout }}</a>
-        {% else %}
-          <a href="/login"
-            class="text-sm px-4 py-2 rounded-lg border border-border text-muted hover:border-gold hover:text-gold transition-all duration-300">
-            {{ t.nav_login }}
-          </a>
-          <a href="https://t.me/mushrooms_ai_bot" target="_blank" onclick="openBotLink(event)"
-            class="text-sm px-4 py-2 rounded-lg bg-gold text-bg font-medium hover:bg-gold-light transition-all duration-300">
-            {{ t.nav_open_bot }}
-          </a>
+          <a href="/logout" class="text-xs text-muted hover:text-red-400 transition-colors duration-300 hidden sm:inline">{{ t.nav_logout }}</a>
         {% endif %}
       </div>
     </div>
