@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 {% block title %}MushroomsAI — Персональный AI-консультант по функциональным грибам{% endblock %}
 
+{% macro block_visible(bkey) %}{% set _b = blocks[bkey] if blocks and bkey in blocks else none %}{% if not _b or not _b.access_level or _b.access_level == 'all' or (user and (user.is_admin or _b.access_level == 'auth' or (_b.access_level == 'start' and user.subscription_plan in ['start','pro','maxi']) or (_b.access_level == 'pro' and user.subscription_plan in ['pro','maxi']) or (_b.access_level == 'maxi' and user.subscription_plan == 'maxi'))) %}1{% endif %}{% endmacro %}
+
 {% block content %}
+{% if block_visible('hero') | trim %}
 <!-- Hero -->
 <section class="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
   <div class="absolute inset-0 bg-gradient-radial from-gold/5 via-transparent to-transparent"></div>
@@ -39,7 +42,9 @@
     </div>
   </div>
 </section>
+{% endif %}
 
+{% if block_visible('features') | trim %}
 <!-- Features -->
 <section class="py-24">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -66,7 +71,9 @@
     </div>
   </div>
 </section>
+{% endif %}
 
+{% if block_visible('pricing') | trim %}
 <!-- Tariffs -->
 <section class="py-24" id="tariffs">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -144,7 +151,9 @@
     </div>
   </div>
 </section>
+{% endif %}
 
+{% if block_visible('community') | trim %}
 <!-- Social Network Block -->
 <section class="py-24 overflow-hidden">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -226,7 +235,9 @@
     </div>
   </div>
 </section>
+{% endif %}
 
+{% if block_visible('shop') | trim %}
 <!-- Marketplace Block -->
 <section class="py-24 bg-surface/30">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -292,6 +303,7 @@
     </div>
   </div>
 </section>
+{% endif %}
 
 <!-- Register popup -->
 <div id="register-popup" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(4px)" onclick="if(event.target===this)hideRegisterPopup()">

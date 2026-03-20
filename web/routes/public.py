@@ -87,7 +87,9 @@ async def index(request: Request):
     # Homepage blocks
     try:
         blocks_raw = await database.fetch_all(
-            homepage_blocks.select().where(homepage_blocks.c.is_visible == True)
+            homepage_blocks.select()
+            .where(homepage_blocks.c.is_visible == True)
+            .order_by(homepage_blocks.c.position, homepage_blocks.c.id)
         )
         blocks = {r["block_name"]: dict(r) for r in blocks_raw}
     except Exception:

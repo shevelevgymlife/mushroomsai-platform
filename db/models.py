@@ -375,5 +375,7 @@ homepage_blocks = sqlalchemy.Table(
     sqlalchemy.Column("subtitle", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("content", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("is_visible", sqlalchemy.Boolean, default=True, server_default="true"),
+    sqlalchemy.Column("position", sqlalchemy.Integer, default=0, server_default="0"),
+    sqlalchemy.Column("access_level", sqlalchemy.Text, default="all", server_default="all"),
     sqlalchemy.Column("updated_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )

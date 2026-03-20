@@ -1052,7 +1052,7 @@ async def admin_homepage(request: Request):
     admin = await require_admin(request)
     if not admin:
         return RedirectResponse("/login")
-    blocks_raw = await database.fetch_all(homepage_blocks.select().order_by(homepage_blocks.c.id))
+    blocks_raw = await database.fetch_all(homepage_blocks.select().order_by(homepage_blocks.c.position, homepage_blocks.c.id))
     blocks = [dict(b) for b in blocks_raw]
     return templates.TemplateResponse(
         "dashboard/admin_homepage.html",
@@ -1068,6 +1068,7 @@ async def update_homepage_block(
     subtitle: str = Form(""),
     content: str = Form(""),
     is_visible: str = Form(""),
+    access_level: str = Form("all"),
 ):
     admin = await require_admin(request)
     if not admin:
@@ -1081,9 +1082,29 @@ async def update_homepage_block(
                 subtitle=subtitle,
                 content=content,
                 is_visible=(is_visible == "true"),
+                access_level=access_level,
                 updated_at=sqlalchemy.func.now(),
             )
         )
+        return JSONResponse({"ok": True})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@router.post("/homepage-blocks/reorder")
+async def reorder_homepage_blocks(request: Request):
+    admin = await require_admin(request)
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    try:
+        body = await request.json()
+        order = body.get("order", [])
+        for i, block_name in enumerate(order):
+            await database.execute(
+                homepage_blocks.update()
+                .where(homepage_blocks.c.block_name == block_name)
+                .values(position=i)
+            )
         return JSONResponse({"ok": True})
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
