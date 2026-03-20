@@ -26,6 +26,16 @@
       'pricing':   '💎 Pricing — Тарифы',
     } %}
 
+    <!-- Sticky save-order bar -->
+    <div id="reorderBar" style="display:none;position:sticky;top:70px;z-index:100;margin-bottom:14px;padding:12px 16px;border-radius:12px;background:#1a1400;border:1px solid rgba(201,168,76,.4);display:flex;align-items:center;justify-content:space-between;gap:12px">
+      <span style="font-size:13px;color:#C9A84C">↕ Порядок блоков изменён</span>
+      <button onclick="saveOrder()"
+        style="padding:8px 22px;border-radius:10px;background:#C9A84C;border:none;color:#080808;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s"
+        onmouseover="this.style.opacity='.82'" onmouseout="this.style.opacity='1'">
+        💾 Сохранить порядок
+      </button>
+    </div>
+
     <div id="blocksContainer">
       {% for b in blocks %}
       <div class="block-card" data-key="{{ b.block_name }}"
@@ -134,7 +144,7 @@ var sortable = Sortable.create(document.getElementById('blocksContainer'), {
   animation: 180,
   ghostClass: 'sortable-ghost',
   dragClass: 'sortable-drag',
-  onEnd: saveOrder,
+  onEnd: function() { showReorderBar(); saveOrder(); },
 });
 
 function getOrder() {
@@ -157,6 +167,10 @@ async function saveOrder() {
 }
 
 // ── ↑↓ buttons ────────────────────────────────────────────────────────────
+function showReorderBar() {
+  document.getElementById('reorderBar').style.display = 'flex';
+}
+
 function moveBlock(key, dir) {
   const container = document.getElementById('blocksContainer');
   const cards = [...container.querySelectorAll('[data-key]')];
@@ -166,6 +180,7 @@ function moveBlock(key, dir) {
   } else if (dir === 'down' && idx < cards.length - 1) {
     container.insertBefore(cards[idx + 1], cards[idx]);
   } else return;
+  showReorderBar();
   saveOrder();
 }
 
@@ -193,6 +208,7 @@ function showSave() {
   const el = document.getElementById('saveMsg');
   el.style.display = 'block';
   setTimeout(() => el.style.display = 'none', 2000);
+  document.getElementById('reorderBar').style.display = 'none';
 }
 function showErr(msg) {
   const el = document.getElementById('errMsg');

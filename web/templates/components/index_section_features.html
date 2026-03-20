@@ -1,0 +1,26 @@
+<!-- Features -->
+<section class="py-24">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="text-center mb-16">
+      <h2 class="text-3xl sm:text-4xl font-light text-text mb-4">{{ blocks.features.title if blocks and 'features' in blocks else t.features_title }}</h2>
+      <p class="text-muted max-w-xl mx-auto">{{ blocks.features.subtitle if blocks and 'features' in blocks else t.features_subtitle }}</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {% set features = [
+        (t.feature_1_title, t.feature_1_desc),
+        (t.feature_2_title, t.feature_2_desc),
+        (t.feature_3_title, t.feature_3_desc),
+      ] %}
+      {% for title, desc in features %}
+      <div class="p-6 rounded-2xl bg-surface border border-border hover:border-gold/30 transition-all duration-300 group">
+        <div class="w-10 h-10 rounded-xl bg-gold/10 flex items-center justify-center mb-4 group-hover:bg-gold/20 transition-colors duration-300">
+          <div class="w-4 h-4 rounded-full bg-gold"></div>
+        </div>
+        <h3 class="font-semibold text-text mb-2">{{ title }}</h3>
+        <p class="text-sm text-muted leading-relaxed">{{ desc }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>

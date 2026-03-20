@@ -84,7 +84,7 @@ async def index(request: Request):
             "avg_rating": round(float(avg), 1) if avg else None,
         })
 
-    # Homepage blocks
+    # Homepage blocks — ordered by position for dynamic section order
     try:
         blocks_raw = await database.fetch_all(
             homepage_blocks.select()
@@ -92,8 +92,10 @@ async def index(request: Request):
             .order_by(homepage_blocks.c.position, homepage_blocks.c.id)
         )
         blocks = {r["block_name"]: dict(r) for r in blocks_raw}
+        block_order = [r["block_name"] for r in blocks_raw]
     except Exception:
         blocks = {}
+        block_order = []
 
     await database.execute(
         __import__("db.models", fromlist=["page_views"]).page_views.insert().values(
@@ -111,6 +113,7 @@ async def index(request: Request):
             "community_members": community_members,
             "last_community_posts": last_community_posts,
             "blocks": blocks,
+            "block_order": block_order,
         },
     )
 
