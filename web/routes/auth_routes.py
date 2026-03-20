@@ -23,9 +23,10 @@ async def login_page(request: Request):
     if user:
         return RedirectResponse("/dashboard")
     from config import settings
+    tg_bot_id = settings.TELEGRAM_TOKEN.split(":")[0] if ":" in settings.TELEGRAM_TOKEN else ""
     return templates.TemplateResponse(
         "login.html",
-        {"request": request, "user": None, "site_url": settings.SITE_URL},
+        {"request": request, "user": None, "site_url": settings.SITE_URL, "tg_bot_id": tg_bot_id},
     )
 
 

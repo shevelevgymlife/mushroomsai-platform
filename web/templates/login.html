@@ -9,7 +9,7 @@
       <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-gold to-gold-light flex items-center justify-center mx-auto mb-4">
         <span class="text-bg font-bold text-xl">M</span>
       </div>
-      <h1 class="text-2xl font-semibold text-text">Войти в MushroomsAI</h1>
+      <h1 class="text-2xl font-semibold" style="color:#C9A84C">Войти в MushroomsAI</h1>
       <p class="text-sm text-muted mt-2">Персональный AI-консультант по грибам</p>
     </div>
 
@@ -22,21 +22,42 @@
     <!-- TG Mini App block — shown only inside Telegram Mini App -->
     <div id="tg-miniapp-block" style="display:none">
       <button onclick="loginWithTelegram()" id="tg-btn"
-        class="flex items-center justify-center gap-3 w-full p-3.5 rounded-xl border border-border bg-surface text-text text-sm font-medium hover:border-gold/40 transition-all duration-300 mb-4">
-        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="#2AABEE">
+        style="display:flex;align-items:center;justify-content:center;gap:12px;width:100%;min-height:52px;padding:0 20px;border-radius:14px;border:none;background:#229ED9;color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:opacity .2s"
+        onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
           <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-2.04 9.607c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.48 14.618l-2.95-.924c-.642-.2-.655-.642.136-.953l11.532-4.448c.536-.194 1.006.131.364.955z"/>
         </svg>
         Войти через Telegram
       </button>
-      <p id="tg-status" class="text-center text-xs text-muted mb-4"></p>
+      <p id="tg-status" class="text-center text-xs text-muted mt-3"></p>
     </div>
 
-    <!-- Web auth block — shown in regular browser: Google + Telegram Widget -->
-    <div id="web-auth-block" style="display:none">
+    <!-- Web auth block — shown in regular browser -->
+    <div id="web-auth-block" style="display:none;flex-direction:column;gap:12px">
+
+      <!-- Telegram -->
+      <button onclick="openTelegramAuth()"
+        style="display:flex;align-items:center;justify-content:center;gap:12px;width:100%;min-height:52px;padding:0 20px;border-radius:14px;border:none;background:#229ED9;color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:opacity .2s"
+        onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
+          <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-2.04 9.607c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.48 14.618l-2.95-.924c-.642-.2-.655-.642.136-.953l11.532-4.448c.536-.194 1.006.131.364.955z"/>
+        </svg>
+        Войти через Telegram
+      </button>
+
+      <!-- Divider -->
+      <div class="flex items-center gap-4">
+        <div class="flex-1 h-px bg-border"></div>
+        <span class="text-xs text-muted">или</span>
+        <div class="flex-1 h-px bg-border"></div>
+      </div>
+
       <!-- Google -->
-      <a href="/auth/google" id="google-btn"
-        class="flex items-center justify-center gap-3 w-full p-3.5 rounded-xl border border-border bg-surface text-text text-sm font-medium hover:border-gold/40 transition-all duration-300 mb-4">
-        <svg class="w-5 h-5" viewBox="0 0 24 24">
+      <a href="/auth/google"
+        style="display:flex;align-items:center;justify-content:center;gap:12px;width:100%;min-height:52px;padding:0 20px;border-radius:14px;text-decoration:none;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.12);color:#e8e8e8;font-size:15px;font-weight:500;transition:all .2s"
+        onmouseover="this.style.background='rgba(255,255,255,.11)';this.style.borderColor='rgba(255,255,255,.22)'"
+        onmouseout="this.style.background='rgba(255,255,255,.06)';this.style.borderColor='rgba(255,255,255,.12)'">
+        <svg width="20" height="20" viewBox="0 0 24 24">
           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
           <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
           <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
@@ -45,28 +66,9 @@
         Войти через Google
       </a>
 
-      <!-- Divider -->
-      <div class="flex items-center gap-4 mb-4">
-        <div class="flex-1 h-px bg-border"></div>
-        <span class="text-xs text-muted">или</span>
-        <div class="flex-1 h-px bg-border"></div>
-      </div>
-
-      <!-- Telegram Login Widget (OAuth for browser) -->
-      <div style="display:flex;justify-content:center;min-height:48px">
-        <script async
-          src="https://telegram.org/js/telegram-login-button.js"
-          data-telegram-login="mushrooms_ai_bot"
-          data-size="large"
-          data-auth-url="/auth/telegram"
-          data-request-access="write"
-          data-radius="12">
-        </script>
-      </div>
-      <p class="text-center text-xs text-muted mt-3">Войдите через аккаунт Telegram</p>
     </div>
 
-    <!-- Email form — hidden (kept for fallback, not shown to users) -->
+    <!-- Email form — hidden (fallback) -->
     <div id="email-block" style="display:none">
       <form action="/login/email" method="post" class="space-y-4">
         <input type="email" name="email" placeholder="Email" required
@@ -80,18 +82,27 @@
       </form>
     </div>
 
-    <!-- Register link — hidden -->
-    <div id="register-link" style="display:none">
-      <p class="text-sm text-muted text-center mt-6">Нет аккаунта?
-        <a href="/register" class="text-gold hover:text-gold-light transition-colors">Зарегистрироваться</a>
-      </p>
-    </div>
-
   </div>
 </div>
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script>
+const TG_BOT_ID = '{{ tg_bot_id }}';
+
+function openTelegramAuth() {
+  const origin = encodeURIComponent(window.location.origin);
+  const returnTo = encodeURIComponent('/auth/telegram');
+  const url = 'https://oauth.telegram.org/auth?bot_id=' + TG_BOT_ID
+    + '&origin=' + origin
+    + '&request_access=write'
+    + '&return_to=' + returnTo;
+  const popup = window.open(url, 'tg_auth', 'width=550,height=470,resizable=yes,scrollbars=yes');
+  if (!popup) {
+    // Fallback if popup blocked
+    window.location.href = url;
+  }
+}
+
 async function loginWithTelegram() {
   const btn = document.getElementById('tg-btn');
   const status = document.getElementById('tg-status');
@@ -123,22 +134,10 @@ document.addEventListener('DOMContentLoaded', function() {
   const isTelegram = !!(window.Telegram?.WebApp?.initData && window.Telegram.WebApp.initData !== '');
 
   if (isTelegram) {
-    // Telegram Mini App — only TG login button
     window.Telegram.WebApp.ready();
     document.getElementById('tg-miniapp-block').style.display = 'block';
-    const emailBlock = document.getElementById('email-block');
-    const registerLink = document.getElementById('register-link');
-    const googleBtn = document.getElementById('google-btn');
-    if (emailBlock) emailBlock.style.display = 'none';
-    if (registerLink) registerLink.style.display = 'none';
-    if (googleBtn) googleBtn.style.display = 'none';
   } else {
-    // Regular browser — Google + Telegram Widget, no email
-    document.getElementById('web-auth-block').style.display = 'block';
-    const emailBlock = document.getElementById('email-block');
-    const registerLink = document.getElementById('register-link');
-    if (emailBlock) emailBlock.style.display = 'none';
-    if (registerLink) registerLink.style.display = 'none';
+    document.getElementById('web-auth-block').style.display = 'flex';
   }
 });
 </script>
