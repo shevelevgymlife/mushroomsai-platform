@@ -222,12 +222,17 @@ async def chat_page(request: Request):
     )
 
 
-@router.get("/community", response_class=HTMLResponse)
+@router.get("/community")
 async def community(request: Request):
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/dashboard#feed", status_code=302)
+
+
+@router.get("/community/_old", response_class=HTMLResponse)
+async def community_old(request: Request):
     current_user = await get_user_from_request(request)
 
     if not current_user:
-        # Preview for unauthenticated users
         post_count = await database.fetch_val(
             sa.select(sa.func.count()).select_from(community_posts).where(community_posts.c.approved == True)
         )
