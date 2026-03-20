@@ -14,7 +14,7 @@
         <span class="text-bg font-bold text-sm">AI</span>
       </div>
       <div>
-        <h1 class="font-semibold text-text text-sm">AI-консультант Евгения Шевелева</h1>
+        <h1 class="font-semibold text-text text-sm">AI MushroomsAI — консультант</h1>
         <p class="text-xs text-muted">Эксперт по фунготерапии</p>
       </div>
       <div class="ml-auto flex items-center gap-2">
@@ -48,17 +48,16 @@
   </div>
 
   <div class="border-t border-border bg-bg/80 backdrop-blur-xl px-4 py-4">
-    <div class="max-w-3xl mx-auto flex gap-3 items-end">
-      <div class="flex-1">
-        <textarea id="messageInput" rows="1"
-          placeholder="Напишите ваш вопрос..."
-          class="w-full px-4 py-3 rounded-xl bg-surface border border-border text-text placeholder-muted text-sm focus:outline-none focus:border-gold/60 transition-colors duration-300 resize-none"
-          style="min-height: 48px; max-height: 120px;"
-          onkeydown="handleKey(event)"></textarea>
-      </div>
+    <div class="max-w-3xl mx-auto" style="display:flex;flex-direction:row;align-items:flex-end;gap:8px">
+      <textarea id="messageInput" rows="1"
+        placeholder="Напишите ваш вопрос..."
+        class="px-4 py-3 rounded-xl bg-surface border border-border text-text placeholder-muted text-sm focus:outline-none focus:border-gold/60 transition-colors duration-300 resize-none"
+        style="flex:1;min-width:0;min-height:48px;max-height:120px;"
+        onkeydown="handleKey(event)"></textarea>
       <button onclick="sendMessage()"
         id="sendBtn"
-        class="w-12 h-12 rounded-xl bg-gold text-bg flex items-center justify-center hover:bg-gold-light transition-all duration-300 flex-shrink-0">
+        class="rounded-xl bg-gold text-bg flex items-center justify-center hover:bg-gold-light transition-all duration-300"
+        style="flex-shrink:0;width:48px;height:48px;white-space:nowrap">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
         </svg>
