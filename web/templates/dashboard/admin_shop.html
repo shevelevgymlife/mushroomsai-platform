@@ -93,11 +93,11 @@
 </div>
 
 <!-- ══ ADD MODAL ══ -->
-<div id="addModal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+<div id="addModal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.75);z-index:9999;display:none;align-items:center;justify-content:center;padding:16px;overflow-y:auto">
   <div class="bg-surface border border-border rounded-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
     <div class="flex items-center justify-between mb-6">
       <h2 class="font-semibold text-text text-lg">Добавить товар</h2>
-      <button onclick="document.getElementById('addModal').classList.add('hidden')" class="text-muted hover:text-text text-xl leading-none">×</button>
+      <button onclick="closeAddModal()" class="text-muted hover:text-text text-xl leading-none">×</button>
     </div>
     <form action="/admin/shop/add" method="post" class="space-y-4">
       <div>
@@ -171,7 +171,7 @@
           class="flex-1 px-4 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-all duration-300">
           Добавить
         </button>
-        <button type="button" onclick="document.getElementById('addModal').classList.add('hidden')"
+        <button type="button" onclick="closeAddModal()"
           class="px-4 py-2.5 rounded-xl border border-border text-muted text-sm hover:border-gold hover:text-gold transition-colors">
           Отмена
         </button>
@@ -181,11 +181,11 @@
 </div>
 
 <!-- ══ EDIT MODAL ══ -->
-<div id="editModal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+<div id="editModal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.75);z-index:9999;display:none;align-items:center;justify-content:center;padding:16px;overflow-y:auto">
   <div class="bg-surface border border-border rounded-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
     <div class="flex items-center justify-between mb-6">
       <h2 class="font-semibold text-text text-lg">Редактировать товар</h2>
-      <button onclick="document.getElementById('editModal').classList.add('hidden')" class="text-muted hover:text-text text-xl leading-none">×</button>
+      <button onclick="closeEditModal()" class="text-muted hover:text-text text-xl leading-none">×</button>
     </div>
     <form id="editForm" method="post" class="space-y-4">
       <div>
@@ -266,7 +266,7 @@
           class="flex-1 px-4 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-all duration-300">
           Сохранить
         </button>
-        <button type="button" onclick="document.getElementById('editModal').classList.add('hidden')"
+        <button type="button" onclick="closeEditModal()"
           class="px-4 py-2.5 rounded-xl border border-border text-muted text-sm hover:border-gold hover:text-gold transition-colors">
           Отмена
         </button>
@@ -311,10 +311,17 @@ function openAddModal() {
   document.getElementById('addPreviewImg').src = '';
   document.getElementById('addFileLabel').textContent = 'Выбрать файл (JPEG, PNG, WebP — до 5 МБ)';
   document.getElementById('addUploadError').classList.add('hidden');
-  document.getElementById('addModal').classList.remove('hidden');
+  document.getElementById('addModal').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeAddModal() {
+  document.getElementById('addModal').style.display = 'none';
+  document.body.style.overflow = '';
 }
 
 function openEditModal(id, name, desc, price, url, mushType, imgUrl, category, inStock) {
+  console.log('openEditModal called', id, name);
   document.getElementById('editForm').action = '/admin/shop/edit/' + id;
   document.getElementById('editName').value = name;
   document.getElementById('editDescription').value = desc;
@@ -337,8 +344,17 @@ function openEditModal(id, name, desc, price, url, mushType, imgUrl, category, i
   else { pb.classList.add('hidden'); }
 
   document.getElementById('editFileLabel').textContent = imgUrl ? 'Заменить фото' : 'Загрузить фото';
+  document.getElementById('editSaveError').classList.add('hidden');
   document.getElementById('editUploadError').classList.add('hidden');
-  document.getElementById('editModal').classList.remove('hidden');
+
+  var modal = document.getElementById('editModal');
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').style.display = 'none';
+  document.body.style.overflow = '';
 }
 
 // Show URL link button live in edit modal
@@ -436,7 +452,7 @@ async function saveEditProduct() {
     var resp = await fetch(form.action, { method: 'POST', body: fd });
     var data = await resp.json();
     if (data.ok) {
-      document.getElementById('editModal').classList.add('hidden');
+      closeEditModal();
       location.reload();
     } else {
       errEl.textContent = data.error || 'Ошибка сохранения';
