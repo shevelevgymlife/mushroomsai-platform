@@ -9,8 +9,21 @@
 
 {% for bkey in render_order %}
   {% if block_visible(bkey) | trim %}
+    {% set _b = blocks[bkey] if blocks and bkey in blocks else none %}
     {% set section_tpl = "components/index_section_" + bkey + ".html" %}
-    {% include section_tpl ignore missing %}
+    {% if _b and _b.blur_for_guests and not user %}
+      <div style="position:relative;overflow:hidden">
+        <div style="filter:blur(8px);pointer-events:none;user-select:none">
+          {% include section_tpl ignore missing %}
+        </div>
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);z-index:10">
+          <p style="color:#e8e8e8;font-size:18px;font-weight:600;text-align:center;padding:0 20px;margin:0">{{ _b.blur_text or 'Войти для просмотра' }}</p>
+          <a href="/login" style="background:#C9A84C;color:#000;padding:10px 28px;border-radius:10px;margin-top:16px;font-weight:700;text-decoration:none;font-size:15px">Войти</a>
+        </div>
+      </div>
+    {% else %}
+      {% include section_tpl ignore missing %}
+    {% endif %}
   {% endif %}
 {% endfor %}
 

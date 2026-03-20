@@ -377,6 +377,9 @@ homepage_blocks = sqlalchemy.Table(
     sqlalchemy.Column("is_visible", sqlalchemy.Boolean, default=True, server_default="true"),
     sqlalchemy.Column("position", sqlalchemy.Integer, default=0, server_default="0"),
     sqlalchemy.Column("access_level", sqlalchemy.Text, default="all", server_default="all"),
+    sqlalchemy.Column("custom_title", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("blur_for_guests", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column("blur_text", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("updated_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
 

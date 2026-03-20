@@ -12,10 +12,20 @@
     </div>
 
     <div id="saveMsg" style="display:none;margin-bottom:14px;padding:12px 16px;border-radius:12px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:#4ade80;font-size:14px">✓ Сохранено</div>
-    <div id="errMsg" style="display:none;margin-bottom:14px;padding:12px 16px;border-radius:12px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:#f87171;font-size:14px"></div>
+    <div id="errMsg"  style="display:none;margin-bottom:14px;padding:12px 16px;border-radius:12px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:#f87171;font-size:14px"></div>
 
     <div style="margin-bottom:16px;padding:10px 14px;border-radius:10px;background:rgba(201,168,76,.06);border:1px solid rgba(201,168,76,.2);color:#C9A84C;font-size:13px">
       ⠿ Перетащите карточки для изменения порядка или используйте кнопки ↑ ↓
+    </div>
+
+    <!-- Sticky reorder bar -->
+    <div id="reorderBar" style="display:none;position:sticky;top:70px;z-index:100;margin-bottom:14px;padding:12px 16px;border-radius:12px;background:#1a1400;border:1px solid rgba(201,168,76,.4);align-items:center;justify-content:space-between;gap:12px">
+      <span style="font-size:13px;color:#C9A84C">↕ Порядок блоков изменён</span>
+      <button onclick="saveOrder()"
+        style="padding:8px 22px;border-radius:10px;background:#C9A84C;border:none;color:#080808;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s"
+        onmouseover="this.style.opacity='.82'" onmouseout="this.style.opacity='1'">
+        💾 Сохранить порядок
+      </button>
     </div>
 
     {% set block_labels = {
@@ -26,47 +36,40 @@
       'pricing':   '💎 Pricing — Тарифы',
     } %}
 
-    <!-- Sticky save-order bar -->
-    <div id="reorderBar" style="display:none;position:sticky;top:70px;z-index:100;margin-bottom:14px;padding:12px 16px;border-radius:12px;background:#1a1400;border:1px solid rgba(201,168,76,.4);display:flex;align-items:center;justify-content:space-between;gap:12px">
-      <span style="font-size:13px;color:#C9A84C">↕ Порядок блоков изменён</span>
-      <button onclick="saveOrder()"
-        style="padding:8px 22px;border-radius:10px;background:#C9A84C;border:none;color:#080808;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s"
-        onmouseover="this.style.opacity='.82'" onmouseout="this.style.opacity='1'">
-        💾 Сохранить порядок
-      </button>
-    </div>
-
     <div id="blocksContainer">
       {% for b in blocks %}
       <div class="block-card" data-key="{{ b.block_name }}"
-        style="margin-bottom:14px;padding:20px 20px 16px;border-radius:16px;background:#111;border:1px solid rgba(255,255,255,.08);transition:border-color .2s,box-shadow .2s"
+        style="margin-bottom:14px;border-radius:16px;background:#111;border:1px solid rgba(255,255,255,.08);transition:border-color .2s,box-shadow .2s;overflow:hidden"
         onmouseover="this.style.borderColor='rgba(201,168,76,.35)';this.style.boxShadow='0 0 0 1px rgba(201,168,76,.1)'"
         onmouseout="this.style.borderColor='rgba(255,255,255,.08)';this.style.boxShadow='none'">
 
         <!-- ── Card header ─────────────────────────────────── -->
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <div style="padding:16px 20px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-bottom:1px solid rgba(255,255,255,.06)">
 
           <!-- Drag handle -->
           <span class="drag-handle" title="Перетащить"
-            style="cursor:grab;font-size:20px;color:#444;padding:4px 6px;border-radius:6px;line-height:1;user-select:none;transition:color .15s;flex-shrink:0"
+            style="cursor:grab;font-size:20px;color:#444;padding:4px 6px;border-radius:6px;line-height:1;user-select:none;flex-shrink:0;transition:color .15s"
             onmouseover="this.style.color='#C9A84C'" onmouseout="this.style.color='#444'">⠿</span>
 
-          <!-- Block name -->
+          <!-- Block key badge -->
+          <span style="font-size:11px;color:#444;background:#0a0a0a;padding:2px 7px;border-radius:5px;font-family:monospace;flex-shrink:0">{{ b.block_name }}</span>
+
+          <!-- Block label -->
           <span style="flex:1;font-size:15px;font-weight:600;color:#e8e8e8;min-width:140px">
             {{ block_labels.get(b.block_name, b.block_name) }}
           </span>
 
           <!-- ↑↓ buttons -->
-          <button onclick="moveBlock('{{ b.block_name }}', 'up')" title="Вверх"
+          <button onclick="moveBlock('{{ b.block_name }}','up')" title="Вверх"
             style="min-width:32px;min-height:32px;padding:0 8px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:none;color:#888;font-size:15px;cursor:pointer;transition:all .15s;flex-shrink:0"
             onmouseover="this.style.borderColor='#C9A84C';this.style.color='#C9A84C'"
             onmouseout="this.style.borderColor='rgba(255,255,255,.12)';this.style.color='#888'">↑</button>
-          <button onclick="moveBlock('{{ b.block_name }}', 'down')" title="Вниз"
+          <button onclick="moveBlock('{{ b.block_name }}','down')" title="Вниз"
             style="min-width:32px;min-height:32px;padding:0 8px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:none;color:#888;font-size:15px;cursor:pointer;transition:all .15s;flex-shrink:0"
             onmouseover="this.style.borderColor='#C9A84C';this.style.color='#C9A84C'"
             onmouseout="this.style.borderColor='rgba(255,255,255,.12)';this.style.color='#888'">↓</button>
 
-          <!-- Access level select -->
+          <!-- Access level -->
           <select id="access_{{ b.block_name }}"
             style="padding:6px 10px;border-radius:8px;background:#0e0e0e;border:1px solid rgba(255,255,255,.12);color:#ccc;font-size:12px;outline:none;cursor:pointer;flex-shrink:0">
             {% set al = b.access_level or 'all' %}
@@ -82,12 +85,23 @@
             <input type="checkbox" id="vis_{{ b.block_name }}" {{ 'checked' if b.is_visible }} class="tgl-inp">
             <span class="tgl-track"><span class="tgl-thumb"></span></span>
           </label>
-          <span style="font-size:11px;color:#555;min-width:52px">{{ 'Видим' if b.is_visible else 'Скрыт' }}</span>
+          <span id="visLabel_{{ b.block_name }}" style="font-size:11px;color:#555;min-width:48px">{{ 'Видим' if b.is_visible else 'Скрыт' }}</span>
 
         </div>
 
-        <!-- ── Fields ─────────────────────────────────────── -->
-        <div style="display:grid;gap:10px">
+        <!-- ── Fields ──────────────────────────────────────── -->
+        <div style="padding:16px 20px;display:grid;gap:12px">
+
+          <!-- Custom title -->
+          <div>
+            <label style="display:block;font-size:10px;color:#666;margin-bottom:5px;text-transform:uppercase;letter-spacing:.6px">Название блока (кастомное)</label>
+            <input type="text" id="ctitle_{{ b.block_name }}" value="{{ b.custom_title or '' }}"
+              placeholder="Оставьте пустым, чтобы использовать название по умолчанию"
+              style="width:100%;padding:9px 12px;border-radius:9px;background:#0c0c0c;border:1px solid rgba(255,255,255,.1);color:#e8e8e8;font-size:14px;outline:none;box-sizing:border-box;transition:border-color .15s"
+              onfocus="this.style.borderColor='rgba(201,168,76,.6)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'" />
+          </div>
+
+          <!-- Заголовок / Подзаголовок / Контент -->
           <div>
             <label style="display:block;font-size:10px;color:#555;margin-bottom:5px;text-transform:uppercase;letter-spacing:.6px">Заголовок</label>
             <input type="text" id="title_{{ b.block_name }}" value="{{ b.title or '' }}"
@@ -106,14 +120,35 @@
               style="width:100%;padding:9px 12px;border-radius:9px;background:#0c0c0c;border:1px solid rgba(255,255,255,.1);color:#e8e8e8;font-size:14px;outline:none;box-sizing:border-box;resize:vertical;transition:border-color .15s"
               onfocus="this.style.borderColor='rgba(201,168,76,.6)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">{{ b.content or '' }}</textarea>
           </div>
+
+          <!-- Blur overlay section -->
+          <div style="padding:14px 16px;border-radius:10px;background:#0d0d0d;border:1px solid rgba(255,255,255,.07)">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+              <label class="tgl-wrap" title="Затенять блок для незарегистрированных гостей" style="flex-shrink:0">
+                <input type="checkbox" id="blur_{{ b.block_name }}" {{ 'checked' if b.blur_for_guests }} class="tgl-inp tgl-blur">
+                <span class="tgl-track"><span class="tgl-thumb"></span></span>
+              </label>
+              <span style="font-size:13px;color:#aaa;font-weight:500">Затенить блок для гостей</span>
+              <span id="blurLabel_{{ b.block_name }}" style="font-size:11px;color:#555;margin-left:auto">{{ 'Включено' if b.blur_for_guests else 'Выключено' }}</span>
+            </div>
+            <div id="blurFields_{{ b.block_name }}" style="{{ '' if b.blur_for_guests else 'display:none' }}">
+              <label style="display:block;font-size:10px;color:#555;margin-bottom:5px;text-transform:uppercase;letter-spacing:.6px">Текст оверлея</label>
+              <input type="text" id="blurtext_{{ b.block_name }}" value="{{ b.blur_text or 'Войти для просмотра' }}"
+                placeholder="Войти для просмотра"
+                style="width:100%;padding:9px 12px;border-radius:9px;background:#0c0c0c;border:1px solid rgba(255,255,255,.1);color:#e8e8e8;font-size:14px;outline:none;box-sizing:border-box;transition:border-color .15s"
+                onfocus="this.style.borderColor='rgba(201,168,76,.6)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'" />
+              <div style="margin-top:8px;font-size:12px;color:#444">Превью: тёмный оверлей поверх размытого блока с кнопкой «Войти» → /login</div>
+            </div>
+          </div>
+
         </div>
 
-        <!-- ── Save button ────────────────────────────────── -->
-        <div style="margin-top:12px;display:flex;justify-content:flex-end">
+        <!-- ── Save button ─────────────────────────────────── -->
+        <div style="padding:0 20px 16px;display:flex;justify-content:flex-end">
           <button onclick="saveBlock('{{ b.block_name }}')"
-            style="padding:8px 22px;border-radius:10px;background:#C9A84C;border:none;color:#080808;font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s"
+            style="padding:9px 26px;border-radius:10px;background:#C9A84C;border:none;color:#080808;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s;display:flex;align-items:center;gap:6px"
             onmouseover="this.style.opacity='.82'" onmouseout="this.style.opacity='1'">
-            Сохранить
+            💾 Сохранить
           </button>
         </div>
 
@@ -144,7 +179,7 @@ var sortable = Sortable.create(document.getElementById('blocksContainer'), {
   animation: 180,
   ghostClass: 'sortable-ghost',
   dragClass: 'sortable-drag',
-  onEnd: function() { showReorderBar(); saveOrder(); },
+  onEnd: function() { showReorderBar(); },
 });
 
 function getOrder() {
@@ -155,15 +190,13 @@ async function saveOrder() {
   try {
     const resp = await fetch('/admin/homepage-blocks/reorder', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ order: getOrder() }),
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({order: getOrder()}),
     });
     const data = await resp.json();
     if (data.ok) showSave();
     else showErr(data.error || 'Ошибка сохранения порядка');
-  } catch(e) {
-    showErr('Ошибка сети: ' + e.message);
-  }
+  } catch(e) { showErr('Ошибка сети: ' + e.message); }
 }
 
 // ── ↑↓ buttons ────────────────────────────────────────────────────────────
@@ -181,33 +214,53 @@ function moveBlock(key, dir) {
     container.insertBefore(cards[idx + 1], cards[idx]);
   } else return;
   showReorderBar();
-  saveOrder();
 }
 
-// ── Save block content ─────────────────────────────────────────────────────
+// ── Blur toggle ────────────────────────────────────────────────────────────
+document.querySelectorAll('.tgl-blur').forEach(function(inp) {
+  inp.addEventListener('change', function() {
+    var name = this.id.replace('blur_', '');
+    var fieldsEl = document.getElementById('blurFields_' + name);
+    var labelEl  = document.getElementById('blurLabel_'  + name);
+    fieldsEl.style.display = this.checked ? '' : 'none';
+    if (labelEl) labelEl.textContent = this.checked ? 'Включено' : 'Выключено';
+  });
+});
+
+// ── Visibility toggle label ────────────────────────────────────────────────
+document.querySelectorAll('.tgl-inp:not(.tgl-blur)').forEach(function(inp) {
+  inp.addEventListener('change', function() {
+    var name = this.id.replace('vis_', '');
+    var label = document.getElementById('visLabel_' + name);
+    if (label) label.textContent = this.checked ? 'Видим' : 'Скрыт';
+  });
+});
+
+// ── Save block ─────────────────────────────────────────────────────────────
 async function saveBlock(name) {
   const fd = new FormData();
-  fd.append('title',        document.getElementById('title_'    + name).value);
-  fd.append('subtitle',     document.getElementById('subtitle_' + name).value);
-  fd.append('content',      document.getElementById('content_'  + name).value);
-  fd.append('is_visible',   document.getElementById('vis_'      + name).checked ? 'true' : 'false');
-  fd.append('access_level', document.getElementById('access_'   + name).value);
+  fd.append('title',          document.getElementById('title_'    + name)?.value || '');
+  fd.append('subtitle',       document.getElementById('subtitle_' + name)?.value || '');
+  fd.append('content',        document.getElementById('content_'  + name)?.value || '');
+  fd.append('is_visible',     document.getElementById('vis_'      + name).checked ? 'true' : 'false');
+  fd.append('access_level',   document.getElementById('access_'   + name).value);
+  fd.append('custom_title',   document.getElementById('ctitle_'   + name)?.value || '');
+  fd.append('blur_for_guests',document.getElementById('blur_'     + name).checked ? 'true' : 'false');
+  fd.append('blur_text',      document.getElementById('blurtext_' + name)?.value || '');
 
   try {
-    const resp = await fetch('/admin/homepage/' + name, { method: 'POST', body: fd });
+    const resp = await fetch('/admin/homepage/' + name, {method: 'POST', body: fd});
     const data = await resp.json();
     if (data.ok) showSave();
     else showErr(data.error || 'Ошибка');
-  } catch(e) {
-    showErr('Ошибка сети: ' + e.message);
-  }
+  } catch(e) { showErr('Ошибка сети: ' + e.message); }
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 function showSave() {
   const el = document.getElementById('saveMsg');
   el.style.display = 'block';
-  setTimeout(() => el.style.display = 'none', 2000);
+  setTimeout(() => el.style.display = 'none', 2200);
   document.getElementById('reorderBar').style.display = 'none';
 }
 function showErr(msg) {
@@ -216,13 +269,5 @@ function showErr(msg) {
   el.style.display = 'block';
   setTimeout(() => el.style.display = 'none', 4000);
 }
-
-// Update visibility label live when toggle changes
-document.querySelectorAll('.tgl-inp').forEach(function(inp) {
-  inp.addEventListener('change', function() {
-    var label = this.closest('[data-key]').querySelector('.tgl-wrap + span');
-    if (label) label.textContent = this.checked ? 'Видим' : 'Скрыт';
-  });
-});
 </script>
 {% endblock %}

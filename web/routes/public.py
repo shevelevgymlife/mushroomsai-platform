@@ -92,6 +92,10 @@ async def index(request: Request):
             .order_by(homepage_blocks.c.position, homepage_blocks.c.id)
         )
         blocks = {r["block_name"]: dict(r) for r in blocks_raw}
+        # Use custom_title as the display title if set
+        for b in blocks.values():
+            if b.get("custom_title"):
+                b["title"] = b["custom_title"]
         block_order = [r["block_name"] for r in blocks_raw]
     except Exception:
         blocks = {}

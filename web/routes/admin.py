@@ -1069,6 +1069,9 @@ async def update_homepage_block(
     content: str = Form(""),
     is_visible: str = Form(""),
     access_level: str = Form("all"),
+    custom_title: str = Form(""),
+    blur_for_guests: str = Form("false"),
+    blur_text: str = Form(""),
 ):
     admin = await require_admin(request)
     if not admin:
@@ -1083,6 +1086,9 @@ async def update_homepage_block(
                 content=content,
                 is_visible=(is_visible == "true"),
                 access_level=access_level,
+                custom_title=custom_title or None,
+                blur_for_guests=(blur_for_guests == "true"),
+                blur_text=blur_text or None,
                 updated_at=sqlalchemy.func.now(),
             )
         )
