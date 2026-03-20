@@ -14,10 +14,6 @@
       </div>
       <div class="flex items-center gap-3">
 
-        {% if user and user.role == 'admin' %}
-          <a href="/admin" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:10px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35);color:#f87171;font-size:13px;font-weight:600;text-decoration:none;transition:all .2s" onmouseover="this.style.background='rgba(239,68,68,.22)'" onmouseout="this.style.background='rgba(239,68,68,.12)'">🛡️ Админка</a>
-        {% endif %}
-
         {% if user %}
           <!-- Авторизован: профиль -->
           <a href="/dashboard" style="display:flex;align-items:center;gap:10px;text-decoration:none;padding:4px 10px 4px 4px;border-radius:40px;border:2px solid #C9A84C;box-shadow:0 0 10px rgba(201,168,76,.2);background:rgba(201,168,76,.05);cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(201,168,76,.12)'" onmouseout="this.style.background='rgba(201,168,76,.05)'">
@@ -28,7 +24,7 @@
                 <span style="color:#C9A84C;font-size:16px;font-weight:700">{{ (user.name or 'U')[0].upper() }}</span>
               </div>
             {% endif %}
-            <span style="font-size:13px;font-weight:500;color:#e8e8e8;white-space:nowrap" class="hidden sm:inline">Личный кабинет</span>
+            <span style="font-size:13px;font-weight:500;color:#e8e8e8;white-space:nowrap">Личный кабинет</span>
           </a>
         {% else %}
           <!-- Гость: войти -->
@@ -38,7 +34,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"/>
               </svg>
             </div>
-            <span style="font-size:13px;font-weight:500;color:#e8e8e8;white-space:nowrap" class="hidden sm:inline">Войти</span>
+            <span style="font-size:13px;font-weight:500;color:#e8e8e8;white-space:nowrap">Войти</span>
           </a>
         {% endif %}
 
