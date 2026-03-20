@@ -553,6 +553,7 @@
               <span style="color:#aaa">{{ val }}</span>
             </div>
             {% endfor %}
+            <button class="btn-o" style="width:100%;margin-top:14px" onclick="document.getElementById('sync-modal').style.display='flex'">🔗 Синхронизировать аккаунты</button>
           </div>
         </div>
       </div>
@@ -593,7 +594,46 @@
 
 </div>
 
+<!-- Sync modal -->
+<div id="sync-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;background:rgba(0,0,0,.75);backdrop-filter:blur(6px)" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:#0e0e0e;border:1px solid rgba(201,168,76,.3);border-radius:20px;padding:36px 32px;max-width:400px;width:90%;box-shadow:0 0 60px rgba(201,168,76,.1)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <h3 style="font-size:18px;font-weight:700;color:#e8e8e8">🔗 Привязка аккаунтов</h3>
+      <button onclick="document.getElementById('sync-modal').style.display='none'" style="background:none;border:none;color:#555;font-size:22px;cursor:pointer;line-height:1">×</button>
+    </div>
+    <p style="font-size:14px;color:#888;margin-bottom:24px;line-height:1.6">Привяжите Telegram или Google чтобы объединить аккаунты в один — единая история, подписка и профиль.</p>
+    <div id="sync-success" style="{% if request.query_params.get('linked') %}display:block{% else %}display:none{% endif %};margin-bottom:16px;padding:12px;border-radius:10px;background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);color:#4ade80;font-size:14px;font-weight:600;text-align:center">✅ Аккаунты объединены!</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <a href="/account/link-telegram"
+        style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:12px;border:1px solid rgba(56,189,248,.3);background:rgba(56,189,248,.05);text-decoration:none;transition:background .2s"
+        onmouseover="this.style.background='rgba(56,189,248,.12)'" onmouseout="this.style.background='rgba(56,189,248,.05)'">
+        <span style="font-size:22px">📱</span>
+        <div>
+          <div style="font-size:14px;font-weight:600;color:#38bdf8">Привязать Telegram</div>
+          <div style="font-size:12px;color:#555">Объедините бот и веб-кабинет</div>
+        </div>
+        <span style="margin-left:auto;color:#38bdf8">→</span>
+      </a>
+      <a href="/account/link-google"
+        style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:12px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.05);text-decoration:none;transition:background .2s"
+        onmouseover="this.style.background='rgba(239,68,68,.12)'" onmouseout="this.style.background='rgba(239,68,68,.05)'">
+        <span style="font-size:22px">🔴</span>
+        <div>
+          <div style="font-size:14px;font-weight:600;color:#ef4444">Привязать Google</div>
+          <div style="font-size:12px;color:#555">Войти через Google аккаунт</div>
+        </div>
+        <span style="margin-left:auto;color:#ef4444">→</span>
+      </a>
+    </div>
+  </div>
+</div>
+
 <script>
+// Auto-open sync modal if ?linked= in URL
+if (window.location.search.includes('linked=')) {
+  document.getElementById('sync-modal').style.display = 'flex';
+}
+
 // ── Section routing ──
 const SECS = ['home','feed','messages','ai','shop','plan','orders','referral','link','language','profile'];
 function goSec(id){

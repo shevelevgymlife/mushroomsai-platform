@@ -23,7 +23,14 @@ async def get_current_user(token: str) -> Optional[dict]:
         return None
 
     row = await database.fetch_one(users.select().where(users.c.id == user_id))
-    return dict(row) if row else None
+    if not row:
+        return None
+    # Always resolve to the primary account
+    if row["primary_user_id"]:
+        primary = await database.fetch_one(users.select().where(users.c.id == row["primary_user_id"]))
+        if primary:
+            return dict(primary)
+    return dict(row)
 
 
 async def get_user_from_request(request) -> Optional[dict]:
