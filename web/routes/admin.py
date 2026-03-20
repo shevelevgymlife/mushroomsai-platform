@@ -10,7 +10,7 @@ from db.models import (
     page_views, ai_settings, subscriptions, knowledge_base,
     shop_products, feedback, admin_permissions, product_reviews,
     community_posts, community_comments, community_likes, community_folders,
-    homepage_blocks,
+    homepage_blocks, dashboard_blocks, user_block_overrides,
 )
 import sqlalchemy
 from datetime import datetime, timedelta, date
@@ -1126,3 +1126,159 @@ async def delete_post(request: Request, post_id: int):
         return JSONResponse({"error": "forbidden"}, status_code=403)
     await database.execute(posts.delete().where(posts.c.id == post_id))
     return JSONResponse({"ok": True})
+
+
+# ─── Dashboard Blocks Manager ─────────────────────────────────────────────────
+
+@router.get("/dashboard-blocks", response_class=HTMLResponse)
+async def admin_dashboard_blocks(request: Request):
+    admin = await require_permission(request, "can_dashboard")
+    if not admin:
+        return RedirectResponse("/login")
+    blocks_raw = await database.fetch_all(
+        dashboard_blocks.select().order_by(dashboard_blocks.c.position, dashboard_blocks.c.id)
+    )
+    blocks = [dict(b) for b in blocks_raw]
+    return templates.TemplateResponse(
+        "dashboard/admin_dashboard_blocks.html",
+        {"request": request, "user": admin, "blocks": blocks,
+         "user_permissions": await get_user_permissions(admin)},
+    )
+
+
+@router.post("/dashboard-blocks/reorder")
+async def reorder_dashboard_blocks(request: Request):
+    admin = await require_permission(request, "can_dashboard")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    try:
+        body = await request.json()
+        order = body.get("order", [])
+        for i, block_key in enumerate(order):
+            await database.execute(
+                dashboard_blocks.update()
+                .where(dashboard_blocks.c.block_key == block_key)
+                .values(position=i)
+            )
+        return JSONResponse({"ok": True})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@router.post("/dashboard-blocks/{block_key}")
+async def update_dashboard_block(
+    request: Request,
+    block_key: str,
+    is_visible: str = Form("true"),
+    access_level: str = Form("all"),
+    block_name: str = Form(""),
+):
+    admin = await require_permission(request, "can_dashboard")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    try:
+        vals = {"is_visible": (is_visible == "true"), "access_level": access_level}
+        if block_name:
+            vals["block_name"] = block_name
+        await database.execute(
+            dashboard_blocks.update()
+            .where(dashboard_blocks.c.block_key == block_key)
+            .values(**vals)
+        )
+        return JSONResponse({"ok": True})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@router.get("/dashboard-blocks/user/{user_id}")
+async def get_user_block_overrides(request: Request, user_id: int):
+    admin = await require_permission(request, "can_dashboard")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    target = await database.fetch_one(users.select().where(users.c.id == user_id))
+    if not target:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    overrides_raw = await database.fetch_all(
+        user_block_overrides.select().where(user_block_overrides.c.user_id == user_id)
+    )
+    overrides = {r["block_key"]: dict(r) for r in overrides_raw}
+    blocks_raw = await database.fetch_all(
+        dashboard_blocks.select().order_by(dashboard_blocks.c.position)
+    )
+    result = []
+    for b in blocks_raw:
+        ov = overrides.get(b["block_key"])
+        result.append({
+            "block_key": b["block_key"],
+            "block_name": b["block_name"],
+            "global_visible": b["is_visible"],
+            "override_visible": ov["is_visible"] if ov and ov["is_visible"] is not None else None,
+            "custom_name": ov["custom_name"] if ov else None,
+        })
+    return JSONResponse({"ok": True, "user": {"id": target["id"], "name": target["name"]}, "blocks": result})
+
+
+@router.post("/dashboard-blocks/user/{user_id}")
+async def set_user_block_override(request: Request, user_id: int):
+    admin = await require_permission(request, "can_dashboard")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    body = await request.json()
+    block_key = body.get("block_key")
+    if not block_key:
+        return JSONResponse({"error": "block_key required"}, status_code=400)
+    is_visible = body.get("is_visible")  # None means "use global"
+    custom_name = body.get("custom_name")
+    existing = await database.fetch_one(
+        user_block_overrides.select()
+        .where(user_block_overrides.c.user_id == user_id)
+        .where(user_block_overrides.c.block_key == block_key)
+    )
+    if existing:
+        await database.execute(
+            user_block_overrides.update()
+            .where(user_block_overrides.c.user_id == user_id)
+            .where(user_block_overrides.c.block_key == block_key)
+            .values(is_visible=is_visible, custom_name=custom_name)
+        )
+    else:
+        await database.execute(
+            user_block_overrides.insert().values(
+                user_id=user_id, block_key=block_key,
+                is_visible=is_visible, custom_name=custom_name
+            )
+        )
+    return JSONResponse({"ok": True})
+
+
+@router.delete("/dashboard-blocks/user/{user_id}/{block_key}")
+async def delete_user_block_override(request: Request, user_id: int, block_key: str):
+    admin = await require_permission(request, "can_dashboard")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    await database.execute(
+        user_block_overrides.delete()
+        .where(user_block_overrides.c.user_id == user_id)
+        .where(user_block_overrides.c.block_key == block_key)
+    )
+    return JSONResponse({"ok": True})
+
+
+@router.get("/users/search")
+async def search_users_api(request: Request, q: str = ""):
+    admin = await require_permission(request, "can_dashboard")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    if not q or len(q) < 2:
+        return JSONResponse({"users": []})
+    results = await database.fetch_all(
+        users.select()
+        .where(users.c.primary_user_id == None)
+        .where(
+            (users.c.name.ilike(f"%{q}%"))
+            | (users.c.email.ilike(f"%{q}%"))
+            | (sqlalchemy.cast(users.c.tg_id, sqlalchemy.String).ilike(f"%{q}%"))
+        )
+        .limit(10)
+    )
+    return JSONResponse({"users": [{"id": u["id"], "name": u["name"], "email": u["email"]} for u in results]})

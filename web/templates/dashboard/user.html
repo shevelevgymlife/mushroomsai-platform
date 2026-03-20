@@ -107,6 +107,7 @@
 @keyframes spin360{to{transform:rotate(360deg)}}
 </style>
 
+{% set vbk = visible_block_keys if visible_block_keys is defined else ['ai_chat','messages','community','shop','profile_photo','posts','tariffs','referral','knowledge_base'] %}
 <div class="db-wrap">
   <!-- MAIN CONTENT -->
   <div class="db-main">
@@ -210,6 +211,7 @@
     </section>
 
     <!-- ══ FEED ══ -->
+    {% if 'community' in vbk %}
     <section class="db-sec" id="sec-feed">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
         <div class="sect-title" style="margin:0">👥 Лента сообщества</div>
@@ -298,8 +300,10 @@
       {% endif %}
       </div>
     </section>
+    {% endif %}
 
     <!-- ══ MESSAGES ══ -->
+    {% if 'messages' in vbk %}
     <section class="db-sec" id="sec-messages">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
         <div class="sect-title" style="margin:0">💬 Личные сообщения</div>
@@ -311,8 +315,10 @@
         </div>
       </div>
     </section>
+    {% endif %}
 
     <!-- ══ AI CHAT ══ -->
+    {% if 'ai_chat' in vbk %}
     <section class="db-sec" id="sec-ai">
       <div class="sect-title">🤖 AI Консультант</div>
       <div class="card" style="padding:16px">
@@ -341,7 +347,10 @@
       </div>
     </section>
 
+    {% endif %}
+
     <!-- ══ SHOP ══ -->
+    {% if 'shop' in vbk %}
     <section class="db-sec" id="sec-shop">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px">
         <div class="sect-title" style="margin:0">🛒 Магазин</div>
@@ -373,7 +382,10 @@
       </div>
     </section>
 
+    {% endif %}
+
     <!-- ══ PLAN ══ -->
+    {% if 'tariffs' in vbk %}
     <section class="db-sec" id="sec-plan">
       <div class="sect-title">💎 Тарифы и подписка</div>
       <div class="card" style="margin-bottom:20px">
@@ -411,6 +423,8 @@
       </div>
     </section>
 
+    {% endif %}
+
     <!-- ══ ORDERS ══ -->
     <section class="db-sec" id="sec-orders">
       <div class="sect-title">📦 Заказы и покупки</div>
@@ -439,6 +453,7 @@
     </section>
 
     <!-- ══ REFERRAL ══ -->
+    {% if 'referral' in vbk %}
     <section class="db-sec" id="sec-referral">
       <div class="sect-title">🎁 Реферальная программа</div>
       <div class="card" style="margin-bottom:16px">
@@ -469,6 +484,8 @@
         {% endfor %}
       </div>
     </section>
+
+    {% endif %}
 
     <!-- ══ LINK ══ -->
     <section class="db-sec" id="sec-link">

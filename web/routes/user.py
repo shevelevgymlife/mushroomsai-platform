@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from web.templates_utils import Jinja2Templates
 from auth.session import get_user_from_request
 from db.database import database
-from db.models import users, messages, orders, posts, post_likes, community_posts, community_likes, community_comments, community_folders, community_follows, community_saved, community_messages, profile_likes, community_profiles
+from db.models import users, messages, orders, posts, post_likes, community_posts, community_likes, community_comments, community_folders, community_follows, community_saved, community_messages, profile_likes, community_profiles, dashboard_blocks, user_block_overrides
 from services.referral_service import get_referral_stats
 from services.subscription_service import check_subscription, PLANS
 from ai.openai_client import chat_with_ai
@@ -15,6 +15,50 @@ import secrets
 
 router = APIRouter()
 templates = Jinja2Templates(directory="web/templates")
+
+
+async def compute_visible_blocks(user_id: int, plan: str) -> list[str]:
+    """Return list of block_keys visible for this user, respecting global settings and per-user overrides."""
+    blocks_raw = await database.fetch_all(
+        dashboard_blocks.select().order_by(dashboard_blocks.c.position, dashboard_blocks.c.id)
+    )
+    overrides_raw = await database.fetch_all(
+        user_block_overrides.select().where(user_block_overrides.c.user_id == user_id)
+    )
+    overrides = {r["block_key"]: r for r in overrides_raw}
+
+    PLAN_ORDER = ["free", "start", "pro", "maxi"]
+    plan_idx = PLAN_ORDER.index(plan) if plan in PLAN_ORDER else 0
+
+    visible = []
+    for b in blocks_raw:
+        key = b["block_key"]
+        ov = overrides.get(key)
+
+        # Per-user override: if explicitly set, respect it
+        if ov and ov["is_visible"] is not None:
+            if ov["is_visible"]:
+                visible.append(key)
+            continue
+
+        # Global visibility
+        if not b["is_visible"]:
+            continue
+
+        # Access level check
+        al = b["access_level"] or "all"
+        if al == "all":
+            visible.append(key)
+        elif al == "auth":
+            visible.append(key)
+        elif al == "start" and plan_idx >= 1:
+            visible.append(key)
+        elif al == "pro" and plan_idx >= 2:
+            visible.append(key)
+        elif al == "maxi" and plan_idx >= 3:
+            visible.append(key)
+
+    return visible
 
 
 async def require_auth(request: Request):
@@ -136,6 +180,11 @@ async def dashboard(request: Request):
     )
 
     from config import settings as _settings
+    try:
+        visible_block_keys = await compute_visible_blocks(effective_user_id, plan)
+    except Exception:
+        visible_block_keys = ["ai_chat", "messages", "community", "shop", "profile_photo", "posts", "tariffs", "referral", "knowledge_base"]
+
     return templates.TemplateResponse(
         "dashboard/user.html",
         {
@@ -158,6 +207,7 @@ async def dashboard(request: Request):
             "comm_profile": dict(comm_profile) if comm_profile else None,
             "shevelev_token": _settings.SHEVELEV_TOKEN_ADDRESS,
             "effective_user_id": effective_user_id,
+            "visible_block_keys": visible_block_keys,
         },
     )
 

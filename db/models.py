@@ -379,3 +379,25 @@ homepage_blocks = sqlalchemy.Table(
     sqlalchemy.Column("access_level", sqlalchemy.Text, default="all", server_default="all"),
     sqlalchemy.Column("updated_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
+
+dashboard_blocks = sqlalchemy.Table(
+    "dashboard_blocks",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("block_key", sqlalchemy.Text, unique=True, nullable=False),
+    sqlalchemy.Column("block_name", sqlalchemy.Text, nullable=False),
+    sqlalchemy.Column("is_visible", sqlalchemy.Boolean, default=True, server_default="true"),
+    sqlalchemy.Column("position", sqlalchemy.Integer, default=0, server_default="0"),
+    sqlalchemy.Column("access_level", sqlalchemy.Text, default="all", server_default="all"),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+user_block_overrides = sqlalchemy.Table(
+    "user_block_overrides",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=False),
+    sqlalchemy.Column("block_key", sqlalchemy.Text, nullable=False),
+    sqlalchemy.Column("is_visible", sqlalchemy.Boolean, nullable=True),
+    sqlalchemy.Column("custom_name", sqlalchemy.Text, nullable=True),
+)
