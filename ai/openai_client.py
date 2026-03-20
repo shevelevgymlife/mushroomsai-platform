@@ -38,7 +38,7 @@ async def chat_with_ai(
     user_message: str,
     user_id: Optional[int] = None,
     session_key: Optional[str] = None,
-    history_limit: int = 10,
+    history_limit: int = 20,
 ) -> str:
     system_prompt = await get_system_prompt()
     
@@ -75,7 +75,7 @@ async def chat_with_ai(
     response = await client.chat.completions.create(
         model="gpt-4o",
         messages=[{"role": "system", "content": system_prompt}] + history,
-        max_tokens=1500,
+        max_tokens=2000,
         temperature=0.7,
     )
     answer = response.choices[0].message.content
