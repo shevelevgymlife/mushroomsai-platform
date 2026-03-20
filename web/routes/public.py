@@ -37,16 +37,32 @@ async def index(request: Request):
     prods = await database.fetch_all(
         products.select().where(products.c.active == True).limit(6)
     )
-    community_posts = await database.fetch_all(
-        posts.select()
-        .where(posts.c.approved == True)
-        .order_by(posts.c.created_at.desc())
-        .limit(4)
-    )
     # Users count (primary accounts only)
     users_count = await database.fetch_val(
         sa.select(sa.func.count()).select_from(users).where(users.c.primary_user_id == None)
     ) or 0
+
+    # Community members for social block (latest 6 with avatars)
+    community_members_raw = await database.fetch_all(
+        users.select()
+        .where(users.c.primary_user_id == None)
+        .order_by(users.c.id.desc())
+        .limit(6)
+    )
+    community_members = [{"name": r["name"] or "User", "avatar": r["avatar"]} for r in community_members_raw]
+
+    # Recent community posts with author info
+    last_community_posts_raw = await database.fetch_all(
+        sa.text("""
+            SELECT cp.id, cp.content, cp.likes_count, cp.comments_count, cp.created_at,
+                   u.name as author_name, u.avatar as author_avatar
+            FROM community_posts cp
+            LEFT JOIN users u ON u.id = cp.user_id
+            ORDER BY cp.created_at DESC
+            LIMIT 3
+        """)
+    )
+    last_community_posts = [dict(r) for r in last_community_posts_raw]
 
     # Featured marketplace products with avg ratings
     featured_raw = await database.fetch_all(
@@ -79,9 +95,10 @@ async def index(request: Request):
             "request": request,
             "user": current_user,
             "products": prods,
-            "posts": community_posts,
             "users_count": users_count,
             "featured_products": featured_products,
+            "community_members": community_members,
+            "last_community_posts": last_community_posts,
         },
     )
 
