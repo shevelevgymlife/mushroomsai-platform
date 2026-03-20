@@ -35,15 +35,17 @@
     <!-- Web auth block — shown in regular browser -->
     <div id="web-auth-block" style="display:none;flex-direction:column;gap:12px">
 
-      <!-- Telegram -->
-      <button onclick="openTelegramAuth()"
-        style="display:flex;align-items:center;justify-content:center;gap:12px;width:100%;min-height:52px;padding:0 20px;border-radius:14px;border:none;background:#229ED9;color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:opacity .2s"
-        onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
-          <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-2.04 9.607c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.48 14.618l-2.95-.924c-.642-.2-.655-.642.136-.953l11.532-4.448c.536-.194 1.006.131.364.955z"/>
-        </svg>
-        Войти через Telegram
-      </button>
+      <!-- Telegram Login Widget (official) -->
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;min-height:52px">
+        <script async src="https://telegram.org/js/telegram-widget.js?22"
+          data-telegram-login="mushrooms_ai_bot"
+          data-size="large"
+          data-auth-url="/auth/telegram"
+          data-request-access="write"
+          data-radius="12">
+        </script>
+        <p class="text-xs text-muted">Войдите через аккаунт Telegram</p>
+      </div>
 
       <!-- Divider -->
       <div class="flex items-center gap-4">
@@ -87,21 +89,6 @@
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script>
-const TG_BOT_ID = '{{ tg_bot_id }}';
-
-function openTelegramAuth() {
-  const origin = encodeURIComponent(window.location.origin);
-  const returnTo = encodeURIComponent('/auth/telegram');
-  const url = 'https://oauth.telegram.org/auth?bot_id=' + TG_BOT_ID
-    + '&origin=' + origin
-    + '&request_access=write'
-    + '&return_to=' + returnTo;
-  const popup = window.open(url, 'tg_auth', 'width=550,height=470,resizable=yes,scrollbars=yes');
-  if (!popup) {
-    // Fallback if popup blocked
-    window.location.href = url;
-  }
-}
 
 async function loginWithTelegram() {
   const btn = document.getElementById('tg-btn');
