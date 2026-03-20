@@ -3,9 +3,10 @@ from db.database import database
 from db.models import users, subscriptions
 
 PLANS = {
-    "free": {"name": "Бесплатный", "price": 0, "questions_per_day": 5, "recipes_per_day": 1},
-    "start": {"name": "Старт", "price": 990, "questions_per_day": -1, "recipes_per_day": -1},
-    "pro": {"name": "Про", "price": 1990, "questions_per_day": -1, "recipes_per_day": -1},
+    "free":  {"name": "Бесплатный", "price": 0,    "questions_per_day": 5,  "recipes_per_day": 1},
+    "start": {"name": "Старт",      "price": 990,  "questions_per_day": -1, "recipes_per_day": -1},
+    "pro":   {"name": "Про",        "price": 1990, "questions_per_day": -1, "recipes_per_day": -1},
+    "maxi":  {"name": "Макси",      "price": 4999, "questions_per_day": -1, "recipes_per_day": -1},
 }
 
 
@@ -56,7 +57,7 @@ async def can_ask_question(user_id: int) -> bool:
         return False
 
     plan = await check_subscription(user_id)
-    if plan in ("start", "pro"):
+    if plan in ("start", "pro", "maxi"):
         return True
 
     today = date.today()

@@ -400,10 +400,10 @@
       </div>
       <div class="plan-grid">
         {% set pls = [
-          ('free','🌿','Бесплатный','0 ₽/мес',['5 вопросов в день','1 рецепт в день']),
-          ('start','⭐','Старт','990 ₽/мес',['Безлимит консультаций','PDF рецепты','AI подбор протокола','Доступ к магазину','Соц. сеть + лента','Поддержка 24/7']),
-          ('pro','💎','Про','1 990 ₽/мес',['Всё из Старт','История 3 мес','Глубокий разбор','Приоритетная поддержка']),
-          ('maxi','👑','Макси','4 999 ₽/мес',['Всё из Про','Реклама на маркетплейсе','VIP поддержка']),
+          ('free','🌿','Бесплатный','0 ₽/мес',['5 вопросов AI в день','База знаний','Магазин грибных продуктов']),
+          ('start','⭐','Старт','990 ₽/мес',['Безлимит AI консультаций','Соцсеть и лента','Маркетплейс','Партнёрство']),
+          ('pro','💎','Про','1 990 ₽/мес',['Всё из Старт','Приватный канал','Значок ⭐ в профиле','Закреп постов на 3 дня']),
+          ('maxi','🏪','Макси','4 999 ₽/мес',['Всё из Про','Значок 🏪 вместо ⭐','Максимальные возможности']),
         ] %}
         {% for pid,em,pname,price,feats in pls %}
         <div class="plan-card {{ 'current' if plan == pid }}">
@@ -415,8 +415,13 @@
           </div>
           {% if plan == pid %}
           <div style="margin-top:14px;font-size:12px;color:#C9A84C;font-weight:600">✓ Текущий тариф</div>
+          {% elif pid == 'free' %}
+          {# free plan — no upgrade/downgrade button needed #}
+          {% elif pid == 'maxi' %}
+          <a href="https://t.me/neurotrops_rus_bot?start=rHQemtw" target="_blank"
+             class="btn-g" style="width:100%;margin-top:14px;font-size:13px;padding:10px;display:block;text-align:center;text-decoration:none">Подключить</a>
           {% else %}
-          <button class="btn-g" style="width:100%;margin-top:14px;font-size:13px;padding:10px" onclick="alert('Оплата будет доступна в ближайшее время')">Выбрать</button>
+          <button class="btn-g" style="width:100%;margin-top:14px;font-size:13px;padding:10px" onclick="showTariffContact()">Подключить</button>
           {% endif %}
         </div>
         {% endfor %}
@@ -803,6 +808,11 @@ function syncHist(){
       if(d.ok){b.style.display='none';ok.style.display='block'}
       else{b.disabled=false;b.textContent='🔄 Синхронизировать историю'}
     }).catch(()=>{b.disabled=false;b.textContent='🔄 Синхронизировать историю'});
+}
+
+// ── Tariff contact ──
+function showTariffContact(){
+  alert('Оплата пока не подключена.\nДля подключения тарифа пишите: @mushrooms_ai_bot');
 }
 
 // ── Shop search ──

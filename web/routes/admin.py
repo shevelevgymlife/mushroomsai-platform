@@ -516,6 +516,36 @@ async def change_subscription(request: Request, user_id: int, plan: str = Form(.
     return JSONResponse({"ok": True, "plan": plan})
 
 
+@router.patch("/users/{user_id}/plan")
+async def patch_user_plan(request: Request, user_id: int):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "invalid json"}, status_code=400)
+    plan = body.get("plan")
+    plan_expires_at = body.get("plan_expires_at")
+    if plan not in ("free", "start", "pro", "maxi"):
+        return JSONResponse({"error": "invalid plan"}, status_code=400)
+    if plan == "free":
+        end_date = None
+    elif plan_expires_at:
+        try:
+            end_date = datetime.strptime(plan_expires_at, "%Y-%m-%d")
+        except ValueError:
+            end_date = datetime.utcnow() + timedelta(days=30)
+    else:
+        end_date = datetime.utcnow() + timedelta(days=30)
+    await database.execute(
+        users.update().where(users.c.id == user_id).values(
+            subscription_plan=plan, subscription_end=end_date
+        )
+    )
+    return JSONResponse({"ok": True, "plan": plan})
+
+
 @router.post("/users/{user_id}/send-message")
 async def send_message_to_user(request: Request, user_id: int, text: str = Form(...)):
     admin = await require_permission(request, "can_users")
