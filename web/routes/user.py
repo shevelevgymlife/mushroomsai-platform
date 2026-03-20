@@ -12,6 +12,7 @@ from ai.openai_client import chat_with_ai
 from services.subscription_service import can_ask_question, increment_question_count
 import sqlalchemy as sa
 import secrets
+import traceback as _traceback
 
 router = APIRouter()
 templates = Jinja2Templates(directory="web/templates")
@@ -214,47 +215,49 @@ async def dashboard(request: Request):
 
 @router.post("/api/chat")
 async def api_chat(request: Request):
-    user = await get_user_from_request(request)
-    body = await request.json()
-    user_message = body.get("message", "").strip()
+    try:
+        user = await get_user_from_request(request)
+        body = await request.json()
+        user_message = body.get("message", "").strip()
 
-    if not user_message:
-        return JSONResponse({"error": "Empty message"}, status_code=400)
+        if not user_message:
+            return JSONResponse({"error": "Empty message"}, status_code=400)
 
-    if user:
-        # Use primary account's ID for history/limits (covers Mini App + linked accounts)
-        effective_user_id = user.get("primary_user_id") or user["id"]
+        if user:
+            # Use primary account's ID for history/limits (covers Mini App + linked accounts)
+            effective_user_id = user.get("primary_user_id") or user["id"]
 
-        UNLIMITED_TG_IDS = {742166400}
-        is_unlimited = (
-            user.get("role") == "admin"
-            or user.get("tg_id") in UNLIMITED_TG_IDS
-            or user.get("linked_tg_id") in UNLIMITED_TG_IDS
-        )
-        if not is_unlimited:
-            allowed = await can_ask_question(effective_user_id)
-            if not allowed:
-                return JSONResponse({"error": "limit", "message": "Дневной лимит исчерпан. Подключите подписку для безлимитного доступа."}, status_code=429)
-        try:
+            UNLIMITED_TG_IDS = {742166400}
+            is_unlimited = (
+                user.get("role") == "admin"
+                or user.get("tg_id") in UNLIMITED_TG_IDS
+                or user.get("linked_tg_id") in UNLIMITED_TG_IDS
+            )
+            if not is_unlimited:
+                allowed = await can_ask_question(effective_user_id)
+                if not allowed:
+                    return JSONResponse({"error": "limit", "message": "Дневной лимит исчерпан. Подключите подписку для безлимитного доступа."}, status_code=429)
             answer = await chat_with_ai(user_message=user_message, user_id=effective_user_id)
-        except Exception as e:
-            return JSONResponse({"error": "ai_error", "message": "Ошибка AI сервиса. Попробуйте позже."}, status_code=500)
-        await increment_question_count(effective_user_id)
-    else:
-        session_key = request.cookies.get("guest_session")
-        if not session_key:
-            session_key = secrets.token_hex(16)
-        count_rows = await database.fetch_all(
-            messages.select().where(messages.c.session_key == session_key)
-        )
-        if len(count_rows) >= 6:  # 3 user + 3 assistant
-            return JSONResponse({"error": "limit", "message": "Зарегистрируйтесь для продолжения диалога."}, status_code=429)
-        try:
+            await increment_question_count(effective_user_id)
+        else:
+            session_key = request.cookies.get("guest_session")
+            if not session_key:
+                session_key = secrets.token_hex(16)
+            count_rows = await database.fetch_all(
+                messages.select().where(messages.c.session_key == session_key)
+            )
+            if len(count_rows) >= 6:  # 3 user + 3 assistant
+                return JSONResponse({"error": "limit", "message": "Зарегистрируйтесь для продолжения диалога."}, status_code=429)
             answer = await chat_with_ai(user_message=user_message, session_key=session_key)
-        except Exception as e:
-            return JSONResponse({"error": "ai_error", "message": "Ошибка AI сервиса. Попробуйте позже."}, status_code=500)
 
-    return JSONResponse({"answer": answer})
+        return JSONResponse({"answer": answer})
+
+    except Exception as _e:
+        _tb = _traceback.format_exc()
+        print("=== /api/chat EXCEPTION ===")
+        print(_tb)
+        print("===========================")
+        return JSONResponse({"error": "ai_error", "message": "Ошибка AI сервиса. Попробуйте позже.", "debug": str(_e)}, status_code=500)
 
 
 _POST_IMAGE_ALLOWED = {"image/jpeg", "image/png", "image/webp", "image/gif"}
