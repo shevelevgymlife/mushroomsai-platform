@@ -84,6 +84,18 @@
       </div>
     </div>
 
+    <div class="scard" style="padding:10px 14px">
+      <a href="/community/members" style="display:flex;align-items:center;gap:10px;padding:10px 8px;border-radius:10px;text-decoration:none;transition:background .2s" onmouseover="this.style.background='rgba(201,168,76,.07)'" onmouseout="this.style.background=''">
+        <span style="font-size:18px">👥</span>
+        <span style="color:#e8e8e8;font-size:14px">Все участники</span>
+      </a>
+      <div onclick="openMessages()" style="cursor:pointer;padding:10px 8px;border-radius:10px;display:flex;align-items:center;gap:10px;transition:background .2s" onmouseover="this.style.background='rgba(201,168,76,.07)'" onmouseout="this.style.background=''">
+        <span style="font-size:18px">💬</span>
+        <span style="color:#e8e8e8;font-size:14px">Сообщения</span>
+        <span id="community-msg-badge" style="display:none;background:#e74c3c;color:white;border-radius:50%;width:20px;height:20px;font-size:10px;align-items:center;justify-content:center;margin-left:auto;font-weight:700"></span>
+      </div>
+    </div>
+
     <div class="scard">
       <div style="font-weight:700;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
         Папки <button class="abt" style="font-size:13px" onclick="openM('fldModal')">+ создать</button>
@@ -516,4 +528,130 @@ document.addEventListener('DOMContentLoaded',()=>{
 {% if shevelev_token %}
 <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
 {% endif %}
+
+<!-- ── FLOATING MESSAGES PANEL ── -->
+<div id="messages-panel" style="display:none;position:fixed;right:80px;bottom:20px;width:360px;height:520px;background:rgba(8,8,8,.98);border:1px solid rgba(201,168,76,.3);border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.6);z-index:999;flex-direction:column;overflow:hidden">
+  <div style="padding:16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+    <div id="panel-header" style="color:#e8e8e8;font-size:15px;font-weight:600">💬 Сообщения</div>
+    <button onclick="closeMessages()" style="background:none;border:none;color:#666;font-size:22px;cursor:pointer;line-height:1">×</button>
+  </div>
+  <div id="search-block" style="padding:8px 16px;border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0">
+    <input id="dialog-search" type="text" placeholder="Поиск..." oninput="filterDialogs(this.value)" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 12px;color:#e8e8e8;font-size:13px;outline:none;box-sizing:border-box">
+  </div>
+  <div id="dialogs-list" style="flex:1;overflow-y:auto;padding:8px"></div>
+  <div id="chat-view" style="display:none;flex:1;flex-direction:column;overflow:hidden">
+    <div style="padding:8px 16px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:10px;flex-shrink:0">
+      <button onclick="backToList()" style="background:none;border:none;color:#C9A84C;cursor:pointer;font-size:20px;padding:0">←</button>
+      <div id="chat-user-info" style="flex:1;font-size:14px;font-weight:600;color:#e8e8e8"></div>
+    </div>
+    <div id="chat-messages" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px"></div>
+    <div style="padding:12px;border-top:1px solid rgba(255,255,255,.06);display:flex;gap:8px;flex-shrink:0">
+      <textarea id="chat-input" placeholder="Сообщение..." rows="1" style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px;color:#e8e8e8;font-size:13px;resize:none;outline:none;font-family:inherit" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();panelSendMsg();}"></textarea>
+      <button onclick="panelSendMsg()" style="background:#C9A84C;border:none;border-radius:12px;padding:10px 16px;color:#080808;cursor:pointer;font-weight:700;font-size:16px">→</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let panelChatUserId = null, panelInterval = null, panelAllDialogs = [];
+
+function openMessages(){
+  const p=document.getElementById('messages-panel');
+  p.style.display='flex';
+  p.style.flexDirection='column';
+  panelLoadDialogs();
+}
+function closeMessages(){
+  document.getElementById('messages-panel').style.display='none';
+  if(panelInterval)clearInterval(panelInterval);
+}
+function backToList(){
+  document.getElementById('dialogs-list').style.display='block';
+  document.getElementById('search-block').style.display='block';
+  document.getElementById('chat-view').style.display='none';
+  document.getElementById('panel-header').textContent='💬 Сообщения';
+  panelChatUserId=null;
+  if(panelInterval)clearInterval(panelInterval);
+  panelLoadDialogs();
+}
+async function panelLoadDialogs(){
+  try{
+    const r=await fetch('/messages/dialogs');
+    const d=await r.json();
+    panelAllDialogs=d.dialogs||[];
+    panelRenderDialogs(panelAllDialogs);
+  }catch(e){}
+}
+function panelRenderDialogs(dialogs){
+  const el=document.getElementById('dialogs-list');
+  if(!dialogs.length){el.innerHTML='<p style="color:#444;text-align:center;padding:20px;font-size:13px">Нет сообщений</p>';return;}
+  el.innerHTML=dialogs.map(d=>`
+    <div onclick="panelOpenDialog(${d.user_id},'${esc2(d.name||'')}')" style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;cursor:pointer;transition:background .2s" onmouseover="this.style.background='rgba(255,255,255,.04)'" onmouseout="this.style.background=''">
+      <div style="width:40px;height:40px;border-radius:50%;background:rgba(201,168,76,.15);border:${d.unread>0?'2px solid #C9A84C':'1px solid rgba(255,255,255,.1)'};display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;overflow:hidden">
+        ${d.avatar?`<img src="${esc(d.avatar)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover" alt="">`:(d.name||'?')[0].toUpperCase()}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="color:#e8e8e8;font-size:13px;font-weight:600">${d.is_system?'🛡️ Система':esc(d.name||'Участник')}</div>
+        <div style="color:#555;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(d.last_message||'')}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+        <div style="color:#444;font-size:10px">${d.time||''}</div>
+        ${d.unread>0?`<div style="background:#e74c3c;color:#fff;border-radius:50%;width:18px;height:18px;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:700">${d.unread}</div>`:''}
+      </div>
+    </div>`).join('');
+}
+function filterDialogs(q){
+  if(!q){panelRenderDialogs(panelAllDialogs);return;}
+  panelRenderDialogs(panelAllDialogs.filter(d=>(d.name||'').toLowerCase().includes(q.toLowerCase())));
+}
+async function panelOpenDialog(uid,uname){
+  panelChatUserId=uid;
+  document.getElementById('dialogs-list').style.display='none';
+  document.getElementById('search-block').style.display='none';
+  const cv=document.getElementById('chat-view');cv.style.display='flex';cv.style.flexDirection='column';
+  document.getElementById('panel-header').textContent=uname||'Диалог';
+  document.getElementById('chat-user-info').textContent=uname||'';
+  await panelLoadChat();
+  if(panelInterval)clearInterval(panelInterval);
+  panelInterval=setInterval(panelLoadChat,5000);
+}
+async function panelLoadChat(){
+  if(!panelChatUserId)return;
+  try{
+    const r=await fetch(`/messages/thread/${panelChatUserId}`);
+    const d=await r.json();
+    const msgs=d.messages||[];
+    const box=document.getElementById('chat-messages');
+    const atBottom=box.scrollHeight-box.scrollTop<=box.clientHeight+50;
+    box.innerHTML=msgs.map(m=>{
+      if(m.is_system)return`<div style="text-align:center;color:#C9A84C;font-size:11px;font-style:italic;padding:4px 8px;background:rgba(201,168,76,.08);border-radius:8px">${esc(m.text)}</div>`;
+      return`<div style="display:flex;justify-content:${m.is_mine?'flex-end':'flex-start'}"><div style="max-width:75%;padding:10px 14px;border-radius:${m.is_mine?'16px 16px 4px 16px':'16px 16px 16px 4px'};background:${m.is_mine?'rgba(201,168,76,.15)':'rgba(255,255,255,.05)'};color:#e8e8e8;font-size:13px;line-height:1.4;word-break:break-word">${esc(m.text)}<div style="font-size:10px;color:rgba(232,232,232,.3);margin-top:3px;text-align:right">${m.time}</div></div></div>`;
+    }).join('');
+    if(atBottom)box.scrollTop=box.scrollHeight;
+  }catch(e){}
+}
+async function panelSendMsg(){
+  const inp=document.getElementById('chat-input');
+  const text=inp.value.trim();if(!text||!panelChatUserId)return;
+  inp.value='';
+  try{
+    await fetch(`/messages/${panelChatUserId}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
+    await panelLoadChat();
+  }catch(e){}
+}
+async function panelUpdateBadge(){
+  try{
+    const r=await fetch('/messages/unread-count');
+    const d=await r.json();
+    const count=d.count||0;
+    const b=document.getElementById('community-msg-badge');
+    if(b){b.textContent=count>99?'99+':count;b.style.display=count>0?'flex':'none';}
+  }catch(e){}
+}
+setInterval(panelUpdateBadge,30000);
+panelUpdateBadge();
+
+// Wire up existing "Написать" button to use panel
+function openDMPanel(uid,uname){panelOpenDialog(uid,uname);openMessages();}
+</script>
 {% endblock %}

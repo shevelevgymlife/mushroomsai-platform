@@ -629,6 +629,66 @@ async def messages_conversations_api(request: Request):
     return JSONResponse({"conversations": convs})
 
 
+@router.get("/messages/dialogs")
+async def messages_dialogs_api(request: Request):
+    """JSON endpoint for community panel — list of dialogs."""
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = current_user.get("primary_user_id") or current_user["id"]
+    convs = await _get_conversations(uid)
+    dialogs = []
+    for c in convs:
+        dialogs.append({
+            "user_id": c["other_id"],
+            "name": c["name"],
+            "avatar": c["avatar"],
+            "last_message": c["last_text"],
+            "unread": c["unread"],
+            "time": "",
+            "is_system": c["other_id"] == 0,
+        })
+    return JSONResponse({"dialogs": dialogs})
+
+
+@router.get("/messages/thread/{other_id}")
+async def messages_thread_api(request: Request, other_id: int):
+    """JSON endpoint for community panel — messages in a thread."""
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = current_user.get("primary_user_id") or current_user["id"]
+
+    if other_id == 0:
+        await database.execute(sa.text(
+            "UPDATE direct_messages SET is_read=true WHERE recipient_id=:uid AND is_system=true AND is_read=false"
+        ), {"uid": uid})
+        rows = await database.fetch_all(sa.text(
+            "SELECT id, sender_id, text, is_system, created_at FROM direct_messages WHERE recipient_id=:uid AND is_system=true ORDER BY created_at ASC LIMIT 100"
+        ), {"uid": uid})
+    else:
+        await database.execute(sa.text(
+            "UPDATE direct_messages SET is_read=true WHERE sender_id=:oid AND recipient_id=:uid AND is_read=false AND is_system=false"
+        ), {"oid": other_id, "uid": uid})
+        rows = await database.fetch_all(sa.text("""
+            SELECT id, sender_id, text, is_system, created_at FROM direct_messages
+            WHERE (sender_id=:uid AND recipient_id=:oid)
+               OR (sender_id=:oid AND recipient_id=:uid AND is_system=false)
+            ORDER BY created_at ASC LIMIT 100
+        """), {"uid": uid, "oid": other_id})
+
+    messages = []
+    for r in rows:
+        messages.append({
+            "id": r["id"],
+            "is_mine": r["sender_id"] == uid,
+            "is_system": r["is_system"],
+            "text": r["text"],
+            "time": r["created_at"].strftime("%H:%M") if r["created_at"] else "",
+        })
+    return JSONResponse({"messages": messages})
+
+
 @router.get("/messages", response_class=HTMLResponse)
 async def messages_list(request: Request):
     current_user = await get_user_from_request(request)
@@ -721,12 +781,20 @@ async def poll_messages(request: Request, other_id: int, after: int = 0):
 
 
 @router.post("/messages/{other_id}")
-async def send_message(request: Request, other_id: int, text: str = Form(...)):
+async def send_message(request: Request, other_id: int):
     current_user = await get_user_from_request(request)
     if not current_user:
         return JSONResponse({"error": "auth required"}, status_code=401)
     uid = current_user.get("primary_user_id") or current_user["id"]
-    text = text.strip()
+
+    ct = request.headers.get("content-type", "")
+    if "application/json" in ct:
+        body = await request.json()
+        text = (body.get("text") or "").strip()
+    else:
+        form = await request.form()
+        text = (form.get("text") or "").strip()
+
     if not text:
         return JSONResponse({"error": "empty"}, status_code=400)
 
@@ -758,3 +826,88 @@ async def send_message(request: Request, other_id: int, text: str = Form(...)):
         "sender_id": uid,
         "created_at": "сейчас",
     })
+
+
+# ─── Community Members Page ────────────────────────────────────────────────────
+
+@router.get("/community/members", response_class=HTMLResponse)
+async def community_members(request: Request):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return RedirectResponse("/login?next=/community/members")
+
+    viewer_id = current_user.get("primary_user_id") or current_user["id"]
+
+    search = request.query_params.get("q", "").strip()
+    level_filter = request.query_params.get("level", "")
+    page = int(request.query_params.get("page", 1))
+    per_page = 24
+    offset = (page - 1) * per_page
+
+    # Build query for primary accounts only
+    base = users.select().where(users.c.primary_user_id == None)
+    if search:
+        base = base.where(users.c.name.ilike(f"%{search}%"))
+
+    count_q = sa.select(sa.func.count()).select_from(users).where(users.c.primary_user_id == None)
+    if search:
+        count_q = count_q.where(users.c.name.ilike(f"%{search}%"))
+    total = await database.fetch_val(count_q) or 0
+
+    raw_members = await database.fetch_all(
+        base.order_by(users.c.followers_count.desc(), users.c.created_at.desc())
+        .limit(per_page).offset(offset)
+    )
+
+    member_cards = []
+    for m in raw_members:
+        mid = m["id"]
+        post_count = await database.fetch_val(
+            sa.select(sa.func.count()).select_from(community_posts)
+            .where(community_posts.c.user_id == mid)
+            .where(community_posts.c.approved == True)
+        ) or 0
+        rep_emoji, rep_level_name = _rep_level(post_count)
+
+        # Skip if level filter doesn't match
+        if level_filter and rep_level_name != level_filter:
+            continue
+
+        is_following = False
+        if mid != viewer_id:
+            fol = await database.fetch_one(
+                community_follows.select()
+                .where(community_follows.c.follower_id == viewer_id)
+                .where(community_follows.c.following_id == mid)
+            )
+            is_following = fol is not None
+
+        member_cards.append({
+            "id": mid,
+            "name": m["name"],
+            "avatar": m["avatar"],
+            "bio": m.get("bio"),
+            "followers_count": m.get("followers_count") or 0,
+            "post_count": post_count,
+            "rep_emoji": rep_emoji,
+            "rep_level": rep_level_name,
+            "is_following": is_following,
+            "is_own": mid == viewer_id,
+        })
+
+    total_pages = (total + per_page - 1) // per_page
+
+    return templates.TemplateResponse(
+        "community_members.html",
+        {
+            "request": request,
+            "user": current_user,
+            "members": member_cards,
+            "search": search,
+            "level_filter": level_filter,
+            "page": page,
+            "total_pages": total_pages,
+            "total": total,
+            "levels": ["Зерно", "Участник", "Адепт", "Мастер", "Легенда"],
+        },
+    )

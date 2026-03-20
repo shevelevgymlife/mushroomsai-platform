@@ -14,42 +14,22 @@
 <style>
 /* ── Layout ── */
 .db-wrap{display:flex;min-height:100vh;padding-top:72px;background:#080808;position:relative}
-/* Desktop >1024px: content padded right for nav */
-.db-main{flex:1;padding:28px 100px 60px 28px;max-width:100%;overflow-x:hidden}
-/* Nav: desktop = fixed right column */
-.db-nav{position:fixed;right:20px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;z-index:200;background:rgba(8,8,8,.9);border:1px solid rgba(255,255,255,.09);border-radius:40px;padding:14px 8px;backdrop-filter:blur(18px)}
-/* Tablet 480–1024px: nav moves to LEFT */
-@media(max-width:1024px) and (min-width:480px){
-  .db-main{padding:20px 20px 60px 72px}
-  .db-nav{right:auto;left:8px}
-  .nc-tip{right:auto!important;left:calc(100% + 12px)!important;transform:translateY(-50%)!important}
-  .nc-tip::after{right:auto!important;left:auto!important;border-left-color:transparent!important;border-right-color:rgba(201,168,76,.3)!important;left:auto;right:100%!important}
-}
-/* Small mobile <480px: nav still LEFT but smaller, no tooltips */
-@media(max-width:479px){
-  .db-main{padding:14px 14px 60px 56px}
-  .db-nav{right:auto;left:4px;gap:5px;padding:10px 6px}
-  .nc{width:38px!important;height:38px!important;font-size:15px!important}
-  .nc-tip,.nc-sep{display:none!important}
-}
+.db-main{flex:1;padding:28px 80px 60px 28px;max-width:100%;overflow-x:hidden}
+@media(max-width:768px){.db-main{padding:20px 60px 60px 16px}}
+@media(max-width:480px){.db-main{padding:14px 52px 60px 14px}}
 
-/* ── Nav circles ── */
-.nc{position:relative;width:48px;height:48px;border-radius:50%;border:1.5px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;transition:all .22s cubic-bezier(.4,0,.2,1);flex-shrink:0;text-decoration:none;user-select:none}
-.nc:hover{border-color:rgba(201,168,76,.5);background:rgba(201,168,76,.08);transform:scale(1.08)}
-.nc.active{border-color:#C9A84C;background:rgba(201,168,76,.15);box-shadow:0 0 14px rgba(201,168,76,.25);animation:ncpulse 2.4s ease-in-out infinite}
-@keyframes ncpulse{0%,100%{box-shadow:0 0 14px rgba(201,168,76,.25)}50%{box-shadow:0 0 22px rgba(201,168,76,.45)}}
-.nc-dot{position:absolute;top:2px;right:2px;width:9px;height:9px;background:#C9A84C;border-radius:50%;border:2px solid #080808;animation:dotblink 1.8s ease-in-out infinite}
-@keyframes dotblink{0%,100%{opacity:1}50%{opacity:.4}}
-.nc-sep{width:28px;height:1px;background:rgba(255,255,255,.07);margin:2px 0;flex-shrink:0}
-/* Tooltip: desktop = LEFT of button */
-.nc-tip{position:absolute;right:calc(100% + 12px);top:50%;transform:translateY(-50%);background:rgba(10,10,10,.96);border:1px solid rgba(201,168,76,.3);border-radius:8px;padding:4px 11px;color:#ddd;font-size:12px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .18s;z-index:210}
-.nc-tip::after{content:'';position:absolute;left:100%;top:50%;transform:translateY(-50%);border:5px solid transparent;border-left-color:rgba(201,168,76,.3)}
-.nc:hover .nc-tip{opacity:1}
-/* Tablet: tooltip RIGHT, arrow LEFT */
-@media(max-width:1024px) and (min-width:480px){
-  .nc-tip{right:auto;left:calc(100% + 12px)}
-  .nc-tip::after{left:auto;right:100%;border-left-color:transparent;border-right-color:rgba(201,168,76,.3)}
-}
+/* ── Nav sidebar (always RIGHT) ── */
+.nav-sidebar{position:fixed;right:12px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px;z-index:1000}
+.nav-item{width:56px;height:56px;border-radius:50%;border:1.5px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;transition:all .3s;text-decoration:none;font-size:20px;color:inherit;user-select:none;flex-shrink:0}
+.nav-item:hover{border-color:rgba(201,168,76,.5);background:rgba(201,168,76,.08);transform:scale(1.08)}
+.nav-item.active{border-color:#C9A84C;background:rgba(201,168,76,.15);box-shadow:0 0 12px rgba(201,168,76,.2);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 12px rgba(201,168,76,.2)}50%{box-shadow:0 0 22px rgba(201,168,76,.4)}}
+.nav-tooltip{position:absolute;right:70px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.9);border:1px solid rgba(201,168,76,.3);border-radius:8px;padding:4px 12px;color:#e8e8e8;font-size:12px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .2s;z-index:1010}
+.nav-item:hover .nav-tooltip{opacity:1}
+.nav-badge{position:absolute;top:0;right:0;min-width:18px;height:18px;border-radius:9px;background:#e74c3c;color:white;font-size:9px;display:none;align-items:center;justify-content:center;font-weight:700;padding:0 3px;border:2px solid #080808}
+.nav-sep{width:28px;height:1px;background:rgba(255,255,255,.07);margin:0 auto;flex-shrink:0}
+@media(max-width:768px){.nav-item{width:44px;height:44px;font-size:17px}.nav-sidebar{right:8px;gap:6px}}
+@media(max-width:480px){.nav-item{width:38px;height:38px;font-size:14px}.nav-sidebar{right:4px;gap:4px}.nav-tooltip{display:none!important}}
 
 /* ── Cards ── */
 .card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:22px}
@@ -580,34 +560,34 @@
 
   </div><!-- /db-main -->
 
-  <!-- RIGHT/LEFT NAV -->
-  <nav class="db-nav" id="dbNav">
-    {% macro nc(id,em,label,dot=False) %}
-    <button class="nc" data-sec="{{ id }}" onclick="goSec('{{ id }}')" id="nc-{{ id }}">
-      {{ em }}{% if dot %}<span class="nc-dot"></span>{% endif %}
-      <span class="nc-tip">{{ label }}</span>
+  <!-- NAV SIDEBAR (always right) -->
+  <nav class="nav-sidebar" id="dbNav">
+    {% macro ni(id,em,label,dot=False) %}
+    <button class="nav-item" onclick="goSec('{{ id }}')" id="nav-{{ id }}">
+      {{ em }}{% if dot %}<span class="nav-badge" style="display:flex;width:9px;height:9px;padding:0;border-radius:50%;top:3px;right:3px"></span>{% endif %}
+      <span class="nav-tooltip">{{ label }}</span>
     </button>
     {% endmacro %}
-    {{ nc('home','🏠','Главная') }}
-    {{ nc('feed','👥','Лента') }}
-    <button class="nc" data-sec="messages" onclick="goSec('messages')" id="nc-messages">
-      💬<span id="dash-messages-badge" style="display:none;position:absolute;top:0;right:0;min-width:16px;height:16px;background:#ef4444;border-radius:8px;border:2px solid #080808;color:#fff;font-size:9px;font-weight:700;align-items:center;justify-content:center;padding:0 3px"></span>
-      <span class="nc-tip">Сообщения</span>
+    {{ ni('home','🏠','Главная') }}
+    {{ ni('feed','👥','Лента') }}
+    <button class="nav-item" onclick="goSec('messages')" id="nav-messages">
+      💬<span class="nav-badge" id="dash-messages-badge"></span>
+      <span class="nav-tooltip">Сообщения</span>
     </button>
-    {{ nc('ai','🤖','AI чат') }}
-    {{ nc('shop','🛒','Магазин') }}
-    <div class="nc-sep"></div>
-    {{ nc('plan','💎','Тариф', dot=(plan=='free')) }}
-    {{ nc('orders','📦','Заказы', dot=(orders|length > 0)) }}
-    {{ nc('referral','🎁','Рефералы') }}
-    <div class="nc-sep"></div>
-    {{ nc('link','🔗','Привязка') }}
-    {{ nc('language','🌐','Язык') }}
-    {{ nc('profile','⚙️','Профиль') }}
-    <div class="nc-sep"></div>
-    <a href="https://t.me/mushrooms_ai_bot" target="_blank" class="nc" style="text-decoration:none">✈️<span class="nc-tip">Telegram бот</span></a>
+    {{ ni('ai','🤖','AI чат') }}
+    {{ ni('shop','🛒','Магазин') }}
+    <div class="nav-sep"></div>
+    {{ ni('plan','💎','Тариф', dot=(plan=='free')) }}
+    {{ ni('orders','📦','Заказы', dot=(orders|length > 0)) }}
+    {{ ni('referral','🎁','Рефералы') }}
+    <div class="nav-sep"></div>
+    {{ ni('link','🔗','Привязка') }}
+    {{ ni('language','🌐','Язык') }}
+    {{ ni('profile','⚙️','Профиль') }}
+    <div class="nav-sep"></div>
+    <button class="nav-item" onclick="window.open('https://t.me/mushrooms_ai_bot','_blank')">✈️<span class="nav-tooltip">Telegram бот</span></button>
     {% if user.role == 'admin' %}
-    <a href="/admin" class="nc" style="color:#f87171;text-decoration:none">🛡️<span class="nc-tip">Администратор</span></a>
+    <button class="nav-item" onclick="window.location='/admin'" style="color:#f87171">🛡️<span class="nav-tooltip">Администратор</span></button>
     {% endif %}
   </nav>
 
@@ -619,10 +599,10 @@ const SECS = ['home','feed','messages','ai','shop','plan','orders','referral','l
 function goSec(id){
   SECS.forEach(s=>{
     document.getElementById('sec-'+s)?.classList.remove('active');
-    document.getElementById('nc-'+s)?.classList.remove('active');
+    document.getElementById('nav-'+s)?.classList.remove('active');
   });
   const sec=document.getElementById('sec-'+id);
-  const btn=document.getElementById('nc-'+id);
+  const btn=document.getElementById('nav-'+id);
   if(sec)sec.classList.add('active');
   if(btn)btn.classList.add('active');
   location.hash=id;

@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% block title %}Участники сообщества{% endblock %}
+{% block content %}
+<style>
+.members-wrap{max-width:1200px;margin:0 auto;padding:24px 16px 60px}
+.members-header{display:flex;align-items:center;gap:16px;margin-bottom:24px;flex-wrap:wrap}
+.members-header h1{font-size:22px;font-weight:700;color:#e8e8e8;flex:1;min-width:160px}
+.members-search{display:flex;gap:8px;flex:2;min-width:220px}
+.members-search input{flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:9px 14px;color:#e8e8e8;font-size:14px;outline:none}
+.members-search input:focus{border-color:#C9A84C}
+.members-search button{background:#C9A84C;color:#111;border:none;border-radius:10px;padding:9px 16px;font-size:14px;font-weight:600;cursor:pointer}
+.level-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.level-btn{padding:5px 14px;border-radius:20px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.04);color:#aaa;font-size:12px;cursor:pointer;text-decoration:none;transition:all .2s}
+.level-btn:hover,.level-btn.active{border-color:#C9A84C;color:#C9A84C;background:rgba(201,168,76,.08)}
+.members-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+@media(max-width:900px){.members-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:640px){.members-grid{grid-template-columns:repeat(2,1fr);gap:10px}}
+.member-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:18px 14px;text-align:center;transition:all .2s;position:relative}
+.member-card:hover{border-color:rgba(201,168,76,.3);background:rgba(255,255,255,.07);transform:translateY(-2px)}
+.mc-avatar{width:64px;height:64px;border-radius:50%;object-fit:cover;margin:0 auto 10px;display:block;border:2px solid rgba(255,255,255,.1)}
+.mc-avatar-placeholder{width:64px;height:64px;border-radius:50%;background:rgba(201,168,76,.15);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:24px;color:#C9A84C;border:2px solid rgba(201,168,76,.2)}
+.mc-name{font-size:14px;font-weight:600;color:#e8e8e8;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mc-level{font-size:11px;color:#C9A84C;margin-bottom:6px}
+.mc-bio{font-size:11px;color:#777;margin-bottom:10px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;min-height:28px}
+.mc-stats{display:flex;justify-content:center;gap:14px;margin-bottom:12px}
+.mc-stat{font-size:11px;color:#aaa;text-align:center}
+.mc-stat b{display:block;font-size:14px;font-weight:600;color:#e8e8e8}
+.mc-actions{display:flex;gap:6px;justify-content:center}
+.mc-btn{flex:1;max-width:80px;padding:6px 0;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.04);color:#ccc;font-size:11px;cursor:pointer;text-decoration:none;transition:all .2s;display:inline-flex;align-items:center;justify-content:center;gap:3px}
+.mc-btn:hover{border-color:#C9A84C;color:#C9A84C}
+.mc-btn.follow-active{background:rgba(201,168,76,.15);border-color:#C9A84C;color:#C9A84C}
+.pagination{display:flex;justify-content:center;gap:8px;margin-top:32px;flex-wrap:wrap}
+.page-btn{width:36px;height:36px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.04);color:#ccc;font-size:13px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;transition:all .2s}
+.page-btn:hover,.page-btn.active{border-color:#C9A84C;color:#C9A84C;background:rgba(201,168,76,.1)}
+.members-count{font-size:13px;color:#666;margin-bottom:16px}
+</style>
+
+<div class="members-wrap">
+  <div class="members-header">
+    <a href="/community" style="color:#C9A84C;text-decoration:none;font-size:20px">←</a>
+    <h1>👥 Участники сообщества</h1>
+    <form class="members-search" method="get" action="/community/members">
+      {% if level_filter %}<input type="hidden" name="level" value="{{ level_filter }}">{% endif %}
+      <input type="text" name="q" placeholder="Поиск по имени..." value="{{ search }}">
+      <button type="submit">Найти</button>
+    </form>
+  </div>
+
+  <div class="level-filters">
+    <a href="/community/members{% if search %}?q={{ search }}{% endif %}" class="level-btn {% if not level_filter %}active{% endif %}">Все</a>
+    {% for lvl in levels %}
+    <a href="/community/members?level={{ lvl }}{% if search %}&q={{ search }}{% endif %}" class="level-btn {% if level_filter == lvl %}active{% endif %}">{{ lvl }}</a>
+    {% endfor %}
+  </div>
+
+  <div class="members-count">Найдено: {{ total }} участников</div>
+
+  {% if members %}
+  <div class="members-grid">
+    {% for m in members %}
+    <div class="member-card">
+      <a href="/community/profile/{{ m.id }}">
+        {% if m.avatar %}
+        <img class="mc-avatar" src="{{ m.avatar }}" alt="{{ m.name }}">
+        {% else %}
+        <div class="mc-avatar-placeholder">{{ m.name[0]|upper if m.name else '?' }}</div>
+        {% endif %}
+      </a>
+      <div class="mc-name">{{ m.name }}</div>
+      <div class="mc-level">{{ m.rep_emoji }} {{ m.rep_level }}</div>
+      <div class="mc-bio">{{ m.bio or '' }}</div>
+      <div class="mc-stats">
+        <div class="mc-stat"><b>{{ m.post_count }}</b>постов</div>
+        <div class="mc-stat"><b>{{ m.followers_count }}</b>подписчиков</div>
+      </div>
+      {% if not m.is_own %}
+      <div class="mc-actions">
+        <button class="mc-btn {% if m.is_following %}follow-active{% endif %}"
+          onclick="toggleFollow(this, {{ m.id }})"
+          data-following="{{ 'true' if m.is_following else 'false' }}">
+          {% if m.is_following %}✓ Вы следите{% else %}+ Подписаться{% endif %}
+        </button>
+        <button class="mc-btn" onclick="openDmWith({{ m.id }}, '{{ m.name|replace("'","\\'")|e }}')">💬</button>
+      </div>
+      {% else %}
+      <div class="mc-actions">
+        <a href="/community/profile/{{ m.id }}" class="mc-btn">Мой профиль</a>
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div style="text-align:center;padding:60px 0;color:#555">
+    <div style="font-size:48px;margin-bottom:12px">🔍</div>
+    <div>Участники не найдены</div>
+  </div>
+  {% endif %}
+
+  {% if total_pages > 1 %}
+  <div class="pagination">
+    {% for p in range(1, total_pages + 1) %}
+    <a href="/community/members?page={{ p }}{% if search %}&q={{ search }}{% endif %}{% if level_filter %}&level={{ level_filter }}{% endif %}"
+       class="page-btn {% if p == page %}active{% endif %}">{{ p }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+
+<!-- DM Modal (inline mini panel) -->
+<div id="dm-members-modal" style="display:none;position:fixed;bottom:20px;right:80px;width:340px;background:#111;border:1px solid rgba(201,168,76,.3);border-radius:14px;z-index:2000;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.6)">
+  <div style="background:rgba(201,168,76,.1);padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.08)">
+    <span id="dm-members-name" style="flex:1;font-size:14px;font-weight:600;color:#e8e8e8"></span>
+    <button onclick="closeDmWith()" style="background:none;border:none;color:#888;cursor:pointer;font-size:18px">×</button>
+  </div>
+  <div id="dm-members-msgs" style="height:260px;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px"></div>
+  <div style="padding:10px 12px;border-top:1px solid rgba(255,255,255,.08);display:flex;gap:8px">
+    <input id="dm-members-inp" type="text" placeholder="Написать..." onkeydown="if(event.key==='Enter')membSend()"
+      style="flex:1;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 12px;color:#e8e8e8;font-size:13px;outline:none">
+    <button onclick="membSend()" style="background:#C9A84C;color:#111;border:none;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer">→</button>
+  </div>
+</div>
+
+<script>
+let _membUid = null;
+
+async function openDmWith(uid, name) {
+  _membUid = uid;
+  document.getElementById('dm-members-name').textContent = '💬 ' + name;
+  document.getElementById('dm-members-modal').style.display = 'block';
+  document.getElementById('dm-members-msgs').innerHTML = '<div style="color:#555;text-align:center;padding:20px">Загрузка...</div>';
+  const r = await fetch('/messages/thread/' + uid);
+  const d = await r.json();
+  const box = document.getElementById('dm-members-msgs');
+  box.innerHTML = '';
+  (d.messages || []).forEach(m => {
+    const div = document.createElement('div');
+    div.style.cssText = `max-width:80%;padding:6px 10px;border-radius:10px;font-size:13px;align-self:${m.is_mine?'flex-end':'flex-start'};background:${m.is_mine?'rgba(201,168,76,.2)':'rgba(255,255,255,.07)'};color:#e8e8e8`;
+    div.textContent = m.text;
+    box.appendChild(div);
+  });
+  box.scrollTop = box.scrollHeight;
+}
+
+function closeDmWith() {
+  document.getElementById('dm-members-modal').style.display = 'none';
+  _membUid = null;
+}
+
+async function membSend() {
+  if (!_membUid) return;
+  const inp = document.getElementById('dm-members-inp');
+  const text = inp.value.trim();
+  if (!text) return;
+  inp.value = '';
+  const r = await fetch('/messages/' + _membUid, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({text})
+  });
+  const d = await r.json();
+  if (d.ok) {
+    const box = document.getElementById('dm-members-msgs');
+    const div = document.createElement('div');
+    div.style.cssText = 'max-width:80%;padding:6px 10px;border-radius:10px;font-size:13px;align-self:flex-end;background:rgba(201,168,76,.2);color:#e8e8e8';
+    div.textContent = text;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+  }
+}
+
+async function toggleFollow(btn, uid) {
+  const isFollowing = btn.dataset.following === 'true';
+  const url = isFollowing ? `/community/unfollow/${uid}` : `/community/follow/${uid}`;
+  const r = await fetch(url, {method: 'POST'});
+  if (r.ok) {
+    btn.dataset.following = isFollowing ? 'false' : 'true';
+    btn.textContent = isFollowing ? '+ Подписаться' : '✓ Вы следите';
+    btn.classList.toggle('follow-active', !isFollowing);
+  }
+}
+</script>
+{% endblock %}
