@@ -50,7 +50,7 @@ async def index(request: Request):
 
     # Featured marketplace products with avg ratings
     featured_raw = await database.fetch_all(
-        shop_products.select().where(shop_products.c.active == True)
+        shop_products.select().where(shop_products.c.in_stock == True)
         .order_by(shop_products.c.created_at.desc()).limit(4)
     )
     featured_products = []
