@@ -27,6 +27,10 @@ users = sqlalchemy.Table(
     sqlalchemy.Column("followers_count", sqlalchemy.Integer, default=0, server_default="0"),
     sqlalchemy.Column("following_count", sqlalchemy.Integer, default=0, server_default="0"),
     sqlalchemy.Column("wallet_address", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("violations_count", sqlalchemy.Integer, default=0, server_default="0"),
+    sqlalchemy.Column("is_banned", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column("ban_until", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("ban_reason", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
 
@@ -310,5 +314,43 @@ profile_likes = sqlalchemy.Table(
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
     sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
     sqlalchemy.Column("liked_user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+community_profiles = sqlalchemy.Table(
+    "community_profiles",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), unique=True, nullable=False),
+    sqlalchemy.Column("display_name", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("bio", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("is_public", sqlalchemy.Boolean, default=True, server_default="true"),
+    sqlalchemy.Column("posts_count", sqlalchemy.Integer, default=0, server_default="0"),
+    sqlalchemy.Column("followers_count", sqlalchemy.Integer, default=0, server_default="0"),
+    sqlalchemy.Column("following_count", sqlalchemy.Integer, default=0, server_default="0"),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+direct_messages = sqlalchemy.Table(
+    "direct_messages",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("sender_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
+    sqlalchemy.Column("recipient_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("text", sqlalchemy.Text, nullable=False),
+    sqlalchemy.Column("is_read", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column("is_system", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+moderation_log = sqlalchemy.Table(
+    "moderation_log",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=True),
+    sqlalchemy.Column("content_type", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("content_text", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("reason", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("action_taken", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )

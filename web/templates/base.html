@@ -43,5 +43,18 @@
 
   <script src="/static/js/app.js"></script>
   {% block extra_scripts %}{% endblock %}
+  <script>
+  function updateUnreadCount(){
+    fetch('/messages/unread-count').then(r=>r.json()).then(data=>{
+      const count=data.count||0;
+      const badge=document.getElementById('messages-badge');
+      if(badge){badge.textContent=count>99?'99+':count;badge.style.display=count>0?'flex':'none';}
+      const dashBadge=document.getElementById('dash-messages-badge');
+      if(dashBadge){dashBadge.textContent=count>99?'99+':count;dashBadge.style.display=count>0?'flex':'none';}
+    }).catch(()=>{});
+  }
+  setInterval(updateUnreadCount,30000);
+  updateUnreadCount();
+  </script>
 </body>
 </html>

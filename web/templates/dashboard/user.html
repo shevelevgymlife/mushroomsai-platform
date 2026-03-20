@@ -14,9 +14,24 @@
 <style>
 /* ── Layout ── */
 .db-wrap{display:flex;min-height:100vh;padding-top:72px;background:#080808;position:relative}
-.db-main{flex:1;padding:28px 28px 60px;max-width:calc(100% - 88px);overflow-x:hidden}
-.db-nav{position:fixed;right:0;top:0;bottom:0;width:72px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:16px 0;z-index:100;background:rgba(8,8,8,.9);border-left:1px solid rgba(255,255,255,.05);backdrop-filter:blur(12px)}
-@media(max-width:700px){.db-main{padding:16px 16px 80px;max-width:100%}.db-nav{top:auto;bottom:0;right:0;left:0;width:100%;height:64px;flex-direction:row;justify-content:space-around;border-left:none;border-top:1px solid rgba(255,255,255,.07);overflow-x:auto;gap:0;padding:0}}
+/* Desktop >1024px: content padded right for nav */
+.db-main{flex:1;padding:28px 100px 60px 28px;max-width:100%;overflow-x:hidden}
+/* Nav: desktop = fixed right column */
+.db-nav{position:fixed;right:20px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;z-index:200;background:rgba(8,8,8,.9);border:1px solid rgba(255,255,255,.09);border-radius:40px;padding:14px 8px;backdrop-filter:blur(18px)}
+/* Tablet 480–1024px: nav moves to LEFT */
+@media(max-width:1024px) and (min-width:480px){
+  .db-main{padding:20px 20px 60px 72px}
+  .db-nav{right:auto;left:8px}
+  .nc-tip{right:auto!important;left:calc(100% + 12px)!important;transform:translateY(-50%)!important}
+  .nc-tip::after{right:auto!important;left:auto!important;border-left-color:transparent!important;border-right-color:rgba(201,168,76,.3)!important;left:auto;right:100%!important}
+}
+/* Small mobile <480px: nav still LEFT but smaller, no tooltips */
+@media(max-width:479px){
+  .db-main{padding:14px 14px 60px 56px}
+  .db-nav{right:auto;left:4px;gap:5px;padding:10px 6px}
+  .nc{width:38px!important;height:38px!important;font-size:15px!important}
+  .nc-tip,.nc-sep{display:none!important}
+}
 
 /* ── Nav circles ── */
 .nc{position:relative;width:48px;height:48px;border-radius:50%;border:1.5px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;transition:all .22s cubic-bezier(.4,0,.2,1);flex-shrink:0;text-decoration:none;user-select:none}
@@ -25,8 +40,16 @@
 @keyframes ncpulse{0%,100%{box-shadow:0 0 14px rgba(201,168,76,.25)}50%{box-shadow:0 0 22px rgba(201,168,76,.45)}}
 .nc-dot{position:absolute;top:2px;right:2px;width:9px;height:9px;background:#C9A84C;border-radius:50%;border:2px solid #080808;animation:dotblink 1.8s ease-in-out infinite}
 @keyframes dotblink{0%,100%{opacity:1}50%{opacity:.4}}
-.nc-sep{width:28px;height:1px;background:rgba(255,255,255,.07);margin:3px 0;flex-shrink:0}
-@media(max-width:700px){.nc{width:42px;height:42px;font-size:16px}.nc-sep{display:none}}
+.nc-sep{width:28px;height:1px;background:rgba(255,255,255,.07);margin:2px 0;flex-shrink:0}
+/* Tooltip: desktop = LEFT of button */
+.nc-tip{position:absolute;right:calc(100% + 12px);top:50%;transform:translateY(-50%);background:rgba(10,10,10,.96);border:1px solid rgba(201,168,76,.3);border-radius:8px;padding:4px 11px;color:#ddd;font-size:12px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .18s;z-index:210}
+.nc-tip::after{content:'';position:absolute;left:100%;top:50%;transform:translateY(-50%);border:5px solid transparent;border-left-color:rgba(201,168,76,.3)}
+.nc:hover .nc-tip{opacity:1}
+/* Tablet: tooltip RIGHT, arrow LEFT */
+@media(max-width:1024px) and (min-width:480px){
+  .nc-tip{right:auto;left:calc(100% + 12px)}
+  .nc-tip::after{left:auto;right:100%;border-left-color:transparent;border-right-color:rgba(201,168,76,.3)}
+}
 
 /* ── Cards ── */
 .card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:22px}
@@ -189,6 +212,36 @@
         <div class="sect-title" style="margin:0">👥 Лента сообщества</div>
         <a href="/community" class="btn-g" style="font-size:13px;padding:8px 16px">Открыть полностью ↗</a>
       </div>
+
+      <!-- My community profile card -->
+      <div class="card" style="margin-bottom:20px;border-color:rgba(201,168,76,.2)">
+        <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+          {% if user.avatar %}
+          <img src="{{ user.avatar }}" style="width:52px;height:52px;border-radius:50%;border:2px solid #C9A84C;object-fit:cover;flex-shrink:0" alt="">
+          {% else %}
+          <div style="width:52px;height:52px;border-radius:50%;border:2px solid #C9A84C;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🍄</div>
+          {% endif %}
+          <div style="flex:1;min-width:140px">
+            <div style="font-size:15px;font-weight:700;color:#e8e8e8">{{ user.name or 'Участник' }}</div>
+            {% if comm_profile %}
+            <div style="display:flex;gap:16px;margin-top:6px;font-size:12px;color:#666">
+              <span><span class="gold">{{ comm_profile.posts_count or my_post_count }}</span> постов</span>
+              <span><span class="gold">{{ comm_profile.followers_count or 0 }}</span> подписчиков</span>
+              <span><span class="gold">{{ comm_profile.following_count or 0 }}</span> подписок</span>
+            </div>
+            {% endif %}
+          </div>
+          <a href="/community/profile/{{ user.id }}" class="btn-o" style="font-size:13px;padding:8px 16px;flex-shrink:0">Открыть мою страницу →</a>
+        </div>
+        <!-- Quick post form -->
+        <div style="margin-top:16px">
+          <textarea id="quickPostText" class="sinp" style="width:100%;min-height:72px;resize:vertical;box-sizing:border-box" placeholder="Поделитесь с сообществом..."></textarea>
+          <div style="display:flex;justify-content:flex-end;margin-top:8px;gap:8px">
+            <span id="quickPostOk" style="display:none;color:#4ade80;font-size:13px;align-self:center">✓ Опубликовано</span>
+            <button class="btn-g" style="font-size:13px;padding:8px 18px" onclick="quickPost()">Опубликовать</button>
+          </div>
+        </div>
+      </div>
       {% if feed_raw %}
       {% for p in feed_raw %}
       {% set a = feed_authors.get(p.user_id) %}
@@ -218,6 +271,19 @@
         <a href="/community" class="btn-g" style="margin-top:16px;display:inline-block">Открыть сообщество</a>
       </div>
       {% endif %}
+    </section>
+
+    <!-- ══ MESSAGES ══ -->
+    <section class="db-sec" id="sec-messages">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div class="sect-title" style="margin:0">💬 Личные сообщения</div>
+        <a href="/messages" class="btn-g" style="font-size:13px;padding:8px 16px">Открыть ↗</a>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden" id="dmPreviewWrap">
+        <div id="dmList" style="min-height:120px;display:flex;align-items:center;justify-content:center;color:#444;font-size:14px">
+          <span class="spin" style="margin-right:8px">⟳</span> Загрузка...
+        </div>
+      </div>
     </section>
 
     <!-- ══ AI CHAT ══ -->
@@ -514,14 +580,21 @@
 
   </div><!-- /db-main -->
 
-  <!-- RIGHT NAV -->
+  <!-- RIGHT/LEFT NAV -->
   <nav class="db-nav" id="dbNav">
     {% macro nc(id,em,label,dot=False) %}
-    <button class="nc" data-sec="{{ id }}" onclick="goSec('{{ id }}')" title="{{ label }}" id="nc-{{ id }}">{{ em }}{% if dot %}<span class="nc-dot"></span>{% endif %}</button>
+    <button class="nc" data-sec="{{ id }}" onclick="goSec('{{ id }}')" id="nc-{{ id }}">
+      {{ em }}{% if dot %}<span class="nc-dot"></span>{% endif %}
+      <span class="nc-tip">{{ label }}</span>
+    </button>
     {% endmacro %}
     {{ nc('home','🏠','Главная') }}
     {{ nc('feed','👥','Лента') }}
-    {{ nc('ai','🤖','AI чат', dot=(messages|length > 0)) }}
+    <button class="nc" data-sec="messages" onclick="goSec('messages')" id="nc-messages">
+      💬<span id="dash-messages-badge" style="display:none;position:absolute;top:0;right:0;min-width:16px;height:16px;background:#ef4444;border-radius:8px;border:2px solid #080808;color:#fff;font-size:9px;font-weight:700;align-items:center;justify-content:center;padding:0 3px"></span>
+      <span class="nc-tip">Сообщения</span>
+    </button>
+    {{ nc('ai','🤖','AI чат') }}
     {{ nc('shop','🛒','Магазин') }}
     <div class="nc-sep"></div>
     {{ nc('plan','💎','Тариф', dot=(plan=='free')) }}
@@ -532,16 +605,17 @@
     {{ nc('language','🌐','Язык') }}
     {{ nc('profile','⚙️','Профиль') }}
     <div class="nc-sep"></div>
-    <a href="https://t.me/mushrooms_ai_bot" target="_blank" class="nc" title="Telegram бот">✈️</a>
+    <a href="https://t.me/mushrooms_ai_bot" target="_blank" class="nc" style="text-decoration:none">✈️<span class="nc-tip">Telegram бот</span></a>
     {% if user.role == 'admin' %}
-    <a href="/admin" class="nc" title="Панель администратора" style="color:#f87171">🛡️</a>
+    <a href="/admin" class="nc" style="color:#f87171;text-decoration:none">🛡️<span class="nc-tip">Администратор</span></a>
     {% endif %}
   </nav>
+
 </div>
 
 <script>
 // ── Section routing ──
-const SECS = ['home','feed','ai','shop','plan','orders','referral','link','language','profile'];
+const SECS = ['home','feed','messages','ai','shop','plan','orders','referral','link','language','profile'];
 function goSec(id){
   SECS.forEach(s=>{
     document.getElementById('sec-'+s)?.classList.remove('active');
@@ -553,6 +627,7 @@ function goSec(id){
   if(btn)btn.classList.add('active');
   location.hash=id;
   if(id==='ai'){setTimeout(()=>{const b=document.getElementById('chatBox');if(b)b.scrollTop=b.scrollHeight},100)}
+  if(id==='messages')loadDMPreview();
 }
 
 // Init from hash
@@ -649,21 +724,58 @@ function filterShop(q){
   });
 }
 
-// ── MetaMask ──
+// ── Toast notification ──
+function showNotification(msg, type='info'){
+  const colors={info:'rgba(201,168,76,.92)',error:'rgba(239,68,68,.92)',success:'rgba(74,222,128,.92)'};
+  const n=document.createElement('div');
+  n.style.cssText=`position:fixed;top:20px;right:90px;z-index:9999;background:${colors[type]||colors.info};color:#000;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:700;box-shadow:0 4px 20px rgba(0,0,0,.5);animation:fadein .3s ease;max-width:280px`;
+  n.textContent=msg;document.body.appendChild(n);
+  setTimeout(()=>n.remove(),3500);
+}
+
+// ── MetaMask / SHEVELEV ──
+const DSC_CHAIN_ID='0x4B';
+const DSC_PARAMS={chainId:DSC_CHAIN_ID,chainName:'Decimal Smart Chain',nativeCurrency:{name:'DEL',symbol:'DEL',decimals:18},rpcUrls:['https://node.decimalchain.com/web3/'],blockExplorerUrls:['https://explorer.decimalchain.com']};
+const SHEVELEV_TOKEN='{{ shevelev_token }}';
+
 async function connectMetaMask(){
-  if(!window.ethereum){alert('Установите MetaMask');return}
+  if(!window.ethereum){
+    const mob=/iPhone|Android|iPad/i.test(navigator.userAgent);
+    if(mob){window.location.href='https://metamask.app.link/dapp/'+encodeURIComponent(location.host+'/dashboard#profile');}
+    else showNotification('Установите MetaMask в браузер','error');
+    return;
+  }
   try{
     const accs=await window.ethereum.request({method:'eth_requestAccounts'});
     const addr=accs[0];
+    try{
+      await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:DSC_CHAIN_ID}]});
+    }catch(se){
+      if(se.code===4902){
+        try{await window.ethereum.request({method:'wallet_addEthereumChain',params:[DSC_PARAMS]});}
+        catch(ae){showNotification('Не удалось добавить сеть Decimal','error');return;}
+      }
+    }
     document.getElementById('wltInp').value=addr;
     await saveWallet(addr);
-  }catch(e){console.error(e)}
+    showNotification('Кошелёк подключён ✓','success');
+    if(SHEVELEV_TOKEN)loadSHEVELEVBalance(addr);
+  }catch(e){if(e.code!==4001)showNotification('Ошибка: '+(e.message||e),'error');}
 }
+
+async function loadSHEVELEVBalance(addr){
+  if(!SHEVELEV_TOKEN||!addr)return;
+  try{
+    const data='0x70a08231'+addr.replace('0x','').toLowerCase().padStart(64,'0');
+    const res=await window.ethereum.request({method:'eth_call',params:[{to:SHEVELEV_TOKEN,data},'latest']});
+    const bal=(Number(BigInt(res||'0x0'))/1e18).toFixed(4);
+    const el=document.getElementById('shevelevBal');if(el)el.textContent=bal+' SHEVELEV';
+  }catch(e){console.error('SHEVELEV:',e);}
+}
+
 async function saveWallet(addr){
-  const a=addr||document.getElementById('wltInp').value.trim();
-  if(!a)return;
-  const fd=new FormData();fd.append('wallet',a);
-  await fetch('/profile/wallet',{method:'POST',body:fd});
+  const a=addr||document.getElementById('wltInp').value.trim();if(!a)return;
+  await fetch('/profile/wallet',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({wallet_address:a})});
   const sh=a.slice(0,12)+'...'+a.slice(-4);
   document.getElementById('wltSt').innerHTML=`<span style="color:#4ade80">✓ ${sh}</span>`;
 }
@@ -680,6 +792,45 @@ async function saveProfile(){
   // Name save (if endpoint exists – just show success for now)
   ok.style.display='block';
   setTimeout(()=>ok.style.display='none',3000);
+}
+
+// ── DM Preview ──
+async function loadDMPreview(){
+  const list=document.getElementById('dmList');if(!list)return;
+  try{
+    const r=await fetch('/messages/conversations');
+    const d=await r.json();
+    if(!d.conversations||!d.conversations.length){
+      list.innerHTML='<div style="text-align:center;padding:40px;color:#444"><div style="font-size:36px;margin-bottom:8px">💬</div>Нет сообщений</div>';
+      return;
+    }
+    list.innerHTML=d.conversations.map(c=>`
+      <a href="/messages/${c.other_id}" style="display:flex;gap:12px;align-items:center;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.05);text-decoration:none;transition:background .2s" onmouseover="this.style.background='rgba(201,168,76,.05)'" onmouseout="this.style.background=''">
+        <div style="width:40px;height:40px;border-radius:50%;border:${c.unread>0?'2px solid #C9A84C':'2px solid #333'};background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;overflow:hidden">
+          ${c.avatar?`<img src="${c.avatar}" style="width:100%;height:100%;object-fit:cover" alt="">`:'🍄'}
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:#ddd">${esc(c.name||'Участник')}</div>
+          <div style="font-size:12px;color:#555;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px">${esc((c.last_text||'').substring(0,50))}</div>
+        </div>
+        ${c.unread>0?`<span style="min-width:20px;height:20px;background:#ef4444;border-radius:10px;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px">${c.unread}</span>`:''}
+      </a>`).join('');
+  }catch(e){list.innerHTML='<div style="text-align:center;padding:40px;color:#444">Ошибка загрузки</div>';}
+}
+
+// ── Quick post from feed section ──
+async function quickPost(){
+  const txt=document.getElementById('quickPostText').value.trim();if(!txt)return;
+  const fd=new FormData();fd.append('content',txt);
+  try{
+    const r=await fetch('/community/post',{method:'POST',body:fd});
+    const d=await r.json();
+    if(d.ok||d.id){
+      document.getElementById('quickPostText').value='';
+      const ok=document.getElementById('quickPostOk');ok.style.display='inline';
+      setTimeout(()=>ok.style.display='none',3000);
+    }
+  }catch(e){showNotification('Ошибка публикации','error');}
 }
 
 // ── Util ──

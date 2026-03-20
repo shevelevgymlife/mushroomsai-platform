@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from web.templates_utils import Jinja2Templates
 from auth.session import get_user_from_request
 from db.database import database
-from db.models import users, messages, orders, posts, post_likes, community_posts, community_likes, community_comments, community_folders, community_follows, community_saved, community_messages, profile_likes
+from db.models import users, messages, orders, posts, post_likes, community_posts, community_likes, community_comments, community_folders, community_follows, community_saved, community_messages, profile_likes, community_profiles
 from services.referral_service import get_referral_stats
 from services.subscription_service import check_subscription, PLANS
 from ai.openai_client import chat_with_ai
@@ -45,6 +45,19 @@ async def dashboard(request: Request):
 
     # Use primary account's ID so linked accounts see the same history
     effective_user_id = user.get("primary_user_id") or user["id"]
+
+    # Auto-create community profile (idempotent)
+    try:
+        import sqlalchemy as _sa_text
+        await database.execute(
+            _sa_text.text(
+                "INSERT INTO community_profiles (user_id, display_name) "
+                "VALUES (:uid, :name) ON CONFLICT (user_id) DO NOTHING"
+            ),
+            {"uid": effective_user_id, "name": user.get("name")},
+        )
+    except Exception:
+        pass
 
     plan = await check_subscription(effective_user_id)
     plan_info = PLANS.get(plan, PLANS["free"])
@@ -94,6 +107,12 @@ async def dashboard(request: Request):
     if full_profile:
         user = dict(full_profile)
 
+    # Community profile record
+    comm_profile = await database.fetch_one(
+        community_profiles.select().where(community_profiles.c.user_id == effective_user_id)
+    )
+
+    from config import settings as _settings
     return templates.TemplateResponse(
         "dashboard/user.html",
         {
@@ -110,6 +129,8 @@ async def dashboard(request: Request):
             "feed_raw": feed_raw,
             "feed_authors": feed_authors,
             "shop_preview": shop_preview,
+            "comm_profile": dict(comm_profile) if comm_profile else None,
+            "shevelev_token": _settings.SHEVELEV_TOKEN_ADDRESS,
         },
     )
 
@@ -337,10 +358,17 @@ async def create_folder(request: Request, name: str = Form(...)):
 
 
 @router.post("/profile/wallet")
-async def update_wallet(request: Request, wallet: str = Form(...)):
+async def update_wallet(request: Request):
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
+    content_type = request.headers.get("content-type", "")
+    if "application/json" in content_type:
+        body = await request.json()
+        wallet = body.get("wallet_address") or body.get("wallet") or ""
+    else:
+        form = await request.form()
+        wallet = form.get("wallet_address") or form.get("wallet") or ""
     await database.execute(
         users.update().where(users.c.id == user["id"]).values(wallet_address=wallet.strip() or None)
     )

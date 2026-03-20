@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% block title %}Сообщения — MushroomsAI{% endblock %}
+
+{% block content %}
+<style>
+.msg-wrap{display:flex;height:calc(100vh - 72px);padding-top:72px;background:#080808;overflow:hidden}
+
+/* Sidebar */
+.msg-sidebar{width:300px;flex-shrink:0;border-right:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;background:#0a0a0a}
+.msg-sidebar-head{padding:18px 16px 12px;border-bottom:1px solid rgba(255,255,255,.06)}
+.msg-sidebar-title{font-size:18px;font-weight:700;color:#e8e8e8;margin-bottom:10px}
+.msg-search{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#e8e8e8;border-radius:10px;padding:8px 12px;font-size:13px;outline:none;width:100%;box-sizing:border-box;transition:border-color .2s}
+.msg-search:focus{border-color:rgba(201,168,76,.4)}
+.conv-list{flex:1;overflow-y:auto}
+.conv-item{display:flex;gap:12px;align-items:center;padding:13px 16px;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;transition:background .2s;text-decoration:none}
+.conv-item:hover{background:rgba(255,255,255,.03)}
+.conv-item.active{background:rgba(201,168,76,.08);border-left:2px solid #C9A84C;padding-left:14px}
+.conv-av{width:42px;height:42px;border-radius:50%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;overflow:hidden;border:2px solid #333}
+.conv-av.unread-av{border-color:#C9A84C}
+.conv-av img{width:100%;height:100%;object-fit:cover}
+.conv-meta{flex:1;min-width:0}
+.conv-name{font-size:13px;font-weight:600;color:#ddd}
+.conv-last{font-size:12px;color:#555;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
+.conv-badge{min-width:20px;height:20px;background:#ef4444;border-radius:10px;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px;flex-shrink:0}
+
+/* Chat pane */
+.msg-chat{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.chat-header{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid rgba(255,255,255,.07);background:#0a0a0a;flex-shrink:0}
+.chat-messages{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:10px}
+.chat-empty{display:flex;align-items:center;justify-content:center;flex:1;flex-direction:column;gap:10px;color:#333;font-size:15px}
+
+/* Bubbles */
+.bubble{max-width:70%;padding:10px 14px;border-radius:4px;font-size:14px;line-height:1.55;word-break:break-word;white-space:pre-wrap;position:relative}
+.bubble-own{align-self:flex-end;background:rgba(201,168,76,.15);border:1px solid rgba(201,168,76,.2);color:#e8e8e8;border-radius:16px 16px 4px 16px}
+.bubble-other{align-self:flex-start;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:#ccc;border-radius:16px 16px 16px 4px}
+.bubble-system{align-self:center;background:rgba(201,168,76,.08);border:1px solid rgba(201,168,76,.2);color:#C9A84C;font-style:italic;font-size:13px;border-radius:12px;text-align:center;max-width:80%}
+.bubble-time{font-size:10px;color:#444;margin-top:4px;display:block}
+.bubble-own .bubble-time{text-align:right}
+.bubble-read{color:#C9A84C}
+
+/* Input */
+.chat-input-wrap{padding:12px 16px;border-top:1px solid rgba(255,255,255,.07);background:#0a0a0a;display:flex;gap:10px;align-items:flex-end;flex-shrink:0}
+.chat-textarea{flex:1;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#e8e8e8;border-radius:12px;padding:10px 14px;font-size:14px;outline:none;resize:none;min-height:42px;max-height:120px;overflow-y:auto;line-height:1.5;font-family:inherit;transition:border-color .2s}
+.chat-textarea:focus{border-color:rgba(201,168,76,.4)}
+.btn-send{background:#C9A84C;color:#000;border:none;border-radius:10px;padding:10px 16px;font-size:16px;cursor:pointer;font-weight:700;flex-shrink:0;transition:background .2s;height:42px}
+.btn-send:hover{background:#E8C96B}
+
+/* Mobile */
+@media(max-width:768px){
+  .msg-sidebar{width:100%;border-right:none;display:none}
+  .msg-sidebar.mob-show{display:flex}
+  .msg-chat{display:none}
+  .msg-chat.mob-show{display:flex}
+  .chat-back{display:flex}
+}
+@media(min-width:769px){
+  .chat-back{display:none!important}
+}
+</style>
+
+<div class="msg-wrap">
+
+  <!-- Sidebar: conversations list -->
+  <div class="msg-sidebar {% if not active_user_id %}mob-show{% endif %}" id="msgSidebar">
+    <div class="msg-sidebar-head">
+      <div class="msg-sidebar-title">💬 Сообщения</div>
+      <input class="msg-search" placeholder="Поиск диалога..." oninput="filterConvs(this.value)">
+    </div>
+    <div class="conv-list" id="convList">
+      {% if conversations %}
+        {% for c in conversations %}
+        <a href="/messages/{{ c.other_id }}"
+           class="conv-item {% if active_user_id == c.other_id %}active{% endif %}"
+           data-name="{{ (c.name or '')|lower }}">
+          <div class="conv-av {% if c.unread > 0 %}unread-av{% endif %}">
+            {% if c.avatar %}<img src="{{ c.avatar }}" alt="">{% else %}🍄{% endif %}
+          </div>
+          <div class="conv-meta">
+            <div class="conv-name">{{ c.name or 'Участник' }}</div>
+            <div class="conv-last">{{ (c.last_text or '')[:40] }}</div>
+          </div>
+          {% if c.unread > 0 %}
+          <span class="conv-badge">{{ c.unread if c.unread <= 99 else '99+' }}</span>
+          {% endif %}
+        </a>
+        {% endfor %}
+      {% else %}
+        <div style="text-align:center;padding:50px 20px;color:#333">
+          <div style="font-size:40px;margin-bottom:10px">💬</div>
+          <div style="font-size:14px">Диалогов пока нет</div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Chat pane -->
+  <div class="msg-chat {% if active_user_id is not none and active_user_id != none %}mob-show{% endif %}" id="msgChat">
+    {% if chat_partner %}
+
+    <!-- Header -->
+    <div class="chat-header">
+      <button class="chat-back" onclick="showSidebar()" style="background:none;border:none;color:#C9A84C;font-size:20px;cursor:pointer;padding:0;margin-right:4px">←</button>
+      <div style="width:38px;height:38px;border-radius:50%;background:#1a1a1a;border:2px solid #C9A84C;display:flex;align-items:center;justify-content:center;font-size:16px;overflow:hidden;flex-shrink:0">
+        {% if chat_partner.avatar %}<img src="{{ chat_partner.avatar }}" style="width:100%;height:100%;object-fit:cover" alt="">{% else %}🍄{% endif %}
+      </div>
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#e8e8e8">{{ chat_partner.name or 'Участник' }}</div>
+      </div>
+      {% if chat_partner.id > 0 %}
+      <a href="/community/profile/{{ chat_partner.id }}" style="margin-left:auto;font-size:12px;color:#C9A84C;text-decoration:none;border:1px solid rgba(201,168,76,.3);border-radius:8px;padding:4px 10px">Профиль →</a>
+      {% endif %}
+    </div>
+
+    <!-- Messages -->
+    <div class="chat-messages" id="chatMessages">
+      {% for m in chat_messages %}
+        {% if m.is_system %}
+        <div class="bubble bubble-system">
+          {{ m.text }}
+          <span class="bubble-time">{{ m.created_at.strftime('%d.%m %H:%M') if m.created_at else '' }}</span>
+        </div>
+        {% elif m.sender_id == current_uid %}
+        <div class="bubble bubble-own">
+          {{ m.text }}
+          <span class="bubble-time">{{ m.created_at.strftime('%H:%M') if m.created_at else '' }} <span class="{{ 'bubble-read' if m.is_read else '' }}">{{ '✓✓' if m.is_read else '✓' }}</span></span>
+        </div>
+        {% else %}
+        <div class="bubble bubble-other">
+          {{ m.text }}
+          <span class="bubble-time">{{ m.created_at.strftime('%H:%M') if m.created_at else '' }}</span>
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+
+    <!-- Input -->
+    {% if chat_partner.id != 0 %}
+    <div class="chat-input-wrap">
+      <textarea id="msgInput" class="chat-textarea" placeholder="Написать сообщение..." rows="1"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"
+        oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
+      <button class="btn-send" onclick="sendMsg()">→</button>
+    </div>
+    {% else %}
+    <div style="padding:12px 20px;border-top:1px solid rgba(255,255,255,.07);text-align:center;font-size:12px;color:#444;font-style:italic">Системные сообщения — только чтение</div>
+    {% endif %}
+
+    {% else %}
+    <!-- Empty state -->
+    <div class="chat-empty">
+      <div style="font-size:56px">💬</div>
+      <div>Выберите диалог слева</div>
+      <div style="font-size:13px;color:#444;margin-top:6px">или перейдите в профиль пользователя</div>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<script>
+const CURRENT_UID = {{ current_uid if current_uid is defined else 0 }};
+const OTHER_ID = {{ active_user_id if active_user_id is not none else 0 }};
+
+// Auto-scroll to bottom
+(function(){const box=document.getElementById('chatMessages');if(box)box.scrollTop=box.scrollHeight;})();
+
+// Poll for new messages every 5s
+{% if active_user_id and active_user_id != 0 %}
+let lastMsgId = {{ chat_messages[-1].id if chat_messages else 0 }};
+setInterval(pollMessages, 5000);
+
+async function pollMessages(){
+  try{
+    const r = await fetch(`/messages/poll/${OTHER_ID}?after=${lastMsgId}`);
+    const d = await r.json();
+    if(d.messages && d.messages.length){
+      const box = document.getElementById('chatMessages');
+      d.messages.forEach(m => {
+        lastMsgId = Math.max(lastMsgId, m.id);
+        const div = document.createElement('div');
+        div.className = 'bubble ' + (m.sender_id == CURRENT_UID ? 'bubble-own' : 'bubble-other');
+        div.innerHTML = esc(m.text) + `<span class="bubble-time">${m.created_at}</span>`;
+        box.appendChild(div);
+      });
+      box.scrollTop = box.scrollHeight;
+    }
+  }catch(e){}
+}
+{% endif %}
+
+async function sendMsg(){
+  const inp = document.getElementById('msgInput');
+  const text = inp?.value.trim();
+  if(!text || !OTHER_ID) return;
+  inp.value = ''; inp.style.height = 'auto';
+  try{
+    const fd = new FormData(); fd.append('text', text);
+    const r = await fetch(`/messages/${OTHER_ID}`, {method:'POST', body:fd});
+    const d = await r.json();
+    if(d.ok){
+      const box = document.getElementById('chatMessages');
+      const div = document.createElement('div');
+      div.className = 'bubble bubble-own';
+      div.innerHTML = esc(d.text) + `<span class="bubble-time">сейчас ✓</span>`;
+      box.appendChild(div);
+      box.scrollTop = box.scrollHeight;
+    }
+  }catch(e){console.error(e);}
+}
+
+function filterConvs(q){
+  const term = q.toLowerCase();
+  document.querySelectorAll('.conv-item').forEach(el => {
+    el.style.display = (el.dataset.name||'').includes(term) ? '' : 'none';
+  });
+}
+
+function showSidebar(){
+  document.getElementById('msgSidebar').classList.add('mob-show');
+  document.getElementById('msgChat').classList.remove('mob-show');
+}
+
+function esc(t){return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}
+</script>
+{% endblock %}

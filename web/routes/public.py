@@ -5,7 +5,7 @@ from fastapi import APIRouter, Request, Depends, UploadFile, File, Form
 from web.templates_utils import Jinja2Templates
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from db.database import database
-from db.models import products, posts, users, shop_products, product_reviews, community_posts, community_likes, community_folders, community_follows, community_saved, community_comments, profile_likes
+from db.models import products, posts, users, shop_products, product_reviews, community_posts, community_likes, community_folders, community_follows, community_saved, community_comments, profile_likes, direct_messages
 from auth.session import get_user_from_request
 from config import settings
 
@@ -550,3 +550,211 @@ async def community_profile(request: Request, user_id: int):
             "shevelev_token": settings.SHEVELEV_TOKEN_ADDRESS,
         },
     )
+
+
+# ─── Direct Messages ──────────────────────────────────────────────────────────
+
+async def _get_conversations(user_id: int) -> list:
+    """Return list of unique DM partners with last message & unread count."""
+    rows = await database.fetch_all(sa.text("""
+        SELECT
+            CASE WHEN dm.sender_id = :uid THEN dm.recipient_id ELSE dm.sender_id END AS other_id,
+            MAX(dm.id) AS last_id
+        FROM direct_messages dm
+        WHERE (dm.sender_id = :uid OR dm.recipient_id = :uid)
+          AND dm.is_system = false
+        GROUP BY other_id
+        ORDER BY last_id DESC
+        LIMIT 50
+    """), {"uid": user_id})
+
+    # Include system messages (sender_id IS NULL) as a separate "Система" entry
+    sys_count = await database.fetch_val(sa.text(
+        "SELECT COUNT(*) FROM direct_messages WHERE recipient_id=:uid AND is_system=true AND is_read=false"
+    ), {"uid": user_id}) or 0
+
+    convs = []
+    if sys_count > 0:
+        last_sys = await database.fetch_one(sa.text(
+            "SELECT text, created_at FROM direct_messages WHERE recipient_id=:uid AND is_system=true ORDER BY id DESC LIMIT 1"
+        ), {"uid": user_id})
+        convs.append({
+            "other_id": 0,
+            "name": "🛡️ Система",
+            "avatar": None,
+            "last_text": last_sys["text"] if last_sys else "",
+            "unread": sys_count,
+        })
+
+    for r in rows:
+        other_id = r["other_id"]
+        if not other_id:
+            continue
+        other = await database.fetch_one(users.select().where(users.c.id == other_id))
+        last_msg = await database.fetch_one(sa.text(
+            "SELECT text FROM direct_messages WHERE id=:lid"
+        ), {"lid": r["last_id"]})
+        unread = await database.fetch_val(sa.text(
+            "SELECT COUNT(*) FROM direct_messages WHERE sender_id=:oid AND recipient_id=:uid AND is_read=false AND is_system=false"
+        ), {"oid": other_id, "uid": user_id}) or 0
+        convs.append({
+            "other_id": other_id,
+            "name": other["name"] if other else "Участник",
+            "avatar": other["avatar"] if other else None,
+            "last_text": last_msg["text"] if last_msg else "",
+            "unread": unread,
+        })
+    return convs
+
+
+@router.get("/messages/unread-count")
+async def messages_unread_count(request: Request):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return JSONResponse({"count": 0})
+    uid = current_user.get("primary_user_id") or current_user["id"]
+    count = await database.fetch_val(sa.text(
+        "SELECT COUNT(*) FROM direct_messages WHERE recipient_id=:uid AND is_read=false"
+    ), {"uid": uid}) or 0
+    return JSONResponse({"count": count})
+
+
+@router.get("/messages/conversations")
+async def messages_conversations_api(request: Request):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = current_user.get("primary_user_id") or current_user["id"]
+    convs = await _get_conversations(uid)
+    return JSONResponse({"conversations": convs})
+
+
+@router.get("/messages", response_class=HTMLResponse)
+async def messages_list(request: Request):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return RedirectResponse("/login?next=/messages")
+    uid = current_user.get("primary_user_id") or current_user["id"]
+    convs = await _get_conversations(uid)
+    return templates.TemplateResponse(
+        "messages.html",
+        {
+            "request": request,
+            "user": current_user,
+            "conversations": convs,
+            "active_user_id": None,
+            "chat_messages": [],
+            "chat_partner": None,
+        },
+    )
+
+
+@router.get("/messages/{other_id}", response_class=HTMLResponse)
+async def messages_thread(request: Request, other_id: int):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return RedirectResponse(f"/login?next=/messages/{other_id}")
+    uid = current_user.get("primary_user_id") or current_user["id"]
+
+    # Mark messages from other_id as read
+    if other_id == 0:
+        # System messages
+        await database.execute(sa.text(
+            "UPDATE direct_messages SET is_read=true WHERE recipient_id=:uid AND is_system=true AND is_read=false"
+        ), {"uid": uid})
+        chat_partner = {"id": 0, "name": "🛡️ Система", "avatar": None}
+        chat_messages_raw = await database.fetch_all(sa.text(
+            "SELECT * FROM direct_messages WHERE recipient_id=:uid AND is_system=true ORDER BY created_at ASC LIMIT 100"
+        ), {"uid": uid})
+    else:
+        await database.execute(sa.text(
+            "UPDATE direct_messages SET is_read=true WHERE sender_id=:oid AND recipient_id=:uid AND is_read=false AND is_system=false"
+        ), {"oid": other_id, "uid": uid})
+        partner_row = await database.fetch_one(users.select().where(users.c.id == other_id))
+        if not partner_row:
+            return RedirectResponse("/messages")
+        chat_partner = {"id": other_id, "name": partner_row["name"], "avatar": partner_row["avatar"]}
+        chat_messages_raw = await database.fetch_all(sa.text("""
+            SELECT * FROM direct_messages
+            WHERE (sender_id=:uid AND recipient_id=:oid)
+               OR (sender_id=:oid AND recipient_id=:uid AND is_system=false)
+            ORDER BY created_at ASC LIMIT 100
+        """), {"uid": uid, "oid": other_id})
+
+    chat_messages = [dict(m) for m in chat_messages_raw]
+    convs = await _get_conversations(uid)
+
+    return templates.TemplateResponse(
+        "messages.html",
+        {
+            "request": request,
+            "user": current_user,
+            "conversations": convs,
+            "active_user_id": other_id,
+            "chat_messages": chat_messages,
+            "chat_partner": chat_partner,
+            "current_uid": uid,
+        },
+    )
+
+
+@router.get("/messages/poll/{other_id}")
+async def poll_messages(request: Request, other_id: int, after: int = 0):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    uid = current_user.get("primary_user_id") or current_user["id"]
+    rows = await database.fetch_all(sa.text("""
+        SELECT id, sender_id, text, is_read, created_at FROM direct_messages
+        WHERE id > :after
+          AND ((sender_id=:uid AND recipient_id=:oid) OR (sender_id=:oid AND recipient_id=:uid AND is_system=false))
+        ORDER BY id ASC LIMIT 50
+    """), {"after": after, "uid": uid, "oid": other_id})
+    # Mark as read
+    await database.execute(sa.text(
+        "UPDATE direct_messages SET is_read=true WHERE sender_id=:oid AND recipient_id=:uid AND is_read=false"
+    ), {"oid": other_id, "uid": uid})
+    msgs = [{"id": r["id"], "sender_id": r["sender_id"], "text": r["text"],
+             "is_read": r["is_read"],
+             "created_at": r["created_at"].strftime("%H:%M") if r["created_at"] else ""} for r in rows]
+    return JSONResponse({"messages": msgs})
+
+
+@router.post("/messages/{other_id}")
+async def send_message(request: Request, other_id: int, text: str = Form(...)):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = current_user.get("primary_user_id") or current_user["id"]
+    text = text.strip()
+    if not text:
+        return JSONResponse({"error": "empty"}, status_code=400)
+
+    msg_id = await database.execute(sa.text(
+        "INSERT INTO direct_messages (sender_id, recipient_id, text, is_read, is_system) VALUES (:s, :r, :t, false, false) RETURNING id"
+    ), {"s": uid, "r": other_id, "t": text})
+
+    # Telegram notify
+    recipient = await database.fetch_one(users.select().where(users.c.id == other_id))
+    if recipient:
+        tg_id = recipient.get("tg_id") or recipient.get("linked_tg_id")
+        if tg_id:
+            try:
+                import httpx
+                sender_name = current_user.get("name") or "Пользователь"
+                notify_text = f"💬 Новое сообщение от {sender_name}\n{text[:100]}"
+                async with httpx.AsyncClient(timeout=5) as client:
+                    await client.post(
+                        f"https://api.telegram.org/bot{settings.TELEGRAM_TOKEN}/sendMessage",
+                        json={"chat_id": tg_id, "text": notify_text},
+                    )
+            except Exception:
+                pass
+
+    return JSONResponse({
+        "ok": True,
+        "id": msg_id,
+        "text": text,
+        "sender_id": uid,
+        "created_at": "сейчас",
+    })

@@ -367,6 +367,7 @@ async def users_list(request: Request, search: str = ""):
             "users": enriched_users,
             "search": search,
             "msg_counts": msg_counts,
+            "now": datetime.utcnow(),
         },
     )
 
@@ -454,6 +455,30 @@ async def set_user_permissions(request: Request, user_id: int):
         users.update().where(users.c.id == user_id).values(role="admin")
     )
     return JSONResponse({"ok": True, "permissions": perms})
+
+
+@router.post("/users/{user_id}/ban")
+async def ban_user(request: Request, user_id: int):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    await database.execute(
+        users.update().where(users.c.id == user_id).values(is_banned=True)
+    )
+    return JSONResponse({"ok": True})
+
+
+@router.post("/users/{user_id}/unban")
+async def unban_user(request: Request, user_id: int):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    await database.execute(
+        users.update().where(users.c.id == user_id).values(
+            is_banned=False, ban_until=None, ban_reason=None, violations_count=0
+        )
+    )
+    return JSONResponse({"ok": True})
 
 
 @router.post("/users/{user_id}/subscription")
