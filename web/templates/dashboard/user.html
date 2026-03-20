@@ -93,6 +93,11 @@
 .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px}
 .stat-box{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:14px;text-align:center}
 
+/* ── Feed tabs ── */
+.feed-tab{padding:7px 16px;border-radius:20px;font-size:13px;font-weight:600;border:1px solid rgba(255,255,255,.1);background:transparent;color:#666;cursor:pointer;transition:all .2s;text-decoration:none;display:inline-block}
+.feed-tab:hover{border-color:rgba(201,168,76,.4);color:#C9A84C}
+.feed-tab-active{border-color:#C9A84C!important;color:#C9A84C!important;background:rgba(201,168,76,.1)!important}
+
 /* ── Util ── */
 .sect-title{font-size:22px;font-weight:700;color:#e8e8e8;margin-bottom:20px}
 .muted{color:#666;font-size:13px}
@@ -135,23 +140,24 @@
             {% endif %}
           </div>
           <div style="display:flex;flex-direction:column;gap:8px;margin-left:auto">
-            <button class="btn-g" onclick="goSec('ai')">🤖 AI консультация</button>
-            <button class="btn-o" onclick="goSec('shop')">🛒 Магазин</button>
+            <button class="btn-g" onclick="goSec('feed');setTimeout(()=>document.getElementById('quickPostText')?.focus(),200)">✏️ Написать пост</button>
+            <button class="btn-o" onclick="goSec('feed')">👥 Моя лента</button>
+            <button class="btn-o" onclick="goSec('profile')" style="font-size:12px;padding:7px 14px">⚙️ Редактировать</button>
           </div>
         </div>
 
         <div class="stats-row">
-          <div class="stat-box">
+          <div class="stat-box" style="cursor:pointer" onclick="goSec('feed');setTimeout(()=>document.querySelector('[data-tab=mine]')?.click(),100)">
             <div style="font-size:22px;font-weight:700;color:#C9A84C">{{ my_post_count }}</div>
-            <div class="muted">постов в соц сети</div>
+            <div class="muted">постов</div>
           </div>
           <div class="stat-box">
-            <div style="font-size:22px;font-weight:700;color:#C9A84C">{{ ai_questions_today }}</div>
-            <div class="muted">вопросов AI сегодня</div>
+            <div style="font-size:22px;font-weight:700;color:#C9A84C">{{ user.followers_count or 0 }}</div>
+            <div class="muted">подписчиков</div>
           </div>
           <div class="stat-box">
-            <div style="font-size:22px;font-weight:700;color:#C9A84C">{{ orders|length }}</div>
-            <div class="muted">заказов</div>
+            <div style="font-size:22px;font-weight:700;color:#C9A84C">{{ user.following_count or 0 }}</div>
+            <div class="muted">подписок</div>
           </div>
         </div>
       </div>
@@ -176,7 +182,7 @@
 
       <!-- Quick links -->
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px">
-        {% set quick = [('👥','Сообщество','feed'),('💎','Тарифы','plan'),('🎁','Рефералы','referral'),('🔗','Привязка аккаунта','link')] %}
+        {% set quick = [('👥','Лента','feed'),('🤖','AI чат','ai'),('🛒','Магазин','shop'),('💎','Тарифы','plan')] %}
         {% for em,lab,sec in quick %}
         <div class="card-sm" style="cursor:pointer;transition:border-color .2s" onclick="goSec('{{ sec }}')" onmouseover="this.style.borderColor='rgba(201,168,76,.4)'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)'">
           <div style="font-size:24px;margin-bottom:8px">{{ em }}</div>
@@ -184,6 +190,23 @@
         </div>
         {% endfor %}
       </div>
+
+      <!-- Last own posts preview -->
+      {% if recent_posts %}
+      <div class="card" style="margin-top:22px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div style="font-weight:700;font-size:16px">Мои последние посты</div>
+          <button class="btn-o" style="padding:6px 14px;font-size:12px" onclick="goSec('feed');setTimeout(()=>document.querySelector('[data-tab=mine]')?.click(),100)">Все мои посты →</button>
+        </div>
+        {% for p in recent_posts[:3] %}
+        <div style="padding:12px 0;{{ '' if loop.last else 'border-bottom:1px solid rgba(255,255,255,.06)' }}">
+          <div style="font-size:13px;color:#ccc;line-height:1.5;white-space:pre-wrap;word-break:break-word">{{ p.content[:180] }}{% if p.content|length > 180 %}…{% endif %}</div>
+          {% if p.image_url %}<img src="{{ p.image_url }}" style="width:100%;max-height:160px;object-fit:cover;border-radius:8px;margin-top:8px" loading="lazy" alt="">{% endif %}
+          <div style="font-size:11px;color:#555;margin-top:6px">{{ p.created_at.strftime('%d.%m.%Y') if p.created_at else '' }} · ❤️ {{ p.likes_count }} · 💬 {{ p.comments_count }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
     </section>
 
     <!-- ══ FEED ══ -->
@@ -192,54 +215,77 @@
         <div class="sect-title" style="margin:0">👥 Лента сообщества</div>
       </div>
 
-      <!-- My community profile card -->
-      <div class="card" style="margin-bottom:20px;border-color:rgba(201,168,76,.2)">
-        <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+      <!-- Mini profile + post form -->
+      <div class="card" style="margin-bottom:16px;border-color:rgba(201,168,76,.2)">
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px">
           {% if user.avatar %}
-          <img src="{{ user.avatar }}" style="width:52px;height:52px;border-radius:50%;border:2px solid #C9A84C;object-fit:cover;flex-shrink:0" alt="">
+          <img src="{{ user.avatar }}" style="width:42px;height:42px;border-radius:50%;border:2px solid #C9A84C;object-fit:cover;flex-shrink:0;cursor:pointer" onclick="goSec('home')" alt="">
           {% else %}
-          <div style="width:52px;height:52px;border-radius:50%;border:2px solid #C9A84C;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🍄</div>
+          <div style="width:42px;height:42px;border-radius:50%;border:2px solid #C9A84C;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;cursor:pointer" onclick="goSec('home')">🍄</div>
           {% endif %}
-          <div style="flex:1;min-width:140px">
-            <div style="font-size:15px;font-weight:700;color:#e8e8e8">{{ user.name or 'Участник' }}</div>
-            {% if comm_profile %}
-            <div style="display:flex;gap:16px;margin-top:6px;font-size:12px;color:#666">
-              <span><span class="gold">{{ comm_profile.posts_count or my_post_count }}</span> постов</span>
-              <span><span class="gold">{{ comm_profile.followers_count or 0 }}</span> подписчиков</span>
-              <span><span class="gold">{{ comm_profile.following_count or 0 }}</span> подписок</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:700;color:#e8e8e8;cursor:pointer" onclick="goSec('home')">{{ user.name or 'Участник' }}</div>
+            <div style="display:flex;gap:12px;font-size:12px;color:#555;margin-top:2px">
+              <span><span class="gold">{{ my_post_count }}</span> постов</span>
+              <span><span class="gold">{{ user.followers_count or 0 }}</span> подп.</span>
+              <span><span class="gold">{{ user.following_count or 0 }}</span> подписок</span>
             </div>
-            {% endif %}
           </div>
-          <a href="/community/profile/{{ user.id }}" class="btn-o" style="font-size:13px;padding:8px 16px;flex-shrink:0">Открыть мою страницу →</a>
+          <button class="btn-o" onclick="goSec('home')" style="font-size:12px;padding:6px 12px;flex-shrink:0">👤 Мой профиль</button>
         </div>
-        <!-- Quick post form -->
-        <div style="margin-top:16px">
-          <textarea id="quickPostText" class="sinp" style="width:100%;min-height:72px;resize:vertical;box-sizing:border-box" placeholder="Поделитесь с сообществом..."></textarea>
-          <div style="display:flex;justify-content:flex-end;margin-top:8px;gap:8px">
-            <span id="quickPostOk" style="display:none;color:#4ade80;font-size:13px;align-self:center">✓ Опубликовано</span>
+        <textarea id="quickPostText" class="sinp" style="width:100%;min-height:72px;resize:vertical;box-sizing:border-box" placeholder="Поделитесь с сообществом..."></textarea>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+          <a href="/community/members" style="font-size:12px;color:#555;text-decoration:none;hover:color:#C9A84C">👥 Все участники →</a>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span id="quickPostOk" style="display:none;color:#4ade80;font-size:13px">✓ Опубликовано</span>
             <button class="btn-g" style="font-size:13px;padding:8px 18px" onclick="quickPost()">Опубликовать</button>
           </div>
         </div>
       </div>
+
+      <!-- Tabs -->
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <button data-tab="all" class="feed-tab feed-tab-active" onclick="feedTab('all',this)">Все</button>
+        <button data-tab="following" class="feed-tab" onclick="feedTab('following',this)">Подписки</button>
+        <button data-tab="mine" class="feed-tab" onclick="feedTab('mine',this)">Мои посты</button>
+      </div>
+
+      <!-- Posts -->
+      <div id="feedPosts">
       {% if feed_raw %}
       {% for p in feed_raw %}
       {% set a = feed_authors.get(p.user_id) %}
-      <div class="fp">
+      {% set is_mine = p.user_id == effective_user_id %}
+      {% set is_following_author = p.user_id in following_ids %}
+      {% set is_liked = p.id in liked_post_ids %}
+      <div class="fp" data-uid="{{ p.user_id }}" data-mine="{{ 'true' if is_mine else 'false' }}" data-following="{{ 'true' if is_following_author else 'false' }}">
         <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
-          {% if a and a.avatar %}<img src="{{ a.avatar }}" style="width:34px;height:34px;border-radius:50%;border:2px solid #C9A84C;object-fit:cover" alt="">
-          {% else %}<div style="width:34px;height:34px;border-radius:50%;border:2px solid #C9A84C;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px">🍄</div>{% endif %}
-          <div>
-            <div style="font-size:13px;font-weight:600;color:#ddd">{{ a.name if a else 'Участник' }}</div>
+          {% if is_mine %}
+          <div onclick="goSec('home')" style="cursor:pointer;flex-shrink:0">
+          {% else %}
+          <a href="/community/profile/{{ p.user_id }}" style="flex-shrink:0;text-decoration:none">
+          {% endif %}
+            {% if a and a.avatar %}<img src="{{ a.avatar }}" style="width:34px;height:34px;border-radius:50%;border:2px solid #C9A84C;object-fit:cover" alt="">
+            {% else %}<div style="width:34px;height:34px;border-radius:50%;border:2px solid #C9A84C;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px">🍄</div>{% endif %}
+          {% if is_mine %}</div>{% else %}</a>{% endif %}
+          <div style="flex:1;min-width:0">
+            {% if is_mine %}
+            <div style="font-size:13px;font-weight:600;color:#ddd;cursor:pointer" onclick="goSec('home')">{{ a.name if a else 'Участник' }} <span style="font-size:11px;color:#C9A84C">● я</span></div>
+            {% else %}
+            <a href="/community/profile/{{ p.user_id }}" style="font-size:13px;font-weight:600;color:#ddd;text-decoration:none">{{ a.name if a else 'Участник' }}</a>
+            {% endif %}
             <div style="font-size:11px;color:#555">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}</div>
           </div>
-          {% if p.pinned %}<span style="margin-left:auto;color:#C9A84C;font-size:12px">📌</span>{% endif %}
+          {% if p.pinned %}<span style="color:#C9A84C;font-size:12px">📌</span>{% endif %}
         </div>
-        <div style="font-size:14px;color:#ccc;line-height:1.6;white-space:pre-wrap;word-break:break-word">{{ p.content[:280] }}{% if p.content|length > 280 %}…{% endif %}</div>
+        <div style="font-size:14px;color:#ccc;line-height:1.6;white-space:pre-wrap;word-break:break-word">{{ p.content[:300] }}{% if p.content|length > 300 %}…{% endif %}</div>
         {% if p.image_url %}<img src="{{ p.image_url }}" style="width:100%;max-height:260px;object-fit:cover;border-radius:10px;margin-top:10px" loading="lazy" alt="">{% endif %}
-        <div style="display:flex;gap:14px;margin-top:10px;font-size:12px;color:#555">
-          <span>❤️ {{ p.likes_count }}</span>
-          <span>💬 {{ p.comments_count }}</span>
-          <span>🔖 {{ p.saves_count }}</span>
+        <div style="display:flex;gap:14px;margin-top:10px;font-size:12px;align-items:center">
+          <button id="like-btn-{{ p.id }}" onclick="likeFeedPost({{ p.id }},this)" style="background:none;border:none;cursor:pointer;color:{{ '#ef4444' if is_liked else '#555' }};font-size:13px;display:flex;align-items:center;gap:4px;padding:0">
+            {{ '❤️' if is_liked else '🤍' }} <span id="like-count-{{ p.id }}">{{ p.likes_count }}</span>
+          </button>
+          <span style="color:#555">💬 {{ p.comments_count }}</span>
+          <span style="color:#555">🔖 {{ p.saves_count }}</span>
         </div>
       </div>
       {% endfor %}
@@ -250,6 +296,7 @@
         <div style="margin-top:8px;font-size:13px;color:#555">Будьте первым — создайте пост выше</div>
       </div>
       {% endif %}
+      </div>
     </section>
 
     <!-- ══ MESSAGES ══ -->
@@ -837,18 +884,51 @@ async function loadDMPreview(){
   }catch(e){list.innerHTML='<div style="text-align:center;padding:40px;color:#444">Ошибка загрузки</div>';}
 }
 
+// ── Feed tabs ──
+function feedTab(tab, btn){
+  // Update button styles
+  document.querySelectorAll('.feed-tab').forEach(b=>b.classList.remove('feed-tab-active'));
+  btn.classList.add('feed-tab-active');
+  // Show/hide posts
+  document.querySelectorAll('#feedPosts .fp').forEach(el=>{
+    const mine=el.dataset.mine==='true';
+    const following=el.dataset.following==='true'||mine;
+    let show=true;
+    if(tab==='mine')show=mine;
+    else if(tab==='following')show=following;
+    el.style.display=show?'':'none';
+  });
+  // Empty state
+  const visible=[...document.querySelectorAll('#feedPosts .fp')].filter(el=>el.style.display!=='none');
+  let empty=document.getElementById('feedEmpty');
+  if(!visible.length){
+    if(!empty){empty=document.createElement('div');empty.id='feedEmpty';empty.style.cssText='text-align:center;padding:40px 0;color:#444';empty.innerHTML='<div style="font-size:36px;margin-bottom:8px">🍄</div><div>Нет постов</div>';document.getElementById('feedPosts').appendChild(empty);}
+  }else{empty?.remove();}
+}
+
+// ── Like feed post ──
+async function likeFeedPost(postId, btn){
+  try{
+    const r=await fetch('/community/like/'+postId,{method:'POST'});
+    const d=await r.json();
+    const cnt=document.getElementById('like-count-'+postId);
+    if(d.liked){btn.style.color='#ef4444';btn.childNodes[0].textContent='❤️ ';if(cnt)cnt.textContent=parseInt(cnt.textContent||0)+1;}
+    else{btn.style.color='#555';btn.childNodes[0].textContent='🤍 ';if(cnt)cnt.textContent=Math.max(0,parseInt(cnt.textContent||0)-1);}
+  }catch(e){showNotification('Ошибка','error');}
+}
+
 // ── Quick post from feed section ──
 async function quickPost(){
   const txt=document.getElementById('quickPostText').value.trim();if(!txt)return;
   const fd=new FormData();fd.append('content',txt);
   try{
     const r=await fetch('/community/post',{method:'POST',body:fd});
-    const d=await r.json();
+    const d=await r.json().catch(()=>({}));
     if(d.ok||d.id){
       document.getElementById('quickPostText').value='';
       const ok=document.getElementById('quickPostOk');ok.style.display='inline';
-      setTimeout(()=>ok.style.display='none',3000);
-    }
+      setTimeout(()=>{ok.style.display='none';location.reload();},1500);
+    }else{showNotification('Ошибка публикации','error');}
   }catch(e){showNotification('Ошибка публикации','error');}
 }
 

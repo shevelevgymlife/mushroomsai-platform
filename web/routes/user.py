@@ -30,8 +30,7 @@ async def dashboard(request: Request):
     if not user:
         return RedirectResponse("/login")
 
-    # If this is a secondary (linked) account, redirect to primary so the
-    # user always sees one unified profile instead of a duplicate.
+    # If secondary account slips through session, re-issue token for primary
     if user.get("primary_user_id"):
         primary = await database.fetch_one(
             users.select().where(users.c.id == user["primary_user_id"])
@@ -43,21 +42,12 @@ async def dashboard(request: Request):
             response.set_cookie("access_token", token, httponly=True, samesite="lax", max_age=60*60*24*30)
             return response
 
-    # Use primary account's ID so linked accounts see the same history
     effective_user_id = user.get("primary_user_id") or user["id"]
 
-    # Auto-create community profile (idempotent)
-    try:
-        import sqlalchemy as _sa_text
-        await database.execute(
-            _sa_text.text(
-                "INSERT INTO community_profiles (user_id, display_name) "
-                "VALUES (:uid, :name) ON CONFLICT (user_id) DO NOTHING"
-            ),
-            {"uid": effective_user_id, "name": user.get("name")},
-        )
-    except Exception:
-        pass
+    # Full profile first (bio, followers_count, following_count, etc.)
+    full_profile = await database.fetch_one(users.select().where(users.c.id == effective_user_id))
+    if full_profile:
+        user = dict(full_profile)
 
     plan = await check_subscription(effective_user_id)
     plan_info = PLANS.get(plan, PLANS["free"])
@@ -75,20 +65,45 @@ async def dashboard(request: Request):
         orders.select().where(orders.c.user_id == user["id"]).order_by(orders.c.created_at.desc())
     )
 
-    # Stats for home screen
-    from db.models import shop_products as shop_products_table
     my_post_count = await database.fetch_val(
         sa.select(sa.func.count()).select_from(community_posts)
         .where(community_posts.c.user_id == effective_user_id)
     ) or 0
     ai_questions_today = user.get("daily_questions") or 0
 
-    # Recent community feed (10 posts)
+    # Auto-upsert community profile with fresh stats
+    try:
+        await database.execute(
+            sa.text(
+                "INSERT INTO community_profiles (user_id, display_name, posts_count, followers_count, following_count) "
+                "VALUES (:uid, :name, :pc, :fc, :fgc) ON CONFLICT (user_id) DO UPDATE SET "
+                "display_name = EXCLUDED.display_name, posts_count = EXCLUDED.posts_count, "
+                "followers_count = EXCLUDED.followers_count, following_count = EXCLUDED.following_count"
+            ),
+            {
+                "uid": effective_user_id, "name": user.get("name"),
+                "pc": my_post_count,
+                "fc": user.get("followers_count") or 0,
+                "fgc": user.get("following_count") or 0,
+            },
+        )
+    except Exception:
+        pass
+
+    # Last 5 posts by user (for profile home screen)
+    recent_posts = await database.fetch_all(
+        community_posts.select()
+        .where(community_posts.c.user_id == effective_user_id)
+        .order_by(community_posts.c.created_at.desc())
+        .limit(5)
+    )
+
+    # Feed: last 20 approved posts
     feed_raw = await database.fetch_all(
         community_posts.select()
         .where(community_posts.c.approved == True)
         .order_by(community_posts.c.pinned.desc(), community_posts.c.created_at.desc())
-        .limit(10)
+        .limit(20)
     )
     feed_authors = {}
     for p in feed_raw:
@@ -97,15 +112,23 @@ async def dashboard(request: Request):
             if a:
                 feed_authors[p["user_id"]] = dict(a)
 
+    # Posts liked by user
+    liked_rows = await database.fetch_all(
+        community_likes.select().where(community_likes.c.user_id == effective_user_id)
+    )
+    liked_post_ids = {r["post_id"] for r in liked_rows}
+
+    # IDs the user follows (for "подписки" tab)
+    following_rows = await database.fetch_all(
+        community_follows.select().where(community_follows.c.follower_id == effective_user_id)
+    )
+    following_ids = {r["following_id"] for r in following_rows}
+
     # Shop products preview
+    from db.models import shop_products as shop_products_table
     shop_preview = await database.fetch_all(
         shop_products_table.select().order_by(shop_products_table.c.created_at.desc()).limit(12)
     )
-
-    # Full user profile (with bio/followers etc)
-    full_profile = await database.fetch_one(users.select().where(users.c.id == effective_user_id))
-    if full_profile:
-        user = dict(full_profile)
 
     # Community profile record
     comm_profile = await database.fetch_one(
@@ -128,9 +151,13 @@ async def dashboard(request: Request):
             "ai_questions_today": ai_questions_today,
             "feed_raw": feed_raw,
             "feed_authors": feed_authors,
+            "liked_post_ids": liked_post_ids,
+            "following_ids": following_ids,
+            "recent_posts": recent_posts,
             "shop_preview": shop_preview,
             "comm_profile": dict(comm_profile) if comm_profile else None,
             "shevelev_token": _settings.SHEVELEV_TOKEN_ADDRESS,
+            "effective_user_id": effective_user_id,
         },
     )
 
@@ -220,7 +247,7 @@ async def create_post(
 
     fid = int(folder_id) if folder_id.strip().isdigit() else None
     effective_uid = user.get("primary_user_id") or user["id"]
-    await database.execute(
+    post_id = await database.execute(
         community_posts.insert().values(
             user_id=effective_uid,
             content=content.strip(),
@@ -229,7 +256,7 @@ async def create_post(
             approved=True,
         )
     )
-    return RedirectResponse("/community", status_code=302)
+    return JSONResponse({"ok": True, "id": post_id})
 
 
 @router.post("/community/like/{post_id}")
