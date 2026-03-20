@@ -7,6 +7,7 @@
     ('Обратная связь', '/admin/feedback', 'can_feedback'),
     ('Рассылки', '/admin/broadcast', 'can_broadcast'),
     ('База знаний', '/admin/knowledge', 'can_knowledge'),
+    ('🏠 Главная', '/admin/homepage', 'can_dashboard'),
   ] %}
   {% for label, href, perm_key in nav_items %}
   {% if user_permissions is not defined or user_permissions.get(perm_key, True) %}

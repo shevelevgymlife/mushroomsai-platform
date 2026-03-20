@@ -365,3 +365,15 @@ ai_training_posts = sqlalchemy.Table(
     sqlalchemy.Column("is_active", sqlalchemy.Boolean, default=True, server_default="true"),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
+
+homepage_blocks = sqlalchemy.Table(
+    "homepage_blocks",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("block_name", sqlalchemy.Text, unique=True, nullable=False),
+    sqlalchemy.Column("title", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("subtitle", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("content", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("is_visible", sqlalchemy.Boolean, default=True, server_default="true"),
+    sqlalchemy.Column("updated_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)

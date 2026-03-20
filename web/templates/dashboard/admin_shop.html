@@ -260,8 +260,9 @@
         <p id="editUploadError" class="hidden mt-1 text-xs text-red-400"></p>
         <input type="hidden" name="image_url" id="editImageUrl" />
       </div>
+      <div id="editSaveError" class="hidden mb-2 p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs"></div>
       <div class="flex gap-3 pt-2">
-        <button type="submit"
+        <button type="button" onclick="saveEditProduct()"
           class="flex-1 px-4 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-all duration-300">
           Сохранить
         </button>
@@ -418,6 +419,33 @@ async function applyCrop() {
       labelEl.textContent = 'Выбрать файл';
     }
   }, 'image/jpeg', 0.9);
+}
+
+// ── Save edit via fetch ────────────────────────────────────────────────────────
+async function saveEditProduct() {
+  var form = document.getElementById('editForm');
+  var fd = new FormData(form);
+  // Ensure in_stock is sent as 'true'/'false' string
+  var inStock = document.getElementById('editInStock').checked;
+  fd.set('in_stock', inStock ? 'true' : 'false');
+
+  var errEl = document.getElementById('editSaveError');
+  errEl.classList.add('hidden');
+
+  try {
+    var resp = await fetch(form.action, { method: 'POST', body: fd });
+    var data = await resp.json();
+    if (data.ok) {
+      document.getElementById('editModal').classList.add('hidden');
+      location.reload();
+    } else {
+      errEl.textContent = data.error || 'Ошибка сохранения';
+      errEl.classList.remove('hidden');
+    }
+  } catch(e) {
+    errEl.textContent = 'Ошибка сети: ' + e.message;
+    errEl.classList.remove('hidden');
+  }
 }
 
 // ── Delete ────────────────────────────────────────────────────────────────────

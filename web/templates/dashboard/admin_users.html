@@ -38,7 +38,7 @@
                   <div class="w-7 h-7 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center text-xs text-gold font-medium flex-shrink-0">
                     {{ (u.name or 'U')[0]|upper }}
                   </div>
-                  <span class="text-sm text-text">{{ u.name or '—' }}</span>
+                  <a href="/community/profile/{{ u.id }}" target="_blank" class="text-sm text-text hover:text-gold transition-colors" style="text-decoration:none">{{ u.name or '—' }}</a>
                 </div>
               </td>
               <td class="px-4 py-3">

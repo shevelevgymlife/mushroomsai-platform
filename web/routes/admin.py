@@ -10,6 +10,7 @@ from db.models import (
     page_views, ai_settings, subscriptions, knowledge_base,
     shop_products, feedback, admin_permissions, product_reviews,
     community_posts, community_comments, community_likes, community_folders,
+    homepage_blocks,
 )
 import sqlalchemy
 from datetime import datetime, timedelta, date
@@ -284,7 +285,7 @@ async def edit_shop_product(
             in_stock=(in_stock == "true"),
         )
     )
-    return RedirectResponse("/admin/shop", status_code=302)
+    return JSONResponse({"ok": True})
 
 
 @router.post("/shop/delete/{product_id}")
@@ -1042,6 +1043,48 @@ async def toggle_ai_post(request: Request, post_id: int):
             ai_training_posts.update().where(ai_training_posts.c.id == post_id).values(is_active=not row["is_active"])
         )
         return JSONResponse({"ok": True, "is_active": not row["is_active"]})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@router.get("/homepage", response_class=HTMLResponse)
+async def admin_homepage(request: Request):
+    admin = await require_admin(request)
+    if not admin:
+        return RedirectResponse("/login")
+    blocks_raw = await database.fetch_all(homepage_blocks.select().order_by(homepage_blocks.c.id))
+    blocks = [dict(b) for b in blocks_raw]
+    return templates.TemplateResponse(
+        "dashboard/admin_homepage.html",
+        {"request": request, "user": admin, "blocks": blocks},
+    )
+
+
+@router.post("/homepage/{block_name}")
+async def update_homepage_block(
+    request: Request,
+    block_name: str,
+    title: str = Form(""),
+    subtitle: str = Form(""),
+    content: str = Form(""),
+    is_visible: str = Form(""),
+):
+    admin = await require_admin(request)
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    try:
+        await database.execute(
+            homepage_blocks.update()
+            .where(homepage_blocks.c.block_name == block_name)
+            .values(
+                title=title,
+                subtitle=subtitle,
+                content=content,
+                is_visible=(is_visible == "true"),
+                updated_at=sqlalchemy.func.now(),
+            )
+        )
+        return JSONResponse({"ok": True})
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 

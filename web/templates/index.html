@@ -44,8 +44,8 @@
 <section class="py-24">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="text-center mb-16">
-      <h2 class="text-3xl sm:text-4xl font-light text-text mb-4">{{ t.features_title }}</h2>
-      <p class="text-muted max-w-xl mx-auto">{{ t.features_subtitle }}</p>
+      <h2 class="text-3xl sm:text-4xl font-light text-text mb-4">{{ blocks.features.title if blocks and 'features' in blocks else t.features_title }}</h2>
+      <p class="text-muted max-w-xl mx-auto">{{ blocks.features.subtitle if blocks and 'features' in blocks else t.features_subtitle }}</p>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -71,8 +71,8 @@
 <section class="py-24" id="tariffs">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="text-center mb-16">
-      <h2 class="text-3xl sm:text-4xl font-light text-text mb-4">{{ t.tariffs_title }}</h2>
-      <p class="text-muted">{{ t.tariffs_subtitle }}</p>
+      <h2 class="text-3xl sm:text-4xl font-light text-text mb-4">{{ blocks.pricing.title if blocks and 'pricing' in blocks else t.tariffs_title }}</h2>
+      <p class="text-muted">{{ blocks.pricing.subtitle if blocks and 'pricing' in blocks else t.tariffs_subtitle }}</p>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 max-w-7xl mx-auto">
@@ -149,8 +149,8 @@
 <section class="py-24 overflow-hidden">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="text-center mb-12">
-      <h2 class="text-3xl sm:text-4xl font-light text-text mb-4">Соц. сеть MushroomsAI</h2>
-      <p class="text-muted max-w-xl mx-auto">Присоединяйся к {{ users_count }}+ участникам — создавай страницу, публикуй опыт и получай советы от живого сообщества</p>
+      <h2 class="text-3xl sm:text-4xl font-light text-text mb-4">{{ blocks.community.title if blocks and 'community' in blocks else 'Соц. сеть MushroomsAI' }}</h2>
+      <p class="text-muted max-w-xl mx-auto">{{ blocks.community.subtitle if blocks and 'community' in blocks else 'Присоединяйся к ' ~ users_count ~ '+ участникам — создавай страницу, публикуй опыт и получай советы от живого сообщества' }}</p>
     </div>
 
     <style>

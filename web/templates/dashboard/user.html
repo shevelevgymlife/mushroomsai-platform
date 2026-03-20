@@ -387,13 +387,20 @@
         </div>
       </div>
       <div class="plan-grid">
-        {% set pls = [('free','🌿','Бесплатный','0 ₽/мес','• 5 вопросов в день\n• Базовый доступ к AI\n• Просмотр магазина'),('start','⭐','Старт','990 ₽/мес','• Безлимитные вопросы\n• Безлимитные рецепты\n• Поддержка 24/7'),('pro','💎','Про','1 990 ₽/мес','• Всё из Старт\n• Приоритетная поддержка\n• Ранний доступ к фичам')] %}
-        {% for pid,em,pname,price,feat in pls %}
+        {% set pls = [
+          ('free','🌿','Бесплатный','0 ₽/мес',['5 вопросов в день','1 рецепт в день']),
+          ('start','⭐','Старт','990 ₽/мес',['Безлимит консультаций','PDF рецепты','AI подбор протокола','Доступ к магазину','Соц. сеть + лента','Поддержка 24/7']),
+          ('pro','💎','Про','1 990 ₽/мес',['Всё из Старт','История 3 мес','Глубокий разбор','Приоритетная поддержка']),
+          ('maxi','👑','Макси','4 999 ₽/мес',['Всё из Про','Реклама на маркетплейсе','VIP поддержка']),
+        ] %}
+        {% for pid,em,pname,price,feats in pls %}
         <div class="plan-card {{ 'current' if plan == pid }}">
           <div style="font-size:24px;margin-bottom:8px">{{ em }}</div>
           <div style="font-size:17px;font-weight:700;color:#e8e8e8;margin-bottom:4px">{{ pname }}</div>
           <div style="font-size:20px;font-weight:700;color:#C9A84C;margin-bottom:12px">{{ price }}</div>
-          <div style="font-size:12px;color:#777;white-space:pre-line;line-height:1.8">{{ feat }}</div>
+          <div style="font-size:12px;color:#777;line-height:1.9">
+            {% for f in feats %}<div>• {{ f }}</div>{% endfor %}
+          </div>
           {% if plan == pid %}
           <div style="margin-top:14px;font-size:12px;color:#C9A84C;font-weight:600">✓ Текущий тариф</div>
           {% else %}

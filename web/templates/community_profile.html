@@ -115,12 +115,6 @@
     </div>
   </div>
 
-  <!-- Privacy notice -->
-  <div class="privacy-notice" style="margin-bottom:20px">
-    <span>🔒</span>
-    <span>Публичный профиль. История чатов, заказы и данные подписки скрыты и не отображаются.</span>
-  </div>
-
   <!-- POSTS FEED -->
   <div style="font-size:16px;font-weight:700;color:#e8e8e8;margin-bottom:14px">
     Посты
@@ -183,25 +177,27 @@
 
 </div><!-- /pp-wrap -->
 
-<!-- DM MODAL -->
-<div class="mover" id="dmModal">
-  <div class="mbox" style="display:flex;flex-direction:column;height:70vh;padding:18px">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-shrink:0">
-      {% if profile.avatar %}
-      <img src="{{ profile.avatar }}" class="avg" style="width:36px;height:36px" alt="">
-      {% else %}
-      <div class="avph" style="width:36px;height:36px;font-size:14px">🍄</div>
-      {% endif %}
-      <span style="font-weight:700;flex:1">{{ profile.name or 'Участник' }}</span>
-      <button onclick="closeM('dmModal')" style="background:none;border:none;color:#666;font-size:20px;cursor:pointer">✕</button>
-    </div>
-    <div id="dmMsgs" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding-right:4px"></div>
-    <div style="display:flex;gap:8px;margin-top:10px;flex-shrink:0">
-      <input type="text" id="dmInp" class="sinp" style="flex:1" placeholder="Сообщение..." onkeydown="if(event.key==='Enter')sendMsg()">
-      <button class="btn-g" style="padding:10px 14px" onclick="sendMsg()">→</button>
-    </div>
+<!-- DM CHAT PANEL (fixed bottom-right) -->
+<div id="dmPanel" style="display:none;position:fixed;right:20px;bottom:20px;width:340px;height:460px;background:#0e0e0e;border:1px solid rgba(201,168,76,.35);border-radius:20px;box-shadow:0 8px 40px rgba(0,0,0,.7);z-index:1000;flex-direction:column;overflow:hidden">
+  <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0;background:#111">
+    {% if profile.avatar %}
+    <img src="{{ profile.avatar }}" class="avg" style="width:34px;height:34px" alt="">
+    {% else %}
+    <div class="avph" style="width:34px;height:34px;font-size:14px">🍄</div>
+    {% endif %}
+    <span style="font-weight:700;flex:1;font-size:14px;color:#e8e8e8">{{ profile.name or 'Участник' }}</span>
+    <button onclick="closeDM()" style="background:none;border:none;color:#666;font-size:20px;cursor:pointer;line-height:1">✕</button>
+  </div>
+  <div id="dmMsgs" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:14px;"></div>
+  <div style="display:flex;gap:8px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.07);flex-shrink:0">
+    <input type="text" id="dmInp" class="sinp" style="flex:1;font-size:13px" placeholder="Сообщение..." onkeydown="if(event.key==='Enter')sendMsg()">
+    <button class="btn-g" style="padding:10px 14px;font-size:14px" onclick="sendMsg()">→</button>
   </div>
 </div>
+
+{% if not is_own %}
+<button onclick="openDM()" style="display:none" id="dmFloatBtn"></button>
+{% endif %}
 
 <script>
 const PROFILE_ID = {{ profile_id }};
@@ -334,9 +330,13 @@ async function delCmt(cmtId, btn){
 }
 
 // ── DM ──
-async function openDM(){
-  openM('dmModal');
-  await loadThread();
+function openDM(){
+  const panel=document.getElementById('dmPanel');
+  if(panel){panel.style.display='flex';loadThread();}
+}
+function closeDM(){
+  const panel=document.getElementById('dmPanel');
+  if(panel)panel.style.display='none';
 }
 async function loadThread(){
   const r=await fetch(`/community/messages/${PROFILE_ID}`);
