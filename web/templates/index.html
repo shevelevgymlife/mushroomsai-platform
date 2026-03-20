@@ -68,7 +68,7 @@
 </section>
 
 <!-- Tariffs -->
-<section class="py-24">
+<section class="py-24" id="tariffs">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="text-center mb-16">
       <h2 class="text-3xl sm:text-4xl font-light text-text mb-4">{{ t.tariffs_title }}</h2>
@@ -144,6 +144,141 @@
     </div>
   </div>
 </section>
+
+<!-- Social Network Block -->
+<section class="py-24 overflow-hidden">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="text-center mb-12">
+      <h2 class="text-3xl sm:text-4xl font-light text-text mb-4">Соц. сеть MushroomsAI</h2>
+      <p class="text-muted max-w-xl mx-auto">Подпишись и создавай свою страницу вместе с тысячами пользователей — общение, лайки, посты</p>
+    </div>
+
+    <style>
+      .feed-card{opacity:0;transform:translateY(24px);animation:feedIn .6s ease forwards}
+      @keyframes feedIn{to{opacity:1;transform:translateY(0)}}
+      .feed-card:nth-child(1){animation-delay:.1s}
+      .feed-card:nth-child(2){animation-delay:.28s}
+      .feed-card:nth-child(3){animation-delay:.46s}
+      .feed-card:nth-child(4){animation-delay:.64s}
+    </style>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-12">
+      {% set feed_cards = [
+        ("АМ", "#7c3aed", "Анна М.", "🌱 Зерно", "Начала курс рейши 3 недели назад — сон стал глубже, тревожность ушла. AI подобрал дозировку идеально 🍄", 24, 7),
+        ("ДК", "#0891b2", "Дмитрий К.", "🍄 Участник", "Результаты анализов после 2 месяцев кордицепса: витальность +40%, гемоглобин вырос. Делюсь протоколом!", 41, 12),
+        ("ЕС", "#059669", "Елена С.", "⚡ Адепт", "AI подобрал мне протокол для иммунитета — ежовик + рейши. Уже 5-й месяц без болезней этой зимой", 18, 5),
+        ("СВ", "#d97706", "Сергей В.", "🔥 Мастер", "Партнёрство с MushroomsAI открыло новые возможности. Продаю через маркетплейс — выручка х3 за квартал", 56, 23),
+      ] %}
+      {% for initials, color, name, level, text, likes, comments in feed_cards %}
+      <div class="feed-card p-5 rounded-2xl bg-surface border border-border hover:border-gold/30 transition-all duration-300">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-white text-sm" style="background:{{ color }}">{{ initials }}</div>
+          <div>
+            <div class="text-sm font-semibold text-text">{{ name }}</div>
+            <div class="text-xs text-gold">{{ level }}</div>
+          </div>
+        </div>
+        <p class="text-sm text-muted leading-relaxed mb-4">{{ text }}</p>
+        <div class="flex items-center gap-4 text-xs text-muted">
+          <span class="flex items-center gap-1">❤️ {{ likes }}</span>
+          <span class="flex items-center gap-1">💬 {{ comments }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="text-center">
+      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gold/10 border border-gold/20 text-gold text-sm mb-6">
+        🍄 Уже {{ users_count }} участников в сообществе
+      </div>
+      <br>
+      <a href="/login" class="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gold text-bg font-semibold hover:bg-gold-light transition-all duration-300 shadow-lg shadow-gold/20">
+        Присоединиться →
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- Marketplace Block -->
+<section class="py-24 bg-surface/30">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="text-center mb-12">
+      <h2 class="text-3xl sm:text-4xl font-light text-text mb-4">Маркетплейс MushroomsAI</h2>
+      <p class="text-muted max-w-xl mx-auto">Лучшие магазины и товары по функциональным грибам — отзывы, рейтинги, проверенные поставщики</p>
+    </div>
+
+    <style>
+      .mp-blur-overlay{position:absolute;inset:0;backdrop-filter:blur(6px);background:rgba(8,8,8,.6);border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;z-index:2;cursor:pointer;transition:background .2s}
+      .mp-blur-overlay:hover{background:rgba(8,8,8,.5)}
+      .star-filled{color:#C9A84C}
+      .star-empty{color:#333}
+    </style>
+
+    {% if featured_products %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-12">
+      {% for p in featured_products %}
+      <div class="relative rounded-2xl bg-surface border border-border overflow-hidden group hover:border-gold/30 transition-all duration-300">
+        {% if not user %}
+        <div class="mp-blur-overlay" onclick="showRegisterPopup()">
+          <div style="font-size:28px">🔒</div>
+          <div class="text-sm text-text font-medium">Войдите для просмотра</div>
+        </div>
+        {% endif %}
+        {% if p.image_url %}
+        <img src="{{ p.image_url }}" alt="{{ p.name }}" class="w-full h-40 object-cover">
+        {% else %}
+        <div class="w-full h-40 bg-gold/5 flex items-center justify-center">
+          <span style="font-size:48px">🍄</span>
+        </div>
+        {% endif %}
+        <div class="p-4">
+          <h3 class="font-semibold text-text text-sm mb-1 line-clamp-1">{{ p.name }}</h3>
+          <p class="text-xs text-muted mb-3 line-clamp-2" style="min-height:32px">{{ p.description[:80] if p.description else '' }}</p>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-0.5">
+              {% if p.avg_rating %}
+                {% for i in range(1, 6) %}
+                  <span class="{{ 'star-filled' if i <= p.avg_rating|round|int else 'star-empty' }}" style="font-size:12px">★</span>
+                {% endfor %}
+                <span class="text-xs text-muted ml-1">{{ p.avg_rating }}</span>
+              {% else %}
+                <span class="text-xs text-muted">Нет отзывов</span>
+              {% endif %}
+            </div>
+            {% if p.price %}
+            <span class="text-sm font-semibold text-gold">{{ p.price }} ₽</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-12 text-muted mb-12">Товары скоро появятся</div>
+    {% endif %}
+
+    <div class="text-center">
+      <a href="#tariffs" class="inline-flex items-center gap-2 px-8 py-4 rounded-xl border border-gold text-gold font-semibold hover:bg-gold hover:text-bg transition-all duration-300">
+        Получить доступ →
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- Register popup -->
+<div id="register-popup" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(4px)" onclick="if(event.target===this)hideRegisterPopup()">
+  <div style="background:#111;border:1px solid rgba(201,168,76,.3);border-radius:20px;padding:36px 32px;max-width:360px;width:90%;text-align:center">
+    <div style="font-size:40px;margin-bottom:12px">🔐</div>
+    <h3 style="font-size:18px;font-weight:700;color:#e8e8e8;margin-bottom:8px">Нужна регистрация</h3>
+    <p style="font-size:14px;color:#888;margin-bottom:24px;line-height:1.5">Создайте аккаунт, чтобы получить доступ к маркетплейсу и всем возможностям платформы</p>
+    <a href="/login" style="display:block;padding:12px;background:#C9A84C;color:#111;border-radius:12px;font-weight:700;text-decoration:none;margin-bottom:10px">Войти / Зарегистрироваться</a>
+    <button onclick="hideRegisterPopup()" style="background:none;border:none;color:#666;font-size:13px;cursor:pointer">Закрыть</button>
+  </div>
+</div>
+<script>
+function showRegisterPopup(){document.getElementById('register-popup').style.display='flex'}
+function hideRegisterPopup(){document.getElementById('register-popup').style.display='none'}
+</script>
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script>

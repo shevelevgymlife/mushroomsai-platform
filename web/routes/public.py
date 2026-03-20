@@ -43,6 +43,31 @@ async def index(request: Request):
         .order_by(posts.c.created_at.desc())
         .limit(4)
     )
+    # Users count (primary accounts only)
+    users_count = await database.fetch_val(
+        sa.select(sa.func.count()).select_from(users).where(users.c.primary_user_id == None)
+    ) or 0
+
+    # Featured marketplace products with avg ratings
+    featured_raw = await database.fetch_all(
+        shop_products.select().where(shop_products.c.active == True)
+        .order_by(shop_products.c.created_at.desc()).limit(4)
+    )
+    featured_products = []
+    for p in featured_raw:
+        avg = await database.fetch_val(
+            sa.select(sa.func.avg(product_reviews.c.rating))
+            .where(product_reviews.c.product_id == p["id"])
+        )
+        featured_products.append({
+            "id": p["id"],
+            "name": p["name"],
+            "description": p.get("description") or "",
+            "price": p.get("price"),
+            "image_url": p.get("image_url"),
+            "avg_rating": round(float(avg), 1) if avg else None,
+        })
+
     await database.execute(
         __import__("db.models", fromlist=["page_views"]).page_views.insert().values(
             path="/", user_id=current_user["id"] if current_user else None
@@ -50,7 +75,14 @@ async def index(request: Request):
     )
     return templates.TemplateResponse(
         "index.html",
-        {"request": request, "user": current_user, "products": prods, "posts": community_posts},
+        {
+            "request": request,
+            "user": current_user,
+            "products": prods,
+            "posts": community_posts,
+            "users_count": users_count,
+            "featured_products": featured_products,
+        },
     )
 
 
