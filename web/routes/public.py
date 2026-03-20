@@ -860,6 +860,27 @@ async def send_message(request: Request, other_id: int):
     })
 
 
+# ─── Contact / Feedback ───────────────────────────────────────────────────────
+
+@router.post("/contact")
+async def contact_feedback(request: Request):
+    body = await request.json()
+    message = (body.get("message") or "").strip()
+    if not message:
+        return JSONResponse({"error": "empty"}, status_code=400)
+    try:
+        import httpx
+        text = f"📬 Обратная связь с сайта mushroomsai.ru:\n\n{message}"
+        async with httpx.AsyncClient(timeout=5) as client:
+            await client.post(
+                f"https://api.telegram.org/bot{settings.TELEGRAM_TOKEN}/sendMessage",
+                json={"chat_id": settings.ADMIN_TG_ID, "text": text},
+            )
+    except Exception:
+        pass
+    return JSONResponse({"ok": True})
+
+
 # ─── Community Members Page ────────────────────────────────────────────────────
 
 @router.get("/community/members", response_class=HTMLResponse)

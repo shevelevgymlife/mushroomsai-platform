@@ -8,8 +8,8 @@
         <span class="font-semibold text-text group-hover:text-gold transition-colors duration-300">MushroomsAI</span>
       </a>
       <div class="hidden md:flex items-center gap-8">
-        <a href="/chat" class="text-sm text-muted hover:text-gold transition-colors duration-300">{{ t.nav_consultation }}</a>
-        <a href="/shop" class="text-sm text-muted hover:text-gold transition-colors duration-300">{{ t.nav_shop }}</a>
+        <a href="/chat" onclick="return guestGuard(event)" class="text-sm text-muted hover:text-gold transition-colors duration-300">{{ t.nav_consultation }}</a>
+        <a href="/shop" onclick="return guestGuard(event)" class="text-sm text-muted hover:text-gold transition-colors duration-300">{{ t.nav_shop }}</a>
         <a href="/community" class="text-sm text-muted hover:text-gold transition-colors duration-300">{{ t.nav_community }}</a>
       </div>
       <div class="flex items-center gap-3">

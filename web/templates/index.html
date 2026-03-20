@@ -26,7 +26,7 @@
          class="px-8 py-4 rounded-xl bg-gold text-bg font-semibold hover:bg-gold-light transition-all duration-300 shadow-lg shadow-gold/20 hover:shadow-gold/30">
         {{ t.btn_open_telegram }}
       </a>
-      <a href="/chat"
+      <a href="/chat" onclick="return guestGuard(event)"
          class="px-8 py-4 rounded-xl border border-border text-text hover:border-gold hover:text-gold transition-all duration-300">
         {{ t.btn_start_consultation }}
       </a>
@@ -104,7 +104,7 @@
           </li>
           {% endfor %}
         </ul>
-        <a href="/dashboard" class="block text-center px-4 py-2.5 rounded-lg bg-gold text-bg font-medium hover:bg-gold-light transition-all duration-300 text-sm">
+        <a href="/dashboard" onclick="return guestGuard(event)" class="block text-center px-4 py-2.5 rounded-lg bg-gold text-bg font-medium hover:bg-gold-light transition-all duration-300 text-sm">
           {{ t.btn_connect }}
         </a>
       </div>
@@ -120,7 +120,7 @@
           </li>
           {% endfor %}
         </ul>
-        <a href="/dashboard" class="block text-center px-4 py-2.5 rounded-lg border border-gold/40 text-gold hover:bg-gold hover:text-bg transition-all duration-300 text-sm">
+        <a href="/dashboard" onclick="return guestGuard(event)" class="block text-center px-4 py-2.5 rounded-lg border border-gold/40 text-gold hover:bg-gold hover:text-bg transition-all duration-300 text-sm">
           {{ t.btn_connect }}
         </a>
       </div>
