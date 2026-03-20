@@ -72,6 +72,8 @@ async def chat_with_ai(
 
     history.append({"role": "user", "content": user_message})
 
+    if not client.api_key:
+        raise RuntimeError("OPENAI_API_KEY не задан в .env / переменных окружения")
     try:
         response = await client.chat.completions.create(
             model="gpt-4o",
