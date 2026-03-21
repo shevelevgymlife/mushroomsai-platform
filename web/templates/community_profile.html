@@ -4,7 +4,6 @@
 {% block content %}
 <style>
 .pp-wrap{max-width:860px;margin:0 auto;padding:88px 16px 40px}
-.pp-hero{background:linear-gradient(135deg,rgba(201,168,76,.12) 0%,rgba(8,8,8,0) 70%);border:1px solid rgba(201,168,76,.2);border-radius:20px;padding:28px;margin-bottom:20px}
 .card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px}
 .avg{border:2px solid #C9A84C;border-radius:50%;object-fit:cover}
 .avph{border:2px solid #C9A84C;border-radius:50%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:32px}
@@ -14,7 +13,6 @@
 .btn-o:hover,.btn-o.on{background:rgba(201,168,76,.12)}
 .btn-muted{border:1px solid rgba(255,255,255,.12);color:#888;background:transparent;border-radius:10px;padding:9px 18px;cursor:pointer;font-size:14px;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
 .btn-muted:hover{border-color:rgba(201,168,76,.4);color:#C9A84C}
-.stat-pill{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:10px 16px;text-align:center;min-width:80px}
 .pcard{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:18px;margin-bottom:14px;transition:border-color .2s}
 .pcard:hover{border-color:rgba(255,255,255,.13)}
 .abt{background:none;border:none;cursor:pointer;color:#666;font-size:14px;display:inline-flex;align-items:center;gap:5px;transition:color .2s;padding:5px 8px;border-radius:8px}
@@ -31,95 +29,122 @@
 .dmmsg.me{background:rgba(201,168,76,.15);border:1px solid rgba(201,168,76,.25);align-self:flex-end}
 .dmmsg.them{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);align-self:flex-start}
 .privacy-notice{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:10px 14px;font-size:12px;color:#444;display:flex;align-items:center;gap:8px}
+.pp-ig-panel{background:linear-gradient(180deg,rgba(255,255,255,.04) 0%,rgba(17,17,17,.85) 100%);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:0 0 18px;margin-bottom:20px;box-shadow:0 12px 48px rgba(0,0,0,.35),0 0 0 1px rgba(201,168,76,.06) inset}
+.pp-ig-topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.06)}
+.pp-ig-back{color:#aaa;text-decoration:none;font-size:20px;line-height:1;padding:4px 8px;border-radius:10px;transition:background .2s,color .2s}
+.pp-ig-back:hover{color:#C9A84C;background:rgba(201,168,76,.08)}
+.pp-ig-handle{font-family:Syne,Inter,system-ui,sans-serif;font-weight:700;font-size:16px;color:#e8e8e8;letter-spacing:-0.02em}
+.pp-ig-menu{color:#555;font-size:20px;letter-spacing:2px;padding:4px 8px}
+.pp-ig-row{display:flex;gap:22px;align-items:center;padding:20px 18px 8px;flex-wrap:wrap}
+.pp-ig-avatar{flex-shrink:0}
+.pp-ig-avatar .avg,.pp-ig-avatar .avph{width:86px;height:86px}
+.pp-ig-stats{display:flex;flex:1;justify-content:space-around;min-width:200px;gap:8px}
+.pp-ig-stats > div{text-align:center}
+.pp-ig-stats b{display:block;font-size:18px;color:#e8e8e8;font-weight:700}
+.pp-ig-stats span{font-size:11px;color:#666;text-transform:uppercase;letter-spacing:.04em}
+.pp-ig-meta{padding:0 18px 12px;font-size:13px;color:#888}
+.pp-ig-meta .dm-badge{margin-right:8px}
+.pp-ig-bio{padding:0 18px 14px;font-size:14px;color:#bbb;line-height:1.55}
+.pp-ig-actions{padding:0 18px 14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pp-ig-tabs{display:flex;border-top:1px solid rgba(255,255,255,.08);margin-top:4px}
+.pp-ig-tabs button{flex:1;padding:12px;background:none;border:none;border-bottom:2px solid transparent;color:#555;font-size:16px;cursor:pointer;transition:color .2s,border-color .2s}
+.pp-ig-tabs button.on{color:#C9A84C;border-bottom-color:#C9A84C}
+.pp-ig-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;background:#080808;border-top:1px solid rgba(255,255,255,.06)}
+.pp-ig-cell{aspect-ratio:1;position:relative;overflow:hidden;background:#111;display:block;text-decoration:none;color:inherit}
+.pp-ig-cell img{width:100%;height:100%;object-fit:cover}
+.pp-ig-cell-text{padding:10px;font-size:11px;line-height:1.35;color:#888;overflow:hidden;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical}
+.pp-ig-cell-ico{position:absolute;top:6px;right:6px;font-size:12px;opacity:.9;text-shadow:0 1px 4px #000}
+.pp-sec-label{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#C9A84C;margin:24px 0 12px;padding-left:4px}
 </style>
 
 <div class="pp-wrap">
 
-  <!-- Back link -->
-  <div style="margin-bottom:16px">
-    <a href="/community" style="color:#666;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:color .2s" onmouseover="this.style.color='#C9A84C'" onmouseout="this.style.color='#666'">← Назад в сообщество</a>
-  </div>
+  <div class="pp-ig-panel">
+    <div class="pp-ig-topbar">
+      <a href="/dashboard#feed" class="pp-ig-back" aria-label="Назад">←</a>
+      <span class="pp-ig-handle">{{ profile.name or 'участник' }}</span>
+      <span class="pp-ig-menu" aria-hidden="true">⋯</span>
+    </div>
 
-  <!-- HERO CARD -->
-  <div class="pp-hero">
-    <div style="display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap">
-
-      <!-- Avatar -->
-      <div style="flex-shrink:0">
+    <div class="pp-ig-row">
+      <div class="pp-ig-avatar">
         {% if profile.avatar %}
-        <img src="{{ profile.avatar }}" class="avg" style="width:96px;height:96px" alt="{{ profile.name }}">
+        <img src="{{ profile.avatar }}" class="avg" alt="{{ profile.name }}">
         {% else %}
-        <div class="avph" style="width:96px;height:96px">🍄</div>
+        <div class="avph">🍄</div>
         {% endif %}
       </div>
-
-      <!-- Info -->
-      <div style="flex:1;min-width:200px">
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">
-          <h1 style="font-size:22px;font-weight:700;color:#e8e8e8;margin:0">{{ profile.name or 'Участник' }}</h1>
-          {% if profile.role == 'admin' %}
-          <span style="background:rgba(248,113,113,.12);color:#f87171;border:1px solid rgba(248,113,113,.25);font-size:11px;padding:2px 9px;border-radius:20px;font-weight:700">🛡️ Админ</span>
-          {% endif %}
-          <span style="background:rgba(201,168,76,.12);color:#C9A84C;border:1px solid rgba(201,168,76,.25);font-size:12px;padding:3px 10px;border-radius:20px">{{ rep_emoji }} {{ rep_level }}</span>
-        </div>
-
-        {% if profile.bio %}
-        <p style="font-size:14px;color:#aaa;margin:0 0 14px;line-height:1.65;max-width:520px">{{ profile.bio }}</p>
-        {% else %}
-        <p style="font-size:14px;color:#444;margin:0 0 14px;font-style:italic">Описание не добавлено</p>
-        {% endif %}
-
-        <!-- Stats row -->
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px">
-          <div class="stat-pill">
-            <div style="font-size:20px;font-weight:700;color:#e8e8e8">{{ post_count }}</div>
-            <div style="font-size:11px;color:#666;margin-top:2px">постов</div>
-          </div>
-          <div class="stat-pill">
-            <div style="font-size:20px;font-weight:700;color:#e8e8e8">{{ profile.followers_count }}</div>
-            <div style="font-size:11px;color:#666;margin-top:2px">подписчиков</div>
-          </div>
-          <div class="stat-pill">
-            <div style="font-size:20px;font-weight:700;color:#e8e8e8">{{ profile.following_count }}</div>
-            <div style="font-size:11px;color:#666;margin-top:2px">подписок</div>
-          </div>
-          <div class="stat-pill" id="profileLikesStat">
-            <div style="font-size:20px;font-weight:700;color:#C9A84C">{{ profile_likes_count }}</div>
-            <div style="font-size:11px;color:#666;margin-top:2px">лайков</div>
-          </div>
-          {% if profile.wallet_address %}
-          <div class="stat-pill" id="walletBalancePill" style="min-width:110px">
-            <div style="font-size:13px;font-weight:700;color:#C9A84C" id="walletBalVal">⚗ —</div>
-            <div style="font-size:11px;color:#666;margin-top:2px">SHEVELEV</div>
-          </div>
-          {% endif %}
-        </div>
-
-        <!-- Action buttons -->
-        <div style="display:flex;gap:10px;flex-wrap:wrap">
-          {% if is_own %}
-          <a href="/dashboard#profile" class="btn-g">✏️ Редактировать профиль</a>
-          <a href="/community" class="btn-muted">← К ленте</a>
-          {% else %}
-          <button class="btn-g {{ '' }}" id="followBtn" onclick="doFollow()">
-            <span id="followBtnText">{{ '✓ Подписан' if is_following else '+ Подписаться' }}</span>
-          </button>
-          <button class="btn-o {{ 'on' if viewer_liked_profile }}" id="profileLikeBtn" onclick="doProfileLike()">
-            <span>{{ '❤️' if viewer_liked_profile else '🤍' }}</span>
-            <span id="profileLikeBtnText">Нравится</span>
-          </button>
-          <button class="btn-muted" onclick="openDM()">✉️ Написать</button>
-          {% endif %}
-        </div>
+      <div class="pp-ig-stats">
+        <div><b>{{ post_count }}</b><span>посты</span></div>
+        <div><b>{{ profile.followers_count }}</b><span>подписчики</span></div>
+        <div><b>{{ profile.following_count }}</b><span>подписки</span></div>
       </div>
     </div>
+
+    <div class="pp-ig-meta">
+      {% if profile.role == 'admin' %}
+      <span style="background:rgba(248,113,113,.12);color:#f87171;border:1px solid rgba(248,113,113,.25);font-size:10px;padding:2px 8px;border-radius:20px;font-weight:700;margin-right:8px">Админ</span>
+      {% endif %}
+      <span class="dm-badge">{{ rep_emoji }} {{ rep_level }}</span>
+      <span style="color:#C9A84C" id="profileLikesStatInline">❤️ {{ profile_likes_count }} лайков на постах</span>
+      {% if profile.wallet_address %}
+      <span style="margin-left:10px;color:#666">·</span>
+      <span style="margin-left:10px;color:#C9A84C;font-size:12px" id="walletBalVal">⚗ —</span>
+      <span style="font-size:11px;color:#555">SHEVELEV</span>
+      {% endif %}
+    </div>
+
+    <div class="pp-ig-bio">
+      <strong style="color:#e8e8e8;display:block;margin-bottom:4px">{{ profile.name or 'Участник' }}</strong>
+      {% if profile.bio %}{{ profile.bio }}{% else %}<span style="color:#555;font-style:italic">Нет описания</span>{% endif %}
+    </div>
+
+    <div class="pp-ig-actions">
+      {% if is_own %}
+      <a href="/dashboard#profile" class="btn-g" style="font-size:13px;padding:8px 16px">Редактировать</a>
+      <a href="/dashboard#feed" class="btn-muted" style="font-size:13px;padding:8px 16px">Лента</a>
+      {% else %}
+      <button class="btn-g" style="font-size:13px;padding:8px 18px" id="followBtn" onclick="doFollow()">
+        <span id="followBtnText">{{ 'Подписки ✓' if is_following else 'Подписаться' }}</span>
+      </button>
+      <button class="btn-o {{ 'on' if viewer_liked_profile }}" style="font-size:13px;padding:8px 16px" id="profileLikeBtn" onclick="doProfileLike()">
+        <span>{{ '❤️' if viewer_liked_profile else '🤍' }}</span>
+        <span id="profileLikeBtnText">Нравится</span>
+      </button>
+      <button class="btn-muted" style="font-size:13px;padding:8px 16px" onclick="openDM()">Сообщение</button>
+      {% endif %}
+    </div>
+
+    <div class="pp-ig-tabs" role="tablist">
+      <button type="button" class="on" aria-current="true">▦</button>
+      <button type="button" disabled title="Скоро">▶</button>
+      <button type="button" disabled title="Скоро">⌁</button>
+    </div>
+
+    {% if feed %}
+    <div class="pp-ig-grid">
+      {% for item in feed %}
+      {% set p = item.post %}
+      <a href="#pc-{{ p.id }}" class="pp-ig-cell">
+        {% if p.image_url %}
+        <img src="{{ p.image_url }}" loading="lazy" alt="">
+        {% if p.content %}<span class="pp-ig-cell-ico" title="Есть подпись">📷</span>{% endif %}
+        {% else %}
+        <div class="pp-ig-cell-text">{{ p.content | truncate(120, True, '…') }}</div>
+        {% endif %}
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="padding:28px 16px;text-align:center;color:#555;font-size:13px;border-top:1px solid rgba(255,255,255,.06)">Пока нет публикаций в сетке</div>
+    {% endif %}
   </div>
 
-  <!-- POSTS FEED -->
-  <div style="font-size:16px;font-weight:700;color:#e8e8e8;margin-bottom:14px">
-    Посты
-    {% if not feed %}<span style="font-size:13px;font-weight:400;color:#555;margin-left:8px">— нет публикаций</span>{% endif %}
-  </div>
+  <!-- POSTS FEED (детали, комментарии) -->
+  <div class="pp-sec-label">Публикации</div>
+  {% if feed %}
+  <p class="muted" style="margin:-8px 0 16px;font-size:13px">Нажмите на ячейку сетки выше, чтобы перейти к посту.</p>
+  {% endif %}
 
   {% if not feed %}
   <div class="card" style="text-align:center;padding:50px">
@@ -238,10 +263,10 @@ async function doFollow(){
   const d=await r.json();
   btn.disabled=false;
   if(d.following){
-    txt.textContent='✓ Подписан';
+    txt.textContent='Подписки ✓';
     btn.style.background='rgba(201,168,76,.3)';
   }else{
-    txt.textContent='+ Подписаться';
+    txt.textContent='Подписаться';
     btn.style.background='';
   }
 }
@@ -251,7 +276,7 @@ async function doProfileLike(){
   if(IS_OWN)return;
   const btn=document.getElementById('profileLikeBtn');
   const txt=document.getElementById('profileLikeBtnText');
-  const stat=document.getElementById('profileLikesStat');
+  const stat=document.getElementById('profileLikesStatInline');
   btn.disabled=true;
   const r=await fetch(`/community/profile/${PROFILE_ID}/like`,{method:'POST'});
   const d=await r.json();
@@ -263,7 +288,7 @@ async function doProfileLike(){
     btn.querySelector('span').textContent='🤍';
     btn.classList.remove('on');
   }
-  if(stat){stat.querySelector('div').textContent=d.count}
+  if(stat) stat.textContent='❤️ ' + d.count + ' лайков на постах';
 }
 
 // ── Post like ──

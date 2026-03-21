@@ -1,3 +1,35 @@
+/* Фон страницы: тот же #080808 + мягкие золотые пятна (цвета бренда) */
+body.bg-bg {
+  background-color: #080808;
+  background-image:
+    radial-gradient(ellipse 120% 70% at 50% -25%, rgba(201, 168, 76, 0.11), transparent 55%),
+    radial-gradient(ellipse 55% 45% at 105% 15%, rgba(201, 168, 76, 0.06), transparent 50%),
+    radial-gradient(ellipse 50% 40% at -5% 60%, rgba(232, 201, 107, 0.04), transparent 45%);
+  background-attachment: fixed;
+}
+
+/* Заголовки лендинга */
+.font-display {
+  font-family: Syne, Inter, system-ui, sans-serif;
+}
+
+/* Метка секции */
+.section-eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #C9A84C;
+}
+
+/* Карточка в стиле «редакционного» макета */
+.panel-rise {
+  border-radius: 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.04) 0%, rgba(17, 17, 17, 0.92) 42%, #111111 100%);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(201, 168, 76, 0.06) inset;
+}
+
 /* Grain texture overlay */
 .grain-overlay {
   position: fixed;

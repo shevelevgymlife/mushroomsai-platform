@@ -1,14 +1,15 @@
-<footer class="border-t border-border mt-24 py-14">
+<footer class="border-t border-white/[0.06] mt-20 sm:mt-28 py-14 relative">
+  <div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/20 to-transparent pointer-events-none"></div>
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-10 mb-12">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-10 lg:gap-12 mb-12">
 
       <!-- Left: logo + description -->
       <div>
-        <div class="flex items-center gap-3 mb-4">
-          <div class="w-9 h-9 rounded-full bg-gradient-to-br from-gold to-gold-light flex items-center justify-center flex-shrink-0">
-            <span class="text-bg font-bold text-sm">M</span>
+        <div class="flex items-center gap-3 mb-5">
+          <div class="w-9 h-9 rounded-full bg-gradient-to-br from-gold to-gold-light flex items-center justify-center shrink-0 shadow-[0_0_18px_rgba(201,168,76,0.2)]">
+            <span class="text-bg font-bold text-sm font-display">M</span>
           </div>
-          <span class="font-bold text-text text-lg">MushroomsAI</span>
+          <span class="font-display font-bold text-text text-lg">MushroomsAI</span>
         </div>
         <p class="text-sm text-muted leading-relaxed max-w-xs">
           AI-платформа по функциональным грибам. Персональные протоколы, консультации и продукты от проекта ShevelevVlog.
@@ -17,7 +18,7 @@
 
       <!-- Middle: Platform links -->
       <div>
-        <h4 class="text-sm font-semibold text-text mb-4">Платформа</h4>
+        <h4 class="section-eyebrow mb-5">Платформа</h4>
         <ul class="space-y-3">
           <li><a href="/chat" onclick="return guestGuard(event)" class="text-sm text-muted hover:text-gold transition-colors">AI Консультант</a></li>
           <li><a href="/shop" onclick="return guestGuard(event)" class="text-sm text-muted hover:text-gold transition-colors">Магазин / Маркетплейс</a></li>
@@ -30,7 +31,7 @@
 
       <!-- Right: Contacts -->
       <div>
-        <h4 class="text-sm font-semibold text-text mb-4">Контакты</h4>
+        <h4 class="section-eyebrow mb-5">Контакты</h4>
         <ul class="space-y-3">
           <li>
             <a href="https://t.me/mushrooms_ai_bot" target="_blank" onclick="openBotLink(event)"
@@ -54,7 +55,7 @@
       </div>
     </div>
 
-    <div class="border-t border-border pt-8 flex flex-col sm:flex-row justify-between items-start gap-3">
+    <div class="border-t border-white/[0.06] pt-8 flex flex-col sm:flex-row justify-between items-start gap-3">
       <p class="text-xs text-muted">© 2026 MushroomsAI. Евгений Шевелев.</p>
       <p class="text-xs text-muted text-right max-w-md">Информация носит образовательный характер. Не является медицинской рекомендацией. Все товары не являются лекарственным средством.</p>
     </div>

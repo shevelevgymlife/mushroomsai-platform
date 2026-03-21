@@ -100,12 +100,30 @@
 .feed-tab-active{border-color:#C9A84C!important;color:#C9A84C!important;background:rgba(201,168,76,.1)!important}
 
 /* ── Instagram-like feed (narrow column, photo-first) ── */
-.ig-feed-shell{max-width:560px;margin:0 auto}
-.ig-post{border:1px solid rgba(255,255,255,.1);border-radius:18px;overflow:hidden;background:rgba(255,255,255,.025);margin-bottom:18px;box-shadow:0 4px 24px rgba(0,0,0,.35)}
-.ig-post-header{padding:12px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.06)}
-.ig-post-img{width:100%;aspect-ratio:1;object-fit:cover;background:#0a0a0a;display:block;max-height:560px}
-.ig-post-body{padding:12px 14px 14px;font-size:14px;line-height:1.55;color:#ddd;white-space:pre-wrap;word-break:break-word}
-.ig-post-actions{display:flex;gap:16px;padding:0 14px 14px;font-size:13px;align-items:center;border-top:1px solid rgba(255,255,255,.05);padding-top:10px;margin-top:0}
+.ig-feed-shell{max-width:470px;margin:0 auto}
+.ig-feed-topbar{display:flex;align-items:center;justify-content:space-between;padding:6px 2px 14px;margin-bottom:4px;border-bottom:1px solid rgba(255,255,255,.06)}
+.ig-feed-topbar .ig-brand{font-family:Syne,Inter,system-ui,sans-serif;font-weight:700;font-size:1.15rem;letter-spacing:-0.02em;color:#e8e8e8;background:linear-gradient(90deg,#e8e8e8,#C9A84C);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.ig-feed-actions-top{display:flex;align-items:center;gap:6px}
+.ig-ic-btn{width:40px;height:40px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:#ccc;transition:border-color .2s,background .2s}
+.ig-ic-btn:hover{border-color:rgba(201,168,76,.45);color:#C9A84C;background:rgba(201,168,76,.06)}
+.ig-stories-wrap{display:flex;gap:12px;overflow-x:auto;padding:6px 0 18px;margin:0 -2px 4px;-webkit-overflow-scrolling:touch;scrollbar-width:none;border-bottom:1px solid rgba(255,255,255,.05)}
+.ig-stories-wrap::-webkit-scrollbar{display:none}
+.ig-story{flex:0 0 auto;width:72px;text-align:center;text-decoration:none;color:inherit}
+.ig-story-ring{width:64px;height:64px;border-radius:50%;padding:2px;background:linear-gradient(145deg,#C9A84C,#8a7030,#E8C96B);margin:0 auto 6px;box-shadow:0 0 20px rgba(201,168,76,.12)}
+.ig-story-ring-inner{width:100%;height:100%;border-radius:50%;border:3px solid #080808;overflow:hidden;background:#111;display:flex;align-items:center;justify-content:center}
+.ig-story-name{font-size:11px;color:#888;max-width:72px;margin:0 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ig-story-ring-inner img{width:100%;height:100%;object-fit:cover;display:block}
+.ig-post{border:1px solid rgba(255,255,255,.08);border-radius:16px;overflow:hidden;background:linear-gradient(180deg,rgba(255,255,255,.04) 0%,rgba(17,17,17,.6) 100%);margin-bottom:20px;box-shadow:0 8px 32px rgba(0,0,0,.4),0 0 0 1px rgba(201,168,76,.05) inset}
+.ig-post-header{padding:10px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.05)}
+.ig-post-img{width:100%;aspect-ratio:1;object-fit:cover;background:#0a0a0a;display:block;max-height:min(470px,92vw)}
+.ig-post-textonly{min-height:100px;padding:16px 14px;font-size:14px;line-height:1.55;color:#ccc;white-space:pre-wrap;word-break:break-word;border-bottom:1px solid rgba(255,255,255,.05)}
+.ig-post-actions{display:flex;gap:8px;padding:10px 12px 6px;align-items:center;justify-content:space-between}
+.ig-post-actions-left{display:flex;gap:6px;align-items:center}
+.ig-post-actions .ig-act{background:none;border:none;cursor:pointer;padding:4px;font-size:20px;line-height:1;color:#aaa;transition:color .2s,transform .15s}
+.ig-post-actions .ig-act:hover{color:#C9A84C;transform:scale(1.06)}
+.ig-post-likes{padding:0 12px 6px;font-size:13px;font-weight:600;color:#e8e8e8}
+.ig-post-body{padding:0 12px 14px;font-size:14px;line-height:1.5;color:#c8c8c8;white-space:pre-wrap;word-break:break-word}
+.ig-post-body .ig-cap-user{font-weight:700;color:#e8e8e8;margin-right:6px}
 
 /* ── Group chats layout ── */
 .ig-groups-wrap{display:grid;grid-template-columns:minmax(240px,300px) 1fr;gap:16px;align-items:stretch}
@@ -135,12 +153,6 @@
 
     <!-- ══ HOME ══ -->
     <section class="db-sec active" id="sec-home">
-      {% if 'community' in vbk %}
-      <div class="card-sm" style="margin-bottom:16px;border-color:rgba(201,168,76,.35);background:rgba(201,168,76,.07);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-        <span style="font-size:13px;color:#ddd;line-height:1.5">Кабинет обновляется: откройте справа <strong class="gold">Лента</strong> (соцсеть) или <strong class="gold">Группы</strong> — там новый дизайн и чаты.</span>
-        <button type="button" class="btn-o" style="flex-shrink:0;font-size:12px;padding:6px 12px" onclick="this.parentElement.remove()">Понятно</button>
-      </div>
-      {% endif %}
       <div class="hero-card" style="margin-bottom:22px">
         <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
           <div class="av-wrap" onclick="document.getElementById('avInput').click()" title="Изменить фото">
@@ -274,10 +286,40 @@
     {% if 'community' in vbk %}
     <section class="db-sec" id="sec-feed">
       <div class="ig-feed-shell">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px">
-        <div class="sect-title" style="margin:0">Лента</div>
-        <span class="muted" style="font-size:12px">MushroomsAI · как в соцсети, только фото</span>
+      <div class="ig-feed-topbar">
+        <span class="ig-brand">MushroomsAI</span>
+        <div class="ig-feed-actions-top">
+          <button type="button" class="ig-ic-btn" title="Новый пост" aria-label="Новый пост" onclick="var t=document.getElementById('quickPostText');if(t){t.focus();t.scrollIntoView({behavior:'smooth',block:'center'})}">＋</button>
+          <a href="/community/members" class="ig-ic-btn" title="Участники" aria-label="Участники" style="text-decoration:none;font-size:16px">👥</a>
+          <button type="button" class="ig-ic-btn" title="Сообщения" aria-label="Сообщения" onclick="goSec('messages')">✉</button>
+        </div>
       </div>
+
+      {% if feed_raw %}
+      <div class="ig-stories-wrap" aria-label="Участники ленты">
+        <div class="ig-story" role="button" tabindex="0" onclick="var t=document.getElementById('quickPostText');if(t){t.focus();t.scrollIntoView({behavior:'smooth',block:'center'})}">
+          <div class="ig-story-ring"><div class="ig-story-ring-inner">
+            {% if user.avatar %}<img src="{{ user.avatar }}" alt="">
+            {% else %}<span style="font-size:22px">🍄</span>{% endif %}
+          </div></div>
+          <div class="ig-story-name">Вы</div>
+        </div>
+        {% set seen_story = namespace(ids=[effective_user_id]) %}
+        {% for p in feed_raw %}
+          {% if p.user_id not in seen_story.ids %}
+            {% set _ = seen_story.ids.append(p.user_id) %}
+            {% set sa = feed_authors.get(p.user_id) %}
+            <a href="/community/profile/{{ p.user_id }}" class="ig-story">
+              <div class="ig-story-ring"><div class="ig-story-ring-inner">
+                {% if sa and sa.avatar %}<img src="{{ sa.avatar }}" alt="">
+                {% else %}<span style="font-size:20px">🍄</span>{% endif %}
+              </div></div>
+              <div class="ig-story-name">{{ ((sa.name if sa else 'Участник')|truncate(12, True, '')) }}</div>
+            </a>
+          {% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
 
       <!-- Mini profile + post form -->
       <div class="card" style="margin-bottom:16px;border-color:rgba(201,168,76,.25);border-radius:18px">
@@ -322,7 +364,7 @@
       {% set is_mine = p.user_id == effective_user_id %}
       {% set is_following_author = p.user_id in following_ids %}
       {% set is_liked = p.id in liked_post_ids %}
-      <div class="fp ig-post" data-uid="{{ p.user_id }}" data-mine="{{ 'true' if is_mine else 'false' }}" data-following="{{ 'true' if is_following_author else 'false' }}">
+      <div class="fp ig-post" id="fp-{{ p.id }}" data-uid="{{ p.user_id }}" data-mine="{{ 'true' if is_mine else 'false' }}" data-following="{{ 'true' if is_following_author else 'false' }}">
         <div class="ig-post-header">
           {% if is_mine %}
           <div onclick="goSec('home')" style="cursor:pointer;flex-shrink:0">
@@ -341,15 +383,23 @@
             <div style="font-size:11px;color:#888">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}{% if p.pinned %} · 📌{% endif %}</div>
           </div>
         </div>
-        {% if p.image_url %}<img src="{{ p.image_url }}" class="ig-post-img" loading="lazy" alt="">{% endif %}
-        {% if p.content %}<div class="ig-post-body">{{ p.content[:2000] }}{% if p.content|length > 2000 %}…{% endif %}</div>{% endif %}
+        {% if p.image_url %}
+        <img src="{{ p.image_url }}" class="ig-post-img" loading="lazy" alt="">
+        {% elif p.content %}
+        <div class="ig-post-textonly">{{ p.content[:500] }}{% if p.content|length > 500 %}…{% endif %}</div>
+        {% endif %}
         <div class="ig-post-actions">
-          <button id="like-btn-{{ p.id }}" onclick="likeFeedPost({{ p.id }},this)" style="background:none;border:none;cursor:pointer;color:{{ '#ef4444' if is_liked else '#888' }};font-size:14px;display:flex;align-items:center;gap:6px;padding:0;font-weight:600">
-            {{ '❤️' if is_liked else '🤍' }} <span id="like-count-{{ p.id }}">{{ p.likes_count }}</span>
-          </button>
-          <span style="color:#666">💬 {{ p.comments_count }}</span>
-          <span style="color:#666">🔖 {{ p.saves_count }}</span>
+          <div class="ig-post-actions-left">
+            <button type="button" class="ig-act" id="like-btn-{{ p.id }}" onclick="likeFeedPost({{ p.id }},this)" title="Нравится" aria-label="Нравится">{{ '❤️' if is_liked else '🤍' }}</button>
+            <a href="/community/profile/{{ p.user_id }}#pc-{{ p.id }}" class="ig-act" title="Комментарии" style="text-decoration:none">💬</a>
+            <a href="/community/profile/{{ p.user_id }}#pc-{{ p.id }}" class="ig-act" title="Открыть пост" style="text-decoration:none">↗</a>
+          </div>
+          <span class="ig-act" style="cursor:default;font-size:16px;opacity:.5" title="Сохранения">🔖 {{ p.saves_count }}</span>
         </div>
+        <div class="ig-post-likes">Нравится: <span id="like-count-{{ p.id }}">{{ p.likes_count }}</span>{% if p.comments_count %} · <a href="/community/profile/{{ p.user_id }}#pc-{{ p.id }}" style="color:#888;text-decoration:none;font-weight:500">{{ p.comments_count }} коммент.</a>{% endif %}</div>
+        {% if p.image_url and p.content %}
+        <div class="ig-post-body"><span class="ig-cap-user">{{ a.name if a else 'Участник' }}</span>{{ p.content[:2000] }}{% if p.content|length > 2000 %}…{% endif %}</div>
+        {% endif %}
       </div>
       {% endfor %}
       {% else %}
@@ -1147,8 +1197,8 @@ async function likeFeedPost(postId, btn){
     const r=await fetch('/community/like/'+postId,{method:'POST'});
     const d=await r.json();
     const cnt=document.getElementById('like-count-'+postId);
-    if(d.liked){btn.style.color='#ef4444';btn.childNodes[0].textContent='❤️ ';if(cnt)cnt.textContent=parseInt(cnt.textContent||0)+1;}
-    else{btn.style.color='#555';btn.childNodes[0].textContent='🤍 ';if(cnt)cnt.textContent=Math.max(0,parseInt(cnt.textContent||0)-1);}
+    if(d.liked){btn.style.color='#ef4444';btn.textContent='❤️';if(cnt)cnt.textContent=parseInt(cnt.textContent||0)+1;}
+    else{btn.style.color='';btn.textContent='🤍';if(cnt)cnt.textContent=Math.max(0,parseInt(cnt.textContent||0)-1);}
   }catch(e){showNotification('Ошибка','error');}
 }
 
