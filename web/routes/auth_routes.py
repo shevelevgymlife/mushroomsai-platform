@@ -62,9 +62,17 @@ async def login_email(
 ):
     user = await authenticate_user(email, password)
     if not user:
+        from config import settings as _s
+        _tid = _s.TELEGRAM_TOKEN.split(":")[0] if ":" in _s.TELEGRAM_TOKEN else ""
         return templates.TemplateResponse(
             "login.html",
-            {"request": request, "user": None, "error": "Неверный email или пароль"},
+            {
+                "request": request,
+                "user": None,
+                "error": "Неверный email или пароль",
+                "site_url": _s.SITE_URL,
+                "tg_bot_id": _tid,
+            },
         )
     token = create_access_token(user["id"])
     dest = _pop_login_redirect(request)
@@ -83,9 +91,17 @@ async def register_email(
 ):
     user = await register_user(email, password, name)
     if not user:
+        from config import settings as _s
+        _tid = _s.TELEGRAM_TOKEN.split(":")[0] if ":" in _s.TELEGRAM_TOKEN else ""
         return templates.TemplateResponse(
             "login.html",
-            {"request": request, "user": None, "error": "Email уже зарегистрирован"},
+            {
+                "request": request,
+                "user": None,
+                "error": "Email уже зарегистрирован",
+                "site_url": _s.SITE_URL,
+                "tg_bot_id": _tid,
+            },
         )
     token = create_access_token(user["id"])
     dest = _pop_login_redirect(request)
@@ -258,9 +274,17 @@ async def google_callback(request: Request):
         return resp
 
     except Exception as e:
+        from config import settings as _s
+        _tid = _s.TELEGRAM_TOKEN.split(":")[0] if ":" in _s.TELEGRAM_TOKEN else ""
         return templates.TemplateResponse(
             "login.html",
-            {"request": request, "user": None, "error": f"Ошибка входа: {str(e)}"},
+            {
+                "request": request,
+                "user": None,
+                "error": f"Ошибка входа: {str(e)}",
+                "site_url": _s.SITE_URL,
+                "tg_bot_id": _tid,
+            },
         )
 
 
