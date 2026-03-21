@@ -68,6 +68,28 @@ async def lifespan(app: FastAPI):
             status VARCHAR(20) DEFAULT 'new',
             created_at TIMESTAMP DEFAULT NOW()
         )""",
+        """CREATE TABLE IF NOT EXISTS community_groups (
+            id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL,
+            description TEXT,
+            created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            created_at TIMESTAMP DEFAULT NOW()
+        )""",
+        """CREATE TABLE IF NOT EXISTS community_group_members (
+            id SERIAL PRIMARY KEY,
+            group_id INTEGER NOT NULL REFERENCES community_groups(id) ON DELETE CASCADE,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            joined_at TIMESTAMP DEFAULT NOW(),
+            UNIQUE(group_id, user_id)
+        )""",
+        """CREATE TABLE IF NOT EXISTS community_group_messages (
+            id SERIAL PRIMARY KEY,
+            group_id INTEGER NOT NULL REFERENCES community_groups(id) ON DELETE CASCADE,
+            sender_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            text TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT NOW()
+        )""",
+        "CREATE INDEX IF NOT EXISTS idx_cggm_group_time ON community_group_messages(group_id, created_at)",
     ]
     for sql in new_columns:
         try:

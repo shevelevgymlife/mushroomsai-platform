@@ -98,6 +98,26 @@
 .feed-tab:hover{border-color:rgba(201,168,76,.4);color:#C9A84C}
 .feed-tab-active{border-color:#C9A84C!important;color:#C9A84C!important;background:rgba(201,168,76,.1)!important}
 
+/* ── Instagram-like feed (narrow column, photo-first) ── */
+.ig-feed-shell{max-width:560px;margin:0 auto}
+.ig-post{border:1px solid rgba(255,255,255,.1);border-radius:18px;overflow:hidden;background:rgba(255,255,255,.025);margin-bottom:18px;box-shadow:0 4px 24px rgba(0,0,0,.35)}
+.ig-post-header{padding:12px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.06)}
+.ig-post-img{width:100%;aspect-ratio:1;object-fit:cover;background:#0a0a0a;display:block;max-height:560px}
+.ig-post-body{padding:12px 14px 14px;font-size:14px;line-height:1.55;color:#ddd;white-space:pre-wrap;word-break:break-word}
+.ig-post-actions{display:flex;gap:16px;padding:0 14px 14px;font-size:13px;align-items:center;border-top:1px solid rgba(255,255,255,.05);padding-top:10px;margin-top:0}
+
+/* ── Group chats layout ── */
+.ig-groups-wrap{display:grid;grid-template-columns:minmax(240px,300px) 1fr;gap:16px;align-items:stretch}
+@media(max-width:900px){.ig-groups-wrap{grid-template-columns:1fr}}
+.ig-groups-sidebar{max-height:70vh;overflow-y:auto}
+.ig-groups-chat{display:flex;flex-direction:column;min-height:420px;max-height:72vh}
+.ig-g-item{padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.08);margin-bottom:8px;cursor:pointer;transition:all .2s;background:rgba(255,255,255,.02)}
+.ig-g-item:hover,.ig-g-item.on{border-color:rgba(201,168,76,.45);background:rgba(201,168,76,.06)}
+.ig-g-msg-wrap{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;background:rgba(0,0,0,.25);border-radius:12px;border:1px solid rgba(255,255,255,.06)}
+.ig-g-bubble{max-width:88%;padding:10px 14px;border-radius:14px;font-size:14px;line-height:1.45;word-break:break-word}
+.ig-g-bubble.me{align-self:flex-end;background:rgba(201,168,76,.18);border:1px solid rgba(201,168,76,.35);color:#f5f0e6}
+.ig-g-bubble.them{align-self:flex-start;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);color:#ddd}
+
 /* ── Util ── */
 .sect-title{font-size:22px;font-weight:700;color:#e8e8e8;margin-bottom:20px}
 .muted{color:#666;font-size:13px}
@@ -213,12 +233,14 @@
     <!-- ══ FEED ══ -->
     {% if 'community' in vbk %}
     <section class="db-sec" id="sec-feed">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-        <div class="sect-title" style="margin:0">👥 Лента сообщества</div>
+      <div class="ig-feed-shell">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+        <div class="sect-title" style="margin:0">Лента</div>
+        <span class="muted" style="font-size:12px">MushroomsAI · как в соцсети, только фото</span>
       </div>
 
       <!-- Mini profile + post form -->
-      <div class="card" style="margin-bottom:16px;border-color:rgba(201,168,76,.2)">
+      <div class="card" style="margin-bottom:16px;border-color:rgba(201,168,76,.25);border-radius:18px">
         <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px">
           {% if user.avatar %}
           <img src="{{ user.avatar }}" style="width:42px;height:42px;border-radius:50%;border:2px solid #C9A84C;object-fit:cover;flex-shrink:0;cursor:pointer" onclick="goSec('home')" alt="">
@@ -260,34 +282,33 @@
       {% set is_mine = p.user_id == effective_user_id %}
       {% set is_following_author = p.user_id in following_ids %}
       {% set is_liked = p.id in liked_post_ids %}
-      <div class="fp" data-uid="{{ p.user_id }}" data-mine="{{ 'true' if is_mine else 'false' }}" data-following="{{ 'true' if is_following_author else 'false' }}">
-        <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
+      <div class="fp ig-post" data-uid="{{ p.user_id }}" data-mine="{{ 'true' if is_mine else 'false' }}" data-following="{{ 'true' if is_following_author else 'false' }}">
+        <div class="ig-post-header">
           {% if is_mine %}
           <div onclick="goSec('home')" style="cursor:pointer;flex-shrink:0">
           {% else %}
           <a href="/community/profile/{{ p.user_id }}" style="flex-shrink:0;text-decoration:none">
           {% endif %}
-            {% if a and a.avatar %}<img src="{{ a.avatar }}" style="width:34px;height:34px;border-radius:50%;border:2px solid #C9A84C;object-fit:cover" alt="">
-            {% else %}<div style="width:34px;height:34px;border-radius:50%;border:2px solid #C9A84C;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px">🍄</div>{% endif %}
+            {% if a and a.avatar %}<img src="{{ a.avatar }}" style="width:36px;height:36px;border-radius:50%;border:2px solid #C9A84C;object-fit:cover" alt="">
+            {% else %}<div style="width:36px;height:36px;border-radius:50%;border:2px solid #C9A84C;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px">🍄</div>{% endif %}
           {% if is_mine %}</div>{% else %}</a>{% endif %}
           <div style="flex:1;min-width:0">
             {% if is_mine %}
-            <div style="font-size:13px;font-weight:600;color:#ddd;cursor:pointer" onclick="goSec('home')">{{ a.name if a else 'Участник' }} <span style="font-size:11px;color:#C9A84C">● я</span></div>
+            <div style="font-size:14px;font-weight:700;color:#e8e8e8;cursor:pointer" onclick="goSec('home')">{{ a.name if a else 'Участник' }} <span style="font-size:11px;color:#C9A84C">● я</span></div>
             {% else %}
-            <a href="/community/profile/{{ p.user_id }}" style="font-size:13px;font-weight:600;color:#ddd;text-decoration:none">{{ a.name if a else 'Участник' }}</a>
+            <a href="/community/profile/{{ p.user_id }}" style="font-size:14px;font-weight:700;color:#e8e8e8;text-decoration:none">{{ a.name if a else 'Участник' }}</a>
             {% endif %}
-            <div style="font-size:11px;color:#555">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}</div>
+            <div style="font-size:11px;color:#888">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}{% if p.pinned %} · 📌{% endif %}</div>
           </div>
-          {% if p.pinned %}<span style="color:#C9A84C;font-size:12px">📌</span>{% endif %}
         </div>
-        <div style="font-size:14px;color:#ccc;line-height:1.6;white-space:pre-wrap;word-break:break-word">{{ p.content[:300] }}{% if p.content|length > 300 %}…{% endif %}</div>
-        {% if p.image_url %}<img src="{{ p.image_url }}" style="width:100%;max-height:260px;object-fit:cover;border-radius:10px;margin-top:10px" loading="lazy" alt="">{% endif %}
-        <div style="display:flex;gap:14px;margin-top:10px;font-size:12px;align-items:center">
-          <button id="like-btn-{{ p.id }}" onclick="likeFeedPost({{ p.id }},this)" style="background:none;border:none;cursor:pointer;color:{{ '#ef4444' if is_liked else '#555' }};font-size:13px;display:flex;align-items:center;gap:4px;padding:0">
+        {% if p.image_url %}<img src="{{ p.image_url }}" class="ig-post-img" loading="lazy" alt="">{% endif %}
+        {% if p.content %}<div class="ig-post-body">{{ p.content[:2000] }}{% if p.content|length > 2000 %}…{% endif %}</div>{% endif %}
+        <div class="ig-post-actions">
+          <button id="like-btn-{{ p.id }}" onclick="likeFeedPost({{ p.id }},this)" style="background:none;border:none;cursor:pointer;color:{{ '#ef4444' if is_liked else '#888' }};font-size:14px;display:flex;align-items:center;gap:6px;padding:0;font-weight:600">
             {{ '❤️' if is_liked else '🤍' }} <span id="like-count-{{ p.id }}">{{ p.likes_count }}</span>
           </button>
-          <span style="color:#555">💬 {{ p.comments_count }}</span>
-          <span style="color:#555">🔖 {{ p.saves_count }}</span>
+          <span style="color:#666">💬 {{ p.comments_count }}</span>
+          <span style="color:#666">🔖 {{ p.saves_count }}</span>
         </div>
       </div>
       {% endfor %}
@@ -298,6 +319,46 @@
         <div style="margin-top:8px;font-size:13px;color:#555">Будьте первым — создайте пост выше</div>
       </div>
       {% endif %}
+      </div>
+      </div><!-- /ig-feed-shell -->
+    </section>
+
+    <!-- ══ GROUP CHATS ══ -->
+    <section class="db-sec" id="sec-groups">
+      <div class="sect-title" style="margin-bottom:8px">Групповые чаты</div>
+      <p class="muted" style="margin-bottom:18px;font-size:14px;line-height:1.5">Создайте тему — все участники смогут писать в общий чат. Цвета как на главной: тёмный фон и золото.</p>
+      <div class="ig-groups-wrap">
+        <div class="card ig-groups-sidebar" style="padding:16px">
+          <button type="button" class="btn-g" style="width:100%;margin-bottom:14px" onclick="document.getElementById('grpCreateModal').style.display='flex'">+ Создать группу</button>
+          <div id="groupListEl" style="font-size:13px">
+            {% if group_list %}
+            {% for g in group_list %}
+            <div class="ig-g-item {% if g.is_member %}on{% endif %}" data-gid="{{ g.id }}" data-member="{{ '1' if g.is_member else '0' }}" onclick="selectGroupChat({{ g.id }},this)">
+              <div style="font-weight:600;color:#e8e8e8;margin-bottom:4px">{{ g.name }}</div>
+              <div style="font-size:11px;color:#666">{{ g.member_count or 0 }} участн. {% if g.is_member %}· вы в чате{% endif %}</div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div style="color:#555;text-align:center;padding:20px">Пока нет групп — создайте первую</div>
+            {% endif %}
+          </div>
+        </div>
+        <div class="card ig-groups-chat" style="padding:0;overflow:hidden">
+          <div id="groupChatPlaceholder" style="flex:1;display:flex;align-items:center;justify-content:center;color:#555;font-size:14px;padding:32px;text-align:center">
+            Выберите группу слева или создайте новую. Чтобы писать, нажмите «Вступить».
+          </div>
+          <div id="groupChatPanel" style="display:none;flex-direction:column;height:100%;min-height:420px">
+            <div style="padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0">
+              <div id="groupChatTitle" style="font-weight:700;color:#e8e8e8;font-size:15px"></div>
+              <button type="button" class="btn-o" id="groupJoinBtn" style="font-size:12px;padding:6px 12px;display:none" onclick="joinSelectedGroup()">Вступить</button>
+            </div>
+            <div id="groupMsgBox" class="ig-g-msg-wrap" style="margin:12px;border-radius:12px;flex:1;min-height:200px"></div>
+            <div style="padding:12px 14px;border-top:1px solid rgba(255,255,255,.08);display:flex;gap:8px;flex-shrink:0">
+              <input type="text" id="groupMsgInput" class="sinp" style="flex:1" placeholder="Сообщение в группу..." disabled onkeydown="if(event.key==='Enter'){event.preventDefault();sendGroupChatMessage();}">
+              <button type="button" class="btn-g" id="groupMsgSend" style="padding:10px 16px" disabled onclick="sendGroupChatMessage()">→</button>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
     {% endif %}
@@ -646,6 +707,7 @@
     {% endmacro %}
     {{ ni('home','🏠','Главная') }}
     {{ ni('feed','👥','Лента') }}
+    {{ ni('groups','💬','Группы') }}
     <button class="nav-item" onclick="goSec('messages')" id="nav-messages">
       💬<span class="nav-badge" id="dash-messages-badge"></span>
       <span class="nav-tooltip">Сообщения</span>
@@ -703,6 +765,20 @@
   </div>
 </div>
 
+<!-- Create group modal -->
+<div id="grpCreateModal" style="display:none;position:fixed;inset:0;z-index:10020;align-items:center;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(4px)" onclick="if(event.target===this)this.style.display='none'">
+  <div class="card" style="max-width:420px;width:92%;padding:26px;border-color:rgba(201,168,76,.25)" onclick="event.stopPropagation()">
+    <div style="font-weight:700;margin-bottom:6px;color:#e8e8e8;font-size:17px">Новая группа</div>
+    <p class="muted" style="font-size:13px;margin-bottom:14px">Все пользователи смогут вступить и писать в чате.</p>
+    <input id="grpNameInp" class="sinp" placeholder="Название" style="margin-bottom:10px" maxlength="120">
+    <textarea id="grpDescInp" class="sinp" placeholder="Описание (необязательно)" style="min-height:80px;resize:vertical;margin-bottom:16px" maxlength="2000"></textarea>
+    <div style="display:flex;gap:10px">
+      <button type="button" class="btn-o" style="flex:1" onclick="document.getElementById('grpCreateModal').style.display='none'">Отмена</button>
+      <button type="button" class="btn-g" style="flex:1" onclick="createGroupSubmit()">Создать</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // Auto-open sync modal if ?linked= in URL
 if (window.location.search.includes('linked=')) {
@@ -710,7 +786,7 @@ if (window.location.search.includes('linked=')) {
 }
 
 // ── Section routing ──
-const SECS = ['home','feed','messages','ai','shop','plan','orders','referral','link','language','profile'];
+const SECS = ['home','feed','groups','messages','ai','shop','plan','orders','referral','link','language','profile'];
 function goSec(id){
   SECS.forEach(s=>{
     document.getElementById('sec-'+s)?.classList.remove('active');
@@ -723,6 +799,7 @@ function goSec(id){
   location.hash=id;
   if(id==='ai'){setTimeout(()=>{const b=document.getElementById('chatBox');if(b)b.scrollTop=b.scrollHeight},100)}
   if(id==='messages')loadDMPreview();
+  if(id==='groups'){setTimeout(()=>{const p=document.getElementById('groupMsgBox');if(p)p.scrollTop=p.scrollHeight},80)}
 }
 
 // Init from hash
@@ -949,6 +1026,94 @@ async function likeFeedPost(postId, btn){
     if(d.liked){btn.style.color='#ef4444';btn.childNodes[0].textContent='❤️ ';if(cnt)cnt.textContent=parseInt(cnt.textContent||0)+1;}
     else{btn.style.color='#555';btn.childNodes[0].textContent='🤍 ';if(cnt)cnt.textContent=Math.max(0,parseInt(cnt.textContent||0)-1);}
   }catch(e){showNotification('Ошибка','error');}
+}
+
+// ── Group chats ──
+let selectedGroupId = null;
+
+function selectGroupChat(id, el){
+  selectedGroupId = id;
+  document.querySelectorAll('.ig-g-item').forEach(x=>x.classList.remove('on'));
+  if(el) el.classList.add('on');
+  const titleEl = document.getElementById('groupChatTitle');
+  const nm = el && el.querySelector('div') ? el.querySelector('div').textContent.trim() : ('Группа #' + id);
+  if(titleEl) titleEl.textContent = nm;
+  const ph = document.getElementById('groupChatPlaceholder');
+  const panel = document.getElementById('groupChatPanel');
+  const joinBtn = document.getElementById('groupJoinBtn');
+  const inp = document.getElementById('groupMsgInput');
+  const snd = document.getElementById('groupMsgSend');
+  if(ph) ph.style.display = 'none';
+  if(panel){ panel.style.display = 'flex'; panel.style.flexDirection = 'column'; }
+  const isMember = el && el.dataset && el.dataset.member === '1';
+  if(joinBtn) joinBtn.style.display = isMember ? 'none' : 'inline-block';
+  if(inp){ inp.disabled = !isMember; if(isMember) inp.focus(); }
+  if(snd) snd.disabled = !isMember;
+  const box = document.getElementById('groupMsgBox');
+  if(!isMember){
+    if(box) box.innerHTML = '<div style="color:#888;text-align:center;padding:24px;font-size:14px">Нажмите «Вступить», чтобы видеть переписку и писать в группе.</div>';
+    return;
+  }
+  loadGroupMessages(id);
+}
+
+async function joinSelectedGroup(){
+  if(!selectedGroupId) return;
+  try{
+    const r = await fetch('/community/groups/' + selectedGroupId + '/join', { method: 'POST', credentials: 'same-origin' });
+    if(r.ok) location.reload();
+    else alert('Не удалось вступить');
+  }catch(e){ alert('Ошибка сети'); }
+}
+
+async function loadGroupMessages(gid){
+  const box = document.getElementById('groupMsgBox');
+  if(!box) return;
+  try{
+    const r = await fetch('/community/groups/' + gid + '/messages', { credentials: 'same-origin' });
+    const d = await r.json();
+    if(d.error){ box.innerHTML = '<div style="color:#f87171;text-align:center;padding:16px">'+esc(d.error)+'</div>'; return; }
+    const msgs = d.messages || [];
+    box.innerHTML = msgs.map(m =>
+      '<div class="ig-g-bubble '+(m.is_mine?'me':'them')+'">'+
+      '<span style="font-size:11px;color:#888;display:block;margin-bottom:4px">'+esc(m.sender_name)+'</span>'+
+      esc(m.text)+
+      '<div style="font-size:10px;color:#555;margin-top:6px">'+esc(m.created_at)+'</div></div>'
+    ).join('');
+    box.scrollTop = box.scrollHeight;
+  }catch(e){ box.innerHTML = '<div style="color:#f87171;text-align:center">Ошибка загрузки</div>'; }
+}
+
+async function sendGroupChatMessage(){
+  const inp = document.getElementById('groupMsgInput');
+  const t = inp && inp.value.trim();
+  if(!t || !selectedGroupId) return;
+  inp.value = '';
+  try{
+    const r = await fetch('/community/groups/' + selectedGroupId + '/message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ text: t })
+    });
+    if(r.ok) await loadGroupMessages(selectedGroupId);
+  }catch(e){}
+}
+
+async function createGroupSubmit(){
+  const n = document.getElementById('grpNameInp') && document.getElementById('grpNameInp').value.trim();
+  if(!n || n.length < 2) return;
+  const fd = new FormData();
+  fd.append('name', n);
+  fd.append('description', (document.getElementById('grpDescInp') && document.getElementById('grpDescInp').value) || '');
+  try{
+    const r = await fetch('/community/groups/create', { method: 'POST', body: fd, credentials: 'same-origin' });
+    const d = await r.json().catch(()=>({}));
+    if(d.ok || d.id){
+      document.getElementById('grpCreateModal').style.display = 'none';
+      location.reload();
+    } else alert(d.error || 'Ошибка');
+  }catch(e){ alert('Ошибка сети'); }
 }
 
 // ── Quick post from feed section ──

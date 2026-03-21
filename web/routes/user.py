@@ -5,7 +5,11 @@ from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from web.templates_utils import Jinja2Templates
 from auth.session import get_user_from_request
 from db.database import database
-from db.models import users, messages, orders, posts, post_likes, community_posts, community_likes, community_comments, community_folders, community_follows, community_saved, community_messages, profile_likes, community_profiles, dashboard_blocks, user_block_overrides
+from db.models import (
+    users, messages, orders, posts, post_likes, community_posts, community_likes, community_comments,
+    community_folders, community_follows, community_saved, community_messages, profile_likes, community_profiles,
+    dashboard_blocks, user_block_overrides, community_groups, community_group_members, community_group_messages,
+)
 from services.referral_service import get_referral_stats
 from services.subscription_service import check_subscription, PLANS
 from ai.openai_client import chat_with_ai
@@ -186,6 +190,23 @@ async def dashboard(request: Request):
     except Exception:
         visible_block_keys = ["ai_chat", "messages", "community", "shop", "profile_photo", "posts", "tariffs", "referral", "knowledge_base"]
 
+    group_list = []
+    try:
+        group_list = await database.fetch_all(
+            sa.text("""
+                SELECT g.id, g.name, g.description, g.created_at,
+                  (SELECT COUNT(*)::bigint FROM community_group_members m WHERE m.group_id = g.id) AS member_count,
+                  EXISTS(SELECT 1 FROM community_group_members m2 WHERE m2.group_id = g.id AND m2.user_id = :uid) AS is_member
+                FROM community_groups g
+                ORDER BY g.created_at DESC
+                LIMIT 80
+            """),
+            {"uid": effective_user_id},
+        )
+        group_list = [dict(r) for r in group_list]
+    except Exception:
+        group_list = []
+
     return templates.TemplateResponse(
         "dashboard/user.html",
         {
@@ -209,6 +230,7 @@ async def dashboard(request: Request):
             "shevelev_token": _settings.SHEVELEV_TOKEN_ADDRESS,
             "effective_user_id": effective_user_id,
             "visible_block_keys": visible_block_keys,
+            "group_list": group_list,
         },
     )
 
@@ -807,3 +829,134 @@ async def like_profile(request: Request, target_id: int):
             .where(profile_likes.c.liked_user_id == target_id)
         ) or 0
         return JSONResponse({"liked": True, "count": count})
+
+
+async def _user_in_community_group(group_id: int, uid: int) -> bool:
+    row = await database.fetch_one(
+        community_group_members.select()
+        .where(community_group_members.c.group_id == group_id)
+        .where(community_group_members.c.user_id == uid)
+    )
+    return row is not None
+
+
+@router.get("/community/groups")
+async def community_groups_list_api(request: Request):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = user.get("primary_user_id") or user["id"]
+    rows = await database.fetch_all(
+        sa.text("""
+            SELECT g.id, g.name, g.description, g.created_at,
+              (SELECT COUNT(*)::bigint FROM community_group_members m WHERE m.group_id = g.id) AS member_count,
+              EXISTS(SELECT 1 FROM community_group_members m2 WHERE m2.group_id = g.id AND m2.user_id = :uid) AS is_member
+            FROM community_groups g
+            ORDER BY g.created_at DESC
+            LIMIT 80
+        """),
+        {"uid": uid},
+    )
+    return JSONResponse({"groups": [dict(r) for r in rows]})
+
+
+@router.post("/community/groups/create")
+async def community_group_create(
+    request: Request,
+    name: str = Form(...),
+    description: str = Form(""),
+):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = user.get("primary_user_id") or user["id"]
+    nm = (name or "").strip()
+    if len(nm) < 2:
+        return JSONResponse({"error": "name too short"}, status_code=400)
+    if len(nm) > 120:
+        return JSONResponse({"error": "name too long"}, status_code=400)
+    desc = (description or "").strip()[:2000] or None
+    row = await database.fetch_one(
+        sa.text(
+            "INSERT INTO community_groups (name, description, created_by) VALUES (:n, :d, :c) RETURNING id"
+        ),
+        {"n": nm, "d": desc, "c": uid},
+    )
+    gid = row["id"] if row else None
+    if gid:
+        try:
+            await database.execute(
+                community_group_members.insert().values(group_id=gid, user_id=uid)
+            )
+        except Exception:
+            pass
+    return JSONResponse({"ok": True, "id": gid})
+
+
+@router.post("/community/groups/{group_id}/join")
+async def community_group_join(request: Request, group_id: int):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = user.get("primary_user_id") or user["id"]
+    g = await database.fetch_one(community_groups.select().where(community_groups.c.id == group_id))
+    if not g:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    try:
+        await database.execute(
+            community_group_members.insert().values(group_id=group_id, user_id=uid)
+        )
+    except Exception:
+        pass
+    return JSONResponse({"ok": True})
+
+
+@router.get("/community/groups/{group_id}/messages")
+async def community_group_messages_get(request: Request, group_id: int):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = user.get("primary_user_id") or user["id"]
+    if not await _user_in_community_group(group_id, uid):
+        return JSONResponse({"error": "not a member"}, status_code=403)
+    rows = await database.fetch_all(
+        community_group_messages.select()
+        .where(community_group_messages.c.group_id == group_id)
+        .order_by(community_group_messages.c.created_at.asc())
+        .limit(200)
+    )
+    out = []
+    for r in rows:
+        snd = r["sender_id"]
+        uname = "Участник"
+        if snd:
+            u = await database.fetch_one(users.select().where(users.c.id == snd))
+            if u:
+                uname = u["name"] or uname
+        out.append({
+            "id": r["id"],
+            "sender_id": snd,
+            "sender_name": uname,
+            "text": r["text"],
+            "is_mine": snd == uid,
+            "created_at": r["created_at"].strftime("%d.%m %H:%M") if r["created_at"] else "",
+        })
+    return JSONResponse({"messages": out})
+
+
+@router.post("/community/groups/{group_id}/message")
+async def community_group_message_post(request: Request, group_id: int):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = user.get("primary_user_id") or user["id"]
+    if not await _user_in_community_group(group_id, uid):
+        return JSONResponse({"error": "not a member"}, status_code=403)
+    body = await request.json()
+    text = (body.get("text") or "").strip()
+    if not text or len(text) > 8000:
+        return JSONResponse({"error": "bad text"}, status_code=400)
+    await database.execute(
+        community_group_messages.insert().values(group_id=group_id, sender_id=uid, text=text)
+    )
+    return JSONResponse({"ok": True})
