@@ -1,5 +1,7 @@
 import os
 import uuid
+from typing import Optional
+
 from fastapi import APIRouter, Request, Form, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from web.templates_utils import Jinja2Templates
@@ -35,6 +37,19 @@ PERM_KEYS = [
     "can_dashboard", "can_ai", "can_shop", "can_users",
     "can_feedback", "can_broadcast", "can_knowledge",
 ]
+
+
+def _parse_form_price(raw: Optional[str]) -> Optional[int]:
+    """Пустое поле цены и нечисловой ввод не должны ломать сохранение товара (422)."""
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    if not s:
+        return None
+    try:
+        return int(s)
+    except ValueError:
+        return None
 
 
 def is_super_admin(user: dict) -> bool:
@@ -238,7 +253,7 @@ async def add_shop_product(
     request: Request,
     name: str = Form(...),
     description: str = Form(""),
-    price: int = Form(0),
+    price: str = Form("0"),
     url: str = Form(""),
     mushroom_type: str = Form(""),
     image_url: str = Form(""),
@@ -249,9 +264,10 @@ async def add_shop_product(
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
 
+    price_val = _parse_form_price(price)
     await database.execute(
         shop_products.insert().values(
-            name=name, description=description, price=price or None,
+            name=name, description=description, price=price_val,
             url=url or None, mushroom_type=mushroom_type or None,
             image_url=image_url or None, category=category or None,
             in_stock=(in_stock == "true"),
@@ -266,7 +282,7 @@ async def edit_shop_product(
     product_id: int,
     name: str = Form(...),
     description: str = Form(""),
-    price: int = Form(0),
+    price: str = Form("0"),
     url: str = Form(""),
     mushroom_type: str = Form(""),
     image_url: str = Form(""),
@@ -277,9 +293,10 @@ async def edit_shop_product(
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
 
+    price_val = _parse_form_price(price)
     await database.execute(
         shop_products.update().where(shop_products.c.id == product_id).values(
-            name=name, description=description, price=price or None,
+            name=name, description=description, price=price_val,
             url=url or None, mushroom_type=mushroom_type or None,
             image_url=image_url or None, category=category or None,
             in_stock=(in_stock == "true"),
@@ -302,24 +319,47 @@ ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5 MB
 
 
+def _normalize_image_content_type(upload: UploadFile) -> Optional[str]:
+    raw = (upload.content_type or "").lower()
+    if ";" in raw:
+        raw = raw.split(";", 1)[0].strip()
+    if raw in ALLOWED_IMAGE_TYPES:
+        return raw
+    name = (upload.filename or "").lower()
+    if name.endswith((".jpg", ".jpeg")):
+        return "image/jpeg"
+    if name.endswith(".png"):
+        return "image/png"
+    if name.endswith(".webp"):
+        return "image/webp"
+    if name.endswith(".gif"):
+        return "image/gif"
+    return None
+
+
 @router.post("/shop/upload-image")
 async def upload_product_image(request: Request, file: UploadFile = File(...)):
     admin = await require_permission(request, "can_shop")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
 
-    if file.content_type not in ALLOWED_IMAGE_TYPES:
+    ct = _normalize_image_content_type(file)
+    if not ct:
         return JSONResponse({"error": "Допустимые форматы: JPEG, PNG, WebP, GIF"}, status_code=400)
 
     data = await file.read()
     if len(data) > MAX_IMAGE_SIZE:
         return JSONResponse({"error": "Файл слишком большой (макс. 5 МБ)"}, status_code=400)
 
-    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else "jpg"
+    ext = file.filename.rsplit(".", 1)[-1].lower() if file.filename and "." in file.filename else "jpg"
+    if ext not in ("jpg", "jpeg", "png", "webp", "gif"):
+        ext = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" }.get(ct, "jpg")
     filename = f"{uuid.uuid4().hex}.{ext}"
 
     base = "/data" if os.path.exists("/data") else "./media"
-    save_path = os.path.join(base, "products", filename)
+    save_dir = os.path.join(base, "products")
+    os.makedirs(save_dir, exist_ok=True)
+    save_path = os.path.join(save_dir, filename)
 
     with open(save_path, "wb") as f:
         f.write(data)

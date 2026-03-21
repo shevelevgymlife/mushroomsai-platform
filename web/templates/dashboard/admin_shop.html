@@ -275,8 +275,8 @@
   </div>
 </div>
 
-<!-- ══ CROP MODAL ══ -->
-<div id="cropModal" class="hidden fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4">
+<!-- ══ CROP MODAL (z-index выше add/edit модалок 9999, иначе обрезка скрыта под ними) ══ -->
+<div id="cropModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4" style="z-index:10050">
   <div class="bg-surface border border-border rounded-2xl w-full max-w-lg p-6">
     <div class="flex items-center justify-between mb-4">
       <h3 class="font-semibold text-text">Обрезать фото</h3>
@@ -417,7 +417,7 @@ async function applyCrop() {
     var fd = new FormData();
     fd.append('file', blob, 'photo.jpg');
     try {
-      var resp = await fetch('/admin/shop/upload-image', { method: 'POST', body: fd });
+      var resp = await fetch('/admin/shop/upload-image', { method: 'POST', body: fd, credentials: 'same-origin' });
       var data = await resp.json();
       if (data.ok) {
         urlInput.value = data.url;
@@ -449,8 +449,15 @@ async function saveEditProduct() {
   errEl.classList.add('hidden');
 
   try {
-    var resp = await fetch(form.action, { method: 'POST', body: fd });
-    var data = await resp.json();
+    var resp = await fetch(form.action, { method: 'POST', body: fd, credentials: 'same-origin' });
+    var data;
+    try {
+      data = await resp.json();
+    } catch (e) {
+      errEl.textContent = 'Сервер вернул не JSON (код ' + resp.status + '). Обновите страницу и попробуйте снова.';
+      errEl.classList.remove('hidden');
+      return;
+    }
     if (data.ok) {
       closeEditModal();
       location.reload();
