@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Магазин — MushroomsAI Admin{% endblock %}
+{% block title %}Мои товары — MushroomsAI{% endblock %}
 
 {% block extra_head %}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" />
@@ -9,10 +9,12 @@
 <div class="pt-24 pb-16">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-    {% include "components/admin_nav.html" %}
-
-    <div class="flex items-center justify-between mb-8">
-      <h1 class="text-3xl font-light text-text">Управление магазином</h1>
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
+      <div>
+        <a href="/dashboard" class="text-xs text-muted hover:text-gold transition-colors mb-2 inline-block">← Личный кабинет</a>
+        <h1 class="text-3xl font-light text-text">Мои товары на маркетплейсе</h1>
+        <p class="text-sm text-muted mt-1">Тариф Макси · товары видны в общем каталоге <a href="/shop" class="text-gold hover:underline">/shop</a></p>
+      </div>
       <button onclick="openAddModal()"
         class="px-5 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-all duration-300">
         + Добавить товар
@@ -51,11 +53,6 @@
         </div>
 
         <div class="flex flex-wrap gap-1.5 mb-2">
-          {% if p.seller_id %}
-          <span class="px-2 py-0.5 rounded-full text-xs bg-blue-500/15 text-blue-300 border border-blue-500/25">Продавец #{{ p.seller_id }}</span>
-          {% else %}
-          <span class="px-2 py-0.5 rounded-full text-xs bg-gold/10 text-gold/80 border border-gold/20">Платформа</span>
-          {% endif %}
           {% if p.mushroom_type %}
           <span class="px-2 py-0.5 rounded-full text-xs bg-gold/10 text-gold">{{ p.mushroom_type }}</span>
           {% endif %}
@@ -107,7 +104,7 @@
       <h2 class="font-semibold text-text text-lg">Добавить товар</h2>
       <button onclick="closeAddModal()" class="text-muted hover:text-text text-xl leading-none">×</button>
     </div>
-    <form action="/admin/shop/add" method="post" class="space-y-4">
+    <form action="/seller/shop/add" method="post" class="space-y-4">
       <div>
         <label class="block text-xs text-muted mb-1.5">Название *</label>
         <input type="text" name="name" required
@@ -329,7 +326,7 @@ function closeAddModal() {
 }
 
 function openEditModal(id, name, desc, price, url, mushType, imgUrl, category, inStock) {
-  document.getElementById('editForm').action = '/admin/shop/edit/' + id;
+  document.getElementById('editForm').action = '/seller/shop/edit/' + id;
   document.getElementById('editName').value = name;
   document.getElementById('editDescription').value = desc;
   document.getElementById('editPrice').value = price;
@@ -449,7 +446,7 @@ async function applyCrop() {
     var fd = new FormData();
     fd.append('file', blob, 'photo.jpg');
     try {
-      var resp = await fetch('/admin/shop/upload-image', { method: 'POST', body: fd, credentials: 'same-origin' });
+      var resp = await fetch('/seller/shop/upload-image', { method: 'POST', body: fd, credentials: 'same-origin' });
       var data = await resp.json();
       if (data.ok) {
         urlInput.value = data.url;
@@ -507,7 +504,7 @@ async function saveEditProduct() {
 async function deleteProduct(id, btn) {
   if (!confirm('Удалить товар?')) return;
   btn.disabled = true;
-  var resp = await fetch('/admin/shop/delete/' + id, { method: 'POST' });
+  var resp = await fetch('/seller/shop/delete/' + id, { method: 'POST' });
   if (resp.ok) btn.closest('.rounded-2xl').remove();
   else { btn.disabled = false; alert('Ошибка удаления'); }
 }

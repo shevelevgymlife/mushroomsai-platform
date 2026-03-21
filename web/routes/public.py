@@ -8,6 +8,7 @@ from db.database import database
 from db.models import products, posts, users, shop_products, product_reviews, community_posts, community_likes, community_folders, community_follows, community_saved, community_comments, profile_likes, direct_messages, homepage_blocks
 from auth.session import get_user_from_request
 from config import settings
+from services.referral_service import attach_invite_ref_from_query
 
 
 def get_public_user_data(row: dict) -> dict:
@@ -106,7 +107,7 @@ async def index(request: Request):
             path="/", user_id=current_user["id"] if current_user else None
         )
     )
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         "index.html",
         {
             "request": request,
@@ -120,6 +121,8 @@ async def index(request: Request):
             "block_order": block_order,
         },
     )
+    attach_invite_ref_from_query(request, response)
+    return response
 
 
 @router.get("/shop", response_class=HTMLResponse)

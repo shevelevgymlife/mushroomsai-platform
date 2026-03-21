@@ -267,6 +267,7 @@ async def add_shop_product(
     price_val = _parse_form_price(price)
     await database.execute(
         shop_products.insert().values(
+            seller_id=None,
             name=name, description=description, price=price_val,
             url=url or None, mushroom_type=mushroom_type or None,
             image_url=image_url or None, category=category or None,
@@ -433,6 +434,21 @@ async def set_user_role(request: Request, user_id: int = Form(...), role: str = 
 
     await database.execute(users.update().where(users.c.id == user_id).values(role=role))
     return JSONResponse({"ok": True, "user_id": user_id, "role": role})
+
+
+@router.post("/users/{user_id}/marketplace-seller")
+async def set_marketplace_seller_flag(request: Request, user_id: int, enabled: str = Form(...)):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    target = await database.fetch_one(users.select().where(users.c.id == user_id))
+    if not target:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    flag = enabled.strip().lower() in ("1", "true", "yes", "on")
+    await database.execute(
+        users.update().where(users.c.id == user_id).values(marketplace_seller=flag)
+    )
+    return JSONResponse({"ok": True, "user_id": user_id, "marketplace_seller": flag})
 
 
 @router.get("/users/{user_id}/permissions")
@@ -1025,6 +1041,8 @@ async def delete_user_permanent(request: Request, user_id: int):
         return JSONResponse({"error": "not found"}, status_code=404)
     if target.get("tg_id") == SUPER_ADMIN_TG_ID or target.get("linked_tg_id") == SUPER_ADMIN_TG_ID:
         return JSONResponse({"error": "protected"}, status_code=403)
+    if (target.get("role") or "") == "admin":
+        return JSONResponse({"error": "Нельзя удалить администратора"}, status_code=403)
 
     import sqlalchemy as sa_
     for sql in [

@@ -32,6 +32,9 @@ users = sqlalchemy.Table(
     sqlalchemy.Column("ban_until", sqlalchemy.DateTime, nullable=True),
     sqlalchemy.Column("ban_reason", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+    sqlalchemy.Column("needs_tariff_choice", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column("marketplace_seller", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column("referral_balance", sqlalchemy.Numeric(12, 2), default=0, server_default="0"),
 )
 
 sessions = sqlalchemy.Table(
@@ -188,6 +191,7 @@ shop_products = sqlalchemy.Table(
     "shop_products",
     metadata,
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("seller_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=True),
     sqlalchemy.Column("name", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("description", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("price", sqlalchemy.Integer, nullable=True),

@@ -107,7 +107,7 @@ TRANSLATIONS = {
         "dash_start_price": "Старт — 990 руб/мес",
         "dash_pro_price": "Про — 1990 руб/мес",
         "dash_referral": "Реферальная программа",
-        "dash_referral_desc": "Приглашайте друзей — оба получите скидку 50% на следующий месяц",
+        "dash_referral_desc": "10% от тарифа Старт на баланс за каждого приглашённого по ссылке",
         "dash_invited": "Приглашено",
         "dash_bonuses": "Бонусов",
         "dash_account_linking": "Привязка аккаунтов",

@@ -88,6 +88,7 @@
 .badge-free{background:rgba(255,255,255,.07);color:#888;border:1px solid rgba(255,255,255,.1)}
 .badge-start{background:rgba(201,168,76,.15);color:#C9A84C;border:1px solid rgba(201,168,76,.3)}
 .badge-pro{background:linear-gradient(135deg,rgba(201,168,76,.25),rgba(232,201,107,.15));color:#E8C96B;border:1px solid rgba(232,201,107,.4)}
+.badge-maxi{background:rgba(201,168,76,.2);color:#E8C96B;border:1px solid rgba(201,168,76,.45)}
 
 /* ── Stats row ── */
 .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px}
@@ -134,10 +135,12 @@
 
     <!-- ══ HOME ══ -->
     <section class="db-sec active" id="sec-home">
+      {% if 'community' in vbk %}
       <div class="card-sm" style="margin-bottom:16px;border-color:rgba(201,168,76,.35);background:rgba(201,168,76,.07);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
         <span style="font-size:13px;color:#ddd;line-height:1.5">Кабинет обновляется: откройте справа <strong class="gold">Лента</strong> (соцсеть) или <strong class="gold">Группы</strong> — там новый дизайн и чаты.</span>
         <button type="button" class="btn-o" style="flex-shrink:0;font-size:12px;padding:6px 12px" onclick="this.parentElement.remove()">Понятно</button>
       </div>
+      {% endif %}
       <div class="hero-card" style="margin-bottom:22px">
         <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
           <div class="av-wrap" onclick="document.getElementById('avInput').click()" title="Изменить фото">
@@ -155,7 +158,7 @@
             <div style="font-size:13px;color:#888;margin-bottom:10px">{{ user.email or ('Telegram ID: ' + (user.tg_id|string) if user.tg_id else 'Google аккаунт') }}</div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <span class="badge-plan badge-{{ plan }}">
-                {% if plan == 'pro' %}💎{% elif plan == 'start' %}⭐{% else %}🌿{% endif %}
+                {% if plan == 'maxi' %}🏪{% elif plan == 'pro' %}💎{% elif plan == 'start' %}⭐{% else %}🌿{% endif %}
                 {{ plan_info.name }}
               </span>
               <span style="font-size:12px;color:#888">{{ rep_badge(my_post_count) }}</span>
@@ -165,12 +168,21 @@
             {% endif %}
           </div>
           <div style="display:flex;flex-direction:column;gap:8px;margin-left:auto">
+            {% if 'community' in vbk %}
             <button class="btn-g" onclick="goSec('feed');setTimeout(()=>document.getElementById('quickPostText')?.focus(),200)">✏️ Написать пост</button>
             <button class="btn-o" onclick="goSec('feed')">👥 Моя лента</button>
+            {% endif %}
+            {% if 'knowledge_base' in vbk %}
+            <a href="https://t.me/ShevelevVlog" target="_blank" rel="noopener noreferrer" class="btn-o" style="font-size:12px;padding:7px 14px;text-align:center;text-decoration:none">📚 База знаний</a>
+            {% endif %}
+            {% if 'ai_chat' in vbk %}
+            <button class="btn-o" onclick="goSec('ai')" style="font-size:12px;padding:7px 14px">🤖 AI чат</button>
+            {% endif %}
             <button class="btn-o" onclick="goSec('profile')" style="font-size:12px;padding:7px 14px">⚙️ Редактировать</button>
           </div>
         </div>
 
+        {% if 'community' in vbk %}
         <div class="stats-row">
           <div class="stat-box" style="cursor:pointer" onclick="goSec('feed');setTimeout(()=>document.querySelector('[data-tab=mine]')?.click(),100)">
             <div style="font-size:22px;font-weight:700;color:#C9A84C">{{ my_post_count }}</div>
@@ -185,6 +197,7 @@
             <div class="muted">подписок</div>
           </div>
         </div>
+        {% endif %}
       </div>
 
       <!-- Recent AI messages preview -->
@@ -207,17 +220,40 @@
 
       <!-- Quick links -->
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px">
-        {% set quick = [('👥','Лента','feed'),('🤖','AI чат','ai'),('🛒','Магазин','shop'),('💎','Тарифы','plan')] %}
-        {% for em,lab,sec in quick %}
-        <div class="card-sm" style="cursor:pointer;transition:border-color .2s" onclick="goSec('{{ sec }}')" onmouseover="this.style.borderColor='rgba(201,168,76,.4)'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)'">
-          <div style="font-size:24px;margin-bottom:8px">{{ em }}</div>
-          <div style="font-size:13px;font-weight:600;color:#ccc">{{ lab }}</div>
+        {% if 'community' in vbk %}
+        <div class="card-sm" style="cursor:pointer;transition:border-color .2s" onclick="goSec('feed')" onmouseover="this.style.borderColor='rgba(201,168,76,.4)'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)'">
+          <div style="font-size:24px;margin-bottom:8px">👥</div>
+          <div style="font-size:13px;font-weight:600;color:#ccc">Лента</div>
         </div>
-        {% endfor %}
+        {% endif %}
+        {% if 'ai_chat' in vbk %}
+        <div class="card-sm" style="cursor:pointer;transition:border-color .2s" onclick="goSec('ai')" onmouseover="this.style.borderColor='rgba(201,168,76,.4)'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)'">
+          <div style="font-size:24px;margin-bottom:8px">🤖</div>
+          <div style="font-size:13px;font-weight:600;color:#ccc">AI чат</div>
+        </div>
+        {% endif %}
+        {% if 'knowledge_base' in vbk %}
+        <a href="https://t.me/ShevelevVlog" target="_blank" rel="noopener noreferrer" class="card-sm" style="cursor:pointer;transition:border-color .2s;text-decoration:none;display:block" onmouseover="this.style.borderColor='rgba(201,168,76,.4)'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)'">
+          <div style="font-size:24px;margin-bottom:8px">📚</div>
+          <div style="font-size:13px;font-weight:600;color:#ccc">База знаний</div>
+        </a>
+        {% endif %}
+        {% if 'shop' in vbk %}
+        <div class="card-sm" style="cursor:pointer;transition:border-color .2s" onclick="goSec('shop')" onmouseover="this.style.borderColor='rgba(201,168,76,.4)'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)'">
+          <div style="font-size:24px;margin-bottom:8px">🛒</div>
+          <div style="font-size:13px;font-weight:600;color:#ccc">Магазин</div>
+        </div>
+        {% endif %}
+        {% if 'tariffs' in vbk %}
+        <div class="card-sm" style="cursor:pointer;transition:border-color .2s" onclick="goSec('plan')" onmouseover="this.style.borderColor='rgba(201,168,76,.4)'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)'">
+          <div style="font-size:24px;margin-bottom:8px">💎</div>
+          <div style="font-size:13px;font-weight:600;color:#ccc">Тарифы</div>
+        </div>
+        {% endif %}
       </div>
 
       <!-- Last own posts preview -->
-      {% if recent_posts %}
+      {% if 'community' in vbk and recent_posts %}
       <div class="card" style="margin-top:22px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
           <div style="font-weight:700;font-size:16px">Мои последние посты</div>
@@ -326,16 +362,19 @@
       </div>
       </div><!-- /ig-feed-shell -->
     </section>
-    {% endif %}
 
-    <!-- ══ GROUP CHATS (всегда для авторизованных — не зависит от блока «community» в админке) ══ -->
+    <!-- ══ GROUP CHATS (тариф Старт+; создание групп — Про/Макси) ══ -->
     {% set group_list = group_list | default([]) %}
     <section class="db-sec" id="sec-groups">
       <div class="sect-title" style="margin-bottom:8px">Групповые чаты</div>
       <p class="muted" style="margin-bottom:18px;font-size:14px;line-height:1.5">Создайте тему — все участники смогут писать в общий чат. Цвета как на главной: тёмный фон и золото.</p>
       <div class="ig-groups-wrap">
         <div class="card ig-groups-sidebar" style="padding:16px">
+          {% if can_create_groups %}
           <button type="button" class="btn-g" style="width:100%;margin-bottom:14px" onclick="document.getElementById('grpCreateModal').style.display='flex'">+ Создать группу</button>
+          {% else %}
+          <p class="muted" style="font-size:12px;margin-bottom:14px;line-height:1.5">Создание групп доступно с тарифа <strong class="gold">Про</strong> и выше. В тарифе Старт можно общаться в существующих группах.</p>
+          {% endif %}
           <div id="groupListEl" style="font-size:13px">
             {% if group_list %}
             {% for g in group_list %}
@@ -367,6 +406,7 @@
         </div>
       </div>
     </section>
+    {% endif %}
 
     <!-- ══ MESSAGES ══ -->
     {% if 'messages' in vbk %}
@@ -413,6 +453,36 @@
       </div>
     </section>
 
+    {% endif %}
+
+    <!-- ══ БАЗА ЗНАНИЙ (бесплатный и выше) ══ -->
+    {% if 'knowledge_base' in vbk %}
+    <section class="db-sec" id="sec-knowledge">
+      <div class="sect-title">База знаний</div>
+      <div class="card" style="max-width:560px">
+        <p class="muted" style="margin-bottom:14px;font-size:14px;line-height:1.6">Канал с материалами и разбором — откройте в Telegram.</p>
+        <a href="https://t.me/ShevelevVlog" target="_blank" rel="noopener noreferrer" class="btn-g" style="display:inline-block">База знаний — Telegram →</a>
+      </div>
+    </section>
+    {% endif %}
+
+    <!-- ══ ПРО: закрытый чат + приоритет в ленте ══ -->
+    {% if 'pro_telegram' in vbk or 'pro_pin_info' in vbk %}
+    <section class="db-sec" id="sec-proextras">
+      {% if 'pro_telegram' in vbk %}
+      <div class="card hero-card" style="margin-bottom:16px">
+        <div class="sect-title" style="margin-bottom:10px;font-size:18px">Закрытый Telegram</div>
+        <p class="muted" style="margin-bottom:16px;font-size:14px">Партнёрство, кейсы, дополнительные материалы.</p>
+        <a href="https://t.me/+_hBvTo07K0k4Mjky" target="_blank" rel="noopener noreferrer" class="btn-g" style="display:inline-block;padding:12px 22px;font-size:15px">Вступить в закрытый чат →</a>
+      </div>
+      {% endif %}
+      {% if 'pro_pin_info' in vbk %}
+      <div class="card" style="border-color:rgba(201,168,76,.35)">
+        <div class="sect-title" style="margin-bottom:8px;font-size:17px">⭐ Приоритет в соцсети (Про)</div>
+        <p class="muted" style="font-size:13px;line-height:1.65">Аккаунт со значком MushroomsAI. Закреп поста в общей ленте до 3 дней — <strong class="gold">не чаще одного раза в сутки</strong>. Если много участников с Про, закрепы ставятся по очереди (сначала новые заявки).</p>
+      </div>
+      {% endif %}
+    </section>
     {% endif %}
 
     <!-- ══ SHOP ══ -->
@@ -496,7 +566,18 @@
 
     {% endif %}
 
+    {% if 'seller_marketplace' in vbk %}
+    <section class="db-sec" id="sec-seller">
+      <div class="sect-title">🏪 Мои товары</div>
+      <div class="card" style="max-width:560px">
+        <p class="muted" style="font-size:14px;line-height:1.65;margin-bottom:14px">Управляйте витриной: добавление, фото, цены. Товары появляются в общем каталоге маркетплейса.</p>
+        <a href="/seller/shop" class="btn-g" style="display:inline-block;text-decoration:none">Открыть кабинет продавца →</a>
+      </div>
+    </section>
+    {% endif %}
+
     <!-- ══ ORDERS ══ -->
+    {% if 'shop' in vbk %}
     <section class="db-sec" id="sec-orders">
       <div class="sect-title">📦 Заказы и покупки</div>
       {% if orders %}
@@ -522,18 +603,25 @@
       </div>
       {% endif %}
     </section>
+    {% endif %}
 
     <!-- ══ REFERRAL ══ -->
     {% if 'referral' in vbk %}
     <section class="db-sec" id="sec-referral">
       <div class="sect-title">🎁 Реферальная программа</div>
       <div class="card" style="margin-bottom:16px">
-        <div style="font-size:15px;font-weight:600;color:#ddd;margin-bottom:10px">Ваша реферальная ссылка</div>
-        <div style="display:flex;gap:8px;margin-bottom:16px">
+        <div style="font-size:15px;font-weight:600;color:#ddd;margin-bottom:10px">Ссылки для приглашений</div>
+        <p class="muted" style="font-size:12px;margin-bottom:8px">Telegram</p>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
           <input type="text" value="{{ ref_link }}" readonly id="refInp" class="sinp" style="flex:1;font-size:13px;color:#888">
-          <button class="btn-g" onclick="copyRef()" id="refCopyBtn" style="flex-shrink:0">Копировать</button>
+          <button type="button" class="btn-g" onclick="copyRef()" id="refCopyBtn" style="flex-shrink:0">Копировать</button>
         </div>
-        <div style="font-size:13px;color:#666">Поделитесь ссылкой — когда друг зарегистрируется и оформит подписку, вы получите бонус.</div>
+        <p class="muted" style="font-size:12px;margin-bottom:8px">Сайт (регистрация в браузере)</p>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <input type="text" value="{{ ref_link_site }}" readonly id="refInpSite" class="sinp" style="flex:1;font-size:13px;color:#888">
+          <button type="button" class="btn-o" id="refCopySiteBtn" onclick="copyRefSite()" style="flex-shrink:0;font-size:12px;padding:8px 12px">Копировать</button>
+        </div>
+        <div style="font-size:13px;color:#666">За каждого зарегистрировавшегося по ссылке на ваш баланс начисляется <strong class="gold">10%</strong> от цены тарифа Старт ({{ (990 * 0.1)|int }} ₽). Баллы можно использовать на продление подписки (по мере подключения оплаты).</div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px">
         <div class="card-sm" style="text-align:center">
@@ -541,13 +629,13 @@
           <div class="muted">приглашено</div>
         </div>
         <div class="card-sm" style="text-align:center">
-          <div style="font-size:28px;font-weight:700;color:#C9A84C">{{ ref_stats.bonus_applied }}</div>
-          <div class="muted">бонусов активировано</div>
+          <div style="font-size:28px;font-weight:700;color:#C9A84C">{{ ref_stats.balance_rub }}</div>
+          <div class="muted">баланс, ₽</div>
         </div>
       </div>
       <div class="card">
         <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:12px">Как это работает</div>
-        {% for step in ['Поделитесь своей реферальной ссылкой с другом','Друг регистрируется на MushroomsAI','Друг оформляет подписку','Вы оба получаете бонус!'] %}
+        {% for step in ['Отправьте другу ссылку (Telegram или сайт)','Друг регистрируется по ней впервые','На ваш счёт начисляется бонус','Бонус один раз на каждого приглашённого'] %}
         <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px">
           <div style="width:24px;height:24px;border-radius:50%;background:rgba(201,168,76,.2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#C9A84C;flex-shrink:0">{{ loop.index }}</div>
           <div style="font-size:13px;color:#aaa;padding-top:3px">{{ step }}</div>
@@ -711,14 +799,37 @@
     </button>
     {% endmacro %}
     {{ ni('home','🏠','Главная') }}
+    {% if 'community' in vbk %}
     {{ ni('feed','👥','Лента') }}
     {{ ni('groups','💬','Группы') }}
+    {% endif %}
+    {% if 'messages' in vbk %}
     <button class="nav-item" onclick="goSec('messages')" id="nav-messages">
       💬<span class="nav-badge" id="dash-messages-badge"></span>
       <span class="nav-tooltip">Сообщения</span>
     </button>
+    {% endif %}
+    {% if 'ai_chat' in vbk %}
+    {{ ni('ai','🤖','AI') }}
+    {% endif %}
+    {% if 'knowledge_base' in vbk %}
+    {{ ni('knowledge','📚','База знаний') }}
+    {% endif %}
+    {% if 'shop' in vbk %}
     {{ ni('shop','🛒','Магазин') }}
+    {% endif %}
+    {% if 'tariffs' in vbk %}
+    {{ ni('plan','✨','Тариф') }}
+    {% endif %}
+    {% if 'pro_telegram' in vbk or 'pro_pin_info' in vbk %}
+    {{ ni('proextras','💎','Про') }}
+    {% endif %}
+    {% if 'seller_marketplace' in vbk %}
+    {{ ni('seller','🏪','Товары') }}
+    {% endif %}
+    {% if 'referral' in vbk %}
     {{ ni('referral','🎁','Рефералы') }}
+    {% endif %}
     <div class="nav-sep"></div>
     {{ ni('link','🔗','Привязка') }}
     {{ ni('profile','⚙️','Профиль') }}
@@ -791,7 +902,7 @@ if (window.location.search.includes('linked=')) {
 }
 
 // ── Section routing ──
-const SECS = ['home','feed','groups','messages','ai','shop','plan','orders','referral','link','language','profile'];
+const SECS = {{ dashboard_secs | default(['home','feed','groups','messages','ai','knowledge','shop','plan','orders','referral','link','language','profile']) | tojson }};
 function goSec(id){
   SECS.forEach(s=>{
     document.getElementById('sec-'+s)?.classList.remove('active');
@@ -870,6 +981,14 @@ function copyRef(){
   if(!v)return;
   navigator.clipboard.writeText(v).then(()=>{
     const b=document.getElementById('refCopyBtn');
+    if(b){b.textContent='Скопировано ✓';setTimeout(()=>b.textContent='Копировать',2200)}
+  });
+}
+function copyRefSite(){
+  const v=document.getElementById('refInpSite')?.value;
+  if(!v)return;
+  navigator.clipboard.writeText(v).then(()=>{
+    const b=document.getElementById('refCopySiteBtn');
     if(b){b.textContent='Скопировано ✓';setTimeout(()=>b.textContent='Копировать',2200)}
   });
 }

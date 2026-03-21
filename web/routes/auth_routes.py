@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, Form, Response
+from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from web.templates_utils import Jinja2Templates
 from starlette.responses import JSONResponse
@@ -7,6 +7,7 @@ from auth.email_auth import authenticate_user, register_user
 from auth.session import create_access_token
 from db.database import database
 from db.models import users
+from services.referral_service import attach_invite_ref_from_query, finalize_web_referral
 import secrets
 import string
 import httpx
@@ -16,24 +17,46 @@ router = APIRouter()
 templates = Jinja2Templates(directory="web/templates")
 
 
+def _safe_next_path(raw: str | None) -> str | None:
+    if not raw or not isinstance(raw, str):
+        return None
+    s = raw.strip()
+    if not s.startswith("/") or s.startswith("//"):
+        return None
+    return s.split("?")[0][:512]
+
+
+def _pop_login_redirect(request: Request) -> str:
+    return _safe_next_path(request.session.pop("login_next", None)) or "/dashboard"
+
+
 @router.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
     from auth.session import get_user_from_request
     user = await get_user_from_request(request)
+    nxt_param = _safe_next_path(request.query_params.get("next"))
+    if nxt_param:
+        request.session["login_next"] = nxt_param
+    elif "next" not in request.query_params and "login_next" in request.session:
+        del request.session["login_next"]
+
     if user:
-        return RedirectResponse("/dashboard")
+        go = nxt_param or _safe_next_path(request.session.pop("login_next", None)) or "/dashboard"
+        return RedirectResponse(go, status_code=302)
+
     from config import settings
     tg_bot_id = settings.TELEGRAM_TOKEN.split(":")[0] if ":" in settings.TELEGRAM_TOKEN else ""
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         "login.html",
         {"request": request, "user": None, "site_url": settings.SITE_URL, "tg_bot_id": tg_bot_id},
     )
+    attach_invite_ref_from_query(request, response)
+    return response
 
 
 @router.post("/login/email")
 async def login_email(
     request: Request,
-    response: Response,
     email: str = Form(...),
     password: str = Form(...),
 ):
@@ -44,8 +67,10 @@ async def login_email(
             {"request": request, "user": None, "error": "Неверный email или пароль"},
         )
     token = create_access_token(user["id"])
-    resp = RedirectResponse("/dashboard", status_code=302)
+    dest = _pop_login_redirect(request)
+    resp = RedirectResponse(dest, status_code=302)
     resp.set_cookie("access_token", token, httponly=True, max_age=30 * 24 * 3600)
+    await finalize_web_referral(request, resp, user["id"])
     return resp
 
 
@@ -63,8 +88,10 @@ async def register_email(
             {"request": request, "user": None, "error": "Email уже зарегистрирован"},
         )
     token = create_access_token(user["id"])
-    resp = RedirectResponse("/dashboard", status_code=302)
+    dest = _pop_login_redirect(request)
+    resp = RedirectResponse(dest, status_code=302)
     resp.set_cookie("access_token", token, httponly=True, max_age=30 * 24 * 3600)
+    await finalize_web_referral(request, resp, user["id"])
     return resp
 
 
@@ -91,8 +118,10 @@ async def telegram_auth(request: Request):
         )
 
     token = create_access_token(user_id)
-    resp = RedirectResponse("/dashboard", status_code=302)
+    dest = _pop_login_redirect(request)
+    resp = RedirectResponse(dest, status_code=302)
     resp.set_cookie("access_token", token, httponly=True, max_age=30 * 24 * 3600)
+    await finalize_web_referral(request, resp, int(user_id))
     return resp
 
 
@@ -123,8 +152,10 @@ async def telegram_miniapp_auth(request: Request):
             )
 
         token = create_access_token(user_id)
-        resp = JSONResponse({"redirect": "/dashboard"})
+        dest = _pop_login_redirect(request)
+        resp = JSONResponse({"redirect": dest})
         resp.set_cookie("access_token", token, httponly=True, max_age=30 * 24 * 3600)
+        await finalize_web_referral(request, resp, int(user_id))
         return resp
 
     except Exception as e:
@@ -220,8 +251,10 @@ async def google_callback(request: Request):
             )
 
         token_str = create_access_token(user_id)
-        resp = RedirectResponse("/dashboard", status_code=302)
+        dest = _pop_login_redirect(request)
+        resp = RedirectResponse(dest, status_code=302)
         resp.set_cookie("access_token", token_str, httponly=True, max_age=30 * 24 * 3600)
+        await finalize_web_referral(request, resp, int(user_id))
         return resp
 
     except Exception as e:

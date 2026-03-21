@@ -50,16 +50,11 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tg_user = update.effective_user
     user = await ensure_user(tg_user)
 
-    # Check for referral
     if context.args:
         ref_code = context.args[0]
-        if ref_code != user.get("referral_code"):
-            referrer = await database.fetch_one(
-                users.select().where(users.c.referral_code == ref_code)
-            )
-            if referrer and not user.get("referred_by"):
-                from services.referral_service import process_referral
-                await process_referral(user["id"], ref_code)
+        if ref_code and ref_code != user.get("referral_code"):
+            from services.referral_service import process_referral
+            await process_referral(user["id"], ref_code)
 
     site_url = settings.SITE_URL
 

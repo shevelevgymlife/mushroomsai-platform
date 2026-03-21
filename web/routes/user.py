@@ -14,6 +14,7 @@ from services.referral_service import get_referral_stats
 from services.subscription_service import check_subscription, PLANS
 from ai.openai_client import chat_with_ai
 from services.subscription_service import can_ask_question, increment_question_count
+from services.plan_access import plan_allowed_block_keys, can_create_community_groups
 import sqlalchemy as sa
 import secrets
 import traceback as _traceback
@@ -66,11 +67,73 @@ async def compute_visible_blocks(user_id: int, plan: str) -> list[str]:
     return visible
 
 
+def build_dashboard_secs(visible_block_keys: list[str]) -> list[str]:
+    keys = set(visible_block_keys)
+    out: list[str] = ["home"]
+    if "community" in keys:
+        out.extend(["feed", "groups"])
+    if "messages" in keys:
+        out.append("messages")
+    if "ai_chat" in keys:
+        out.append("ai")
+    if "knowledge_base" in keys:
+        out.append("knowledge")
+    if "pro_telegram" in keys or "pro_pin_info" in keys:
+        out.append("proextras")
+    if "shop" in keys:
+        out.extend(["shop", "orders"])
+    if "tariffs" in keys:
+        out.append("plan")
+    if "referral" in keys:
+        out.append("referral")
+    if "seller_marketplace" in keys:
+        out.append("seller")
+    out.extend(["link", "language", "profile"])
+    return out
+
+
 async def require_auth(request: Request):
     user = await get_user_from_request(request)
     if not user:
         return None
     return user
+
+
+@router.get("/onboarding/tariff", response_class=HTMLResponse)
+async def onboarding_tariff_page(request: Request):
+    user = await require_auth(request)
+    if not user:
+        return RedirectResponse("/login?next=/onboarding/tariff")
+    if user.get("role") == "admin":
+        return RedirectResponse("/dashboard")
+    if not user.get("needs_tariff_choice"):
+        return RedirectResponse("/dashboard")
+    return templates.TemplateResponse(
+        "onboarding_tariff.html",
+        {"request": request, "user": user, "plans": PLANS},
+    )
+
+
+@router.post("/onboarding/tariff")
+async def onboarding_tariff_submit(request: Request, choice: str = Form(...)):
+    user = await require_auth(request)
+    if not user:
+        return RedirectResponse("/login")
+    uid = user.get("primary_user_id") or user["id"]
+    choice = (choice or "").strip().lower()
+    if choice not in ("free", "start", "pro", "maxi"):
+        return RedirectResponse("/onboarding/tariff")
+    if choice == "free":
+        await database.execute(
+            users.update()
+            .where(users.c.id == uid)
+            .values(subscription_plan="free", needs_tariff_choice=False)
+        )
+        return RedirectResponse("/dashboard")
+    await database.execute(
+        users.update().where(users.c.id == uid).values(needs_tariff_choice=False)
+    )
+    return RedirectResponse("https://t.me/mushrooms_ai_bot?start=tariff_" + choice, status_code=302)
 
 
 @router.get("/dashboard", response_class=HTMLResponse)
@@ -98,11 +161,15 @@ async def dashboard(request: Request):
     if full_profile:
         user = dict(full_profile)
 
+    if user.get("needs_tariff_choice") and user.get("role") != "admin":
+        return RedirectResponse("/onboarding/tariff")
+
     plan = await check_subscription(effective_user_id)
     plan_info = PLANS.get(plan, PLANS["free"])
-    ref_stats = await get_referral_stats(user["id"])
+    ref_stats = await get_referral_stats(effective_user_id)
     from config import settings
     ref_link = f"https://t.me/mushrooms_ai_bot?start={user.get('referral_code', '')}"
+    ref_link_site = f"{settings.SITE_URL.rstrip('/')}/login?ref={user.get('referral_code', '')}"
 
     recent_messages = await database.fetch_all(
         messages.select()
@@ -190,20 +257,35 @@ async def dashboard(request: Request):
     except Exception:
         visible_block_keys = ["ai_chat", "messages", "community", "shop", "profile_photo", "posts", "tariffs", "referral", "knowledge_base"]
 
+    allowed_by_plan = plan_allowed_block_keys(plan, user)
+    visible_block_keys = [k for k in visible_block_keys if k in allowed_by_plan]
+    for _extra in ("knowledge_base", "pro_telegram", "pro_pin_info", "seller_marketplace"):
+        if _extra in allowed_by_plan and _extra not in visible_block_keys:
+            visible_block_keys.append(_extra)
+
+    if "community" not in visible_block_keys:
+        feed_raw = []
+        feed_authors = {}
+    if "shop" not in visible_block_keys:
+        shop_preview = []
+    can_create_groups = can_create_community_groups(plan, user)
+    dashboard_secs = build_dashboard_secs(visible_block_keys)
+
     group_list = []
     try:
-        group_list = await database.fetch_all(
-            sa.text("""
-                SELECT g.id, g.name, g.description, g.created_at,
-                  (SELECT COUNT(*)::bigint FROM community_group_members m WHERE m.group_id = g.id) AS member_count,
-                  EXISTS(SELECT 1 FROM community_group_members m2 WHERE m2.group_id = g.id AND m2.user_id = :uid) AS is_member
-                FROM community_groups g
-                ORDER BY g.created_at DESC
-                LIMIT 80
-            """),
-            {"uid": effective_user_id},
-        )
-        group_list = [dict(r) for r in group_list]
+        if "community" in visible_block_keys:
+            _gr = await database.fetch_all(
+                sa.text("""
+                    SELECT g.id, g.name, g.description, g.created_at,
+                      (SELECT COUNT(*)::bigint FROM community_group_members m WHERE m.group_id = g.id) AS member_count,
+                      EXISTS(SELECT 1 FROM community_group_members m2 WHERE m2.group_id = g.id AND m2.user_id = :uid) AS is_member
+                    FROM community_groups g
+                    ORDER BY g.created_at DESC
+                    LIMIT 80
+                """),
+                {"uid": effective_user_id},
+            )
+            group_list = [dict(r) for r in _gr]
     except Exception:
         group_list = []
 
@@ -214,8 +296,10 @@ async def dashboard(request: Request):
             "user": user,
             "plan": plan,
             "plan_info": plan_info,
+            "can_create_groups": can_create_groups,
             "ref_stats": ref_stats,
             "ref_link": ref_link,
+            "ref_link_site": ref_link_site,
             "messages": list(reversed(recent_messages)),
             "orders": my_orders,
             "my_post_count": my_post_count,
@@ -230,6 +314,7 @@ async def dashboard(request: Request):
             "shevelev_token": _settings.SHEVELEV_TOKEN_ADDRESS,
             "effective_user_id": effective_user_id,
             "visible_block_keys": visible_block_keys,
+            "dashboard_secs": dashboard_secs,
             "group_list": group_list,
         },
     )
@@ -874,6 +959,12 @@ async def community_group_create(
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
     uid = user.get("primary_user_id") or user["id"]
+    pl = await check_subscription(uid)
+    if not can_create_community_groups(pl, user):
+        return JSONResponse(
+            {"error": "Создание групп доступно с тарифов Про и Макси"},
+            status_code=403,
+        )
     nm = (name or "").strip()
     if len(nm) < 2:
         return JSONResponse({"error": "name too short"}, status_code=400)
