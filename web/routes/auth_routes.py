@@ -8,6 +8,7 @@ from auth.session import create_access_token
 from db.database import database
 from db.models import users
 from services.referral_service import attach_invite_ref_from_query, finalize_web_referral
+from auth.blocked_identities import is_identity_blocked, login_denied_for_user_row
 import secrets
 import string
 import httpx
@@ -28,6 +29,23 @@ def _safe_next_path(raw: str | None) -> str | None:
 
 def _pop_login_redirect(request: Request) -> str:
     return _safe_next_path(request.session.pop("login_next", None)) or "/dashboard"
+
+
+async def _login_blocked_response(request: Request):
+    from config import settings as _s
+
+    _tid = _s.TELEGRAM_TOKEN.split(":")[0] if ":" in _s.TELEGRAM_TOKEN else ""
+    return templates.TemplateResponse(
+        "login.html",
+        {
+            "request": request,
+            "user": None,
+            "error": "Этот аккаунт заблокирован администратором.",
+            "site_url": _s.SITE_URL,
+            "tg_bot_id": _tid,
+        },
+        status_code=403,
+    )
 
 
 @router.get("/login", response_class=HTMLResponse)
@@ -121,8 +139,13 @@ async def telegram_auth(request: Request):
     name = f"{data.get('first_name', '')} {data.get('last_name', '')}".strip()
     photo = data.get("photo_url", "")
 
+    if await is_identity_blocked("tg_id", str(tg_id)):
+        return await _login_blocked_response(request)
+
     row = await database.fetch_one(users.select().where(users.c.tg_id == tg_id))
     if row:
+        if await login_denied_for_user_row(dict(row)):
+            return await _login_blocked_response(request)
         user_id = row["primary_user_id"] or row["id"]
         await database.execute(
             users.update().where(users.c.tg_id == tg_id).values(name=name, avatar=photo)
@@ -155,8 +178,13 @@ async def telegram_miniapp_auth(request: Request):
         name = f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip()
         avatar = user_data.get("photo_url", "")
 
+        if await is_identity_blocked("tg_id", str(tg_id)):
+            return JSONResponse({"error": "Аккаунт заблокирован"}, status_code=403)
+
         row = await database.fetch_one(users.select().where(users.c.tg_id == tg_id))
         if row:
+            if await login_denied_for_user_row(dict(row)):
+                return JSONResponse({"error": "Аккаунт заблокирован"}, status_code=403)
             user_id = row["primary_user_id"] or row["id"]
             await database.execute(
                 users.update().where(users.c.tg_id == tg_id).values(name=name, avatar=avatar)
@@ -227,6 +255,11 @@ async def google_callback(request: Request):
         name = user_info.get("name", "")
         avatar = user_info.get("picture", "")
 
+        if google_id and await is_identity_blocked("google_id", google_id):
+            return await _login_blocked_response(request)
+        if email and await is_identity_blocked("email", email.strip().lower()):
+            return await _login_blocked_response(request)
+
         # Check if this is an account-linking request
         link_user_id = request.session.pop("link_user_id", None)
         state = request.query_params.get("state", "")
@@ -254,6 +287,8 @@ async def google_callback(request: Request):
 
         row = await database.fetch_one(users.select().where(users.c.google_id == google_id))
         if row:
+            if await login_denied_for_user_row(dict(row)):
+                return await _login_blocked_response(request)
             user_id = row["primary_user_id"] or row["id"]
             await database.execute(
                 users.update().where(users.c.google_id == google_id).values(name=name, avatar=avatar)

@@ -1,12 +1,14 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
-from bot.handlers.start import ensure_user
+from bot.handlers.start import ensure_user_or_blocked_reply
 from services.referral_service import get_referral_stats, referral_bonus_per_invite_rub
 from config import settings
 
 
 async def referral_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = await ensure_user(update.effective_user)
+    user = await ensure_user_or_blocked_reply(update)
+    if not user:
+        return
     stats = await get_referral_stats(user["id"])
 
     ref_link = f"https://t.me/{context.bot.username}?start={user['referral_code']}"

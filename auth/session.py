@@ -4,6 +4,7 @@ from jose import jwt, JWTError
 from config import settings
 from db.database import database
 from db.models import users, sessions
+from auth.blocked_identities import login_denied_for_user_row_sync
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
@@ -29,8 +30,11 @@ async def get_current_user(token: str) -> Optional[dict]:
     if row["primary_user_id"]:
         primary = await database.fetch_one(users.select().where(users.c.id == row["primary_user_id"]))
         if primary:
-            return dict(primary)
-    return dict(row)
+            row = primary
+    u = dict(row)
+    if login_denied_for_user_row_sync(u):
+        return None
+    return u
 
 
 async def get_user_from_request(request) -> Optional[dict]:

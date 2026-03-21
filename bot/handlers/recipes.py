@@ -1,6 +1,6 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
-from bot.handlers.start import ensure_user
+from bot.handlers.start import ensure_user, ensure_user_or_blocked_reply, BLOCKED_BOT_MSG
 from services.subscription_service import check_subscription
 from ai.openai_client import chat_with_ai
 from config import settings
@@ -13,7 +13,9 @@ RECIPE_PROMPT = (
 
 
 async def recipes_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = await ensure_user(update.effective_user)
+    user = await ensure_user_or_blocked_reply(update)
+    if not user:
+        return
     plan = await check_subscription(user["id"])
 
     if plan in ("start", "pro"):
@@ -47,9 +49,11 @@ async def recipes_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def recipe_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
-
     user = await ensure_user(query.from_user)
+    if not user:
+        await query.answer(BLOCKED_BOT_MSG, show_alert=True)
+        return
+    await query.answer()
     await query.message.chat.send_action("typing")
 
     recipe = await chat_with_ai(

@@ -42,6 +42,16 @@ async def handle_violation(user_id: int, reason: str, content: str, db) -> dict:
             "UPDATE users SET is_banned = true, ban_reason = :r WHERE id = :id",
             {"r": reason, "id": user_id},
         )
+        try:
+            from db.database import database as _db
+            from db.models import users as _users
+            from auth.blocked_identities import block_identities_for_user
+
+            full = await _db.fetch_one(_users.select().where(_users.c.id == user_id))
+            if full:
+                await block_identities_for_user(dict(full))
+        except Exception:
+            pass
         msg = "🚫 Аккаунт заблокирован навсегда\n\nПричина: систематические нарушения правил."
 
     # System DM

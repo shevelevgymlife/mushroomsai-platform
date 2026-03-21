@@ -1,14 +1,17 @@
 from telegram import Update, ForceReply
 from telegram.ext import ContextTypes, ConversationHandler, MessageHandler, filters, CommandHandler
 from db.database import database
-from db.models import feedback, users
-from bot.handlers.start import ensure_user
+from db.models import feedback
+from bot.handlers.start import ensure_user_or_blocked_reply
 
 AWAITING_FEEDBACK = 1
 
 
 async def feedback_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Пользователь нажал 'Написать нам' — просим ввести сообщение."""
+    user = await ensure_user_or_blocked_reply(update)
+    if not user:
+        return ConversationHandler.END
     await update.message.reply_text(
         "Напишите ваше сообщение, вопрос или предложение — мы обязательно ответим.\n\n"
         "Для отмены напишите /cancel",
@@ -19,8 +22,9 @@ async def feedback_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def feedback_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Получаем сообщение и сохраняем в БД."""
-    tg_user = update.effective_user
-    user = await ensure_user(tg_user)
+    user = await ensure_user_or_blocked_reply(update)
+    if not user:
+        return ConversationHandler.END
     message_text = update.message.text.strip()
 
     try:

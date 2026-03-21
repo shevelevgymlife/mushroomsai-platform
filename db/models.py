@@ -389,6 +389,16 @@ moderation_log = sqlalchemy.Table(
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
 
+blocked_identities = sqlalchemy.Table(
+    "blocked_identities",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("id_type", sqlalchemy.String(32), nullable=False),
+    sqlalchemy.Column("id_value", sqlalchemy.String(512), nullable=False),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+    sqlalchemy.UniqueConstraint("id_type", "id_value", name="uq_blocked_identities_type_value"),
+)
+
 ai_training_posts = sqlalchemy.Table(
     "ai_training_posts",
     metadata,

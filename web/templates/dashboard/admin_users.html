@@ -362,8 +362,8 @@ async function toggleMarketplaceSeller(userId, currentlyOn) {
 }
 
 async function deleteForever(userId, userName) {
-  if (!confirm(`УДАЛИТЬ "${userName}" (ID ${userId}) навсегда?\nВсе данные будут уничтожены.`)) return;
-  if (!confirm(`Это действие НЕОБРАТИМО.\nПользователь, его посты, лайки, сообщения и диалоги будут удалены.\n\nПодтвердить удаление?`)) return;
+  if (!confirm(`УДАЛИТЬ "${userName}" (ID ${userId}) навсегда?\n\nВся история, посты и сессии исчезнут. Блокировка по этому аккаунту снимется — тот же Telegram/Google сможет зайти как новый пользователь.`)) return;
+  if (!confirm(`Это НЕОБРАТИМО. Подтвердить полное удаление?`)) return;
   try {
     const resp = await fetch('/admin/users/' + userId + '/permanent', {method: 'DELETE'});
     const data = await resp.json();
@@ -499,7 +499,7 @@ async function revokeAllPerms() {
 }
 
 async function banUser(userId, userName) {
-  if (!confirm(`Заблокировать пользователя "${userName}"?`)) return;
+  if (!confirm(`Заблокировать "${userName}"?\n\nЕго Telegram / Google / email попадут в чёрный список — войти снова не получится, пока вы не нажмёте «Разбанить».`)) return;
   const r = await fetch(`/admin/users/${userId}/ban`, {method:'POST'});
   const d = await r.json();
   if (d.ok) window.location.reload();

@@ -2,12 +2,14 @@ import io
 from telegram import Update
 from telegram.ext import ContextTypes
 from services.pdf_service import generate_recipe_pdf
-from bot.handlers.start import ensure_user
+from bot.handlers.start import ensure_user_or_blocked_reply
 from services.subscription_service import check_subscription
 
 
 async def send_pdf_recipe(update: Update, context: ContextTypes.DEFAULT_TYPE, recipe_text: str, title: str = "Персональный протокол"):
-    user = await ensure_user(update.effective_user)
+    user = await ensure_user_or_blocked_reply(update)
+    if not user:
+        return
     plan = await check_subscription(user["id"])
 
     if plan not in ("start", "pro"):

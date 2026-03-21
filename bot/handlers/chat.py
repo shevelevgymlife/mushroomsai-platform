@@ -4,7 +4,7 @@ from db.database import database
 from db.models import users, knowledge_base, shop_products
 from ai.openai_client import chat_with_ai
 from services.subscription_service import can_ask_question, increment_question_count
-from bot.handlers.start import ensure_user
+from bot.handlers.start import ensure_user_or_blocked_reply
 
 # Telegram IDs with unlimited access
 UNLIMITED_USERS = [742166400, 162329668]
@@ -115,7 +115,9 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     tg_user = update.effective_user
-    user = await ensure_user(tg_user)
+    user = await ensure_user_or_blocked_reply(update)
+    if not user:
+        return
 
     # If this TG account is linked to a primary (Google) account,
     # use the primary account's ID for all history/limits operations.

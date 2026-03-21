@@ -6,6 +6,7 @@ from fastapi import APIRouter, Request, Form, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from web.templates_utils import Jinja2Templates
 from auth.session import get_user_from_request
+from auth.blocked_identities import block_identities_for_user, unblock_identities_for_user
 from db.database import database
 from db.models import (
     users, messages, leads, products, orders, posts,
@@ -519,6 +520,12 @@ async def ban_user(request: Request, user_id: int):
     admin = await require_permission(request, "can_users")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
+    target = await database.fetch_one(users.select().where(users.c.id == user_id))
+    if not target:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    if is_super_admin(target):
+        return JSONResponse({"error": "protected"}, status_code=403)
+    await block_identities_for_user(dict(target))
     await database.execute(
         users.update().where(users.c.id == user_id).values(is_banned=True)
     )
@@ -530,6 +537,9 @@ async def unban_user(request: Request, user_id: int):
     admin = await require_permission(request, "can_users")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
+    target = await database.fetch_one(users.select().where(users.c.id == user_id))
+    if target:
+        await unblock_identities_for_user(dict(target))
     await database.execute(
         users.update().where(users.c.id == user_id).values(
             is_banned=False, ban_until=None, ban_reason=None, violations_count=0
@@ -1032,7 +1042,7 @@ async def constructor(request: Request):
 
 @router.delete("/users/{user_id}/permanent")
 async def delete_user_permanent(request: Request, user_id: int):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_users")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
 
@@ -1043,6 +1053,8 @@ async def delete_user_permanent(request: Request, user_id: int):
         return JSONResponse({"error": "protected"}, status_code=403)
     if (target.get("role") or "") == "admin":
         return JSONResponse({"error": "Нельзя удалить администратора"}, status_code=403)
+
+    await unblock_identities_for_user(dict(target))
 
     import sqlalchemy as sa_
     for sql in [

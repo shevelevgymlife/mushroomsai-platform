@@ -6,8 +6,19 @@ from db.database import database
 from db.models import users
 from config import settings
 
+BLOCKED_BOT_MSG = (
+    "🚫 Доступ к аккаунту ограничен администратором. "
+    "Если это ошибка, напишите в поддержку проекта."
+)
 
-async def ensure_user(tg_user) -> dict:
+
+async def ensure_user(tg_user) -> dict | None:
+    from auth.blocked_identities import is_identity_blocked, login_denied_for_user_row
+
+    tid = str(int(tg_user.id))
+    if await is_identity_blocked("tg_id", tid):
+        return None
+
     row = await database.fetch_one(users.select().where(users.c.tg_id == tg_user.id))
     if not row:
         referral_code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
@@ -21,7 +32,28 @@ async def ensure_user(tg_user) -> dict:
             )
         )
         row = await database.fetch_one(users.select().where(users.c.id == user_id))
-    return dict(row)
+    u = dict(row)
+    if await login_denied_for_user_row(u):
+        return None
+    return u
+
+
+async def ensure_user_or_blocked_reply(update: Update) -> dict | None:
+    """Как ensure_user; при блокировке отвечает пользователю и возвращает None."""
+    tg = update.effective_user
+    if not tg:
+        return None
+    u = await ensure_user(tg)
+    if u:
+        return u
+    if update.message:
+        await update.message.reply_text(BLOCKED_BOT_MSG)
+    elif update.callback_query:
+        try:
+            await update.callback_query.answer(BLOCKED_BOT_MSG, show_alert=True)
+        except Exception:
+            pass
+    return None
 
 
 def main_keyboard(site_url: str):
@@ -48,7 +80,9 @@ def main_inline_keyboard(site_url: str):
 
 async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tg_user = update.effective_user
-    user = await ensure_user(tg_user)
+    user = await ensure_user_or_blocked_reply(update)
+    if not user:
+        return
 
     if context.args:
         ref_code = context.args[0]

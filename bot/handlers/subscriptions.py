@@ -1,6 +1,6 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
-from bot.handlers.start import ensure_user
+from bot.handlers.start import ensure_user_or_blocked_reply
 from services.subscription_service import check_subscription, PLANS
 from config import settings
 
@@ -42,7 +42,9 @@ PDF-протоколы — 990-1490 руб:
 
 
 async def subscriptions_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = await ensure_user(update.effective_user)
+    user = await ensure_user_or_blocked_reply(update)
+    if not user:
+        return
     plan = await check_subscription(user["id"])
     plan_name = PLANS.get(plan, {}).get("name", "Бесплатный")
 

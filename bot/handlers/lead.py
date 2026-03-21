@@ -2,13 +2,17 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler, MessageHandler, filters
 from db.database import database
 from db.models import leads
-from bot.handlers.start import ensure_user
+from bot.handlers.start import ensure_user_or_blocked_reply
 from config import settings
 
 ASK_NAME, ASK_PHONE, ASK_QUESTION = range(3)
 
 
 async def lead_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = await ensure_user_or_blocked_reply(update)
+    if not user:
+        from telegram.ext import ConversationHandler
+        return ConversationHandler.END
     await update.message.reply_text(
         "Запись на консультацию с Евгением Шевелевым.\n\n"
         "Введите ваше имя:"
@@ -29,7 +33,10 @@ async def lead_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def lead_question(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = await ensure_user(update.effective_user)
+    user = await ensure_user_or_blocked_reply(update)
+    if not user:
+        from telegram.ext import ConversationHandler
+        return ConversationHandler.END
     question = update.message.text
 
     await database.execute(
