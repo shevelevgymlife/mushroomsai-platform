@@ -207,7 +207,7 @@ async def dashboard(request: Request):
     except Exception:
         group_list = []
 
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         "dashboard/user.html",
         {
             "request": request,
@@ -233,6 +233,10 @@ async def dashboard(request: Request):
             "group_list": group_list,
         },
     )
+    # Не кэшировать HTML кабинета — иначе после деплоя виден старый интерфейс
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    return response
 
 
 @router.post("/api/chat")

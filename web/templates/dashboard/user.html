@@ -134,6 +134,10 @@
 
     <!-- ══ HOME ══ -->
     <section class="db-sec active" id="sec-home">
+      <div class="card-sm" style="margin-bottom:16px;border-color:rgba(201,168,76,.35);background:rgba(201,168,76,.07);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <span style="font-size:13px;color:#ddd;line-height:1.5">Кабинет обновляется: откройте справа <strong class="gold">Лента</strong> (соцсеть) или <strong class="gold">Группы</strong> — там новый дизайн и чаты.</span>
+        <button type="button" class="btn-o" style="flex-shrink:0;font-size:12px;padding:6px 12px" onclick="this.parentElement.remove()">Понятно</button>
+      </div>
       <div class="hero-card" style="margin-bottom:22px">
         <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
           <div class="av-wrap" onclick="document.getElementById('avInput').click()" title="Изменить фото">
@@ -322,8 +326,10 @@
       </div>
       </div><!-- /ig-feed-shell -->
     </section>
+    {% endif %}
 
-    <!-- ══ GROUP CHATS ══ -->
+    <!-- ══ GROUP CHATS (всегда для авторизованных — не зависит от блока «community» в админке) ══ -->
+    {% set group_list = group_list | default([]) %}
     <section class="db-sec" id="sec-groups">
       <div class="sect-title" style="margin-bottom:8px">Групповые чаты</div>
       <p class="muted" style="margin-bottom:18px;font-size:14px;line-height:1.5">Создайте тему — все участники смогут писать в общий чат. Цвета как на главной: тёмный фон и золото.</p>
@@ -361,7 +367,6 @@
         </div>
       </div>
     </section>
-    {% endif %}
 
     <!-- ══ MESSAGES ══ -->
     {% if 'messages' in vbk %}
