@@ -29,6 +29,9 @@ class AsyncDatabase:
         await asyncio.to_thread(engine.dispose)
 
     async def execute(self, query) -> Any:
+        if isinstance(query, str):
+            query = text(query)
+
         def _run():
             with engine.begin() as conn:
                 result = conn.execute(query)
