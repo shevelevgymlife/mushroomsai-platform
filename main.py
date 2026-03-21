@@ -123,7 +123,7 @@ async def lifespan(app: FastAPI):
                 ("profile_photo", "Фото профиля", 4, "start"),
                 ("posts", "Посты", 5, "start"),
                 ("tariffs", "Тарифы и подписка", 6, "all"),
-                ("referral", "Реферальная программа", 7, "start"),
+                ("referral", "Реферальная программа", 7, "all"),
                 ("knowledge_base", "База знаний", 8, "all"),
             ]
             for key, name, pos, al in blocks:
@@ -140,8 +140,14 @@ async def lifespan(app: FastAPI):
             await database.execute(
                 sa.text(
                     "UPDATE dashboard_blocks SET is_visible = true "
-                    "WHERE block_key IN ('community','messages','shop','posts','profile_photo','referral') "
+                    "WHERE block_key IN ('community','messages','shop','posts','profile_photo') "
                     "AND is_visible = false"
+                )
+            )
+            await database.execute(
+                sa.text(
+                    "UPDATE dashboard_blocks SET is_visible = true, access_level = 'all' "
+                    "WHERE block_key = 'referral'"
                 )
             )
     except Exception as e:
