@@ -52,6 +52,18 @@ class AsyncDatabase:
                 return dict(row._mapping) if row is not None else None
         return await asyncio.to_thread(_run)
 
+    async def fetch_one_write(self, query, params: Optional[dict] = None) -> Optional[dict]:
+        """INSERT/UPDATE … RETURNING — в транзакции с commit (иначе fetch_one откатывает изменения)."""
+        if isinstance(query, str):
+            query = text(query)
+
+        def _run():
+            with engine.begin() as conn:
+                result = conn.execute(query, params) if params is not None else conn.execute(query)
+                row = result.fetchone()
+                return dict(row._mapping) if row is not None else None
+        return await asyncio.to_thread(_run)
+
     async def fetch_all(self, query, params: Optional[dict] = None) -> List[dict]:
         def _run():
             with engine.connect() as conn:

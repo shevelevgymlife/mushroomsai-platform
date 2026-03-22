@@ -17,6 +17,7 @@ from ai.openai_client import chat_with_ai
 from services.subscription_service import can_ask_question, increment_question_count
 from services.plan_access import plan_allowed_block_keys, is_platform_operator
 from services.group_platform_settings import user_can_create_community_group
+from services.community_group_queries import fetch_community_group_row
 from services.legal import legal_acceptance_redirect
 from services.notify_admin import notify_admin_telegram
 import sqlalchemy as sa
@@ -1264,14 +1265,7 @@ async def _ensure_community_group_member(group_id: int, uid: int) -> bool:
     """Если пользователь — создатель или группа open, но строки в members нет — добавить (после сбоя INSERT)."""
     if await _user_in_community_group(group_id, uid):
         return True
-    g = await database.fetch_one(community_groups.select().where(community_groups.c.id == group_id))
-    if not g:
-        g = await database.fetch_one(
-            sa.text(
-                "SELECT id, name, description, created_at, created_by, join_mode, message_retention_days "
-                "FROM community_groups WHERE id = :gid"
-            ).bindparams(gid=group_id)
-        )
+    g = await fetch_community_group_row(group_id)
     if not g:
         return False
     cb = g.get("created_by")
@@ -1433,7 +1427,7 @@ async def community_group_create(request: Request):
         return JSONResponse({"ok": False, "error": "Слишком длинное название"}, status_code=400)
     row = None
     try:
-        row = await database.fetch_one(
+        row = await database.fetch_one_write(
             sa.text(
                 "INSERT INTO community_groups (name, description, created_by, join_mode) "
                 "VALUES (:n, :d, :c, 'open') RETURNING id"
@@ -1442,7 +1436,7 @@ async def community_group_create(request: Request):
     except Exception as e:
         _logger.warning("community_groups insert with join_mode failed: %s", e)
         try:
-            row = await database.fetch_one(
+            row = await database.fetch_one_write(
                 sa.text(
                     "INSERT INTO community_groups (name, description, created_by) "
                     "VALUES (:n, :d, :c) RETURNING id"
@@ -1485,7 +1479,7 @@ async def community_group_join(request: Request, group_id: int):
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
     uid = _effective_user_id(user)
-    g = await database.fetch_one(community_groups.select().where(community_groups.c.id == group_id))
+    g = await fetch_community_group_row(group_id)
     if not g:
         return JSONResponse({"error": "not found"}, status_code=404)
     mode = (g.get("join_mode") or "approval").lower()
@@ -1529,7 +1523,7 @@ async def community_group_join_requests_list(request: Request, group_id: int):
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
     uid = _effective_user_id(user)
-    g = await database.fetch_one(community_groups.select().where(community_groups.c.id == group_id))
+    g = await fetch_community_group_row(group_id)
     if not g:
         return JSONResponse({"error": "not found"}, status_code=404)
     if not _can_manage_community_group(g, user, uid):
@@ -1558,7 +1552,7 @@ async def community_group_join_approve(request: Request, group_id: int, request_
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
     uid = _effective_user_id(user)
-    g = await database.fetch_one(community_groups.select().where(community_groups.c.id == group_id))
+    g = await fetch_community_group_row(group_id)
     if not g:
         return JSONResponse({"error": "not found"}, status_code=404)
     if not _can_manage_community_group(g, user, uid):
@@ -1591,7 +1585,7 @@ async def community_group_join_reject(request: Request, group_id: int, request_i
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
     uid = _effective_user_id(user)
-    g = await database.fetch_one(community_groups.select().where(community_groups.c.id == group_id))
+    g = await fetch_community_group_row(group_id)
     if not g:
         return JSONResponse({"error": "not found"}, status_code=404)
     if not _can_manage_community_group(g, user, uid):
@@ -1611,15 +1605,7 @@ async def community_group_settings(request: Request, group_id: int):
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
     uid = _effective_user_id(user)
-    g = await database.fetch_one(community_groups.select().where(community_groups.c.id == group_id))
-    if not g:
-        g = await database.fetch_one(
-            sa.text(
-                "SELECT id, name, description, created_at, created_by, join_mode, message_retention_days, "
-                "slow_mode_seconds, show_history_to_new_members "
-                "FROM community_groups WHERE id = :gid"
-            ).bindparams(gid=group_id)
-        )
+    g = await fetch_community_group_row(group_id)
     if not g:
         _logger.warning("community_group_settings: group not found id=%s uid=%s", group_id, uid)
         return JSONResponse({"error": "not found"}, status_code=404)
@@ -1683,7 +1669,7 @@ async def community_group_messages_get(request: Request, group_id: int):
     uid = _effective_user_id(user)
     if not await _ensure_community_group_member(group_id, uid):
         return JSONResponse({"error": "not a member"}, status_code=403)
-    g_row = await database.fetch_one(community_groups.select().where(community_groups.c.id == group_id))
+    g_row = await fetch_community_group_row(group_id)
     mem_row = await database.fetch_one(
         community_group_members.select()
         .where(community_group_members.c.group_id == group_id)
@@ -1740,7 +1726,7 @@ async def community_group_message_post(request: Request, group_id: int):
     text = (body.get("text") or "").strip()
     if not text or len(text) > 8000:
         return JSONResponse({"error": "bad text"}, status_code=400)
-    g_row = await database.fetch_one(community_groups.select().where(community_groups.c.id == group_id))
+    g_row = await fetch_community_group_row(group_id)
     sm = None
     if g_row is not None:
         sm = g_row.get("slow_mode_seconds")

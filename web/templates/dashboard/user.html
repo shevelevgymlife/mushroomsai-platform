@@ -2322,7 +2322,13 @@ async function loadGroupMessages(gid, opts){
   const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
   try{
     const r = await fetch('/community/groups/' + gid + '/messages', { credentials: 'same-origin' });
-    const d = await r.json();
+    let d = {};
+    try{ d = await r.json(); }catch(_){}
+    if(!r.ok){
+      const err = d.detail || d.error || ('HTTP '+r.status);
+      if(!silent) box.innerHTML = '<div style="color:#f87171;text-align:center;padding:16px">'+esc(String(err))+'</div>';
+      return;
+    }
     if(d.error){ if(!silent) box.innerHTML = '<div style="color:#f87171;text-align:center;padding:16px">'+esc(d.error)+'</div>'; return; }
     const msgs = d.messages || [];
     box.innerHTML = msgs.map(m =>

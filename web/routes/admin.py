@@ -9,6 +9,7 @@ from services.subscription_service import PLANS
 from auth.session import get_user_from_request
 from auth.blocked_identities import block_identities_for_user, unblock_identities_for_user
 from db.database import database
+from services.community_group_queries import fetch_community_group_row
 from db.models import (
     users, messages, leads, products, orders, posts,
     page_views, ai_settings, subscriptions, knowledge_base,
@@ -1115,7 +1116,7 @@ async def admin_group_patch(request: Request, group_id: int):
         body = await request.json()
     except Exception:
         return JSONResponse({"error": "invalid json"}, status_code=400)
-    g = await database.fetch_one(community_groups.select().where(community_groups.c.id == group_id))
+    g = await fetch_community_group_row(group_id)
     if not g:
         return JSONResponse({"error": "not found"}, status_code=404)
     vals = {}
@@ -1220,7 +1221,7 @@ async def admin_group_delete(request: Request, group_id: int):
     admin = await require_admin(request)
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
-    g = await database.fetch_one(community_groups.select().where(community_groups.c.id == group_id))
+    g = await fetch_community_group_row(group_id)
     if not g:
         return JSONResponse({"error": "not found"}, status_code=404)
     await database.execute(community_groups.delete().where(community_groups.c.id == group_id))
