@@ -1425,6 +1425,16 @@ async def community_group_create(request: Request):
         return JSONResponse({"ok": False, "error": "Слишком короткое название"}, status_code=400)
     if len(nm) > 120:
         return JSONResponse({"ok": False, "error": "Слишком длинное название"}, status_code=400)
+    dup = await database.fetch_one(
+        sa.text(
+            "SELECT id FROM community_groups WHERE LOWER(TRIM(name)) = LOWER(TRIM(:n)) LIMIT 1"
+        ).bindparams(n=nm)
+    )
+    if dup:
+        return JSONResponse(
+            {"ok": False, "error": "Группа с таким названием уже существует"},
+            status_code=400,
+        )
     row = None
     try:
         row = await database.fetch_one_write(

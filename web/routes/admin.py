@@ -1123,6 +1123,13 @@ async def admin_group_patch(request: Request, group_id: int):
     if "name" in body:
         nm = (body.get("name") or "").strip()
         if 2 <= len(nm) <= 120:
+            dup = await database.fetch_one(
+                sqlalchemy.text(
+                    "SELECT id FROM community_groups WHERE LOWER(TRIM(name)) = LOWER(TRIM(:n)) AND id != :gid LIMIT 1"
+                ).bindparams(n=nm, gid=group_id)
+            )
+            if dup:
+                return JSONResponse({"error": "Группа с таким названием уже есть"}, status_code=400)
             vals["name"] = nm
     if "description" in body:
         d = body.get("description")

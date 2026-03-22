@@ -309,6 +309,12 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('me')"><span class="e">{{ ico('grid') }}</span><span class="lbl">Мой профиль</span></button>
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('feed')"><span class="e">{{ ico('feed') }}</span><span class="lbl">Лента</span></button>
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('groups')"><span class="e">{{ ico('message_sq') }}</span><span class="lbl">Группы и чаты</span></button>
+      {% if 'community' in vbk %}
+      <details class="ig-drawer-details" id="drawerGroupsDetails" style="border-bottom:1px solid rgba(255,255,255,.06)">
+        <summary class="ig-drawer-item ig-drawer-summary" style="list-style:none;cursor:pointer"><span class="e">{{ ico('message_sq') }}</span><span class="lbl">Список групп</span><span class="ig-drawer-chev" style="margin-left:auto;opacity:.5;font-size:10px">▼</span></summary>
+        <div id="drawerGroupList" style="padding:4px 8px 12px 18px;font-size:13px;max-height:min(42vh,320px);overflow-y:auto"></div>
+      </details>
+      {% endif %}
       {% if 'messages' in vbk %}
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('messages')"><span class="e">{{ ico('message') }}</span><span class="lbl">Сообщения</span></button>
       {% endif %}
@@ -1487,8 +1493,19 @@ function goSec(id){
   if(id==='ai'){setTimeout(()=>{const b=document.getElementById('chatBox');if(b)b.scrollTop=b.scrollHeight},100)}
   if(id==='messages')loadDMPreview();
   if(id==='feed'){setTimeout(()=>{markActivityRead();},500);}
-  if(id==='groups'){setTimeout(()=>{refreshGroupListFromApi();const p=document.getElementById('groupMsgBox');if(p)p.scrollTop=p.scrollHeight},80)}
-  else stopGroupPoll();
+  if(id==='groups'){
+    if(window.__groupsJustCreated){
+      setTimeout(function(){
+        const p=document.getElementById('groupMsgBox');
+        if(p)p.scrollTop=p.scrollHeight;
+      }, 0);
+    }else{
+      refreshGroupListFromApi().then(function(){
+        const p=document.getElementById('groupMsgBox');
+        if(p)p.scrollTop=p.scrollHeight;
+      });
+    }
+  }else stopGroupPoll();
   if(id==='me'||id==='profile'){
     setTimeout(initShevelevOnLoad,100);
     setTimeout(startShevelevAutoSync,200);
@@ -2090,6 +2107,7 @@ async function submitPlanUpgradeRequest(){
 // ── Group chats ──
 let selectedGroupId = null;
 let groupPollTimer = null;
+let _lastGroupMsgSig = {};
 window.__canCreateGroups = {{ can_create_groups | tojson }};
 window.__canManageGroupSettings = {{ can_manage_group_settings | default(false) | tojson }};
 
@@ -2102,13 +2120,46 @@ function startGroupPoll(){
   const item = document.querySelector('.ig-g-item[data-gid="'+selectedGroupId+'"]');
   if(!item || item.dataset.member !== '1') return;
   groupPollTimer = setInterval(()=>{
+    if(document.hidden) return;
     if(selectedGroupId) loadGroupMessages(selectedGroupId, { silent: true });
-  }, 3500);
+  }, 8000);
 }
+document.addEventListener('visibilitychange', function(){
+  if(document.hidden) stopGroupPoll();
+  else if(selectedGroupId){
+    const it = document.querySelector('.ig-g-item[data-gid="'+selectedGroupId+'"]');
+    if(it && it.dataset.member === '1'){ loadGroupMessages(selectedGroupId, { silent: true }); startGroupPoll(); }
+  }
+});
 
 function _dashUid(){
   const v=document.getElementById('dashUserId');
   return v?parseInt(v.value||'0',10)||0:0;
+}
+
+function syncDrawerGroupList(groups){
+  const el = document.getElementById('drawerGroupList');
+  if(!el) return;
+  function escD(t){
+    return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  if(!groups || !groups.length){
+    el.innerHTML = '<span style="color:#666;font-size:12px">Пока нет групп</span>';
+    return;
+  }
+  el.innerHTML = groups.map(function(g){
+    const nm = escD((g.name||'').trim() || ('Группа #'+g.id));
+    return '<button type="button" class="ig-drawer-subbtn" style="width:100%;text-align:left;padding-left:10px" onclick="openGroupFromDrawer('+g.id+')">'+nm+'</button>';
+  }).join('');
+}
+async function openGroupFromDrawer(gid){
+  closeDbDrawer();
+  window.__groupsJustCreated = true;
+  goSec('groups');
+  await refreshGroupListFromApi();
+  window.__groupsJustCreated = false;
+  const row = document.querySelector('.ig-g-item[data-gid="'+gid+'"]');
+  if(row) selectGroupChat(gid, row);
 }
 
 async function refreshGroupListFromApi(){
@@ -2119,6 +2170,8 @@ async function refreshGroupListFromApi(){
     const d = await r.json().catch(()=>({}));
     if(!r.ok || !Array.isArray(d.groups)) return;
     const groups = d.groups;
+    window.__groupsLast = groups;
+    syncDrawerGroupList(groups);
     const emptyMsg = window.__canCreateGroups ? 'Нет групп — нажмите «Новая группа»' : 'Пока нет групп';
     if(!groups.length){
       /* Не затирать список пустым ответом, если уже есть строки чатов (POST создал группу, а GET вернул [] из‑за рассинхрона/SQL). */
@@ -2219,6 +2272,8 @@ async function saveGroupRetention(){
 
 function selectGroupChat(id, el){
   stopGroupPoll();
+  const prevG = selectedGroupId;
+  if(prevG != null && String(prevG) !== String(id)) delete _lastGroupMsgSig[String(prevG)];
   selectedGroupId = id;
   document.querySelectorAll('.ig-g-item').forEach(x=>x.classList.remove('on'));
   if(el) el.classList.add('on');
@@ -2331,6 +2386,9 @@ async function loadGroupMessages(gid, opts){
     }
     if(d.error){ if(!silent) box.innerHTML = '<div style="color:#f87171;text-align:center;padding:16px">'+esc(d.error)+'</div>'; return; }
     const msgs = d.messages || [];
+    const sig = JSON.stringify(msgs.map(function(m){ return [m.id, m.text||'', m.created_at||'']; }));
+    if(silent && _lastGroupMsgSig[String(gid)] === sig) return;
+    _lastGroupMsgSig[String(gid)] = sig;
     box.innerHTML = msgs.map(m =>
       '<div class="ig-g-row '+(m.is_mine?'me':'them')+'">'+
       '<div class="ig-g-bubble '+(m.is_mine?'me':'them')+'">'+
@@ -2371,30 +2429,6 @@ async function sendGroupChatMessage(){
   }catch(e){}
 }
 
-function prependCreatedGroupToList(gid, name){
-  const el = document.getElementById('groupListEl');
-  if(!el || !gid) return;
-  el.querySelectorAll('.tg-empty-hint').forEach(function(x){ x.remove(); });
-  el.querySelectorAll(':scope > div').forEach(function(div){
-    const t = (div.textContent||'').trim();
-    if((t.indexOf('Нет групп')>=0 || t.indexOf('Пока нет групп')>=0) && !div.querySelector('.tg-chat-item-title')) div.remove();
-  });
-  function esc(t){ return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-  const uid = _dashUid();
-  const letter = (String(name||'').trim().charAt(0)||'?').toUpperCase();
-  const row = document.createElement('div');
-  row.className = 'ig-g-item tg-chat-item on';
-  row.dataset.title = name || '';
-  row.dataset.gid = String(gid);
-  row.dataset.member = '1';
-  row.dataset.join = 'open';
-  row.dataset.owner = String(uid||'');
-  row.dataset.pending = '0';
-  row.innerHTML = '<div class="tg-chat-av">'+esc(letter)+'</div><div class="tg-chat-item-text"><div class="tg-chat-item-title">'+esc(name)+'</div><div class="tg-chat-item-sub">1 участн. · вы в чате</div></div>';
-  row.addEventListener('click', function(){ selectGroupChat(gid, row); });
-  el.insertBefore(row, el.firstChild);
-}
-
 async function createGroupSubmit(){
   const n = document.getElementById('grpNameInp') && document.getElementById('grpNameInp').value.trim();
   if(!n || n.length < 2){ showNotification('Введите название группы (от 2 символов)','error'); return; }
@@ -2413,12 +2447,12 @@ async function createGroupSubmit(){
     if(okCreated){
       document.getElementById('grpCreateModal').style.display = 'none';
       showNotification('Группа создана','success');
-      prependCreatedGroupToList(gid, n);
+      window.__groupsJustCreated = true;
       goSec('groups');
-      setTimeout(function(){
-        const row = document.querySelector('.ig-g-item[data-gid="'+gid+'"]');
-        if(row) selectGroupChat(gid, row);
-      }, 120);
+      await refreshGroupListFromApi();
+      window.__groupsJustCreated = false;
+      const row = document.querySelector('.ig-g-item[data-gid="'+gid+'"]');
+      if(row) selectGroupChat(gid, row);
       return;
     }
     let hint403 = 'Создание группы недоступно: политика в админке «Группы» или тариф (проверьте ADMIN_TG_ID / ADMIN_EMAIL для операторов)';
