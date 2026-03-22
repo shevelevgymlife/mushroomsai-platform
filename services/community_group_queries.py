@@ -15,7 +15,7 @@ async def fetch_community_group_row(group_id: int) -> Optional[dict[str, Any]]:
         row = await database.fetch_one(
             sa.text(
                 "SELECT id, name, description, created_at, created_by, join_mode, message_retention_days, "
-                "slow_mode_seconds, show_history_to_new_members "
+                "slow_mode_seconds, show_history_to_new_members, image_url "
                 "FROM community_groups WHERE id = :gid"
             ).bindparams(gid=group_id)
         )
@@ -35,6 +35,7 @@ async def fetch_community_group_row(group_id: int) -> Optional[dict[str, Any]]:
         d = dict(row)
         d.setdefault("slow_mode_seconds", None)
         d.setdefault("show_history_to_new_members", True)
+        d.setdefault("image_url", None)
         return d
     except Exception:
         return None

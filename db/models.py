@@ -427,6 +427,7 @@ community_groups = sqlalchemy.Table(
     sqlalchemy.Column("message_retention_days", sqlalchemy.Integer, nullable=True),
     sqlalchemy.Column("slow_mode_seconds", sqlalchemy.Integer, nullable=True),
     sqlalchemy.Column("show_history_to_new_members", sqlalchemy.Boolean, default=True, server_default="true"),
+    sqlalchemy.Column("image_url", sqlalchemy.Text, nullable=True),
 )
 
 community_group_join_requests = sqlalchemy.Table(

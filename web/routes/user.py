@@ -1300,12 +1300,33 @@ def _can_manage_community_group(g: dict, user: dict, uid: int) -> bool:
     return is_platform_operator(user)
 
 
+def _can_edit_group_image(g: dict, user: dict, uid: int) -> bool:
+    """Аватар группы: оператор или создатель группы."""
+    if is_platform_operator(user):
+        return True
+    cb = g.get("created_by")
+    if cb is None:
+        return False
+    try:
+        return int(cb) == int(uid)
+    except (TypeError, ValueError):
+        return False
+
+
 def _group_rows_to_dicts(rows) -> list[dict]:
     out = []
     for r in rows:
         d = dict(r)
         d["is_member"] = bool(d.get("is_member"))
         d["pending_join"] = bool(d.get("pending_join"))
+        for k in ("msg_count", "member_count"):
+            if k in d and d[k] is not None:
+                try:
+                    d[k] = int(d[k])
+                except (TypeError, ValueError):
+                    pass
+        if not d.get("image_url"):
+            d["image_url"] = None
         out.append(d)
     return out
 
@@ -1313,7 +1334,7 @@ def _group_rows_to_dicts(rows) -> list[dict]:
 async def fetch_community_groups_for_user(uid: int) -> list[dict]:
     """Список групп для кабинета/API. Полный запрос с заявками; при ошибке — без join_requests (старая БД)."""
     q_full = """
-            SELECT g.id, g.name, g.description, g.created_at, g.created_by,
+            SELECT g.id, g.name, g.description, g.created_at, g.created_by, g.image_url,
               COALESCE(g.join_mode, 'approval') AS join_mode,
               g.message_retention_days,
               g.slow_mode_seconds,
@@ -1330,7 +1351,7 @@ async def fetch_community_groups_for_user(uid: int) -> list[dict]:
             LIMIT 80
         """
     q_simple = """
-            SELECT g.id, g.name, g.description, g.created_at, g.created_by,
+            SELECT g.id, g.name, g.description, g.created_at, g.created_by, g.image_url,
               COALESCE(g.join_mode, 'approval') AS join_mode,
               g.message_retention_days,
               g.slow_mode_seconds,
@@ -1345,6 +1366,7 @@ async def fetch_community_groups_for_user(uid: int) -> list[dict]:
         """
     q_minimal = """
             SELECT g.id, g.name, g.description, g.created_at, g.created_by,
+              NULL::text AS image_url,
               COALESCE(g.join_mode, 'approval') AS join_mode,
               g.message_retention_days,
               NULL::integer AS slow_mode_seconds,
@@ -1619,47 +1641,62 @@ async def community_group_settings(request: Request, group_id: int):
     if not g:
         _logger.warning("community_group_settings: group not found id=%s uid=%s", group_id, uid)
         return JSONResponse({"error": "not found"}, status_code=404)
-    if not _can_manage_community_group(g, user, uid):
-        return JSONResponse({"error": "forbidden"}, status_code=403)
     try:
         body = await request.json()
     except Exception:
         body = {}
+    is_op = _can_manage_community_group(g, user, uid)
+    if not is_op:
+        body = {k: body[k] for k in body if k == "image_url"}
     vals = {}
-    if "message_retention_days" in body:
-        v = body.get("message_retention_days")
-        if v is None or v == "":
-            vals["message_retention_days"] = None
-        else:
-            try:
-                n = int(v)
-                if n < 1:
-                    n = 1
-                if n > 36500:
-                    n = 36500
-                vals["message_retention_days"] = n
-            except (TypeError, ValueError):
-                pass
-    if "join_mode" in body:
-        jm = (body.get("join_mode") or "").strip().lower()
-        if jm in ("open", "approval"):
-            vals["join_mode"] = jm
-    if "slow_mode_seconds" in body:
-        v = body.get("slow_mode_seconds")
-        if v is None or v == "":
-            vals["slow_mode_seconds"] = None
-        else:
-            try:
-                n = int(v)
-                if n < 0:
-                    n = 0
-                if n > 86400:
-                    n = 86400
-                vals["slow_mode_seconds"] = n if n > 0 else None
-            except (TypeError, ValueError):
-                pass
-    if "show_history_to_new_members" in body:
-        vals["show_history_to_new_members"] = bool(body.get("show_history_to_new_members"))
+    if is_op:
+        if "message_retention_days" in body:
+            v = body.get("message_retention_days")
+            if v is None or v == "":
+                vals["message_retention_days"] = None
+            else:
+                try:
+                    n = int(v)
+                    if n < 1:
+                        n = 1
+                    if n > 36500:
+                        n = 36500
+                    vals["message_retention_days"] = n
+                except (TypeError, ValueError):
+                    pass
+        if "join_mode" in body:
+            jm = (body.get("join_mode") or "").strip().lower()
+            if jm in ("open", "approval"):
+                vals["join_mode"] = jm
+        if "slow_mode_seconds" in body:
+            v = body.get("slow_mode_seconds")
+            if v is None or v == "":
+                vals["slow_mode_seconds"] = None
+            else:
+                try:
+                    n = int(v)
+                    if n < 0:
+                        n = 0
+                    if n > 86400:
+                        n = 86400
+                    vals["slow_mode_seconds"] = n if n > 0 else None
+                except (TypeError, ValueError):
+                    pass
+        if "show_history_to_new_members" in body:
+            vals["show_history_to_new_members"] = bool(body.get("show_history_to_new_members"))
+    if "image_url" in body:
+        if not _can_edit_group_image(g, user, uid):
+            return JSONResponse({"error": "forbidden"}, status_code=403)
+        url = (body.get("image_url") or "").strip()
+        if url == "":
+            vals["image_url"] = None
+        elif len(url) <= 2000 and (
+            url.startswith("http://")
+            or url.startswith("https://")
+            or url.startswith("/media/")
+            or url.startswith("/static/")
+        ):
+            vals["image_url"] = url
     if vals:
         try:
             await database.execute(
@@ -1669,6 +1706,47 @@ async def community_group_settings(request: Request, group_id: int):
             _logger.exception("community_group_settings update failed")
             return JSONResponse({"ok": False, "error": str(e)[:200]}, status_code=500)
     return JSONResponse({"ok": True})
+
+
+_GROUP_IMG_ALLOWED = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+_GROUP_IMG_MAX = 6 * 1024 * 1024
+
+
+@router.post("/community/groups/{group_id}/upload-image")
+async def community_group_upload_image(request: Request, group_id: int, file: UploadFile = File(...)):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"ok": False, "error": "auth required"}, status_code=401)
+    uid = _effective_user_id(user)
+    g = await fetch_community_group_row(group_id)
+    if not g:
+        return JSONResponse({"ok": False, "error": "not found"}, status_code=404)
+    if not _can_edit_group_image(g, user, uid):
+        return JSONResponse({"ok": False, "error": "forbidden"}, status_code=403)
+    ct = (file.content_type or "").lower()
+    if ct not in _GROUP_IMG_ALLOWED:
+        return JSONResponse({"ok": False, "error": "Нужен JPEG, PNG, WebP или GIF"}, status_code=400)
+    data = await file.read()
+    if len(data) > _GROUP_IMG_MAX:
+        return JSONResponse({"ok": False, "error": "Файл слишком большой (макс. 6 МБ)"}, status_code=400)
+    ext = file.filename.rsplit(".", 1)[-1].lower() if file.filename and "." in file.filename else "jpg"
+    if ext not in ("jpg", "jpeg", "png", "webp", "gif"):
+        ext = "jpg"
+    filename = f"g{group_id}_{uuid.uuid4().hex}.{ext}"
+    base = "/data" if os.path.exists("/data") else "./media"
+    save_path = os.path.join(base, "community", "groups", filename)
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    with open(save_path, "wb") as f:
+        f.write(data)
+    image_url = f"/media/community/groups/{filename}"
+    try:
+        await database.execute(
+            community_groups.update().where(community_groups.c.id == group_id).values(image_url=image_url)
+        )
+    except Exception as e:
+        _logger.exception("community_group image update failed")
+        return JSONResponse({"ok": False, "error": str(e)[:200]}, status_code=500)
+    return JSONResponse({"ok": True, "image_url": image_url})
 
 
 @router.get("/community/groups/{group_id}/messages")

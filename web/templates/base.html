@@ -2,7 +2,7 @@
 <html lang="ru" class="scroll-smooth">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
   <title>{% block title %}MushroomsAI{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -32,7 +32,18 @@
   <link rel="stylesheet" href="/static/css/custom.css" />
   {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-bg text-text font-sans antialiased min-h-screen">
+<body class="bg-bg text-text font-sans antialiased min-h-screen{% block body_class %}{% endblock %}">
+<script>
+(function(){
+  function setAppVh(){
+    var h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    document.documentElement.style.setProperty('--vvh', h + 'px');
+  }
+  setAppVh();
+  window.addEventListener('resize', setAppVh);
+  if(window.visualViewport) window.visualViewport.addEventListener('resize', setAppVh);
+})();
+</script>
 <script>window._isLoggedIn = {{ 'true' if user else 'false' }};</script>
 
 <!-- Guest popup -->
@@ -67,6 +78,7 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
   {% include "components/footer.html" %}
 
   <script src="/static/js/app.js"></script>
+  <script src="/static/js/mobile-shell.js" defer></script>
   {% block extra_scripts %}{% endblock %}
   <script>
   function updateUnreadCount(){
