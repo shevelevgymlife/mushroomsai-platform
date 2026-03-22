@@ -49,16 +49,16 @@ async def block_identities_for_user(user: dict) -> None:
             text(
                 "INSERT INTO blocked_identities (id_type, id_value) VALUES (:t, :v) "
                 "ON CONFLICT (id_type, id_value) DO NOTHING"
-            ),
-            {"t": id_type, "v": id_value},
+            ).bindparams(t=id_type, v=id_value)
         )
 
 
 async def unblock_identities_for_user(user: dict) -> None:
     for id_type, id_value in collect_identities(user):
         await database.execute(
-            text("DELETE FROM blocked_identities WHERE id_type = :t AND id_value = :v"),
-            {"t": id_type, "v": id_value},
+            text("DELETE FROM blocked_identities WHERE id_type = :t AND id_value = :v").bindparams(
+                t=id_type, v=id_value
+            )
         )
 
 
@@ -85,8 +85,7 @@ async def is_identity_blocked(id_type: str, raw_value: str | None) -> bool:
     row = await database.fetch_one(
         text(
             "SELECT 1 AS x FROM blocked_identities WHERE id_type = :t AND id_value = :v LIMIT 1"
-        ),
-        {"t": id_type, "v": v},
+        ).bindparams(t=id_type, v=v)
     )
     return row is not None
 

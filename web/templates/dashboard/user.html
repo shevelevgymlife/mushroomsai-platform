@@ -144,14 +144,103 @@
 .sep{height:1px;background:rgba(255,255,255,.07);margin:18px 0}
 .spin{animation:spin360 .9s linear infinite;display:inline-block}
 @keyframes spin360{to{transform:rotate(360deg)}}
+
+/* ── Instagram-style dashboard (соцсеть) ── */
+.db-ig-mode #dbNav{display:none!important}
+.db-ig-mode .db-main{padding:56px 12px calc(68px + env(safe-area-inset-bottom,0px)) 12px;max-width:100%}
+@media(min-width:769px){.db-ig-mode .db-main{padding-left:24px;padding-right:24px}}
+.ig-dash-header{position:fixed;top:72px;left:0;right:0;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 12px 0 10px;background:rgba(8,8,8,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid rgba(255,255,255,.06);z-index:950;box-sizing:border-box}
+.ig-dash-header .ig-ham{width:44px;height:44px;border:none;border-radius:12px;background:transparent;color:#e8e8e8;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.ig-dash-header .ig-ham:hover{background:rgba(255,255,255,.06)}
+.ig-dash-header .ig-head-brand{font-family:Syne,Inter,system-ui,sans-serif;font-weight:700;font-size:1.05rem;letter-spacing:-0.02em;background:linear-gradient(90deg,#e8e8e8,#C9A84C);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;pointer-events:none}
+.ig-dash-header .ig-head-msg{width:44px;height:44px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:18px;color:#ccc;transition:border-color .2s,background .2s}
+.ig-dash-header .ig-head-msg:hover{border-color:rgba(201,168,76,.45);color:#C9A84C}
+.ig-drawer-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1040;opacity:0;pointer-events:none;transition:opacity .25s ease}
+.ig-drawer-backdrop.on{opacity:1;pointer-events:auto}
+.ig-drawer{position:fixed;top:0;left:0;bottom:0;width:min(300px,88vw);max-width:100%;background:#0c0c0c;border-right:1px solid rgba(255,255,255,.08);z-index:1050;transform:translateX(-102%);transition:transform .28s cubic-bezier(.22,1,.36,1);display:flex;flex-direction:column;padding:calc(72px + env(safe-area-inset-top,0px)) 0 calc(20px + env(safe-area-inset-bottom,0px));box-shadow:8px 0 40px rgba(0,0,0,.5)}
+.ig-drawer.open{transform:translateX(0)}
+.ig-drawer-head{padding:12px 18px 16px;border-bottom:1px solid rgba(255,255,255,.06)}
+.ig-drawer-head .nm{font-weight:700;color:#e8e8e8;font-size:16px}
+.ig-drawer-head .em{font-size:12px;color:#666;margin-top:4px;word-break:break-all}
+.ig-drawer-scroll{flex:1;overflow-y:auto;padding:10px 0 20px}
+.ig-drawer-item{width:100%;display:flex;align-items:center;gap:14px;padding:14px 20px;border:none;background:transparent;color:#ddd;font-size:15px;text-align:left;cursor:pointer;font-family:inherit;transition:background .15s}
+.ig-drawer-item:hover,.ig-drawer-item:focus-visible{background:rgba(255,255,255,.06);outline:none}
+.ig-drawer-item .e{font-size:20px;width:28px;text-align:center;flex-shrink:0}
+.ig-drawer-item .lbl{flex:1}
+.ig-drawer-sep{height:1px;background:rgba(255,255,255,.07);margin:10px 20px}
+.ig-tabbar{position:fixed;left:0;right:0;bottom:0;height:calc(56px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);background:rgba(8,8,8,.96);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid rgba(255,255,255,.08);display:flex;align-items:flex-start;justify-content:space-around;padding-top:6px;z-index:940;box-sizing:border-box}
+.ig-tabbar .ig-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:2px;padding:4px 4px 0;border:none;background:transparent;color:#777;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;max-width:88px}
+.ig-tabbar .ig-tab .ic{font-size:24px;line-height:1;opacity:.85}
+.ig-tabbar .ig-tab.on,.ig-tabbar .ig-tab.on .ic{color:#e8e8e8;opacity:1}
+.ig-tabbar .ig-tab.on .ic{filter:drop-shadow(0 0 10px rgba(201,168,76,.35))}
 </style>
 
 {% set vbk = visible_block_keys if visible_block_keys is defined else ['ai_chat','messages','community','shop','profile_photo','posts','tariffs','referral','knowledge_base'] %}
-<div class="db-wrap">
+{% set ig_social = 'community' in vbk %}
+{% set dash_home = 'profile' if ig_social else 'home' %}
+<div class="db-wrap{% if ig_social %} db-ig-mode{% endif %}">
+  {% if ig_social %}
+  <header class="ig-dash-header" aria-label="Панель ленты">
+    <button type="button" class="ig-ham" onclick="toggleDbDrawer()" aria-label="Открыть меню">☰</button>
+    <span class="ig-head-brand">MushroomsAI</span>
+    {% if 'messages' in vbk %}
+    <button type="button" class="ig-head-msg" style="border:none;cursor:pointer" title="Сообщения" aria-label="Сообщения" onclick="goSec('messages')">✉</button>
+    {% else %}
+    <span style="width:44px"></span>
+    {% endif %}
+  </header>
+  <div class="ig-drawer-backdrop" id="dbDrawerBackdrop" onclick="closeDbDrawer()"></div>
+  <aside class="ig-drawer" id="dbDrawer" aria-label="Меню">
+    <div class="ig-drawer-head">
+      <div class="nm">{{ user.name or 'Участник' }}</div>
+      <div class="em">{{ user.email or ('Telegram: ' + (user.tg_id|string) if user.tg_id else '') }}</div>
+    </div>
+    <div class="ig-drawer-scroll">
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('feed')"><span class="e">🏠</span><span class="lbl">Лента</span></button>
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('groups')"><span class="e">💬</span><span class="lbl">Группы и чаты</span></button>
+      {% if 'messages' in vbk %}
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('messages')"><span class="e">✉️</span><span class="lbl">Сообщения</span></button>
+      {% endif %}
+      {% if 'ai_chat' in vbk %}
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('ai')"><span class="e">🤖</span><span class="lbl">AI-чат</span></button>
+      {% endif %}
+      {% if 'knowledge_base' in vbk %}
+      <a href="https://t.me/ShevelevVlog" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none"><span class="e">📚</span><span class="lbl">База знаний</span></a>
+      {% endif %}
+      {% if 'shop' in vbk %}
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('shop')"><span class="e">🛒</span><span class="lbl">Магазин</span></button>
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('orders')"><span class="e">📦</span><span class="lbl">Мои заказы</span></button>
+      {% endif %}
+      {% if 'tariffs' in vbk %}
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('plan')"><span class="e">✨</span><span class="lbl">Тариф</span></button>
+      {% endif %}
+      {% if 'pro_telegram' in vbk or 'pro_pin_info' in vbk %}
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('proextras')"><span class="e">💎</span><span class="lbl">Про-функции</span></button>
+      {% endif %}
+      {% if 'seller_marketplace' in vbk %}
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('seller')"><span class="e">🏪</span><span class="lbl">Товары продавца</span></button>
+      {% endif %}
+      {% if 'referral' in vbk %}
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('referral')"><span class="e">🎁</span><span class="lbl">Реферальная программа</span></button>
+      {% endif %}
+      <div class="ig-drawer-sep"></div>
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();document.getElementById('sync-modal').style.display='flex'"><span class="e">🔗</span><span class="lbl">Синхронизация аккаунтов</span></button>
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('link')"><span class="e">⛓️</span><span class="lbl">Привязка Telegram / Google</span></button>
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('language')"><span class="e">🌐</span><span class="lbl">Язык интерфейса</span></button>
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('profile')"><span class="e">⚙️</span><span class="lbl">Профиль и настройки</span></button>
+      <div class="ig-drawer-sep"></div>
+      <a href="https://t.me/mushrooms_ai_bot" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none"><span class="e" style="color:#38bdf8">✈️</span><span class="lbl">Бот в Telegram</span></a>
+      {% if user.role == 'admin' %}
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();window.location='/admin'" style="color:#f87171"><span class="e">🛡️</span><span class="lbl">Администратор</span></button>
+      {% endif %}
+    </div>
+  </aside>
+  {% endif %}
   <!-- MAIN CONTENT -->
   <div class="db-main">
 
     <!-- ══ HOME ══ -->
+    {% if not ig_social %}
     <section class="db-sec active" id="sec-home">
       <div class="hero-card" style="margin-bottom:22px">
         <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
@@ -281,11 +370,13 @@
       </div>
       {% endif %}
     </section>
+    {% endif %}
 
     <!-- ══ FEED ══ -->
     {% if 'community' in vbk %}
-    <section class="db-sec" id="sec-feed">
+    <section class="db-sec{% if ig_social %} active{% endif %}" id="sec-feed">
       <div class="ig-feed-shell">
+      {% if not ig_social %}
       <div class="ig-feed-topbar">
         <span class="ig-brand">MushroomsAI</span>
         <div class="ig-feed-actions-top">
@@ -294,6 +385,7 @@
           <button type="button" class="ig-ic-btn" title="Сообщения" aria-label="Сообщения" onclick="goSec('messages')">✉</button>
         </div>
       </div>
+      {% endif %}
 
       {% if feed_raw %}
       <div class="ig-stories-wrap" aria-label="Участники ленты">
@@ -325,19 +417,19 @@
       <div class="card" style="margin-bottom:16px;border-color:rgba(201,168,76,.25);border-radius:18px">
         <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px">
           {% if user.avatar %}
-          <img src="{{ user.avatar }}" style="width:42px;height:42px;border-radius:50%;border:2px solid #C9A84C;object-fit:cover;flex-shrink:0;cursor:pointer" onclick="goSec('home')" alt="">
+          <img src="{{ user.avatar }}" style="width:42px;height:42px;border-radius:50%;border:2px solid #C9A84C;object-fit:cover;flex-shrink:0;cursor:pointer" onclick="goSec('{{ dash_home }}')" alt="">
           {% else %}
-          <div style="width:42px;height:42px;border-radius:50%;border:2px solid #C9A84C;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;cursor:pointer" onclick="goSec('home')">🍄</div>
+          <div style="width:42px;height:42px;border-radius:50%;border:2px solid #C9A84C;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;cursor:pointer" onclick="goSec('{{ dash_home }}')">🍄</div>
           {% endif %}
           <div style="flex:1;min-width:0">
-            <div style="font-size:14px;font-weight:700;color:#e8e8e8;cursor:pointer" onclick="goSec('home')">{{ user.name or 'Участник' }}</div>
+            <div style="font-size:14px;font-weight:700;color:#e8e8e8;cursor:pointer" onclick="goSec('{{ dash_home }}')">{{ user.name or 'Участник' }}</div>
             <div style="display:flex;gap:12px;font-size:12px;color:#555;margin-top:2px">
               <span><span class="gold">{{ my_post_count }}</span> постов</span>
               <span><span class="gold">{{ user.followers_count or 0 }}</span> подп.</span>
               <span><span class="gold">{{ user.following_count or 0 }}</span> подписок</span>
             </div>
           </div>
-          <button class="btn-o" onclick="goSec('home')" style="font-size:12px;padding:6px 12px;flex-shrink:0">👤 Мой профиль</button>
+          <button class="btn-o" onclick="goSec('profile')" style="font-size:12px;padding:6px 12px;flex-shrink:0">👤 Мой профиль</button>
         </div>
         <textarea id="quickPostText" class="sinp" style="width:100%;min-height:72px;resize:vertical;box-sizing:border-box" placeholder="Поделитесь с сообществом..."></textarea>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
@@ -367,7 +459,7 @@
       <div class="fp ig-post" id="fp-{{ p.id }}" data-uid="{{ p.user_id }}" data-mine="{{ 'true' if is_mine else 'false' }}" data-following="{{ 'true' if is_following_author else 'false' }}">
         <div class="ig-post-header">
           {% if is_mine %}
-          <div onclick="goSec('home')" style="cursor:pointer;flex-shrink:0">
+          <div onclick="goSec('{{ dash_home }}')" style="cursor:pointer;flex-shrink:0">
           {% else %}
           <a href="/community/profile/{{ p.user_id }}" style="flex-shrink:0;text-decoration:none">
           {% endif %}
@@ -376,7 +468,7 @@
           {% if is_mine %}</div>{% else %}</a>{% endif %}
           <div style="flex:1;min-width:0">
             {% if is_mine %}
-            <div style="font-size:14px;font-weight:700;color:#e8e8e8;cursor:pointer" onclick="goSec('home')">{{ a.name if a else 'Участник' }} <span style="font-size:11px;color:#C9A84C">● я</span></div>
+            <div style="font-size:14px;font-weight:700;color:#e8e8e8;cursor:pointer" onclick="goSec('{{ dash_home }}')">{{ a.name if a else 'Участник' }} <span style="font-size:11px;color:#C9A84C">● я</span></div>
             {% else %}
             <a href="/community/profile/{{ p.user_id }}" style="font-size:14px;font-weight:700;color:#e8e8e8;text-decoration:none">{{ a.name if a else 'Участник' }}</a>
             {% endif %}
@@ -840,6 +932,7 @@
 
   </div><!-- /db-main -->
 
+  {% if not ig_social %}
   <!-- NAV SIDEBAR (always right) -->
   <nav class="nav-sidebar" id="dbNav">
     {% macro ni(id,em,label,dot=False) %}
@@ -894,6 +987,24 @@
     <button class="nav-item" onclick="window.location='/admin'" style="color:#f87171">🛡️<span class="nav-tooltip">Администратор</span></button>
     {% endif %}
   </nav>
+  {% else %}
+  <nav class="nav-sidebar" id="dbNav" style="display:none" aria-hidden="true"></nav>
+  <nav class="ig-tabbar" id="igTabbar" aria-label="Нижняя навигация">
+    <button type="button" class="ig-tab on" data-igtab="feed" onclick="goSec('feed')"><span class="ic">🏠</span>Главная</button>
+    <button type="button" class="ig-tab" data-igtab="search" onclick="window.location.href='/community/members'"><span class="ic">🔍</span>Поиск</button>
+    <button type="button" class="ig-tab" data-igtab="create" onclick="igTabCreate()"><span class="ic" style="font-size:28px;font-weight:300;line-height:1">＋</span>Создать</button>
+    {% if 'messages' in vbk %}
+    <button type="button" class="ig-tab" data-igtab="messages" onclick="goSec('messages')"><span class="ic">✉️</span>Входящие</button>
+    {% elif 'shop' in vbk %}
+    <button type="button" class="ig-tab" data-igtab="shop" onclick="goSec('shop')"><span class="ic">🛒</span>Магазин</button>
+    {% elif 'tariffs' in vbk %}
+    <button type="button" class="ig-tab" data-igtab="plan" onclick="goSec('plan')"><span class="ic">✨</span>Тариф</button>
+    {% else %}
+    <button type="button" class="ig-tab" data-igtab="groups" onclick="goSec('groups')"><span class="ic">💬</span>Чаты</button>
+    {% endif %}
+    <button type="button" class="ig-tab" data-igtab="profile" onclick="goSec('profile')"><span class="ic">👤</span>Профиль</button>
+  </nav>
+  {% endif %}
 
 </div>
 
@@ -953,7 +1064,31 @@ if (window.location.search.includes('linked=')) {
 
 // ── Section routing ──
 const SECS = {{ dashboard_secs | default(['home','feed','groups','messages','ai','knowledge','shop','plan','orders','referral','link','language','profile']) | tojson }};
+const DEFAULT_SEC = SECS.includes('home') ? 'home' : (SECS[0] || 'feed');
+function closeDbDrawer(){
+  document.getElementById('dbDrawer')?.classList.remove('open');
+  document.getElementById('dbDrawerBackdrop')?.classList.remove('on');
+}
+function toggleDbDrawer(){
+  document.getElementById('dbDrawer')?.classList.toggle('open');
+  document.getElementById('dbDrawerBackdrop')?.classList.toggle('on');
+}
+function igTabCreate(){
+  goSec('feed');
+  setTimeout(()=>{
+    const t=document.getElementById('quickPostText');
+    if(t){t.focus();t.scrollIntoView({behavior:'smooth',block:'center'})}
+  },200);
+}
+function syncIgTabbar(id){
+  const bar=document.getElementById('igTabbar');
+  if(!bar)return;
+  bar.querySelectorAll('.ig-tab').forEach(t=>t.classList.remove('on'));
+  const key=(id==='feed'||id==='groups'||id==='messages'||id==='shop'||id==='plan'||id==='profile')?id:null;
+  if(key) bar.querySelector(`[data-igtab="${key}"]`)?.classList.add('on');
+}
 function goSec(id){
+  closeDbDrawer();
   SECS.forEach(s=>{
     document.getElementById('sec-'+s)?.classList.remove('active');
     document.getElementById('nav-'+s)?.classList.remove('active');
@@ -963,6 +1098,7 @@ function goSec(id){
   if(sec)sec.classList.add('active');
   if(btn)btn.classList.add('active');
   location.hash=id;
+  syncIgTabbar(id);
   if(id==='ai'){setTimeout(()=>{const b=document.getElementById('chatBox');if(b)b.scrollTop=b.scrollHeight},100)}
   if(id==='messages')loadDMPreview();
   if(id==='groups'){setTimeout(()=>{const p=document.getElementById('groupMsgBox');if(p)p.scrollTop=p.scrollHeight},80)}
@@ -971,7 +1107,7 @@ function goSec(id){
 // Init from hash
 (function(){
   const h=(location.hash||'').replace('#','');
-  goSec(SECS.includes(h)?h:'home');
+  goSec(SECS.includes(h)?h:DEFAULT_SEC);
 })();
 
 window.addEventListener('hashchange',()=>{

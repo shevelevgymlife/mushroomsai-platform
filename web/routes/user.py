@@ -69,9 +69,11 @@ async def compute_visible_blocks(user_id: int, plan: str) -> list[str]:
 
 def build_dashboard_secs(visible_block_keys: list[str]) -> list[str]:
     keys = set(visible_block_keys)
-    out: list[str] = ["home"]
+    # Соцсеть: сразу лента на весь экран, без отдельной «главной»
     if "community" in keys:
-        out.extend(["feed", "groups"])
+        out = ["feed", "groups"]
+    else:
+        out = ["home"]
     if "messages" in keys:
         out.append("messages")
     if "ai_chat" in keys:
