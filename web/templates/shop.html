@@ -6,9 +6,16 @@
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
     <!-- Header -->
-    <div class="mb-10">
-      <h1 class="text-4xl font-light text-text mb-2">Магазин</h1>
-      <p class="text-muted text-sm">Функциональные грибы — экстракты, капсулы, порошки</p>
+    <div class="mb-10 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+      <div>
+        <h1 class="text-4xl font-light text-text mb-2">Магазин</h1>
+        <p class="text-muted text-sm">Функциональные грибы — экстракты, капсулы, порошки</p>
+      </div>
+      {% if user %}
+      <a href="/shop/cart" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-sm text-text hover:border-gold hover:text-gold transition-colors">
+        Корзина{% if cart_qty %} <span class="text-gold font-medium">({{ cart_qty }})</span>{% endif %}
+      </a>
+      {% endif %}
     </div>
 
     <!-- Search + Sort -->

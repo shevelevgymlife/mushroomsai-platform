@@ -55,13 +55,14 @@
               </button>
               {% endif %}
 
-              {% if item.fb_user and item.fb_user.tg_id %}
+              {% if item.fb_user %}
               <button onclick="openReplyModal({{ item.fb.id }}, '{{ (item.fb_user.name or 'Пользователь') | e }}')"
                 class="px-3 py-1.5 rounded-lg text-xs bg-gold/10 border border-gold/30 text-gold hover:bg-gold/20 transition-colors font-medium">
-                Ответить в Telegram
+                Ответить пользователю
               </button>
+              <span class="text-xs text-muted block mt-1 max-w-md">Сообщение попадёт в кабинет (уведомления). В Telegram — только если пользователь не онлайн и привязан бот.</span>
               {% else %}
-              <span class="text-xs text-muted">Нет Telegram для ответа</span>
+              <span class="text-xs text-muted">Нет привязки к аккаунту</span>
               {% endif %}
             </div>
           </div>
@@ -136,11 +137,16 @@ async function sendReply() {
     });
     const data = await resp.json();
     if (data.ok) {
+      let extra = '';
+      if (data.user_was_online) extra += ' Пользователь онлайн — доставлено в кабинет.';
+      else if (data.telegram_sent) extra += ' Дубль отправлен в Telegram.';
+      else if (data.telegram_attempted) extra += ' Telegram не доставлен (проверьте бота).';
+      okEl.textContent = 'Сообщение отправлено.' + extra;
       okEl.classList.remove('hidden');
       setTimeout(() => {
         document.getElementById('replyModal').classList.add('hidden');
         window.location.reload();
-      }, 1000);
+      }, 1600);
     } else {
       errEl.textContent = data.error || 'Ошибка отправки';
       errEl.classList.remove('hidden');

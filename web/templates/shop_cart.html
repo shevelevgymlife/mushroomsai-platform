@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Корзина — MushroomsAI{% endblock %}
+
+{% block content %}
+<div class="pt-24 pb-16">
+  <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between mb-8">
+      <h1 class="text-3xl font-light text-text">Корзина</h1>
+      <a href="/shop" class="text-sm text-gold hover:underline">← В каталог</a>
+    </div>
+
+    {% if items %}
+    <div class="space-y-4 mb-8">
+      {% for it in items %}
+      {% set p = it.product %}
+      <div class="p-4 rounded-2xl bg-surface border border-border flex gap-4 flex-wrap items-center">
+        <a href="/shop/{{ p.id }}" class="w-20 h-20 rounded-xl overflow-hidden bg-bg border border-border flex-shrink-0">
+          {% if p.image_url %}
+          <img src="{{ p.image_url }}" alt="" class="w-full h-full object-cover" />
+          {% else %}
+          <div class="w-full h-full flex items-center justify-center text-2xl opacity-40">🍄</div>
+          {% endif %}
+        </a>
+        <div class="flex-1 min-w-0">
+          <a href="/shop/{{ p.id }}" class="font-medium text-text hover:text-gold text-sm">{{ p.name }}</a>
+          <p class="text-xs text-muted mt-1">{% if p.price %}{{ p.price }} ₽ × {{ it.line.quantity }}{% else %}Цена по запросу{% endif %}</p>
+        </div>
+        <div class="text-right">
+          <p class="text-gold font-semibold">{{ it.line_total }} ₽</p>
+        </div>
+        <form action="/shop/cart/update" method="post" class="flex items-center gap-2">
+          <input type="hidden" name="line_id" value="{{ it.line.id }}" />
+          <input type="number" name="quantity" value="{{ it.line.quantity }}" min="1" max="99"
+            class="w-16 px-2 py-1 rounded-lg bg-bg border border-border text-text text-sm text-center" />
+          <button type="submit" class="text-xs text-muted hover:text-gold border border-border rounded-lg px-2 py-1">OK</button>
+        </form>
+        <form action="/shop/cart/remove" method="post">
+          <input type="hidden" name="line_id" value="{{ it.line.id }}" />
+          <button type="submit" class="text-xs text-red-400/80 hover:text-red-400">Удалить</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="p-6 rounded-2xl bg-surface border border-border mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div>
+        <p class="text-sm text-muted">Итого</p>
+        <p class="text-2xl font-light text-text">{{ total }} <span class="text-lg text-muted">₽</span></p>
+      </div>
+      <a href="/shop/checkout"
+        class="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-all">
+        Оформить заказ
+      </a>
+    </div>
+    {% else %}
+    <div class="text-center py-16 text-muted">
+      <p class="text-4xl mb-4">🛒</p>
+      <p class="text-sm">Корзина пуста</p>
+      <a href="/shop" class="inline-block mt-4 text-gold text-sm hover:underline">Перейти в магазин</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

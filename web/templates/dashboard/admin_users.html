@@ -57,7 +57,7 @@
         <button type="button" onclick="toggleAct('actm{{ u.id }}')" class="w-full py-2 rounded-xl border border-border text-sm text-muted">Действия ▾</button>
         <div id="actm{{ u.id }}" class="hidden rounded-xl border border-border overflow-hidden divide-y divide-border">
           <a href="/admin/users/{{ u.id }}/dialogs" class="block px-3 py-2.5 text-sm text-text hover:bg-border/20" style="text-decoration:none">💬 Диалоги с AI</a>
-          <button type="button" onclick="closeAllActs();openMsgModal({{ u.id }}, '{{ u.name | e }}', '{{ u.display_tg_id or '' }}')" class="w-full text-left px-3 py-2.5 text-sm text-text hover:bg-border/20">✉️ Написать в Telegram</button>
+          <button type="button" onclick="closeAllActs();openMsgModal({{ u.id }}, '{{ u.name | e }}', '{{ u.display_tg_id or '' }}', {{ 'true' if u.is_online else 'false' }})" class="w-full text-left px-3 py-2.5 text-sm text-text hover:bg-border/20">✉️ Сообщение пользователю</button>
           <button type="button" onclick="closeAllActs();openSubModal({{ u.id }}, '{{ u.name | e }}', '{{ u.subscription_plan }}')" class="w-full text-left px-3 py-2.5 text-sm text-text hover:bg-border/20">⭐ Подписка</button>
           <button type="button" onclick="closeAllActs();toggleMarketplaceSeller({{ u.id }}, {{ 'true' if u.marketplace_seller else 'false' }})" class="w-full text-left px-3 py-2.5 text-sm text-text hover:bg-border/20">🏪 Продавец маркетплейса</button>
           {% if is_super %}
@@ -166,7 +166,7 @@
                   </button>
                   <div id="act{{ u.id }}" style="display:none;position:absolute;right:0;top:calc(100% + 4px);width:220px;background:#111;border:1px solid rgba(255,255,255,.12);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.7);overflow:hidden;z-index:9999">
                     <a href="/admin/users/{{ u.id }}/dialogs" style="display:block;padding:10px 16px;font-size:13px;color:#aaa;text-decoration:none;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='none'">💬 Диалоги с AI</a>
-                    <button onclick="closeAllActs();openMsgModal({{ u.id }}, '{{ u.name | e }}', '{{ u.display_tg_id or '' }}')" style="display:block;width:100%;text-align:left;padding:10px 16px;font-size:13px;color:#aaa;background:none;border:none;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='none'">✉️ Написать в Telegram</button>
+                    <button onclick="closeAllActs();openMsgModal({{ u.id }}, '{{ u.name | e }}', '{{ u.display_tg_id or '' }}', {{ 'true' if u.is_online else 'false' }})" style="display:block;width:100%;text-align:left;padding:10px 16px;font-size:13px;color:#aaa;background:none;border:none;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='none'">✉️ Сообщение пользователю</button>
                     <button onclick="closeAllActs();openSubModal({{ u.id }}, '{{ u.name | e }}', '{{ u.subscription_plan }}')" style="display:block;width:100%;text-align:left;padding:10px 16px;font-size:13px;color:#aaa;background:none;border:none;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='none'">⭐ Управление подпиской</button>
                     <button onclick="closeAllActs();toggleMarketplaceSeller({{ u.id }}, {{ 'true' if u.marketplace_seller else 'false' }})" style="display:block;width:100%;text-align:left;padding:10px 16px;font-size:13px;color:#aaa;background:none;border:none;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='none'">🏪 Продавец маркетплейса (Макси)</button>
                     {% if is_super %}
@@ -308,16 +308,17 @@
   </div>
 </div>
 
-<!-- Send TG Message Modal -->
+<!-- Message user (cabinet + TG if offline) -->
 <div id="msgModal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
   <div class="bg-surface border border-border rounded-2xl w-full max-w-sm p-6">
     <div class="flex items-center justify-between mb-4">
       <div>
-        <h2 class="font-semibold text-text">Написать в Telegram</h2>
+        <h2 class="font-semibold text-text">Сообщение пользователю</h2>
         <p class="text-xs text-muted mt-0.5">
-          Пользователь: <span id="msgUserName" class="text-text"></span>
+          <span id="msgUserName" class="text-text"></span>
           · <span class="font-mono" id="msgTgId"></span>
         </p>
+        <p id="msgDeliveryHint" class="text-[11px] text-muted mt-2 leading-relaxed"></p>
       </div>
       <button onclick="closeMsgModal()" class="text-muted hover:text-text text-xl">×</button>
     </div>
@@ -504,11 +505,20 @@ async function savePermissions() {
   }
 }
 
-// ── Send TG Message modal ────────────────────────────────────────────────────
-function openMsgModal(userId, userName, tgId) {
+// ── Message user (cabinet + optional Telegram) ────────────────────────────────
+function openMsgModal(userId, userName, tgId, isOnline) {
   currentUserId = userId;
   document.getElementById('msgUserName').textContent = userName || 'ID ' + userId;
-  document.getElementById('msgTgId').textContent = 'tg:' + tgId;
+  document.getElementById('msgTgId').textContent = tgId ? ('tg:' + tgId) : 'нет TG';
+  const hint = document.getElementById('msgDeliveryHint');
+  const online = !!isOnline;
+  if (online) {
+    hint.textContent = 'Сейчас онлайн — сообщение уйдёт в кабинет (уведомления). В Telegram не дублируем.';
+  } else if (tgId) {
+    hint.textContent = 'Не в сети и есть Telegram — дубль в бот + запись в кабинет.';
+  } else {
+    hint.textContent = 'Нет Telegram — только кабинет на сайте.';
+  }
   document.getElementById('msgText').value = '';
   document.getElementById('msgStatus').classList.add('hidden');
   document.getElementById('msgModal').classList.remove('hidden');
@@ -532,9 +542,13 @@ async function sendTgMessage() {
     statusEl.classList.remove('hidden');
     if (data.ok) {
       statusEl.className = 'mb-3 p-3 rounded-xl text-xs bg-green-500/10 border border-green-500/20 text-green-400';
-      statusEl.textContent = 'Сообщение отправлено';
+      let t = 'Отправлено в кабинет.';
+      if (data.user_was_online) t += ' (онлайн)';
+      else if (data.telegram_sent) t += ' Дубль в Telegram.';
+      else if (data.telegram_attempted) t += ' Telegram не доставлен.';
+      statusEl.textContent = t;
       document.getElementById('msgText').value = '';
-      setTimeout(closeMsgModal, 1500);
+      setTimeout(closeMsgModal, 1800);
     } else {
       statusEl.className = 'mb-3 p-3 rounded-xl text-xs bg-red-500/10 border border-red-500/20 text-red-400';
       statusEl.textContent = data.error || 'Ошибка отправки';

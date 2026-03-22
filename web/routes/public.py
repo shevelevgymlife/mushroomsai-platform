@@ -5,10 +5,31 @@ from fastapi import APIRouter, Request, Depends, UploadFile, File, Form
 from web.templates_utils import Jinja2Templates
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from db.database import database
-from db.models import products, posts, users, shop_products, product_reviews, community_posts, community_likes, community_folders, community_follows, community_saved, community_comments, profile_likes, direct_messages, homepage_blocks
+from db.models import (
+    products,
+    posts,
+    users,
+    shop_products,
+    product_reviews,
+    product_questions,
+    shop_cart_items,
+    shop_market_orders,
+    shop_market_order_items,
+    admin_permissions,
+    community_posts,
+    community_likes,
+    community_folders,
+    community_follows,
+    community_saved,
+    community_comments,
+    profile_likes,
+    direct_messages,
+    homepage_blocks,
+)
 from auth.session import get_user_from_request
 from config import settings
 from services.referral_service import attach_invite_ref_from_query
+from datetime import datetime
 
 
 def get_public_user_data(row: dict) -> dict:
@@ -27,6 +48,35 @@ def get_public_user_data(row: dict) -> dict:
 
 router = APIRouter()
 templates = Jinja2Templates(directory="web/templates")
+
+
+def _shop_effective_uid(user: dict) -> int:
+    return int(user.get("primary_user_id") or user["id"])
+
+
+async def _shop_cart_qty(user_id: int) -> int:
+    q = await database.fetch_val(
+        sa.select(sa.func.coalesce(sa.func.sum(shop_cart_items.c.quantity), 0)).where(
+            shop_cart_items.c.user_id == user_id
+        )
+    )
+    return int(q or 0)
+
+
+async def _can_answer_product_question(user_id: int, product: dict) -> bool:
+    urow = await database.fetch_one(users.select().where(users.c.id == user_id))
+    if not urow:
+        return False
+    if urow.get("role") in ("admin", "moderator"):
+        return True
+    perm = await database.fetch_one(
+        admin_permissions.select().where(admin_permissions.c.user_id == user_id)
+    )
+    if perm and perm.get("can_shop"):
+        return True
+    if urow.get("marketplace_seller") and product.get("seller_id") == user_id:
+        return True
+    return False
 
 MUSHROOM_TYPES = ["Рейши", "Шиитаке", "Кордицепс", "Ежовик", "Красный мухомор", "Пантерный мухомор", "Королевский мухомор"]
 CATEGORIES = ["Экстракт", "Плодовое тело", "Капсулы", "Порошок"]
@@ -161,6 +211,10 @@ async def shop(
         )
         ratings[p["id"]] = round(float(avg), 1) if avg else None
 
+    cart_qty = 0
+    if current_user:
+        cart_qty = await _shop_cart_qty(_shop_effective_uid(current_user))
+
     return templates.TemplateResponse(
         "shop.html",
         {
@@ -174,6 +228,7 @@ async def shop(
             "sel_category": category,
             "sort": sort,
             "search": search,
+            "cart_qty": cart_qty,
         },
     )
 
@@ -214,6 +269,29 @@ async def product_page(request: Request, product_id: int):
             .limit(4)
         )
 
+    q_rows = await database.fetch_all(
+        product_questions.select()
+        .where(product_questions.c.product_id == product_id)
+        .order_by(product_questions.c.created_at.desc())
+        .limit(50)
+    )
+    questions = []
+    for q in q_rows:
+        asker = None
+        if q["user_id"]:
+            asker = await database.fetch_one(users.select().where(users.c.id == q["user_id"]))
+        ans_by = None
+        if q["answered_by"]:
+            ans_by = await database.fetch_one(users.select().where(users.c.id == q["answered_by"]))
+        questions.append({"q": q, "asker": asker, "answerer": ans_by})
+
+    can_answer_questions = False
+    cart_qty = 0
+    if current_user:
+        uid = _shop_effective_uid(current_user)
+        cart_qty = await _shop_cart_qty(uid)
+        can_answer_questions = await _can_answer_product_question(uid, dict(product))
+
     return templates.TemplateResponse(
         "shop_product.html",
         {
@@ -223,6 +301,9 @@ async def product_page(request: Request, product_id: int):
             "reviews": reviews,
             "avg_rating": avg_rating,
             "similar": similar,
+            "product_questions": questions,
+            "can_answer_questions": can_answer_questions,
+            "cart_qty": cart_qty,
         },
     )
 
@@ -250,6 +331,337 @@ async def add_review(
         )
     )
     return RedirectResponse(f"/shop/{product_id}#reviews", status_code=302)
+
+
+@router.post("/shop/{product_id}/question")
+async def add_product_question(
+    request: Request,
+    product_id: int,
+    question_text: str = Form(...),
+):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return RedirectResponse(f"/login?next=/shop/{product_id}", status_code=302)
+    product = await database.fetch_one(
+        shop_products.select().where(shop_products.c.id == product_id)
+    )
+    if not product:
+        return HTMLResponse("Не найдено", status_code=404)
+    text = (question_text or "").strip()
+    if len(text) < 3:
+        return RedirectResponse(f"/shop/{product_id}#questions", status_code=302)
+    uid = _shop_effective_uid(current_user)
+    await database.execute(
+        product_questions.insert().values(
+            product_id=product_id,
+            user_id=uid,
+            question_text=text[:4000],
+        )
+    )
+    return RedirectResponse(f"/shop/{product_id}#questions", status_code=302)
+
+
+@router.post("/shop/questions/{question_id}/answer")
+async def answer_product_question(
+    request: Request,
+    question_id: int,
+    answer_text: str = Form(...),
+):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    qrow = await database.fetch_one(
+        product_questions.select().where(product_questions.c.id == question_id)
+    )
+    if not qrow:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    product = await database.fetch_one(
+        shop_products.select().where(shop_products.c.id == qrow["product_id"])
+    )
+    if not product:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    uid = _shop_effective_uid(current_user)
+    if not await _can_answer_product_question(uid, dict(product)):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    body = (answer_text or "").strip()
+    if len(body) < 1:
+        return JSONResponse({"error": "empty"}, status_code=400)
+    await database.execute(
+        product_questions.update()
+        .where(product_questions.c.id == question_id)
+        .values(answer_text=body[:8000], answered_by=uid, answered_at=datetime.utcnow())
+    )
+    return JSONResponse({"ok": True})
+
+
+@router.post("/shop/cart/add")
+async def shop_cart_add(
+    request: Request,
+    product_id: int = Form(...),
+    quantity: int = Form(1),
+):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return RedirectResponse(f"/login?next=/shop/{product_id}", status_code=302)
+    product = await database.fetch_one(
+        shop_products.select().where(shop_products.c.id == product_id)
+    )
+    if not product or not product.get("in_stock", True):
+        return RedirectResponse("/shop", status_code=302)
+    qty = max(1, min(99, int(quantity or 1)))
+    uid = _shop_effective_uid(current_user)
+    existing = await database.fetch_one(
+        shop_cart_items.select()
+        .where(shop_cart_items.c.user_id == uid)
+        .where(shop_cart_items.c.product_id == product_id)
+    )
+    if existing:
+        new_q = min(99, int(existing["quantity"] or 0) + qty)
+        await database.execute(
+            shop_cart_items.update()
+            .where(shop_cart_items.c.id == existing["id"])
+            .values(quantity=new_q)
+        )
+    else:
+        await database.execute(
+            shop_cart_items.insert().values(user_id=uid, product_id=product_id, quantity=qty)
+        )
+    nxt = request.query_params.get("next") or f"/shop/{product_id}"
+    return RedirectResponse(nxt, status_code=302)
+
+
+@router.post("/shop/cart/update")
+async def shop_cart_update(
+    request: Request,
+    line_id: int = Form(...),
+    quantity: int = Form(...),
+):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return RedirectResponse("/login?next=/shop/cart", status_code=302)
+    uid = _shop_effective_uid(current_user)
+    row = await database.fetch_one(
+        shop_cart_items.select().where(shop_cart_items.c.id == line_id)
+    )
+    if not row or row["user_id"] != uid:
+        return RedirectResponse("/shop/cart", status_code=302)
+    q = int(quantity or 0)
+    if q < 1:
+        await database.execute(shop_cart_items.delete().where(shop_cart_items.c.id == line_id))
+    else:
+        await database.execute(
+            shop_cart_items.update()
+            .where(shop_cart_items.c.id == line_id)
+            .values(quantity=min(99, q))
+        )
+    return RedirectResponse("/shop/cart", status_code=302)
+
+
+@router.post("/shop/cart/remove")
+async def shop_cart_remove(request: Request, line_id: int = Form(...)):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return RedirectResponse("/login?next=/shop/cart", status_code=302)
+    uid = _shop_effective_uid(current_user)
+    row = await database.fetch_one(
+        shop_cart_items.select().where(shop_cart_items.c.id == line_id)
+    )
+    if row and row["user_id"] == uid:
+        await database.execute(shop_cart_items.delete().where(shop_cart_items.c.id == line_id))
+    return RedirectResponse("/shop/cart", status_code=302)
+
+
+@router.get("/shop/cart", response_class=HTMLResponse)
+async def shop_cart_page(request: Request):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return RedirectResponse("/login?next=/shop/cart", status_code=302)
+    uid = _shop_effective_uid(current_user)
+    lines = await database.fetch_all(
+        shop_cart_items.select().where(shop_cart_items.c.user_id == uid)
+    )
+    items = []
+    total = 0
+    for line in lines:
+        p = await database.fetch_one(
+            shop_products.select().where(shop_products.c.id == line["product_id"])
+        )
+        if not p:
+            continue
+        price = int(p["price"] or 0)
+        qty = int(line["quantity"] or 1)
+        line_total = price * qty
+        total += line_total
+        items.append({"line": line, "product": p, "line_total": line_total})
+    cart_qty = await _shop_cart_qty(uid)
+    return templates.TemplateResponse(
+        "shop_cart.html",
+        {
+            "request": request,
+            "user": current_user,
+            "items": items,
+            "total": total,
+            "cart_qty": cart_qty,
+        },
+    )
+
+
+@router.get("/shop/checkout", response_class=HTMLResponse)
+async def shop_checkout_get(request: Request):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return RedirectResponse("/login?next=/shop/checkout", status_code=302)
+    uid = _shop_effective_uid(current_user)
+    lines = await database.fetch_all(
+        shop_cart_items.select().where(shop_cart_items.c.user_id == uid)
+    )
+    if not lines:
+        return RedirectResponse("/shop/cart", status_code=302)
+    items = []
+    total = 0
+    for line in lines:
+        p = await database.fetch_one(
+            shop_products.select().where(shop_products.c.id == line["product_id"])
+        )
+        if not p:
+            continue
+        price = int(p["price"] or 0)
+        qty = int(line["quantity"] or 1)
+        line_total = price * qty
+        total += line_total
+        items.append({"line": line, "product": p, "line_total": line_total})
+    if not items:
+        return RedirectResponse("/shop/cart", status_code=302)
+    cart_qty = await _shop_cart_qty(uid)
+    return templates.TemplateResponse(
+        "shop_checkout.html",
+        {
+            "request": request,
+            "user": current_user,
+            "items": items,
+            "total": total,
+            "cart_qty": cart_qty,
+        },
+    )
+
+
+@router.post("/shop/checkout")
+async def shop_checkout_post(
+    request: Request,
+    delivery_address: str = Form(...),
+    delivery_city: str = Form(""),
+    delivery_phone: str = Form(""),
+    delivery_comment: str = Form(""),
+):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return RedirectResponse("/login?next=/shop/checkout", status_code=302)
+    uid = _shop_effective_uid(current_user)
+    lines = await database.fetch_all(
+        shop_cart_items.select().where(shop_cart_items.c.user_id == uid)
+    )
+    if not lines:
+        return RedirectResponse("/shop/cart", status_code=302)
+    items = []
+    total = 0
+    for line in lines:
+        p = await database.fetch_one(
+            shop_products.select().where(shop_products.c.id == line["product_id"])
+        )
+        if not p or not p.get("in_stock", True):
+            return RedirectResponse("/shop/cart?err=stock", status_code=302)
+        price = int(p["price"] or 0)
+        qty = int(line["quantity"] or 1)
+        line_total = price * qty
+        total += line_total
+        items.append({"line": line, "product": p, "line_total": line_total})
+    addr = (delivery_address or "").strip()
+    if len(addr) < 5:
+        return RedirectResponse("/shop/checkout?err=addr", status_code=302)
+    oid = await database.execute(
+        shop_market_orders.insert().values(
+            user_id=uid,
+            status="new",
+            delivery_address=addr[:2000],
+            delivery_city=(delivery_city or "").strip()[:500] or None,
+            delivery_phone=(delivery_phone or "").strip()[:100] or None,
+            delivery_comment=(delivery_comment or "").strip()[:2000] or None,
+            total_amount=total,
+        )
+    )
+    if oid is None:
+        oid = await database.fetch_val(
+            sa.select(shop_market_orders.c.id)
+            .where(shop_market_orders.c.user_id == uid)
+            .order_by(shop_market_orders.c.id.desc())
+            .limit(1)
+        )
+    for it in items:
+        p = it["product"]
+        await database.execute(
+            shop_market_order_items.insert().values(
+                order_id=oid,
+                product_id=p["id"],
+                quantity=it["line"]["quantity"],
+                unit_price=p["price"],
+            )
+        )
+    for it in items:
+        await database.execute(
+            shop_cart_items.delete().where(shop_cart_items.c.id == it["line"]["id"])
+        )
+    return RedirectResponse(f"/shop/order/{oid}", status_code=302)
+
+
+@router.get("/shop/order/{order_id}", response_class=HTMLResponse)
+async def shop_order_thanks(request: Request, order_id: int):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return RedirectResponse("/login", status_code=302)
+    uid = _shop_effective_uid(current_user)
+    order = await database.fetch_one(
+        shop_market_orders.select().where(shop_market_orders.c.id == order_id)
+    )
+    if not order or order["user_id"] != uid:
+        return RedirectResponse("/shop", status_code=302)
+    oitems = await database.fetch_all(
+        shop_market_order_items.select().where(shop_market_order_items.c.order_id == order_id)
+    )
+    enriched = []
+    for oi in oitems:
+        pn = None
+        if oi["product_id"]:
+            pr = await database.fetch_one(
+                shop_products.select().where(shop_products.c.id == oi["product_id"])
+            )
+            if pr:
+                pn = pr.get("name")
+        d = dict(oi)
+        d["product_name"] = pn
+        enriched.append(d)
+    cart_qty = await _shop_cart_qty(uid)
+    return templates.TemplateResponse(
+        "shop_order_thanks.html",
+        {
+            "request": request,
+            "user": current_user,
+            "order": order,
+            "order_items": enriched,
+            "cart_qty": cart_qty,
+        },
+    )
+
+
+@router.get("/api/chain/decimal-balance")
+async def api_decimal_balance(address: str = ""):
+    """Публичное чтение баланса DEL по адресу (без авторизации)."""
+    from services.decimal_chain import fetch_native_del_balance
+
+    bal = await fetch_native_del_balance(address)
+    if bal is None:
+        return JSONResponse({"error": "invalid or unreachable"}, status_code=400)
+    fmt = f"{bal:.12f}".rstrip("0").rstrip(".") or "0"
+    return JSONResponse({"ok": True, "del": bal, "formatted": fmt})
 
 
 @router.get("/chat", response_class=HTMLResponse)

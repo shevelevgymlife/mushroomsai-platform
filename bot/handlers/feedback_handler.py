@@ -36,7 +36,8 @@ async def feedback_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         )
         await update.message.reply_text(
-            "Спасибо! Ваше сообщение получено. Мы ответим вам в ближайшее время. 🍄"
+            "Спасибо! Ваше сообщение получено. Ответ придёт в этот чат (если вы не на сайте) "
+            "и продублируется в личный кабинет на mushroomsai.ru. Продолжить диалог можно снова через «Написать нам». 🍄"
         )
     except Exception:
         await update.message.reply_text(

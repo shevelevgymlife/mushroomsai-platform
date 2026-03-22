@@ -6,7 +6,9 @@ from fastapi import APIRouter, Request, Form, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from auth.session import get_user_from_request
 from db.database import database
-from db.models import shop_products, users
+import sqlalchemy as sa
+
+from db.models import shop_products, users, product_questions
 from services.subscription_service import check_subscription
 from web.templates_utils import Jinja2Templates
 
@@ -78,9 +80,47 @@ async def seller_shop_page(request: Request):
         .order_by(shop_products.c.id.desc())
     )
     products = [dict(r) for r in rows]
+    pending_q = await database.fetch_val(
+        sa.select(sa.func.count())
+        .select_from(
+            product_questions.join(
+                shop_products, product_questions.c.product_id == shop_products.c.id
+            )
+        )
+        .where(shop_products.c.seller_id == uid)
+        .where(product_questions.c.answer_text.is_(None))
+    )
     return templates.TemplateResponse(
         "dashboard/seller_shop.html",
-        {"request": request, "user": seller, "products": products},
+        {
+            "request": request,
+            "user": seller,
+            "products": products,
+            "pending_questions_count": int(pending_q or 0),
+        },
+    )
+
+
+@router.get("/questions", response_class=HTMLResponse)
+async def seller_questions_page(request: Request):
+    seller = await require_maxi_seller(request)
+    if not seller:
+        return RedirectResponse("/dashboard", status_code=302)
+    uid = seller["id"]
+    rows = await database.fetch_all(
+        sa.select(product_questions, shop_products.c.name.label("product_name"))
+        .select_from(
+            product_questions.join(
+                shop_products, product_questions.c.product_id == shop_products.c.id
+            )
+        )
+        .where(shop_products.c.seller_id == uid)
+        .where(product_questions.c.answer_text.is_(None))
+        .order_by(product_questions.c.created_at.asc())
+    )
+    return templates.TemplateResponse(
+        "dashboard/seller_questions.html",
+        {"request": request, "user": seller, "questions": rows},
     )
 
 

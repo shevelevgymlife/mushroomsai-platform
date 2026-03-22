@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Вопросы покупателей — MushroomsAI{% endblock %}
+
+{% block content %}
+<div class="pt-24 pb-16">
+  <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+    <a href="/seller/shop" class="text-xs text-muted hover:text-gold transition-colors mb-4 inline-block">← Мои товары</a>
+    <h1 class="text-3xl font-light text-text mb-2">Вопросы без ответа</h1>
+    <p class="text-sm text-muted mb-8">Ответы появятся на карточке товара в разделе «Вопросы о товаре».</p>
+
+    {% if questions %}
+    <div class="space-y-6">
+      {% for q in questions %}
+      <div class="p-5 rounded-2xl bg-surface border border-border">
+        <p class="text-xs text-gold mb-1">{{ q.product_name or 'Товар' }} · <a href="/shop/{{ q.product_id }}" class="hover:underline" target="_blank">открыть</a></p>
+        <p class="text-sm text-text mb-3">{{ q.question_text }}</p>
+        <p class="text-xs text-muted mb-3">{{ q.created_at.strftime('%d.%m.%Y %H:%M') if q.created_at else '' }}</p>
+        <textarea id="ta-{{ q.id }}" rows="3" placeholder="Ваш ответ покупателю..."
+          class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-text text-sm resize-none focus:border-gold/60 mb-2"></textarea>
+        <button type="button" onclick="sendAns({{ q.id }})"
+          class="px-4 py-2 rounded-xl bg-gold text-bg text-sm font-semibold hover:bg-gold-light">Отправить</button>
+        <p id="e-{{ q.id }}" class="hidden text-xs text-red-400 mt-2"></p>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-muted text-sm">Нет открытых вопросов.</p>
+    {% endif %}
+  </div>
+</div>
+<script>
+async function sendAns(id) {
+  const ta = document.getElementById('ta-' + id);
+  const err = document.getElementById('e-' + id);
+  err.classList.add('hidden');
+  const text = (ta && ta.value || '').trim();
+  if (!text) return;
+  const fd = new FormData();
+  fd.append('answer_text', text);
+  const r = await fetch('/shop/questions/' + id + '/answer', { method: 'POST', body: fd });
+  const d = await r.json();
+  if (d.ok) location.reload();
+  else { err.textContent = d.error || 'Ошибка'; err.classList.remove('hidden'); }
+}
+</script>
+{% endblock %}

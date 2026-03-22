@@ -467,6 +467,18 @@
         {% else %}
         <p style="font-size:12px;color:#555;margin-bottom:12px">Баланс SHEVELEV: задайте <code>SHEVELEV_TOKEN_ADDRESS</code> на сервере.</p>
         {% endif %}
+        <div style="margin-bottom:16px;padding:14px 16px;border-radius:14px;background:rgba(147,197,253,.08);border:1px solid rgba(147,197,253,.28);max-width:420px">
+          <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Баланс DEL (Decimal Smart Chain)</div>
+          <div id="delBalMe" style="font-size:20px;font-weight:700;color:#93c5fd">
+            {% if user.get('decimal_del_balance') is not none and user.get('decimal_del_balance') != '' %}{{ user.decimal_del_balance }} DEL{% else %}—{% endif %}
+          </div>
+          {% if user.get('decimal_balance_cached_at') %}
+          <div style="font-size:11px;color:#666;margin-top:4px">Синхронизация: {{ user.decimal_balance_cached_at }}</div>
+          {% endif %}
+          <button type="button" class="btn-o" style="margin-top:10px;font-size:12px" onclick="syncDelBalance()">Синхронизировать с блокчейном</button>
+          <div id="delBalErrMe" style="display:none;font-size:12px;color:#f87171;margin-top:6px"></div>
+          <p style="font-size:11px;color:#555;margin-top:8px;line-height:1.4">Запрос идёт на RPC <code style="font-size:10px">node.decimalchain.com</code> по адресу из профиля. SHEVELEV в MetaMask по-прежнему читается в браузере.</p>
+        </div>
         <div id="meEditPanel" class="card" style="display:none;margin-bottom:20px;padding:18px;border-radius:16px">
           <div style="font-size:13px;font-weight:600;color:#888;margin-bottom:12px">Редактирование</div>
           <input id="meName" class="sinp" style="margin-bottom:10px" value="{{ user.name or '' }}" placeholder="Имя">
@@ -1516,6 +1528,26 @@ async function saveWallet(addr){
   const st=document.getElementById('wltSt');if(st)st.innerHTML=`<span style="color:#4ade80">✓ ${sh}</span>`;
   const stm=document.getElementById('wltStMe');if(stm)stm.innerHTML=`<span style="color:#4ade80">Кошелёк: ${a.slice(0,10)}…${a.slice(-4)}</span>`;
   if(window.ethereum&&SHEVELEV_TOKEN)loadSHEVELEVBalance(a);
+}
+
+async function syncDelBalance(){
+  const el=document.getElementById('delBalMe');
+  const er=document.getElementById('delBalErrMe');
+  if(er){er.style.display='none';er.textContent='';}
+  if(el)el.textContent='…';
+  try{
+    const r=await fetch('/profile/wallet/sync-decimal',{method:'POST'});
+    const d=await r.json();
+    if(!d.ok){
+      if(er){er.textContent=d.error||'Ошибка';er.style.display='block';}
+      if(el)el.textContent='—';
+      return;
+    }
+    if(el)el.textContent=(d.formatted!=null?String(d.formatted):String(d.del))+' DEL';
+  }catch(e){
+    if(er){er.textContent=e.message||'Сеть';er.style.display='block';}
+    if(el)el.textContent='—';
+  }
 }
 
 // ── Save profile (кабинет + экран «я») ──

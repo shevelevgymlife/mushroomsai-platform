@@ -660,18 +660,25 @@ async def send_message_to_user(request: Request, user_id: int, text: str = Form(
     if not target:
         return JSONResponse({"error": "not found"}, status_code=404)
 
-    tg_id = target.get("tg_id") or target.get("linked_tg_id")
-    if not tg_id:
-        return JSONResponse({"error": "У пользователя нет Telegram ID"}, status_code=400)
+    from services.support_delivery import deliver_support_message
 
-    from config import settings
-    from telegram import Bot
-    bot = Bot(token=settings.TELEGRAM_TOKEN)
-    try:
-        await bot.send_message(chat_id=tg_id, text=text)
-        return JSONResponse({"ok": True})
-    except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+    aid = admin.get("primary_user_id") or admin["id"]
+    result = await deliver_support_message(
+        admin_id=aid,
+        recipient_user_id=user_id,
+        text=text,
+        feedback_id=None,
+    )
+    if not result.get("ok"):
+        return JSONResponse({"error": result.get("error", "delivery failed")}, status_code=400)
+    return JSONResponse(
+        {
+            "ok": True,
+            "user_was_online": result.get("user_was_online"),
+            "telegram_sent": result.get("telegram_sent"),
+            "telegram_attempted": result.get("telegram_attempted"),
+        }
+    )
 
 
 @router.get("/users/{user_id}/dialogs", response_class=HTMLResponse)
@@ -750,20 +757,32 @@ async def reply_to_feedback(request: Request, feedback_id: int, reply_text: str 
         return JSONResponse({"error": "not found"}, status_code=404)
 
     target_user = await database.fetch_one(users.select().where(users.c.id == fb_row["user_id"]))
-    if not target_user or not target_user["tg_id"]:
-        return JSONResponse({"error": "no telegram"}, status_code=400)
+    if not target_user:
+        return JSONResponse({"error": "not found"}, status_code=404)
 
-    from config import settings
-    from telegram import Bot
-    bot = Bot(token=settings.TELEGRAM_TOKEN)
-    try:
-        await bot.send_message(chat_id=target_user["tg_id"], text=f"💬 Ответ от команды MushroomsAI:\n\n{reply_text}")
-        await database.execute(
-            feedback.update().where(feedback.c.id == feedback_id).values(status="replied")
-        )
-        return JSONResponse({"ok": True})
-    except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+    from services.support_delivery import deliver_support_message
+
+    aid = admin.get("primary_user_id") or admin["id"]
+    result = await deliver_support_message(
+        admin_id=aid,
+        recipient_user_id=fb_row["user_id"],
+        text=reply_text,
+        feedback_id=feedback_id,
+    )
+    if not result.get("ok"):
+        return JSONResponse({"error": result.get("error", "delivery failed")}, status_code=400)
+
+    await database.execute(
+        feedback.update().where(feedback.c.id == feedback_id).values(status="replied")
+    )
+    return JSONResponse(
+        {
+            "ok": True,
+            "user_was_online": result.get("user_was_online"),
+            "telegram_sent": result.get("telegram_sent"),
+            "telegram_attempted": result.get("telegram_attempted"),
+        }
+    )
 
 
 # ─── Broadcast ────────────────────────────────────────────────────────────────
@@ -1112,6 +1131,13 @@ async def delete_user_permanent(request: Request, user_id: int):
         "DELETE FROM messages WHERE user_id=:uid",
         "DELETE FROM sessions WHERE user_id=:uid",
         "DELETE FROM orders WHERE user_id=:uid",
+        "DELETE FROM shop_market_order_items WHERE order_id IN (SELECT id FROM shop_market_orders WHERE user_id=:uid)",
+        "DELETE FROM shop_market_orders WHERE user_id=:uid",
+        "DELETE FROM shop_cart_items WHERE user_id=:uid",
+        "DELETE FROM product_questions WHERE user_id=:uid OR answered_by=:uid",
+        "DELETE FROM support_message_deliveries WHERE recipient_id=:uid OR admin_id=:uid",
+        "DELETE FROM feedback WHERE user_id=:uid",
+        "DELETE FROM product_reviews WHERE user_id=:uid",
         "UPDATE users SET primary_user_id=NULL WHERE primary_user_id=:uid",
         "UPDATE users SET referred_by=NULL WHERE referred_by=:uid",
     ]:

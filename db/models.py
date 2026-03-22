@@ -38,6 +38,8 @@ users = sqlalchemy.Table(
     sqlalchemy.Column("marketplace_seller", sqlalchemy.Boolean, default=False, server_default="false"),
     sqlalchemy.Column("referral_balance", sqlalchemy.Numeric(12, 2), default=0, server_default="0"),
     sqlalchemy.Column("last_seen_at", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("decimal_del_balance", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("decimal_balance_cached_at", sqlalchemy.DateTime, nullable=True),
 )
 
 sessions = sqlalchemy.Table(
@@ -214,6 +216,69 @@ product_reviews = sqlalchemy.Table(
     sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=True),
     sqlalchemy.Column("rating", sqlalchemy.Integer, nullable=False),
     sqlalchemy.Column("text", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+product_questions = sqlalchemy.Table(
+    "product_questions",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("product_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("shop_products.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
+    sqlalchemy.Column("question_text", sqlalchemy.Text, nullable=False),
+    sqlalchemy.Column("answer_text", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("answered_by", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
+    sqlalchemy.Column("answered_at", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+shop_cart_items = sqlalchemy.Table(
+    "shop_cart_items",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("product_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("shop_products.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("quantity", sqlalchemy.Integer, nullable=False, server_default="1"),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+    sqlalchemy.UniqueConstraint("user_id", "product_id", name="uq_shop_cart_user_product"),
+)
+
+shop_market_orders = sqlalchemy.Table(
+    "shop_market_orders",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
+    sqlalchemy.Column("status", sqlalchemy.String(32), default="new", server_default="new"),
+    sqlalchemy.Column("delivery_address", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("delivery_city", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("delivery_phone", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("delivery_comment", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("total_amount", sqlalchemy.Integer, nullable=True),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+shop_market_order_items = sqlalchemy.Table(
+    "shop_market_order_items",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("order_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("shop_market_orders.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("product_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("shop_products.id", ondelete="SET NULL"), nullable=True),
+    sqlalchemy.Column("quantity", sqlalchemy.Integer, nullable=False, server_default="1"),
+    sqlalchemy.Column("unit_price", sqlalchemy.Integer, nullable=True),
+)
+
+support_message_deliveries = sqlalchemy.Table(
+    "support_message_deliveries",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("admin_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
+    sqlalchemy.Column("recipient_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("feedback_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("feedback.id", ondelete="SET NULL"), nullable=True),
+    sqlalchemy.Column("message_preview", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("in_app_delivered", sqlalchemy.Boolean, default=True, server_default="true"),
+    sqlalchemy.Column("telegram_attempted", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column("telegram_ok", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column("user_was_online", sqlalchemy.Boolean, default=False, server_default="false"),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
 

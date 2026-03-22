@@ -6,12 +6,19 @@
   <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 
     <!-- Breadcrumb -->
-    <a href="/shop" class="inline-flex items-center gap-1.5 text-sm text-muted hover:text-gold transition-colors mb-8">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-      </svg>
-      Магазин
-    </a>
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
+      <a href="/shop" class="inline-flex items-center gap-1.5 text-sm text-muted hover:text-gold transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+        </svg>
+        Магазин
+      </a>
+      {% if user %}
+      <a href="/shop/cart" class="text-sm text-text border border-border px-3 py-1.5 rounded-xl hover:border-gold hover:text-gold transition-colors">
+        Корзина{% if cart_qty %} <span class="text-gold">({{ cart_qty }})</span>{% endif %}
+      </a>
+      {% endif %}
+    </div>
 
     <!-- Product main block -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-10 mb-16">
@@ -74,26 +81,95 @@
 
         <!-- CTA buttons -->
         <div class="space-y-3">
+          {% if user and product.in_stock != false and product.price %}
+          <form action="/shop/cart/add" method="post" class="flex gap-2">
+            <input type="hidden" name="product_id" value="{{ product.id }}" />
+            <input type="hidden" name="next" value="/shop/{{ product.id }}" />
+            <input type="number" name="quantity" value="1" min="1" max="99"
+              class="w-20 px-2 py-3 rounded-xl bg-bg border border-border text-text text-sm text-center" />
+            <button type="submit"
+              class="flex-1 py-3.5 rounded-xl bg-gold text-bg font-semibold hover:bg-gold-light transition-all duration-300 text-sm">
+              В корзину
+            </button>
+          </form>
+          {% elif user and product.in_stock != false %}
+          <p class="text-xs text-muted text-center">Цена по запросу — оформите через менеджера или внешнюю ссылку.</p>
+          {% endif %}
           {% if product.url %}
           <a href="{{ product.url }}" target="_blank" rel="noopener"
              class="flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gold text-bg font-semibold hover:bg-gold-light transition-all duration-300">
-            Купить
+            Купить (внешняя ссылка)
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
             </svg>
           </a>
           {% else %}
           <a href="https://t.me/mushrooms_ai_bot" target="_blank"
-             class="flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gold text-bg font-semibold hover:bg-gold-light transition-all duration-300">
+             class="flex items-center justify-center gap-2 py-3.5 rounded-xl border border-border text-text hover:border-gold hover:text-gold transition-all duration-300 text-sm">
             Заказать в Telegram
           </a>
           {% endif %}
+          <a href="/shop/cart"
+             class="block text-center py-3 rounded-xl border border-dashed border-border text-muted hover:border-gold hover:text-gold text-sm transition-colors">
+            Перейти в корзину
+          </a>
           <a href="/chat"
              class="block text-center py-3.5 rounded-xl border border-border text-text hover:border-gold hover:text-gold transition-all duration-300 text-sm">
             Задать вопрос AI
           </a>
         </div>
+        <p class="text-xs text-muted mt-4 leading-relaxed">Доставка по РФ уточняется при оформлении заказа (корзина → адрес и телефон). Сроки и способ оплаты согласуются с менеджером.</p>
       </div>
+    </div>
+
+    <!-- Questions to seller -->
+    <div id="questions" class="mb-16">
+      <h2 class="text-2xl font-light text-text mb-6">Вопросы о товаре</h2>
+      <div class="space-y-4 mb-8">
+        {% for item in product_questions %}
+        {% set qq = item.q %}
+        <div class="p-5 rounded-2xl bg-surface border border-border">
+          <div class="flex items-start gap-3 mb-2">
+            <div class="w-8 h-8 rounded-full bg-gold/15 flex items-center justify-center text-gold text-xs font-semibold flex-shrink-0">?</div>
+            <div class="min-w-0 flex-1">
+              <p class="text-sm text-text">{{ qq.question_text }}</p>
+              <p class="text-xs text-muted mt-1">{{ item.asker.name if item.asker and item.asker.name else 'Покупатель' }} · {{ qq.created_at.strftime('%d.%m.%Y') if qq.created_at else '' }}</p>
+            </div>
+          </div>
+          {% if qq.answer_text %}
+          <div class="mt-3 pl-11 border-l-2 border-gold/30">
+            <p class="text-sm text-muted">{{ qq.answer_text }}</p>
+            <p class="text-xs text-muted mt-1">Ответ {% if item.answerer and item.answerer.name %}{{ item.answerer.name }}{% else %}продавца{% endif %}{% if qq.answered_at %} · {{ qq.answered_at.strftime('%d.%m.%Y') }}{% endif %}</p>
+          </div>
+          {% elif can_answer_questions %}
+          <div class="mt-3 pl-11">
+            <textarea id="ans-{{ qq.id }}" rows="2" placeholder="Ответ продавца..."
+              class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-text text-sm resize-none focus:border-gold/60"></textarea>
+            <button type="button" onclick="postAnswer({{ qq.id }})"
+              class="mt-2 px-4 py-2 rounded-xl bg-gold/15 border border-gold/30 text-gold text-xs font-medium hover:bg-gold/25">Отправить ответ</button>
+            <p id="ans-err-{{ qq.id }}" class="hidden text-xs text-red-400 mt-1"></p>
+          </div>
+          {% endif %}
+        </div>
+        {% endfor %}
+        {% if not product_questions %}
+        <p class="text-sm text-muted">Пока нет вопросов. Спросите первым.</p>
+        {% endif %}
+      </div>
+      {% if user %}
+      <div class="p-6 rounded-2xl bg-surface border border-border">
+        <h3 class="font-semibold text-text mb-3 text-sm">Задать вопрос продавцу</h3>
+        <form action="/shop/{{ product.id }}/question" method="post" class="space-y-3">
+          <textarea name="question_text" required rows="3" minlength="3" maxlength="4000" placeholder="Состав, срок годности, доставка..."
+            class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm resize-none focus:outline-none focus:border-gold/60"></textarea>
+          <button type="submit" class="px-5 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light">Отправить вопрос</button>
+        </form>
+      </div>
+      {% else %}
+      <div class="p-5 rounded-2xl bg-surface border border-border text-sm text-muted text-center">
+        <a href="/login?next=/shop/{{ product.id }}#questions" class="text-gold hover:underline">Войдите</a>, чтобы задать вопрос продавцу
+      </div>
+      {% endif %}
     </div>
 
     <!-- Reviews -->
@@ -204,6 +280,24 @@
 </div>
 
 <script>
+async function postAnswer(qid) {
+  const ta = document.getElementById('ans-' + qid);
+  const err = document.getElementById('ans-err-' + qid);
+  err.classList.add('hidden');
+  const text = (ta && ta.value || '').trim();
+  if (!text) return;
+  const fd = new FormData();
+  fd.append('answer_text', text);
+  try {
+    const r = await fetch('/shop/questions/' + qid + '/answer', { method: 'POST', body: fd });
+    const d = await r.json();
+    if (d.ok) location.reload();
+    else { err.textContent = d.error || 'Ошибка'; err.classList.remove('hidden'); }
+  } catch (e) {
+    err.textContent = e.message;
+    err.classList.remove('hidden');
+  }
+}
 var currentRating = 0;
 function setRating(val) {
   currentRating = val;

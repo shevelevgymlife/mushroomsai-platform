@@ -14,6 +14,10 @@
         <a href="/dashboard" class="text-xs text-muted hover:text-gold transition-colors mb-2 inline-block">← Личный кабинет</a>
         <h1 class="text-3xl font-light text-text">Мои товары на маркетплейсе</h1>
         <p class="text-sm text-muted mt-1">Тариф Макси · товары видны в общем каталоге <a href="/shop" class="text-gold hover:underline">/shop</a></p>
+        <p class="text-sm mt-2">
+          <a href="/seller/questions" class="text-gold hover:underline">Вопросы покупателей</a>
+          {% if pending_questions_count %}<span class="text-muted"> ({{ pending_questions_count }} без ответа)</span>{% endif %}
+        </p>
       </div>
       <button onclick="openAddModal()"
         class="px-5 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-all duration-300">

@@ -108,6 +108,56 @@ async def lifespan(app: FastAPI):
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP",
         "ALTER TABLE community_likes ADD COLUMN IF NOT EXISTS seen_by_post_owner BOOLEAN NOT NULL DEFAULT true",
         "ALTER TABLE community_comments ADD COLUMN IF NOT EXISTS seen_by_post_owner BOOLEAN NOT NULL DEFAULT true",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS decimal_del_balance TEXT",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS decimal_balance_cached_at TIMESTAMP",
+        """CREATE TABLE IF NOT EXISTS product_questions (
+            id SERIAL PRIMARY KEY,
+            product_id INTEGER NOT NULL REFERENCES shop_products(id) ON DELETE CASCADE,
+            user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            question_text TEXT NOT NULL,
+            answer_text TEXT,
+            answered_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            answered_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT NOW()
+        )""",
+        """CREATE TABLE IF NOT EXISTS shop_cart_items (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            product_id INTEGER NOT NULL REFERENCES shop_products(id) ON DELETE CASCADE,
+            quantity INTEGER NOT NULL DEFAULT 1,
+            created_at TIMESTAMP DEFAULT NOW(),
+            UNIQUE(user_id, product_id)
+        )""",
+        """CREATE TABLE IF NOT EXISTS shop_market_orders (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            status VARCHAR(32) DEFAULT 'new',
+            delivery_address TEXT,
+            delivery_city TEXT,
+            delivery_phone TEXT,
+            delivery_comment TEXT,
+            total_amount INTEGER,
+            created_at TIMESTAMP DEFAULT NOW()
+        )""",
+        """CREATE TABLE IF NOT EXISTS shop_market_order_items (
+            id SERIAL PRIMARY KEY,
+            order_id INTEGER NOT NULL REFERENCES shop_market_orders(id) ON DELETE CASCADE,
+            product_id INTEGER REFERENCES shop_products(id) ON DELETE SET NULL,
+            quantity INTEGER NOT NULL DEFAULT 1,
+            unit_price INTEGER
+        )""",
+        """CREATE TABLE IF NOT EXISTS support_message_deliveries (
+            id SERIAL PRIMARY KEY,
+            admin_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            recipient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            feedback_id INTEGER REFERENCES feedback(id) ON DELETE SET NULL,
+            message_preview TEXT,
+            in_app_delivered BOOLEAN DEFAULT true,
+            telegram_attempted BOOLEAN DEFAULT false,
+            telegram_ok BOOLEAN DEFAULT false,
+            user_was_online BOOLEAN DEFAULT false,
+            created_at TIMESTAMP DEFAULT NOW()
+        )""",
     ]
     try:
         await database.execute(

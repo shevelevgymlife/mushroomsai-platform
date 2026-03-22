@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Заказ оформлен — MushroomsAI{% endblock %}
+
+{% block content %}
+<div class="pt-24 pb-16">
+  <div class="max-w-xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+    <p class="text-5xl mb-4">✓</p>
+    <h1 class="text-2xl font-light text-text mb-2">Заказ №{{ order.id }} принят</h1>
+    <p class="text-sm text-muted mb-8">Мы свяжемся с вами для уточнения доставки и оплаты.</p>
+
+    <div class="text-left p-5 rounded-2xl bg-surface border border-border mb-8">
+      <p class="text-xs text-muted mb-3">Детали доставки</p>
+      {% if order.delivery_city %}<p class="text-sm text-text">{{ order.delivery_city }}</p>{% endif %}
+      <p class="text-sm text-text mt-1">{{ order.delivery_address or '—' }}</p>
+      {% if order.delivery_phone %}<p class="text-sm text-muted mt-2">{{ order.delivery_phone }}</p>{% endif %}
+      {% if order.delivery_comment %}<p class="text-sm text-muted mt-2">{{ order.delivery_comment }}</p>{% endif %}
+      <p class="text-gold font-medium mt-4">{{ order.total_amount or 0 }} ₽</p>
+    </div>
+
+    <div class="text-left text-sm text-muted mb-8">
+      <p class="text-xs uppercase tracking-wider mb-2">Позиции</p>
+      <ul class="space-y-1">
+        {% for oi in order_items %}
+        <li class="text-text">
+          {{ oi.product_name or ('Товар #' ~ oi.product_id) }} × {{ oi.quantity }}
+          {% if oi.unit_price %}<span class="text-muted"> — {{ oi.unit_price }} ₽/шт.</span>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <a href="/shop" class="inline-flex items-center justify-center px-6 py-3 rounded-xl border border-border text-text text-sm hover:border-gold hover:text-gold transition-colors">
+      Вернуться в магазин
+    </a>
+  </div>
+</div>
+{% endblock %}

@@ -618,6 +618,31 @@ async def update_wallet(request: Request):
     return JSONResponse({"ok": True})
 
 
+@router.post("/profile/wallet/sync-decimal")
+async def sync_decimal_del_balance(request: Request):
+    """Синхронизация нативного баланса DEL с RPC Decimal Smart Chain (сервер)."""
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    from services.decimal_chain import fetch_native_del_balance
+
+    uid = _effective_user_id(user)
+    row = await database.fetch_one(users.select().where(users.c.id == uid))
+    w = (row.get("wallet_address") or "").strip() if row else ""
+    if not w.startswith("0x"):
+        return JSONResponse({"error": "Укажите адрес кошелька (0x…)"}, status_code=400)
+    bal = await fetch_native_del_balance(w)
+    if bal is None:
+        return JSONResponse({"error": "Не удалось запросить сеть Decimal"}, status_code=502)
+    fmt = f"{bal:.12f}".rstrip("0").rstrip(".") or "0"
+    await database.execute(
+        users.update()
+        .where(users.c.id == uid)
+        .values(decimal_del_balance=fmt, decimal_balance_cached_at=datetime.utcnow())
+    )
+    return JSONResponse({"ok": True, "del": bal, "formatted": fmt})
+
+
 @router.post("/dashboard/language")
 async def update_language(request: Request, language: str = Form(...)):
     user = await require_auth(request)
