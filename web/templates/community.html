@@ -536,7 +536,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     let tid=null;
     async function tick(){
       if(document.hidden)return;
-      try{await fetch('/profile/wallet/sync-shevelev',{method:'POST',credentials:'same-origin'});}catch(e){}
+      try{await fetch('/profile/wallet/sync-balances',{method:'POST',credentials:'same-origin'});}catch(e){}
     }
     function arm(){if(tid)clearInterval(tid);tid=setInterval(tick,SYNC_MS);}
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick();});

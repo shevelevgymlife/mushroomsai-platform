@@ -265,7 +265,7 @@ async def dashboard(request: Request):
         community_profiles.select().where(community_profiles.c.user_id == effective_user_id)
     )
 
-    from config import settings as _settings
+    from config import settings as _settings, shevelev_token_address
     try:
         visible_block_keys = await compute_visible_blocks(effective_user_id, plan)
     except Exception:
@@ -330,7 +330,7 @@ async def dashboard(request: Request):
             "plans_catalog": PLANS,
             "shop_preview": shop_preview,
             "comm_profile": dict(comm_profile) if comm_profile else None,
-            "shevelev_token": _settings.SHEVELEV_TOKEN_ADDRESS,
+            "shevelev_token": shevelev_token_address(),
             "effective_user_id": effective_user_id,
             "visible_block_keys": visible_block_keys,
             "dashboard_secs": dashboard_secs,
@@ -649,15 +649,18 @@ async def sync_shevelev_balance(request: Request):
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
-    from config import settings as _s
+    from config import shevelev_token_address
     from services.decimal_chain import fetch_erc20_balance
 
     uid = _effective_user_id(user)
     row = await database.fetch_one(users.select().where(users.c.id == uid))
     w = (row.get("wallet_address") or "").strip() if row else ""
-    tok = (_s.SHEVELEV_TOKEN_ADDRESS or "").strip()
+    tok = shevelev_token_address()
     if not tok:
-        return JSONResponse({"error": "SHEVELEV_TOKEN_ADDRESS не настроен на сервере"}, status_code=400)
+        return JSONResponse(
+            {"error": "Адрес контракта SHEVELEV не задан: переменная SHEVELEV_TOKEN_ADDRESS или файл deployment/shevelev_token_address.txt"},
+            status_code=400,
+        )
     if not w.startswith("0x"):
         return JSONResponse({"error": "Укажите адрес кошелька (0x…)"}, status_code=400)
     bal = await fetch_erc20_balance(tok, w)
@@ -678,7 +681,7 @@ async def sync_decimal_balances_combined(request: Request):
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
-    from config import settings as _s
+    from config import shevelev_token_address
     from services.decimal_chain import fetch_erc20_balance, fetch_native_del_balance
 
     uid = _effective_user_id(user)
@@ -692,7 +695,7 @@ async def sync_decimal_balances_combined(request: Request):
         return JSONResponse({"error": "Не удалось запросить сеть Decimal (DEL)"}, status_code=502)
     del_fmt = f"{del_bal:.12f}".rstrip("0").rstrip(".") or "0"
 
-    tok = (_s.SHEVELEV_TOKEN_ADDRESS or "").strip()
+    tok = shevelev_token_address()
     shev_fmt = None
     shev_val = None
     if tok:

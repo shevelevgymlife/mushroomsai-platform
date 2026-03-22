@@ -7,6 +7,8 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
+      - key: SHEVELEV_TOKEN_ADDRESS
+        sync: false
 
 databases:
   - name: mushroomsai-db

@@ -218,6 +218,40 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
 .ig-post-cell{aspect-ratio:1;position:relative;overflow:hidden;background:#121212}
 .ig-post-cell img{width:100%;height:100%;object-fit:cover;display:block}
 .ig-post-cell-ph{display:flex;align-items:center;justify-content:center;font-size:10px;color:#666;padding:8px;text-align:center;line-height:1.35;overflow:hidden}
+
+/* ── Мои токены (компактный виджет) ── */
+.my-tokens-dock{
+  position:fixed;
+  left:max(10px,env(safe-area-inset-left));
+  top:calc(72px + 52px + 10px);
+  z-index:930;
+  min-width:118px;
+  max-width:min(42vw,156px);
+  padding:11px 13px;
+  border-radius:16px;
+  background:linear-gradient(155deg,rgba(22,20,14,.96),rgba(6,6,6,.94));
+  border:1px solid rgba(201,168,76,.5);
+  box-shadow:0 0 26px rgba(201,168,76,.28),0 8px 28px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.07);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  pointer-events:none;
+}
+.my-tokens-dock__title{
+  font-size:9px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:rgba(232,201,107,.98);
+  font-weight:800;
+  margin-bottom:3px;
+  text-shadow:0 0 14px rgba(201,168,76,.45);
+}
+.my-tokens-dock__note{font-size:9px;color:#555;margin-bottom:8px;line-height:1.2}
+.my-tokens-dock__row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:10px;margin:4px 0;color:#666}
+.my-tokens-dock__row span:last-child{font-weight:700;color:#e8e8e8;font-size:11px;font-variant-numeric:tabular-nums}
+.my-tokens-dock__row .tok-shev{color:#E8C96B;text-shadow:0 0 10px rgba(201,168,76,.35)}
+@media(max-width:480px){
+  .my-tokens-dock{top:calc(72px + 48px + 6px);padding:9px 11px;min-width:104px;left:max(6px,env(safe-area-inset-left))}
+}
 </style>
 
 {% from 'components/stroke_icons.html' import ico %}
@@ -245,6 +279,13 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
     {% endif %}
     </div>
   </header>
+  <aside id="myTokensDock" class="my-tokens-dock" aria-label="Мои токены Decimal" title="Пока вкладка открыта, балансы подтягиваются с сети автоматически">
+    <div class="my-tokens-dock__title">Мои токены</div>
+    <div class="my-tokens-dock__note">Сеть Decimal · онлайн</div>
+    <div class="my-tokens-dock__row"><span>DEL</span><span id="delBalMe">{% if user.get('decimal_del_balance') %}{{ user.decimal_del_balance }}{% else %}—{% endif %}</span></div>
+    <div class="my-tokens-dock__row"><span>SHEVELEV</span><span id="shevelevBalMe" class="tok-shev">{% if user.get('shevelev_balance_cached') %}{{ user.shevelev_balance_cached }}{% else %}—{% endif %}</span></div>
+    <div id="shevelevBalErrMe" style="display:none;font-size:10px;color:#f87171;margin-top:6px;line-height:1.3"></div>
+  </aside>
   <div class="ig-drawer-backdrop" id="dbDrawerBackdrop" onclick="closeDbDrawer()"></div>
   <aside class="ig-drawer" id="dbDrawer" aria-label="Меню">
     <div class="ig-drawer-head">
@@ -478,19 +519,6 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
         {% if user.get('profile_link_url') %}
         <a href="{{ user.profile_link_url }}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:8px;color:#C9A84C;font-weight:600;font-size:14px;margin-bottom:14px;text-decoration:none;border-bottom:1px solid rgba(201,168,76,.35);padding-bottom:2px">{{ user.get('profile_link_label') or user.profile_link_url }}</a>
         {% endif %}
-        <div id="cryptoSummaryMe" class="shevelev-bal-box" style="margin-bottom:16px;padding:14px 16px;border-radius:14px;background:rgba(201,168,76,.08);border:1px solid rgba(201,168,76,.25);max-width:420px">
-          <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Токены в профиле (после синхронизации с сетью)</div>
-          <div style="display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center;font-size:13px">
-            <span style="color:#888">Токен DEL</span>
-            <span id="delBalMe" style="font-weight:700;color:#e8e8e8;min-width:3ch">{% if user.get('decimal_del_balance') %}{{ user.decimal_del_balance }}{% else %}—{% endif %}</span>
-            <span style="color:#666">·</span>
-            <span style="color:#888">Токен SHEVELEV</span>
-            <span id="shevelevBalMe" style="font-weight:700;color:#C9A84C;min-width:3ch">{% if user.get('shevelev_balance_cached') %}{{ user.shevelev_balance_cached }}{% else %}—{% endif %}</span>
-          </div>
-          <div id="shevelevBalErrMe" style="display:none;font-size:12px;color:#f87171;margin-top:8px"></div>
-          <button type="button" class="btn-o" style="margin-top:12px;font-size:12px" onclick="syncBlockchainBalances()">Синхронизировать с блокчейном (MetaMask)</button>
-          <p style="font-size:11px;color:#555;margin-top:8px;line-height:1.4">Пока вкладка открыта, баланс <strong style="color:#aaa">SHEVELEV</strong> в профиле подтягивается с сети автоматически (примерно раз в 2 минуты). Адрес кошелька — в расширенных настройках; полная синхронизация DEL+SHEVELEV — кнопкой выше.</p>
-        </div>
         <div id="meEditPanel" class="card" style="display:none;margin-bottom:20px;padding:18px;border-radius:16px">
           <div style="font-size:13px;font-weight:600;color:#888;margin-bottom:12px">Редактирование</div>
           <input id="meName" class="sinp" style="margin-bottom:10px" value="{{ user.name or '' }}" placeholder="Имя">
@@ -1104,7 +1132,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
               </div>
               <div id="shevelevBalErr" style="display:none;font-size:12px;color:#f87171;margin-top:8px"></div>
               {% else %}
-              <p style="font-size:12px;color:#666;margin:0">SHEVELEV: контракт не задан на сервере.</p>
+              <p style="font-size:12px;color:#666;margin:0;line-height:1.45">SHEVELEV: укажите адрес контракта в переменной окружения <strong style="color:#888">SHEVELEV_TOKEN_ADDRESS</strong> на Render или одной строкой <strong style="color:#888">0x…</strong> в файле <strong style="color:#888">deployment/shevelev_token_address.txt</strong> в репозитории (адрес из MetaMask → токен → контракт).</p>
               {% endif %}
             </div>
             <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px">
@@ -1528,7 +1556,7 @@ function showNotification(msg, type='info'){
 const DSC_CHAIN_ID='0x4B';
 const DSC_PARAMS={chainId:DSC_CHAIN_ID,chainName:'Decimal Smart Chain',nativeCurrency:{name:'DEL',symbol:'DEL',decimals:18},rpcUrls:['https://node.decimalchain.com/web3/'],blockExplorerUrls:['https://explorer.decimalchain.com']};
 const SHEVELEV_TOKEN='{{ shevelev_token|default("", true)|e }}'.trim();
-const SHEVELEV_AUTO_MS=120000;
+const SHEVELEV_AUTO_MS=90000;
 let _shevelevAutoTimer=null;
 let _shevelevVisBound=false;
 
@@ -1550,8 +1578,10 @@ function initShevelevOnLoad(){
 async function loadDelNative(addr){
   if(!addr||!window.ethereum)return;
   const el=document.getElementById('delBal');
-  if(!el)return;
-  el.textContent='…';
+  const dock=document.getElementById('delBalMe');
+  if(!el&&!dock)return;
+  if(el)el.textContent='…';
+  if(dock)dock.textContent='…';
   try{
     try{
       await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:DSC_CHAIN_ID}]});
@@ -1564,10 +1594,13 @@ async function loadDelNative(addr){
     const hex=await window.ethereum.request({method:'eth_getBalance',params:[addr,'latest']});
     const wei=BigInt(!hex||hex==='0x'?'0':hex);
     const human=Number(wei)/1e18;
-    el.textContent=(Number.isFinite(human)?human.toLocaleString('ru-RU',{maximumFractionDigits:8}):'0')+' DEL';
+    const num=Number.isFinite(human)?human.toLocaleString('ru-RU',{maximumFractionDigits:8}):'0';
+    if(el)el.textContent=num+' DEL';
+    if(dock)dock.textContent=num;
   }catch(e){
     console.error('DEL:',e);
-    el.textContent='—';
+    if(el)el.textContent='—';
+    if(dock)dock.textContent='—';
   }
 }
 
@@ -1616,7 +1649,10 @@ async function loadSHEVELEVBalance(addr){
   };
   const setBal=(txt)=>{
     const el=document.getElementById('shevelevBal');
+    const dock=document.getElementById('shevelevBalMe');
+    const num=String(txt).replace(/\s*SHEVELEV\s*$/i,'').trim();
     if(el)el.textContent=txt;
+    if(dock)dock.textContent=num;
   };
   setErr('',true);
   setBal('…');
@@ -1649,27 +1685,29 @@ async function saveWallet(addr){
     if(SHEVELEV_TOKEN)loadSHEVELEVBalance(a);
   }
   startShevelevAutoSync();
-  syncShevelevServerOnly({silent:true});
+  syncBalancesServerSilent({silent:true});
 }
 
-async function syncShevelevServerOnly(opts){
+async function syncBalancesServerSilent(opts){
   opts=opts||{};
-  if(!SHEVELEV_TOKEN)return;
   const w=getDashWallet();
   if(!w||!w.startsWith('0x'))return;
   try{
-    const r=await fetch('/profile/wallet/sync-shevelev',{method:'POST',credentials:'same-origin'});
+    const r=await fetch('/profile/wallet/sync-balances',{method:'POST',credentials:'same-origin'});
     const d=await r.json();
     if(!r.ok||!d.ok){
       if(!opts.silent&&d&&d.error)showNotification(d.error,'error');
       return;
     }
-    const fmt=String(d.formatted!=null?d.formatted:'0');
-    const el=document.getElementById('shevelevBalMe');
-    if(el)el.textContent=fmt;
+    const delMe=document.getElementById('delBalMe');
+    if(delMe&&d.del_formatted!=null)delMe.textContent=String(d.del_formatted);
+    const shMe=document.getElementById('shevelevBalMe');
+    if(shMe&&d.shevelev_formatted!=null)shMe.textContent=String(d.shevelev_formatted);
+    const dSet=document.getElementById('delBal');
+    if(dSet&&d.del_formatted!=null)dSet.textContent=String(d.del_formatted)+' DEL';
     const sSet=document.getElementById('shevelevBal');
-    if(sSet)sSet.textContent=fmt+(SHEVELEV_TOKEN?' SHEVELEV':'');
-    if(!opts.silent)showNotification('Баланс SHEVELEV обновлён','success');
+    if(sSet&&d.shevelev_formatted!=null)sSet.textContent=String(d.shevelev_formatted)+(SHEVELEV_TOKEN?' SHEVELEV':'');
+    if(!opts.silent)showNotification('Балансы обновлены','success');
   }catch(e){if(!opts.silent)console.error(e);}
 }
 
@@ -1679,19 +1717,18 @@ function stopShevelevAutoSync(){
 
 function _shevelevOnVis(){
   if(document.hidden)return;
-  syncShevelevServerOnly({silent:true});
+  syncBalancesServerSilent({silent:true});
 }
 
 function startShevelevAutoSync(){
   stopShevelevAutoSync();
-  if(!SHEVELEV_TOKEN)return;
   const w=getDashWallet();
   if(!w||!w.startsWith('0x'))return;
   if(!_shevelevVisBound){
     document.addEventListener('visibilitychange',_shevelevOnVis);
     _shevelevVisBound=true;
   }
-  const tick=()=>{if(!document.hidden)syncShevelevServerOnly({silent:true});};
+  const tick=()=>{if(!document.hidden)syncBalancesServerSilent({silent:true});};
   _shevelevAutoTimer=setInterval(tick,SHEVELEV_AUTO_MS);
   setTimeout(tick,5000);
 }
@@ -1725,7 +1762,7 @@ async function syncBlockchainBalances(){
     if(dSet&&d.del_formatted!=null)dSet.textContent=String(d.del_formatted)+' DEL';
     const sSet=document.getElementById('shevelevBal');
     if(sSet&&d.shevelev_formatted!=null)sSet.textContent=String(d.shevelev_formatted)+(SHEVELEV_TOKEN?' SHEVELEV':'');
-    showNotification('Балансы DEL и SHEVELEV обновлены в профиле','success');
+    showNotification(d.shevelev_formatted!=null?'Балансы DEL и SHEVELEV обновлены в профиле':'Баланс DEL обновлён (контракт SHEVELEV не задан на сервере)','success');
   }catch(e){
     if(er){er.textContent=e.message||'Сеть';er.style.display='block';}
     if(delEl)delEl.textContent='—';
