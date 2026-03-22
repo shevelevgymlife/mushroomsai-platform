@@ -28,13 +28,13 @@ class AsyncDatabase:
     async def disconnect(self):
         await asyncio.to_thread(engine.dispose)
 
-    async def execute(self, query) -> Any:
+    async def execute(self, query, params: Optional[dict] = None) -> Any:
         if isinstance(query, str):
             query = text(query)
 
         def _run():
             with engine.begin() as conn:
-                result = conn.execute(query)
+                result = conn.execute(query, params) if params is not None else conn.execute(query)
                 try:
                     pk = result.inserted_primary_key
                     if pk is not None:
@@ -44,25 +44,25 @@ class AsyncDatabase:
                 return result.rowcount
         return await asyncio.to_thread(_run)
 
-    async def fetch_one(self, query) -> Optional[dict]:
+    async def fetch_one(self, query, params: Optional[dict] = None) -> Optional[dict]:
         def _run():
             with engine.connect() as conn:
-                result = conn.execute(query)
+                result = conn.execute(query, params) if params is not None else conn.execute(query)
                 row = result.fetchone()
                 return dict(row._mapping) if row is not None else None
         return await asyncio.to_thread(_run)
 
-    async def fetch_all(self, query) -> List[dict]:
+    async def fetch_all(self, query, params: Optional[dict] = None) -> List[dict]:
         def _run():
             with engine.connect() as conn:
-                result = conn.execute(query)
+                result = conn.execute(query, params) if params is not None else conn.execute(query)
                 return [dict(row._mapping) for row in result.fetchall()]
         return await asyncio.to_thread(_run)
 
-    async def fetch_val(self, query) -> Any:
+    async def fetch_val(self, query, params: Optional[dict] = None) -> Any:
         def _run():
             with engine.connect() as conn:
-                result = conn.execute(query)
+                result = conn.execute(query, params) if params is not None else conn.execute(query)
                 row = result.fetchone()
                 return row[0] if row is not None else None
         return await asyncio.to_thread(_run)
