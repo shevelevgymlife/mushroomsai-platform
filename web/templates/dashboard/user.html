@@ -2091,6 +2091,7 @@ async function submitPlanUpgradeRequest(){
 let selectedGroupId = null;
 let groupPollTimer = null;
 window.__canCreateGroups = {{ can_create_groups | tojson }};
+window.__canManageGroupSettings = {{ can_manage_group_settings | default(false) | tojson }};
 
 function stopGroupPoll(){
   if(groupPollTimer){ clearInterval(groupPollTimer); groupPollTimer=null; }
@@ -2237,19 +2238,17 @@ function selectGroupChat(id, el){
   const ownerBar=document.getElementById('groupOwnerBar');
   const retRow=document.getElementById('groupRetentionRow');
   const retInp=document.getElementById('groupRetentionInp');
-  const myId=_dashUid();
-  const ownerId=el&&el.dataset?parseInt(el.dataset.owner||'0',10)||0:0;
-  const isOwner=myId&&ownerId===myId;
+  const canManage = !!window.__canManageGroupSettings;
   const joinMode=(el&&el.dataset&&el.dataset.join)||'approval';
   const pending=el&&el.dataset&&el.dataset.pending==='1';
   if(ph) ph.style.display = 'none';
   if(panel){ panel.style.display = 'flex'; panel.style.flexDirection = 'column'; }
   if(ownerBar){
-    ownerBar.style.display=isOwner?'block':'none';
-    if(isOwner) loadOwnerPendingForGroup(id);
+    ownerBar.style.display=canManage?'block':'none';
+    if(canManage) loadOwnerPendingForGroup(id);
   }
   if(retRow){
-    retRow.style.display=isOwner?'flex':'none';
+    retRow.style.display=canManage?'flex':'none';
     if(retInp){
       const rv=el&&el.dataset?el.dataset.retention||'':'';
       retInp.value=rv;
@@ -2273,8 +2272,8 @@ function selectGroupChat(id, el){
   const box = document.getElementById('groupMsgBox');
   if(!isMember){
     let msg='';
-    if(pending&&joinMode!=='open') msg='Ожидайте решения владельца группы.';
-    else if(joinMode!=='open') msg='Нажмите «Подать заявку», чтобы вступить. После одобрения владельца вы сможете читать и писать.';
+    if(pending&&joinMode!=='open') msg='Ожидайте решения администратора.';
+    else if(joinMode!=='open') msg='Нажмите «Подать заявку», чтобы вступить. После одобрения администратором вы сможете читать и писать.';
     else msg='Нажмите «Вступить», чтобы видеть переписку и писать в группе.';
     if(box) box.innerHTML = '<div style="color:#888;text-align:center;padding:24px;font-size:14px">'+msg+'</div>';
     return;
@@ -2416,7 +2415,7 @@ async function createGroupSubmit(){
       }, 120);
       return;
     }
-    let hint403 = 'Нужен тариф Про/Макси или права администратора (проверьте ADMIN_TG_ID / ADMIN_EMAIL на сервере)';
+    let hint403 = 'Создание группы недоступно: политика в админке «Группы» или тариф (проверьте ADMIN_TG_ID / ADMIN_EMAIL для операторов)';
     if(d.plan){ hint403 += ' · ваш тариф: '+d.plan; }
     const msg = d.error || d.detail || (r.status===403 ? hint403 : r.status===401 ? 'Войдите в аккаунт' : (r.status===500 ? (d.error||'Ошибка сервера при сохранении') : 'Не удалось создать группу'));
     showNotification(msg,'error');

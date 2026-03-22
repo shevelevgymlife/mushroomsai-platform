@@ -16,6 +16,7 @@ from db.models import (
     community_posts, community_comments, community_likes, community_saved, community_folders,
     homepage_blocks, dashboard_blocks, user_block_overrides,
     ai_training_posts, ai_training_folders,
+    community_groups,
 )
 import sqlalchemy
 from datetime import datetime, timedelta, date
@@ -34,6 +35,7 @@ ADMIN_NAV = [
     ("Рассылки", "/admin/broadcast"),
     ("База знаний", "/admin/knowledge"),
     ("Сообщество", "/admin/community"),
+    ("Группы", "/admin/groups"),
 ]
 
 PERM_KEYS = [
@@ -1019,6 +1021,210 @@ async def pin_community_post(request: Request, post_id: int):
         .values(pinned=not post["pinned"])
     )
     return JSONResponse({"ok": True, "pinned": not post["pinned"]})
+
+
+# ─── Групповые чаты (Telegram-подобные настройки) ─────────────────────────────
+
+@router.get("/groups", response_class=HTMLResponse)
+async def admin_groups_page(request: Request):
+    admin = await require_admin(request)
+    if not admin:
+        return RedirectResponse("/login")
+    from services.group_platform_settings import get_group_creation_policy
+
+    policy = await get_group_creation_policy()
+    try:
+        rows = await database.fetch_all(
+            sqlalchemy.text(
+                """
+                SELECT g.id, g.name, g.description, g.created_at, g.created_by,
+                  COALESCE(g.join_mode, 'approval') AS join_mode,
+                  g.message_retention_days,
+                  g.slow_mode_seconds,
+                  COALESCE(g.show_history_to_new_members, true) AS show_history_to_new_members,
+                  u.name AS creator_name,
+                  (SELECT COUNT(*)::bigint FROM community_group_members m WHERE m.group_id = g.id) AS member_count,
+                  (SELECT COUNT(*)::bigint FROM community_group_messages gm WHERE gm.group_id = g.id) AS msg_count
+                FROM community_groups g
+                LEFT JOIN users u ON u.id = g.created_by
+                ORDER BY g.created_at DESC
+                LIMIT 200
+                """
+            )
+        )
+    except Exception:
+        rows = await database.fetch_all(
+            sqlalchemy.text(
+                """
+                SELECT g.id, g.name, g.description, g.created_at, g.created_by,
+                  COALESCE(g.join_mode, 'approval') AS join_mode,
+                  g.message_retention_days,
+                  NULL::integer AS slow_mode_seconds,
+                  true AS show_history_to_new_members,
+                  u.name AS creator_name,
+                  (SELECT COUNT(*)::bigint FROM community_group_members m WHERE m.group_id = g.id) AS member_count,
+                  (SELECT COUNT(*)::bigint FROM community_group_messages gm WHERE gm.group_id = g.id) AS msg_count
+                FROM community_groups g
+                LEFT JOIN users u ON u.id = g.created_by
+                ORDER BY g.created_at DESC
+                LIMIT 200
+                """
+            )
+        )
+    groups = [dict(r) for r in rows]
+    return templates.TemplateResponse(
+        "dashboard/admin_groups.html",
+        {
+            "request": request,
+            "user": admin,
+            "nav": ADMIN_NAV,
+            "user_permissions": await get_user_permissions(admin),
+            "policy": policy,
+            "groups": groups,
+        },
+    )
+
+
+@router.post("/groups/policy")
+async def admin_groups_policy_save(request: Request):
+    admin = await require_admin(request)
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "invalid json"}, status_code=400)
+    from services.group_platform_settings import set_group_creation_policy
+
+    mode = (body.get("mode") or "").strip().lower()
+    plans = body.get("plans")
+    if mode not in ("admin_only", "by_plan"):
+        mode = "by_plan"
+    if not isinstance(plans, list):
+        plans = ["pro", "maxi"]
+    await set_group_creation_policy({"mode": mode, "plans": plans})
+    return JSONResponse({"ok": True})
+
+
+@router.patch("/groups/{group_id}")
+async def admin_group_patch(request: Request, group_id: int):
+    admin = await require_admin(request)
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "invalid json"}, status_code=400)
+    g = await database.fetch_one(community_groups.select().where(community_groups.c.id == group_id))
+    if not g:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    vals = {}
+    if "name" in body:
+        nm = (body.get("name") or "").strip()
+        if 2 <= len(nm) <= 120:
+            vals["name"] = nm
+    if "description" in body:
+        d = body.get("description")
+        vals["description"] = (str(d).strip()[:2000] if d is not None else None) or None
+    if "join_mode" in body:
+        jm = (body.get("join_mode") or "").strip().lower()
+        if jm in ("open", "approval"):
+            vals["join_mode"] = jm
+    if "message_retention_days" in body:
+        v = body.get("message_retention_days")
+        if v is None or v == "":
+            vals["message_retention_days"] = None
+        else:
+            try:
+                n = int(v)
+                if 1 <= n <= 36500:
+                    vals["message_retention_days"] = n
+            except (TypeError, ValueError):
+                pass
+    if "slow_mode_seconds" in body:
+        v = body.get("slow_mode_seconds")
+        if v is None or v == "":
+            vals["slow_mode_seconds"] = None
+        else:
+            try:
+                n = int(v)
+                if n < 0:
+                    n = 0
+                if n > 86400:
+                    n = 86400
+                vals["slow_mode_seconds"] = n if n > 0 else None
+            except (TypeError, ValueError):
+                pass
+    if "show_history_to_new_members" in body:
+        vals["show_history_to_new_members"] = bool(body.get("show_history_to_new_members"))
+    if vals:
+        await database.execute(
+            community_groups.update().where(community_groups.c.id == group_id).values(**vals)
+        )
+    return JSONResponse({"ok": True})
+
+
+@router.post("/groups/bulk")
+async def admin_groups_bulk(request: Request):
+    admin = await require_admin(request)
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "invalid json"}, status_code=400)
+    vals = {}
+    if "join_mode" in body:
+        jm = (body.get("join_mode") or "").strip().lower()
+        if jm in ("open", "approval"):
+            vals["join_mode"] = jm
+    if "message_retention_days" in body:
+        v = body.get("message_retention_days")
+        if v is None:
+            pass
+        elif v == "":
+            vals["message_retention_days"] = None
+        else:
+            try:
+                n = int(v)
+                if 1 <= n <= 36500:
+                    vals["message_retention_days"] = n
+            except (TypeError, ValueError):
+                pass
+    if "slow_mode_seconds" in body:
+        v = body.get("slow_mode_seconds")
+        if v is None:
+            pass
+        elif v == "":
+            vals["slow_mode_seconds"] = None
+        else:
+            try:
+                n = int(v)
+                if n < 0:
+                    n = 0
+                if n > 86400:
+                    n = 86400
+                vals["slow_mode_seconds"] = n if n > 0 else None
+            except (TypeError, ValueError):
+                pass
+    if "show_history_to_new_members" in body:
+        vals["show_history_to_new_members"] = bool(body.get("show_history_to_new_members"))
+    if not vals:
+        return JSONResponse({"ok": True})
+    await database.execute(community_groups.update().values(**vals))
+    return JSONResponse({"ok": True})
+
+
+@router.delete("/groups/{group_id}")
+async def admin_group_delete(request: Request, group_id: int):
+    admin = await require_admin(request)
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    g = await database.fetch_one(community_groups.select().where(community_groups.c.id == group_id))
+    if not g:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    await database.execute(community_groups.delete().where(community_groups.c.id == group_id))
+    return JSONResponse({"ok": True})
 
 
 # ─── Legacy routes ────────────────────────────────────────────────────────────

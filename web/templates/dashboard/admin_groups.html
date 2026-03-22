@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+{% block title %}Группы — Admin{% endblock %}
+
+{% block content %}
+<div class="pt-20 pb-16">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6">
+    {% include "components/admin_nav.html" ignore missing %}
+
+    <div class="mb-8">
+      <h1 class="text-3xl font-light text-text mb-1">Групповые чаты</h1>
+      <p class="text-sm text-muted">Политика создания, настройки как в Telegram: вступление, хранение, slow mode, история для новых участников. Массово — ко всем группам.</p>
+    </div>
+
+    <!-- Кто может создавать группы -->
+    <div class="p-6 rounded-2xl bg-surface border border-border mb-8">
+      <h2 class="text-lg font-medium text-text mb-4">Кто может создавать группы в кабинете</h2>
+      <div class="space-y-4 text-sm">
+        <label class="flex items-center gap-3 cursor-pointer">
+          <input type="radio" name="gc_mode" value="admin_only" id="gc_admin_only" class="accent-gold" />
+          <span>Только администраторы и операторы сайта (роль admin, ADMIN_EMAIL, ADMIN_TG_ID)</span>
+        </label>
+        <label class="flex items-center gap-3 cursor-pointer">
+          <input type="radio" name="gc_mode" value="by_plan" id="gc_by_plan" class="accent-gold" />
+          <span>Пользователи с выбранными тарифами (операторы всегда могут)</span>
+        </label>
+        <div id="gc_plans_box" class="pl-8 flex flex-wrap gap-4 text-muted">
+          {% for p in ['free', 'start', 'pro', 'maxi'] %}
+          <label class="inline-flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" class="gc-plan-cb accent-gold" value="{{ p }}" data-plan="{{ p }}" />
+            <span>{{ p }}</span>
+          </label>
+          {% endfor %}
+        </div>
+        <button type="button" onclick="savePolicy()" class="px-4 py-2 rounded-xl bg-gold/20 text-gold text-sm font-medium hover:bg-gold/30">Сохранить политику</button>
+        <p id="gc_policy_msg" class="text-xs text-muted"></p>
+      </div>
+    </div>
+
+    <!-- Массово ко всем группам -->
+    <div class="p-6 rounded-2xl bg-surface border border-border mb-8">
+      <h2 class="text-lg font-medium text-text mb-2">Применить ко всем группам сразу</h2>
+      <p class="text-xs text-muted mb-4">Пустые поля не меняют соответствующий параметр. Осторожно: затронет все чаты.</p>
+      <div class="grid sm:grid-cols-2 gap-4 text-sm">
+        <div>
+          <label class="block text-muted mb-1">Вступление</label>
+          <select id="bulk_join" class="w-full rounded-xl bg-background border border-border px-3 py-2 text-text">
+            <option value="">— не менять —</option>
+            <option value="open">Свободный вход</option>
+            <option value="approval">По заявкам</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-muted mb-1">Хранение сообщений (дней, пусто = без лимита)</label>
+          <input type="text" id="bulk_ret" placeholder="не менять" class="w-full rounded-xl bg-background border border-border px-3 py-2 text-text" />
+        </div>
+        <div>
+          <label class="block text-muted mb-1">Slow mode (сек между своими сообщениями, 0 = выкл)</label>
+          <input type="number" id="bulk_slow" min="0" max="86400" placeholder="не менять" class="w-full rounded-xl bg-background border border-border px-3 py-2 text-text" />
+        </div>
+        <div>
+          <label class="block text-muted mb-1">История новым участникам</label>
+          <select id="bulk_hist" class="w-full rounded-xl bg-background border border-border px-3 py-2 text-text">
+            <option value="">— не менять —</option>
+            <option value="1">Показывать всю историю</option>
+            <option value="0">Только с момента вступления</option>
+          </select>
+        </div>
+      </div>
+      <button type="button" onclick="saveBulk()" class="mt-4 px-4 py-2 rounded-xl bg-amber-500/20 text-amber-200 text-sm font-medium hover:bg-amber-500/30">Применить ко всем</button>
+      <p id="bulk_msg" class="text-xs text-muted mt-2"></p>
+    </div>
+
+    <!-- Список групп -->
+    <div>
+      <h2 class="text-lg font-medium text-text mb-4">Все группы ({{ groups|length }})</h2>
+      <div class="space-y-4">
+        {% for g in groups %}
+        <div class="p-5 rounded-2xl bg-surface border border-border" data-gid="{{ g.id }}">
+          <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
+            <div>
+              <p class="font-medium text-text">{{ g.name }}</p>
+              <p class="text-xs text-muted mt-1">#{{ g.id }} · создал: {{ g.creator_name or '—' }} (id {{ g.created_by or '—' }}) · {{ g.member_count or 0 }} уч. · {{ g.msg_count or 0 }} сообщ.</p>
+            </div>
+            <button type="button" onclick="deleteGroup({{ g.id }})" class="text-xs px-3 py-1.5 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25">Удалить группу</button>
+          </div>
+          <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+            <div>
+              <label class="text-xs text-muted">Название</label>
+              <input type="text" class="g-name w-full rounded-lg bg-background border border-border px-2 py-1.5 text-text" value="{{ g.name|e }}" />
+            </div>
+            <div class="sm:col-span-2">
+              <label class="text-xs text-muted">Описание</label>
+              <input type="text" class="g-desc w-full rounded-lg bg-background border border-border px-2 py-1.5 text-text" value="{{ (g.description or '')|e }}" />
+            </div>
+            <div>
+              <label class="text-xs text-muted">Вступление</label>
+              <select class="g-join w-full rounded-lg bg-background border border-border px-2 py-1.5 text-text">
+                <option value="open" {% if (g.join_mode or 'approval') == 'open' %}selected{% endif %}>Свободный вход</option>
+                <option value="approval" {% if (g.join_mode or 'approval') != 'open' %}selected{% endif %}>По заявкам</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs text-muted">Хранение (дней)</label>
+              <input type="text" class="g-ret w-full rounded-lg bg-background border border-border px-2 py-1.5 text-text" placeholder="без лимита" value="{% if g.message_retention_days is not none %}{{ g.message_retention_days }}{% endif %}" />
+            </div>
+            <div>
+              <label class="text-xs text-muted">Slow mode (сек)</label>
+              <input type="number" class="g-slow w-full rounded-lg bg-background border border-border px-2 py-1.5 text-text" min="0" max="86400" value="{% if g.slow_mode_seconds %}{{ g.slow_mode_seconds }}{% endif %}" />
+            </div>
+            <div>
+              <label class="text-xs text-muted">История для новых</label>
+              <select class="g-hist w-full rounded-lg bg-background border border-border px-2 py-1.5 text-text">
+                <option value="1" {% if g.show_history_to_new_members != false %}selected{% endif %}>Вся история</option>
+                <option value="0" {% if g.show_history_to_new_members == false %}selected{% endif %}>Со вступления</option>
+              </select>
+            </div>
+          </div>
+          <button type="button" onclick="saveOne({{ g.id }}, this)" class="mt-3 text-xs px-4 py-2 rounded-lg bg-gold/15 text-gold hover:bg-gold/25">Сохранить эту группу</button>
+          <p class="g-msg text-xs text-muted mt-2"></p>
+        </div>
+        {% else %}
+        <p class="text-sm text-muted">Групп пока нет.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const POLICY = {{ policy | tojson }};
+
+function initPolicyUI(){
+  const mode = (POLICY && POLICY.mode) === 'admin_only' ? 'admin_only' : 'by_plan';
+  document.getElementById('gc_admin_only').checked = mode === 'admin_only';
+  document.getElementById('gc_by_plan').checked = mode === 'by_plan';
+  const plans = (POLICY && POLICY.plans) ? POLICY.plans : ['pro','maxi'];
+  document.querySelectorAll('.gc-plan-cb').forEach(function(cb){
+    cb.checked = plans.indexOf(cb.value) >= 0;
+  });
+  togglePlansBox();
+  document.querySelectorAll('input[name="gc_mode"]').forEach(function(r){
+    r.addEventListener('change', togglePlansBox);
+  });
+}
+function togglePlansBox(){
+  const byPlan = document.getElementById('gc_by_plan').checked;
+  const box = document.getElementById('gc_plans_box');
+  if(box) box.style.opacity = byPlan ? '1' : '0.45';
+  document.querySelectorAll('.gc-plan-cb').forEach(function(cb){ cb.disabled = !byPlan; });
+}
+
+async function savePolicy(){
+  const msg = document.getElementById('gc_policy_msg');
+  const mode = document.getElementById('gc_admin_only').checked ? 'admin_only' : 'by_plan';
+  const plans = [];
+  document.querySelectorAll('.gc-plan-cb:checked').forEach(function(cb){ plans.push(cb.value); });
+  try{
+    const r = await fetch('/admin/groups/policy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ mode: mode, plans: plans })
+    });
+    const d = await r.json().catch(()=>({}));
+    if(r.ok && d.ok){ msg.textContent = 'Сохранено'; msg.style.color = '#86efac'; }
+    else { msg.textContent = d.error || 'Ошибка'; msg.style.color = '#fca5a5'; }
+  }catch(e){ msg.textContent = 'Сеть'; msg.style.color = '#fca5a5'; }
+}
+
+async function saveBulk(){
+  const el = document.getElementById('bulk_msg');
+  const body = {};
+  const j = document.getElementById('bulk_join').value;
+  if(j) body.join_mode = j;
+  const ret = (document.getElementById('bulk_ret').value || '').trim();
+  if(ret === '') {}
+  else if(ret === '0') body.message_retention_days = null;
+  else {
+    const n = parseInt(ret, 10);
+    if(Number.isFinite(n) && n >= 1) body.message_retention_days = n;
+  }
+  const slow = document.getElementById('bulk_slow').value;
+  if(slow !== '' && slow != null){
+    const n = parseInt(slow, 10);
+    if(Number.isFinite(n)){
+      body.slow_mode_seconds = n <= 0 ? null : Math.min(86400, n);
+    }
+  }
+  const h = document.getElementById('bulk_hist').value;
+  if(h === '1') body.show_history_to_new_members = true;
+  if(h === '0') body.show_history_to_new_members = false;
+  if(Object.keys(body).length === 0){
+    el.textContent = 'Выберите хотя бы одно поле';
+    el.style.color = '#fca5a5';
+    return;
+  }
+  if(!confirm('Применить настройки ко ВСЕМ группам?')) return;
+  try{
+    const r = await fetch('/admin/groups/bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify(body)
+    });
+    const d = await r.json().catch(()=>({}));
+    if(r.ok && d.ok){ el.textContent = 'Готово'; el.style.color = '#86efac'; }
+    else { el.textContent = d.error || 'Ошибка'; el.style.color = '#fca5a5'; }
+  }catch(e){ el.textContent = 'Сеть'; el.style.color = '#fca5a5'; }
+}
+
+async function saveOne(gid, btn){
+  const root = btn.closest('[data-gid]');
+  const msg = root.querySelector('.g-msg');
+  const name = (root.querySelector('.g-name') && root.querySelector('.g-name').value || '').trim();
+  const desc = root.querySelector('.g-desc') ? root.querySelector('.g-desc').value : '';
+  const join_mode = root.querySelector('.g-join').value;
+  const retRaw = (root.querySelector('.g-ret').value || '').trim();
+  let message_retention_days = undefined;
+  if(retRaw === '') message_retention_days = null;
+  else {
+    const n = parseInt(retRaw, 10);
+    if(Number.isFinite(n) && n >= 1) message_retention_days = n;
+    else { msg.textContent = 'Некорректное число дней'; msg.style.color = '#fca5a5'; return; }
+  }
+  const slowRaw = root.querySelector('.g-slow').value;
+  let slow_mode_seconds = undefined;
+  if(slowRaw === '' || slowRaw == null) slow_mode_seconds = null;
+  else {
+    const n = parseInt(slowRaw, 10);
+    if(Number.isFinite(n)) slow_mode_seconds = n <= 0 ? null : Math.min(86400, n);
+  }
+  const hist = root.querySelector('.g-hist').value === '1';
+  try{
+    const r = await fetch('/admin/groups/'+gid, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        name: name,
+        description: desc,
+        join_mode: join_mode,
+        message_retention_days: message_retention_days,
+        slow_mode_seconds: slow_mode_seconds,
+        show_history_to_new_members: hist
+      })
+    });
+    const d = await r.json().catch(()=>({}));
+    if(r.ok && d.ok){ msg.textContent = 'Сохранено'; msg.style.color = '#86efac'; }
+    else { msg.textContent = d.error || 'Ошибка'; msg.style.color = '#fca5a5'; }
+  }catch(e){ msg.textContent = 'Сеть'; msg.style.color = '#fca5a5'; }
+}
+
+async function deleteGroup(gid){
+  if(!confirm('Удалить группу #'+gid+' и все сообщения?')) return;
+  try{
+    const r = await fetch('/admin/groups/'+gid, { method: 'DELETE', credentials: 'same-origin' });
+    const d = await r.json().catch(()=>({}));
+    if(r.ok && d.ok){ location.reload(); }
+    else { alert(d.error || 'Ошибка'); }
+  }catch(e){ alert('Сеть'); }
+}
+
+document.addEventListener('DOMContentLoaded', initPolicyUI);
+</script>
+{% endblock %}

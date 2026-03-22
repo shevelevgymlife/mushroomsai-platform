@@ -115,7 +115,7 @@ def plan_allowed_block_keys(plan: str | None, user: dict[str, Any] | None) -> fr
 
 
 def can_create_community_groups(plan: str | None, user: dict[str, Any] | None) -> bool:
-    """Создание групп — тарифы Про и Макси, либо оператор/админ платформы (см. is_platform_operator)."""
+    """Устаревшая синхронная проверка без БД. Реальная политика — async user_can_create_community_group (админка «Группы»)."""
     if not user:
         return False
     if is_platform_operator(user):

@@ -15,7 +15,8 @@ from services.referral_service import get_referral_stats
 from services.subscription_service import check_subscription, PLANS
 from ai.openai_client import chat_with_ai
 from services.subscription_service import can_ask_question, increment_question_count
-from services.plan_access import plan_allowed_block_keys, can_create_community_groups, is_platform_operator
+from services.plan_access import plan_allowed_block_keys, is_platform_operator
+from services.group_platform_settings import user_can_create_community_group
 from services.legal import legal_acceptance_redirect
 from services.notify_admin import notify_admin_telegram
 import sqlalchemy as sa
@@ -305,7 +306,8 @@ async def dashboard(request: Request):
         feed_authors = {}
     if "shop" not in visible_block_keys:
         shop_preview = []
-    can_create_groups = can_create_community_groups(plan, user)
+    can_create_groups = await user_can_create_community_group(plan, user)
+    can_manage_group_settings = is_platform_operator(user)
     dashboard_secs = build_dashboard_secs(visible_block_keys)
 
     group_list = []
@@ -320,6 +322,7 @@ async def dashboard(request: Request):
             "plan": plan,
             "plan_info": plan_info,
             "can_create_groups": can_create_groups,
+            "can_manage_group_settings": can_manage_group_settings,
             "ref_stats": ref_stats,
             "ref_link": ref_link,
             "ref_link_site": ref_link_site,
@@ -1257,6 +1260,52 @@ async def _user_in_community_group(group_id: int, uid: int) -> bool:
     return row is not None
 
 
+async def _ensure_community_group_member(group_id: int, uid: int) -> bool:
+    """Если пользователь — создатель или группа open, но строки в members нет — добавить (после сбоя INSERT)."""
+    if await _user_in_community_group(group_id, uid):
+        return True
+    g = await database.fetch_one(community_groups.select().where(community_groups.c.id == group_id))
+    if not g:
+        g = await database.fetch_one(
+            sa.text(
+                "SELECT id, name, description, created_at, created_by, join_mode, message_retention_days "
+                "FROM community_groups WHERE id = :gid"
+            ).bindparams(gid=group_id)
+        )
+    if not g:
+        return False
+    cb = g.get("created_by")
+    mode = (g.get("join_mode") or "open").lower()
+    if cb is not None and int(cb) == int(uid):
+        try:
+            await database.execute(
+                sa.text(
+                    "INSERT INTO community_group_members (group_id, user_id) VALUES (:gid, :uid) "
+                    "ON CONFLICT (group_id, user_id) DO NOTHING"
+                ).bindparams(gid=group_id, uid=uid)
+            )
+        except Exception as e:
+            _logger.warning("ensure member (creator): %s", e)
+        return await _user_in_community_group(group_id, uid)
+    if mode == "open":
+        try:
+            await database.execute(
+                sa.text(
+                    "INSERT INTO community_group_members (group_id, user_id) VALUES (:gid, :uid) "
+                    "ON CONFLICT (group_id, user_id) DO NOTHING"
+                ).bindparams(gid=group_id, uid=uid)
+            )
+        except Exception as e:
+            _logger.warning("ensure member (open): %s", e)
+        return await _user_in_community_group(group_id, uid)
+    return False
+
+
+def _can_manage_community_group(g: dict, user: dict, uid: int) -> bool:
+    """Настройки группы в кабинете: только операторы платформы (полный CRUD в админке «Группы»)."""
+    return is_platform_operator(user)
+
+
 def _group_rows_to_dicts(rows) -> list[dict]:
     out = []
     for r in rows:
@@ -1273,6 +1322,8 @@ async def fetch_community_groups_for_user(uid: int) -> list[dict]:
             SELECT g.id, g.name, g.description, g.created_at, g.created_by,
               COALESCE(g.join_mode, 'approval') AS join_mode,
               g.message_retention_days,
+              g.slow_mode_seconds,
+              COALESCE(g.show_history_to_new_members, true) AS show_history_to_new_members,
               (SELECT COUNT(*)::bigint FROM community_group_members m WHERE m.group_id = g.id) AS member_count,
               EXISTS(SELECT 1 FROM community_group_members m2 WHERE m2.group_id = g.id AND m2.user_id = :uid) AS is_member,
               (SELECT COUNT(*)::bigint FROM community_group_messages gm WHERE gm.group_id = g.id) AS msg_count,
@@ -1288,6 +1339,8 @@ async def fetch_community_groups_for_user(uid: int) -> list[dict]:
             SELECT g.id, g.name, g.description, g.created_at, g.created_by,
               COALESCE(g.join_mode, 'approval') AS join_mode,
               g.message_retention_days,
+              g.slow_mode_seconds,
+              COALESCE(g.show_history_to_new_members, true) AS show_history_to_new_members,
               (SELECT COUNT(*)::bigint FROM community_group_members m WHERE m.group_id = g.id) AS member_count,
               EXISTS(SELECT 1 FROM community_group_members m2 WHERE m2.group_id = g.id AND m2.user_id = :uid) AS is_member,
               (SELECT COUNT(*)::bigint FROM community_group_messages gm WHERE gm.group_id = g.id) AS msg_count,
@@ -1300,6 +1353,8 @@ async def fetch_community_groups_for_user(uid: int) -> list[dict]:
             SELECT g.id, g.name, g.description, g.created_at, g.created_by,
               COALESCE(g.join_mode, 'approval') AS join_mode,
               g.message_retention_days,
+              NULL::integer AS slow_mode_seconds,
+              true AS show_history_to_new_members,
               (SELECT COUNT(*)::bigint FROM community_group_members m WHERE m.group_id = g.id) AS member_count,
               EXISTS(SELECT 1 FROM community_group_members m2 WHERE m2.group_id = g.id AND m2.user_id = :uid) AS is_member,
               0::bigint AS msg_count,
@@ -1343,7 +1398,7 @@ async def community_group_create(request: Request):
         return JSONResponse({"error": "auth required", "ok": False}, status_code=401)
     uid = _effective_user_id(user)
     pl = await check_subscription(uid)
-    if not can_create_community_groups(pl, user):
+    if not await user_can_create_community_group(pl, user):
         _logger.warning(
             "community_group_create 403 uid=%s plan=%s role=%s is_operator=%s",
             uid,
@@ -1354,7 +1409,7 @@ async def community_group_create(request: Request):
         return JSONResponse(
             {
                 "ok": False,
-                "error": "Создание групп доступно на тарифах Про и Макси, либо администратору сайта",
+                "error": "Создание групп недоступно: проверьте тариф и политику в админке «Группы»",
                 "plan": pl,
             },
             status_code=403,
@@ -1412,10 +1467,15 @@ async def community_group_create(request: Request):
         return JSONResponse({"ok": False, "error": "Группа не создана"}, status_code=500)
     try:
         await database.execute(
-            community_group_members.insert().values(group_id=gid, user_id=uid)
+            sa.text(
+                "INSERT INTO community_group_members (group_id, user_id) VALUES (:gid, :uid) "
+                "ON CONFLICT (group_id, user_id) DO NOTHING"
+            ).bindparams(gid=gid, uid=uid)
         )
     except Exception as e:
         _logger.warning("community_group_members insert: %s", e)
+    if not await _user_in_community_group(gid, uid):
+        _logger.error("creator not in members after create gid=%s uid=%s", gid, uid)
     return JSONResponse({"ok": True, "id": gid})
 
 
@@ -1424,7 +1484,7 @@ async def community_group_join(request: Request, group_id: int):
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
-    uid = user.get("primary_user_id") or user["id"]
+    uid = _effective_user_id(user)
     g = await database.fetch_one(community_groups.select().where(community_groups.c.id == group_id))
     if not g:
         return JSONResponse({"error": "not found"}, status_code=404)
@@ -1468,11 +1528,11 @@ async def community_group_join_requests_list(request: Request, group_id: int):
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
-    uid = user.get("primary_user_id") or user["id"]
+    uid = _effective_user_id(user)
     g = await database.fetch_one(community_groups.select().where(community_groups.c.id == group_id))
     if not g:
         return JSONResponse({"error": "not found"}, status_code=404)
-    if g.get("created_by") != uid and user.get("role") != "admin":
+    if not _can_manage_community_group(g, user, uid):
         return JSONResponse({"error": "forbidden"}, status_code=403)
     rows = await database.fetch_all(
         sa.text("""
@@ -1497,11 +1557,11 @@ async def community_group_join_approve(request: Request, group_id: int, request_
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
-    uid = user.get("primary_user_id") or user["id"]
+    uid = _effective_user_id(user)
     g = await database.fetch_one(community_groups.select().where(community_groups.c.id == group_id))
     if not g:
         return JSONResponse({"error": "not found"}, status_code=404)
-    if g.get("created_by") != uid and user.get("role") != "admin":
+    if not _can_manage_community_group(g, user, uid):
         return JSONResponse({"error": "forbidden"}, status_code=403)
     row = await database.fetch_one(
         community_group_join_requests.select()
@@ -1530,11 +1590,11 @@ async def community_group_join_reject(request: Request, group_id: int, request_i
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
-    uid = user.get("primary_user_id") or user["id"]
+    uid = _effective_user_id(user)
     g = await database.fetch_one(community_groups.select().where(community_groups.c.id == group_id))
     if not g:
         return JSONResponse({"error": "not found"}, status_code=404)
-    if g.get("created_by") != uid and user.get("role") != "admin":
+    if not _can_manage_community_group(g, user, uid):
         return JSONResponse({"error": "forbidden"}, status_code=403)
     await database.execute(
         community_group_join_requests.update()
@@ -1550,13 +1610,25 @@ async def community_group_settings(request: Request, group_id: int):
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
-    uid = user.get("primary_user_id") or user["id"]
+    uid = _effective_user_id(user)
     g = await database.fetch_one(community_groups.select().where(community_groups.c.id == group_id))
     if not g:
+        g = await database.fetch_one(
+            sa.text(
+                "SELECT id, name, description, created_at, created_by, join_mode, message_retention_days, "
+                "slow_mode_seconds, show_history_to_new_members "
+                "FROM community_groups WHERE id = :gid"
+            ).bindparams(gid=group_id)
+        )
+    if not g:
+        _logger.warning("community_group_settings: group not found id=%s uid=%s", group_id, uid)
         return JSONResponse({"error": "not found"}, status_code=404)
-    if g.get("created_by") != uid and user.get("role") != "admin":
+    if not _can_manage_community_group(g, user, uid):
         return JSONResponse({"error": "forbidden"}, status_code=403)
-    body = await request.json()
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
     vals = {}
     if "message_retention_days" in body:
         v = body.get("message_retention_days")
@@ -1576,10 +1648,30 @@ async def community_group_settings(request: Request, group_id: int):
         jm = (body.get("join_mode") or "").strip().lower()
         if jm in ("open", "approval"):
             vals["join_mode"] = jm
+    if "slow_mode_seconds" in body:
+        v = body.get("slow_mode_seconds")
+        if v is None or v == "":
+            vals["slow_mode_seconds"] = None
+        else:
+            try:
+                n = int(v)
+                if n < 0:
+                    n = 0
+                if n > 86400:
+                    n = 86400
+                vals["slow_mode_seconds"] = n if n > 0 else None
+            except (TypeError, ValueError):
+                pass
+    if "show_history_to_new_members" in body:
+        vals["show_history_to_new_members"] = bool(body.get("show_history_to_new_members"))
     if vals:
-        await database.execute(
-            community_groups.update().where(community_groups.c.id == group_id).values(**vals)
-        )
+        try:
+            await database.execute(
+                community_groups.update().where(community_groups.c.id == group_id).values(**vals)
+            )
+        except Exception as e:
+            _logger.exception("community_group_settings update failed")
+            return JSONResponse({"ok": False, "error": str(e)[:200]}, status_code=500)
     return JSONResponse({"ok": True})
 
 
@@ -1588,14 +1680,29 @@ async def community_group_messages_get(request: Request, group_id: int):
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
-    uid = user.get("primary_user_id") or user["id"]
-    if not await _user_in_community_group(group_id, uid):
+    uid = _effective_user_id(user)
+    if not await _ensure_community_group_member(group_id, uid):
         return JSONResponse({"error": "not a member"}, status_code=403)
-    rows = await database.fetch_all(
+    g_row = await database.fetch_one(community_groups.select().where(community_groups.c.id == group_id))
+    mem_row = await database.fetch_one(
+        community_group_members.select()
+        .where(community_group_members.c.group_id == group_id)
+        .where(community_group_members.c.user_id == uid)
+    )
+    show_hist = True
+    if g_row and g_row.get("show_history_to_new_members") is not None:
+        show_hist = bool(g_row["show_history_to_new_members"])
+    cutoff = None
+    if not show_hist and mem_row and mem_row.get("joined_at"):
+        cutoff = mem_row["joined_at"]
+    q = (
         community_group_messages.select()
         .where(community_group_messages.c.group_id == group_id)
-        .order_by(community_group_messages.c.created_at.asc())
-        .limit(200)
+    )
+    if cutoff is not None:
+        q = q.where(community_group_messages.c.created_at >= cutoff)
+    rows = await database.fetch_all(
+        q.order_by(community_group_messages.c.created_at.asc()).limit(200)
     )
     is_admin = user.get("role") == "admin"
     out = []
@@ -1623,13 +1730,44 @@ async def community_group_message_post(request: Request, group_id: int):
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
-    uid = user.get("primary_user_id") or user["id"]
-    if not await _user_in_community_group(group_id, uid):
+    uid = _effective_user_id(user)
+    if not await _ensure_community_group_member(group_id, uid):
         return JSONResponse({"error": "not a member"}, status_code=403)
-    body = await request.json()
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
     text = (body.get("text") or "").strip()
     if not text or len(text) > 8000:
         return JSONResponse({"error": "bad text"}, status_code=400)
+    g_row = await database.fetch_one(community_groups.select().where(community_groups.c.id == group_id))
+    sm = None
+    if g_row is not None:
+        sm = g_row.get("slow_mode_seconds")
+    try:
+        sm_int = int(sm) if sm is not None else 0
+    except (TypeError, ValueError):
+        sm_int = 0
+    if sm_int > 0:
+        last = await database.fetch_one(
+            sa.text(
+                "SELECT created_at FROM community_group_messages "
+                "WHERE group_id = :gid AND sender_id = :uid "
+                "ORDER BY created_at DESC LIMIT 1"
+            ).bindparams(gid=group_id, uid=uid)
+        )
+        if last and last.get("created_at"):
+            ca = last["created_at"]
+            if isinstance(ca, datetime):
+                now = datetime.utcnow()
+                ca_naive = ca.replace(tzinfo=None) if getattr(ca, "tzinfo", None) else ca
+                elapsed = (now - ca_naive).total_seconds()
+                if elapsed < sm_int:
+                    wait = max(1, int(sm_int - elapsed))
+                    return JSONResponse(
+                        {"error": "slow_mode", "wait_sec": wait, "ok": False},
+                        status_code=429,
+                    )
     await database.execute(
         community_group_messages.insert().values(group_id=group_id, sender_id=uid, text=text)
     )
@@ -1641,8 +1779,8 @@ async def community_group_message_delete(request: Request, group_id: int, messag
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
-    uid = user.get("primary_user_id") or user["id"]
-    if not await _user_in_community_group(group_id, uid):
+    uid = _effective_user_id(user)
+    if not await _ensure_community_group_member(group_id, uid):
         return JSONResponse({"error": "not a member"}, status_code=403)
     msg = await database.fetch_one(
         community_group_messages.select()

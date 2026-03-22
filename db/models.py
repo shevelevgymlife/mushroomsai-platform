@@ -389,6 +389,14 @@ admin_permissions = sqlalchemy.Table(
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
 
+# Ключ-значение (value = JSON-строка): group_creation_policy и др.
+platform_settings = sqlalchemy.Table(
+    "platform_settings",
+    metadata,
+    sqlalchemy.Column("key", sqlalchemy.String(128), primary_key=True),
+    sqlalchemy.Column("value", sqlalchemy.Text, nullable=False, server_default=""),
+)
+
 community_follows = sqlalchemy.Table(
     "community_follows",
     metadata,
@@ -417,6 +425,8 @@ community_groups = sqlalchemy.Table(
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
     sqlalchemy.Column("join_mode", sqlalchemy.String(20), default="approval", server_default="approval"),
     sqlalchemy.Column("message_retention_days", sqlalchemy.Integer, nullable=True),
+    sqlalchemy.Column("slow_mode_seconds", sqlalchemy.Integer, nullable=True),
+    sqlalchemy.Column("show_history_to_new_members", sqlalchemy.Boolean, default=True, server_default="true"),
 )
 
 community_group_join_requests = sqlalchemy.Table(
