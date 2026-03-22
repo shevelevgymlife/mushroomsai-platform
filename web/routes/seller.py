@@ -101,6 +101,24 @@ async def seller_shop_page(request: Request):
     )
 
 
+@router.get("/shop/product/{product_id}")
+async def seller_shop_product_json(request: Request, product_id: int):
+    """JSON для модалки редактирования (без data-product в HTML — кавычки ломали атрибут)."""
+    seller = await require_maxi_seller(request)
+    if not seller:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    uid = seller["id"]
+    row = await database.fetch_one(
+        shop_products.select().where(shop_products.c.id == product_id)
+    )
+    if not row or row.get("seller_id") != uid:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    p = dict(row)
+    p["price"] = int(p["price"] or 0)
+    p["in_stock"] = p.get("in_stock") is not False
+    return JSONResponse(p)
+
+
 @router.get("/questions", response_class=HTMLResponse)
 async def seller_questions_page(request: Request):
     seller = await require_maxi_seller(request)

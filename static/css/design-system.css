@@ -223,3 +223,130 @@ html.neo-twa main > .min-h-screen.pt-16:first-child {
 html.neo-twa main > .pt-28:first-child {
   padding-top: calc(7rem + env(safe-area-inset-top, 0px)) !important;
 }
+
+/* ── Page blocks: hero strip + product cards + modals (не только смена hex) ── */
+.neo-page-hero {
+  position: relative;
+  border-radius: var(--neo-radius);
+  padding: 1.35rem 1.35rem 1.5rem;
+  margin-bottom: 1.75rem;
+  overflow: hidden;
+  background: linear-gradient(
+    125deg,
+    rgba(0, 245, 255, 0.11) 0%,
+    rgba(255, 0, 170, 0.07) 42%,
+    rgba(10, 12, 22, 0.75) 100%
+  );
+  border: 1px solid rgba(0, 245, 255, 0.16);
+  box-shadow:
+    var(--neo-shadow),
+    0 0 50px rgba(0, 245, 255, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.neo-page-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(ellipse 80% 60% at 100% 0%, rgba(255, 0, 170, 0.12), transparent 55%);
+  opacity: 0.9;
+}
+.neo-page-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.neo-product-card {
+  position: relative;
+  border-radius: var(--neo-radius-sm);
+  padding: 1.25rem;
+  background: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(16, 18, 32, 0.62) 40%,
+    rgba(6, 8, 16, 0.92) 100%
+  );
+  border: 1px solid rgba(0, 245, 255, 0.14);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: var(--neo-shadow), 0 0 28px rgba(0, 245, 255, 0.05);
+  transition: border-color 0.22s ease, box-shadow 0.22s ease, transform 0.2s ease;
+}
+.neo-product-card:hover {
+  border-color: rgba(0, 245, 255, 0.3);
+  box-shadow: var(--neo-shadow), 0 0 40px rgba(0, 245, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+.neo-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow-y: auto;
+  background: rgba(2, 3, 10, 0.86);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.neo-modal-overlay.neo-modal-overlay--open {
+  display: flex;
+}
+
+.neo-modal-panel {
+  width: 100%;
+  max-width: 32rem;
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: var(--neo-radius);
+  padding: 1.5rem;
+  background: linear-gradient(
+    168deg,
+    rgba(26, 28, 44, 0.95) 0%,
+    rgba(10, 12, 22, 0.98) 100%
+  );
+  border: 1px solid rgba(0, 245, 255, 0.2);
+  box-shadow:
+    0 28px 90px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 0, 170, 0.08),
+    0 0 56px rgba(0, 245, 255, 0.08);
+}
+
+.neo-btn-ghost {
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  border: 1px solid rgba(0, 245, 255, 0.28);
+  color: var(--neo-cyan);
+  background: rgba(0, 245, 255, 0.06);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.neo-btn-ghost:hover {
+  background: rgba(0, 245, 255, 0.12);
+  border-color: rgba(0, 245, 255, 0.45);
+  color: #fff;
+}
+
+.neo-btn-danger-ghost {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  color: #f87171;
+  background: transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.15s;
+}
+.neo-btn-danger-ghost:hover {
+  background: rgba(248, 113, 113, 0.12);
+}

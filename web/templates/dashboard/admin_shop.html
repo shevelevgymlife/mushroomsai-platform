@@ -11,19 +11,24 @@
 
     {% include "components/admin_nav.html" %}
 
-    <div class="flex items-center justify-between mb-8">
-      <h1 class="text-3xl font-light text-text">Управление магазином</h1>
-      <button onclick="openAddModal()"
-        class="px-5 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-all duration-300">
-        + Добавить товар
-      </button>
+    <div class="neo-page-hero mb-8">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 class="text-2xl sm:text-3xl font-semibold text-text tracking-tight">Управление магазином</h1>
+          <p class="text-sm text-muted mt-2">Каталог, цены и карточки товаров на сайте</p>
+        </div>
+        <button type="button" onclick="openAddModal()"
+          class="px-5 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:opacity-95 transition-all shadow-[0_0_24px_rgba(0,245,255,0.25)] shrink-0">
+          + Добавить товар
+        </button>
+      </div>
     </div>
 
     <!-- Products grid -->
     {% if products %}
     <div id="shop-products-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
       {% for p in products %}
-      <div class="p-5 rounded-2xl bg-surface border border-border hover:border-gold/30 transition-colors group">
+      <div class="neo-product-card group">
         {% if p.image_url %}
         <div class="w-full h-40 rounded-xl overflow-hidden mb-4 bg-bg">
           <img src="{{ p.image_url }}" alt="{{ p.name }}" class="w-full h-full object-cover" />
@@ -69,17 +74,11 @@
           </a>
         </div>
         <div class="flex gap-2">
-          <button type="button" class="js-edit-shop-product"
-            data-product-id="{{ p.id }}"
-            style="min-height:44px;flex:1;padding:10px 14px;border-radius:10px;font-size:13px;border:1px solid rgba(255,255,255,.15);color:#aaa;background:none;cursor:pointer;transition:all .2s;touch-action:manipulation"
-            onmouseover="this.style.borderColor='#00f5ff';this.style.color='#00f5ff'"
-            onmouseout="this.style.borderColor='rgba(255,255,255,.15)';this.style.color='#aaa'">
+          <button type="button" class="js-edit-shop-product neo-btn-ghost flex-1"
+            data-product-id="{{ p.id }}">
             ✏️ Редактировать
           </button>
-          <button onclick="deleteProduct({{ p.id }}, this)"
-            style="min-height:44px;min-width:44px;padding:10px 14px;border-radius:10px;font-size:13px;border:1px solid rgba(239,68,68,.3);color:#f87171;background:none;cursor:pointer;transition:all .2s;touch-action:manipulation"
-            onmouseover="this.style.background='rgba(239,68,68,.1)'"
-            onmouseout="this.style.background='none'">
+          <button type="button" class="neo-btn-danger-ghost" onclick="deleteProduct({{ p.id }}, this)" title="Удалить">
             🗑️
           </button>
         </div>
@@ -96,8 +95,8 @@
 </div>
 
 <!-- ══ ADD MODAL ══ -->
-<div id="addModal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.75);z-index:9999;display:none;align-items:center;justify-content:center;padding:16px;overflow-y:auto">
-  <div class="bg-surface border border-border rounded-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+<div id="addModal" class="neo-modal-overlay">
+  <div class="neo-modal-panel">
     <div class="flex items-center justify-between mb-6">
       <h2 class="font-semibold text-text text-lg">Добавить товар</h2>
       <button onclick="closeAddModal()" class="text-muted hover:text-text text-xl leading-none">×</button>
@@ -184,8 +183,8 @@
 </div>
 
 <!-- ══ EDIT MODAL ══ -->
-<div id="editModal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.75);z-index:9999;display:none;align-items:center;justify-content:center;padding:16px;overflow-y:auto">
-  <div class="bg-surface border border-border rounded-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+<div id="editModal" class="neo-modal-overlay">
+  <div class="neo-modal-panel">
     <div class="flex items-center justify-between mb-6">
       <h2 class="font-semibold text-text text-lg">Редактировать товар</h2>
       <button onclick="closeEditModal()" class="text-muted hover:text-text text-xl leading-none">×</button>
@@ -279,8 +278,8 @@
 </div>
 
 <!-- ══ CROP MODAL (z-index выше add/edit модалок 9999, иначе обрезка скрыта под ними) ══ -->
-<div id="cropModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4" style="z-index:10050">
-  <div class="bg-surface border border-border rounded-2xl w-full max-w-lg p-6">
+<div id="cropModal" class="hidden fixed inset-0 z-[10050] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+  <div class="neo-modal-panel max-w-lg">
     <div class="flex items-center justify-between mb-4">
       <h3 class="font-semibold text-text">Обрезать фото</h3>
       <button onclick="cancelCrop()" class="text-muted hover:text-text text-xl leading-none">×</button>
@@ -507,8 +506,9 @@ async function saveEditProduct() {
 async function deleteProduct(id, btn) {
   if (!confirm('Удалить товар?')) return;
   btn.disabled = true;
-  var resp = await fetch('/admin/shop/delete/' + id, { method: 'POST' });
-  if (resp.ok) btn.closest('.rounded-2xl').remove();
+  var resp = await fetch('/admin/shop/delete/' + id, { method: 'POST', credentials: 'same-origin' });
+  var card = btn.closest('.neo-product-card');
+  if (resp.ok) { if (card) card.remove(); }
   else { btn.disabled = false; alert('Ошибка удаления'); }
 }
 </script>

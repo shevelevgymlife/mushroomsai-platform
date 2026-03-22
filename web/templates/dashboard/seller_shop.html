@@ -9,38 +9,29 @@
 <div class="pt-24 pb-16 neo-app-surface">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-    <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
-      <div>
-        <a href="/dashboard" class="text-xs text-muted hover:text-gold transition-colors mb-2 inline-block">← Личный кабинет</a>
-        <h1 class="text-3xl font-light text-text">Мои товары на маркетплейсе</h1>
-        <p class="text-sm text-muted mt-1">Тариф Макси · товары видны в общем каталоге <a href="/shop" class="text-gold hover:underline">/shop</a></p>
-        <p class="text-sm mt-2">
-          <a href="/seller/questions" class="text-gold hover:underline">Вопросы покупателей</a>
-          {% if pending_questions_count %}<span class="text-muted"> ({{ pending_questions_count }} без ответа)</span>{% endif %}
-        </p>
+    <div class="neo-page-hero">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <a href="/dashboard" class="text-xs text-muted hover:text-gold transition-colors mb-2 inline-block">← Личный кабинет</a>
+          <h1 class="text-2xl sm:text-3xl font-semibold text-text tracking-tight">Мои товары</h1>
+          <p class="text-sm text-muted mt-2 max-w-xl leading-relaxed">Каталог маркетплейса: <a href="/shop" class="text-gold hover:underline font-medium">/shop</a> · тариф Макси</p>
+          <p class="text-sm mt-3">
+            <a href="/seller/questions" class="text-gold hover:underline">Вопросы покупателей</a>
+            {% if pending_questions_count %}<span class="text-muted"> ({{ pending_questions_count }} без ответа)</span>{% endif %}
+          </p>
+        </div>
+        <button type="button" onclick="openAddModal()"
+          class="px-5 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:opacity-95 transition-all shadow-[0_0_24px_rgba(0,245,255,0.25)] shrink-0">
+          + Добавить товар
+        </button>
       </div>
-      <button onclick="openAddModal()"
-        class="px-5 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-all duration-300">
-        + Добавить товар
-      </button>
     </div>
 
     <!-- Products grid -->
     {% if products %}
     <div id="shop-products-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
       {% for p in products %}
-      {% set _p = {
-        'id': p.id,
-        'name': p.name or '',
-        'description': p.description or '',
-        'price': p.price|int if p.price is not none else 0,
-        'url': p.url or '',
-        'mushroom_type': p.mushroom_type or '',
-        'image_url': p.image_url or '',
-        'category': p.category or '',
-        'in_stock': p.in_stock != false
-      } %}
-      <div class="p-5 rounded-2xl bg-surface border border-border hover:border-gold/30 transition-colors group">
+      <div class="neo-product-card group">
         {% if p.image_url %}
         <div class="w-full h-40 rounded-xl overflow-hidden mb-4 bg-bg">
           <img src="{{ p.image_url }}" alt="{{ p.name }}" class="w-full h-full object-cover" />
@@ -75,17 +66,11 @@
         {% endif %}
 
         <div class="flex gap-2">
-          <button type="button" class="js-edit-shop-product"
-            data-product="{{ _p | tojson }}"
-            style="min-height:44px;flex:1;padding:10px 14px;border-radius:10px;font-size:13px;border:1px solid rgba(255,255,255,.15);color:#aaa;background:none;cursor:pointer;transition:all .2s;touch-action:manipulation"
-            onmouseover="this.style.borderColor='#00f5ff';this.style.color='#00f5ff'"
-            onmouseout="this.style.borderColor='rgba(255,255,255,.15)';this.style.color='#aaa'">
+          <button type="button" class="js-edit-shop-product neo-btn-ghost flex-1"
+            data-product-id="{{ p.id }}">
             ✏️ Редактировать
           </button>
-          <button onclick="deleteProduct({{ p.id }}, this)"
-            style="min-height:44px;min-width:44px;padding:10px 14px;border-radius:10px;font-size:13px;border:1px solid rgba(239,68,68,.3);color:#f87171;background:none;cursor:pointer;transition:all .2s;touch-action:manipulation"
-            onmouseover="this.style.background='rgba(239,68,68,.1)'"
-            onmouseout="this.style.background='none'">
+          <button type="button" class="neo-btn-danger-ghost" onclick="deleteProduct({{ p.id }}, this)" title="Удалить">
             🗑️
           </button>
         </div>
@@ -102,8 +87,8 @@
 </div>
 
 <!-- ══ ADD MODAL ══ -->
-<div id="addModal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.75);z-index:9999;display:none;align-items:center;justify-content:center;padding:16px;overflow-y:auto">
-  <div class="bg-surface border border-border rounded-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+<div id="addModal" class="neo-modal-overlay">
+  <div class="neo-modal-panel">
     <div class="flex items-center justify-between mb-6">
       <h2 class="font-semibold text-text text-lg">Добавить товар</h2>
       <button onclick="closeAddModal()" class="text-muted hover:text-text text-xl leading-none">×</button>
@@ -190,8 +175,8 @@
 </div>
 
 <!-- ══ EDIT MODAL ══ -->
-<div id="editModal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.75);z-index:9999;display:none;align-items:center;justify-content:center;padding:16px;overflow-y:auto">
-  <div class="bg-surface border border-border rounded-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+<div id="editModal" class="neo-modal-overlay">
+  <div class="neo-modal-panel">
     <div class="flex items-center justify-between mb-6">
       <h2 class="font-semibold text-text text-lg">Редактировать товар</h2>
       <button onclick="closeEditModal()" class="text-muted hover:text-text text-xl leading-none">×</button>
@@ -285,8 +270,8 @@
 </div>
 
 <!-- ══ CROP MODAL (z-index выше add/edit модалок 9999, иначе обрезка скрыта под ними) ══ -->
-<div id="cropModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4" style="z-index:10050">
-  <div class="bg-surface border border-border rounded-2xl w-full max-w-lg p-6">
+<div id="cropModal" class="hidden fixed inset-0 z-[10050] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+  <div class="neo-modal-panel max-w-lg">
     <div class="flex items-center justify-between mb-4">
       <h3 class="font-semibold text-text">Обрезать фото</h3>
       <button onclick="cancelCrop()" class="text-muted hover:text-text text-xl leading-none">×</button>
@@ -365,21 +350,26 @@ function closeEditModal() {
   document.body.style.overflow = '';
 }
 
-// Show URL link button live in edit modal + edit button (data-product, без inline onclick — не ломается на кавычках в тексте)
+// Редактирование: JSON с сервера (data-product в атрибуте ломался из‑за кавычек в названии/описании)
 document.addEventListener('DOMContentLoaded', function() {
   var grid = document.getElementById('shop-products-grid');
   if (grid) {
-    grid.addEventListener('click', function(e) {
+    grid.addEventListener('click', async function(e) {
       var btn = e.target.closest('.js-edit-shop-product');
       if (!btn) return;
       e.preventDefault();
-      var raw = btn.getAttribute('data-product');
-      if (!raw) return;
+      var pid = btn.getAttribute('data-product-id');
+      if (!pid) return;
       try {
-        var pr = JSON.parse(raw);
+        var resp = await fetch('/seller/shop/product/' + pid, { credentials: 'same-origin' });
+        var pr = await resp.json();
+        if (!resp.ok || pr.error) {
+          alert(pr.error || 'Ошибка загрузки товара');
+          return;
+        }
         openEditModal(
-          pr.id, pr.name, pr.description, pr.price, pr.url,
-          pr.mushroom_type, pr.image_url, pr.category, pr.in_stock
+          pr.id, pr.name || '', pr.description || '', pr.price || 0, pr.url || '',
+          pr.mushroom_type || '', pr.image_url || '', pr.category || '', !!pr.in_stock
         );
       } catch (err) {
         console.error(err);
@@ -508,8 +498,9 @@ async function saveEditProduct() {
 async function deleteProduct(id, btn) {
   if (!confirm('Удалить товар?')) return;
   btn.disabled = true;
-  var resp = await fetch('/seller/shop/delete/' + id, { method: 'POST' });
-  if (resp.ok) btn.closest('.rounded-2xl').remove();
+  var resp = await fetch('/seller/shop/delete/' + id, { method: 'POST', credentials: 'same-origin' });
+  var card = btn.closest('.neo-product-card');
+  if (resp.ok) { if (card) card.remove(); }
   else { btn.disabled = false; alert('Ошибка удаления'); }
 }
 </script>
