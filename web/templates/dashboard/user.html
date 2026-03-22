@@ -366,16 +366,16 @@ details.ig-drawer-details > summary{list-style:none}
 @media(min-width:640px){.ig-profile-head{gap:32px}}
 .ig-profile-av-wrap{position:relative;cursor:pointer;flex-shrink:0}
 .ig-profile-av{width:min(150px,32vw);height:min(150px,32vw);min-width:96px;min-height:96px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.12);display:block}
-.ig-profile-stats{display:flex;gap:0;justify-content:space-around;align-items:stretch;flex:1;min-width:min(100%,280px);max-width:360px}
+.ig-profile-stats{display:flex;gap:10px;justify-content:space-between;align-items:stretch;flex:1;min-width:min(100%,280px);max-width:380px}
 /* Одинаковые отступы для div и button — иначе «публикации» без padding кнопки визуально съезжали вверх */
 .ig-profile-stat{
-  text-align:center;flex:1;min-width:0;
+  text-align:center;flex:1 1 0;min-width:0;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   padding:10px 4px;box-sizing:border-box;
 }
 .ig-profile-stat b{display:block;font-size:clamp(16px,4vw,20px);color:#e8e8e8;font-weight:700;line-height:1.15}
-.ig-profile-stat span{display:block;font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-top:4px;line-height:1.2}
-button.ig-profile-stat{width:100%;cursor:pointer;border:none;background:transparent;font:inherit;margin:0;border-radius:12px;transition:background .15s}
+.ig-profile-stat span{display:block;font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.04em;margin-top:4px;line-height:1.35;max-width:100%;padding:0 2px;overflow-wrap:break-word;word-break:normal}
+button.ig-profile-stat{width:auto;min-width:0;flex:1 1 0;cursor:pointer;border:none;background:transparent;font:inherit;margin:0;border-radius:12px;transition:background .15s}
 button.ig-profile-stat:hover{background:rgba(255,255,255,.06)}
 button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outline-offset:2px}
 .ig-plan-pill{display:inline-flex;align-items:center;padding:5px 12px;border-radius:22px;font-size:11px;font-weight:700;letter-spacing:.02em}
