@@ -1,0 +1,58 @@
+{# Минималистичные line-иконки (stroke), стиль как monoline UI kits #}
+{% macro ico(name, cls='') -%}
+<svg class="stroke-ico {{ cls }}" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+{%- if name == 'menu' -%}
+<path d="M4 6h16M4 12h16M4 18h16"/>
+{%- elif name == 'home' -%}
+<path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1Z"/>
+{%- elif name == 'grid' -%}
+<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+{%- elif name == 'feed' -%}
+<path d="M4 6h16M4 12h10M4 18h7"/><circle cx="18" cy="15" r="4"/>
+{%- elif name == 'search' -%}
+<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
+{%- elif name == 'plus' -%}
+<path d="M12 5v14M5 12h14"/>
+{%- elif name == 'message' -%}
+<path d="M21 12a8 8 0 1 1-3.5-6.6L21 5z"/>
+{%- elif name == 'user' -%}
+<circle cx="12" cy="8" r="4"/><path d="M5 20a7 7 0 0 1 14 0"/>
+{%- elif name == 'users' -%}
+<circle cx="9" cy="7" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20a6 6 0 0 1 12 0M15 18a5 5 0 0 1 8 2"/>
+{%- elif name == 'settings' -%}
+<circle cx="12" cy="12" r="3"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+{%- elif name == 'shop' -%}
+<path d="M6 8h15l-1.5 9H7L6 8z"/><path d="M6 8 5 3H2"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/>
+{%- elif name == 'spark' -%}
+<path d="M12 3v3m0 12v3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1M3 12h3m12 0h3M5.6 18.4l2.1-2.1m8.6-8.6 2.1-2.1"/><circle cx="12" cy="12" r="3"/>
+{%- elif name == 'book' -%}
+<path d="M4 5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2V5z"/><path d="M6 3v14a2 2 0 0 1 2-2h10"/>
+{%- elif name == 'package' -%}
+<path d="M12 22V12"/><path d="m21 8-9-5-9 5v10l9 5 9-5V8z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 12 3.3 7"/>
+{%- elif name == 'gift' -%}
+<rect x="3" y="8" width="18" height="14" rx="2"/><path d="M12 8V22"/><path d="M8 8h8a4 4 0 0 0-8 0z"/><path d="M8 8H6a2 2 0 1 1 0-4c1.5 0 2.5 1 2.5 2.5V8z"/><path d="M16 8h2a2 2 0 1 0 0-4c-1.5 0-2.5 1-2.5 2.5V8z"/>
+{%- elif name == 'link' -%}
+<path d="M10 13a5 5 0 0 1 0-7l1-1a5 5 0 0 1 7 7l-1 1"/><path d="M14 11a5 5 0 0 1 0 7l-1 1a5 5 0 0 1-7-7l1-1"/>
+{%- elif name == 'globe' -%}
+<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20"/>
+{%- elif name == 'send' -%}
+<path d="m22 2-7 20-4-9-9-4 20-7z"/><path d="M22 2 11 13"/>
+{%- elif name == 'shield' -%}
+<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+{%- elif name == 'wallet' -%}
+<path d="M19 8V6a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/><path d="M3 10h17a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H3"/><circle cx="17" cy="14" r="1"/>
+{%- elif name == 'layout' -%}
+<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/>
+{%- elif name == 'message_sq' -%}
+<path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/>
+{%- elif name == 'cpu' -%}
+<rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 9h6v6H9zM9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/>
+{%- elif name == 'bell' -%}
+<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 7h18s-3 0-3-7"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+{%- elif name == 'folder' -%}
+<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+{%- else -%}
+<circle cx="12" cy="12" r="10"/>
+{%- endif -%}
+</svg>
+{%- endmacro %}

@@ -24,6 +24,8 @@ users = sqlalchemy.Table(
     sqlalchemy.Column("daily_recipes", sqlalchemy.Integer, default=0, server_default="0"),
     sqlalchemy.Column("last_reset", sqlalchemy.Date, nullable=True),
     sqlalchemy.Column("bio", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("profile_link_label", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("profile_link_url", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("followers_count", sqlalchemy.Integer, default=0, server_default="0"),
     sqlalchemy.Column("following_count", sqlalchemy.Integer, default=0, server_default="0"),
     sqlalchemy.Column("wallet_address", sqlalchemy.Text, nullable=True),
@@ -406,6 +408,7 @@ ai_training_posts = sqlalchemy.Table(
     sqlalchemy.Column("title", sqlalchemy.Text, nullable=False),
     sqlalchemy.Column("content", sqlalchemy.Text, nullable=False),
     sqlalchemy.Column("category", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("folder", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("is_active", sqlalchemy.Boolean, default=True, server_default="true"),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )

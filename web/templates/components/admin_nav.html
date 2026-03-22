@@ -1,20 +1,39 @@
-<div class="flex gap-2 mb-8 overflow-x-auto pb-2">
+{% from 'components/stroke_icons.html' import ico %}
+<style>
+.admin-nav-wrap{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:2rem}
+@media(max-width:640px){
+  .admin-nav-wrap{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+}
+.admin-nav-item{
+  display:inline-flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:500;
+  border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.65);text-decoration:none;transition:border-color .2s,color .2s,background .2s;
+  white-space:nowrap
+}
+.admin-nav-item:hover{border-color:rgba(201,168,76,.45);color:#C9A84C;background:rgba(201,168,76,.06)}
+.admin-nav-item.on{border-color:#C9A84C;background:rgba(201,168,76,.12);color:#e8e8e8}
+.admin-nav-item .ni-ic{flex-shrink:0;opacity:.9}
+.admin-nav-item.on .ni-ic{color:#C9A84C}
+</style>
+<div class="admin-nav-wrap">
   {% set nav_items = [
-    ('Dashboard', '/admin', 'can_dashboard'),
-    ('AI', '/admin/ai', 'can_ai'),
-    ('Магазин', '/admin/shop', 'can_shop'),
-    ('Пользователи', '/admin/users', 'can_users'),
-    ('Обратная связь', '/admin/feedback', 'can_feedback'),
-    ('Рассылки', '/admin/broadcast', 'can_broadcast'),
-    ('База знаний', '/admin/knowledge', 'can_knowledge'),
-    ('🏠 Главная', '/admin/homepage', 'can_dashboard'),
-    ('🎛️ Блоки кабинета', '/admin/dashboard-blocks', 'can_dashboard'),
+    ('Панель', '/admin', 'can_dashboard', 'layout'),
+    ('AI', '/admin/ai', 'can_ai', 'cpu'),
+    ('Обучающие посты', '/admin/ai-posts', 'can_ai', 'book'),
+    ('Магазин', '/admin/shop', 'can_shop', 'shop'),
+    ('Пользователи', '/admin/users', 'can_users', 'users'),
+    ('Обратная связь', '/admin/feedback', 'can_feedback', 'message_sq'),
+    ('Рассылки', '/admin/broadcast', 'can_broadcast', 'send'),
+    ('База знаний', '/admin/knowledge', 'can_knowledge', 'book'),
+    ('Сообщество', '/admin/community', 'can_dashboard', 'users'),
+    ('Главная сайта', '/admin/homepage', 'can_dashboard', 'home'),
+    ('Блоки кабинета', '/admin/dashboard-blocks', 'can_dashboard', 'grid'),
   ] %}
-  {% for label, href, perm_key in nav_items %}
+  {% for label, href, perm_key, iname in nav_items %}
   {% if user_permissions is not defined or user_permissions.get(perm_key, True) %}
   <a href="{{ href }}"
-     class="px-4 py-2 rounded-lg text-sm whitespace-nowrap border transition-all duration-300 {{ 'bg-gold text-bg border-gold font-medium' if request.url.path == href else 'border-border text-muted hover:border-gold hover:text-gold' }}">
-    {{ label }}
+     class="admin-nav-item {{ 'on' if request.url.path == href else '' }}">
+    <span class="ni-ic">{{ ico(iname) }}</span>
+    <span>{{ label }}</span>
   </a>
   {% endif %}
   {% endfor %}

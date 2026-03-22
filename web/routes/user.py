@@ -69,9 +69,9 @@ async def compute_visible_blocks(user_id: int, plan: str) -> list[str]:
 
 def build_dashboard_secs(visible_block_keys: list[str]) -> list[str]:
     keys = set(visible_block_keys)
-    # Соцсеть: сразу лента на весь экран, без отдельной «главной»
+    # Соцсеть: главный экран — профиль в стиле Instagram, лента отдельно
     if "community" in keys:
-        out = ["feed", "groups"]
+        out = ["me", "feed", "groups"]
     else:
         out = ["home"]
     if "messages" in keys:
@@ -208,12 +208,19 @@ async def dashboard(request: Request):
     except Exception:
         pass
 
-    # Last 5 posts by user (for profile home screen)
+    # Last 5 posts by user (for classic home screen)
     recent_posts = await database.fetch_all(
         community_posts.select()
         .where(community_posts.c.user_id == effective_user_id)
         .order_by(community_posts.c.created_at.desc())
         .limit(5)
+    )
+    # Сетка профиля (Instagram): до 120 постов пользователя
+    my_grid_posts = await database.fetch_all(
+        community_posts.select()
+        .where(community_posts.c.user_id == effective_user_id)
+        .order_by(community_posts.c.created_at.desc())
+        .limit(120)
     )
 
     # Feed: last 20 approved posts
@@ -311,6 +318,8 @@ async def dashboard(request: Request):
             "liked_post_ids": liked_post_ids,
             "following_ids": following_ids,
             "recent_posts": recent_posts,
+            "my_grid_posts": my_grid_posts,
+            "plans_catalog": PLANS,
             "shop_preview": shop_preview,
             "comm_profile": dict(comm_profile) if comm_profile else None,
             "shevelev_token": _settings.SHEVELEV_TOKEN_ADDRESS,
@@ -556,6 +565,19 @@ async def create_folder(request: Request, name: str = Form(...)):
     return JSONResponse({"ok": True, "id": fid, "name": name.strip()})
 
 
+def _effective_user_id(user: dict) -> int:
+    return int(user.get("primary_user_id") or user["id"])
+
+
+def _normalize_profile_url(raw: str) -> str | None:
+    s = (raw or "").strip()
+    if not s:
+        return None
+    if not s.startswith(("http://", "https://")):
+        s = "https://" + s
+    return s[:2000]
+
+
 @router.post("/profile/wallet")
 async def update_wallet(request: Request):
     user = await require_auth(request)
@@ -568,8 +590,9 @@ async def update_wallet(request: Request):
     else:
         form = await request.form()
         wallet = form.get("wallet_address") or form.get("wallet") or ""
+    uid = _effective_user_id(user)
     await database.execute(
-        users.update().where(users.c.id == user["id"]).values(wallet_address=wallet.strip() or None)
+        users.update().where(users.c.id == uid).values(wallet_address=wallet.strip() or None)
     )
     return JSONResponse({"ok": True})
 
@@ -579,8 +602,9 @@ async def update_language(request: Request, language: str = Form(...)):
     user = await require_auth(request)
     if not user:
         return RedirectResponse("/login")
+    uid = _effective_user_id(user)
     await database.execute(
-        users.update().where(users.c.id == user["id"]).values(language=language)
+        users.update().where(users.c.id == uid).values(language=language)
     )
     return RedirectResponse("/dashboard", status_code=302)
 
@@ -603,7 +627,8 @@ async def upload_avatar(request: Request, file: UploadFile = File(...)):
         return JSONResponse({"error": "Файл слишком большой (макс. 3 МБ)"}, status_code=400)
 
     ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else "jpg"
-    filename = f"{user['id']}.{ext}"
+    uid = _effective_user_id(user)
+    filename = f"{uid}.{ext}"
 
     base = "/data" if os.path.exists("/data") else "./media"
     save_path = os.path.join(base, "avatars", filename)
@@ -614,7 +639,7 @@ async def upload_avatar(request: Request, file: UploadFile = File(...)):
 
     url = f"/media/avatars/{filename}"
     await database.execute(
-        users.update().where(users.c.id == user["id"]).values(avatar=url)
+        users.update().where(users.c.id == uid).values(avatar=url)
     )
     return JSONResponse({"ok": True, "url": url})
 
@@ -624,9 +649,33 @@ async def update_bio(request: Request, bio: str = Form("")):
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = _effective_user_id(user)
     await database.execute(
-        users.update().where(users.c.id == user["id"]).values(bio=bio.strip()[:300] or None)
+        users.update().where(users.c.id == uid).values(bio=bio.strip()[:300] or None)
     )
+    return JSONResponse({"ok": True})
+
+
+@router.post("/profile/me")
+async def update_profile_me(
+    request: Request,
+    name: str = Form(""),
+    bio: str = Form(""),
+    link_label: str = Form(""),
+    link_url: str = Form(""),
+):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = _effective_user_id(user)
+    vals = {
+        "bio": bio.strip()[:300] or None,
+        "profile_link_label": link_label.strip()[:120] or None,
+        "profile_link_url": _normalize_profile_url(link_url),
+    }
+    if name.strip():
+        vals["name"] = name.strip()[:255]
+    await database.execute(users.update().where(users.c.id == uid).values(**vals))
     return JSONResponse({"ok": True})
 
 

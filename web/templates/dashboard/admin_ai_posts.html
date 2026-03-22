@@ -7,118 +7,112 @@
 
     {% include "components/admin_nav.html" %}
 
-    <div class="flex items-center justify-between mb-8">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
       <div>
         <h1 class="text-3xl font-light text-text">Обучающие посты AI</h1>
-        <p class="text-sm text-muted mt-1">Активные посты добавляются в системный промт автоматически</p>
+        <p class="text-sm text-muted mt-1">Папки группируют знания; в промт попадают все активные посты с заголовками разделов</p>
       </div>
-      <button onclick="openAddModal()"
-        style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:12px;background:#C9A84C;color:#111;font-weight:600;font-size:14px;border:none;cursor:pointer;transition:background .2s"
-        onmouseover="this.style.background='#E8C96B'" onmouseout="this.style.background='#C9A84C'">
+      <button type="button" onclick="openAddModal()"
+        class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm border-0 cursor-pointer hover:opacity-90 transition-opacity shrink-0">
         + Добавить пост
       </button>
     </div>
 
-    <!-- Table -->
-    <div class="rounded-2xl bg-surface border border-border overflow-hidden">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="border-b border-border text-left">
-            <th class="px-5 py-4 text-xs font-semibold text-muted uppercase tracking-wider">Заголовок</th>
-            <th class="px-5 py-4 text-xs font-semibold text-muted uppercase tracking-wider hidden md:table-cell">Категория</th>
-            <th class="px-5 py-4 text-xs font-semibold text-muted uppercase tracking-wider hidden lg:table-cell">Дата</th>
-            <th class="px-5 py-4 text-xs font-semibold text-muted uppercase tracking-wider">Статус</th>
-            <th class="px-5 py-4 text-xs font-semibold text-muted uppercase tracking-wider">Действия</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-border">
-          {% for post in posts %}
-          <tr class="hover:bg-border/20 transition-colors">
-            <td class="px-5 py-4">
-              <div class="font-medium text-text">{{ post.title }}</div>
-              <div class="text-xs text-muted mt-1 line-clamp-2 max-w-xs">{{ post.content[:120] }}{% if post.content|length > 120 %}…{% endif %}</div>
-            </td>
-            <td class="px-5 py-4 hidden md:table-cell">
-              {% if post.category %}
-              <span style="display:inline-block;padding:3px 10px;border-radius:20px;background:rgba(201,168,76,.15);color:#C9A84C;font-size:12px;font-weight:500">{{ post.category }}</span>
-              {% else %}
-              <span class="text-muted text-xs">—</span>
-              {% endif %}
-            </td>
-            <td class="px-5 py-4 text-muted hidden lg:table-cell text-xs">
-              {{ post.created_at.strftime('%d.%m.%Y') if post.created_at else '—' }}
-            </td>
-            <td class="px-5 py-4">
-              <button onclick="togglePost({{ post.id }}, this)"
-                data-active="{{ 'true' if post.is_active else 'false' }}"
-                style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;{{ 'background:rgba(34,197,94,.15);color:#4ade80' if post.is_active else 'background:rgba(255,255,255,.06);color:#666' }}">
-                {{ '● Активен' if post.is_active else '○ Выключен' }}
-              </button>
-            </td>
-            <td class="px-5 py-4">
-              <button onclick="deletePost({{ post.id }})"
-                style="padding:6px 12px;border-radius:8px;background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.2);font-size:12px;cursor:pointer;transition:all .2s"
-                onmouseover="this.style.background='rgba(239,68,68,.2)'" onmouseout="this.style.background='rgba(239,68,68,.1)'">
-                Удалить
-              </button>
-            </td>
-          </tr>
-          {% else %}
-          <tr>
-            <td colspan="5" class="px-5 py-12 text-center text-muted">
-              Постов ещё нет. Добавьте первый, чтобы AI начал использовать эти знания.
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    {% for folder in folder_order %}
+    {% set fposts = posts_by_folder[folder] %}
+    <section class="mb-10 rounded-2xl bg-surface border border-border overflow-hidden">
+      <div class="px-4 sm:px-5 py-3 border-b border-border flex items-center gap-2 bg-bg/40">
+        <span class="text-gold text-lg leading-none">📁</span>
+        <h2 class="text-sm font-semibold text-text tracking-wide">{{ folder }}</h2>
+        <span class="text-xs text-muted ml-auto">{{ fposts|length }} пост.</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm min-w-[640px]">
+          <thead>
+            <tr class="border-b border-border text-left">
+              <th class="px-4 sm:px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Заголовок</th>
+              <th class="px-4 sm:px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wider hidden sm:table-cell">Категория</th>
+              <th class="px-4 sm:px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wider hidden lg:table-cell">Дата</th>
+              <th class="px-4 sm:px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Статус</th>
+              <th class="px-4 sm:px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Действия</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border">
+            {% for post in fposts %}
+            <tr class="hover:bg-border/20 transition-colors">
+              <td class="px-4 sm:px-5 py-3">
+                <div class="font-medium text-text">{{ post.title }}</div>
+                <div class="text-xs text-muted mt-1 line-clamp-2 max-w-md">{{ post.content[:120] }}{% if post.content|length > 120 %}…{% endif %}</div>
+              </td>
+              <td class="px-4 sm:px-5 py-3 hidden sm:table-cell">
+                {% if post.category %}
+                <span class="inline-block px-2.5 py-0.5 rounded-full bg-gold/15 text-gold text-xs font-medium">{{ post.category }}</span>
+                {% else %}<span class="text-muted text-xs">—</span>{% endif %}
+              </td>
+              <td class="px-4 sm:px-5 py-3 text-muted hidden lg:table-cell text-xs">
+                {{ post.created_at.strftime('%d.%m.%Y') if post.created_at else '—' }}
+              </td>
+              <td class="px-4 sm:px-5 py-3">
+                <button type="button" onclick="togglePost({{ post.id }}, this)"
+                  data-active="{{ 'true' if post.is_active else 'false' }}"
+                  class="text-xs font-semibold rounded-full px-3 py-1 border-0 cursor-pointer transition-all {{ 'bg-green-500/15 text-green-400' if post.is_active else 'bg-border/30 text-muted' }}">
+                  {{ '● Активен' if post.is_active else '○ Выключен' }}
+                </button>
+              </td>
+              <td class="px-4 sm:px-5 py-3">
+                <button type="button" onclick="deletePost({{ post.id }})"
+                  class="text-xs px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 cursor-pointer hover:bg-red-500/20 transition-colors">
+                  Удалить
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    {% else %}
+    <div class="rounded-2xl border border-border bg-surface p-12 text-center text-muted text-sm">
+      Постов ещё нет. Добавьте первый и укажите папку (например «Инструкции» или «Биохимия»).
     </div>
-
-    <!-- Count -->
-    {% if posts %}
-    <p class="text-xs text-muted mt-3">Всего: {{ posts|length }} постов, активных: {{ posts|selectattr('is_active')|list|length }}</p>
-    {% endif %}
+    {% endfor %}
 
   </div>
 </div>
 
 <!-- Add modal -->
-<div id="add-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;background:rgba(0,0,0,.75);backdrop-filter:blur(6px)" onclick="if(event.target===this)closeAddModal()">
-  <div style="background:#0e0e0e;border:1px solid rgba(201,168,76,.3);border-radius:20px;padding:36px 32px;max-width:560px;width:90%;max-height:90vh;overflow-y:auto;box-shadow:0 0 60px rgba(201,168,76,.1)">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
-      <h3 style="font-size:18px;font-weight:700;color:#e8e8e8">Новый обучающий пост</h3>
-      <button onclick="closeAddModal()" style="background:none;border:none;color:#555;font-size:22px;cursor:pointer;line-height:1">×</button>
+<div id="add-modal" class="hidden fixed inset-0 z-[9999] items-center justify-center bg-black/75 backdrop-blur-sm p-4" style="display:none" onclick="if(event.target===this)closeAddModal()">
+  <div class="bg-[#0e0e0e] border border-gold/30 rounded-2xl p-6 sm:p-8 max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl shadow-gold/10" onclick="event.stopPropagation()">
+    <div class="flex items-center justify-between mb-6">
+      <h3 class="text-lg font-bold text-text">Новый обучающий пост</h3>
+      <button type="button" onclick="closeAddModal()" class="bg-transparent border-0 text-muted text-2xl cursor-pointer leading-none">&times;</button>
     </div>
     <form id="add-form" onsubmit="submitPost(event)">
-      <div style="margin-bottom:16px">
-        <label style="display:block;font-size:13px;color:#aaa;margin-bottom:6px">Заголовок *</label>
-        <input type="text" name="title" required placeholder="Например: Рейши при аутоиммунных заболеваниях"
-          style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px 14px;color:#e8e8e8;font-size:14px;outline:none;box-sizing:border-box"
-          onfocus="this.style.borderColor='rgba(201,168,76,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.12)'">
+      <div class="mb-4">
+        <label class="block text-xs text-muted mb-1.5">Папка *</label>
+        <input type="text" name="folder" required placeholder="Например: Инструкции или Биохимия"
+          class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm outline-none focus:border-gold/50 box-border" />
+        <p class="text-[11px] text-muted mt-1">Посты в одной папке читаются AI как один раздел</p>
       </div>
-      <div style="margin-bottom:16px">
-        <label style="display:block;font-size:13px;color:#aaa;margin-bottom:6px">Категория</label>
-        <input type="text" name="category" placeholder="Например: грибы, протоколы, противопоказания"
-          style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px 14px;color:#e8e8e8;font-size:14px;outline:none;box-sizing:border-box"
-          onfocus="this.style.borderColor='rgba(201,168,76,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.12)'">
+      <div class="mb-4">
+        <label class="block text-xs text-muted mb-1.5">Заголовок *</label>
+        <input type="text" name="title" required
+          class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm outline-none focus:border-gold/50 box-border" />
       </div>
-      <div style="margin-bottom:24px">
-        <label style="display:block;font-size:13px;color:#aaa;margin-bottom:6px">Содержание *</label>
-        <textarea name="content" rows="8" required placeholder="Подробная информация, которую AI должен знать..."
-          style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px 14px;color:#e8e8e8;font-size:14px;outline:none;resize:vertical;font-family:inherit;box-sizing:border-box"
-          onfocus="this.style.borderColor='rgba(201,168,76,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.12)'"></textarea>
+      <div class="mb-4">
+        <label class="block text-xs text-muted mb-1.5">Категория (тег)</label>
+        <input type="text" name="category" placeholder="грибы, протоколы…"
+          class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm outline-none focus:border-gold/50 box-border" />
       </div>
-      <div id="add-status" style="font-size:13px;color:#f87171;margin-bottom:12px;display:none"></div>
-      <div style="display:flex;gap:10px">
-        <button type="submit"
-          style="flex:1;padding:12px;background:#C9A84C;color:#111;border:none;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;transition:background .2s"
-          onmouseover="this.style.background='#E8C96B'" onmouseout="this.style.background='#C9A84C'">
-          Сохранить
-        </button>
-        <button type="button" onclick="closeAddModal()"
-          style="padding:12px 18px;background:none;border:1px solid #333;color:#666;border-radius:12px;font-size:14px;cursor:pointer">
-          Отмена
-        </button>
+      <div class="mb-6">
+        <label class="block text-xs text-muted mb-1.5">Содержание *</label>
+        <textarea name="content" rows="8" required
+          class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm outline-none focus:border-gold/50 resize-y font-inherit box-border"></textarea>
+      </div>
+      <div id="add-status" class="text-sm text-red-400 mb-3 hidden"></div>
+      <div class="flex gap-2">
+        <button type="submit" class="flex-1 py-3 rounded-xl bg-gold text-bg font-bold text-sm border-0 cursor-pointer hover:opacity-90">Сохранить</button>
+        <button type="button" onclick="closeAddModal()" class="px-5 py-3 rounded-xl border border-border text-muted text-sm cursor-pointer hover:border-gold/40">Отмена</button>
       </div>
     </form>
   </div>
@@ -128,12 +122,16 @@
 {% block extra_scripts %}
 <script>
 function openAddModal() {
-  document.getElementById('add-modal').style.display = 'flex';
-  document.getElementById('add-status').style.display = 'none';
+  const m = document.getElementById('add-modal');
+  m.style.display = 'flex';
+  m.classList.remove('hidden');
+  document.getElementById('add-status').classList.add('hidden');
   document.getElementById('add-form').reset();
 }
 function closeAddModal() {
-  document.getElementById('add-modal').style.display = 'none';
+  const m = document.getElementById('add-modal');
+  m.style.display = 'none';
+  m.classList.add('hidden');
 }
 
 async function submitPost(e) {
@@ -141,24 +139,24 @@ async function submitPost(e) {
   const form = e.target;
   const status = document.getElementById('add-status');
   const data = new FormData(form);
-  status.style.display = 'none';
+  status.classList.add('hidden');
   try {
     const r = await fetch('/admin/ai-posts', { method: 'POST', body: data });
     if (r.ok) {
       location.reload();
     } else {
       const d = await r.json().catch(() => ({}));
-      status.style.display = 'block';
-      status.textContent = d.detail || 'Ошибка при сохранении';
+      status.textContent = d.detail || d.error || 'Ошибка при сохранении';
+      status.classList.remove('hidden');
     }
   } catch {
-    status.style.display = 'block';
     status.textContent = 'Ошибка сети';
+    status.classList.remove('hidden');
   }
 }
 
 async function deletePost(id) {
-  if (!confirm('Удалить этот пост? AI перестанет его использовать.')) return;
+  if (!confirm('Удалить этот пост?')) return;
   const r = await fetch('/admin/ai-posts/' + id, { method: 'DELETE' });
   if (r.ok) location.reload();
 }
@@ -170,8 +168,7 @@ async function togglePost(id, btn) {
   const active = d.is_active;
   btn.dataset.active = active ? 'true' : 'false';
   btn.textContent = active ? '● Активен' : '○ Выключен';
-  btn.style.background = active ? 'rgba(34,197,94,.15)' : 'rgba(255,255,255,.06)';
-  btn.style.color = active ? '#4ade80' : '#666';
+  btn.className = 'text-xs font-semibold rounded-full px-3 py-1 border-0 cursor-pointer transition-all ' + (active ? 'bg-green-500/15 text-green-400' : 'bg-border/30 text-muted');
 }
 </script>
 {% endblock %}

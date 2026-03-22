@@ -18,7 +18,50 @@
         class="w-full max-w-md px-4 py-2.5 rounded-xl bg-surface border border-border text-text placeholder-muted text-sm focus:outline-none focus:border-gold/60 transition-colors" />
     </form>
 
-    <div class="rounded-2xl bg-surface border border-border overflow-hidden">
+    {# Мобильные карточки #}
+    <div class="md:hidden space-y-3 mb-6">
+      {% for u in users %}
+      {% set is_protected = (u.role == 'admin' or u.tg_id == 742166400 or u.linked_tg_id == 742166400) %}
+      <div class="rounded-2xl bg-surface border border-border p-4 space-y-3">
+        <div class="flex items-start justify-between gap-2">
+          <div class="flex items-center gap-2 min-w-0">
+            <div class="w-10 h-10 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center text-sm text-gold font-medium flex-shrink-0">
+              {{ (u.name or 'U')[0]|upper }}
+            </div>
+            <div class="min-w-0">
+              <a href="/community/profile/{{ u.id }}" target="_blank" class="font-medium text-text text-sm truncate block hover:text-gold" style="text-decoration:none">{{ u.name or '—' }}</a>
+              <p class="text-xs text-muted font-mono">{{ u.display_tg_id or '—' }}</p>
+            </div>
+          </div>
+          <span class="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide shrink-0
+            {% if u.subscription_plan == 'maxi' %}text-amber-300 bg-amber-500/15 border border-amber-500/25
+            {% elif u.subscription_plan == 'pro' %}text-gold bg-gold/10 border border-gold/20
+            {% elif u.subscription_plan == 'start' %}text-blue-400 bg-blue-500/10 border border-blue-500/20
+            {% else %}text-muted bg-border border border-border{% endif %}">
+            {{ plan_labels.get(u.subscription_plan, u.subscription_plan) if plan_labels is defined else u.subscription_plan }}
+          </span>
+        </div>
+        <div class="flex flex-wrap gap-2 text-xs">
+          <span class="px-2 py-1 rounded-lg bg-border/40 text-muted">{{ u.email or '—' }}</span>
+          <span class="px-2 py-1 rounded-lg bg-border/40 text-muted">AI: {{ msg_counts.get(u.id, 0) }}</span>
+          {% if u.is_banned %}<span class="text-red-400">Забанен</span>{% endif %}
+        </div>
+        <button type="button" onclick="toggleAct('actm{{ u.id }}')" class="w-full py-2 rounded-xl border border-border text-sm text-muted">Действия ▾</button>
+        <div id="actm{{ u.id }}" class="hidden rounded-xl border border-border overflow-hidden divide-y divide-border">
+          <a href="/admin/users/{{ u.id }}/dialogs" class="block px-3 py-2.5 text-sm text-text hover:bg-border/20" style="text-decoration:none">Диалоги AI</a>
+          <button type="button" onclick="closeAllActs();openSubModal({{ u.id }}, '{{ u.name | e }}', '{{ u.subscription_plan }}')" class="w-full text-left px-3 py-2.5 text-sm text-text hover:bg-border/20">Подписка</button>
+          {% if not is_protected %}
+          <button type="button" onclick="closeAllActs();banUser({{ u.id }}, '{{ u.name | e }}')" class="w-full text-left px-3 py-2.5 text-sm text-orange-400 hover:bg-border/20">Блок</button>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+      {% if not users %}
+      <p class="text-center text-muted text-sm py-8">Нет пользователей</p>
+      {% endif %}
+    </div>
+
+    <div class="rounded-2xl bg-surface border border-border overflow-hidden hidden md:block">
       <div class="overflow-x-auto">
         <table class="w-full">
           <thead>
@@ -61,10 +104,11 @@
               </td>
               <td class="px-4 py-3">
                 <span class="px-2 py-0.5 rounded text-xs font-medium
-                  {{ 'text-gold bg-gold/10 border border-gold/20' if u.subscription_plan == 'pro'
+                  {{ 'text-amber-300 bg-amber-500/15 border border-amber-500/25' if u.subscription_plan == 'maxi'
+                     else 'text-gold bg-gold/10 border border-gold/20' if u.subscription_plan == 'pro'
                      else 'text-blue-400 bg-blue-500/10 border border-blue-500/20' if u.subscription_plan == 'start'
                      else 'text-muted bg-border border border-border' }}">
-                  {{ u.subscription_plan }}
+                  {{ plan_labels.get(u.subscription_plan, u.subscription_plan) if plan_labels is defined else u.subscription_plan }}
                 </span>
               </td>
               <!-- violations count -->
@@ -140,18 +184,14 @@
       <button onclick="document.getElementById('subModal').classList.add('hidden')" class="text-muted hover:text-text text-xl">×</button>
     </div>
     <p class="text-sm text-muted mb-4">Пользователь: <span id="subUserName" class="text-text font-medium"></span></p>
+    {% set _pm = plan_modal_rows if plan_modal_rows is defined else [('free','Бесплатный',0),('start','Старт',990),('pro','Про',1990),('maxi','Макси',4999)] %}
     <div class="space-y-2 mb-4">
-      {% for plan, label, desc in [
-        ('free', 'Free', 'Бесплатный, 5 вопросов/день'),
-        ('start', 'Старт', '990 ₽/мес, безлимит + соц.сеть'),
-        ('pro', 'Про', '1990 ₽/мес, безлимит + TG-канал'),
-        ('maxi', 'Макси', '4999 ₽/мес, всё + реклама на маркетплейсе'),
-      ] %}
+      {% for plan, pname, price in _pm %}
       <label class="flex items-center gap-3 p-3 rounded-xl border border-border hover:border-gold/40 cursor-pointer transition-colors">
         <input type="radio" name="plan" value="{{ plan }}" class="accent-gold" />
         <div>
-          <p class="text-sm text-text font-medium">{{ label }}</p>
-          <p class="text-xs text-muted">{{ desc }}</p>
+          <p class="text-sm text-text font-medium">{{ pname }}</p>
+          <p class="text-xs text-muted">{% if price %}от {{ price }} ₽/мес{% else %}Бесплатно{% endif %}</p>
         </div>
       </label>
       {% endfor %}

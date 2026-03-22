@@ -1,3 +1,6 @@
+from datetime import datetime
+from itertools import groupby
+
 from openai import AsyncOpenAI
 from config import settings
 from db.database import database
@@ -18,17 +21,28 @@ async def get_system_prompt() -> str:
         base_prompt = DEFAULT_SYSTEM_PROMPT
 
     try:
-        posts = await database.fetch_all(
-            ai_training_posts.select()
-            .where(ai_training_posts.c.is_active == True)
-            .order_by(ai_training_posts.c.created_at.asc())
+        posts = list(
+            await database.fetch_all(
+                ai_training_posts.select().where(ai_training_posts.c.is_active == True)
+            )
+        )
+        posts.sort(
+            key=lambda r: (
+                ((r.get("folder") or "").strip().lower()),
+                r["created_at"] or datetime.min,
+            )
         )
         if posts:
             blocks = []
-            for p in posts:
-                cat = f"[{p['category']}] " if p["category"] else ""
-                blocks.append(f"{cat}{p['title']}:\n{p['content']}")
-            base_prompt += "\n\nДОПОЛНИТЕЛЬНЫЕ ЗНАНИЯ:\n" + "\n\n".join(blocks)
+            for folder, group_iter in groupby(
+                posts, key=lambda r: (r.get("folder") or "").strip() or "Общее"
+            ):
+                group = list(group_iter)
+                blocks.append(f"═══ Папка / раздел: {folder} ═══")
+                for p in group:
+                    cat = f"[{p['category']}] " if p.get("category") else ""
+                    blocks.append(f"{cat}{p['title']}:\n{p['content']}")
+            base_prompt += "\n\nДОПОЛНИТЕЛЬНЫЕ ЗНАНИЯ (по папкам):\n" + "\n\n".join(blocks)
     except Exception:
         pass
 

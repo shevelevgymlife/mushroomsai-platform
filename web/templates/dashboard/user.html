@@ -173,18 +173,40 @@
 .ig-tabbar .ig-tab .ic{font-size:24px;line-height:1;opacity:.85}
 .ig-tabbar .ig-tab.on,.ig-tabbar .ig-tab.on .ic{color:#e8e8e8;opacity:1}
 .ig-tabbar .ig-tab.on .ic{filter:drop-shadow(0 0 10px rgba(201,168,76,.35))}
+.stroke-ico{display:block;flex-shrink:0}
+.ig-drawer-item .stroke-ico{color:#888}
+.ig-tabbar .ig-tab .stroke-ico{width:26px;height:26px;margin:0 auto;color:#777}
+.ig-tabbar .ig-tab.on .stroke-ico{color:#e8e8e8}
+.ig-ham .stroke-ico{color:#e8e8e8}
+.ig-head-msg .stroke-ico{width:22px;height:22px}
+.ig-me-shell{width:100%;max-width:min(100%,935px);margin:0 auto;padding-bottom:8px}
+.ig-profile-head{display:flex;gap:22px;align-items:center;padding:8px 0 24px;flex-wrap:wrap}
+@media(min-width:640px){.ig-profile-head{gap:32px}}
+.ig-profile-av-wrap{position:relative;cursor:pointer;flex-shrink:0}
+.ig-profile-av{width:min(150px,32vw);height:min(150px,32vw);min-width:96px;min-height:96px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.12);display:block}
+.ig-profile-stats{display:flex;gap:0;justify-content:space-around;flex:1;min-width:min(100%,280px);max-width:360px}
+.ig-profile-stat{text-align:center;flex:1}
+.ig-profile-stat b{display:block;font-size:clamp(16px,4vw,20px);color:#e8e8e8;font-weight:700}
+.ig-profile-stat span{display:block;font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+.ig-plan-pill{display:inline-flex;align-items:center;padding:5px 12px;border-radius:22px;font-size:11px;font-weight:700;letter-spacing:.02em}
+.ig-post-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;width:100%;border-top:1px solid rgba(255,255,255,.08);padding-top:3px}
+.ig-post-cell{aspect-ratio:1;position:relative;overflow:hidden;background:#121212}
+.ig-post-cell img{width:100%;height:100%;object-fit:cover;display:block}
+.ig-post-cell-ph{display:flex;align-items:center;justify-content:center;font-size:10px;color:#666;padding:8px;text-align:center;line-height:1.35;overflow:hidden}
 </style>
 
+{% from 'components/stroke_icons.html' import ico %}
 {% set vbk = visible_block_keys if visible_block_keys is defined else ['ai_chat','messages','community','shop','profile_photo','posts','tariffs','referral','knowledge_base'] %}
 {% set ig_social = 'community' in vbk %}
-{% set dash_home = 'profile' if ig_social else 'home' %}
+{% set dash_home = 'me' if ig_social else 'home' %}
+{% set grid_posts = my_grid_posts if my_grid_posts is defined else [] %}
 <div class="db-wrap{% if ig_social %} db-ig-mode{% endif %}">
   {% if ig_social %}
   <header class="ig-dash-header" aria-label="Панель ленты">
-    <button type="button" class="ig-ham" onclick="toggleDbDrawer()" aria-label="Открыть меню">☰</button>
+    <button type="button" class="ig-ham" onclick="toggleDbDrawer()" aria-label="Открыть меню">{{ ico('menu') }}</button>
     <span class="ig-head-brand">MushroomsAI</span>
     {% if 'messages' in vbk %}
-    <button type="button" class="ig-head-msg" style="border:none;cursor:pointer" title="Сообщения" aria-label="Сообщения" onclick="goSec('messages')">✉</button>
+    <button type="button" class="ig-head-msg" style="border:none;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center" title="Сообщения" aria-label="Сообщения" onclick="goSec('messages')">{{ ico('message') }}</button>
     {% else %}
     <span style="width:44px"></span>
     {% endif %}
@@ -196,42 +218,44 @@
       <div class="em">{{ user.email or ('Telegram: ' + (user.tg_id|string) if user.tg_id else '') }}</div>
     </div>
     <div class="ig-drawer-scroll">
-      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('feed')"><span class="e">🏠</span><span class="lbl">Лента</span></button>
-      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('groups')"><span class="e">💬</span><span class="lbl">Группы и чаты</span></button>
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('me')"><span class="e">{{ ico('grid') }}</span><span class="lbl">Мой профиль</span></button>
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('feed')"><span class="e">{{ ico('feed') }}</span><span class="lbl">Лента</span></button>
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('groups')"><span class="e">{{ ico('message_sq') }}</span><span class="lbl">Группы и чаты</span></button>
       {% if 'messages' in vbk %}
-      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('messages')"><span class="e">✉️</span><span class="lbl">Сообщения</span></button>
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('messages')"><span class="e">{{ ico('message') }}</span><span class="lbl">Сообщения</span></button>
       {% endif %}
       {% if 'ai_chat' in vbk %}
-      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('ai')"><span class="e">🤖</span><span class="lbl">AI-чат</span></button>
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('ai')"><span class="e">{{ ico('cpu') }}</span><span class="lbl">AI-чат</span></button>
       {% endif %}
       {% if 'knowledge_base' in vbk %}
-      <a href="https://t.me/ShevelevVlog" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none"><span class="e">📚</span><span class="lbl">База знаний</span></a>
+      <a href="https://t.me/ShevelevVlog" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none"><span class="e">{{ ico('book') }}</span><span class="lbl">База знаний</span></a>
       {% endif %}
       {% if 'shop' in vbk %}
-      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('shop')"><span class="e">🛒</span><span class="lbl">Магазин</span></button>
-      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('orders')"><span class="e">📦</span><span class="lbl">Мои заказы</span></button>
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('shop')"><span class="e">{{ ico('shop') }}</span><span class="lbl">Магазин</span></button>
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('orders')"><span class="e">{{ ico('package') }}</span><span class="lbl">Мои заказы</span></button>
       {% endif %}
       {% if 'tariffs' in vbk %}
-      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('plan')"><span class="e">✨</span><span class="lbl">Тариф</span></button>
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('plan')"><span class="e">{{ ico('spark') }}</span><span class="lbl">Тариф</span></button>
       {% endif %}
       {% if 'pro_telegram' in vbk or 'pro_pin_info' in vbk %}
-      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('proextras')"><span class="e">💎</span><span class="lbl">Про-функции</span></button>
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('proextras')"><span class="e">{{ ico('spark') }}</span><span class="lbl">Про-функции</span></button>
       {% endif %}
       {% if 'seller_marketplace' in vbk %}
-      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('seller')"><span class="e">🏪</span><span class="lbl">Товары продавца</span></button>
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('seller')"><span class="e">{{ ico('shop') }}</span><span class="lbl">Товары продавца</span></button>
       {% endif %}
       {% if 'referral' in vbk %}
-      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('referral')"><span class="e">🎁</span><span class="lbl">Реферальная программа</span></button>
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('referral')"><span class="e">{{ ico('gift') }}</span><span class="lbl">Реферальная программа</span></button>
       {% endif %}
       <div class="ig-drawer-sep"></div>
-      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();document.getElementById('sync-modal').style.display='flex'"><span class="e">🔗</span><span class="lbl">Синхронизация аккаунтов</span></button>
-      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('link')"><span class="e">⛓️</span><span class="lbl">Привязка Telegram / Google</span></button>
-      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('language')"><span class="e">🌐</span><span class="lbl">Язык интерфейса</span></button>
-      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('profile')"><span class="e">⚙️</span><span class="lbl">Профиль и настройки</span></button>
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();connectMetaMask()"><span class="e">{{ ico('wallet') }}</span><span class="lbl">MetaMask / кошелёк</span></button>
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();document.getElementById('sync-modal').style.display='flex'"><span class="e">{{ ico('link') }}</span><span class="lbl">Синхронизация аккаунтов</span></button>
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('link')"><span class="e">{{ ico('link') }}</span><span class="lbl">Привязка Telegram / Google</span></button>
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('language')"><span class="e">{{ ico('globe') }}</span><span class="lbl">Язык интерфейса</span></button>
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('profile')"><span class="e">{{ ico('settings') }}</span><span class="lbl">Расширенные настройки</span></button>
       <div class="ig-drawer-sep"></div>
-      <a href="https://t.me/mushrooms_ai_bot" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none"><span class="e" style="color:#38bdf8">✈️</span><span class="lbl">Бот в Telegram</span></a>
+      <a href="https://t.me/mushrooms_ai_bot" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none"><span class="e">{{ ico('send') }}</span><span class="lbl">Бот в Telegram</span></a>
       {% if user.role == 'admin' %}
-      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();window.location='/admin'" style="color:#f87171"><span class="e">🛡️</span><span class="lbl">Администратор</span></button>
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();window.location='/admin'" style="color:#f87171"><span class="e">{{ ico('shield') }}</span><span class="lbl">Администратор</span></button>
       {% endif %}
     </div>
   </aside>
@@ -372,9 +396,70 @@
     </section>
     {% endif %}
 
+    <!-- ══ ME — профиль как в Instagram ══ -->
+    {% if ig_social %}
+    <section class="db-sec active" id="sec-me">
+      <div class="ig-me-shell">
+        <div class="ig-profile-head">
+          <div class="ig-profile-av-wrap" onclick="document.getElementById('avInputMe').click()" title="Сменить фото">
+            {% if user.avatar %}
+            <img id="avImgMe" src="{{ user.avatar }}" class="ig-profile-av" alt="">
+            {% else %}
+            <div class="ig-profile-av" style="background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:min(48px,12vw)">🍄</div>
+            <img id="avImgMe" src="" class="ig-profile-av" style="display:none" alt="">
+            {% endif %}
+            <input id="avInputMe" type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="uploadAv(this,'avImgMe')">
+          </div>
+          <div style="flex:1;min-width:200px">
+            <div class="ig-profile-stats">
+              <div class="ig-profile-stat"><b>{{ my_post_count }}</b><span>публикаций</span></div>
+              <div class="ig-profile-stat"><b>{{ user.followers_count or 0 }}</b><span>подписчики</span></div>
+              <div class="ig-profile-stat"><b>{{ user.following_count or 0 }}</b><span>подписки</span></div>
+            </div>
+            <div style="margin-top:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <span style="font-size:clamp(18px,4.5vw,22px);font-weight:700;color:#e8e8e8">{{ user.name or 'Участник' }}</span>
+              <span class="badge-plan badge-{{ plan }} ig-plan-pill">{{ plan_info.name }}</span>
+            </div>
+            <button type="button" class="btn-o" style="margin-top:12px;font-size:13px;padding:8px 18px" onclick="(function(){var p=document.getElementById('meEditPanel');if(!p)return;p.style.display=p.style.display==='none'||!p.style.display?'block':'none';})()">Редактировать профиль</button>
+          </div>
+        </div>
+        {% if user.bio %}
+        <div style="font-size:14px;color:#ccc;line-height:1.55;max-width:560px;margin-bottom:10px;white-space:pre-wrap">{{ user.bio }}</div>
+        {% endif %}
+        {% if user.get('profile_link_url') %}
+        <a href="{{ user.profile_link_url }}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:8px;color:#C9A84C;font-weight:600;font-size:14px;margin-bottom:14px;text-decoration:none;border-bottom:1px solid rgba(201,168,76,.35);padding-bottom:2px">{{ user.get('profile_link_label') or user.profile_link_url }}</a>
+        {% endif %}
+        <div id="wltStMe" style="font-size:12px;color:#666;margin-bottom:12px">
+          {% if user.wallet_address %}<span style="color:#4ade80">Кошелёк: {{ user.wallet_address[:10] }}…{{ user.wallet_address[-4:] }}</span>{% endif %}
+        </div>
+        <div id="meEditPanel" class="card" style="display:none;margin-bottom:20px;padding:18px;border-radius:16px">
+          <div style="font-size:13px;font-weight:600;color:#888;margin-bottom:12px">Редактирование</div>
+          <input id="meName" class="sinp" style="margin-bottom:10px" value="{{ user.name or '' }}" placeholder="Имя">
+          <textarea id="meBio" class="sinp" style="min-height:72px;margin-bottom:10px;resize:vertical" placeholder="О себе">{{ user.bio or '' }}</textarea>
+          <input id="meLinkLabel" class="sinp" style="margin-bottom:8px" value="{{ user.get('profile_link_label','') }}" placeholder="Подпись к ссылке (например, Мой сайт)">
+          <input id="meLinkUrl" class="sinp" style="margin-bottom:12px" value="{{ user.get('profile_link_url','') }}" placeholder="https://…">
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button type="button" class="btn-g" onclick="saveMeProfile()">Сохранить</button>
+            <button type="button" class="btn-o" onclick="connectMetaMask()">MetaMask</button>
+          </div>
+          <div id="meProfOk" style="display:none;margin-top:10px;font-size:13px;color:#4ade80">✓ Сохранено</div>
+        </div>
+        <div class="ig-post-grid">
+          {% for p in grid_posts %}
+          <a href="/community/profile/{{ effective_user_id }}#pc-{{ p.id }}" class="ig-post-cell">
+            {% if p.image_url %}<img src="{{ p.image_url }}" alt="" loading="lazy">{% else %}<div class="ig-post-cell-ph">{{ p.content[:100] }}{% if p.content|length > 100 %}…{% endif %}</div>{% endif %}
+          </a>
+          {% else %}
+          <div style="grid-column:1/-1;text-align:center;padding:36px 16px;color:#555;font-size:14px">Пока нет публикаций. Во вкладке «Лента» нажмите «Создать» и опубликуйте пост.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+    {% endif %}
+
     <!-- ══ FEED ══ -->
     {% if 'community' in vbk %}
-    <section class="db-sec{% if ig_social %} active{% endif %}" id="sec-feed">
+    <section class="db-sec{% if not ig_social %} active{% endif %}" id="sec-feed">
       <div class="ig-feed-shell">
       {% if not ig_social %}
       <div class="ig-feed-topbar">
@@ -413,8 +498,9 @@
       </div>
       {% endif %}
 
-      <!-- Mini profile + post form -->
-      <div class="card" style="margin-bottom:16px;border-color:rgba(201,168,76,.25);border-radius:18px">
+      <!-- Форма поста (в ленте — без дублирования профиля) -->
+      <div class="card" style="margin-bottom:16px;border-color:rgba(201,168,76,.2);border-radius:16px;padding:{% if ig_social %}14px{% else %}22px{% endif %}">
+        {% if not ig_social %}
         <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px">
           {% if user.avatar %}
           <img src="{{ user.avatar }}" style="width:42px;height:42px;border-radius:50%;border:2px solid #C9A84C;object-fit:cover;flex-shrink:0;cursor:pointer" onclick="goSec('{{ dash_home }}')" alt="">
@@ -429,11 +515,11 @@
               <span><span class="gold">{{ user.following_count or 0 }}</span> подписок</span>
             </div>
           </div>
-          <button class="btn-o" onclick="goSec('profile')" style="font-size:12px;padding:6px 12px;flex-shrink:0">👤 Мой профиль</button>
         </div>
+        {% endif %}
         <textarea id="quickPostText" class="sinp" style="width:100%;min-height:72px;resize:vertical;box-sizing:border-box" placeholder="Поделитесь с сообществом..."></textarea>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
-          <a href="/community/members" style="font-size:12px;color:#555;text-decoration:none;hover:color:#C9A84C">👥 Все участники →</a>
+          <a href="/community/members" style="font-size:12px;color:#666;text-decoration:none">Участники →</a>
           <div style="display:flex;gap:8px;align-items:center">
             <span id="quickPostOk" style="display:none;color:#4ade80;font-size:13px">✓ Опубликовано</span>
             <button class="btn-g" style="font-size:13px;padding:8px 18px" onclick="quickPost()">Опубликовать</button>
@@ -895,6 +981,14 @@
               <label style="font-size:12px;color:#666;display:block;margin-bottom:5px">О себе (bio)</label>
               <textarea id="profBio" class="sinp" style="resize:vertical;min-height:80px">{{ user.bio or '' }}</textarea>
             </div>
+            <div style="margin-bottom:12px">
+              <label style="font-size:12px;color:#666;display:block;margin-bottom:5px">Подпись к ссылке в профиле</label>
+              <input id="profLinkLabel" class="sinp" value="{{ user.get('profile_link_label','') }}" placeholder="Например: Мой сайт">
+            </div>
+            <div style="margin-bottom:14px">
+              <label style="font-size:12px;color:#666;display:block;margin-bottom:5px">URL ссылки</label>
+              <input id="profLinkUrl" class="sinp" value="{{ user.get('profile_link_url','') }}" placeholder="https://…">
+            </div>
             <button class="btn-g" style="width:100%" onclick="saveProfile()">Сохранить</button>
             <div id="profOk" style="display:none;text-align:center;margin-top:8px;font-size:13px;color:#4ade80">✓ Сохранено</div>
           </div>
@@ -990,19 +1084,19 @@
   {% else %}
   <nav class="nav-sidebar" id="dbNav" style="display:none" aria-hidden="true"></nav>
   <nav class="ig-tabbar" id="igTabbar" aria-label="Нижняя навигация">
-    <button type="button" class="ig-tab on" data-igtab="feed" onclick="goSec('feed')"><span class="ic">🏠</span>Главная</button>
-    <button type="button" class="ig-tab" data-igtab="search" onclick="window.location.href='/community/members'"><span class="ic">🔍</span>Поиск</button>
-    <button type="button" class="ig-tab" data-igtab="create" onclick="igTabCreate()"><span class="ic" style="font-size:28px;font-weight:300;line-height:1">＋</span>Создать</button>
+    <button type="button" class="ig-tab on" data-igtab="me" onclick="goSec('me')"><span class="ic">{{ ico('user') }}</span>Профиль</button>
+    <button type="button" class="ig-tab" data-igtab="feed" onclick="goSec('feed')"><span class="ic">{{ ico('home') }}</span>Лента</button>
+    <button type="button" class="ig-tab" data-igtab="create" onclick="igTabCreate()"><span class="ic">{{ ico('plus') }}</span>Создать</button>
+    <button type="button" class="ig-tab" data-igtab="search" onclick="window.location.href='/community/members'"><span class="ic">{{ ico('search') }}</span>Поиск</button>
     {% if 'messages' in vbk %}
-    <button type="button" class="ig-tab" data-igtab="messages" onclick="goSec('messages')"><span class="ic">✉️</span>Входящие</button>
+    <button type="button" class="ig-tab" data-igtab="messages" onclick="goSec('messages')"><span class="ic">{{ ico('message') }}</span>Входящие</button>
     {% elif 'shop' in vbk %}
-    <button type="button" class="ig-tab" data-igtab="shop" onclick="goSec('shop')"><span class="ic">🛒</span>Магазин</button>
+    <button type="button" class="ig-tab" data-igtab="shop" onclick="goSec('shop')"><span class="ic">{{ ico('shop') }}</span>Магазин</button>
     {% elif 'tariffs' in vbk %}
-    <button type="button" class="ig-tab" data-igtab="plan" onclick="goSec('plan')"><span class="ic">✨</span>Тариф</button>
+    <button type="button" class="ig-tab" data-igtab="plan" onclick="goSec('plan')"><span class="ic">{{ ico('spark') }}</span>Тариф</button>
     {% else %}
-    <button type="button" class="ig-tab" data-igtab="groups" onclick="goSec('groups')"><span class="ic">💬</span>Чаты</button>
+    <button type="button" class="ig-tab" data-igtab="groups" onclick="goSec('groups')"><span class="ic">{{ ico('message_sq') }}</span>Чаты</button>
     {% endif %}
-    <button type="button" class="ig-tab" data-igtab="profile" onclick="goSec('profile')"><span class="ic">👤</span>Профиль</button>
   </nav>
   {% endif %}
 
@@ -1084,7 +1178,8 @@ function syncIgTabbar(id){
   const bar=document.getElementById('igTabbar');
   if(!bar)return;
   bar.querySelectorAll('.ig-tab').forEach(t=>t.classList.remove('on'));
-  const key=(id==='feed'||id==='groups'||id==='messages'||id==='shop'||id==='plan'||id==='profile')?id:null;
+  const map={me:'me',feed:'feed',groups:'groups',messages:'messages',shop:'shop',plan:'plan'};
+  const key=map[id];
   if(key) bar.querySelector(`[data-igtab="${key}"]`)?.classList.add('on');
 }
 function goSec(id){
@@ -1125,9 +1220,10 @@ async function uploadAv(input,imgId='avImg'){
     const r=await fetch('/profile/upload-avatar',{method:'POST',body:fd});
     const d=await r.json();
     if(d.ok){
-      const imgs=[document.getElementById('avImg'),document.getElementById('avImg2')];
+      const imgs=[document.getElementById('avImg'),document.getElementById('avImg2'),document.getElementById('avImgMe')];
       imgs.forEach(el=>{if(el){el.src=d.url+'?t='+Date.now();el.style.display='block'}});
       document.querySelectorAll('nav img[src*="/media/avatars/"]').forEach(el=>el.src=d.url+'?t='+Date.now());
+      if(imgId==='avImgMe'){location.reload();return;}
     }else if(err){err.textContent=d.error||'Ошибка';err.style.display='block'}
   }catch(e){if(err){err.textContent='Сетевая ошибка';err.style.display='block'}}
   input.value='';
@@ -1261,24 +1357,40 @@ async function loadSHEVELEVBalance(addr){
 }
 
 async function saveWallet(addr){
-  const a=addr||document.getElementById('wltInp').value.trim();if(!a)return;
-  await fetch('/profile/wallet',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({wallet_address:a})});
+  const inp=document.getElementById('wltInp');
+  const a=addr||(inp&&inp.value.trim());if(!a)return;
+  const r=await fetch('/profile/wallet',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({wallet_address:a})});
+  if(!r.ok)return;
   const sh=a.slice(0,12)+'...'+a.slice(-4);
-  document.getElementById('wltSt').innerHTML=`<span style="color:#4ade80">✓ ${sh}</span>`;
+  const st=document.getElementById('wltSt');if(st)st.innerHTML=`<span style="color:#4ade80">✓ ${sh}</span>`;
+  const stm=document.getElementById('wltStMe');if(stm)stm.innerHTML=`<span style="color:#4ade80">Кошелёк: ${a.slice(0,10)}…${a.slice(-4)}</span>`;
 }
 
-// ── Save profile ──
+// ── Save profile (кабинет + экран «я») ──
+async function saveMeProfile(){
+  const fd=new FormData();
+  fd.append('name',(document.getElementById('meName')?.value||'').trim());
+  fd.append('bio',(document.getElementById('meBio')?.value||'').trim());
+  fd.append('link_label',(document.getElementById('meLinkLabel')?.value||'').trim());
+  fd.append('link_url',(document.getElementById('meLinkUrl')?.value||'').trim());
+  const ok=document.getElementById('meProfOk');
+  try{
+    const r=await fetch('/profile/me',{method:'POST',body:fd});
+    if(r.ok){if(ok){ok.style.display='block';setTimeout(()=>location.reload(),800)}}
+  }catch(e){}
+}
 async function saveProfile(){
-  const name=document.getElementById('profName').value.trim();
-  const bio=document.getElementById('profBio').value.trim();
   const ok=document.getElementById('profOk');
-  ok.style.display='none';
-  // Save bio
-  const fd1=new FormData();fd1.append('bio',bio);
-  await fetch('/profile/bio',{method:'POST',body:fd1});
-  // Name save (if endpoint exists – just show success for now)
-  ok.style.display='block';
-  setTimeout(()=>ok.style.display='none',3000);
+  if(ok)ok.style.display='none';
+  const fd=new FormData();
+  fd.append('name',(document.getElementById('profName')?.value||'').trim());
+  fd.append('bio',(document.getElementById('profBio')?.value||'').trim());
+  fd.append('link_label',(document.getElementById('profLinkLabel')?.value||'').trim());
+  fd.append('link_url',(document.getElementById('profLinkUrl')?.value||'').trim());
+  try{
+    const r=await fetch('/profile/me',{method:'POST',body:fd});
+    if(r.ok&&ok){ok.style.display='block';setTimeout(()=>ok.style.display='none',3000)}
+  }catch(e){}
 }
 
 // ── DM Preview ──

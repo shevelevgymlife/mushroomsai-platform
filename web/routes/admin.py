@@ -5,6 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, Request, Form, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from web.templates_utils import Jinja2Templates
+from services.subscription_service import PLANS
 from auth.session import get_user_from_request
 from auth.blocked_identities import block_identities_for_user, unblock_identities_for_user
 from db.database import database
@@ -411,6 +412,13 @@ async def users_list(request: Request, search: str = ""):
             "search": search,
             "msg_counts": msg_counts,
             "now": datetime.utcnow(),
+            "plan_labels": {k: v["name"] for k, v in PLANS.items()},
+            "plan_modal_rows": [
+                ("free", PLANS["free"]["name"], PLANS["free"]["price"]),
+                ("start", PLANS["start"]["name"], PLANS["start"]["price"]),
+                ("pro", PLANS["pro"]["name"], PLANS["pro"]["price"]),
+                ("maxi", PLANS["maxi"]["name"], PLANS["maxi"]["price"]),
+            ],
         },
     )
 
@@ -757,6 +765,8 @@ async def broadcast_send(
         query = query.where(users.c.subscription_plan == "pro")
     elif segment == "start":
         query = query.where(users.c.subscription_plan == "start")
+    elif segment == "maxi":
+        query = query.where(users.c.subscription_plan == "maxi")
     elif segment == "free":
         query = query.where(users.c.subscription_plan == "free")
 
@@ -1095,21 +1105,48 @@ async def ai_posts_page(request: Request):
         )
     except Exception:
         posts_list = []
+    folder_order: list[str] = []
+    posts_by_folder: dict[str, list] = {}
+    for p in posts_list:
+        fn = (p.get("folder") or "").strip() or "Без папки"
+        if fn not in posts_by_folder:
+            folder_order.append(fn)
+            posts_by_folder[fn] = []
+        posts_by_folder[fn].append(p)
     return templates.TemplateResponse(
         "dashboard/admin_ai_posts.html",
-        {"request": request, "user": admin, "posts": posts_list},
+        {
+            "request": request,
+            "user": admin,
+            "nav": ADMIN_NAV,
+            "user_permissions": await get_user_permissions(admin),
+            "posts": posts_list,
+            "posts_by_folder": posts_by_folder,
+            "folder_order": folder_order,
+        },
     )
 
 
 @router.post("/ai-posts")
-async def add_ai_post(request: Request, title: str = Form(...), content: str = Form(...), category: str = Form("")):
+async def add_ai_post(
+    request: Request,
+    title: str = Form(...),
+    content: str = Form(...),
+    category: str = Form(""),
+    folder: str = Form(""),
+):
     admin = await require_permission(request, "can_ai")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     try:
         from db.models import ai_training_posts
         await database.execute(
-            ai_training_posts.insert().values(title=title.strip(), content=content.strip(), category=category.strip() or None)
+            ai_training_posts.insert().values(
+                title=title.strip(),
+                content=content.strip(),
+                category=category.strip() or None,
+                folder=folder.strip() or None,
+            )
         )
         return JSONResponse({"ok": True})
     except Exception as e:
