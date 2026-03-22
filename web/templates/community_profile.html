@@ -1,10 +1,11 @@
 {% extends "base.html" %}
 {% block title %}{{ profile.name or 'Профиль' }} — Сообщество MushroomsAI{% endblock %}
 
+{% from 'components/stroke_icons.html' import ico %}
+
 {% block content %}
 <style>
-.pp-wrap{max-width:860px;margin:0 auto;padding:88px 16px 40px}
-.card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px}
+/* Общие кнопки и DM (как в кабинете) */
 .avg{border:2px solid #C9A84C;border-radius:50%;object-fit:cover}
 .avph{border:2px solid #C9A84C;border-radius:50%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:32px}
 .btn-g{background:#C9A84C;color:#000;font-weight:700;border-radius:10px;padding:10px 20px;border:none;cursor:pointer;transition:background .2s;font-size:14px;display:inline-flex;align-items:center;gap:6px}
@@ -13,159 +14,139 @@
 .btn-o:hover,.btn-o.on{background:rgba(201,168,76,.12)}
 .btn-muted{border:1px solid rgba(255,255,255,.12);color:#888;background:transparent;border-radius:10px;padding:9px 18px;cursor:pointer;font-size:14px;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
 .btn-muted:hover{border-color:rgba(201,168,76,.4);color:#C9A84C}
-.pcard{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:18px;margin-bottom:14px;transition:border-color .2s}
-.pcard:hover{border-color:rgba(255,255,255,.13)}
-.abt{background:none;border:none;cursor:pointer;color:#666;font-size:14px;display:inline-flex;align-items:center;gap:5px;transition:color .2s;padding:5px 8px;border-radius:8px}
-.abt:hover{color:#C9A84C;background:rgba(201,168,76,.08)}
-.abt.on{color:#C9A84C}
 .csec{display:none;margin-top:14px;border-top:1px solid rgba(255,255,255,.06);padding-top:14px}
 .sinp{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#e8e8e8;border-radius:12px;padding:10px 16px;font-size:14px;outline:none;width:100%;box-sizing:border-box;transition:border-color .2s}
 .sinp:focus{border-color:rgba(201,168,76,.5)}
 .dm-badge{background:rgba(201,168,76,.15);color:#C9A84C;border:1px solid rgba(201,168,76,.3);font-size:11px;padding:2px 8px;border-radius:20px;font-weight:700}
-.mover{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
-.mover.open{display:flex}
-.mbox{background:#111;border:1px solid #2a2a2a;border-radius:20px;padding:26px;width:100%;max-width:480px;max-height:88vh;overflow-y:auto;position:relative}
 .dmmsg{padding:8px 14px;border-radius:14px;max-width:80%;font-size:14px;line-height:1.5}
 .dmmsg.me{background:rgba(201,168,76,.15);border:1px solid rgba(201,168,76,.25);align-self:flex-end}
 .dmmsg.them{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);align-self:flex-start}
-.privacy-notice{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:10px 14px;font-size:12px;color:#444;display:flex;align-items:center;gap:8px}
-.pp-ig-panel{background:linear-gradient(180deg,rgba(255,255,255,.04) 0%,rgba(17,17,17,.85) 100%);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:0 0 18px;margin-bottom:20px;box-shadow:0 12px 48px rgba(0,0,0,.35),0 0 0 1px rgba(201,168,76,.06) inset}
-.pp-ig-topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.06)}
-.pp-ig-back{color:#aaa;text-decoration:none;font-size:20px;line-height:1;padding:4px 8px;border-radius:10px;transition:background .2s,color .2s}
-.pp-ig-back:hover{color:#C9A84C;background:rgba(201,168,76,.08)}
-.pp-ig-handle{font-family:Syne,Inter,system-ui,sans-serif;font-weight:700;font-size:16px;color:#e8e8e8;letter-spacing:-0.02em}
-.pp-ig-menu{color:#555;font-size:20px;letter-spacing:2px;padding:4px 8px}
-.pp-ig-row{display:flex;gap:22px;align-items:center;padding:20px 18px 8px;flex-wrap:wrap}
-.pp-ig-avatar{flex-shrink:0}
-.pp-ig-avatar .avg,.pp-ig-avatar .avph{width:86px;height:86px}
-.pp-ig-stats{display:flex;flex:1;justify-content:space-around;min-width:200px;gap:8px}
-.pp-ig-stats > div{text-align:center}
-.pp-ig-stats b{display:block;font-size:18px;color:#e8e8e8;font-weight:700}
-.pp-ig-stats span{font-size:11px;color:#666;text-transform:uppercase;letter-spacing:.04em}
-.pp-ig-meta{padding:0 18px 12px;font-size:13px;color:#888}
-.pp-ig-meta .dm-badge{margin-right:8px}
-.pp-ig-bio{padding:0 18px 14px;font-size:14px;color:#bbb;line-height:1.55}
-.pp-ig-actions{padding:0 18px 14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.pp-ig-tabs{display:flex;border-top:1px solid rgba(255,255,255,.08);margin-top:4px}
-.pp-ig-tabs button{flex:1;padding:12px;background:none;border:none;border-bottom:2px solid transparent;color:#555;font-size:16px;cursor:pointer;transition:color .2s,border-color .2s}
-.pp-ig-tabs button.on{color:#C9A84C;border-bottom-color:#C9A84C}
-.pp-ig-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;background:#080808;border-top:1px solid rgba(255,255,255,.06)}
-.pp-ig-cell{aspect-ratio:1;position:relative;overflow:hidden;background:#111;display:block;text-decoration:none;color:inherit}
-.pp-ig-cell img{width:100%;height:100%;object-fit:cover}
-.pp-ig-cell-text{padding:10px;font-size:11px;line-height:1.35;color:#888;overflow:hidden;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical}
-.pp-ig-cell-ico{position:absolute;top:6px;right:6px;font-size:12px;opacity:.9;text-shadow:0 1px 4px #000}
-.pp-sec-label{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#C9A84C;margin:24px 0 12px;padding-left:4px}
-.pp-feed .ig-post{border:1px solid rgba(255,255,255,.08);border-radius:16px;overflow:hidden;background:linear-gradient(180deg,rgba(255,255,255,.04) 0%,rgba(17,17,17,.6) 100%);margin-bottom:20px;box-shadow:0 8px 32px rgba(0,0,0,.4),0 0 0 1px rgba(201,168,76,.05) inset}
-.pp-feed .ig-post-header{padding:10px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.05)}
-.pp-feed .ig-post-img{width:100%;aspect-ratio:1;object-fit:cover;background:#0a0a0a;display:block;max-height:min(470px,92vw)}
-.pp-feed .ig-post-textonly{min-height:80px;padding:16px 14px;font-size:14px;line-height:1.55;color:#ccc;white-space:pre-wrap;word-break:break-word;border-bottom:1px solid rgba(255,255,255,.05)}
-.pp-feed .ig-post-actions{display:flex;gap:8px;padding:10px 12px 6px;align-items:center;justify-content:space-between}
-.pp-feed .ig-post-actions-left{display:flex;gap:6px;align-items:center}
-.pp-feed .ig-post-actions .ig-act{background:none;border:none;cursor:pointer;padding:4px;font-size:20px;line-height:1;color:#aaa}
-.pp-feed .ig-post-likes{padding:0 12px 6px;font-size:13px;font-weight:600;color:#e8e8e8}
-.pp-feed .ig-post-body{padding:0 12px 14px;font-size:14px;line-height:1.5;color:#c8c8c8;white-space:pre-wrap;word-break:break-word}
-.pp-feed .ig-post-body .ig-cap-user{font-weight:700;color:#e8e8e8;margin-right:6px}
+.card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px}
+
+/* Тот же каркас, что экран «Мой профиль» в /dashboard */
+.cp-ig-root{background:#080808;min-height:100vh}
+.cp-ig-root .ig-dash-header{position:fixed;top:4rem;left:0;right:0;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 12px 0 10px;background:rgba(8,8,8,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid rgba(255,255,255,.06);z-index:950;box-sizing:border-box}
+.cp-ig-root .ig-ham{width:44px;height:44px;border:none;border-radius:12px;background:transparent;color:#e8e8e8;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;text-decoration:none}
+.cp-ig-root .ig-ham:hover{background:rgba(255,255,255,.06)}
+.cp-ig-root .ig-head-brand{font-family:Syne,Inter,system-ui,sans-serif;font-weight:700;font-size:1.05rem;letter-spacing:-0.02em;background:linear-gradient(90deg,#e8e8e8,#C9A84C);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-decoration:none;border:none;cursor:pointer;padding:0;font:inherit}
+.cp-ig-root .ig-head-msg{width:44px;height:44px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:18px;color:#ccc;transition:border-color .2s,background .2s}
+.cp-ig-root .ig-head-msg:hover{border-color:rgba(201,168,76,.45);color:#C9A84C}
+.cp-ig-main{padding:calc(4rem + 52px + 8px) 12px calc(28px + env(safe-area-inset-bottom,0px));max-width:100%}
+@media(min-width:769px){.cp-ig-main{padding-left:24px;padding-right:24px}}
+
+.ig-me-shell{width:100%;max-width:min(100%,935px);margin:0 auto;padding-bottom:8px}
+.ig-profile-head{display:flex;gap:22px;align-items:center;padding:8px 0 20px;flex-wrap:wrap}
+@media(min-width:640px){.ig-profile-head{gap:32px}}
+.ig-profile-av-wrap{position:relative;flex-shrink:0}
+.ig-profile-av{width:min(150px,32vw);height:min(150px,32vw);min-width:96px;min-height:96px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.12);display:block}
+.ig-profile-stats{display:flex;gap:0;justify-content:space-around;flex:1;min-width:min(100%,280px);max-width:360px}
+.ig-profile-stat{text-align:center;flex:1}
+.ig-profile-stat b{display:block;font-size:clamp(16px,4vw,20px);color:#e8e8e8;font-weight:700}
+.ig-profile-stat span{display:block;font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+.ig-rep-pill{display:inline-flex;align-items:center;padding:5px 12px;border-radius:22px;font-size:11px;font-weight:700;letter-spacing:.02em;background:rgba(201,168,76,.12);border:1px solid rgba(201,168,76,.28);color:#C9A84C;margin-top:10px}
+.ig-post-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;width:100%;border-top:1px solid rgba(255,255,255,.08);padding-top:3px}
+.ig-post-cell{aspect-ratio:1;position:relative;overflow:hidden;background:#121212;display:block;text-decoration:none;color:inherit}
+.ig-post-cell img{width:100%;height:100%;object-fit:cover;display:block}
+.ig-post-cell-ph{display:flex;align-items:center;justify-content:center;font-size:10px;color:#666;padding:8px;text-align:center;line-height:1.35;overflow:hidden}
+.ig-post-cell-ico{position:absolute;top:6px;right:6px;font-size:12px;opacity:.9;text-shadow:0 1px 4px #000}
+
+.ig-feed-shell{max-width:470px;margin:0 auto}
+.ig-post{border:1px solid rgba(255,255,255,.08);border-radius:16px;overflow:hidden;background:linear-gradient(180deg,rgba(255,255,255,.04) 0%,rgba(17,17,17,.6) 100%);margin-bottom:20px;box-shadow:0 8px 32px rgba(0,0,0,.4),0 0 0 1px rgba(201,168,76,.05) inset}
+.ig-post-header{padding:10px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.05)}
+.ig-post-img{width:100%;aspect-ratio:1;object-fit:cover;background:#0a0a0a;display:block;max-height:min(470px,92vw)}
+.ig-post-textonly{min-height:100px;padding:16px 14px;font-size:14px;line-height:1.55;color:#ccc;white-space:pre-wrap;word-break:break-word;border-bottom:1px solid rgba(255,255,255,.05)}
+.ig-post-actions{display:flex;gap:8px;padding:10px 12px 6px;align-items:center;justify-content:space-between}
+.ig-post-actions-left{display:flex;gap:6px;align-items:center}
+.ig-post-actions .ig-act{background:none;border:none;cursor:pointer;padding:4px;font-size:20px;line-height:1;color:#aaa;transition:color .2s,transform .15s}
+.ig-post-actions .ig-act:hover{color:#C9A84C;transform:scale(1.06)}
+.ig-post-likes{padding:0 12px 6px;font-size:13px;font-weight:600;color:#e8e8e8}
+.ig-post-body{padding:0 12px 14px;font-size:14px;line-height:1.5;color:#c8c8c8;white-space:pre-wrap;word-break:break-word}
+.ig-post-body .ig-cap-user{font-weight:700;color:#e8e8e8;margin-right:6px}
+.cp-prof-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:6px 0 14px;font-size:13px;color:#888}
+.shevelev-bal-box{margin-bottom:16px;padding:14px 16px;border-radius:14px;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.28);max-width:420px}
 </style>
 
-<div class="pp-wrap">
-
-  <div class="pp-ig-panel">
-    <div class="pp-ig-topbar">
-      <a href="/dashboard#feed" class="pp-ig-back" aria-label="Назад">←</a>
-      <span class="pp-ig-handle">{{ profile.name or 'участник' }}</span>
-      <span class="pp-ig-menu" aria-hidden="true">⋯</span>
+<div class="cp-ig-root">
+  <header class="ig-dash-header" aria-label="Профиль">
+    <a href="/dashboard#feed" class="ig-ham" aria-label="Назад к ленте">←</a>
+    <a href="/dashboard#feed" class="ig-head-brand">MushroomsAI</a>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
+      <a href="/dashboard#feed" class="ig-head-msg" title="Лента" aria-label="Лента">{{ ico('feed') }}</a>
+      <a href="/dashboard" class="ig-head-msg" title="Кабинет" aria-label="Кабинет">{{ ico('user') }}</a>
     </div>
+  </header>
 
-    <div class="pp-ig-row">
-      <div class="pp-ig-avatar">
-        {% if profile.avatar %}
-        <img src="{{ profile.avatar }}" class="avg" alt="{{ profile.name }}">
-        {% else %}
-        <div class="avph">🍄</div>
-        {% endif %}
+  <main class="cp-ig-main">
+    <div class="ig-me-shell">
+      <div class="ig-profile-head">
+        <div class="ig-profile-av-wrap">
+          {% if profile.avatar %}
+          <img src="{{ profile.avatar }}" class="ig-profile-av" alt="{{ profile.name }}">
+          {% else %}
+          <div class="ig-profile-av" style="background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:min(48px,12vw)">🍄</div>
+          {% endif %}
+        </div>
+        <div style="flex:1;min-width:200px">
+          <div class="ig-profile-stats">
+            <div class="ig-profile-stat"><b>{{ post_count }}</b><span>публикаций</span></div>
+            <div class="ig-profile-stat"><b>{{ profile.followers_count }}</b><span>подписчики</span></div>
+            <div class="ig-profile-stat"><b>{{ profile.following_count }}</b><span>подписки</span></div>
+          </div>
+          <div style="margin-top:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span style="font-size:clamp(18px,4.5vw,22px);font-weight:700;color:#e8e8e8">{{ profile.name or 'Участник' }}</span>
+            {% if profile.role == 'admin' %}
+            <span style="background:rgba(248,113,113,.12);color:#f87171;border:1px solid rgba(248,113,113,.25);font-size:10px;padding:2px 8px;border-radius:20px;font-weight:700">Админ</span>
+            {% endif %}
+          </div>
+          <div class="cp-prof-meta">
+            <span class="ig-rep-pill">{{ rep_emoji }} {{ rep_level }}</span>
+            <span id="profileLikesStatInline" style="color:#888">❤️ {{ profile_likes_count }}</span>
+            {% if profile.shevelev_balance_cached %}
+            <span style="color:#C9A84C;font-weight:700" title="SHEVELEV (после синхронизации в кабинете)">⚗ {{ profile.shevelev_balance_cached }}</span>
+            {% endif %}
+          </div>
+          <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            {% if is_own %}
+            <a href="/dashboard#profile" class="btn-o" style="font-size:13px;padding:8px 18px;text-decoration:none;display:inline-flex">Редактировать профиль</a>
+            <a href="/dashboard#feed" class="btn-muted" style="font-size:13px;padding:8px 16px;text-decoration:none;display:inline-flex">Лента</a>
+            {% else %}
+            <button type="button" class="btn-g" style="font-size:13px;padding:8px 18px" id="followBtn" onclick="doFollow()">
+              <span id="followBtnText">{{ 'Подписки ✓' if is_following else 'Подписаться' }}</span>
+            </button>
+            <button type="button" class="btn-o {{ 'on' if viewer_liked_profile }}" style="font-size:13px;padding:8px 16px" id="profileLikeBtn" onclick="doProfileLike()">
+              <span>{{ '❤️' if viewer_liked_profile else '🤍' }}</span>
+              <span id="profileLikeBtnText">Нравится</span>
+            </button>
+            <button type="button" class="btn-muted" style="font-size:13px;padding:8px 16px" onclick="openDM()">Сообщение</button>
+            {% endif %}
+          </div>
+        </div>
       </div>
-      <div class="pp-ig-stats">
-        <div><b>{{ post_count }}</b><span>посты</span></div>
-        <div><b>{{ profile.followers_count }}</b><span>подписчики</span></div>
-        <div><b>{{ profile.following_count }}</b><span>подписки</span></div>
-      </div>
-    </div>
 
-    <div class="pp-ig-meta">
-      {% if profile.role == 'admin' %}
-      <span style="background:rgba(248,113,113,.12);color:#f87171;border:1px solid rgba(248,113,113,.25);font-size:10px;padding:2px 8px;border-radius:20px;font-weight:700;margin-right:8px">Админ</span>
+      {% if profile.bio %}
+      <div style="font-size:14px;color:#ccc;line-height:1.55;max-width:560px;margin-bottom:10px;white-space:pre-wrap">{{ profile.bio }}</div>
       {% endif %}
-      <span class="dm-badge">{{ rep_emoji }} {{ rep_level }}</span>
-      <span style="color:#888" id="profileLikesStatInline">❤️ {{ profile_likes_count }}</span>
-      {% if profile.shevelev_balance_cached %}
-      <span style="margin-left:10px;color:#666">·</span>
-      <span style="margin-left:10px;color:#C9A84C;font-size:13px;font-weight:700" title="SHEVELEV (после синхронизации в кабинете)">⚗ {{ profile.shevelev_balance_cached }}</span>
+      {% if profile.get('profile_link_url') %}
+      <a href="{{ profile.profile_link_url }}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:8px;color:#C9A84C;font-weight:600;font-size:14px;margin-bottom:14px;text-decoration:none;border-bottom:1px solid rgba(201,168,76,.35);padding-bottom:2px">{{ profile.get('profile_link_label') or profile.profile_link_url }}</a>
       {% endif %}
-    </div>
 
-    <div class="pp-ig-bio">
-      <strong style="color:#e8e8e8;display:block;margin-bottom:4px">{{ profile.name or 'Участник' }}</strong>
-      {% if profile.bio %}{{ profile.bio }}{% else %}<span style="color:#555;font-style:italic">Нет описания</span>{% endif %}
-    </div>
-
-    <div class="pp-ig-actions">
-      {% if is_own %}
-      <a href="/dashboard#profile" class="btn-g" style="font-size:13px;padding:8px 16px">Редактировать</a>
-      <a href="/dashboard#feed" class="btn-muted" style="font-size:13px;padding:8px 16px">Лента</a>
-      {% else %}
-      <button class="btn-g" style="font-size:13px;padding:8px 18px" id="followBtn" onclick="doFollow()">
-        <span id="followBtnText">{{ 'Подписки ✓' if is_following else 'Подписаться' }}</span>
-      </button>
-      <button class="btn-o {{ 'on' if viewer_liked_profile }}" style="font-size:13px;padding:8px 16px" id="profileLikeBtn" onclick="doProfileLike()">
-        <span>{{ '❤️' if viewer_liked_profile else '🤍' }}</span>
-        <span id="profileLikeBtnText">Нравится</span>
-      </button>
-      <button class="btn-muted" style="font-size:13px;padding:8px 16px" onclick="openDM()">Сообщение</button>
-      {% endif %}
-    </div>
-
-    <div class="pp-ig-tabs" role="tablist">
-      <button type="button" class="on" aria-current="true">▦</button>
-      <button type="button" disabled title="Скоро">▶</button>
-      <button type="button" disabled title="Скоро">⌁</button>
-    </div>
-
-    {% if feed %}
-    <div class="pp-ig-grid">
-      {% for item in feed %}
-      {% set p = item.post %}
-      <a href="#pc-{{ p.id }}" class="pp-ig-cell">
-        {% if p.image_url %}
-        <img src="{{ p.image_url }}" loading="lazy" alt="">
-        {% if p.content %}<span class="pp-ig-cell-ico" title="Есть подпись">📷</span>{% endif %}
+      <div class="ig-post-grid">
+        {% for item in feed %}
+        {% set p = item.post %}
+        <a href="#pc-{{ p.id }}" class="ig-post-cell" aria-label="К посту">
+          {% if p.image_url %}
+          <img src="{{ p.image_url }}" loading="lazy" alt="">
+          {% if p.content %}<span class="ig-post-cell-ico" title="Есть подпись">📷</span>{% endif %}
+          {% else %}
+          <div class="ig-post-cell-ph">{{ p.content[:100] }}{% if p.content|length > 100 %}…{% endif %}</div>
+          {% endif %}
+        </a>
         {% else %}
-        <div class="pp-ig-cell-text">{{ p.content | truncate(120, True, '…') }}</div>
-        {% endif %}
-      </a>
-      {% endfor %}
-    </div>
-    {% else %}
-    <div style="padding:28px 16px;text-align:center;color:#555;font-size:13px;border-top:1px solid rgba(255,255,255,.06)">Пока нет публикаций в сетке</div>
-    {% endif %}
-  </div>
+        <div style="grid-column:1/-1;text-align:center;padding:28px 16px;color:#555;font-size:14px">Пока нет публикаций</div>
+        {% endfor %}
+      </div>
 
-  <!-- POSTS FEED — тот же визуальный язык, что лента в кабинете -->
-  <div class="pp-sec-label">Публикации</div>
-  {% if feed %}
-  <p class="muted" style="margin:-8px 0 16px;font-size:13px;color:#555">Нажмите на ячейку сетки выше — страница прокрутится к посту.</p>
-  {% endif %}
-
-  {% if not feed %}
-  <div class="card" style="text-align:center;padding:50px">
-    <div style="font-size:40px;margin-bottom:10px">🍄</div>
-    <div style="color:#444">Пользователь ещё не публиковал посты</div>
-    {% if is_own %}
-    <button class="btn-g" style="margin-top:16px" onclick="location.href='/dashboard#feed'">Написать первый пост</button>
-    {% endif %}
-  </div>
-  {% endif %}
-
-  <div class="pp-feed">
+      <div class="ig-feed-shell" style="margin-top:16px">
   {% for item in feed %}
   {% set p = item.post %}
   <div class="ig-post" id="pc-{{ p.id }}">
@@ -204,9 +185,10 @@
     </div>
   </div>
   {% endfor %}
-  </div>
-
-</div><!-- /pp-wrap -->
+      </div>
+    </div>
+  </main>
+</div>
 
 <!-- DM CHAT PANEL (fixed bottom-right) -->
 <div id="dmPanel" style="display:none;position:fixed;right:20px;bottom:20px;width:340px;height:460px;background:#0e0e0e;border:1px solid rgba(201,168,76,.35);border-radius:20px;box-shadow:0 8px 40px rgba(0,0,0,.7);z-index:1000;flex-direction:column;overflow:hidden">

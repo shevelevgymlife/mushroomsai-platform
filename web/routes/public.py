@@ -47,6 +47,8 @@ def get_public_user_data(row: dict) -> dict:
         "created_at": row.get("created_at"),
         "shevelev_balance_cached": row.get("shevelev_balance_cached"),
         "shevelev_balance_cached_at": row.get("shevelev_balance_cached_at"),
+        "profile_link_label": row.get("profile_link_label"),
+        "profile_link_url": row.get("profile_link_url"),
     }
 
 router = APIRouter()
@@ -1139,6 +1141,7 @@ async def community_profile(request: Request, user_id: int):
             "is_following": is_following,
             "is_own": is_own,
             "feed": feed,
+            "shevelev_token": settings.SHEVELEV_TOKEN_ADDRESS,
         },
     )
 
