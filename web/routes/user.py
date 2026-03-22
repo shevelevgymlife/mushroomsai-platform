@@ -15,7 +15,7 @@ from services.referral_service import get_referral_stats
 from services.subscription_service import check_subscription, PLANS
 from ai.openai_client import chat_with_ai
 from services.subscription_service import can_ask_question, increment_question_count
-from services.plan_access import plan_allowed_block_keys, can_create_community_groups
+from services.plan_access import plan_allowed_block_keys, can_create_community_groups, is_platform_operator
 from services.legal import legal_acceptance_redirect
 from services.notify_admin import notify_admin_telegram
 import sqlalchemy as sa
@@ -593,7 +593,14 @@ async def create_folder(request: Request, name: str = Form(...)):
 
 
 def _effective_user_id(user: dict) -> int:
-    return int(user.get("primary_user_id") or user["id"])
+    """Аккаунт для действий в БД: привязанный primary или текущий id."""
+    pu = user.get("primary_user_id")
+    if pu is not None and str(pu).strip() != "":
+        try:
+            return int(pu)
+        except (TypeError, ValueError):
+            pass
+    return int(user["id"])
 
 
 def _normalize_profile_url(raw: str) -> str | None:
@@ -1324,33 +1331,52 @@ async def community_groups_list_api(request: Request):
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
-    uid = user.get("primary_user_id") or user["id"]
+    uid = _effective_user_id(user)
     out = await fetch_community_groups_for_user(uid)
     return JSONResponse({"groups": out})
 
 
 @router.post("/community/groups/create")
-async def community_group_create(
-    request: Request,
-    name: str = Form(...),
-    description: str = Form(""),
-):
+async def community_group_create(request: Request):
     user = await require_auth(request)
     if not user:
-        return JSONResponse({"error": "auth required"}, status_code=401)
-    uid = user.get("primary_user_id") or user["id"]
+        return JSONResponse({"error": "auth required", "ok": False}, status_code=401)
+    uid = _effective_user_id(user)
     pl = await check_subscription(uid)
     if not can_create_community_groups(pl, user):
+        _logger.warning(
+            "community_group_create 403 uid=%s plan=%s role=%s is_operator=%s",
+            uid,
+            pl,
+            user.get("role"),
+            is_platform_operator(user),
+        )
         return JSONResponse(
-            {"error": "Создание групп доступно на тарифах Про и Макси, либо администратору сайта"},
+            {
+                "ok": False,
+                "error": "Создание групп доступно на тарифах Про и Макси, либо администратору сайта",
+                "plan": pl,
+            },
             status_code=403,
         )
-    nm = (name or "").strip()
+    ct = (request.headers.get("content-type") or "").lower()
+    if "application/json" in ct:
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        nm = (body.get("name") or "").strip()
+        desc_raw = body.get("description")
+        desc = (desc_raw or "").strip()[:2000] or None
+    else:
+        form = await request.form()
+        nm = (form.get("name") or "").strip()
+        desc = (form.get("description") or "").strip()[:2000] or None
     if len(nm) < 2:
-        return JSONResponse({"error": "Слишком короткое название"}, status_code=400)
+        return JSONResponse({"ok": False, "error": "Слишком короткое название"}, status_code=400)
     if len(nm) > 120:
-        return JSONResponse({"error": "Слишком длинное название"}, status_code=400)
-    desc = (description or "").strip()[:2000] or None
+        return JSONResponse({"ok": False, "error": "Слишком длинное название"}, status_code=400)
+    row = None
     try:
         row = await database.fetch_one(
             sa.text(
@@ -1359,7 +1385,20 @@ async def community_group_create(
             ).bindparams(n=nm, d=desc, c=uid)
         )
     except Exception as e:
-        return JSONResponse({"ok": False, "error": "Не удалось сохранить группу: " + str(e)[:180]}, status_code=500)
+        _logger.warning("community_groups insert with join_mode failed: %s", e)
+        try:
+            row = await database.fetch_one(
+                sa.text(
+                    "INSERT INTO community_groups (name, description, created_by) "
+                    "VALUES (:n, :d, :c) RETURNING id"
+                ).bindparams(n=nm, d=desc, c=uid)
+            )
+        except Exception as e2:
+            _logger.exception("community_groups insert failed")
+            return JSONResponse(
+                {"ok": False, "error": "Не удалось сохранить группу: " + str(e2)[:180]},
+                status_code=500,
+            )
     gid = None
     if row:
         rid = row.get("id")
@@ -1375,8 +1414,8 @@ async def community_group_create(
         await database.execute(
             community_group_members.insert().values(group_id=gid, user_id=uid)
         )
-    except Exception:
-        pass
+    except Exception as e:
+        _logger.warning("community_group_members insert: %s", e)
     return JSONResponse({"ok": True, "id": gid})
 
 

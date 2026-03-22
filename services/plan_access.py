@@ -31,7 +31,7 @@ def is_platform_operator(user: dict[str, Any] | None) -> bool:
     """
     if not user:
         return False
-    if (user.get("role") or "").lower() == "admin":
+    if (user.get("role") or "").lower() in ("admin", "moderator"):
         return True
     em = (getattr(settings, "ADMIN_EMAIL", "") or "").strip().lower()
     if em and (user.get("email") or "").strip().lower() == em:

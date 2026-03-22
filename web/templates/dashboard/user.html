@@ -2391,11 +2391,14 @@ function prependCreatedGroupToList(gid, name){
 async function createGroupSubmit(){
   const n = document.getElementById('grpNameInp') && document.getElementById('grpNameInp').value.trim();
   if(!n || n.length < 2){ showNotification('Введите название группы (от 2 символов)','error'); return; }
-  const fd = new FormData();
-  fd.append('name', n);
-  fd.append('description', (document.getElementById('grpDescInp') && document.getElementById('grpDescInp').value) || '');
+  const desc = (document.getElementById('grpDescInp') && document.getElementById('grpDescInp').value) || '';
   try{
-    const r = await fetch('/community/groups/create', { method: 'POST', body: fd, credentials: 'same-origin' });
+    const r = await fetch('/community/groups/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ name: n, description: desc })
+    });
     const d = await r.json().catch(()=>({}));
     const gidRaw = d.id != null ? d.id : d.group_id;
     const gid = Number(gidRaw);
@@ -2412,7 +2415,9 @@ async function createGroupSubmit(){
       }, 120);
       return;
     }
-    const msg = d.error || d.detail || (r.status===403 ? 'Нужен тариф Про/Макси или права администратора (ADMIN_TG_ID / ADMIN_EMAIL в .env)' : r.status===401 ? 'Войдите в аккаунт' : (r.status===500 ? (d.error||'Ошибка сервера при сохранении') : 'Не удалось создать группу'));
+    let hint403 = 'Нужен тариф Про/Макси или права администратора (проверьте ADMIN_TG_ID / ADMIN_EMAIL на сервере)';
+    if(d.plan){ hint403 += ' · ваш тариф: '+d.plan; }
+    const msg = d.error || d.detail || (r.status===403 ? hint403 : r.status===401 ? 'Войдите в аккаунт' : (r.status===500 ? (d.error||'Ошибка сервера при сохранении') : 'Не удалось создать группу'));
     showNotification(msg,'error');
   }catch(e){ showNotification('Ошибка сети','error'); }
 }
