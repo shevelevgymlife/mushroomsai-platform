@@ -698,21 +698,28 @@ async def sync_decimal_balances_combined(request: Request):
     tok = shevelev_token_address()
     shev_fmt = None
     shev_val = None
+    shev_err = None
     if tok:
         shev_val = await fetch_erc20_balance(tok, w)
         if shev_val is None:
-            return JSONResponse({"error": "Не удалось прочитать баланс SHEVELEV"}, status_code=502)
-        shev_fmt = f"{shev_val:.10f}".rstrip("0").rstrip(".") or "0"
-        await database.execute(
-            users.update()
-            .where(users.c.id == uid)
-            .values(
-                decimal_del_balance=del_fmt,
-                decimal_balance_cached_at=datetime.utcnow(),
-                shevelev_balance_cached=shev_fmt,
-                shevelev_balance_cached_at=datetime.utcnow(),
+            shev_err = "Не удалось прочитать баланс SHEVELEV по RPC (проверьте сеть и адрес контракта)."
+            await database.execute(
+                users.update()
+                .where(users.c.id == uid)
+                .values(decimal_del_balance=del_fmt, decimal_balance_cached_at=datetime.utcnow())
             )
-        )
+        else:
+            shev_fmt = f"{shev_val:.10f}".rstrip("0").rstrip(".") or "0"
+            await database.execute(
+                users.update()
+                .where(users.c.id == uid)
+                .values(
+                    decimal_del_balance=del_fmt,
+                    decimal_balance_cached_at=datetime.utcnow(),
+                    shevelev_balance_cached=shev_fmt,
+                    shevelev_balance_cached_at=datetime.utcnow(),
+                )
+            )
     else:
         await database.execute(
             users.update()
@@ -727,6 +734,7 @@ async def sync_decimal_balances_combined(request: Request):
             "del_formatted": del_fmt,
             "shevelev": shev_val,
             "shevelev_formatted": shev_fmt,
+            "shevelev_error": shev_err,
         }
     )
 

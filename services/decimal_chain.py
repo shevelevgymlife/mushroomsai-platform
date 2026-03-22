@@ -63,6 +63,8 @@ async def _eth_call(to_contract: str, data: str) -> str | None:
             data_j = r.json()
     except Exception:
         return None
+    if data_j.get("error"):
+        return None
     res = data_j.get("result")
     if not res or not isinstance(res, str) or not res.startswith("0x"):
         return None

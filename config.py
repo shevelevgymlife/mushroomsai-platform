@@ -40,9 +40,16 @@ def _shevelev_address_from_file() -> str:
     return ""
 
 
+# Публичный адрес контракта ERC-20 SHEVELEV (Decimal Smart Chain). Используется, если не заданы env и файл.
+DEFAULT_SHEVELEV_TOKEN_ADDRESS = "0xb5c1933b1fa015818ac2c53812f67611c48e6b56"
+
+
 def shevelev_token_address() -> str:
-    """ERC-20 SHEVELEV на Decimal Smart Chain: env SHEVELEV_TOKEN_ADDRESS или строка в deployment/shevelev_token_address.txt."""
+    """ERC-20 SHEVELEV: env → файл deployment/shevelev_token_address.txt → константа по умолчанию."""
     env = (settings.SHEVELEV_TOKEN_ADDRESS or "").strip()
     if env:
         return env
-    return _shevelev_address_from_file().strip()
+    f = _shevelev_address_from_file().strip()
+    if f:
+        return f
+    return (DEFAULT_SHEVELEV_TOKEN_ADDRESS or "").strip()

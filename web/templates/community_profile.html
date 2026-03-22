@@ -65,7 +65,15 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
 .ig-post-likes{padding:0 12px 6px;font-size:13px;font-weight:600;color:#e8e8e8}
 .ig-post-body{padding:0 12px 14px;font-size:14px;line-height:1.5;color:#c8c8c8;white-space:pre-wrap;word-break:break-word}
 .ig-post-body .ig-cap-user{font-weight:700;color:#e8e8e8;margin-right:6px}
-.cp-prof-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:6px 0 14px;font-size:13px;color:#888}
+.cp-prof-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:6px 0 10px;font-size:13px;color:#888}
+.cp-tokens-strip{margin-top:2px;margin-bottom:14px;padding:12px 14px;max-width:min(100%,420px);border-radius:14px;background:linear-gradient(155deg,rgba(22,20,14,.75),rgba(8,8,8,.85));border:1px solid rgba(201,168,76,.35);box-shadow:0 0 18px rgba(201,168,76,.08)}
+.cp-tokens-strip__title{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:rgba(232,201,107,.9);font-weight:800;margin-bottom:10px}
+.cp-tokens-strip__grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 20px;align-items:start}
+.cp-tokens-strip__cell{display:flex;flex-direction:column;gap:4px;min-width:0;text-align:left}
+.cp-ts-lbl{font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.04em}
+.cp-ts-val{font-size:13px;font-weight:700;color:#e8e8e8;font-variant-numeric:tabular-nums;word-break:break-all}
+.cp-ts-shev{color:#C9A84C}
+@media(max-width:400px){.cp-tokens-strip__grid{grid-template-columns:1fr;gap:10px}}
 .shevelev-bal-box{margin-bottom:16px;padding:14px 16px;border-radius:14px;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.28);max-width:420px}
 </style>
 
@@ -108,14 +116,6 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
           <div class="cp-prof-meta">
             <span class="ig-rep-pill">{{ rep_emoji }} {{ rep_level }}</span>
             <span id="profileLikesStatInline" style="color:#888">❤️ {{ profile_likes_count }}</span>
-            {% if profile.decimal_del_balance %}
-            <span style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.04em">Токен DEL</span>
-            <span style="color:#ddd;font-weight:700">{{ profile.decimal_del_balance }}</span>
-            {% endif %}
-            {% if profile.shevelev_balance_cached %}
-            <span style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.04em">Токен SHEVELEV</span>
-            <span style="color:#C9A84C;font-weight:700" title="После синхронизации в кабинете">{{ profile.shevelev_balance_cached }}</span>
-            {% endif %}
           </div>
           <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
             {% if is_own %}
@@ -131,6 +131,19 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
             </button>
             <button type="button" class="btn-muted" style="font-size:13px;padding:8px 16px" onclick="openDM()">Сообщение</button>
             {% endif %}
+          </div>
+          <div class="cp-tokens-strip" aria-label="Токены в сети Decimal">
+            <div class="cp-tokens-strip__title">Токены · Decimal</div>
+            <div class="cp-tokens-strip__grid">
+              <div class="cp-tokens-strip__cell">
+                <span class="cp-ts-lbl">DEL</span>
+                <span class="cp-ts-val">{{ profile.decimal_del_balance or '—' }}</span>
+              </div>
+              <div class="cp-tokens-strip__cell">
+                <span class="cp-ts-lbl">SHEVELEV</span>
+                <span class="cp-ts-val cp-ts-shev">{{ profile.shevelev_balance_cached or '—' }}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
