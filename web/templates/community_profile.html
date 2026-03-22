@@ -43,6 +43,9 @@
 .ig-profile-stat{text-align:center;flex:1}
 .ig-profile-stat b{display:block;font-size:clamp(16px,4vw,20px);color:#e8e8e8;font-weight:700}
 .ig-profile-stat span{display:block;font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+button.ig-profile-stat{width:100%;cursor:pointer;border:none;background:transparent;font:inherit;padding:10px 4px;margin:0;border-radius:12px;transition:background .15s}
+button.ig-profile-stat:hover{background:rgba(255,255,255,.06)}
+button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outline-offset:2px}
 .ig-rep-pill{display:inline-flex;align-items:center;padding:5px 12px;border-radius:22px;font-size:11px;font-weight:700;letter-spacing:.02em;background:rgba(201,168,76,.12);border:1px solid rgba(201,168,76,.28);color:#C9A84C;margin-top:10px}
 .ig-post-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;width:100%;border-top:1px solid rgba(255,255,255,.08);padding-top:3px}
 .ig-post-cell{aspect-ratio:1;position:relative;overflow:hidden;background:#121212;display:block;text-decoration:none;color:inherit}
@@ -89,8 +92,12 @@
         <div style="flex:1;min-width:200px">
           <div class="ig-profile-stats">
             <div class="ig-profile-stat"><b>{{ post_count }}</b><span>публикаций</span></div>
-            <div class="ig-profile-stat"><b>{{ profile.followers_count }}</b><span>подписчики</span></div>
-            <div class="ig-profile-stat"><b>{{ profile.following_count }}</b><span>подписки</span></div>
+            <button type="button" class="ig-profile-stat" onclick="openFollowListModal({{ profile_id }}, 'followers')" title="Кто подписан">
+              <b>{{ profile.followers_count }}</b><span>подписчики</span>
+            </button>
+            <button type="button" class="ig-profile-stat" onclick="openFollowListModal({{ profile_id }}, 'following')" title="На кого подписан">
+              <b>{{ profile.following_count }}</b><span>подписки</span>
+            </button>
           </div>
           <div style="margin-top:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
             <span style="font-size:clamp(18px,4.5vw,22px);font-weight:700;color:#e8e8e8">{{ profile.name or 'Участник' }}</span>
@@ -190,6 +197,16 @@
   </main>
 </div>
 
+<div id="followListModal" style="display:none;position:fixed;inset:0;z-index:10020;align-items:center;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(4px)" onclick="if(event.target===this)closeFollowListModal()">
+  <div class="card" style="max-width:420px;width:92%;max-height:min(85vh,560px);padding:0;overflow:hidden;border-color:rgba(201,168,76,.28);background:#0e0e0e" onclick="event.stopPropagation()">
+    <div style="padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;gap:12px">
+      <span id="followListModalTitle" style="font-weight:700;font-size:16px;color:#e8e8e8">Подписчики</span>
+      <button type="button" onclick="closeFollowListModal()" style="background:none;border:none;color:#888;font-size:24px;cursor:pointer;line-height:1;padding:4px" aria-label="Закрыть">×</button>
+    </div>
+    <div id="followListModalBody" style="overflow-y:auto;max-height:min(65vh,480px);min-height:120px"></div>
+  </div>
+</div>
+
 <!-- DM CHAT PANEL (fixed bottom-right) -->
 <div id="dmPanel" style="display:none;position:fixed;right:20px;bottom:20px;width:340px;height:460px;background:#0e0e0e;border:1px solid rgba(201,168,76,.35);border-radius:20px;box-shadow:0 8px 40px rgba(0,0,0,.7);z-index:1000;flex-direction:column;overflow:hidden">
   <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0;background:#111">
@@ -213,6 +230,45 @@
 {% endif %}
 
 <script>
+function _escHtml(t){
+  const d=document.createElement('div');d.textContent=t==null?'':String(t);return d.innerHTML;
+}
+function closeFollowListModal(){
+  const m=document.getElementById('followListModal');if(m)m.style.display='none';
+}
+async function openFollowListModal(profileId, kind){
+  const modal=document.getElementById('followListModal');
+  const title=document.getElementById('followListModalTitle');
+  const body=document.getElementById('followListModalBody');
+  if(!modal||!body)return;
+  title.textContent=kind==='followers'?'Подписчики':'Подписки';
+  body.innerHTML='<div style="text-align:center;padding:32px;color:#888;font-size:14px">Загрузка…</div>';
+  modal.style.display='flex';
+  try{
+    const path=kind==='followers'?'followers':'following';
+    const r=await fetch('/community/profile/'+profileId+'/'+path,{credentials:'same-origin'});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.ok){
+      body.innerHTML='<div style="padding:20px;text-align:center;color:#f87171;font-size:14px">'+(d.error||'Не удалось загрузить')+'</div>';
+      return;
+    }
+    const users=d.users||[];
+    if(!users.length){
+      body.innerHTML='<div style="padding:32px;text-align:center;color:#666;font-size:14px">Пока никого</div>';
+      return;
+    }
+    body.innerHTML=users.map(function(u){
+      const av=u.avatar
+        ?'<img src="'+_escHtml(u.avatar)+'" alt="" style="width:100%;height:100%;object-fit:cover">'
+        :'<span style="font-size:20px">🍄</span>';
+      return '<a href="/community/profile/'+u.id+'" class="follow-list-row" style="display:flex;align-items:center;gap:14px;padding:12px 18px;text-decoration:none;color:inherit;border-bottom:1px solid rgba(255,255,255,.06);transition:background .15s" onmouseover="this.style.background=\'rgba(255,255,255,.05)\'" onmouseout="this.style.background=\'transparent\'">'+
+        '<div style="width:48px;height:48px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid rgba(201,168,76,.3);background:#1a1a1a;display:flex;align-items:center;justify-content:center">'+av+'</div>'+
+        '<span style="font-weight:600;font-size:15px;color:#e8e8e8">'+_escHtml(u.name)+'</span></a>';
+    }).join('');
+  }catch(e){
+    body.innerHTML='<div style="padding:20px;text-align:center;color:#f87171;font-size:14px">Ошибка сети</div>';
+  }
+}
 const PROFILE_ID = {{ profile_id }};
 const IS_OWN = {{ 'true' if is_own else 'false' }};
 function openM(id){document.getElementById(id).classList.add('open')}

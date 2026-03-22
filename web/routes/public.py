@@ -1146,6 +1146,84 @@ async def community_profile(request: Request, user_id: int):
     )
 
 
+async def _resolve_community_profile_id(user_id: int):
+    """Как на странице профиля: id в URL → основной аккаунт."""
+    raw = await database.fetch_one(users.select().where(users.c.id == user_id))
+    if not raw:
+        return None
+    r = dict(raw)
+    if r.get("primary_user_id"):
+        primary = await database.fetch_one(users.select().where(users.c.id == r["primary_user_id"]))
+        if primary:
+            r = dict(primary)
+    return r["id"]
+
+
+async def _user_for_social_list(user_id: int):
+    """Один элемент списка: id для ссылки на /community/profile/{id}, имя, аватар (основной аккаунт)."""
+    row = await database.fetch_one(users.select().where(users.c.id == user_id))
+    if not row:
+        return None
+    r = dict(row)
+    if r.get("primary_user_id"):
+        p = await database.fetch_one(users.select().where(users.c.id == r["primary_user_id"]))
+        if p:
+            r = dict(p)
+    return {
+        "id": r["id"],
+        "name": (r.get("name") or "").strip() or "Участник",
+        "avatar": r.get("avatar"),
+    }
+
+
+@router.get("/community/profile/{user_id}/followers")
+async def api_profile_followers(request: Request, user_id: int):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    profile_id = await _resolve_community_profile_id(user_id)
+    if profile_id is None:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    rows = await database.fetch_all(
+        community_follows.select()
+        .where(community_follows.c.following_id == profile_id)
+        .order_by(community_follows.c.created_at.desc())
+        .limit(500)
+    )
+    out = []
+    seen = set()
+    for row in rows:
+        u = await _user_for_social_list(row["follower_id"])
+        if u and u["id"] not in seen:
+            seen.add(u["id"])
+            out.append(u)
+    return JSONResponse({"ok": True, "users": out})
+
+
+@router.get("/community/profile/{user_id}/following")
+async def api_profile_following(request: Request, user_id: int):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    profile_id = await _resolve_community_profile_id(user_id)
+    if profile_id is None:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    rows = await database.fetch_all(
+        community_follows.select()
+        .where(community_follows.c.follower_id == profile_id)
+        .order_by(community_follows.c.created_at.desc())
+        .limit(500)
+    )
+    out = []
+    seen = set()
+    for row in rows:
+        u = await _user_for_social_list(row["following_id"])
+        if u and u["id"] not in seen:
+            seen.add(u["id"])
+            out.append(u)
+    return JSONResponse({"ok": True, "users": out})
+
+
 # ─── Direct Messages ──────────────────────────────────────────────────────────
 
 async def _get_conversations(user_id: int) -> list:
