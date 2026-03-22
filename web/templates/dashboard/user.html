@@ -444,9 +444,8 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outlin
     <div class="ig-drawer-scroll">
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('me')"><span class="e">{{ ico('grid') }}</span><span class="lbl">Мой профиль</span></button>
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('feed')"><span class="e">{{ ico('feed') }}</span><span class="lbl">Лента</span></button>
-      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('groups')"><span class="e">{{ ico('message_sq') }}</span><span class="lbl">Группы и чаты</span></button>
       {% if 'community' in vbk %}
-      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('groups')" title="Список чатов как в сообщениях"><span class="e">{{ ico('message_sq') }}</span><span class="lbl">Мои группы</span></button>
+      <button type="button" class="ig-drawer-item" onclick="goToGroupsChatsFromBurger()" title="Групповые чаты"><span class="e">{{ ico('message_sq') }}</span><span class="lbl">Чаты</span></button>
       {% endif %}
       {% if 'messages' in vbk %}
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('messages')"><span class="e">{{ ico('message') }}</span><span class="lbl">Сообщения</span></button>
@@ -1396,7 +1395,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outlin
     {{ ni('home','🏠','Главная') }}
     {% if 'community' in vbk %}
     {{ ni('feed','👥','Лента') }}
-    {{ ni('groups','💬','Группы') }}
+    {{ ni('groups','💬','Чаты') }}
     {% endif %}
     {% if 'messages' in vbk %}
     <button class="nav-item" onclick="goSec('messages')" id="nav-messages">
@@ -1738,6 +1737,15 @@ function igDashBackClick(){
   if(window.history.length>1) history.back();
   else goSec('me');
 }
+function goToGroupsChatsFromBurger(){
+  closeDbDrawer();
+  try{
+    location.hash = 'groups';
+    location.reload();
+  }catch(e){
+    goSec('groups');
+  }
+}
 function goSec(id){
   closeDbDrawer();
   if(id!=='groups'&&document.body.classList.contains('tg-group-mobile-chat')){
@@ -1745,7 +1753,6 @@ function goSec(id){
       try{ history.replaceState(null,'',location.pathname+location.search+'#'+id); }catch(e){}
       window.__groupChatHistoryPushed=false;
     }
-    finishGroupChatOverlayUI();
   }
   SECS.forEach(s=>{
     document.getElementById('sec-'+s)?.classList.remove('active');
@@ -1779,6 +1786,8 @@ function goSec(id){
     document.body.classList.remove('tg-group-mobile-chat');
     const back = document.getElementById('groupMobileBack');
     if(back) back.style.display = 'none';
+    window.__groupChatHistoryPushed = false;
+    finishGroupChatOverlayUI();
   }
   if(id==='me'||id==='profile'){
     setTimeout(initShevelevOnLoad,100);
