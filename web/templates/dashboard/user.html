@@ -1914,6 +1914,14 @@ async function submitSendShev(){
     if(st)st.textContent='Подтвердите транзакцию в MetaMask…';
     const txh=await window.ethereum.request({method:'eth_sendTransaction',params:[{from,to:SHEVELEV_TOKEN,data}]});
     if(st){st.style.color='#4ade80';st.textContent='Отправлено: '+String(txh).slice(0,18)+'…';}
+    try{
+      await fetch('/profile/shevelev-transfer-notify',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        credentials:'same-origin',
+        body:JSON.stringify({to:to,tx_hash:String(txh),amount:rawAmt})
+      });
+    }catch(_){}
     syncBalancesServerSilent({silent:true});
     setTimeout(()=>syncBalancesServerSilent({silent:true}),4000);
   }catch(e){

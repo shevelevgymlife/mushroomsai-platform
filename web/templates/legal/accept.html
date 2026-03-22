@@ -9,14 +9,16 @@
     <div class="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center">{{ error }}</div>
     {% endif %}
     <div class="rounded-2xl border border-border bg-surface p-6 mb-6 space-y-4 text-sm text-muted leading-relaxed">
-      <p>Перед использованием онлайн-платформы <strong class="text-text">MushroomsAI</strong> (далее — «Сервис») вы подтверждаете, что:</p>
+      <p><strong class="text-text">MushroomsAI</strong> — это социальная сеть, ИИ-ассистент, маркетплейс и при необходимости привязка кошелька для криптоактивов. Сервис <strong>не оказывает медицинских консультаций</strong> и не заменяет врача.</p>
+      <p>Вы подтверждаете, что:</p>
       <ul class="list-disc pl-5 space-y-2">
-        <li>прочитали <a href="/legal/terms" target="_blank" class="text-gold hover:underline">Пользовательское соглашение</a> и <a href="/legal/privacy" target="_blank" class="text-gold hover:underline">Политику конфиденциальности</a>;</li>
+        <li>ознакомились с <a href="/legal/terms" target="_blank" class="text-gold hover:underline">Пользовательским соглашением</a> и <a href="/legal/privacy" target="_blank" class="text-gold hover:underline">Политикой конфиденциальности</a>;</li>
         <li>вам исполнилось 18 лет;</li>
-        <li>понимаете, что материалы носят образовательный характер и не заменяют консультацию врача;</li>
-        <li>соглашаетесь на обработку персональных данных в объёме, указанном в Политике.</li>
+        <li>понимаете, что публикации, ИИ и карточки товаров носят информационный характер; за фото, тексты и сделки на маркетплейсе отвечаете в рамках закона;</li>
+        <li>соглашаетесь на обработку персональных данных (в т.ч. профиль, фото, сообщения, адрес кошелька при указании) — как в Политике;</li>
+        <li>понимаете риски операций в блокчейне при использовании своего кошелька.</li>
       </ul>
-      <p class="text-xs text-muted/80">Оператор вправе обновлять документы. При существенных изменениях вам может потребоваться повторное принятие новой редакции.</p>
+      <p class="text-xs text-muted/80">Документы могут обновляться; при существенных изменениях потребуется повторное принятие.</p>
     </div>
     <form method="post" action="/legal/accept" class="space-y-5">
       <input type="hidden" name="next" value="{{ next_url }}">

@@ -21,7 +21,7 @@ from services.notify_admin import notify_admin_telegram
 import sqlalchemy as sa
 import secrets
 import traceback as _traceback
-from datetime import datetime
+from datetime import datetime, timedelta
 
 router = APIRouter()
 templates = Jinja2Templates(directory="web/templates")
@@ -705,6 +705,67 @@ async def profile_plan_upgrade_request(
     )
     await notify_admin_telegram(txt)
     return JSONResponse({"ok": True})
+
+
+@router.post("/profile/shevelev-transfer-notify")
+async def shevelev_transfer_notify(request: Request):
+    """После отправки SHEVELEV в MetaMask — уведомить получателя в ЛС; в Telegram, если не онлайн."""
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    to_addr = (body.get("to") or "").strip()
+    tx_hash = (body.get("tx_hash") or "").strip()
+    amount = (body.get("amount") or "").strip()[:64]
+    if not tx_hash or len(tx_hash) < 8 or not to_addr.startswith("0x") or len(to_addr) < 42:
+        return JSONResponse({"error": "bad params"}, status_code=400)
+    uid = user.get("primary_user_id") or user["id"]
+    sender_row = await database.fetch_one(users.select().where(users.c.id == uid))
+    sender_name = (sender_row.get("name") if sender_row else None) or "Участник"
+    to_norm = to_addr.lower()
+    recipient = await database.fetch_one(
+        sa.text(
+            "SELECT * FROM users WHERE id != :sid AND wallet_address IS NOT NULL "
+            "AND LOWER(TRIM(wallet_address)) = :w LIMIT 1"
+        ).bindparams(sid=uid, w=to_norm)
+    )
+    if not recipient:
+        return JSONResponse({"ok": True, "notified": False})
+    rid = recipient["id"]
+    short_tx = tx_hash if len(tx_hash) <= 28 else tx_hash[:22] + "…"
+    msg = (
+        f"Вам отправлен перевод SHEVELEV: {amount or '—'} (сеть Decimal Smart Chain).\n"
+        f"От: {sender_name}.\n"
+        f"Хэш транзакции: {short_tx}\n"
+        f"Проверьте подтверждение в блокчейне; баланс в кабинете обновляется после синхронизации."
+    )
+    try:
+        await database.execute(
+            sa.text(
+                "INSERT INTO direct_messages (sender_id, recipient_id, text, is_read, is_system) "
+                "VALUES (:s, :r, :t, false, false)"
+            ),
+            {"s": uid, "r": rid, "t": msg},
+        )
+    except Exception:
+        return JSONResponse({"error": "dm"}, status_code=500)
+    tg_id = recipient.get("tg_id") or recipient.get("linked_tg_id")
+    last_seen = recipient.get("last_seen_at")
+    online = False
+    if last_seen:
+        try:
+            online = datetime.utcnow() - last_seen < timedelta(minutes=3)
+        except Exception:
+            online = False
+    if tg_id and not online:
+        from bot.handlers.notify import notify_user
+
+        tg_line = "💰 " + msg.replace("\n", " ")
+        await notify_user(int(tg_id), tg_line[:3900])
+    return JSONResponse({"ok": True, "notified": True})
 
 
 @router.post("/profile/wallet/sync-decimal")

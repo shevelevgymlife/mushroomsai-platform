@@ -8,7 +8,7 @@ from fastapi import Request
 from fastapi.responses import RedirectResponse
 
 # При существенном изменении текста /legal/* — увеличить версию (все пользователи перепримут).
-LEGAL_DOCS_VERSION = "2025-03-22-v1"
+LEGAL_DOCS_VERSION = "2025-03-23-v2"
 
 
 def legal_next_param(request: Request) -> str:
