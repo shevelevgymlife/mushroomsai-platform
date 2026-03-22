@@ -330,7 +330,7 @@ details.ig-drawer-details > summary::-webkit-details-marker{display:none}
 details.ig-drawer-details > summary{list-style:none}
 .ig-tabbar{position:fixed;left:0;right:0;bottom:0;height:calc(56px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);background:rgba(6,8,16,.58);backdrop-filter:blur(25px);-webkit-backdrop-filter:blur(25px);border-top:1px solid rgba(0,245,255,.14);display:flex;align-items:flex-start;justify-content:space-around;padding-top:6px;z-index:980;box-sizing:border-box;box-shadow:0 -8px 40px rgba(0,0,0,.35)}
 .ig-tabbar .ig-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:2px;padding:4px 4px 0;border:none;background:transparent;color:#777;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;max-width:88px;min-width:0;position:relative;z-index:1}
-.ig-tabbar .ig-tab--fab{flex:0 0 auto;position:relative;top:0;width:56px;height:56px;min-width:56px;max-width:none;padding:0;border-radius:50%;align-items:center;justify-content:center;background:linear-gradient(145deg,#00f5ff,#006680,#ff00aa);color:#05050a!important;box-shadow:0 0 28px rgba(0,245,255,.45),0 8px 28px rgba(255,0,170,.2);border:1px solid rgba(255,255,255,.2);z-index:2;-webkit-tap-highlight-color:transparent}
+.ig-tabbar .ig-tab--fab{flex:0 0 auto;position:relative;top:0;width:56px;height:56px;min-width:56px;max-width:none;padding:0;border-radius:50%;align-items:center;justify-content:center;background:linear-gradient(145deg,#00f5ff,#006680,#ff00aa);color:#05050a!important;box-shadow:0 0 28px rgba(0,245,255,.45),0 8px 28px rgba(255,0,170,.2);border:1px solid rgba(255,255,255,.2);z-index:5;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .ig-tabbar .ig-tab--fab .ig-tab-lbl{display:none}
 .ig-tabbar .ig-tab--fab .stroke-ico{color:#05050a!important;filter:none;width:28px;height:28px;pointer-events:none}
 .ig-tabbar .ig-tab--fab .ic{display:flex;align-items:center;justify-content:center;pointer-events:none}
@@ -748,7 +748,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outlin
         <span class="ig-brand">MushroomsAI</span>
         <div class="ig-feed-actions-top">
           <button type="button" class="ig-ic-btn" title="Новый пост" aria-label="Новый пост" onclick="openCreatePostModal()">＋</button>
-          <a href="/community/members" class="ig-ic-btn" title="Участники" aria-label="Участники" style="text-decoration:none;font-size:16px">👥</a>
+          <button type="button" class="ig-ic-btn" title="Участники" aria-label="Участники" style="font-size:16px" onclick="goSec('search')">👥</button>
           <button type="button" class="ig-ic-btn" title="Сообщения" aria-label="Сообщения" onclick="goSec('messages')">✉</button>
         </div>
       </div>
@@ -875,6 +875,13 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outlin
         </div>
       </div>
       {% endif %}
+    </section>
+
+    <!-- ══ SEARCH (участники) — внутри дашборда, бургер и шапка остаются ══ -->
+    <section class="db-sec" id="sec-search">
+      <div class="ig-members-embed-wrap" style="box-sizing:border-box;width:100%;height:calc(var(--vvh,100vh) - 120px);min-height:260px;min-width:0;padding:0 0 8px">
+        <iframe id="membersSearchIframe" title="Поиск участников" src="/community/members?embed=1" style="border:none;width:100%;height:100%;display:block;background:transparent;border-radius:0"></iframe>
+      </div>
     </section>
 
     <!-- ══ GROUP CHATS (сообщество: лента + группы; новые группы — вступление без заявки) ══ -->
@@ -1449,7 +1456,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outlin
     <button type="button" class="ig-tab on" data-igtab="me" onclick="goSec('me')"><span class="ic">{{ ico('user') }}</span>Профиль</button>
     <button type="button" class="ig-tab" data-igtab="feed" onclick="goSec('feed')"><span class="ic">{{ ico('home') }}</span>Лента</button>
     <button type="button" class="ig-tab ig-tab--fab" data-igtab="create" onclick="igTabCreate()"><span class="ic">{{ ico('plus') }}</span><span class="ig-tab-lbl">Создать</span></button>
-    <button type="button" class="ig-tab" data-igtab="search" onclick="window.location.href='/community/members'"><span class="ic">{{ ico('search') }}</span>Поиск</button>
+    <button type="button" class="ig-tab" data-igtab="search" onclick="goSec('search')"><span class="ic">{{ ico('search') }}</span>Поиск</button>
     {% if 'community' not in vbk and 'messages' not in vbk %}
     {% if 'shop' in vbk %}
     <button type="button" class="ig-tab" data-igtab="shop" onclick="goSec('shop')"><span class="ic">{{ ico('shop') }}</span>Магазин</button>
@@ -1650,7 +1657,6 @@ async function openFollowListModal(profileId, kind){
     body.innerHTML='<div style="padding:20px;text-align:center;color:#f87171;font-size:14px">Ошибка сети</div>';
   }
 }
-window._needTariffForCommunity = {{ (('community' not in vbk) and ('tariffs' in vbk)) | tojson }};
 window.__groupsInitial = {{ group_list | default([]) | tojson }};
 window.__groupsLast = window.__groupsInitial || [];
 window.__groupChatHistoryPushed = false;
@@ -1660,7 +1666,7 @@ if (window.location.search.includes('linked=')) {
 }
 
 // ── Section routing ──
-const SECS = {{ dashboard_secs | default(['me','feed','groups','messages','ai','knowledge','shop','plan','orders','referral','link','language','profile']) | tojson }};
+const SECS = {{ dashboard_secs | default(['me','feed','groups','search','messages','ai','knowledge','shop','plan','orders','referral','link','language','profile']) | tojson }};
 const DEFAULT_SEC = SECS.includes('me') ? 'me' : (SECS.includes('home') ? 'home' : (SECS[0] || 'feed'));
 function closeDbDrawer(){
   document.getElementById('dbDrawer')?.classList.remove('open');
@@ -1675,7 +1681,6 @@ function toggleDbDrawer(){
   if(willOpen){ refreshGroupListFromApi(); }
 }
 function openCreatePostModal(){
-  if(window._needTariffForCommunity){goSec('plan');return;}
   const m=document.getElementById('createPostModal');
   if(!m)return;
   document.getElementById('createPostErr')&&(document.getElementById('createPostErr').style.display='none');
@@ -1684,7 +1689,12 @@ function openCreatePostModal(){
 }
 function igTabCreate(){
   goSec('feed');
-  setTimeout(()=>openCreatePostModal(),150);
+  function open(){ openCreatePostModal(); }
+  if(typeof requestAnimationFrame==='function'){
+    requestAnimationFrame(function(){ requestAnimationFrame(open); });
+  }else{
+    setTimeout(open,0);
+  }
 }
 function syncIgTabbar(id){
   const bar=document.getElementById('igTabbar');
@@ -1694,9 +1704,9 @@ function syncIgTabbar(id){
   const key=map[id];
   if(key) bar.querySelector(`[data-igtab="${key}"]`)?.classList.add('on');
 }
-var IG_ROOT_SECS={me:1,feed:1,groups:1,messages:1};
+var IG_ROOT_SECS={me:1,feed:1,groups:1,messages:1,search:1};
 var SEC_TITLE={
-  me:'Профиль',feed:'Лента',groups:'Чаты',messages:'Входящие',ai:'AI-чат',knowledge:'База знаний',
+  me:'Профиль',feed:'Лента',groups:'Чаты',messages:'Входящие',search:'Участники',ai:'AI-чат',knowledge:'База знаний',
   proextras:'Про-функции',shop:'Магазин',orders:'Заказы',plan:'Тариф',referral:'Рефералы',seller:'Товары',
   link:'Привязка',language:'Язык',profile:'Настройки'
 };
@@ -1709,15 +1719,14 @@ function updateIgDashHeader(secId){
   let mobile=false;
   try{ mobile=window.matchMedia('(max-width:768px)').matches; }catch(e){ mobile=window.innerWidth<=768; }
   const root=!!IG_ROOT_SECS[secId];
+  ham.style.display='flex';
   if(mobile&&!root){
     back.style.display='flex';
-    ham.style.display='none';
     ttxt.textContent=SEC_TITLE[secId]||secId;
     tbtn.classList.add('ig-head-title--plain');
     tbtn.title='';
   }else{
     back.style.display='none';
-    ham.style.display='flex';
     ttxt.textContent='MushroomsAI';
     tbtn.classList.remove('ig-head-title--plain');
     tbtn.title='Мой профиль';

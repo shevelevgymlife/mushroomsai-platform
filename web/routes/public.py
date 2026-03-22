@@ -1583,6 +1583,7 @@ async def community_members(request: Request):
 
     search = request.query_params.get("q", "").strip()
     level_filter = request.query_params.get("level", "")
+    embed = request.query_params.get("embed", "").strip() == "1"
     page = int(request.query_params.get("page", 1))
     per_page = 24
     offset = (page - 1) * per_page
@@ -1652,5 +1653,6 @@ async def community_members(request: Request):
             "total_pages": total_pages,
             "total": total,
             "levels": ["Зерно", "Участник", "Адепт", "Мастер", "Легенда"],
+            "embed": embed,
         },
     )

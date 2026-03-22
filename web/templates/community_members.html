@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Участники сообщества{% endblock %}
 {% block content %}
+{% set embed = embed|default(false) %}
 <style>
 .members-wrap{max-width:1200px;margin:0 auto;padding:24px 16px 60px}
 .members-header{display:flex;align-items:center;gap:16px;margin-bottom:24px;flex-wrap:wrap}
@@ -33,13 +34,19 @@
 .page-btn{width:36px;height:36px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.04);color:#ccc;font-size:13px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;transition:all .2s}
 .page-btn:hover,.page-btn.active{border-color:#00f5ff;color:#00f5ff;background:rgba(0,245,255,.1)}
 .members-count{font-size:13px;color:#666;margin-bottom:16px}
+.members-wrap--embed{padding-top:4px;padding-bottom:40px}
+.members-wrap--embed .members-header{margin-bottom:14px}
+.members-wrap--embed .members-header h1{font-size:18px}
 </style>
 
-<div class="members-wrap">
+<div class="members-wrap{% if embed %} members-wrap--embed{% endif %}">
   <div class="members-header">
+    {% if not embed %}
     <a href="/community" style="color:#00f5ff;text-decoration:none;font-size:20px">←</a>
+    {% endif %}
     <h1>👥 Участники сообщества</h1>
     <form class="members-search" method="get" action="/community/members">
+      {% if embed %}<input type="hidden" name="embed" value="1">{% endif %}
       {% if level_filter %}<input type="hidden" name="level" value="{{ level_filter }}">{% endif %}
       <input type="text" name="q" placeholder="Поиск по имени..." value="{{ search }}">
       <button type="submit">Найти</button>
@@ -47,9 +54,9 @@
   </div>
 
   <div class="level-filters">
-    <a href="/community/members{% if search %}?q={{ search }}{% endif %}" class="level-btn {% if not level_filter %}active{% endif %}">Все</a>
+    <a href="/community/members{% if embed %}?embed=1{% endif %}{% if search %}{% if embed %}&{% else %}?{% endif %}q={{ search }}{% endif %}" class="level-btn {% if not level_filter %}active{% endif %}">Все</a>
     {% for lvl in levels %}
-    <a href="/community/members?level={{ lvl }}{% if search %}&q={{ search }}{% endif %}" class="level-btn {% if level_filter == lvl %}active{% endif %}">{{ lvl }}</a>
+    <a href="/community/members?{% if embed %}embed=1&{% endif %}level={{ lvl }}{% if search %}&q={{ search }}{% endif %}" class="level-btn {% if level_filter == lvl %}active{% endif %}">{{ lvl }}</a>
     {% endfor %}
   </div>
 
@@ -100,7 +107,7 @@
   {% if total_pages > 1 %}
   <div class="pagination">
     {% for p in range(1, total_pages + 1) %}
-    <a href="/community/members?page={{ p }}{% if search %}&q={{ search }}{% endif %}{% if level_filter %}&level={{ level_filter }}{% endif %}"
+    <a href="/community/members?page={{ p }}{% if search %}&q={{ search }}{% endif %}{% if level_filter %}&level={{ level_filter }}{% endif %}{% if embed %}&embed=1{% endif %}"
        class="page-btn {% if p == page %}active{% endif %}">{{ p }}</a>
     {% endfor %}
   </div>

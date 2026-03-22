@@ -84,7 +84,7 @@ async def compute_visible_blocks(user_id: int, plan: str) -> list[str]:
 def build_dashboard_secs(visible_block_keys: list[str]) -> list[str]:
     keys = set(visible_block_keys)
     # Единый каркас как Instagram у всех: профиль, лента, группы; наполнение внутри — по тарифу (vbk)
-    out = ["me", "feed", "groups"]
+    out = ["me", "feed", "groups", "search"]
     if "messages" in keys:
         out.append("messages")
     if "ai_chat" in keys:
