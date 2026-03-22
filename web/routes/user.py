@@ -292,6 +292,10 @@ async def dashboard(request: Request):
 
     from config import settings as _settings, shevelev_token_address
     try:
+        shevelev_tok = shevelev_token_address()
+    except Exception:
+        shevelev_tok = ""
+    try:
         visible_block_keys = await compute_visible_blocks(effective_user_id, plan)
     except Exception:
         visible_block_keys = ["ai_chat", "messages", "community", "shop", "profile_photo", "posts", "tariffs", "referral", "knowledge_base"]
@@ -313,7 +317,11 @@ async def dashboard(request: Request):
 
     group_list = []
     if "community" in visible_block_keys:
-        group_list = await fetch_community_groups_for_user(effective_user_id)
+        try:
+            group_list = await fetch_community_groups_for_user(effective_user_id)
+        except Exception:
+            _logger.exception("dashboard: fetch_community_groups_for_user")
+            group_list = []
 
     response = templates.TemplateResponse(
         "dashboard/user.html",
@@ -340,7 +348,7 @@ async def dashboard(request: Request):
             "plans_catalog": PLANS,
             "shop_preview": shop_preview,
             "comm_profile": dict(comm_profile) if comm_profile else None,
-            "shevelev_token": shevelev_token_address(),
+            "shevelev_token": shevelev_tok,
             "effective_user_id": effective_user_id,
             "visible_block_keys": visible_block_keys,
             "dashboard_secs": dashboard_secs,
@@ -1327,12 +1335,49 @@ def _group_rows_to_dicts(rows) -> list[dict]:
                     pass
         if not d.get("image_url"):
             d["image_url"] = None
+        for k in ("last_message_at",):
+            if k in d and d[k] is not None and hasattr(d[k], "isoformat"):
+                d[k] = d[k].isoformat()
+        if "unread_count" in d and d["unread_count"] is not None:
+            try:
+                d["unread_count"] = int(d["unread_count"])
+            except (TypeError, ValueError):
+                d["unread_count"] = 0
         out.append(d)
     return out
 
 
 async def fetch_community_groups_for_user(uid: int) -> list[dict]:
-    """Список групп для кабинета/API. Полный запрос с заявками; при ошибке — без join_requests (старая БД)."""
+    """Список групп для кабинета/API. Полный запрос; при ошибке — по цепочке упрощённых запросов."""
+    q_rich = """
+            SELECT g.id, g.name, g.description, g.created_at, g.created_by, g.image_url,
+              COALESCE(g.join_mode, 'approval') AS join_mode,
+              g.message_retention_days,
+              g.slow_mode_seconds,
+              COALESCE(g.show_history_to_new_members, true) AS show_history_to_new_members,
+              (SELECT COUNT(*)::bigint FROM community_group_members m WHERE m.group_id = g.id) AS member_count,
+              EXISTS(SELECT 1 FROM community_group_members m2 WHERE m2.group_id = g.id AND m2.user_id = :uid) AS is_member,
+              (SELECT COUNT(*)::bigint FROM community_group_messages gm WHERE gm.group_id = g.id) AS msg_count,
+              EXISTS(
+                SELECT 1 FROM community_group_join_requests r
+                WHERE r.group_id = g.id AND r.user_id = :uid AND r.status = 'pending'
+              ) AS pending_join,
+              (SELECT LEFT(gm.text::text, 500) FROM community_group_messages gm WHERE gm.group_id = g.id ORDER BY gm.created_at DESC LIMIT 1) AS last_message_text,
+              (SELECT gm.created_at FROM community_group_messages gm WHERE gm.group_id = g.id ORDER BY gm.created_at DESC LIMIT 1) AS last_message_at,
+              (SELECT CASE WHEN EXISTS (SELECT 1 FROM community_group_members mx WHERE mx.group_id = g.id AND mx.user_id = :uid) THEN (
+                SELECT COUNT(*)::bigint FROM community_group_messages gm
+                WHERE gm.group_id = g.id
+                AND gm.created_at > COALESCE(
+                  (SELECT m.last_read_at FROM community_group_members m WHERE m.group_id = g.id AND m.user_id = :uid),
+                  (SELECT m2.joined_at FROM community_group_members m2 WHERE m2.group_id = g.id AND m2.user_id = :uid)
+                )
+              ) ELSE 0::bigint END) AS unread_count
+            FROM community_groups g
+            ORDER BY
+              (SELECT gm.created_at FROM community_group_messages gm WHERE gm.group_id = g.id ORDER BY gm.created_at DESC LIMIT 1) DESC NULLS LAST,
+              g.created_at DESC
+            LIMIT 80
+        """
     q_full = """
             SELECT g.id, g.name, g.description, g.created_at, g.created_by, g.image_url,
               COALESCE(g.join_mode, 'approval') AS join_mode,
@@ -1379,22 +1424,24 @@ async def fetch_community_groups_for_user(uid: int) -> list[dict]:
             ORDER BY g.created_at DESC
             LIMIT 80
         """
-    try:
-        rows = await database.fetch_all(sa.text(q_full).bindparams(uid=uid))
-        return _group_rows_to_dicts(rows)
-    except Exception as e:
-        _logger.warning("community groups full query failed, using fallback: %s", e)
+    _no_img = "g.created_by, g.image_url"
+    _no_img_rep = "g.created_by, NULL::text AS image_url"
+    for q in (
+        q_rich,
+        q_rich.replace(_no_img, _no_img_rep),
+        q_full,
+        q_full.replace(_no_img, _no_img_rep),
+        q_simple,
+        q_simple.replace(_no_img, _no_img_rep),
+        q_minimal,
+    ):
         try:
-            rows = await database.fetch_all(sa.text(q_simple).bindparams(uid=uid))
+            rows = await database.fetch_all(sa.text(q).bindparams(uid=uid))
             return _group_rows_to_dicts(rows)
-        except Exception as e2:
-            _logger.warning("community groups simple query failed, using minimal: %s", e2)
-            try:
-                rows = await database.fetch_all(sa.text(q_minimal).bindparams(uid=uid))
-                return _group_rows_to_dicts(rows)
-            except Exception:
-                _logger.exception("community groups minimal query failed")
-                return []
+        except Exception as e:
+            _logger.warning("community groups query failed, next fallback: %s", e)
+    _logger.exception("community groups: all fallbacks failed")
+    return []
 
 
 @router.get("/community/groups")
@@ -1705,6 +1752,26 @@ async def community_group_settings(request: Request, group_id: int):
         except Exception as e:
             _logger.exception("community_group_settings update failed")
             return JSONResponse({"ok": False, "error": str(e)[:200]}, status_code=500)
+    return JSONResponse({"ok": True})
+
+
+@router.post("/community/groups/{group_id}/mark-read")
+async def community_group_mark_read(request: Request, group_id: int):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = _effective_user_id(user)
+    if not await _ensure_community_group_member(group_id, uid):
+        return JSONResponse({"error": "not a member"}, status_code=403)
+    try:
+        await database.execute(
+            sa.text(
+                "UPDATE community_group_members SET last_read_at = NOW() WHERE group_id = :gid AND user_id = :uid"
+            ).bindparams(gid=group_id, uid=uid)
+        )
+    except Exception as e:
+        _logger.warning("community_group mark-read: %s", e)
+        return JSONResponse({"ok": False, "error": "db"}, status_code=500)
     return JSONResponse({"ok": True})
 
 

@@ -94,6 +94,7 @@ async def lifespan(app: FastAPI):
         "ALTER TABLE community_groups ADD COLUMN IF NOT EXISTS join_mode VARCHAR(20) DEFAULT 'approval'",
         "ALTER TABLE community_groups ADD COLUMN IF NOT EXISTS message_retention_days INTEGER",
         "ALTER TABLE community_groups ADD COLUMN IF NOT EXISTS image_url TEXT",
+        "ALTER TABLE community_group_members ADD COLUMN IF NOT EXISTS last_read_at TIMESTAMP",
         """CREATE TABLE IF NOT EXISTS community_group_join_requests (
             id SERIAL PRIMARY KEY,
             group_id INTEGER NOT NULL REFERENCES community_groups(id) ON DELETE CASCADE,

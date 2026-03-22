@@ -448,6 +448,7 @@ community_group_members = sqlalchemy.Table(
     sqlalchemy.Column("group_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("community_groups.id", ondelete="CASCADE"), nullable=False),
     sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
     sqlalchemy.Column("joined_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+    sqlalchemy.Column("last_read_at", sqlalchemy.DateTime, nullable=True),
     sqlalchemy.UniqueConstraint("group_id", "user_id", name="uq_community_group_member"),
 )
 

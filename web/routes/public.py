@@ -1276,7 +1276,7 @@ async def _get_conversations(user_id: int) -> list:
         convs = []
         if sys_count > 0:
             last_sys = await database.fetch_one(sa.text(
-                "SELECT text FROM direct_messages WHERE recipient_id=:uid AND is_system=true ORDER BY id DESC LIMIT 1"
+                "SELECT text, created_at FROM direct_messages WHERE recipient_id=:uid AND is_system=true ORDER BY id DESC LIMIT 1"
             ), {"uid": user_id})
             convs.append({
                 "other_id": 0,
@@ -1284,6 +1284,7 @@ async def _get_conversations(user_id: int) -> list:
                 "avatar": None,
                 "last_text": last_sys["text"] if last_sys else "",
                 "unread": sys_count,
+                "last_time": last_sys["created_at"].isoformat() if last_sys and last_sys.get("created_at") else "",
             })
 
         for r in rows:
@@ -1292,7 +1293,7 @@ async def _get_conversations(user_id: int) -> list:
                 continue
             other = await database.fetch_one(users.select().where(users.c.id == other_id))
             last_msg = await database.fetch_one(sa.text(
-                "SELECT text FROM direct_messages WHERE id=:lid"
+                "SELECT text, created_at FROM direct_messages WHERE id=:lid"
             ), {"lid": r["last_id"]})
             unread = await database.fetch_val(sa.text(
                 "SELECT COUNT(*) FROM direct_messages WHERE sender_id=:oid AND recipient_id=:uid AND is_read=false AND is_system=false"
@@ -1303,6 +1304,7 @@ async def _get_conversations(user_id: int) -> list:
                 "avatar": other["avatar"] if other else None,
                 "last_text": last_msg["text"] if last_msg else "",
                 "unread": unread,
+                "last_time": last_msg["created_at"].isoformat() if last_msg and last_msg.get("created_at") else "",
             })
         return convs
     except Exception as e:
