@@ -2,16 +2,16 @@
 {% block title %}Вход — MushroomsAI{% endblock %}
 
 {% block content %}
-<div class="min-h-screen flex items-center justify-center pt-16 px-4">
+<div class="min-h-screen flex items-center justify-center pt-16 px-4 neo-app-surface">
   <div class="w-full max-w-md">
 
     <div class="text-center mb-10">
       <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-gold to-gold-light flex items-center justify-center mx-auto mb-4">
         <span class="text-bg font-bold text-xl">M</span>
       </div>
-      <h1 class="text-2xl font-semibold" style="color:#C9A84C">Войти в MushroomsAI</h1>
+      <h1 class="text-2xl font-semibold" style="color:#00f5ff">Войти в MushroomsAI</h1>
       <p class="text-sm text-muted mt-2">Персональный AI-консультант по грибам</p>
-      <p class="text-xs text-muted mt-4 max-w-sm mx-auto leading-relaxed">Если вы ещё не в системе — после входа выберите <strong style="color:#C9A84C">бесплатный план</strong> и примите пользовательское соглашение. Платные тарифы на сайте пока не подключаются; запрос смены тарифа — из кабинета.</p>
+      <p class="text-xs text-muted mt-4 max-w-sm mx-auto leading-relaxed">Если вы ещё не в системе — после входа выберите <strong style="color:#00f5ff">бесплатный план</strong> и примите пользовательское соглашение. Платные тарифы на сайте пока не подключаются; запрос смены тарифа — из кабинета.</p>
     </div>
 
     {% if error %}
@@ -104,7 +104,6 @@
   </div>
 </div>
 
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script>
 const SITE_URL = {{ site_url | default('') | tojson }};
 

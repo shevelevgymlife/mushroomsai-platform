@@ -36,6 +36,10 @@ def collect_identities(user: dict) -> list[tuple[str, str]]:
     if gid is not None:
         add("google_id", str(gid))
 
+    lg = user.get("linked_google_id")
+    if lg is not None:
+        add("google_id", str(lg))
+
     em = user.get("email")
     if em:
         add("email", str(em).strip().lower())

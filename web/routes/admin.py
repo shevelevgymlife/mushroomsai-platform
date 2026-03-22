@@ -1,6 +1,9 @@
+import logging
 import os
 import uuid
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Request, Form, UploadFile, File, Query
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
@@ -1340,7 +1343,35 @@ async def delete_user_permanent(request: Request, user_id: int):
     await unblock_identities_for_user(dict(target))
 
     import sqlalchemy as sa_
+
+    # Порядок важен: сначала ссылки других строк на этого пользователя, затем дочерние сущности постов/товаров.
     for sql in [
+        "UPDATE users SET primary_user_id=NULL WHERE primary_user_id=:uid",
+        "UPDATE users SET referred_by=NULL WHERE referred_by=:uid",
+        "UPDATE ai_settings SET updated_by=NULL WHERE updated_by=:uid",
+        "DELETE FROM admin_permissions WHERE user_id=:uid",
+        "DELETE FROM referrals WHERE referrer_id=:uid OR referred_id=:uid",
+        "DELETE FROM community_messages WHERE sender_id=:uid OR recipient_id=:uid",
+        "UPDATE community_posts SET folder_id=NULL WHERE folder_id IN (SELECT id FROM community_folders WHERE user_id=:uid)",
+        "DELETE FROM community_folders WHERE user_id=:uid",
+        # Лайки/сохранения/комментарии к постам пользователя (в т.ч. чужие комментарии под его постами)
+        "DELETE FROM community_likes WHERE post_id IN (SELECT id FROM community_posts WHERE user_id=:uid)",
+        "DELETE FROM community_saved WHERE post_id IN (SELECT id FROM community_posts WHERE user_id=:uid)",
+        "DELETE FROM community_comments WHERE post_id IN (SELECT id FROM community_posts WHERE user_id=:uid)",
+        "DELETE FROM community_posts WHERE user_id=:uid",
+        # Товары продавца: сначала дочерние строки
+        "DELETE FROM shop_product_likes WHERE product_id IN (SELECT id FROM shop_products WHERE seller_id=:uid)",
+        "DELETE FROM shop_product_comments WHERE product_id IN (SELECT id FROM shop_products WHERE seller_id=:uid)",
+        "DELETE FROM product_questions WHERE product_id IN (SELECT id FROM shop_products WHERE seller_id=:uid)",
+        "DELETE FROM product_reviews WHERE product_id IN (SELECT id FROM shop_products WHERE seller_id=:uid)",
+        "UPDATE shop_market_order_items SET product_id=NULL WHERE product_id IN (SELECT id FROM shop_products WHERE seller_id=:uid)",
+        "DELETE FROM shop_products WHERE seller_id=:uid",
+        "DELETE FROM post_likes WHERE user_id=:uid",
+        "DELETE FROM posts WHERE user_id=:uid",
+        "DELETE FROM subscriptions WHERE user_id=:uid",
+        "DELETE FROM leads WHERE user_id=:uid",
+        "DELETE FROM followups WHERE user_id=:uid",
+        "DELETE FROM page_views WHERE user_id=:uid",
         "DELETE FROM direct_messages WHERE sender_id=:uid OR recipient_id=:uid",
         "DELETE FROM moderation_log WHERE user_id=:uid",
         "DELETE FROM community_likes WHERE user_id=:uid",
@@ -1348,7 +1379,6 @@ async def delete_user_permanent(request: Request, user_id: int):
         "DELETE FROM community_comments WHERE user_id=:uid",
         "DELETE FROM community_follows WHERE follower_id=:uid OR following_id=:uid",
         "DELETE FROM profile_likes WHERE user_id=:uid OR liked_user_id=:uid",
-        "DELETE FROM community_posts WHERE user_id=:uid",
         "DELETE FROM community_group_message_likes WHERE user_id=:uid",
         "DELETE FROM community_group_messages WHERE sender_id=:uid",
         "DELETE FROM community_group_join_requests WHERE user_id=:uid",
@@ -1367,15 +1397,20 @@ async def delete_user_permanent(request: Request, user_id: int):
         "DELETE FROM support_message_deliveries WHERE recipient_id=:uid OR admin_id=:uid",
         "DELETE FROM feedback WHERE user_id=:uid",
         "DELETE FROM product_reviews WHERE user_id=:uid",
-        "UPDATE users SET primary_user_id=NULL WHERE primary_user_id=:uid",
-        "UPDATE users SET referred_by=NULL WHERE referred_by=:uid",
     ]:
         try:
             await database.execute(sa_.text(sql), {"uid": user_id})
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("delete_user_permanent cleanup sql failed uid=%s: %s", user_id, e)
 
-    await database.execute(users.delete().where(users.c.id == user_id))
+    try:
+        await database.execute(users.delete().where(users.c.id == user_id))
+    except Exception as e:
+        logger.exception("delete_user_permanent final delete uid=%s", user_id)
+        return JSONResponse(
+            {"ok": False, "error": f"Не удалось удалить пользователя: {str(e)[:180]}"},
+            status_code=500,
+        )
     return JSONResponse({"ok": True})
 
 

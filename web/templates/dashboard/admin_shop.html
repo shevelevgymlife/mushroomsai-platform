@@ -6,7 +6,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="pt-24 pb-16">
+<div class="pt-24 pb-16 neo-app-surface">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
     {% include "components/admin_nav.html" %}
@@ -72,7 +72,7 @@
           <button type="button" class="js-edit-shop-product"
             data-product-id="{{ p.id }}"
             style="min-height:44px;flex:1;padding:10px 14px;border-radius:10px;font-size:13px;border:1px solid rgba(255,255,255,.15);color:#aaa;background:none;cursor:pointer;transition:all .2s;touch-action:manipulation"
-            onmouseover="this.style.borderColor='#C9A84C';this.style.color='#C9A84C'"
+            onmouseover="this.style.borderColor='#00f5ff';this.style.color='#00f5ff'"
             onmouseout="this.style.borderColor='rgba(255,255,255,.15)';this.style.color='#aaa'">
             ✏️ Редактировать
           </button>

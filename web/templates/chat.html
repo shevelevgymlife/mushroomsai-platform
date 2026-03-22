@@ -7,7 +7,7 @@
 </style>
 {% endblock %}
 {% block content %}
-<div class="pt-16 h-screen flex flex-col">
+<div class="pt-16 h-screen flex flex-col neo-app-surface">
   <div class="border-b border-border bg-bg/80 backdrop-blur-xl px-4 py-4">
     <div class="max-w-3xl mx-auto flex items-center gap-3">
       <div class="w-9 h-9 rounded-full bg-gradient-to-br from-gold to-gold-light flex items-center justify-center">
@@ -73,7 +73,6 @@
   </div>
 </div>
 
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script>
 window.addEventListener('load', function() {
   const tg = window.Telegram?.WebApp;

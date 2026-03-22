@@ -2,7 +2,7 @@
 {% block title %}Блоки кабинета — MushroomsAI Admin{% endblock %}
 
 {% block content %}
-<div class="pt-24 pb-16">
+<div class="pt-24 pb-16 neo-app-surface">
   <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 
     {% include "components/admin_nav.html" %}
@@ -25,12 +25,12 @@
     <!-- Tabs -->
     <div style="display:flex;gap:8px;margin-bottom:24px">
       <button id="tab-global" onclick="switchTab('global')"
-        style="padding:9px 22px;border-radius:10px;border:1px solid #C9A84C;background:#C9A84C;color:#080808;font-size:13px;font-weight:700;cursor:pointer">
+        style="padding:9px 22px;border-radius:10px;border:1px solid #00f5ff;background:#00f5ff;color:#080808;font-size:13px;font-weight:700;cursor:pointer">
         Глобальные настройки
       </button>
       <button id="tab-user" onclick="switchTab('user')"
         style="padding:9px 22px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:none;color:#888;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s"
-        onmouseover="this.style.borderColor='#C9A84C';this.style.color='#C9A84C'"
+        onmouseover="this.style.borderColor='#00f5ff';this.style.color='#00f5ff'"
         onmouseout="if(activeTab!=='user'){this.style.borderColor='rgba(255,255,255,.12)';this.style.color='#888'}">
         Настройки для пользователя
       </button>
@@ -38,15 +38,15 @@
 
     <!-- ── TAB: GLOBAL ─────────────────────────────────────────────────────── -->
     <div id="pane-global">
-      <div style="margin-bottom:16px;padding:10px 14px;border-radius:10px;background:rgba(201,168,76,.06);border:1px solid rgba(201,168,76,.2);color:#C9A84C;font-size:13px">
+      <div style="margin-bottom:16px;padding:10px 14px;border-radius:10px;background:rgba(0,245,255,.06);border:1px solid rgba(0,245,255,.2);color:#00f5ff;font-size:13px">
         ⠿ Перетащите блоки для изменения порядка или используйте ↑ ↓
       </div>
 
       <!-- Sticky reorder bar -->
-      <div id="reorderBar" style="display:none;position:sticky;top:70px;z-index:100;margin-bottom:14px;padding:12px 16px;border-radius:12px;background:#1a1400;border:1px solid rgba(201,168,76,.4);display:flex;align-items:center;justify-content:space-between;gap:12px">
-        <span style="font-size:13px;color:#C9A84C">↕ Порядок изменён</span>
+      <div id="reorderBar" style="display:none;position:sticky;top:70px;z-index:100;margin-bottom:14px;padding:12px 16px;border-radius:12px;background:#1a1400;border:1px solid rgba(0,245,255,.4);display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <span style="font-size:13px;color:#00f5ff">↕ Порядок изменён</span>
         <button onclick="saveOrder()"
-          style="padding:8px 22px;border-radius:10px;background:#C9A84C;border:none;color:#080808;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s"
+          style="padding:8px 22px;border-radius:10px;background:#00f5ff;border:none;color:#080808;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s"
           onmouseover="this.style.opacity='.82'" onmouseout="this.style.opacity='1'">
           💾 Сохранить порядок
         </button>
@@ -56,7 +56,7 @@
         {% for b in blocks %}
         <div class="block-card" data-key="{{ b.block_key }}"
           style="margin-bottom:14px;padding:20px 20px 16px;border-radius:16px;background:#111;border:1px solid rgba(255,255,255,.08);transition:border-color .2s,box-shadow .2s"
-          onmouseover="this.style.borderColor='rgba(201,168,76,.35)';this.style.boxShadow='0 0 0 1px rgba(201,168,76,.1)'"
+          onmouseover="this.style.borderColor='rgba(0,245,255,.35)';this.style.boxShadow='0 0 0 1px rgba(0,245,255,.1)'"
           onmouseout="this.style.borderColor='rgba(255,255,255,.08)';this.style.boxShadow='none'">
 
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -64,7 +64,7 @@
             <!-- Drag handle -->
             <span class="drag-handle" title="Перетащить"
               style="cursor:grab;font-size:20px;color:#444;padding:4px 6px;border-radius:6px;line-height:1;user-select:none;flex-shrink:0;transition:color .15s"
-              onmouseover="this.style.color='#C9A84C'" onmouseout="this.style.color='#444'">⠿</span>
+              onmouseover="this.style.color='#00f5ff'" onmouseout="this.style.color='#444'">⠿</span>
 
             <!-- Key badge -->
             <span style="font-size:11px;color:#444;background:#0a0a0a;padding:2px 7px;border-radius:5px;font-family:monospace;flex-shrink:0">{{ b.block_key }}</span>
@@ -75,11 +75,11 @@
             <!-- ↑↓ -->
             <button onclick="moveBlock('{{ b.block_key }}','up')" title="Вверх"
               style="min-width:32px;min-height:32px;padding:0 8px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:none;color:#888;font-size:15px;cursor:pointer;transition:all .15s;flex-shrink:0"
-              onmouseover="this.style.borderColor='#C9A84C';this.style.color='#C9A84C'"
+              onmouseover="this.style.borderColor='#00f5ff';this.style.color='#00f5ff'"
               onmouseout="this.style.borderColor='rgba(255,255,255,.12)';this.style.color='#888'">↑</button>
             <button onclick="moveBlock('{{ b.block_key }}','down')" title="Вниз"
               style="min-width:32px;min-height:32px;padding:0 8px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:none;color:#888;font-size:15px;cursor:pointer;transition:all .15s;flex-shrink:0"
-              onmouseover="this.style.borderColor='#C9A84C';this.style.color='#C9A84C'"
+              onmouseover="this.style.borderColor='#00f5ff';this.style.color='#00f5ff'"
               onmouseout="this.style.borderColor='rgba(255,255,255,.12)';this.style.color='#888'">↓</button>
 
             <!-- Access level -->
@@ -102,7 +102,7 @@
 
             <!-- Save -->
             <button onclick="saveBlock('{{ b.block_key }}')"
-              style="padding:7px 18px;border-radius:9px;background:#C9A84C;border:none;color:#080808;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;transition:opacity .15s"
+              style="padding:7px 18px;border-radius:9px;background:#00f5ff;border:none;color:#080808;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;transition:opacity .15s"
               onmouseover="this.style.opacity='.82'" onmouseout="this.style.opacity='1'">
               Сохранить
             </button>
@@ -121,7 +121,7 @@
           <input id="userSearch" type="text" placeholder="Имя, email или Telegram ID…"
             style="flex:1;padding:10px 14px;border-radius:10px;background:#0c0c0c;border:1px solid rgba(255,255,255,.1);color:#e8e8e8;font-size:14px;outline:none;transition:border-color .15s"
             oninput="searchUsers(this.value)"
-            onfocus="this.style.borderColor='rgba(201,168,76,.6)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+            onfocus="this.style.borderColor='rgba(0,245,255,.6)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
         </div>
         <div id="userResults" style="margin-top:8px;display:flex;flex-direction:column;gap:6px"></div>
       </div>
@@ -149,12 +149,12 @@
 .tgl-wrap { position:relative;display:inline-flex;align-items:center;width:42px;height:22px }
 .tgl-inp  { opacity:0;width:0;height:0;position:absolute }
 .tgl-track{ position:absolute;inset:0;background:#2a2a2a;border-radius:22px;cursor:pointer;transition:.25s;border:1px solid rgba(255,255,255,.1) }
-.tgl-inp:checked + .tgl-track { background:#C9A84C;border-color:#C9A84C }
+.tgl-inp:checked + .tgl-track { background:#00f5ff;border-color:#00f5ff }
 .tgl-thumb{ position:absolute;top:3px;left:3px;width:14px;height:14px;background:#fff;border-radius:50%;transition:.25s;box-shadow:0 1px 3px rgba(0,0,0,.4) }
 .tgl-inp:checked + .tgl-track .tgl-thumb { transform:translateX(20px) }
 .drag-handle:active { cursor:grabbing !important }
 .sortable-ghost { opacity:.4;background:#1a1a1a !important }
-.sortable-drag   { box-shadow:0 8px 32px rgba(201,168,76,.25) !important }
+.sortable-drag   { box-shadow:0 8px 32px rgba(0,245,255,.25) !important }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
@@ -169,10 +169,10 @@ function switchTab(tab) {
   const btnG = document.getElementById('tab-global');
   const btnU = document.getElementById('tab-user');
   if (tab === 'global') {
-    btnG.style.background = '#C9A84C'; btnG.style.color = '#080808'; btnG.style.borderColor = '#C9A84C';
+    btnG.style.background = '#00f5ff'; btnG.style.color = '#080808'; btnG.style.borderColor = '#00f5ff';
     btnU.style.background = 'none'; btnU.style.color = '#888'; btnU.style.borderColor = 'rgba(255,255,255,.12)';
   } else {
-    btnU.style.background = '#C9A84C'; btnU.style.color = '#080808'; btnU.style.borderColor = '#C9A84C';
+    btnU.style.background = '#00f5ff'; btnU.style.color = '#080808'; btnU.style.borderColor = '#00f5ff';
     btnG.style.background = 'none'; btnG.style.color = '#888'; btnG.style.borderColor = 'rgba(255,255,255,.12)';
   }
 }
@@ -246,7 +246,7 @@ function searchUsers(q) {
       el.innerHTML = data.users.map(u =>
         `<div onclick="selectUser(${u.id},'${(u.name||'').replace(/'/g,"\\'")}','${(u.email||'').replace(/'/g,"\\'")}') "
           style="padding:10px 14px;border-radius:10px;background:#111;border:1px solid rgba(255,255,255,.08);cursor:pointer;transition:border-color .15s;font-size:13px"
-          onmouseover="this.style.borderColor='rgba(201,168,76,.4)'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)'">
+          onmouseover="this.style.borderColor='rgba(0,245,255,.4)'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)'">
           <span style="color:#e8e8e8;font-weight:600">${u.name || '—'}</span>
           <span style="color:#555;margin-left:8px">${u.email || ''}</span>
           <span style="color:#444;margin-left:8px;font-size:11px">ID ${u.id}</span>
@@ -280,7 +280,7 @@ async function loadUserBlocks(id) {
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
             <span style="font-size:11px;color:#444;background:#0a0a0a;padding:2px 7px;border-radius:5px;font-family:monospace">${b.block_key}</span>
             <span style="flex:1;font-size:14px;font-weight:600;color:#e8e8e8">${b.block_name}</span>
-            ${isInherited ? '<span style="font-size:11px;color:#555;padding:2px 8px;border:1px solid rgba(255,255,255,.1);border-radius:6px">наследует</span>' : '<span style="font-size:11px;color:#C9A84C;padding:2px 8px;border:1px solid rgba(201,168,76,.3);border-radius:6px">переопределён</span>'}
+            ${isInherited ? '<span style="font-size:11px;color:#555;padding:2px 8px;border:1px solid rgba(255,255,255,.1);border-radius:6px">наследует</span>' : '<span style="font-size:11px;color:#00f5ff;padding:2px 8px;border:1px solid rgba(0,245,255,.3);border-radius:6px">переопределён</span>'}
             <button onclick="setUserBlock('${b.block_key}', true)"
               style="padding:5px 14px;border-radius:8px;border:1px solid rgba(74,222,128,${effVis ? '.5' : '.2'});background:rgba(74,222,128,${effVis ? '.12' : '0'});color:${effVis ? '#4ade80' : '#555'};font-size:12px;cursor:pointer;transition:all .15s">
               Показать
@@ -291,7 +291,7 @@ async function loadUserBlocks(id) {
             </button>
             ${!isInherited ? `<button onclick="resetUserBlock('${b.block_key}')"
               style="padding:5px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:none;color:#555;font-size:12px;cursor:pointer;transition:all .15s"
-              onmouseover="this.style.borderColor='rgba(201,168,76,.4)';this.style.color='#C9A84C'"
+              onmouseover="this.style.borderColor='rgba(0,245,255,.4)';this.style.color='#00f5ff'"
               onmouseout="this.style.borderColor='rgba(255,255,255,.1)';this.style.color='#555'">↺ Сбросить</button>` : ''}
           </div>
         </div>`;

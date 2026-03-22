@@ -6,7 +6,7 @@
       <!-- Left: logo + description -->
       <div>
         <div class="flex items-center gap-3 mb-5">
-          <div class="w-9 h-9 rounded-full bg-gradient-to-br from-gold to-gold-light flex items-center justify-center shrink-0 shadow-[0_0_18px_rgba(201,168,76,0.2)]">
+          <div class="w-9 h-9 rounded-full bg-gradient-to-br from-gold to-gold-light flex items-center justify-center shrink-0 shadow-[0_0_18px_rgba(0,245,255,0.2)]">
             <span class="text-bg font-bold text-sm font-display">M</span>
           </div>
           <span class="font-display font-bold text-text text-lg">MushroomsAI</span>
@@ -68,19 +68,19 @@
 
 <!-- Feedback modal -->
 <div id="feedback-modal" style="display:none;position:fixed;inset:0;z-index:9998;align-items:center;justify-content:center;background:rgba(0,0,0,.75);backdrop-filter:blur(6px)" onclick="if(event.target===this)closeFeedbackModal()">
-  <div style="background:#0e0e0e;border:1px solid rgba(201,168,76,.4);border-radius:20px;padding:36px 32px;max-width:420px;width:90%;box-shadow:0 0 60px rgba(201,168,76,.1)">
+  <div style="background:#0e0e0e;border:1px solid rgba(0,245,255,.4);border-radius:20px;padding:36px 32px;max-width:420px;width:90%;box-shadow:0 0 60px rgba(0,245,255,.1)">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
       <h3 style="font-size:18px;font-weight:700;color:#e8e8e8">💬 Написать нам</h3>
       <button onclick="closeFeedbackModal()" style="background:none;border:none;color:#555;font-size:22px;cursor:pointer;line-height:1">×</button>
     </div>
     <textarea id="feedback-text" rows="5" placeholder="Укажите ваш ник в Telegram для обратной связи..."
       style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:12px 14px;color:#e8e8e8;font-size:14px;outline:none;resize:vertical;font-family:inherit;box-sizing:border-box"
-      onfocus="this.style.borderColor='rgba(201,168,76,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.12)'"></textarea>
-    <div id="feedback-status" style="font-size:13px;color:#C9A84C;margin-top:8px;display:none"></div>
+      onfocus="this.style.borderColor='rgba(0,245,255,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.12)'"></textarea>
+    <div id="feedback-status" style="font-size:13px;color:#00f5ff;margin-top:8px;display:none"></div>
     <div style="display:flex;gap:10px;margin-top:16px">
       <button onclick="submitFeedback()"
-        style="flex:1;padding:12px;background:#C9A84C;color:#111;border:none;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;transition:background .2s"
-        onmouseover="this.style.background='#E8C96B'" onmouseout="this.style.background='#C9A84C'">
+        style="flex:1;padding:12px;background:#00f5ff;color:#111;border:none;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;transition:background .2s"
+        onmouseover="this.style.background='#ff66d0'" onmouseout="this.style.background='#00f5ff'">
         Отправить
       </button>
       <button onclick="closeFeedbackModal()"
@@ -115,7 +115,7 @@ async function submitFeedback() {
   const text = document.getElementById('feedback-text').value.trim();
   const status = document.getElementById('feedback-status');
   if (!text) { status.style.display='block'; status.textContent='Напишите сообщение'; status.style.color='#f87171'; return; }
-  status.style.display='block'; status.style.color='#C9A84C'; status.textContent='Отправляем...';
+  status.style.display='block'; status.style.color='#00f5ff'; status.textContent='Отправляем...';
   try {
     const r = await fetch('/contact', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({message: text}) });
     const d = await r.json();

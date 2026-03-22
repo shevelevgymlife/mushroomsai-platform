@@ -10,13 +10,13 @@
 .msg-sidebar-head{padding:18px 16px 12px;border-bottom:1px solid rgba(255,255,255,.06)}
 .msg-sidebar-title{font-size:18px;font-weight:700;color:#e8e8e8;margin-bottom:10px}
 .msg-search{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#e8e8e8;border-radius:10px;padding:8px 12px;font-size:13px;outline:none;width:100%;box-sizing:border-box;transition:border-color .2s}
-.msg-search:focus{border-color:rgba(201,168,76,.4)}
+.msg-search:focus{border-color:rgba(0,245,255,.4)}
 .conv-list{flex:1;overflow-y:auto}
 .conv-item{display:flex;gap:12px;align-items:center;padding:13px 16px;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;transition:background .2s;text-decoration:none}
 .conv-item:hover{background:rgba(255,255,255,.03)}
-.conv-item.active{background:rgba(201,168,76,.08);border-left:2px solid #C9A84C;padding-left:14px}
+.conv-item.active{background:rgba(0,245,255,.08);border-left:2px solid #00f5ff;padding-left:14px}
 .conv-av{width:42px;height:42px;border-radius:50%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;overflow:hidden;border:2px solid #333}
-.conv-av.unread-av{border-color:#C9A84C}
+.conv-av.unread-av{border-color:#00f5ff}
 .conv-av img{width:100%;height:100%;object-fit:cover}
 .conv-meta{flex:1;min-width:0}
 .conv-name{font-size:13px;font-weight:600;color:#ddd}
@@ -31,19 +31,19 @@
 
 /* Bubbles */
 .bubble{max-width:70%;padding:10px 14px;border-radius:4px;font-size:14px;line-height:1.55;word-break:break-word;white-space:pre-wrap;position:relative}
-.bubble-own{align-self:flex-end;background:rgba(201,168,76,.15);border:1px solid rgba(201,168,76,.2);color:#e8e8e8;border-radius:16px 16px 4px 16px}
+.bubble-own{align-self:flex-end;background:rgba(0,245,255,.15);border:1px solid rgba(0,245,255,.2);color:#e8e8e8;border-radius:16px 16px 4px 16px}
 .bubble-other{align-self:flex-start;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:#ccc;border-radius:16px 16px 16px 4px}
-.bubble-system{align-self:center;background:rgba(201,168,76,.08);border:1px solid rgba(201,168,76,.2);color:#C9A84C;font-style:italic;font-size:13px;border-radius:12px;text-align:center;max-width:80%}
+.bubble-system{align-self:center;background:rgba(0,245,255,.08);border:1px solid rgba(0,245,255,.2);color:#00f5ff;font-style:italic;font-size:13px;border-radius:12px;text-align:center;max-width:80%}
 .bubble-time{font-size:10px;color:#444;margin-top:4px;display:block}
 .bubble-own .bubble-time{text-align:right}
-.bubble-read{color:#C9A84C}
+.bubble-read{color:#00f5ff}
 
 /* Input */
 .chat-input-wrap{padding:12px 16px;border-top:1px solid rgba(255,255,255,.07);background:#0a0a0a;display:flex;gap:10px;align-items:flex-end;flex-shrink:0}
 .chat-textarea{flex:1;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#e8e8e8;border-radius:12px;padding:10px 14px;font-size:14px;outline:none;resize:none;min-height:42px;max-height:120px;overflow-y:auto;line-height:1.5;font-family:inherit;transition:border-color .2s}
-.chat-textarea:focus{border-color:rgba(201,168,76,.4)}
-.btn-send{background:#C9A84C;color:#000;border:none;border-radius:10px;padding:10px 16px;font-size:16px;cursor:pointer;font-weight:700;flex-shrink:0;transition:background .2s;height:42px}
-.btn-send:hover{background:#E8C96B}
+.chat-textarea:focus{border-color:rgba(0,245,255,.4)}
+.btn-send{background:#00f5ff;color:#000;border:none;border-radius:10px;padding:10px 16px;font-size:16px;cursor:pointer;font-weight:700;flex-shrink:0;transition:background .2s;height:42px}
+.btn-send:hover{background:#ff66d0}
 
 /* Mobile */
 @media(max-width:768px){
@@ -99,15 +99,15 @@
 
     <!-- Header -->
     <div class="chat-header">
-      <button class="chat-back" onclick="showSidebar()" style="background:none;border:none;color:#C9A84C;font-size:20px;cursor:pointer;padding:0;margin-right:4px">←</button>
-      <div style="width:38px;height:38px;border-radius:50%;background:#1a1a1a;border:2px solid #C9A84C;display:flex;align-items:center;justify-content:center;font-size:16px;overflow:hidden;flex-shrink:0">
+      <button class="chat-back" onclick="showSidebar()" style="background:none;border:none;color:#00f5ff;font-size:20px;cursor:pointer;padding:0;margin-right:4px">←</button>
+      <div style="width:38px;height:38px;border-radius:50%;background:#1a1a1a;border:2px solid #00f5ff;display:flex;align-items:center;justify-content:center;font-size:16px;overflow:hidden;flex-shrink:0">
         {% if chat_partner.avatar %}<img src="{{ chat_partner.avatar }}" style="width:100%;height:100%;object-fit:cover" alt="">{% else %}🍄{% endif %}
       </div>
       <div>
         <div style="font-size:14px;font-weight:700;color:#e8e8e8">{{ chat_partner.name or 'Участник' }}</div>
       </div>
       {% if chat_partner.id > 0 %}
-      <a href="/community/profile/{{ chat_partner.id }}" style="margin-left:auto;font-size:12px;color:#C9A84C;text-decoration:none;border:1px solid rgba(201,168,76,.3);border-radius:8px;padding:4px 10px">Профиль →</a>
+      <a href="/community/profile/{{ chat_partner.id }}" style="margin-left:auto;font-size:12px;color:#00f5ff;text-decoration:none;border:1px solid rgba(0,245,255,.3);border-radius:8px;padding:4px 10px">Профиль →</a>
       {% endif %}
     </div>
 
@@ -226,7 +226,7 @@ function linkifyDisplay(raw){
   const s=String(raw||'');
   return s.split(/(https?:\/\/[^\s<]+)/g).map(function(p){
     if(/^https?:\/\//.test(p)){
-      return '<a href="'+escAttr(p)+'" target="_blank" rel="noopener noreferrer" style="color:#C9A84C;text-decoration:underline;word-break:break-all">'+esc(p)+'</a>';
+      return '<a href="'+escAttr(p)+'" target="_blank" rel="noopener noreferrer" style="color:#00f5ff;text-decoration:underline;word-break:break-all">'+esc(p)+'</a>';
     }
     return esc(p);
   }).join('');

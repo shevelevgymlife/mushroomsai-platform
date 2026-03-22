@@ -7,7 +7,7 @@ from reportlab.lib.units import cm
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 
 
-GOLD = HexColor("#C9A84C")
+GOLD = HexColor("#00f5ff")
 DARK = HexColor("#080808")
 LIGHT = HexColor("#e8e8e8")
 

@@ -6,20 +6,20 @@
 {% block content %}
 <style>
 /* Общие кнопки и DM (как в кабинете) */
-.avg{border:2px solid #C9A84C;border-radius:50%;object-fit:cover}
-.avph{border:2px solid #C9A84C;border-radius:50%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:32px}
-.btn-g{background:#C9A84C;color:#000;font-weight:700;border-radius:10px;padding:10px 20px;border:none;cursor:pointer;transition:background .2s;font-size:14px;display:inline-flex;align-items:center;gap:6px}
-.btn-g:hover{background:#E8C96B}
-.btn-o{border:1.5px solid #C9A84C;color:#C9A84C;background:transparent;border-radius:10px;padding:9px 18px;cursor:pointer;font-weight:600;transition:all .2s;font-size:14px;display:inline-flex;align-items:center;gap:6px}
-.btn-o:hover,.btn-o.on{background:rgba(201,168,76,.12)}
+.avg{border:2px solid #00f5ff;border-radius:50%;object-fit:cover}
+.avph{border:2px solid #00f5ff;border-radius:50%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:32px}
+.btn-g{background:#00f5ff;color:#000;font-weight:700;border-radius:10px;padding:10px 20px;border:none;cursor:pointer;transition:background .2s;font-size:14px;display:inline-flex;align-items:center;gap:6px}
+.btn-g:hover{background:#ff66d0}
+.btn-o{border:1.5px solid #00f5ff;color:#00f5ff;background:transparent;border-radius:10px;padding:9px 18px;cursor:pointer;font-weight:600;transition:all .2s;font-size:14px;display:inline-flex;align-items:center;gap:6px}
+.btn-o:hover,.btn-o.on{background:rgba(0,245,255,.12)}
 .btn-muted{border:1px solid rgba(255,255,255,.12);color:#888;background:transparent;border-radius:10px;padding:9px 18px;cursor:pointer;font-size:14px;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
-.btn-muted:hover{border-color:rgba(201,168,76,.4);color:#C9A84C}
+.btn-muted:hover{border-color:rgba(0,245,255,.4);color:#00f5ff}
 .csec{display:none;margin-top:14px;border-top:1px solid rgba(255,255,255,.06);padding-top:14px}
 .sinp{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#e8e8e8;border-radius:12px;padding:10px 16px;font-size:14px;outline:none;width:100%;box-sizing:border-box;transition:border-color .2s}
-.sinp:focus{border-color:rgba(201,168,76,.5)}
-.dm-badge{background:rgba(201,168,76,.15);color:#C9A84C;border:1px solid rgba(201,168,76,.3);font-size:11px;padding:2px 8px;border-radius:20px;font-weight:700}
+.sinp:focus{border-color:rgba(0,245,255,.5)}
+.dm-badge{background:rgba(0,245,255,.15);color:#00f5ff;border:1px solid rgba(0,245,255,.3);font-size:11px;padding:2px 8px;border-radius:20px;font-weight:700}
 .dmmsg{padding:8px 14px;border-radius:14px;max-width:80%;font-size:14px;line-height:1.5}
-.dmmsg.me{background:rgba(201,168,76,.15);border:1px solid rgba(201,168,76,.25);align-self:flex-end}
+.dmmsg.me{background:rgba(0,245,255,.15);border:1px solid rgba(0,245,255,.25);align-self:flex-end}
 .dmmsg.them{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);align-self:flex-start}
 .card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px}
 
@@ -28,9 +28,9 @@
 .cp-ig-root .ig-dash-header{position:fixed;top:4rem;left:0;right:0;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 12px 0 10px;background:rgba(8,8,8,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid rgba(255,255,255,.06);z-index:950;box-sizing:border-box}
 .cp-ig-root .ig-ham{width:44px;height:44px;border:none;border-radius:12px;background:transparent;color:#e8e8e8;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;text-decoration:none}
 .cp-ig-root .ig-ham:hover{background:rgba(255,255,255,.06)}
-.cp-ig-root .ig-head-brand{font-family:Syne,Inter,system-ui,sans-serif;font-weight:700;font-size:1.05rem;letter-spacing:-0.02em;background:linear-gradient(90deg,#e8e8e8,#C9A84C);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-decoration:none;border:none;cursor:pointer;padding:0;font:inherit}
+.cp-ig-root .ig-head-brand{font-family:Syne,Inter,system-ui,sans-serif;font-weight:700;font-size:1.05rem;letter-spacing:-0.02em;background:linear-gradient(90deg,#e8e8e8,#00f5ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-decoration:none;border:none;cursor:pointer;padding:0;font:inherit}
 .cp-ig-root .ig-head-msg{width:44px;height:44px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:18px;color:#ccc;transition:border-color .2s,background .2s}
-.cp-ig-root .ig-head-msg:hover{border-color:rgba(201,168,76,.45);color:#C9A84C}
+.cp-ig-root .ig-head-msg:hover{border-color:rgba(0,245,255,.45);color:#00f5ff}
 .cp-ig-main{padding:calc(4rem + 52px + 8px) 12px calc(28px + env(safe-area-inset-bottom,0px));max-width:100%}
 @media(min-width:769px){.cp-ig-main{padding-left:24px;padding-right:24px}}
 
@@ -45,8 +45,8 @@
 .ig-profile-stat span{display:block;font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-top:4px;line-height:1.2}
 button.ig-profile-stat{width:100%;cursor:pointer;border:none;background:transparent;font:inherit;padding:10px 4px;margin:0;border-radius:12px;transition:background .15s}
 button.ig-profile-stat:hover{background:rgba(255,255,255,.06)}
-button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outline-offset:2px}
-.ig-rep-pill{display:inline-flex;align-items:center;padding:5px 12px;border-radius:22px;font-size:11px;font-weight:700;letter-spacing:.02em;background:rgba(201,168,76,.12);border:1px solid rgba(201,168,76,.28);color:#C9A84C;margin-top:10px}
+button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outline-offset:2px}
+.ig-rep-pill{display:inline-flex;align-items:center;padding:5px 12px;border-radius:22px;font-size:11px;font-weight:700;letter-spacing:.02em;background:rgba(0,245,255,.12);border:1px solid rgba(0,245,255,.28);color:#00f5ff;margin-top:10px}
 .ig-post-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;width:100%;border-top:1px solid rgba(255,255,255,.08);padding-top:3px}
 .ig-post-cell{aspect-ratio:1;position:relative;overflow:hidden;background:#121212;display:block;text-decoration:none;color:inherit}
 .ig-post-cell img{width:100%;height:100%;object-fit:cover;display:block}
@@ -54,27 +54,27 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
 .ig-post-cell-ico{position:absolute;top:6px;right:6px;font-size:12px;opacity:.9;text-shadow:0 1px 4px #000}
 
 .ig-feed-shell{max-width:470px;margin:0 auto}
-.ig-post{border:1px solid rgba(255,255,255,.08);border-radius:16px;overflow:hidden;background:linear-gradient(180deg,rgba(255,255,255,.04) 0%,rgba(17,17,17,.6) 100%);margin-bottom:20px;box-shadow:0 8px 32px rgba(0,0,0,.4),0 0 0 1px rgba(201,168,76,.05) inset}
+.ig-post{border:1px solid rgba(255,255,255,.08);border-radius:16px;overflow:hidden;background:linear-gradient(180deg,rgba(255,255,255,.04) 0%,rgba(17,17,17,.6) 100%);margin-bottom:20px;box-shadow:0 8px 32px rgba(0,0,0,.4),0 0 0 1px rgba(0,245,255,.05) inset}
 .ig-post-header{padding:10px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.05)}
 .ig-post-img{width:100%;aspect-ratio:1;object-fit:cover;background:#0a0a0a;display:block;max-height:min(470px,92vw)}
 .ig-post-textonly{min-height:100px;padding:16px 14px;font-size:14px;line-height:1.55;color:#ccc;white-space:pre-wrap;word-break:break-word;border-bottom:1px solid rgba(255,255,255,.05)}
 .ig-post-actions{display:flex;gap:8px;padding:10px 12px 6px;align-items:center;justify-content:space-between}
 .ig-post-actions-left{display:flex;gap:6px;align-items:center}
 .ig-post-actions .ig-act{background:none;border:none;cursor:pointer;padding:4px;font-size:20px;line-height:1;color:#aaa;transition:color .2s,transform .15s}
-.ig-post-actions .ig-act:hover{color:#C9A84C;transform:scale(1.06)}
+.ig-post-actions .ig-act:hover{color:#00f5ff;transform:scale(1.06)}
 .ig-post-likes{padding:0 12px 6px;font-size:13px;font-weight:600;color:#e8e8e8}
 .ig-post-body{padding:0 12px 14px;font-size:14px;line-height:1.5;color:#c8c8c8;white-space:pre-wrap;word-break:break-word}
 .ig-post-body .ig-cap-user{font-weight:700;color:#e8e8e8;margin-right:6px}
 .cp-prof-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:6px 0 10px;font-size:13px;color:#888}
-.cp-tokens-strip{margin-top:2px;margin-bottom:14px;padding:12px 14px;max-width:min(100%,420px);border-radius:14px;background:linear-gradient(155deg,rgba(22,20,14,.75),rgba(8,8,8,.85));border:1px solid rgba(201,168,76,.35);box-shadow:0 0 18px rgba(201,168,76,.08)}
-.cp-tokens-strip__title{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:rgba(232,201,107,.9);font-weight:800;margin-bottom:10px}
+.cp-tokens-strip{margin-top:2px;margin-bottom:14px;padding:12px 14px;max-width:min(100%,420px);border-radius:14px;background:linear-gradient(155deg,rgba(22,20,14,.75),rgba(8,8,8,.85));border:1px solid rgba(0,245,255,.35);box-shadow:0 0 18px rgba(0,245,255,.08)}
+.cp-tokens-strip__title{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,0,170,.9);font-weight:800;margin-bottom:10px}
 .cp-tokens-strip__grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 20px;align-items:start}
 .cp-tokens-strip__cell{display:flex;flex-direction:column;gap:4px;min-width:0;text-align:left}
 .cp-ts-lbl{font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.04em}
 .cp-ts-val{font-size:13px;font-weight:700;color:#e8e8e8;font-variant-numeric:tabular-nums;word-break:break-word;overflow-wrap:anywhere;line-height:1.35;min-height:1.35em;max-width:100%}
-.cp-ts-shev{color:#C9A84C}
+.cp-ts-shev{color:#00f5ff}
 @media(max-width:400px){.cp-tokens-strip__grid{grid-template-columns:1fr;gap:10px}}
-.shevelev-bal-box{margin-bottom:16px;padding:14px 16px;border-radius:14px;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.28);max-width:420px}
+.shevelev-bal-box{margin-bottom:16px;padding:14px 16px;border-radius:14px;background:rgba(0,245,255,.1);border:1px solid rgba(0,245,255,.28);max-width:420px}
 </style>
 
 <div class="cp-ig-root">
@@ -160,7 +160,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
       <div style="font-size:14px;color:#ccc;line-height:1.55;max-width:560px;margin-bottom:10px;white-space:pre-wrap">{{ profile.bio }}</div>
       {% endif %}
       {% if profile.get('profile_link_url') %}
-      <a href="{{ profile.profile_link_url }}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:8px;color:#C9A84C;font-weight:600;font-size:14px;margin-bottom:14px;text-decoration:none;border-bottom:1px solid rgba(201,168,76,.35);padding-bottom:2px">{{ profile.get('profile_link_label') or profile.profile_link_url }}</a>
+      <a href="{{ profile.profile_link_url }}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:8px;color:#00f5ff;font-weight:600;font-size:14px;margin-bottom:14px;text-decoration:none;border-bottom:1px solid rgba(0,245,255,.35);padding-bottom:2px">{{ profile.get('profile_link_label') or profile.profile_link_url }}</a>
       {% endif %}
 
       <div class="ig-post-grid">
@@ -184,7 +184,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
   {% set p = item.post %}
   <div class="ig-post" id="pc-{{ p.id }}">
     <div class="ig-post-header">
-      <div style="width:36px;height:36px;border-radius:50%;border:2px solid #C9A84C;overflow:hidden;flex-shrink:0">
+      <div style="width:36px;height:36px;border-radius:50%;border:2px solid #00f5ff;overflow:hidden;flex-shrink:0">
         {% if profile.avatar %}<img src="{{ profile.avatar }}" style="width:100%;height:100%;object-fit:cover" alt="">{% else %}<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px">🍄</div>{% endif %}
       </div>
       <div style="flex:1;min-width:0">
@@ -224,7 +224,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
 </div>
 
 <div id="followListModal" style="display:none;position:fixed;inset:0;z-index:10020;align-items:center;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(4px)" onclick="if(event.target===this)closeFollowListModal()">
-  <div class="card" style="max-width:420px;width:92%;max-height:min(85vh,560px);padding:0;overflow:hidden;border-color:rgba(201,168,76,.28);background:#0e0e0e" onclick="event.stopPropagation()">
+  <div class="card" style="max-width:420px;width:92%;max-height:min(85vh,560px);padding:0;overflow:hidden;border-color:rgba(0,245,255,.28);background:#0e0e0e" onclick="event.stopPropagation()">
     <div style="padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;gap:12px">
       <span id="followListModalTitle" style="font-weight:700;font-size:16px;color:#e8e8e8">Подписчики</span>
       <button type="button" onclick="closeFollowListModal()" style="background:none;border:none;color:#888;font-size:24px;cursor:pointer;line-height:1;padding:4px" aria-label="Закрыть">×</button>
@@ -234,7 +234,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
 </div>
 
 <!-- DM CHAT PANEL (fixed bottom-right) -->
-<div id="dmPanel" style="display:none;position:fixed;right:20px;bottom:20px;width:340px;height:460px;background:#0e0e0e;border:1px solid rgba(201,168,76,.35);border-radius:20px;box-shadow:0 8px 40px rgba(0,0,0,.7);z-index:1000;flex-direction:column;overflow:hidden">
+<div id="dmPanel" style="display:none;position:fixed;right:20px;bottom:20px;width:340px;height:460px;background:#0e0e0e;border:1px solid rgba(0,245,255,.35);border-radius:20px;box-shadow:0 8px 40px rgba(0,0,0,.7);z-index:1000;flex-direction:column;overflow:hidden">
   <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0;background:#111">
     {% if profile.avatar %}
     <img src="{{ profile.avatar }}" class="avg" style="width:34px;height:34px" alt="">
@@ -288,7 +288,7 @@ async function openFollowListModal(profileId, kind){
         ?'<img src="'+_escHtml(u.avatar)+'" alt="" style="width:100%;height:100%;object-fit:cover">'
         :'<span style="font-size:20px">🍄</span>';
       return '<a href="/community/profile/'+u.id+'" class="follow-list-row" style="display:flex;align-items:center;gap:14px;padding:12px 18px;text-decoration:none;color:inherit;border-bottom:1px solid rgba(255,255,255,.06);transition:background .15s" onmouseover="this.style.background=\'rgba(255,255,255,.05)\'" onmouseout="this.style.background=\'transparent\'">'+
-        '<div style="width:48px;height:48px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid rgba(201,168,76,.3);background:#1a1a1a;display:flex;align-items:center;justify-content:center">'+av+'</div>'+
+        '<div style="width:48px;height:48px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid rgba(0,245,255,.3);background:#1a1a1a;display:flex;align-items:center;justify-content:center">'+av+'</div>'+
         '<span style="font-weight:600;font-size:15px;color:#e8e8e8">'+_escHtml(u.name)+'</span></a>';
     }).join('');
   }catch(e){
@@ -312,7 +312,7 @@ async function doFollow(){
   btn.disabled=false;
   if(d.following){
     txt.textContent='Подписки ✓';
-    btn.style.background='rgba(201,168,76,.3)';
+    btn.style.background='rgba(0,245,255,.3)';
   }else{
     txt.textContent='Подписаться';
     btn.style.background='';

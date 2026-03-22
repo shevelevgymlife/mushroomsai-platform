@@ -6,33 +6,48 @@
   <title>{% block title %}MushroomsAI{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            bg: '#080808',
-            surface: '#111111',
-            border: '#222222',
-            gold: '#C9A84C',
-            'gold-light': '#E8C96B',
-            muted: '#888888',
-            text: '#e8e8e8',
+            bg: '#05050a',
+            surface: '#0a0a12',
+            border: 'rgba(255,255,255,0.08)',
+            gold: '#00f5ff',
+            'gold-light': '#ff00aa',
+            muted: '#8b8b9a',
+            text: '#e8e8f0',
           },
           fontFamily: {
-            sans: ['Inter', 'system-ui', 'sans-serif'],
-            display: ['Syne', 'Inter', 'system-ui', 'sans-serif'],
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            display: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+          },
+          borderRadius: {
+            neo: '28px',
           },
         },
       },
     }
   </script>
   <link rel="stylesheet" href="/static/css/custom.css" />
+  <link rel="stylesheet" href="/static/css/design-system.css" />
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
   {% block extra_head %}{% endblock %}
 </head>
 <body class="bg-bg text-text font-sans antialiased min-h-screen{% block body_class %}{% endblock %}">
+<script>
+(function(){
+  try {
+    var tg = window.Telegram && window.Telegram.WebApp;
+    if (tg && typeof tg.initData === 'string' && tg.initData.length) {
+      document.documentElement.classList.add('neo-twa');
+    }
+  } catch (e) {}
+})();
+</script>
 <script>
 (function(){
   function setAppVh(){
@@ -47,12 +62,12 @@
 <script>window._isLoggedIn = {{ 'true' if user else 'false' }};</script>
 
 <!-- Guest popup -->
-<div id="guest-popup" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;background:rgba(0,0,0,.75);backdrop-filter:blur(6px)" onclick="if(event.target===this)closeGuestPopup()">
-  <div style="background:#0e0e0e;border:1px solid #C9A84C;border-radius:20px;padding:40px 32px;max-width:380px;width:90%;text-align:center;box-shadow:0 0 60px rgba(201,168,76,.15)">
-    <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#C9A84C,#E8C96B);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px">🍄</div>
-    <h3 style="font-size:20px;font-weight:700;color:#e8e8e8;margin-bottom:10px">Добро пожаловать в MushroomsAI</h3>
-    <p style="font-size:14px;color:#888;line-height:1.6;margin-bottom:28px">Зарегистрируйся или войди — получи полный доступ к AI-консультанту, маркетплейсу и соц. сети</p>
-    <a href="/login?next=/onboarding/tariff" style="display:block;padding:13px;background:#C9A84C;color:#111;border-radius:12px;font-weight:700;font-size:15px;text-decoration:none;margin-bottom:10px;transition:background .2s" onmouseover="this.style.background='#E8C96B'" onmouseout="this.style.background='#C9A84C'">Войти (бесплатный план)</a>
+<div id="guest-popup" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;background:rgba(0,0,0,.78);backdrop-filter:blur(12px)" onclick="if(event.target===this)closeGuestPopup()">
+  <div style="background:rgba(12,14,24,.88);border:1px solid rgba(0,245,255,.35);border-radius:28px;padding:40px 32px;max-width:380px;width:90%;text-align:center;box-shadow:0 0 60px rgba(0,245,255,.12),0 0 80px rgba(255,0,170,.08);backdrop-filter:blur(20px)">
+    <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#00f5ff,#ff00aa);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px;box-shadow:0 0 28px rgba(0,245,255,.4)">🍄</div>
+    <h3 style="font-size:20px;font-weight:700;color:#e8e8f0;margin-bottom:10px">Добро пожаловать в MushroomsAI</h3>
+    <p style="font-size:14px;color:#8b8b9a;line-height:1.6;margin-bottom:28px">Зарегистрируйся или войди — получи полный доступ к AI-консультанту, маркетплейсу и соц. сети</p>
+    <a href="/login?next=/onboarding/tariff" style="display:block;padding:13px;background:linear-gradient(90deg,#00f5ff,#00c8d4);color:#05050a;border-radius:14px;font-weight:700;font-size:15px;text-decoration:none;margin-bottom:10px;transition:filter .2s;box-shadow:0 0 24px rgba(0,245,255,.35)" onmouseover="this.style.filter='brightness(1.08)'" onmouseout="this.style.filter='none'">Войти (бесплатный план)</a>
     <button onclick="closeGuestPopup()" style="background:none;border:1px solid #333;color:#666;font-size:13px;cursor:pointer;padding:9px 20px;border-radius:10px;width:100%;transition:all .2s" onmouseover="this.style.borderColor='#555';this.style.color='#999'" onmouseout="this.style.borderColor='#333';this.style.color='#666'">Пока не надо</button>
   </div>
 </div>
