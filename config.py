@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str = ""
     JWT_SECRET: str = "change-me-in-production"
     ADMIN_TG_ID: int = 0
+    ADMIN_EMAIL: str = ""  # опционально: email владельца (Google) = права оператора
     SITE_URL: str = "https://mushroomsai.ru"
     TELEGRAM_BOT_USERNAME: str = "mushrooms_ai_bot"
     SHEVELEV_TOKEN_ADDRESS: str = ""

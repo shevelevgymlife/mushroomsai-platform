@@ -125,52 +125,54 @@
 .ig-post-body{padding:0 12px 14px;font-size:14px;line-height:1.5;color:#c8c8c8;white-space:pre-wrap;word-break:break-word}
 .ig-post-body .ig-cap-user{font-weight:700;color:#e8e8e8;margin-right:6px}
 
-/* ── Group chats (Telegram-like) ── */
-.tg-chat-shell{display:grid;grid-template-columns:minmax(280px,340px) 1fr;gap:0;align-items:stretch;min-height:min(72vh,640px);max-height:85vh;border-radius:14px;overflow:hidden;border:1px solid #243445;background:#0e1621;box-shadow:0 8px 32px rgba(0,0,0,.45)}
+/* ── Group chats (layout как в TG, цвета как на сайте — золото / тёмный) ── */
+.tg-chat-shell{display:grid;grid-template-columns:minmax(280px,340px) 1fr;gap:0;align-items:stretch;min-height:min(72vh,640px);max-height:85vh;border-radius:16px;overflow:hidden;border:1px solid rgba(201,168,76,.22);background:linear-gradient(165deg,rgba(18,18,18,.98),rgba(8,8,8,.99));box-shadow:0 8px 32px rgba(0,0,0,.5),0 0 0 1px rgba(201,168,76,.06) inset}
 @media(max-width:900px){.tg-chat-shell{grid-template-columns:1fr;min-height:auto;max-height:none}}
-.tg-chat-sidebar{background:#17212b;border-right:1px solid #0e1621;display:flex;flex-direction:column;min-height:420px;max-height:72vh}
-@media(max-width:900px){.tg-chat-sidebar{max-height:42vh;border-right:none;border-bottom:1px solid #0e1621}}
-.tg-chat-sidebar-head{padding:12px 14px;border-bottom:1px solid #0e1621}
-.tg-chat-sidebar-head .tg-h{font-size:15px;font-weight:700;color:#fff;letter-spacing:.02em}
-.tg-chat-sidebar-head .tg-sub{font-size:12px;color:#708499;margin-top:4px;line-height:1.45}
-.tg-btn-new{width:calc(100% - 24px);margin:12px auto 8px;padding:10px 14px;border-radius:10px;border:none;background:#5288c1;color:#fff;font-weight:600;font-size:14px;cursor:pointer;transition:background .2s}
-.tg-btn-new:hover{background:#6a9fd4}
+.tg-chat-sidebar{background:rgba(255,255,255,.02);border-right:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;min-height:420px;max-height:72vh}
+@media(max-width:900px){.tg-chat-sidebar{max-height:42vh;border-right:none;border-bottom:1px solid rgba(255,255,255,.08)}}
+.tg-chat-sidebar-head{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.07)}
+.tg-chat-sidebar-head .tg-h{font-size:15px;font-weight:700;color:#e8e8e8;letter-spacing:.02em}
+.tg-chat-sidebar-head .tg-sub{font-size:12px;color:#888;margin-top:4px;line-height:1.45}
+.tg-btn-new{width:calc(100% - 24px);margin:12px auto 8px;padding:10px 14px;border-radius:10px;border:none;background:#C9A84C;color:#0a0a0a;font-weight:700;font-size:14px;cursor:pointer;transition:background .2s,box-shadow .2s;box-shadow:0 2px 12px rgba(201,168,76,.2)}
+.tg-btn-new:hover{background:#E8C96B;box-shadow:0 4px 16px rgba(201,168,76,.28)}
 .tg-chat-list{flex:1;overflow-y:auto;padding:0 0 8px;-webkit-overflow-scrolling:touch}
 .tg-chat-list::-webkit-scrollbar{width:6px}
-.tg-chat-list::-webkit-scrollbar-thumb{background:#243445;border-radius:3px}
-.ig-g-item.tg-chat-item{display:flex;align-items:center;gap:12px;padding:10px 12px;margin:0;border-radius:0;border:none;border-bottom:1px solid #0e1621;background:transparent;transition:background .15s;cursor:pointer}
-.ig-g-item.tg-chat-item:hover{background:#202b36}
-.ig-g-item.tg-chat-item.on{background:#2b5278}
-.ig-g-item.tg-chat-item.on:hover{background:#2b5278}
-.tg-chat-av{flex-shrink:0;width:48px;height:48px;border-radius:50%;background:linear-gradient(145deg,#5eb5f7,#3a7ebf);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;text-transform:uppercase;box-shadow:0 1px 3px rgba(0,0,0,.3)}
-.ig-g-item.tg-chat-item.on .tg-chat-av{background:linear-gradient(145deg,#7ec8ff,#4a9ae0)}
+.tg-chat-list::-webkit-scrollbar-thumb{background:rgba(201,168,76,.25);border-radius:3px}
+.ig-g-item.tg-chat-item{display:flex;align-items:center;gap:12px;padding:10px 12px;margin:0;border-radius:0;border:none;border-bottom:1px solid rgba(255,255,255,.06);background:transparent;transition:background .15s;cursor:pointer}
+.ig-g-item.tg-chat-item:hover{background:rgba(201,168,76,.06)}
+.ig-g-item.tg-chat-item.on{background:rgba(201,168,76,.12);border-left:3px solid #C9A84C;padding-left:9px}
+.ig-g-item.tg-chat-item.on:hover{background:rgba(201,168,76,.14)}
+.tg-chat-av{flex-shrink:0;width:48px;height:48px;border-radius:50%;background:linear-gradient(145deg,#C9A84C,#8a7030);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#0a0a0a;text-transform:uppercase;box-shadow:0 2px 8px rgba(201,168,76,.25);border:1px solid rgba(201,168,76,.35)}
+.ig-g-item.tg-chat-item.on .tg-chat-av{background:linear-gradient(145deg,#E8C96B,#C9A84C);color:#0a0a0a}
 .tg-chat-item-text{min-width:0;flex:1}
-.tg-chat-item-title{font-weight:600;font-size:15px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
-.tg-chat-item-sub{font-size:13px;color:#708499;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tg-chat-main{background:#0e1621;display:flex;flex-direction:column;min-height:420px;max-height:72vh;border-radius:0}
+.tg-chat-item-title{font-weight:600;font-size:15px;color:#e8e8e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
+.tg-chat-item-sub{font-size:13px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tg-chat-main{background:#080808;display:flex;flex-direction:column;min-height:420px;max-height:72vh;border-radius:0}
 @media(max-width:900px){.tg-chat-main{min-height:360px}}
-.tg-chat-header-row{padding:12px 16px;border-bottom:1px solid #17212b;display:flex;align-items:center;justify-content:space-between;gap:10px;background:#17212b;flex-shrink:0}
-.tg-chat-header-row #groupChatTitle{color:#fff;font-size:16px;font-weight:600}
-.tg-chat-shell .ig-g-msg-wrap{flex:1;overflow-y:auto;padding:12px 10px 14px;display:flex;flex-direction:column;gap:8px;background:#0e1621;border:none;border-radius:0;margin:0!important;min-height:220px}
+.tg-chat-header-row{padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(0,0,0,.35);flex-shrink:0}
+.tg-chat-header-row #groupChatTitle{color:#e8e8e8;font-size:16px;font-weight:600}
+.tg-chat-shell .ig-g-msg-wrap{flex:1;overflow-y:auto;padding:12px 10px 14px;display:flex;flex-direction:column;gap:8px;background:#0a0a0a;border:none;border-radius:0;margin:0!important;min-height:220px}
 .tg-chat-shell .ig-g-row{display:flex;flex-direction:column;width:100%}
 .tg-chat-shell .ig-g-row.me{align-items:flex-end}
 .tg-chat-shell .ig-g-row.them{align-items:flex-start}
 .tg-chat-shell .ig-g-bubble{max-width:min(82%,380px);padding:9px 12px 7px;border-radius:18px;font-size:14px;line-height:1.45;word-break:break-word;position:relative;animation:igMsgIn .2s ease-out}
-.tg-chat-shell .ig-g-bubble.me{border-bottom-right-radius:6px;background:#2b5278!important;border:1px solid #2b5278!important;color:#fff!important;box-shadow:0 1px 2px rgba(0,0,0,.2)}
-.tg-chat-shell .ig-g-bubble.them{border-bottom-left-radius:6px;background:#182533!important;border:1px solid #182533!important;color:#e5ebf1!important}
-.tg-chat-shell .ig-g-name{font-size:12px;font-weight:600;color:#6ab7ff!important}
-.tg-chat-shell .ig-g-bubble.them .ig-g-name{color:#708499!important}
-.tg-chat-shell .ig-g-del{border:none;background:transparent;color:#b8d4f0;cursor:pointer;font-size:18px;line-height:1;padding:0 2px;opacity:.75}
-.tg-chat-shell .ig-g-del:hover{color:#fff;opacity:1}
+.tg-chat-shell .ig-g-bubble.me{border-bottom-right-radius:6px;background:rgba(201,168,76,.18)!important;border:1px solid rgba(201,168,76,.35)!important;color:#f2efe6!important;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.tg-chat-shell .ig-g-bubble.them{border-bottom-left-radius:6px;background:rgba(255,255,255,.06)!important;border:1px solid rgba(255,255,255,.1)!important;color:#e4e4e4!important}
+.tg-chat-shell .ig-g-name{font-size:12px;font-weight:600;color:#C9A84C!important}
+.tg-chat-shell .ig-g-bubble.them .ig-g-name{color:#9ca3af!important}
+.tg-chat-shell .ig-g-del{border:none;background:transparent;color:#888;cursor:pointer;font-size:18px;line-height:1;padding:0 2px;opacity:.75}
+.tg-chat-shell .ig-g-del:hover{color:#f87171;opacity:1}
 .tg-chat-shell .ig-g-text{white-space:pre-wrap}
 .tg-chat-shell .ig-g-time{font-size:10px;color:rgba(255,255,255,.45)!important;margin-top:4px;text-align:right}
 .tg-chat-shell .ig-g-bubble.them .ig-g-time{text-align:left;color:rgba(255,255,255,.35)!important}
-.tg-chat-input-row{padding:10px 12px 14px;border-top:1px solid #17212b;background:#17212b;display:flex;gap:8px;align-items:center;flex-shrink:0}
-.tg-chat-input-row .sinp{background:#0e1621;border:1px solid #243445;color:#fff;border-radius:22px;padding:10px 16px}
-.tg-chat-input-row .btn-g{background:#5288c1;color:#fff;border-radius:22px;padding:10px 18px;border:none}
-.tg-chat-input-row .btn-o{border-color:#5288c1;color:#9cc3e8}
-#groupChatPlaceholder{color:#708499!important;background:#0e1621!important}
-.tg-owner-bar{background:#17212b!important;border-bottom:1px solid #0e1621!important}
+.tg-chat-input-row{padding:10px 12px 14px;border-top:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.45);display:flex;gap:8px;align-items:center;flex-shrink:0}
+.tg-chat-input-row .sinp{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#e8e8e8;border-radius:22px;padding:10px 16px}
+.tg-chat-input-row .sinp:focus{border-color:rgba(201,168,76,.45)}
+.tg-chat-input-row .btn-g{background:#C9A84C;color:#0a0a0a;border-radius:22px;padding:10px 18px;border:none;font-weight:700}
+.tg-chat-input-row .btn-g:hover{background:#E8C96B}
+.tg-chat-input-row .btn-o{border-color:#C9A84C;color:#C9A84C}
+#groupChatPlaceholder{color:#666!important;background:#080808!important}
+.tg-owner-bar{background:rgba(201,168,76,.08)!important;border-bottom:1px solid rgba(255,255,255,.08)!important}
 
 /* ── Util ── */
 .sect-title{font-size:22px;font-weight:700;color:#e8e8e8;margin-bottom:20px}
@@ -764,7 +766,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
           {% if can_create_groups %}
           <button type="button" class="tg-btn-new" onclick="document.getElementById('grpCreateModal').style.display='flex'">+ Новая группа</button>
           {% else %}
-          <p class="muted" style="font-size:12px;margin:0 14px 12px;line-height:1.5;color:#708499!important">Создание групп — только <strong class="gold">Про</strong> / <strong class="gold">Макси</strong> или админ. Вступайте в группы и пишите в чатах.</p>
+          <p class="muted" style="font-size:12px;margin:0 14px 12px;line-height:1.5;color:#888!important">Создание групп — только <strong class="gold">Про</strong> / <strong class="gold">Макси</strong> или админ. Вступайте в группы и пишите в чатах.</p>
           {% endif %}
           <div id="groupListEl" class="tg-chat-list">
             {% if group_list %}
@@ -779,7 +781,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
             </div>
             {% endfor %}
             {% else %}
-            <div style="color:#708499;text-align:center;padding:24px 16px;font-size:13px">{% if can_create_groups %}Нет групп — «Новая группа»{% else %}Пока нет групп{% endif %}</div>
+            <div class="tg-empty-hint" style="color:#666;text-align:center;padding:24px 16px;font-size:13px">{% if can_create_groups %}Нет групп — «Новая группа»{% else %}Пока нет групп{% endif %}</div>
             {% endif %}
           </div>
         </aside>
@@ -788,12 +790,12 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
             Выберите чат слева или создайте группу.
           </div>
           <div id="groupChatPanel" style="display:none;flex-direction:column;height:100%;min-height:420px;flex:1">
-            <div id="groupOwnerBar" class="tg-owner-bar" style="display:none;padding:10px 14px;font-size:12px;color:#9cc3e8">
-              <div style="font-weight:600;color:#7ec8ff;margin-bottom:6px">Заявки на вступление</div>
+            <div id="groupOwnerBar" class="tg-owner-bar" style="display:none;padding:10px 14px;font-size:12px;color:#ccc">
+              <div style="font-weight:600;color:#E8C96B;margin-bottom:6px">Заявки на вступление</div>
               <div id="groupPendingList" style="display:flex;flex-direction:column;gap:6px"></div>
             </div>
-            <div id="groupRetentionRow" style="display:none;padding:8px 14px;border-bottom:1px solid #0e1621;align-items:center;gap:8px;flex-wrap:wrap;background:#17212b">
-              <span style="font-size:11px;color:#708499">Хранение сообщений (дней, пусто = без ограничения):</span>
+            <div id="groupRetentionRow" style="display:none;padding:8px 14px;border-bottom:1px solid rgba(255,255,255,.08);align-items:center;gap:8px;flex-wrap:wrap;background:rgba(0,0,0,.35)">
+              <span style="font-size:11px;color:#888">Хранение сообщений (дней, пусто = без ограничения):</span>
               <input type="number" id="groupRetentionInp" min="1" max="36500" placeholder="∞" class="sinp" style="max-width:110px;padding:6px 10px;font-size:12px">
               <button type="button" class="btn-o" style="font-size:11px;padding:6px 10px" onclick="saveGroupRetention()">Сохранить</button>
             </div>
@@ -2118,7 +2120,7 @@ async function refreshGroupListFromApi(){
     const groups = d.groups;
     const emptyMsg = window.__canCreateGroups ? 'Нет групп — нажмите «Новая группа»' : 'Пока нет групп';
     if(!groups.length){
-      el.innerHTML = '<div style="color:#708499;text-align:center;padding:24px 16px;font-size:13px">'+ emptyMsg +'</div>';
+      el.innerHTML = '<div style="color:#666;text-align:center;padding:24px 16px;font-size:13px">'+ emptyMsg +'</div>';
       return;
     }
     function escHtml(t){
@@ -2362,6 +2364,30 @@ async function sendGroupChatMessage(){
   }catch(e){}
 }
 
+function prependCreatedGroupToList(gid, name){
+  const el = document.getElementById('groupListEl');
+  if(!el || !gid) return;
+  el.querySelectorAll('.tg-empty-hint').forEach(function(x){ x.remove(); });
+  el.querySelectorAll(':scope > div').forEach(function(div){
+    const t = (div.textContent||'').trim();
+    if((t.indexOf('Нет групп')>=0 || t.indexOf('Пока нет групп')>=0) && !div.querySelector('.tg-chat-item-title')) div.remove();
+  });
+  function esc(t){ return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  const uid = _dashUid();
+  const letter = (String(name||'').trim().charAt(0)||'?').toUpperCase();
+  const row = document.createElement('div');
+  row.className = 'ig-g-item tg-chat-item on';
+  row.dataset.title = name || '';
+  row.dataset.gid = String(gid);
+  row.dataset.member = '1';
+  row.dataset.join = 'open';
+  row.dataset.owner = String(uid||'');
+  row.dataset.pending = '0';
+  row.innerHTML = '<div class="tg-chat-av">'+esc(letter)+'</div><div class="tg-chat-item-text"><div class="tg-chat-item-title">'+esc(name)+'</div><div class="tg-chat-item-sub">1 участн. · вы в чате</div></div>';
+  row.addEventListener('click', function(){ selectGroupChat(gid, row); });
+  el.insertBefore(row, el.firstChild);
+}
+
 async function createGroupSubmit(){
   const n = document.getElementById('grpNameInp') && document.getElementById('grpNameInp').value.trim();
   if(!n || n.length < 2){ showNotification('Введите название группы (от 2 символов)','error'); return; }
@@ -2371,19 +2397,22 @@ async function createGroupSubmit(){
   try{
     const r = await fetch('/community/groups/create', { method: 'POST', body: fd, credentials: 'same-origin' });
     const d = await r.json().catch(()=>({}));
-    if(r.ok && d.ok && d.id){
+    const gidRaw = d.id != null ? d.id : d.group_id;
+    const gid = Number(gidRaw);
+    const okCreated = r.ok && d.ok !== false && Number.isFinite(gid) && gid > 0;
+    if(okCreated){
       document.getElementById('grpCreateModal').style.display = 'none';
       showNotification('Группа создана','success');
+      prependCreatedGroupToList(gid, n);
       await refreshGroupListFromApi();
       goSec('groups');
-      const newId = d.id;
       setTimeout(function(){
-        const row = document.querySelector('.ig-g-item[data-gid="'+newId+'"]');
-        if(row) selectGroupChat(newId, row);
-      }, 150);
+        const row = document.querySelector('.ig-g-item[data-gid="'+gid+'"]');
+        if(row) selectGroupChat(gid, row);
+      }, 120);
       return;
     }
-    const msg = d.error || d.detail || (r.status===403 ? 'Нужен тариф Про/Макси или права администратора' : r.status===401 ? 'Войдите в аккаунт' : (r.status===500 ? (d.error||'Ошибка сервера при сохранении') : 'Не удалось создать группу'));
+    const msg = d.error || d.detail || (r.status===403 ? 'Нужен тариф Про/Макси или права администратора (ADMIN_TG_ID / ADMIN_EMAIL в .env)' : r.status===401 ? 'Войдите в аккаунт' : (r.status===500 ? (d.error||'Ошибка сервера при сохранении') : 'Не удалось создать группу'));
     showNotification(msg,'error');
   }catch(e){ showNotification('Ошибка сети','error'); }
 }

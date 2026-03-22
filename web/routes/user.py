@@ -1362,8 +1362,11 @@ async def community_group_create(
         return JSONResponse({"ok": False, "error": "Не удалось сохранить группу: " + str(e)[:180]}, status_code=500)
     gid = None
     if row:
+        rid = row.get("id")
+        if rid is None:
+            rid = next((row[k] for k in row if str(k).lower() == "id"), None)
         try:
-            gid = int(row["id"])
+            gid = int(rid) if rid is not None else None
         except (TypeError, ValueError):
             gid = None
     if not gid:

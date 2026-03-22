@@ -11,23 +11,37 @@ from config import settings
 SUPER_ADMIN_TG_ID = 742166400
 
 
+def _tg_equal(a: Any, b: Any) -> bool:
+    """Сравнение Telegram ID из БД (int/str) с настройкой .env."""
+    if a is None or b is None:
+        return False
+    try:
+        return int(a) == int(b)
+    except (TypeError, ValueError):
+        return str(a).strip() == str(b).strip()
+
+
 def is_platform_operator(user: dict[str, Any] | None) -> bool:
     """
     Кто считается «администратором» для создания групп и т.п.:
     - role=admin в БД;
-    - Telegram ID из .env (ADMIN_TG_ID) — владелец часто не имеет role=admin, но получает уведомления;
+    - Telegram ID из .env (ADMIN_TG_ID) — сравнение int/str;
+    - email = ADMIN_EMAIL (вход через Google без tg_id);
     - супер-админ по tg_id (как в /admin).
     """
     if not user:
         return False
     if (user.get("role") or "").lower() == "admin":
         return True
+    em = (getattr(settings, "ADMIN_EMAIL", "") or "").strip().lower()
+    if em and (user.get("email") or "").strip().lower() == em:
+        return True
     tg = user.get("tg_id")
     linked = user.get("linked_tg_id")
     aid = int(getattr(settings, "ADMIN_TG_ID", 0) or 0)
-    if aid and (tg == aid or linked == aid):
+    if aid and (_tg_equal(tg, aid) or _tg_equal(linked, aid)):
         return True
-    if tg == SUPER_ADMIN_TG_ID or linked == SUPER_ADMIN_TG_ID:
+    if _tg_equal(tg, SUPER_ADMIN_TG_ID) or _tg_equal(linked, SUPER_ADMIN_TG_ID):
         return True
     return False
 
