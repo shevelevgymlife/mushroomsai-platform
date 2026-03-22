@@ -30,6 +30,7 @@ from db.models import (
 )
 from auth.session import get_user_from_request
 from config import settings, shevelev_token_address
+from services.legal import legal_acceptance_redirect
 from services.referral_service import attach_invite_ref_from_query
 from datetime import datetime
 
@@ -51,7 +52,19 @@ def get_public_user_data(row: dict) -> dict:
         "decimal_balance_cached_at": row.get("decimal_balance_cached_at"),
         "profile_link_label": row.get("profile_link_label"),
         "profile_link_url": row.get("profile_link_url"),
+        "show_del_to_public": True if row.get("show_del_to_public") is None else bool(row.get("show_del_to_public")),
+        "show_shev_to_public": True if row.get("show_shev_to_public") is None else bool(row.get("show_shev_to_public")),
     }
+
+
+def apply_token_privacy_for_viewer(profile: dict, viewer_id: int | None, owner_id: int) -> None:
+    """Скрывает кэшированные балансы у чужих глаз согласно настройкам владельца (мутирует profile)."""
+    if viewer_id is not None and viewer_id == owner_id:
+        return
+    if not profile.get("show_del_to_public", True):
+        profile["decimal_del_balance"] = None
+    if not profile.get("show_shev_to_public", True):
+        profile["shevelev_balance_cached"] = None
 
 router = APIRouter()
 templates = Jinja2Templates(directory="web/templates")
@@ -1049,6 +1062,9 @@ async def community_profile(request: Request, user_id: int):
     current_user = await get_user_from_request(request)
     if not current_user:
         return RedirectResponse(f"/login?next=/community/profile/{user_id}")
+    leg = await legal_acceptance_redirect(request, current_user)
+    if leg:
+        return leg
 
     viewer_id = current_user.get("primary_user_id") or current_user["id"]
 
@@ -1064,6 +1080,7 @@ async def community_profile(request: Request, user_id: int):
 
     # Public-safe profile data only
     profile = get_public_user_data(dict(raw))
+    apply_token_privacy_for_viewer(profile, viewer_id, profile_id)
 
     # Post count & reputation
     post_count = await database.fetch_val(
@@ -1384,6 +1401,9 @@ async def messages_list(request: Request):
     current_user = await get_user_from_request(request)
     if not current_user:
         return RedirectResponse("/login?next=/messages")
+    leg = await legal_acceptance_redirect(request, current_user)
+    if leg:
+        return leg
     uid = current_user.get("primary_user_id") or current_user["id"]
     convs = await _get_conversations(uid)
     return templates.TemplateResponse(
@@ -1404,6 +1424,9 @@ async def messages_thread(request: Request, other_id: int):
     current_user = await get_user_from_request(request)
     if not current_user:
         return RedirectResponse(f"/login?next=/messages/{other_id}")
+    leg = await legal_acceptance_redirect(request, current_user)
+    if leg:
+        return leg
     uid = current_user.get("primary_user_id") or current_user["id"]
     try:
         if other_id == 0:
@@ -1550,6 +1573,9 @@ async def community_members(request: Request):
     current_user = await get_user_from_request(request)
     if not current_user:
         return RedirectResponse("/login?next=/community/members")
+    leg = await legal_acceptance_redirect(request, current_user)
+    if leg:
+        return leg
 
     viewer_id = current_user.get("primary_user_id") or current_user["id"]
 

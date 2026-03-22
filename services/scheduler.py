@@ -1,5 +1,8 @@
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from datetime import datetime
+
+import sqlalchemy as sa
+
 from db.database import database
 from db.models import followups, users
 
@@ -34,11 +37,32 @@ async def send_followup_messages(bot):
                 pass
 
 
+async def purge_expired_group_messages():
+    """Удаляет сообщения групп старше message_retention_days (если задано у группы)."""
+    try:
+        await database.execute(
+            sa.text("""
+                DELETE FROM community_group_messages cgm
+                USING community_groups cg
+                WHERE cgm.group_id = cg.id
+                  AND cg.message_retention_days IS NOT NULL
+                  AND cgm.created_at < NOW() - (cg.message_retention_days * INTERVAL '1 day')
+            """)
+        )
+    except Exception:
+        pass
+
+
 def start_scheduler(bot):
     scheduler.add_job(
         send_followup_messages,
         "interval",
         minutes=30,
         args=[bot],
+    )
+    scheduler.add_job(
+        purge_expired_group_messages,
+        "interval",
+        hours=1,
     )
     scheduler.start()

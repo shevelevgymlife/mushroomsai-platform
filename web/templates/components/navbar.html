@@ -30,7 +30,7 @@
             <span class="text-xs font-medium text-text truncate" title="{{ _pn }}">{% if user.needs_tariff_choice|default(false) %}{{ t.nav_choose_tariff }}{% elif _pn == 'maxi' %}{{ t.plan_maxi }}{% elif _pn == 'pro' %}{{ t.plan_pro }}{% elif _pn == 'start' %}{{ t.plan_start }}{% else %}{{ t.plan_free }}{% endif %}</span>
           </a>
         {% else %}
-          <a href="/login" class="flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border-2 border-gold/40 bg-gold/[0.03] hover:border-gold hover:bg-gold/10 transition-all max-w-[140px] no-underline">
+          <a href="/login?next=/onboarding/tariff" class="flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border-2 border-gold/40 bg-gold/[0.03] hover:border-gold hover:bg-gold/10 transition-all max-w-[140px] no-underline">
             <div class="w-9 h-9 rounded-full bg-gold/10 flex items-center justify-center shrink-0">
               <svg width="18" height="18" fill="none" stroke="#C9A84C" stroke-width="1.8" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"/>

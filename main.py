@@ -13,6 +13,7 @@ from db.database import database, metadata, engine
 from web.routes.public import router as public_router
 from web.routes.auth_routes import router as auth_router
 from web.routes.user import router as user_router
+from web.routes.legal_routes import router as legal_router
 from web.routes.admin import router as admin_router
 from web.routes.account import router as account_router
 from web.routes.language import router as language_router
@@ -90,6 +91,25 @@ async def lifespan(app: FastAPI):
             text TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT NOW()
         )""",
+        "ALTER TABLE community_groups ADD COLUMN IF NOT EXISTS join_mode VARCHAR(20) DEFAULT 'approval'",
+        "ALTER TABLE community_groups ADD COLUMN IF NOT EXISTS message_retention_days INTEGER",
+        """CREATE TABLE IF NOT EXISTS community_group_join_requests (
+            id SERIAL PRIMARY KEY,
+            group_id INTEGER NOT NULL REFERENCES community_groups(id) ON DELETE CASCADE,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            status VARCHAR(20) DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT NOW(),
+            UNIQUE(group_id, user_id)
+        )""",
+        """CREATE TABLE IF NOT EXISTS plan_upgrade_requests (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            requested_plan TEXT NOT NULL,
+            note TEXT,
+            created_at TIMESTAMP DEFAULT NOW()
+        )""",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS legal_accepted_at TIMESTAMP",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS legal_docs_version TEXT",
         "CREATE INDEX IF NOT EXISTS idx_cggm_group_time ON community_group_messages(group_id, created_at)",
         """CREATE TABLE IF NOT EXISTS ai_training_folders (
             id SERIAL PRIMARY KEY,
@@ -112,6 +132,8 @@ async def lifespan(app: FastAPI):
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS decimal_balance_cached_at TIMESTAMP",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS shevelev_balance_cached TEXT",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS shevelev_balance_cached_at TIMESTAMP",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS show_del_to_public BOOLEAN DEFAULT true",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS show_shev_to_public BOOLEAN DEFAULT true",
         """CREATE TABLE IF NOT EXISTS shop_product_likes (
             id SERIAL PRIMARY KEY,
             user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -324,6 +346,7 @@ else:
 # Routers
 app.include_router(public_router)
 app.include_router(auth_router)
+app.include_router(legal_router)
 app.include_router(user_router)
 app.include_router(seller_router)
 app.include_router(admin_router)

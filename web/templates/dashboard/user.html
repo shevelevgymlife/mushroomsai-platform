@@ -136,7 +136,7 @@
 .ig-g-row{display:flex;flex-direction:column;width:100%}
 .ig-g-row.me{align-items:flex-end}
 .ig-g-row.them{align-items:flex-start}
-.ig-g-bubble{max-width:min(82%,360px);padding:8px 12px 6px;border-radius:16px;font-size:14px;line-height:1.45;word-break:break-word;position:relative}
+.ig-g-bubble{max-width:min(82%,360px);padding:8px 12px 6px;border-radius:16px;font-size:14px;line-height:1.45;word-break:break-word;position:relative;animation:igMsgIn .2s ease-out}
 .ig-g-bubble.me{border-bottom-right-radius:5px;background:#2d2a22;border:1px solid rgba(201,168,76,.28);color:#f2efe6;box-shadow:0 1px 2px rgba(0,0,0,.25)}
 .ig-g-bubble.them{border-bottom-left-radius:5px;background:#1f1f1f;border:1px solid rgba(255,255,255,.07);color:#e4e4e4}
 .ig-g-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;min-height:18px}
@@ -240,11 +240,12 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
 .my-tokens-inline__grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;align-items:center}
 .my-tokens-inline__cell{display:flex;flex-direction:column;gap:4px;min-width:0}
 .my-tokens-inline__cell .lbl{font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.04em}
-.my-tokens-inline__cell .val{font-size:13px;font-weight:700;color:#e8e8e8;font-variant-numeric:tabular-nums}
+.my-tokens-inline__cell .val{font-size:13px;font-weight:700;color:#e8e8e8;font-variant-numeric:tabular-nums;line-height:1.35;min-height:1.35em;overflow-wrap:anywhere;word-break:break-word;max-width:100%}
 .my-tokens-inline__cell .val.tok-shev{color:#E8C96B}
 @media(max-width:400px){
   .my-tokens-inline__grid{grid-template-columns:1fr;gap:8px}
 }
+@keyframes igMsgIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 </style>
 
 {% from 'components/stroke_icons.html' import ico %}
@@ -322,6 +323,15 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();document.getElementById('sync-modal').style.display='flex'"><span class="e">{{ ico('link') }}</span><span class="lbl">Синхронизация аккаунтов</span></button>
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('link')"><span class="e">{{ ico('link') }}</span><span class="lbl">Привязка Telegram / Google</span></button>
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('language')"><span class="e">{{ ico('globe') }}</span><span class="lbl">Язык интерфейса</span></button>
+      <details class="ig-drawer-details" style="border-bottom:1px solid rgba(255,255,255,.06)">
+        <summary class="ig-drawer-item ig-drawer-summary" style="list-style:none;cursor:pointer"><span class="e">📄</span><span class="lbl">Документы</span><span class="ig-drawer-chev" style="margin-left:auto;opacity:.5;font-size:10px">▼</span></summary>
+        <div style="padding:4px 12px 14px 18px;font-size:13px">
+          <a href="/legal/terms" target="_blank" rel="noopener noreferrer" class="ig-drawer-sub" onclick="closeDbDrawer()">Пользовательское соглашение</a>
+          <a href="/legal/privacy" target="_blank" rel="noopener noreferrer" class="ig-drawer-sub" onclick="closeDbDrawer()">Политика конфиденциальности</a>
+          <p style="font-size:11px;color:#666;margin-top:10px;line-height:1.45">Актуальная редакция принимается при входе. Дата принятия: {% if user.get('legal_accepted_at') %}{{ user.legal_accepted_at.strftime('%d.%m.%Y %H:%M') if user.legal_accepted_at else '—' }}{% else %}—{% endif %} · версия {{ user.get('legal_docs_version') or '—' }}</p>
+        </div>
+      </details>
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();document.getElementById('planReqModal').style.display='flex'"><span class="e">{{ ico('spark') }}</span><span class="lbl">Запросить платный тариф</span></button>
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('profile')"><span class="e">{{ ico('settings') }}</span><span class="lbl">Расширенные настройки</span></button>
       <div class="ig-drawer-sep"></div>
       <a href="https://t.me/mushrooms_ai_bot" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none"><span class="e">{{ ico('send') }}</span><span class="lbl">Бот в Telegram</span></a>
@@ -334,6 +344,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
   <!-- MAIN CONTENT -->
   <div class="db-main">
     <input type="hidden" id="dashWalletAddr" value="{{ user.wallet_address or '' }}">
+    <input type="hidden" id="dashUserId" value="{{ effective_user_id }}">
 
     <!-- ══ HOME ══ -->
     {% if not ig_social %}
@@ -510,6 +521,9 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
                 </div>
               </div>
               <div id="shevelevBalErrMe" style="display:none;font-size:11px;color:#f87171;margin-top:10px;line-height:1.35"></div>
+              {% if shevelev_token %}
+              <button type="button" class="btn-o" style="margin-top:12px;font-size:12px;padding:8px 14px;align-self:flex-start" onclick="openSendShevModal()">Подарить / отправить SHEVELEV</button>
+              {% endif %}
             </div>
           </div>
         </div>
@@ -727,9 +741,9 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
           <div id="groupListEl" style="font-size:13px">
             {% if group_list %}
             {% for g in group_list %}
-            <div class="ig-g-item {% if g.is_member %}on{% endif %}" data-gid="{{ g.id }}" data-member="{{ '1' if g.is_member else '0' }}" onclick="selectGroupChat({{ g.id }},this)">
+            <div class="ig-g-item {% if g.is_member %}on{% endif %}" data-gid="{{ g.id }}" data-member="{{ '1' if g.is_member else '0' }}" data-join="{{ g.join_mode or 'approval' }}" data-owner="{{ g.created_by or '' }}" data-pending="{{ '1' if g.pending_join else '0' }}" data-retention="{% if g.message_retention_days is not none %}{{ g.message_retention_days }}{% endif %}" onclick="selectGroupChat({{ g.id }},this)">
               <div style="font-weight:600;color:#e8e8e8;margin-bottom:4px">{{ g.name }}</div>
-              <div style="font-size:11px;color:#666">{{ g.member_count or 0 }} участн. {% if g.is_member %}· вы в чате{% endif %}</div>
+              <div style="font-size:11px;color:#666">{{ g.member_count or 0 }} участн. {% if g.is_member %}· вы в чате{% elif g.pending_join %}· заявка{% endif %}</div>
             </div>
             {% endfor %}
             {% else %}
@@ -742,6 +756,15 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
             Выберите группу слева или создайте новую. Чтобы писать, нажмите «Вступить».
           </div>
           <div id="groupChatPanel" style="display:none;flex-direction:column;height:100%;min-height:420px">
+            <div id="groupOwnerBar" style="display:none;padding:10px 14px;background:rgba(201,168,76,.1);border-bottom:1px solid rgba(255,255,255,.08);font-size:12px;color:#ccc">
+              <div style="font-weight:600;color:#E8C96B;margin-bottom:6px">Заявки на вступление</div>
+              <div id="groupPendingList" style="display:flex;flex-direction:column;gap:6px"></div>
+            </div>
+            <div id="groupRetentionRow" style="display:none;padding:8px 14px;border-bottom:1px solid rgba(255,255,255,.06);align-items:center;gap:8px;flex-wrap:wrap">
+              <span style="font-size:11px;color:#888">Хранение сообщений (дней, пусто = без ограничения):</span>
+              <input type="number" id="groupRetentionInp" min="1" max="36500" placeholder="∞" class="sinp" style="max-width:110px;padding:6px 10px;font-size:12px">
+              <button type="button" class="btn-o" style="font-size:11px;padding:6px 10px" onclick="saveGroupRetention()">Сохранить</button>
+            </div>
             <div style="padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0">
               <div id="groupChatTitle" style="font-weight:700;color:#e8e8e8;font-size:15px"></div>
               <button type="button" class="btn-o" id="groupJoinBtn" style="font-size:12px;padding:6px 12px;display:none" onclick="joinSelectedGroup()">Вступить</button>
@@ -1121,14 +1144,14 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
             </div>
             <div style="margin-top:14px;padding:14px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
               <div style="font-size:11px;color:#888;margin-bottom:8px">В браузере (MetaMask, сеть Decimal)</div>
-              <div style="display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin-bottom:6px;font-size:13px">
-                <span style="color:#888">Токен DEL</span>
-                <span id="delBal" style="font-weight:700;color:#e8e8e8">—</span>
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;font-size:13px;min-height:1.35em">
+                <span style="color:#888;flex-shrink:0">Токен DEL</span>
+                <span id="delBal" style="font-weight:700;color:#e8e8e8;text-align:right;min-width:0;max-width:min(100%,220px);overflow-wrap:anywhere;word-break:break-word;line-height:1.35;font-variant-numeric:tabular-nums">—</span>
               </div>
               {% if shevelev_token %}
-              <div style="display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;font-size:13px">
-                <span style="color:#888">Токен SHEVELEV</span>
-                <span id="shevelevBal" style="font-weight:700;color:#C9A84C">{% if user.get('shevelev_balance_cached') %}{{ user.shevelev_balance_cached }}{% else %}—{% endif %}</span>
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;font-size:13px;min-height:1.35em">
+                <span style="color:#888;flex-shrink:0">Токен SHEVELEV</span>
+                <span id="shevelevBal" style="font-weight:700;color:#C9A84C;text-align:right;min-width:0;max-width:min(100%,220px);overflow-wrap:anywhere;word-break:break-word;line-height:1.35;font-variant-numeric:tabular-nums">{% if user.get('shevelev_balance_cached') %}{{ user.shevelev_balance_cached }}{% else %}—{% endif %}</span>
               </div>
               <div id="shevelevBalErr" style="display:none;font-size:12px;color:#f87171;margin-top:8px"></div>
               {% else %}
@@ -1141,7 +1164,19 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
               <button type="button" class="btn-o" style="font-size:12px;padding:8px 14px" onclick="openSendShevModal()">Отправить SHEVELEV</button>
               {% endif %}
             </div>
-            <p style="font-size:11px;color:#555;margin-top:10px;line-height:1.4">Кнопка синхронизации считывает DEL и SHEVELEV с RPC Decimal и сохраняет в профиль — их видно у вас на странице и у других.</p>
+            <p style="font-size:11px;color:#555;margin-top:10px;line-height:1.4">Кнопка синхронизации считывает DEL и SHEVELEV с RPC Decimal и сохраняет в профиль. Ниже — кто из других пользователей увидит токены в вашем публичном профиле; здесь вы всегда видите свои балансы.</p>
+          </div>
+          <div class="card">
+            <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:8px">Видимость токенов для других</div>
+            <p style="font-size:12px;color:#666;margin:0 0 12px;line-height:1.45">В этом блоке и в «Мои токены» на главной вы всегда видите свои суммы. Галочки ниже — только для страницы профиля в сообществе.</p>
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:10px;font-size:13px;color:#ccc">
+              <input type="checkbox" id="pubShowDel" {% if user.get('show_del_to_public') is not sameas false %}checked{% endif %}> Показывать DEL в профиле другим
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:14px;font-size:13px;color:#ccc">
+              <input type="checkbox" id="pubShowShev" {% if user.get('show_shev_to_public') is not sameas false %}checked{% endif %}> Показывать SHEVELEV в профиле другим
+            </label>
+            <button type="button" class="btn-o" style="font-size:12px" onclick="saveTokenVisibility()">Сохранить видимость</button>
+            <span id="tokVisOk" style="display:none;margin-left:10px;color:#4ade80;font-size:13px">✓ Сохранено</span>
           </div>
           <div class="card">
             <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:12px">Информация аккаунта</div>
@@ -1269,6 +1304,22 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
   </div>
 </div>
 
+<div id="planReqModal" style="display:none;position:fixed;inset:0;z-index:10024;align-items:center;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(4px)" onclick="if(event.target===this)this.style.display='none'">
+  <div class="card" style="max-width:420px;width:92%;padding:24px;border-color:rgba(201,168,76,.3)" onclick="event.stopPropagation()">
+    <div style="font-weight:700;margin-bottom:6px;color:#e8e8e8;font-size:17px">Запрос платного тарифа</div>
+    <p style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.45">Оплата на сайте пока не подключена. Заявка уйдёт администратору в Telegram (или в личные сообщения при настройке). После ручной активации тарифа откроются функции плана.</p>
+    <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Желаемый тариф</label>
+    <select id="planReqSelect" class="sinp" style="margin-bottom:12px;width:100%;box-sizing:border-box">
+      <option value="start">Старт</option>
+      <option value="pro">Про</option>
+      <option value="maxi">Макси</option>
+    </select>
+    <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Комментарий (необязательно)</label>
+    <textarea id="planReqNote" class="sinp" style="min-height:72px;margin-bottom:14px;width:100%;box-sizing:border-box" placeholder="Как с вами связаться и т.д."></textarea>
+    <button type="button" class="btn-g" style="width:100%" onclick="submitPlanUpgradeRequest()">Отправить запрос</button>
+    <p id="planReqSt" style="margin-top:12px;font-size:12px;text-align:center;color:#888"></p>
+  </div>
+</div>
 <div id="sendShevModal" style="display:none;position:fixed;inset:0;z-index:10025;align-items:center;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(4px)" onclick="if(event.target===this)this.style.display='none'">
   <div class="card" style="max-width:420px;width:92%;padding:24px;border-color:rgba(201,168,76,.3)" onclick="event.stopPropagation()">
     <div style="font-weight:700;margin-bottom:4px;color:#C9A84C;font-size:17px">Отправить SHEVELEV</div>
@@ -1307,6 +1358,14 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
 </div>
 
 <script>
+// MetaMask / SHEVELEV — объявить до любых вызовов initShevelevOnLoad (иначе TDZ: «before initialization»)
+const DSC_CHAIN_ID='0x4B';
+const DSC_PARAMS={chainId:DSC_CHAIN_ID,chainName:'Decimal Smart Chain',nativeCurrency:{name:'DEL',symbol:'DEL',decimals:18},rpcUrls:['https://node.decimalchain.com/web3/'],blockExplorerUrls:['https://explorer.decimalchain.com']};
+const SHEVELEV_TOKEN='{{ shevelev_token|default("", true)|e }}'.trim();
+const SHEVELEV_AUTO_MS=45000;
+let _shevelevAutoTimer=null;
+let _shevelevVisBound=false;
+
 function _escHtmlFl(t){
   const d=document.createElement('div');d.textContent=t==null?'':String(t);return d.innerHTML;
 }
@@ -1552,14 +1611,6 @@ function showNotification(msg, type='info'){
   setTimeout(()=>n.remove(),3500);
 }
 
-// ── MetaMask / SHEVELEV ──
-const DSC_CHAIN_ID='0x4B';
-const DSC_PARAMS={chainId:DSC_CHAIN_ID,chainName:'Decimal Smart Chain',nativeCurrency:{name:'DEL',symbol:'DEL',decimals:18},rpcUrls:['https://node.decimalchain.com/web3/'],blockExplorerUrls:['https://explorer.decimalchain.com']};
-const SHEVELEV_TOKEN='{{ shevelev_token|default("", true)|e }}'.trim();
-const SHEVELEV_AUTO_MS=90000;
-let _shevelevAutoTimer=null;
-let _shevelevVisBound=false;
-
 function getDashWallet(){
   const h=document.getElementById('dashWalletAddr');
   if(h&&h.value&&h.value.trim())return h.value.trim();
@@ -1686,6 +1737,27 @@ async function saveWallet(addr){
   }
   startShevelevAutoSync();
   syncBalancesServerSilent({silent:true});
+}
+
+async function saveTokenVisibility(){
+  const del=document.getElementById('pubShowDel');
+  const shev=document.getElementById('pubShowShev');
+  const ok=document.getElementById('tokVisOk');
+  try{
+    const r=await fetch('/profile/token-visibility',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      credentials:'same-origin',
+      body:JSON.stringify({
+        show_del_to_public:!!(del&&del.checked),
+        show_shev_to_public:!!(shev&&shev.checked)
+      })
+    });
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){showNotification(d.error||'Не удалось сохранить','error');return;}
+    if(ok){ok.style.display='inline';setTimeout(()=>{ok.style.display='none'},2200);}
+    showNotification('Видимость токенов в профиле сохранена','success');
+  }catch(e){showNotification('Ошибка сети','error');}
 }
 
 async function syncBalancesServerSilent(opts){
@@ -1842,6 +1914,8 @@ async function submitSendShev(){
     if(st)st.textContent='Подтвердите транзакцию в MetaMask…';
     const txh=await window.ethereum.request({method:'eth_sendTransaction',params:[{from,to:SHEVELEV_TOKEN,data}]});
     if(st){st.style.color='#4ade80';st.textContent='Отправлено: '+String(txh).slice(0,18)+'…';}
+    syncBalancesServerSilent({silent:true});
+    setTimeout(()=>syncBalancesServerSilent({silent:true}),4000);
   }catch(e){
     if(e&&e.code===4001){if(st){st.style.color='#888';st.textContent='Отменено';}return;}
     if(st){st.style.color='#f87171';st.textContent=e.message||String(e);}
@@ -1949,6 +2023,28 @@ async function deleteFeedPost(postId){
   }catch(e){showNotification('Ошибка сети','error');}
 }
 
+async function submitPlanUpgradeRequest(){
+  const st=document.getElementById('planReqSt');
+  const sel=document.getElementById('planReqSelect');
+  const note=document.getElementById('planReqNote');
+  if(st)st.textContent='';
+  const fd=new FormData();
+  fd.append('requested_plan',sel&&sel.value||'start');
+  fd.append('note',note&&note.value||'');
+  try{
+    const r=await fetch('/profile/plan-upgrade-request',{method:'POST',body:fd,credentials:'same-origin'});
+    const d=await r.json().catch(()=>({}));
+    if(r.ok&&d.ok){
+      if(st){st.style.color='#4ade80';st.textContent='Запрос отправлен администратору.';}
+      showNotification('Запрос отправлен','success');
+      setTimeout(()=>{const m=document.getElementById('planReqModal');if(m)m.style.display='none';},1200);
+    }else{
+      if(st){st.style.color='#f87171';st.textContent=d.error||'Ошибка';}
+      showNotification(d.error||'Ошибка','error');
+    }
+  }catch(e){if(st){st.style.color='#f87171';st.textContent='Сеть';}}
+}
+
 // ── Group chats ──
 let selectedGroupId = null;
 let groupPollTimer = null;
@@ -1966,6 +2062,64 @@ function startGroupPoll(){
   }, 3500);
 }
 
+function _dashUid(){
+  const v=document.getElementById('dashUserId');
+  return v?parseInt(v.value||'0',10)||0:0;
+}
+
+async function loadOwnerPendingForGroup(gid){
+  const bar=document.getElementById('groupOwnerBar');
+  const list=document.getElementById('groupPendingList');
+  if(!bar||!list)return;
+  try{
+    const r=await fetch('/community/groups/'+gid+'/join-requests',{credentials:'same-origin'});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.requests||!d.requests.length){list.innerHTML='<span style="color:#666">Нет заявок</span>';return;}
+    list.innerHTML=d.requests.map(q=>(
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">'+
+      '<span>'+esc(q.user_name||'Участник')+' <span style="color:#666">#'+q.user_id+'</span></span>'+
+      '<span><button type="button" class="btn-o" style="font-size:11px;padding:4px 8px" onclick="approveGroupJoin('+gid+','+q.id+')">Одобрить</button> '+
+      '<button type="button" class="btn-o" style="font-size:11px;padding:4px 8px;opacity:.8" onclick="rejectGroupJoin('+gid+','+q.id+')">Отклонить</button></span></div>'
+    )).join('');
+  }catch(e){list.innerHTML='<span style="color:#f87171">Ошибка загрузки</span>';}
+}
+
+async function approveGroupJoin(gid, rid){
+  try{
+    const r=await fetch('/community/groups/'+gid+'/join-requests/'+rid+'/approve',{method:'POST',credentials:'same-origin'});
+    const d=await r.json().catch(()=>({}));
+    if(r.ok&&d.ok){showNotification('Участник добавлен','success');loadOwnerPendingForGroup(gid);}
+    else showNotification(d.error||'Ошибка','error');
+  }catch(e){showNotification('Сеть','error');}
+}
+
+async function rejectGroupJoin(gid, rid){
+  try{
+    const r=await fetch('/community/groups/'+gid+'/join-requests/'+rid+'/reject',{method:'POST',credentials:'same-origin'});
+    const d=await r.json().catch(()=>({}));
+    if(r.ok&&d.ok){showNotification('Отклонено','success');loadOwnerPendingForGroup(gid);}
+    else showNotification(d.error||'Ошибка','error');
+  }catch(e){showNotification('Сеть','error');}
+}
+
+async function saveGroupRetention(){
+  if(!selectedGroupId)return;
+  const inp=document.getElementById('groupRetentionInp');
+  const raw=(inp&&inp.value||'').trim();
+  let body={message_retention_days:null};
+  if(raw!==''){
+    const n=parseInt(raw,10);
+    if(!Number.isFinite(n)||n<1){showNotification('Укажите число дней ≥ 1 или оставьте пусто','error');return;}
+    body.message_retention_days=n;
+  }
+  try{
+    const r=await fetch('/community/groups/'+selectedGroupId+'/settings',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(body)});
+    const d=await r.json().catch(()=>({}));
+    if(r.ok&&d.ok)showNotification('Настройки сохранены','success');
+    else showNotification(d.error||'Ошибка','error');
+  }catch(e){showNotification('Сеть','error');}
+}
+
 function selectGroupChat(id, el){
   stopGroupPoll();
   selectedGroupId = id;
@@ -1979,15 +2133,49 @@ function selectGroupChat(id, el){
   const joinBtn = document.getElementById('groupJoinBtn');
   const inp = document.getElementById('groupMsgInput');
   const snd = document.getElementById('groupMsgSend');
+  const ownerBar=document.getElementById('groupOwnerBar');
+  const retRow=document.getElementById('groupRetentionRow');
+  const retInp=document.getElementById('groupRetentionInp');
+  const myId=_dashUid();
+  const ownerId=el&&el.dataset?parseInt(el.dataset.owner||'0',10)||0:0;
+  const isOwner=myId&&ownerId===myId;
+  const joinMode=(el&&el.dataset&&el.dataset.join)||'approval';
+  const pending=el&&el.dataset&&el.dataset.pending==='1';
   if(ph) ph.style.display = 'none';
   if(panel){ panel.style.display = 'flex'; panel.style.flexDirection = 'column'; }
+  if(ownerBar){
+    ownerBar.style.display=isOwner?'block':'none';
+    if(isOwner) loadOwnerPendingForGroup(id);
+  }
+  if(retRow){
+    retRow.style.display=isOwner?'flex':'none';
+    if(retInp){
+      const rv=el&&el.dataset?el.dataset.retention||'':'';
+      retInp.value=rv;
+    }
+  }
   const isMember = el && el.dataset && el.dataset.member === '1';
-  if(joinBtn) joinBtn.style.display = isMember ? 'none' : 'inline-block';
+  if(joinBtn){
+    if(isMember){ joinBtn.style.display='none'; }
+    else if(pending&&joinMode!=='open'){
+      joinBtn.style.display='inline-block';
+      joinBtn.textContent='Заявка отправлена';
+      joinBtn.disabled=true;
+    }else{
+      joinBtn.disabled=false;
+      joinBtn.style.display='inline-block';
+      joinBtn.textContent=(joinMode==='open')?'Вступить':'Подать заявку';
+    }
+  }
   if(inp){ inp.disabled = !isMember; if(isMember) setTimeout(()=>inp.focus(), 50); }
   if(snd) snd.disabled = !isMember;
   const box = document.getElementById('groupMsgBox');
   if(!isMember){
-    if(box) box.innerHTML = '<div style="color:#888;text-align:center;padding:24px;font-size:14px">Нажмите «Вступить», чтобы видеть переписку и писать в группе.</div>';
+    let msg='';
+    if(pending&&joinMode!=='open') msg='Ожидайте решения владельца группы.';
+    else if(joinMode!=='open') msg='Нажмите «Подать заявку», чтобы вступить. После одобрения владельца вы сможете читать и писать.';
+    else msg='Нажмите «Вступить», чтобы видеть переписку и писать в группе.';
+    if(box) box.innerHTML = '<div style="color:#888;text-align:center;padding:24px;font-size:14px">'+msg+'</div>';
     return;
   }
   loadGroupMessages(id).then(()=>{ startGroupPoll(); });
@@ -1995,24 +2183,35 @@ function selectGroupChat(id, el){
 
 async function joinSelectedGroup(){
   if(!selectedGroupId) return;
+  const joinBtn=document.getElementById('groupJoinBtn');
+  if(joinBtn&&joinBtn.disabled) return;
   try{
     const r = await fetch('/community/groups/' + selectedGroupId + '/join', { method: 'POST', credentials: 'same-origin' });
-    if(!r.ok){ alert('Не удалось вступить'); return; }
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok){ showNotification(d.error||'Не удалось','error'); return; }
+    if(d.pending){
+      showNotification('Заявка отправлена владельцу группы','success');
+      const item = document.querySelector('.ig-g-item[data-gid="'+selectedGroupId+'"]');
+      if(item){ item.dataset.pending='1'; }
+      if(joinBtn){ joinBtn.textContent='Заявка отправлена'; joinBtn.disabled=true; }
+      const box=document.getElementById('groupMsgBox');
+      if(box) box.innerHTML='<div style="color:#888;text-align:center;padding:24px;font-size:14px">Ожидайте решения владельца группы.</div>';
+      return;
+    }
     const item = document.querySelector('.ig-g-item[data-gid="'+selectedGroupId+'"]');
-    if(item){ item.dataset.member = '1'; item.classList.add('on'); }
-    const joinBtn = document.getElementById('groupJoinBtn');
-    if(joinBtn) joinBtn.style.display = 'none';
+    if(item){ item.dataset.member = '1'; item.dataset.pending='0'; item.classList.add('on'); }
+    if(joinBtn){ joinBtn.style.display = 'none'; joinBtn.disabled=false; }
     const inp = document.getElementById('groupMsgInput');
     const snd = document.getElementById('groupMsgSend');
     if(inp){ inp.disabled = false; inp.focus(); }
     if(snd) snd.disabled = false;
     const sub = item && item.querySelector('div + div');
     if(sub && sub.textContent.indexOf('вы в чате')<0){
-      sub.textContent = (sub.textContent.replace(/\s*·\s*вы в чате\s*$/,'').trim()) + ' · вы в чате';
+      sub.textContent = (sub.textContent.replace(/\s*·\s*(вы в чате|заявка)\s*$/,'').trim()) + ' · вы в чате';
     }
     await loadGroupMessages(selectedGroupId);
     startGroupPoll();
-  }catch(e){ alert('Ошибка сети'); }
+  }catch(e){ showNotification('Ошибка сети','error'); }
 }
 
 async function loadGroupMessages(gid, opts){
@@ -2068,18 +2267,22 @@ async function sendGroupChatMessage(){
 
 async function createGroupSubmit(){
   const n = document.getElementById('grpNameInp') && document.getElementById('grpNameInp').value.trim();
-  if(!n || n.length < 2) return;
+  if(!n || n.length < 2){ showNotification('Введите название группы (от 2 символов)','error'); return; }
   const fd = new FormData();
   fd.append('name', n);
   fd.append('description', (document.getElementById('grpDescInp') && document.getElementById('grpDescInp').value) || '');
   try{
     const r = await fetch('/community/groups/create', { method: 'POST', body: fd, credentials: 'same-origin' });
     const d = await r.json().catch(()=>({}));
-    if(d.ok && d.id){
+    if(r.ok && d.ok && d.id){
       document.getElementById('grpCreateModal').style.display = 'none';
+      showNotification('Группа создана','success');
       location.reload();
-    } else alert(d.error || 'Ошибка');
-  }catch(e){ alert('Ошибка сети'); }
+      return;
+    }
+    const msg = d.error || (r.status===403 ? 'Нет доступа' : r.status===401 ? 'Войдите в аккаунт' : 'Не удалось создать группу');
+    showNotification(msg,'error');
+  }catch(e){ showNotification('Ошибка сети','error'); }
 }
 
 // ── Quick post from feed section ──

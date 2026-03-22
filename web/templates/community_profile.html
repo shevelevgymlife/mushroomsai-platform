@@ -71,7 +71,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
 .cp-tokens-strip__grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 20px;align-items:start}
 .cp-tokens-strip__cell{display:flex;flex-direction:column;gap:4px;min-width:0;text-align:left}
 .cp-ts-lbl{font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.04em}
-.cp-ts-val{font-size:13px;font-weight:700;color:#e8e8e8;font-variant-numeric:tabular-nums;word-break:break-all}
+.cp-ts-val{font-size:13px;font-weight:700;color:#e8e8e8;font-variant-numeric:tabular-nums;word-break:break-word;overflow-wrap:anywhere;line-height:1.35;min-height:1.35em;max-width:100%}
 .cp-ts-shev{color:#C9A84C}
 @media(max-width:400px){.cp-tokens-strip__grid{grid-template-columns:1fr;gap:10px}}
 .shevelev-bal-box{margin-bottom:16px;padding:14px 16px;border-radius:14px;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.28);max-width:420px}
@@ -132,19 +132,27 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
             <button type="button" class="btn-muted" style="font-size:13px;padding:8px 16px" onclick="openDM()">Сообщение</button>
             {% endif %}
           </div>
+          {% set show_del_cell = is_own or profile.decimal_del_balance is not none %}
+          {% set show_shev_cell = is_own or profile.shevelev_balance_cached is not none %}
+          {% if show_del_cell or show_shev_cell %}
           <div class="cp-tokens-strip" aria-label="Токены в сети Decimal">
             <div class="cp-tokens-strip__title">Токены · Decimal</div>
-            <div class="cp-tokens-strip__grid">
+            <div class="cp-tokens-strip__grid" style="{% if show_del_cell and show_shev_cell %}grid-template-columns:1fr 1fr{% else %}grid-template-columns:1fr{% endif %}">
+              {% if show_del_cell %}
               <div class="cp-tokens-strip__cell">
                 <span class="cp-ts-lbl">DEL</span>
                 <span class="cp-ts-val">{{ profile.decimal_del_balance or '—' }}</span>
               </div>
+              {% endif %}
+              {% if show_shev_cell %}
               <div class="cp-tokens-strip__cell">
                 <span class="cp-ts-lbl">SHEVELEV</span>
                 <span class="cp-ts-val cp-ts-shev">{{ profile.shevelev_balance_cached or '—' }}</span>
               </div>
+              {% endif %}
             </div>
           </div>
+          {% endif %}
         </div>
       </div>
 

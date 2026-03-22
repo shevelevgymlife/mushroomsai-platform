@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Согласие с условиями — MushroomsAI{% endblock %}
+{% block content %}
+<div class="pt-28 pb-20 px-4 min-h-screen bg-bg">
+  <div class="max-w-xl mx-auto">
+    <h1 class="text-2xl font-display font-semibold text-text text-center mb-2">Документы сервиса</h1>
+    <p class="text-muted text-sm text-center mb-8">Редакция {{ legal_version }}. Ознакомьтесь и примите условия один раз — без этого доступ к личному кабинету недоступен.</p>
+    {% if error %}
+    <div class="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center">{{ error }}</div>
+    {% endif %}
+    <div class="rounded-2xl border border-border bg-surface p-6 mb-6 space-y-4 text-sm text-muted leading-relaxed">
+      <p>Перед использованием онлайн-платформы <strong class="text-text">MushroomsAI</strong> (далее — «Сервис») вы подтверждаете, что:</p>
+      <ul class="list-disc pl-5 space-y-2">
+        <li>прочитали <a href="/legal/terms" target="_blank" class="text-gold hover:underline">Пользовательское соглашение</a> и <a href="/legal/privacy" target="_blank" class="text-gold hover:underline">Политику конфиденциальности</a>;</li>
+        <li>вам исполнилось 18 лет;</li>
+        <li>понимаете, что материалы носят образовательный характер и не заменяют консультацию врача;</li>
+        <li>соглашаетесь на обработку персональных данных в объёме, указанном в Политике.</li>
+      </ul>
+      <p class="text-xs text-muted/80">Оператор вправе обновлять документы. При существенных изменениях вам может потребоваться повторное принятие новой редакции.</p>
+    </div>
+    <form method="post" action="/legal/accept" class="space-y-5">
+      <input type="hidden" name="next" value="{{ next_url }}">
+      <label class="flex items-start gap-3 cursor-pointer text-sm text-text">
+        <input type="checkbox" name="accept" value="1" class="mt-1 rounded border-border text-gold focus:ring-gold/40" required>
+        <span>Я принимаю условия Пользовательского соглашения и Политики конфиденциальности в актуальной редакции.</span>
+      </label>
+      <button type="submit" class="w-full py-3.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-colors">
+        Продолжить
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

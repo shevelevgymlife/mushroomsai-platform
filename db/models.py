@@ -42,6 +42,10 @@ users = sqlalchemy.Table(
     sqlalchemy.Column("decimal_balance_cached_at", sqlalchemy.DateTime, nullable=True),
     sqlalchemy.Column("shevelev_balance_cached", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("shevelev_balance_cached_at", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("show_del_to_public", sqlalchemy.Boolean, default=True, server_default="true"),
+    sqlalchemy.Column("show_shev_to_public", sqlalchemy.Boolean, default=True, server_default="true"),
+    sqlalchemy.Column("legal_accepted_at", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("legal_docs_version", sqlalchemy.Text, nullable=True),
 )
 
 sessions = sqlalchemy.Table(
@@ -411,6 +415,19 @@ community_groups = sqlalchemy.Table(
     sqlalchemy.Column("description", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("created_by", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+    sqlalchemy.Column("join_mode", sqlalchemy.String(20), default="approval", server_default="approval"),
+    sqlalchemy.Column("message_retention_days", sqlalchemy.Integer, nullable=True),
+)
+
+community_group_join_requests = sqlalchemy.Table(
+    "community_group_join_requests",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("group_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("community_groups.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("status", sqlalchemy.String(20), default="pending", server_default="pending"),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+    sqlalchemy.UniqueConstraint("group_id", "user_id", name="uq_cg_join_req"),
 )
 
 community_group_members = sqlalchemy.Table(

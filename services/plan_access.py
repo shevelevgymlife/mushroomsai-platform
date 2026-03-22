@@ -66,11 +66,12 @@ def plan_allowed_block_keys(plan: str | None, user: dict[str, Any] | None) -> fr
 
 
 def can_create_community_groups(plan: str | None, user: dict[str, Any] | None) -> bool:
-    """Создание групповых чатов — Старт и выше (есть доступ к сообществу)."""
+    """Создание групповых чатов — доступно всем авторизованным (в т.ч. free)."""
     if user and user.get("role") == "admin":
         return True
-    p = (plan or "free").lower()
-    return p in ("start", "pro", "maxi")
+    if not user:
+        return False
+    return True
 
 
 def can_use_priority_pin(plan: str | None, user: dict[str, Any] | None) -> bool:

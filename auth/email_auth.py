@@ -51,6 +51,8 @@ async def register_user(email: str, password: str, name: str) -> Optional[dict]:
             name=name,
             referral_code=referral_code,
             role="user",
+            subscription_plan="free",
+            needs_tariff_choice=True,
         )
     )
     return await database.fetch_one(users.select().where(users.c.id == user_id))

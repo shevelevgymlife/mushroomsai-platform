@@ -28,6 +28,7 @@
         <a href="/login?next=/onboarding/tariff" class="block text-center px-4 py-3 rounded-xl border border-white/[0.08] text-muted hover:border-gold/50 hover:text-gold transition-all duration-300 text-sm font-medium">
           {{ t.btn_start_free }}
         </a>
+        <p class="text-[11px] text-muted/90 text-center mt-3 leading-snug">Вход и регистрация с бесплатным планом</p>
       </div>
 
       <!-- Start -->
@@ -42,9 +43,10 @@
           </li>
           {% endfor %}
         </ul>
-        <a href="/login?next=/onboarding/tariff" class="block text-center px-4 py-3 rounded-xl bg-gold text-bg font-semibold hover:bg-gold-light transition-all duration-300 text-sm shadow-[0_8px_32px_rgba(201,168,76,0.25)]">
-          {{ t.btn_connect }}
-        </a>
+        <button type="button" disabled class="block w-full text-center px-4 py-3 rounded-xl border border-white/10 text-muted text-sm cursor-not-allowed opacity-80">
+          Оплата не подключена
+        </button>
+        <p class="text-[11px] text-muted/90 text-center mt-3 leading-snug">После входа с бесплатным планом можно запросить смену тарифа у администратора</p>
       </div>
 
       <!-- Pro -->
@@ -58,9 +60,10 @@
           </li>
           {% endfor %}
         </ul>
-        <a href="/login?next=/onboarding/tariff" class="block text-center px-4 py-3 rounded-xl border border-gold/40 text-gold hover:bg-gold hover:text-bg transition-all duration-300 text-sm font-semibold">
-          {{ t.btn_connect }}
-        </a>
+        <button type="button" disabled class="block w-full text-center px-4 py-3 rounded-xl border border-white/10 text-muted text-sm cursor-not-allowed opacity-80">
+          Оплата не подключена
+        </button>
+        <p class="text-[11px] text-muted/90 text-center mt-3 leading-snug">Запрос тарифа — из кабинета после регистрации</p>
       </div>
 
       <!-- Maxi -->
@@ -74,10 +77,10 @@
           </li>
           {% endfor %}
         </ul>
-        <a href="/login?next=/onboarding/tariff"
-           class="block text-center px-4 py-3 rounded-xl border border-gold text-gold hover:bg-gold hover:text-bg transition-all duration-300 text-sm font-semibold">
-          {{ t.btn_apply }}
-        </a>
+        <button type="button" disabled class="block w-full text-center px-4 py-3 rounded-xl border border-white/10 text-muted text-sm cursor-not-allowed opacity-80">
+          Оплата не подключена
+        </button>
+        <p class="text-[11px] text-muted/90 text-center mt-3 leading-snug">Запрос тарифа — из кабинета</p>
       </div>
     </div>
   </div>

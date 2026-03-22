@@ -9,12 +9,15 @@ from db.models import (
     users, messages, orders, posts, post_likes, community_posts, community_likes, community_comments,
     community_folders, community_follows, community_saved, community_messages, profile_likes, community_profiles,
     dashboard_blocks, user_block_overrides, community_groups, community_group_members, community_group_messages,
+    community_group_join_requests,
 )
 from services.referral_service import get_referral_stats
 from services.subscription_service import check_subscription, PLANS
 from ai.openai_client import chat_with_ai
 from services.subscription_service import can_ask_question, increment_question_count
 from services.plan_access import plan_allowed_block_keys, can_create_community_groups
+from services.legal import legal_acceptance_redirect
+from services.notify_admin import notify_admin_telegram
 import sqlalchemy as sa
 import secrets
 import traceback as _traceback
@@ -104,13 +107,16 @@ async def onboarding_tariff_page(request: Request):
     user = await require_auth(request)
     if not user:
         return RedirectResponse("/login?next=/onboarding/tariff")
+    leg = await legal_acceptance_redirect(request, user)
+    if leg:
+        return leg
     if user.get("role") == "admin":
         return RedirectResponse("/dashboard")
     if not user.get("needs_tariff_choice"):
         return RedirectResponse("/dashboard")
     return templates.TemplateResponse(
         "onboarding_tariff.html",
-        {"request": request, "user": user, "plans": PLANS},
+        {"request": request, "user": user, "plans": PLANS, "error": None},
     )
 
 
@@ -119,21 +125,31 @@ async def onboarding_tariff_submit(request: Request, choice: str = Form(...)):
     user = await require_auth(request)
     if not user:
         return RedirectResponse("/login")
+    leg = await legal_acceptance_redirect(request, user)
+    if leg:
+        return leg
     uid = user.get("primary_user_id") or user["id"]
     choice = (choice or "").strip().lower()
     if choice not in ("free", "start", "pro", "maxi"):
         return RedirectResponse("/onboarding/tariff")
-    if choice == "free":
-        await database.execute(
-            users.update()
-            .where(users.c.id == uid)
-            .values(subscription_plan="free", needs_tariff_choice=False)
+    # Платный приём на сайте не подключён — доступен только бесплатный план при регистрации.
+    if choice != "free":
+        return templates.TemplateResponse(
+            "onboarding_tariff.html",
+            {
+                "request": request,
+                "user": user,
+                "plans": PLANS,
+                "error": "Оплата тарифов на сайте пока не подключена. Выберите бесплатный план — он доступен сразу. Платные тарифы можно запросить у администратора через кабинет после входа.",
+            },
+            status_code=400,
         )
-        return RedirectResponse("/dashboard")
     await database.execute(
-        users.update().where(users.c.id == uid).values(needs_tariff_choice=False)
+        users.update()
+        .where(users.c.id == uid)
+        .values(subscription_plan="free", needs_tariff_choice=False)
     )
-    return RedirectResponse("https://t.me/mushrooms_ai_bot?start=tariff_" + choice, status_code=302)
+    return RedirectResponse("/dashboard")
 
 
 @router.get("/dashboard", response_class=HTMLResponse)
@@ -153,6 +169,10 @@ async def dashboard(request: Request):
             response = RedirectResponse("/dashboard", status_code=302)
             response.set_cookie("access_token", token, httponly=True, samesite="lax", max_age=60*60*24*30)
             return response
+
+    leg = await legal_acceptance_redirect(request, user)
+    if leg:
+        return leg
 
     effective_user_id = user.get("primary_user_id") or user["id"]
 
@@ -290,11 +310,18 @@ async def dashboard(request: Request):
         if "community" in visible_block_keys:
             _gr = await database.fetch_all(
                 sa.text("""
-                    SELECT g.id, g.name, g.description, g.created_at,
+                    SELECT g.id, g.name, g.description, g.created_at, g.created_by,
+                      COALESCE(g.join_mode, 'approval') AS join_mode,
+                      g.message_retention_days,
                       (SELECT COUNT(*)::bigint FROM community_group_members m WHERE m.group_id = g.id) AS member_count,
-                      EXISTS(SELECT 1 FROM community_group_members m2 WHERE m2.group_id = g.id AND m2.user_id = :uid) AS is_member
+                      EXISTS(SELECT 1 FROM community_group_members m2 WHERE m2.group_id = g.id AND m2.user_id = :uid) AS is_member,
+                      (SELECT COUNT(*)::bigint FROM community_group_messages gm WHERE gm.group_id = g.id) AS msg_count,
+                      EXISTS(
+                        SELECT 1 FROM community_group_join_requests r
+                        WHERE r.group_id = g.id AND r.user_id = :uid AND r.status = 'pending'
+                      ) AS pending_join
                     FROM community_groups g
-                    ORDER BY g.created_at DESC
+                    ORDER BY msg_count DESC NULLS LAST, g.created_at DESC
                     LIMIT 80
                 """).bindparams(uid=effective_user_id)
             )
@@ -302,6 +329,7 @@ async def dashboard(request: Request):
             for r in _gr:
                 d = dict(r)
                 d["is_member"] = bool(d.get("is_member"))
+                d["pending_join"] = bool(d.get("pending_join"))
                 group_list.append(d)
     except Exception:
         group_list = []
@@ -615,6 +643,67 @@ async def update_wallet(request: Request):
     await database.execute(
         users.update().where(users.c.id == uid).values(wallet_address=wallet.strip() or None)
     )
+    return JSONResponse({"ok": True})
+
+
+@router.post("/profile/token-visibility")
+async def profile_token_visibility(request: Request):
+    """Какие кэшированные балансы токенов видят другие на публичном профиле."""
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = user.get("primary_user_id") or user["id"]
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    show_del = bool(body.get("show_del_to_public", True))
+    show_shev = bool(body.get("show_shev_to_public", True))
+    await database.execute(
+        users.update()
+        .where(users.c.id == uid)
+        .values(show_del_to_public=show_del, show_shev_to_public=show_shev)
+    )
+    return JSONResponse({"ok": True})
+
+
+@router.post("/profile/plan-upgrade-request")
+async def profile_plan_upgrade_request(
+    request: Request,
+    requested_plan: str = Form(...),
+    note: str = Form(""),
+):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = user.get("primary_user_id") or user["id"]
+    rp = (requested_plan or "").strip().lower()
+    if rp not in ("start", "pro", "maxi"):
+        return JSONResponse({"error": "Недопустимый тариф"}, status_code=400)
+    nm = (note or "").strip()[:2000]
+    urow = await database.fetch_one(users.select().where(users.c.id == uid))
+    uname = (urow.get("name") if urow else "") or "—"
+    uemail = (urow.get("email") if urow else "") or "—"
+    utg = urow.get("tg_id") if urow else None
+    try:
+        await database.execute(
+            sa.text(
+                "INSERT INTO plan_upgrade_requests (user_id, requested_plan, note) VALUES (:u,:p,:n)"
+            ).bindparams(u=uid, p=rp, n=nm or None)
+        )
+    except Exception:
+        pass
+    cur = ((urow.get("subscription_plan") or "free") if urow else "free").lower()
+    txt = (
+        "📋 Запрос смены тарифа (MushroomsAI)\n"
+        f"Пользователь: {uname} (id {uid})\n"
+        f"Email: {uemail}\n"
+        f"Telegram id: {utg or '—'}\n"
+        f"Текущий план: {cur}\n"
+        f"Запрошен: {rp}\n"
+        f"Комментарий: {nm or '—'}"
+    )
+    await notify_admin_telegram(txt)
     return JSONResponse({"ok": True})
 
 
@@ -1130,11 +1219,18 @@ async def community_groups_list_api(request: Request):
     uid = user.get("primary_user_id") or user["id"]
     rows = await database.fetch_all(
         sa.text("""
-            SELECT g.id, g.name, g.description, g.created_at,
+            SELECT g.id, g.name, g.description, g.created_at, g.created_by,
+              COALESCE(g.join_mode, 'approval') AS join_mode,
+              g.message_retention_days,
               (SELECT COUNT(*)::bigint FROM community_group_members m WHERE m.group_id = g.id) AS member_count,
-              EXISTS(SELECT 1 FROM community_group_members m2 WHERE m2.group_id = g.id AND m2.user_id = :uid) AS is_member
+              EXISTS(SELECT 1 FROM community_group_members m2 WHERE m2.group_id = g.id AND m2.user_id = :uid) AS is_member,
+              (SELECT COUNT(*)::bigint FROM community_group_messages gm WHERE gm.group_id = g.id) AS msg_count,
+              EXISTS(
+                SELECT 1 FROM community_group_join_requests r
+                WHERE r.group_id = g.id AND r.user_id = :uid AND r.status = 'pending'
+              ) AS pending_join
             FROM community_groups g
-            ORDER BY g.created_at DESC
+            ORDER BY msg_count DESC NULLS LAST, g.created_at DESC
             LIMIT 80
         """).bindparams(uid=uid)
     )
@@ -1142,6 +1238,7 @@ async def community_groups_list_api(request: Request):
     for r in rows:
         d = dict(r)
         d["is_member"] = bool(d.get("is_member"))
+        d["pending_join"] = bool(d.get("pending_join"))
         out.append(d)
     return JSONResponse({"groups": out})
 
@@ -1156,31 +1253,36 @@ async def community_group_create(
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
     uid = user.get("primary_user_id") or user["id"]
-    pl = await check_subscription(uid)
-    if not can_create_community_groups(pl, user):
-        return JSONResponse(
-            {"error": "Создание групп доступно с активной подпиской (Старт и выше)"},
-            status_code=403,
-        )
+    if not can_create_community_groups(None, user):
+        return JSONResponse({"error": "Нет доступа"}, status_code=403)
     nm = (name or "").strip()
     if len(nm) < 2:
-        return JSONResponse({"error": "name too short"}, status_code=400)
+        return JSONResponse({"error": "Слишком короткое название"}, status_code=400)
     if len(nm) > 120:
-        return JSONResponse({"error": "name too long"}, status_code=400)
+        return JSONResponse({"error": "Слишком длинное название"}, status_code=400)
     desc = (description or "").strip()[:2000] or None
-    row = await database.fetch_one(
-        sa.text(
-            "INSERT INTO community_groups (name, description, created_by) VALUES (:n, :d, :c) RETURNING id"
-        ).bindparams(n=nm, d=desc, c=uid)
-    )
-    gid = row["id"] if row else None
-    if gid:
+    try:
+        row = await database.fetch_one(
+            sa.text(
+                "INSERT INTO community_groups (name, description, created_by) VALUES (:n, :d, :c) RETURNING id"
+            ).bindparams(n=nm, d=desc, c=uid)
+        )
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": "Не удалось сохранить группу: " + str(e)[:180]}, status_code=500)
+    gid = None
+    if row:
         try:
-            await database.execute(
-                community_group_members.insert().values(group_id=gid, user_id=uid)
-            )
-        except Exception:
-            pass
+            gid = int(row["id"])
+        except (TypeError, ValueError):
+            gid = None
+    if not gid:
+        return JSONResponse({"ok": False, "error": "Группа не создана"}, status_code=500)
+    try:
+        await database.execute(
+            community_group_members.insert().values(group_id=gid, user_id=uid)
+        )
+    except Exception:
+        pass
     return JSONResponse({"ok": True, "id": gid})
 
 
@@ -1193,12 +1295,158 @@ async def community_group_join(request: Request, group_id: int):
     g = await database.fetch_one(community_groups.select().where(community_groups.c.id == group_id))
     if not g:
         return JSONResponse({"error": "not found"}, status_code=404)
+    mode = (g.get("join_mode") or "approval").lower()
+    if await _user_in_community_group(group_id, uid):
+        return JSONResponse({"ok": True, "member": True})
+    if mode == "open":
+        try:
+            await database.execute(
+                community_group_members.insert().values(group_id=group_id, user_id=uid)
+            )
+        except Exception:
+            pass
+        return JSONResponse({"ok": True, "member": True})
+    # approval: заявка владельцу
+    existing = await database.fetch_one(
+        community_group_join_requests.select()
+        .where(community_group_join_requests.c.group_id == group_id)
+        .where(community_group_join_requests.c.user_id == uid)
+    )
+    if existing and existing.get("status") == "pending":
+        return JSONResponse({"ok": True, "pending": True})
+    if existing and existing.get("status") == "rejected":
+        await database.execute(
+            community_group_join_requests.update()
+            .where(community_group_join_requests.c.id == existing["id"])
+            .values(status="pending")
+        )
+        return JSONResponse({"ok": True, "pending": True})
     try:
         await database.execute(
-            community_group_members.insert().values(group_id=group_id, user_id=uid)
+            community_group_join_requests.insert().values(group_id=group_id, user_id=uid, status="pending")
         )
     except Exception:
         pass
+    return JSONResponse({"ok": True, "pending": True})
+
+
+@router.get("/community/groups/{group_id}/join-requests")
+async def community_group_join_requests_list(request: Request, group_id: int):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = user.get("primary_user_id") or user["id"]
+    g = await database.fetch_one(community_groups.select().where(community_groups.c.id == group_id))
+    if not g:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    if g.get("created_by") != uid and user.get("role") != "admin":
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    rows = await database.fetch_all(
+        sa.text("""
+            SELECT r.id, r.user_id, r.status, r.created_at, u.name AS user_name
+            FROM community_group_join_requests r
+            JOIN users u ON u.id = r.user_id
+            WHERE r.group_id = :gid AND r.status = 'pending'
+            ORDER BY r.created_at ASC
+        """).bindparams(gid=group_id)
+    )
+    out = []
+    for r in rows:
+        d = dict(r)
+        if d.get("created_at"):
+            d["created_at"] = d["created_at"].strftime("%d.%m.%Y %H:%M")
+        out.append(d)
+    return JSONResponse({"requests": out})
+
+
+@router.post("/community/groups/{group_id}/join-requests/{request_id}/approve")
+async def community_group_join_approve(request: Request, group_id: int, request_id: int):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = user.get("primary_user_id") or user["id"]
+    g = await database.fetch_one(community_groups.select().where(community_groups.c.id == group_id))
+    if not g:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    if g.get("created_by") != uid and user.get("role") != "admin":
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    row = await database.fetch_one(
+        community_group_join_requests.select()
+        .where(community_group_join_requests.c.id == request_id)
+        .where(community_group_join_requests.c.group_id == group_id)
+    )
+    if not row or row.get("status") != "pending":
+        return JSONResponse({"error": "not found"}, status_code=404)
+    new_uid = row["user_id"]
+    await database.execute(
+        community_group_join_requests.update()
+        .where(community_group_join_requests.c.id == request_id)
+        .values(status="approved")
+    )
+    try:
+        await database.execute(
+            community_group_members.insert().values(group_id=group_id, user_id=new_uid)
+        )
+    except Exception:
+        pass
+    return JSONResponse({"ok": True})
+
+
+@router.post("/community/groups/{group_id}/join-requests/{request_id}/reject")
+async def community_group_join_reject(request: Request, group_id: int, request_id: int):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = user.get("primary_user_id") or user["id"]
+    g = await database.fetch_one(community_groups.select().where(community_groups.c.id == group_id))
+    if not g:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    if g.get("created_by") != uid and user.get("role") != "admin":
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    await database.execute(
+        community_group_join_requests.update()
+        .where(community_group_join_requests.c.id == request_id)
+        .where(community_group_join_requests.c.group_id == group_id)
+        .values(status="rejected")
+    )
+    return JSONResponse({"ok": True})
+
+
+@router.post("/community/groups/{group_id}/settings")
+async def community_group_settings(request: Request, group_id: int):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = user.get("primary_user_id") or user["id"]
+    g = await database.fetch_one(community_groups.select().where(community_groups.c.id == group_id))
+    if not g:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    if g.get("created_by") != uid and user.get("role") != "admin":
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    body = await request.json()
+    vals = {}
+    if "message_retention_days" in body:
+        v = body.get("message_retention_days")
+        if v is None or v == "":
+            vals["message_retention_days"] = None
+        else:
+            try:
+                n = int(v)
+                if n < 1:
+                    n = 1
+                if n > 36500:
+                    n = 36500
+                vals["message_retention_days"] = n
+            except (TypeError, ValueError):
+                pass
+    if "join_mode" in body:
+        jm = (body.get("join_mode") or "").strip().lower()
+        if jm in ("open", "approval"):
+            vals["join_mode"] = jm
+    if vals:
+        await database.execute(
+            community_groups.update().where(community_groups.c.id == group_id).values(**vals)
+        )
     return JSONResponse({"ok": True})
 
 
