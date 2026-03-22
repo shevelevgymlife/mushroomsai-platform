@@ -489,7 +489,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
           </div>
           <div id="shevelevBalErrMe" style="display:none;font-size:12px;color:#f87171;margin-top:8px"></div>
           <button type="button" class="btn-o" style="margin-top:12px;font-size:12px" onclick="syncBlockchainBalances()">Синхронизировать с блокчейном (MetaMask)</button>
-          <p style="font-size:11px;color:#555;margin-top:8px;line-height:1.4">Адрес кошелька — в расширенных настройках. Подключите MetaMask к сети Decimal (chain id 75), затем нажмите синхронизацию — балансы увидите вы и другие в вашем профиле.</p>
+          <p style="font-size:11px;color:#555;margin-top:8px;line-height:1.4">Пока вкладка открыта, баланс <strong style="color:#aaa">SHEVELEV</strong> в профиле подтягивается с сети автоматически (примерно раз в 2 минуты). Адрес кошелька — в расширенных настройках; полная синхронизация DEL+SHEVELEV — кнопкой выше.</p>
         </div>
         <div id="meEditPanel" class="card" style="display:none;margin-bottom:20px;padding:18px;border-radius:16px">
           <div style="font-size:13px;font-weight:600;color:#888;margin-bottom:12px">Редактирование</div>
@@ -1368,7 +1368,10 @@ function goSec(id){
   if(id==='feed'){setTimeout(()=>{markActivityRead();},500);}
   if(id==='groups'){setTimeout(()=>{const p=document.getElementById('groupMsgBox');if(p)p.scrollTop=p.scrollHeight},80)}
   else stopGroupPoll();
-  if(id==='me'||id==='profile')setTimeout(initShevelevOnLoad,100);
+  if(id==='me'||id==='profile'){
+    setTimeout(initShevelevOnLoad,100);
+    setTimeout(startShevelevAutoSync,200);
+  }
 }
 
 // Init from hash
@@ -1409,9 +1412,10 @@ async function refreshActivityCount(){
 })();
 
 if(document.readyState==='loading'){
-  document.addEventListener('DOMContentLoaded',initShevelevOnLoad);
+  document.addEventListener('DOMContentLoaded',()=>{initShevelevOnLoad();startShevelevAutoSync();});
 }else{
   initShevelevOnLoad();
+  startShevelevAutoSync();
 }
 
 // ── Avatar upload ──
@@ -1524,6 +1528,9 @@ function showNotification(msg, type='info'){
 const DSC_CHAIN_ID='0x4B';
 const DSC_PARAMS={chainId:DSC_CHAIN_ID,chainName:'Decimal Smart Chain',nativeCurrency:{name:'DEL',symbol:'DEL',decimals:18},rpcUrls:['https://node.decimalchain.com/web3/'],blockExplorerUrls:['https://explorer.decimalchain.com']};
 const SHEVELEV_TOKEN='{{ shevelev_token|default("", true)|e }}'.trim();
+const SHEVELEV_AUTO_MS=120000;
+let _shevelevAutoTimer=null;
+let _shevelevVisBound=false;
 
 function getDashWallet(){
   const h=document.getElementById('dashWalletAddr');
@@ -1641,6 +1648,52 @@ async function saveWallet(addr){
     loadDelNative(a);
     if(SHEVELEV_TOKEN)loadSHEVELEVBalance(a);
   }
+  startShevelevAutoSync();
+  syncShevelevServerOnly({silent:true});
+}
+
+async function syncShevelevServerOnly(opts){
+  opts=opts||{};
+  if(!SHEVELEV_TOKEN)return;
+  const w=getDashWallet();
+  if(!w||!w.startsWith('0x'))return;
+  try{
+    const r=await fetch('/profile/wallet/sync-shevelev',{method:'POST',credentials:'same-origin'});
+    const d=await r.json();
+    if(!r.ok||!d.ok){
+      if(!opts.silent&&d&&d.error)showNotification(d.error,'error');
+      return;
+    }
+    const fmt=String(d.formatted!=null?d.formatted:'0');
+    const el=document.getElementById('shevelevBalMe');
+    if(el)el.textContent=fmt;
+    const sSet=document.getElementById('shevelevBal');
+    if(sSet)sSet.textContent=fmt+(SHEVELEV_TOKEN?' SHEVELEV':'');
+    if(!opts.silent)showNotification('Баланс SHEVELEV обновлён','success');
+  }catch(e){if(!opts.silent)console.error(e);}
+}
+
+function stopShevelevAutoSync(){
+  if(_shevelevAutoTimer){clearInterval(_shevelevAutoTimer);_shevelevAutoTimer=null;}
+}
+
+function _shevelevOnVis(){
+  if(document.hidden)return;
+  syncShevelevServerOnly({silent:true});
+}
+
+function startShevelevAutoSync(){
+  stopShevelevAutoSync();
+  if(!SHEVELEV_TOKEN)return;
+  const w=getDashWallet();
+  if(!w||!w.startsWith('0x'))return;
+  if(!_shevelevVisBound){
+    document.addEventListener('visibilitychange',_shevelevOnVis);
+    _shevelevVisBound=true;
+  }
+  const tick=()=>{if(!document.hidden)syncShevelevServerOnly({silent:true});};
+  _shevelevAutoTimer=setInterval(tick,SHEVELEV_AUTO_MS);
+  setTimeout(tick,5000);
 }
 
 function showMePost(id){

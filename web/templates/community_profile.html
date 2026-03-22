@@ -407,6 +407,20 @@ async function sendMsg(){
 }
 
 function esc(t){return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+{% if shevelev_auto_sync %}
+(function(){
+  const SYNC_MS=120000;
+  let tid=null;
+  async function tick(){
+    if(document.hidden)return;
+    try{await fetch('/profile/wallet/sync-shevelev',{method:'POST',credentials:'same-origin'});}catch(e){}
+  }
+  function arm(){if(tid)clearInterval(tid);tid=setInterval(tick,SYNC_MS);}
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick();});
+  setTimeout(tick,6000);
+  arm();
+})();
+{% endif %}
 </script>
 
 {% if shevelev_token %}

@@ -945,6 +945,9 @@ async def community_old(request: Request):
     if full_profile:
         display_user = dict(full_profile)
 
+    _wa = (display_user.get("wallet_address") or "").strip()
+    shevelev_auto_sync = bool(settings.SHEVELEV_TOKEN_ADDRESS) and _wa.startswith("0x")
+
     return templates.TemplateResponse(
         "community.html",
         {
@@ -958,6 +961,7 @@ async def community_old(request: Request):
             "tab": tab,
             "search": search,
             "shevelev_token": settings.SHEVELEV_TOKEN_ADDRESS,
+            "shevelev_auto_sync": shevelev_auto_sync,
         },
     )
 
@@ -1128,6 +1132,10 @@ async def community_profile(request: Request, user_id: int):
             "folder_name": folder_name,
         })
 
+    vrow = await database.fetch_one(users.select().where(users.c.id == viewer_id))
+    _vwa = (vrow.get("wallet_address") or "").strip() if vrow else ""
+    shevelev_auto_sync = bool(settings.SHEVELEV_TOKEN_ADDRESS) and _vwa.startswith("0x")
+
     return templates.TemplateResponse(
         "community_profile.html",
         {
@@ -1144,6 +1152,7 @@ async def community_profile(request: Request, user_id: int):
             "is_own": is_own,
             "feed": feed,
             "shevelev_token": settings.SHEVELEV_TOKEN_ADDRESS,
+            "shevelev_auto_sync": shevelev_auto_sync,
         },
     )
 
