@@ -672,6 +672,62 @@ async def sync_shevelev_balance(request: Request):
     return JSONResponse({"ok": True, "shevelev": bal, "formatted": fmt})
 
 
+@router.post("/profile/wallet/sync-balances")
+async def sync_decimal_balances_combined(request: Request):
+    """Один запрос: нативный DEL + SHEVELEV (ERC-20) с RPC → кэш в БД для профиля."""
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    from config import settings as _s
+    from services.decimal_chain import fetch_erc20_balance, fetch_native_del_balance
+
+    uid = _effective_user_id(user)
+    row = await database.fetch_one(users.select().where(users.c.id == uid))
+    w = (row.get("wallet_address") or "").strip() if row else ""
+    if not w.startswith("0x"):
+        return JSONResponse({"error": "Укажите адрес кошелька (0x…) в настройках"}, status_code=400)
+
+    del_bal = await fetch_native_del_balance(w)
+    if del_bal is None:
+        return JSONResponse({"error": "Не удалось запросить сеть Decimal (DEL)"}, status_code=502)
+    del_fmt = f"{del_bal:.12f}".rstrip("0").rstrip(".") or "0"
+
+    tok = (_s.SHEVELEV_TOKEN_ADDRESS or "").strip()
+    shev_fmt = None
+    shev_val = None
+    if tok:
+        shev_val = await fetch_erc20_balance(tok, w)
+        if shev_val is None:
+            return JSONResponse({"error": "Не удалось прочитать баланс SHEVELEV"}, status_code=502)
+        shev_fmt = f"{shev_val:.10f}".rstrip("0").rstrip(".") or "0"
+        await database.execute(
+            users.update()
+            .where(users.c.id == uid)
+            .values(
+                decimal_del_balance=del_fmt,
+                decimal_balance_cached_at=datetime.utcnow(),
+                shevelev_balance_cached=shev_fmt,
+                shevelev_balance_cached_at=datetime.utcnow(),
+            )
+        )
+    else:
+        await database.execute(
+            users.update()
+            .where(users.c.id == uid)
+            .values(decimal_del_balance=del_fmt, decimal_balance_cached_at=datetime.utcnow())
+        )
+
+    return JSONResponse(
+        {
+            "ok": True,
+            "del": del_bal,
+            "del_formatted": del_fmt,
+            "shevelev": shev_val,
+            "shevelev_formatted": shev_fmt,
+        }
+    )
+
+
 @router.post("/dashboard/language")
 async def update_language(request: Request, language: str = Form(...)):
     user = await require_auth(request)

@@ -108,8 +108,13 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
           <div class="cp-prof-meta">
             <span class="ig-rep-pill">{{ rep_emoji }} {{ rep_level }}</span>
             <span id="profileLikesStatInline" style="color:#888">❤️ {{ profile_likes_count }}</span>
+            {% if profile.decimal_del_balance %}
+            <span style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.04em">Токен DEL</span>
+            <span style="color:#ddd;font-weight:700">{{ profile.decimal_del_balance }}</span>
+            {% endif %}
             {% if profile.shevelev_balance_cached %}
-            <span style="color:#C9A84C;font-weight:700" title="SHEVELEV (после синхронизации в кабинете)">⚗ {{ profile.shevelev_balance_cached }}</span>
+            <span style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.04em">Токен SHEVELEV</span>
+            <span style="color:#C9A84C;font-weight:700" title="После синхронизации в кабинете">{{ profile.shevelev_balance_cached }}</span>
             {% endif %}
           </div>
           <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">

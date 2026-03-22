@@ -179,6 +179,14 @@
 .ig-drawer-item .e{font-size:20px;width:28px;text-align:center;flex-shrink:0}
 .ig-drawer-item .lbl{flex:1}
 .ig-drawer-sep{height:1px;background:rgba(255,255,255,.07);margin:10px 20px}
+.ig-drawer-details .ig-drawer-summary{display:flex;align-items:center;width:100%;box-sizing:border-box}
+.ig-drawer-details[open] .ig-drawer-chev{transform:rotate(-180deg)}
+.ig-drawer-sub{display:block;padding:10px 8px;color:#bbb;text-decoration:none;border-radius:10px;font-size:14px}
+.ig-drawer-sub:hover{background:rgba(255,255,255,.06);color:#C9A84C}
+.ig-drawer-subbtn{display:block;width:100%;text-align:left;padding:10px 8px;margin:0;border:none;background:transparent;color:#bbb;font-size:14px;cursor:pointer;border-radius:10px;font-family:inherit}
+.ig-drawer-subbtn:hover{background:rgba(255,255,255,.06);color:#C9A84C}
+details.ig-drawer-details > summary::-webkit-details-marker{display:none}
+details.ig-drawer-details > summary{list-style:none}
 .ig-tabbar{position:fixed;left:0;right:0;bottom:0;height:calc(56px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);background:rgba(8,8,8,.96);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid rgba(255,255,255,.08);display:flex;align-items:flex-start;justify-content:space-around;padding-top:6px;z-index:940;box-sizing:border-box}
 .ig-tabbar .ig-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:2px;padding:4px 4px 0;border:none;background:transparent;color:#777;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;max-width:88px}
 .ig-tabbar .ig-tab .ic{font-size:24px;line-height:1;opacity:.85}
@@ -273,11 +281,17 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('referral')"><span class="e">{{ ico('gift') }}</span><span class="lbl">Реферальная программа</span></button>
       {% endif %}
       <div class="ig-drawer-sep"></div>
-      <a href="https://wallet.decimalchain.com/" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none"><span class="e">{{ ico('wallet') }}</span><span class="lbl">Кошелёк Decimal (web)</span></a>
-      <a href="https://play.google.com/store/apps/details?id=com.chain.decimal" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none"><span class="e">📱</span><span class="lbl">Decimal Wallet — Android</span></a>
-      <a href="https://apps.apple.com/app/decimal-blockchain-wallet/id1510802073" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none"><span class="e"></span><span class="lbl">Decimal Wallet — iPhone (App Store)</span></a>
-      <a href="https://metamask.app.link/dapp/{{ request.url.hostname }}/dashboard" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none"><span class="e">{{ ico('wallet') }}</span><span class="lbl">MetaMask — открыть в приложении (iOS / Android)</span></a>
-      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();connectMetaMask()"><span class="e">{{ ico('wallet') }}</span><span class="lbl">MetaMask в браузере</span></button>
+      <details class="ig-drawer-details" id="drawerCryptoDetails" style="border-bottom:1px solid rgba(255,255,255,.06)">
+        <summary class="ig-drawer-item ig-drawer-summary" style="list-style:none;cursor:pointer"><span class="e">₿</span><span class="lbl">Моя криптовалюта</span><span class="ig-drawer-chev" style="margin-left:auto;opacity:.5;font-size:10px">▼</span></summary>
+        <div style="padding:4px 12px 14px 18px;font-size:13px">
+          <a href="https://wallet.decimalchain.com/" target="_blank" rel="noopener noreferrer" class="ig-drawer-sub" onclick="closeDbDrawer()">Decimal Wallet — веб</a>
+          <a href="https://play.google.com/store/apps/details?id=com.chain.decimal" target="_blank" rel="noopener noreferrer" class="ig-drawer-sub" onclick="closeDbDrawer()">Decimal Wallet — Android (Play Market)</a>
+          <a href="https://apps.apple.com/app/decimal-blockchain-wallet/id1510802073" target="_blank" rel="noopener noreferrer" class="ig-drawer-sub" onclick="closeDbDrawer()">Decimal Wallet — iPhone (App Store)</a>
+          <a href="https://metamask.app.link/dapp/https://{{ request.url.hostname }}/dashboard" target="_blank" rel="noopener noreferrer" class="ig-drawer-sub" onclick="closeDbDrawer()">MetaMask — открыть в приложении (iOS / Android)</a>
+          <button type="button" class="ig-drawer-subbtn" onclick="closeDbDrawer();connectMetaMask()">MetaMask в браузере (подключить)</button>
+          <button type="button" class="ig-drawer-subbtn" onclick="closeDbDrawer();goSec('profile')">Кошелёк и синхронизация →</button>
+        </div>
+      </details>
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();document.getElementById('sync-modal').style.display='flex'"><span class="e">{{ ico('link') }}</span><span class="lbl">Синхронизация аккаунтов</span></button>
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('link')"><span class="e">{{ ico('link') }}</span><span class="lbl">Привязка Telegram / Google</span></button>
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('language')"><span class="e">{{ ico('globe') }}</span><span class="lbl">Язык интерфейса</span></button>
@@ -464,15 +478,19 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
         {% if user.get('profile_link_url') %}
         <a href="{{ user.profile_link_url }}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:8px;color:#C9A84C;font-weight:600;font-size:14px;margin-bottom:14px;text-decoration:none;border-bottom:1px solid rgba(201,168,76,.35);padding-bottom:2px">{{ user.get('profile_link_label') or user.profile_link_url }}</a>
         {% endif %}
-        {% if shevelev_token %}
-        <div id="shevelevBalWrapMe" class="shevelev-bal-box" style="margin-bottom:16px;padding:14px 16px;border-radius:14px;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.28);max-width:420px">
-          <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">SHEVELEV (виден другим после синхронизации)</div>
-          <div id="shevelevBalMe" style="font-size:20px;font-weight:700;color:#C9A84C">{% if user.get('shevelev_balance_cached') %}{{ user.shevelev_balance_cached }}{% else %}—{% endif %}</div>
-          <div id="shevelevBalErrMe" style="display:none;font-size:12px;color:#f87171;margin-top:6px"></div>
-          <button type="button" class="btn-o" style="margin-top:10px;font-size:12px" onclick="syncShevelevServer()">Синхронизировать с блокчейном</button>
-          <p style="font-size:11px;color:#555;margin-top:8px;line-height:1.4">Укажите адрес кошелька в расширенных настройках или через меню «MetaMask». Затем нажмите синхронизацию — число появится у вас и в профиле для других.</p>
+        <div id="cryptoSummaryMe" class="shevelev-bal-box" style="margin-bottom:16px;padding:14px 16px;border-radius:14px;background:rgba(201,168,76,.08);border:1px solid rgba(201,168,76,.25);max-width:420px">
+          <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Токены в профиле (после синхронизации с сетью)</div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center;font-size:13px">
+            <span style="color:#888">Токен DEL</span>
+            <span id="delBalMe" style="font-weight:700;color:#e8e8e8;min-width:3ch">{% if user.get('decimal_del_balance') %}{{ user.decimal_del_balance }}{% else %}—{% endif %}</span>
+            <span style="color:#666">·</span>
+            <span style="color:#888">Токен SHEVELEV</span>
+            <span id="shevelevBalMe" style="font-weight:700;color:#C9A84C;min-width:3ch">{% if user.get('shevelev_balance_cached') %}{{ user.shevelev_balance_cached }}{% else %}—{% endif %}</span>
+          </div>
+          <div id="shevelevBalErrMe" style="display:none;font-size:12px;color:#f87171;margin-top:8px"></div>
+          <button type="button" class="btn-o" style="margin-top:12px;font-size:12px" onclick="syncBlockchainBalances()">Синхронизировать с блокчейном (MetaMask)</button>
+          <p style="font-size:11px;color:#555;margin-top:8px;line-height:1.4">Адрес кошелька — в расширенных настройках. Подключите MetaMask к сети Decimal (chain id 75), затем нажмите синхронизацию — балансы увидите вы и другие в вашем профиле.</p>
         </div>
-        {% endif %}
         <div id="meEditPanel" class="card" style="display:none;margin-bottom:20px;padding:18px;border-radius:16px">
           <div style="font-size:13px;font-weight:600;color:#888;margin-bottom:12px">Редактирование</div>
           <input id="meName" class="sinp" style="margin-bottom:10px" value="{{ user.name or '' }}" placeholder="Имя">
@@ -1032,7 +1050,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
     <!-- ══ PROFILE ══ -->
     <section class="db-sec" id="sec-profile">
       <div class="sect-title">⚙️ Расширенные настройки</div>
-      <p style="font-size:12px;color:#666;margin:-8px 0 16px;max-width:520px">Фото меняется на экране профиля (аватар) или в шапке кабинета. Подключение MetaMask — в меню «гамбургер».</p>
+      <p style="font-size:12px;color:#666;margin:-8px 0 16px;max-width:520px">Фото — на экране профиля. Кошелёк и приложения Decimal / MetaMask — в меню «Моя криптовалюта» или в блоке ниже.</p>
       <div style="max-width:560px;display:flex;flex-direction:column;gap:16px">
           <div class="card">
             <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:14px">Информация</div>
@@ -1060,30 +1078,42 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
             <div id="profOk" style="display:none;text-align:center;margin-top:8px;font-size:13px;color:#4ade80">✓ Сохранено</div>
           </div>
           <div class="card">
-            <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:14px">Кошелёк и SHEVELEV</div>
+            <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:14px">Кошелёк Decimal / MetaMask</div>
             <div id="wltSt" style="font-size:12px;color:#666;margin-bottom:10px">
               {% if user.wallet_address %}<span style="color:#4ade80">✓ Адрес сохранён</span>
-              {% else %}Укажите адрес 0x… для синхронизации токена{% endif %}
+              {% else %}Укажите адрес 0x…{% endif %}
             </div>
+            <button type="button" class="btn-o" style="width:100%;margin-bottom:12px;font-size:13px" onclick="connectMetaMask()">Подключить MetaMask (сеть Decimal)</button>
             <div>
-              <label style="font-size:12px;color:#666;display:block;margin-bottom:5px">Адрес кошелька (Decimal / MetaMask)</label>
+              <label style="font-size:12px;color:#666;display:block;margin-bottom:5px">Адрес кошелька</label>
               <div style="display:flex;gap:8px">
                 <input id="wltInp" class="sinp" style="flex:1" placeholder="0x..." value="{{ user.wallet_address or '' }}">
                 <button class="btn-g" style="flex-shrink:0" onclick="saveWallet()">✓</button>
               </div>
             </div>
-            {% if shevelev_token %}
-            <div id="shevelevBalWrap" style="margin-top:14px;padding:14px;border-radius:12px;background:rgba(201,168,76,.08);border:1px solid rgba(201,168,76,.22)">
-              <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">SHEVELEV (в кошельке, через браузер)</div>
-              <div id="shevelevBal" style="font-size:18px;font-weight:700;color:#C9A84C">{% if user.get('shevelev_balance_cached') %}{{ user.shevelev_balance_cached }}{% else %}—{% endif %}</div>
-              <div id="shevelevBalErr" style="display:none;font-size:12px;color:#f87171;margin-top:6px"></div>
-              <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">
-                <button type="button" class="btn-o" style="font-size:12px;padding:8px 14px" onclick="syncShevelevServer()">Синхронизировать для профиля</button>
-                <button type="button" class="btn-g" style="font-size:12px;padding:8px 14px" onclick="openSendShevModal()">Отправить SHEVELEV</button>
+            <div style="margin-top:14px;padding:14px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
+              <div style="font-size:11px;color:#888;margin-bottom:8px">В браузере (MetaMask, сеть Decimal)</div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin-bottom:6px;font-size:13px">
+                <span style="color:#888">Токен DEL</span>
+                <span id="delBal" style="font-weight:700;color:#e8e8e8">—</span>
               </div>
-              <p style="font-size:11px;color:#555;margin-top:10px;line-height:1.4">«Синхронизировать» записывает баланс на сервер — другие увидят ⚗ в вашем профиле. Отправка — через MetaMask (сеть Decimal).</p>
+              {% if shevelev_token %}
+              <div style="display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;font-size:13px">
+                <span style="color:#888">Токен SHEVELEV</span>
+                <span id="shevelevBal" style="font-weight:700;color:#C9A84C">{% if user.get('shevelev_balance_cached') %}{{ user.shevelev_balance_cached }}{% else %}—{% endif %}</span>
+              </div>
+              <div id="shevelevBalErr" style="display:none;font-size:12px;color:#f87171;margin-top:8px"></div>
+              {% else %}
+              <p style="font-size:12px;color:#666;margin:0">SHEVELEV: контракт не задан на сервере.</p>
+              {% endif %}
             </div>
-            {% endif %}
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px">
+              <button type="button" class="btn-g" style="font-size:12px;padding:8px 14px;flex:1;min-width:160px" onclick="syncBlockchainBalances()">Синхронизировать с блокчейном</button>
+              {% if shevelev_token %}
+              <button type="button" class="btn-o" style="font-size:12px;padding:8px 14px" onclick="openSendShevModal()">Отправить SHEVELEV</button>
+              {% endif %}
+            </div>
+            <p style="font-size:11px;color:#555;margin-top:10px;line-height:1.4">Кнопка синхронизации считывает DEL и SHEVELEV с RPC Decimal и сохраняет в профиль — их видно у вас на странице и у других.</p>
           </div>
           <div class="card">
             <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:12px">Информация аккаунта</div>
@@ -1503,9 +1533,35 @@ function getDashWallet(){
 }
 
 function initShevelevOnLoad(){
-  if(!SHEVELEV_TOKEN||!window.ethereum)return;
+  if(!window.ethereum)return;
   const w=getDashWallet();
-  if(w)loadSHEVELEVBalance(w);
+  if(!w)return;
+  loadDelNative(w);
+  if(SHEVELEV_TOKEN)loadSHEVELEVBalance(w);
+}
+
+async function loadDelNative(addr){
+  if(!addr||!window.ethereum)return;
+  const el=document.getElementById('delBal');
+  if(!el)return;
+  el.textContent='…';
+  try{
+    try{
+      await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:DSC_CHAIN_ID}]});
+    }catch(se){
+      if(se&&se.code===4902){
+        try{await window.ethereum.request({method:'wallet_addEthereumChain',params:[DSC_PARAMS]});}
+        catch(_){}
+      }
+    }
+    const hex=await window.ethereum.request({method:'eth_getBalance',params:[addr,'latest']});
+    const wei=BigInt(!hex||hex==='0x'?'0':hex);
+    const human=Number(wei)/1e18;
+    el.textContent=(Number.isFinite(human)?human.toLocaleString('ru-RU',{maximumFractionDigits:8}):'0')+' DEL';
+  }catch(e){
+    console.error('DEL:',e);
+    el.textContent='—';
+  }
 }
 
 async function erc20Decimals(token){
@@ -1581,7 +1637,10 @@ async function saveWallet(addr){
   const hid=document.getElementById('dashWalletAddr');if(hid)hid.value=a;
   const sh=a.slice(0,12)+'...'+a.slice(-4);
   const st=document.getElementById('wltSt');if(st)st.innerHTML=`<span style="color:#4ade80">✓ ${sh}</span>`;
-  if(window.ethereum&&SHEVELEV_TOKEN)loadSHEVELEVBalance(a);
+  if(window.ethereum){
+    loadDelNative(a);
+    if(SHEVELEV_TOKEN)loadSHEVELEVBalance(a);
+  }
 }
 
 function showMePost(id){
@@ -1590,23 +1649,33 @@ function showMePost(id){
   if(el){el.style.display='block';el.scrollIntoView({behavior:'smooth',block:'start'});}
 }
 
-async function syncShevelevServer(){
+async function syncBlockchainBalances(){
   const el=document.getElementById('shevelevBalMe');
+  const delEl=document.getElementById('delBalMe');
   const er=document.getElementById('shevelevBalErrMe');
   if(er){er.style.display='none';er.textContent='';}
+  if(delEl)delEl.textContent='…';
   if(el)el.textContent='…';
   try{
-    const r=await fetch('/profile/wallet/sync-shevelev',{method:'POST'});
+    const r=await fetch('/profile/wallet/sync-balances',{method:'POST',credentials:'same-origin'});
     const d=await r.json();
     if(!d.ok){
       if(er){er.textContent=d.error||'Ошибка';er.style.display='block';}
+      if(delEl)delEl.textContent='—';
       if(el)el.textContent='—';
+      showNotification(d.error||'Ошибка синхронизации','error');
       return;
     }
-    if(el)el.textContent=d.formatted!=null?String(d.formatted):String(d.shevelev);
-    showNotification('Баланс SHEVELEV обновлён — другие увидят его в вашем профиле','success');
+    if(delEl)delEl.textContent=d.del_formatted!=null?String(d.del_formatted):'—';
+    if(el&&d.shevelev_formatted!=null)el.textContent=String(d.shevelev_formatted);
+    const dSet=document.getElementById('delBal');
+    if(dSet&&d.del_formatted!=null)dSet.textContent=String(d.del_formatted)+' DEL';
+    const sSet=document.getElementById('shevelevBal');
+    if(sSet&&d.shevelev_formatted!=null)sSet.textContent=String(d.shevelev_formatted)+(SHEVELEV_TOKEN?' SHEVELEV':'');
+    showNotification('Балансы DEL и SHEVELEV обновлены в профиле','success');
   }catch(e){
     if(er){er.textContent=e.message||'Сеть';er.style.display='block';}
+    if(delEl)delEl.textContent='—';
     if(el)el.textContent='—';
   }
 }
