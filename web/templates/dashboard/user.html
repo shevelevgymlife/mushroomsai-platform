@@ -262,6 +262,7 @@
   {% endif %}
   <!-- MAIN CONTENT -->
   <div class="db-main">
+    <input type="hidden" id="dashWalletAddr" value="{{ user.wallet_address or '' }}">
 
     <!-- ══ HOME ══ -->
     {% if not ig_social %}
@@ -432,6 +433,15 @@
         <div id="wltStMe" style="font-size:12px;color:#666;margin-bottom:12px">
           {% if user.wallet_address %}<span style="color:#4ade80">Кошелёк: {{ user.wallet_address[:10] }}…{{ user.wallet_address[-4:] }}</span>{% endif %}
         </div>
+        {% if shevelev_token %}
+        <div id="shevelevBalWrapMe" class="shevelev-bal-box" style="margin-bottom:16px;padding:14px 16px;border-radius:14px;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.28);max-width:420px">
+          <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Баланс SHEVELEV</div>
+          <div id="shevelevBalMe" style="font-size:20px;font-weight:700;color:#C9A84C">—</div>
+          <div id="shevelevBalErrMe" style="display:none;font-size:12px;color:#f87171;margin-top:6px"></div>
+        </div>
+        {% else %}
+        <p style="font-size:12px;color:#555;margin-bottom:12px">Баланс SHEVELEV: задайте <code>SHEVELEV_TOKEN_ADDRESS</code> на сервере.</p>
+        {% endif %}
         <div id="meEditPanel" class="card" style="display:none;margin-bottom:20px;padding:18px;border-radius:16px">
           <div style="font-size:13px;font-weight:600;color:#888;margin-bottom:12px">Редактирование</div>
           <input id="meName" class="sinp" style="margin-bottom:10px" value="{{ user.name or '' }}" placeholder="Имя">
@@ -1008,6 +1018,13 @@
                 <button class="btn-g" style="flex-shrink:0" onclick="saveWallet()">✓</button>
               </div>
             </div>
+            {% if shevelev_token %}
+            <div id="shevelevBalWrap" style="margin-top:14px;padding:14px;border-radius:12px;background:rgba(201,168,76,.08);border:1px solid rgba(201,168,76,.22)">
+              <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Баланс SHEVELEV</div>
+              <div id="shevelevBal" style="font-size:18px;font-weight:700;color:#C9A84C">—</div>
+              <div id="shevelevBalErr" style="display:none;font-size:12px;color:#f87171;margin-top:6px"></div>
+            </div>
+            {% endif %}
           </div>
           <div class="card">
             <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:12px">Информация аккаунта</div>
@@ -1197,6 +1214,7 @@ function goSec(id){
   if(id==='ai'){setTimeout(()=>{const b=document.getElementById('chatBox');if(b)b.scrollTop=b.scrollHeight},100)}
   if(id==='messages')loadDMPreview();
   if(id==='groups'){setTimeout(()=>{const p=document.getElementById('groupMsgBox');if(p)p.scrollTop=p.scrollHeight},80)}
+  if(id==='me'||id==='profile')setTimeout(initShevelevOnLoad,100);
 }
 
 // Init from hash
@@ -1209,6 +1227,12 @@ window.addEventListener('hashchange',()=>{
   const h=(location.hash||'').replace('#','');
   if(SECS.includes(h))goSec(h);
 });
+
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded',initShevelevOnLoad);
+}else{
+  initShevelevOnLoad();
+}
 
 // ── Avatar upload ──
 async function uploadAv(input,imgId='avImg'){
@@ -1319,7 +1343,29 @@ function showNotification(msg, type='info'){
 // ── MetaMask / SHEVELEV ──
 const DSC_CHAIN_ID='0x4B';
 const DSC_PARAMS={chainId:DSC_CHAIN_ID,chainName:'Decimal Smart Chain',nativeCurrency:{name:'DEL',symbol:'DEL',decimals:18},rpcUrls:['https://node.decimalchain.com/web3/'],blockExplorerUrls:['https://explorer.decimalchain.com']};
-const SHEVELEV_TOKEN='{{ shevelev_token }}';
+const SHEVELEV_TOKEN='{{ shevelev_token|default("", true)|e }}'.trim();
+
+function getDashWallet(){
+  const h=document.getElementById('dashWalletAddr');
+  if(h&&h.value&&h.value.trim())return h.value.trim();
+  const inp=document.getElementById('wltInp');
+  return inp&&inp.value.trim()?inp.value.trim():'';
+}
+
+function initShevelevOnLoad(){
+  if(!SHEVELEV_TOKEN||!window.ethereum)return;
+  const w=getDashWallet();
+  if(w)loadSHEVELEVBalance(w);
+}
+
+async function erc20Decimals(token){
+  try{
+    const r=await window.ethereum.request({method:'eth_call',params:[{to:token,data:'0x313ce567'},'latest']});
+    if(!r||r==='0x')return 18;
+    const n=parseInt(r,16);
+    return Number.isFinite(n)&&n>=0&&n<=36?n:18;
+  }catch(_){return 18;}
+}
 
 async function connectMetaMask(){
   if(!window.ethereum){
@@ -1339,21 +1385,44 @@ async function connectMetaMask(){
         catch(ae){showNotification('Не удалось добавить сеть Decimal','error');return;}
       }
     }
-    document.getElementById('wltInp').value=addr;
+    const wi=document.getElementById('wltInp');if(wi)wi.value=addr;
     await saveWallet(addr);
     showNotification('Кошелёк подключён ✓','success');
-    if(SHEVELEV_TOKEN)loadSHEVELEVBalance(addr);
   }catch(e){if(e.code!==4001)showNotification('Ошибка: '+(e.message||e),'error');}
 }
 
 async function loadSHEVELEVBalance(addr){
-  if(!SHEVELEV_TOKEN||!addr)return;
+  if(!SHEVELEV_TOKEN||!addr||!window.ethereum)return;
+  const setErr=(msg,hide)=>{
+    ['shevelevBalErr','shevelevBalErrMe'].forEach(id=>{
+      const e=document.getElementById(id);
+      if(!e)return;
+      if(hide){e.style.display='none';e.textContent='';}
+      else{e.style.display='block';e.textContent=msg;}
+    });
+  };
+  const setBal=(txt)=>{
+    ['shevelevBal','shevelevBalMe'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el)el.textContent=txt;
+    });
+  };
+  setErr('',true);
+  setBal('…');
   try{
-    const data='0x70a08231'+addr.replace('0x','').toLowerCase().padStart(64,'0');
+    const dec=await erc20Decimals(SHEVELEV_TOKEN);
+    const pad=addr.replace(/^0x/i,'').toLowerCase().padStart(64,'0');
+    const data='0x70a08231'+pad;
     const res=await window.ethereum.request({method:'eth_call',params:[{to:SHEVELEV_TOKEN,data},'latest']});
-    const bal=(Number(BigInt(res||'0x0'))/1e18).toFixed(4);
-    const el=document.getElementById('shevelevBal');if(el)el.textContent=bal+' SHEVELEV';
-  }catch(e){console.error('SHEVELEV:',e);}
+    const wei=BigInt(!res||res==='0x'?'0':res);
+    const human=Number(wei)/Math.pow(10,dec);
+    const txt=(Number.isFinite(human)?human.toLocaleString('ru-RU',{maximumFractionDigits:8}):'0')+' SHEVELEV';
+    setBal(txt);
+  }catch(e){
+    console.error('SHEVELEV:',e);
+    setBal('—');
+    setErr('Не удалось прочитать баланс. В MetaMask выберите сеть Decimal Smart Chain (chain id 75 / 0x4B), где находится контракт SHEVELEV.',false);
+  }
 }
 
 async function saveWallet(addr){
@@ -1361,9 +1430,11 @@ async function saveWallet(addr){
   const a=addr||(inp&&inp.value.trim());if(!a)return;
   const r=await fetch('/profile/wallet',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({wallet_address:a})});
   if(!r.ok)return;
+  const hid=document.getElementById('dashWalletAddr');if(hid)hid.value=a;
   const sh=a.slice(0,12)+'...'+a.slice(-4);
   const st=document.getElementById('wltSt');if(st)st.innerHTML=`<span style="color:#4ade80">✓ ${sh}</span>`;
   const stm=document.getElementById('wltStMe');if(stm)stm.innerHTML=`<span style="color:#4ade80">Кошелёк: ${a.slice(0,10)}…${a.slice(-4)}</span>`;
+  if(window.ethereum&&SHEVELEV_TOKEN)loadSHEVELEVBalance(a);
 }
 
 // ── Save profile (кабинет + экран «я») ──
