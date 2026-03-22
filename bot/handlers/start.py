@@ -67,9 +67,13 @@ def main_keyboard(site_url: str):
 
 
 def main_inline_keyboard(site_url: str):
+    app_url = site_url.strip().rstrip("/")
+    if not app_url.startswith("http"):
+        app_url = "https://" + app_url
+    app_url = app_url + "/"
     return InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("📱 Открыть приложение", web_app=WebAppInfo(url="https://mushroomsai.onrender.com")),
+            InlineKeyboardButton("MushroomsAI — приложение", web_app=WebAppInfo(url=app_url)),
         ],
         [
             InlineKeyboardButton("Личный кабинет", url=f"{site_url}/dashboard"),
