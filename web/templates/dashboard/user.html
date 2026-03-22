@@ -2120,7 +2120,9 @@ async function refreshGroupListFromApi(){
     const groups = d.groups;
     const emptyMsg = window.__canCreateGroups ? 'Нет групп — нажмите «Новая группа»' : 'Пока нет групп';
     if(!groups.length){
-      el.innerHTML = '<div style="color:#666;text-align:center;padding:24px 16px;font-size:13px">'+ emptyMsg +'</div>';
+      /* Не затирать список пустым ответом, если уже есть строки чатов (POST создал группу, а GET вернул [] из‑за рассинхрона/SQL). */
+      if(el.querySelector('.ig-g-item')) return;
+      el.innerHTML = '<div class="tg-empty-hint" style="color:#666;text-align:center;padding:24px 16px;font-size:13px">'+ emptyMsg +'</div>';
       return;
     }
     function escHtml(t){
@@ -2407,7 +2409,6 @@ async function createGroupSubmit(){
       document.getElementById('grpCreateModal').style.display = 'none';
       showNotification('Группа создана','success');
       prependCreatedGroupToList(gid, n);
-      await refreshGroupListFromApi();
       goSec('groups');
       setTimeout(function(){
         const row = document.querySelector('.ig-g-item[data-gid="'+gid+'"]');
