@@ -116,17 +116,17 @@
       {% for m in chat_messages %}
         {% if m.is_system %}
         <div class="bubble bubble-system">
-          {{ m.text }}
+          <span class="bubble-txt">{{ m.text }}</span>
           <span class="bubble-time">{{ m.created_at.strftime('%d.%m %H:%M') if m.created_at else '' }}</span>
         </div>
         {% elif m.sender_id == current_uid %}
         <div class="bubble bubble-own">
-          {{ m.text }}
+          <span class="bubble-txt">{{ m.text }}</span>
           <span class="bubble-time">{{ m.created_at.strftime('%H:%M') if m.created_at else '' }} <span class="{{ 'bubble-read' if m.is_read else '' }}">{{ '✓✓' if m.is_read else '✓' }}</span></span>
         </div>
         {% else %}
         <div class="bubble bubble-other">
-          {{ m.text }}
+          <span class="bubble-txt">{{ m.text }}</span>
           <span class="bubble-time">{{ m.created_at.strftime('%H:%M') if m.created_at else '' }}</span>
         </div>
         {% endif %}
@@ -179,7 +179,7 @@ async function pollMessages(){
         lastMsgId = Math.max(lastMsgId, m.id);
         const div = document.createElement('div');
         div.className = 'bubble ' + (m.sender_id == CURRENT_UID ? 'bubble-own' : 'bubble-other');
-        div.innerHTML = esc(m.text) + `<span class="bubble-time">${m.created_at}</span>`;
+        div.innerHTML = '<span class="bubble-txt">'+linkifyDisplay(m.text)+'</span><span class="bubble-time">'+esc(m.created_at)+'</span>';
         box.appendChild(div);
       });
       box.scrollTop = box.scrollHeight;
@@ -201,7 +201,7 @@ async function sendMsg(){
       const box = document.getElementById('chatMessages');
       const div = document.createElement('div');
       div.className = 'bubble bubble-own';
-      div.innerHTML = esc(d.text) + `<span class="bubble-time">сейчас ✓</span>`;
+      div.innerHTML = '<span class="bubble-txt">'+linkifyDisplay(d.text)+'</span><span class="bubble-time">сейчас ✓</span>';
       box.appendChild(div);
       box.scrollTop = box.scrollHeight;
     }
@@ -221,5 +221,20 @@ function showSidebar(){
 }
 
 function esc(t){return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}
+function escAttr(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;')}
+function linkifyDisplay(raw){
+  const s=String(raw||'');
+  return s.split(/(https?:\/\/[^\s<]+)/g).map(function(p){
+    if(/^https?:\/\//.test(p)){
+      return '<a href="'+escAttr(p)+'" target="_blank" rel="noopener noreferrer" style="color:#C9A84C;text-decoration:underline;word-break:break-all">'+esc(p)+'</a>';
+    }
+    return esc(p);
+  }).join('');
+}
+(function(){
+  document.querySelectorAll('#chatMessages .bubble:not(.bubble-system) .bubble-txt').forEach(function(sp){
+    sp.innerHTML=linkifyDisplay(sp.textContent);
+  });
+})();
 </script>
 {% endblock %}

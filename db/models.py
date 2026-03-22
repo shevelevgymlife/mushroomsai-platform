@@ -322,6 +322,7 @@ community_posts = sqlalchemy.Table(
     metadata,
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
     sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=True),
+    sqlalchemy.Column("title", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("content", sqlalchemy.Text, nullable=False),
     sqlalchemy.Column("image_url", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("folder_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("community_folders.id"), nullable=True),

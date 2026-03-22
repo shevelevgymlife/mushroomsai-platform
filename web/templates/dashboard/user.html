@@ -93,8 +93,15 @@
 .badge-maxi{background:rgba(201,168,76,.2);color:#E8C96B;border:1px solid rgba(201,168,76,.45)}
 
 /* ── Stats row ── */
-.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px}
-.stat-box{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:14px;text-align:center}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px;align-items:stretch}
+.stat-box{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:14px;text-align:center;display:flex;flex-direction:column;justify-content:center;min-height:72px;box-sizing:border-box}
+.ig-pm{position:relative;flex-shrink:0;margin-left:auto}
+.ig-pm>summary{list-style:none;cursor:pointer;font-size:18px;line-height:1;padding:4px 8px;border-radius:8px;color:#888}
+.ig-pm>summary::-webkit-details-marker{display:none}
+.ig-pm[open]>summary{background:rgba(255,255,255,.06);color:#e8e8e8}
+.ig-pm-panel{position:absolute;right:0;top:100%;margin-top:4px;min-width:200px;background:#141414;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:6px;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.ig-pm-panel button{display:block;width:100%;text-align:left;padding:10px 12px;border:none;background:transparent;color:#e8e8e8;font-size:13px;cursor:pointer;border-radius:8px}
+.ig-pm-panel button:hover{background:rgba(201,168,76,.12)}
 
 /* ── Feed tabs ── */
 .feed-tab{padding:7px 16px;border-radius:20px;font-size:13px;font-weight:600;border:1px solid rgba(255,255,255,.1);background:transparent;color:#666;cursor:pointer;transition:all .2s;text-decoration:none;display:inline-block}
@@ -245,15 +252,18 @@
   body.tg-group-mobile-chat .groups-page-intro{display:none!important}
   /* Строка ввода при клавиатуре: прижата к низу видимой области, без смещения вбок */
   body.tg-group-mobile-chat #sec-groups .tg-chat-input-row{
-    position:sticky;
+    position:fixed;
     bottom:0;
     left:0;
     right:0;
-    z-index:30;
+    z-index:40;
     width:100%;
     max-width:100vw;
     box-sizing:border-box;
     padding-bottom:max(12px, env(safe-area-inset-bottom, 0px));
+  }
+  body.tg-group-mobile-chat #sec-groups .ig-g-msg-wrap{
+    padding-bottom:calc(72px + env(safe-area-inset-bottom, 0px))!important;
   }
   body.tg-group-mobile-chat #groupMsgBox{
     padding-bottom:8px;
@@ -417,10 +427,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('feed')"><span class="e">{{ ico('feed') }}</span><span class="lbl">Лента</span></button>
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('groups')"><span class="e">{{ ico('message_sq') }}</span><span class="lbl">Группы и чаты</span></button>
       {% if 'community' in vbk %}
-      <details class="ig-drawer-details drawer-groups-box" id="drawerGroupsDetails" open>
-        <summary class="ig-drawer-item ig-drawer-summary" style="list-style:none;cursor:pointer"><span class="e">{{ ico('message_sq') }}</span><span class="lbl">Мои группы</span><span class="ig-drawer-chev" style="margin-left:auto;opacity:.5;font-size:10px">▼</span></summary>
-        <div id="drawerGroupList" style="padding:4px 8px 12px 18px;font-size:13px;max-height:min(42vh,320px);overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
-      </details>
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('groups')" title="Список чатов как в сообщениях"><span class="e">{{ ico('message_sq') }}</span><span class="lbl">Мои группы</span></button>
       {% endif %}
       {% if 'messages' in vbk %}
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('messages')"><span class="e">{{ ico('message') }}</span><span class="lbl">Сообщения</span></button>
@@ -516,7 +523,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
           </div>
           <div style="display:flex;flex-direction:column;gap:8px;margin-left:auto">
             {% if 'community' in vbk %}
-            <button class="btn-g" onclick="goSec('feed');setTimeout(()=>document.getElementById('quickPostText')?.focus(),200)">✏️ Написать пост</button>
+            <button type="button" class="btn-g" onclick="openCreatePostModal()">✏️ Написать пост</button>
             <button class="btn-o" onclick="goSec('feed')">👥 Моя лента</button>
             {% endif %}
             {% if 'knowledge_base' in vbk %}
@@ -689,7 +696,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
             {% if p.image_url %}<img src="{{ p.image_url }}" alt="" loading="lazy">{% else %}<div class="ig-post-cell-ph">{{ p.content[:100] }}{% if p.content|length > 100 %}…{% endif %}</div>{% endif %}
           </a>
           {% else %}
-          <div style="grid-column:1/-1;text-align:center;padding:36px 16px;color:#555;font-size:14px">Пока нет публикаций. Во вкладке «Лента» нажмите «Создать» и опубликуйте пост.</div>
+          <div style="grid-column:1/-1;text-align:center;padding:36px 16px;color:#555;font-size:14px">Пока нет публикаций. Нажмите «Создать» внизу или «Написать пост» выше.</div>
           {% endfor %}
         </div>
         <div class="ig-me-post-details" style="margin-top:12px">
@@ -717,7 +724,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
       <div class="ig-feed-topbar">
         <span class="ig-brand">MushroomsAI</span>
         <div class="ig-feed-actions-top">
-          <button type="button" class="ig-ic-btn" title="Новый пост" aria-label="Новый пост" onclick="var t=document.getElementById('quickPostText');if(t){t.focus();t.scrollIntoView({behavior:'smooth',block:'center'})}">＋</button>
+          <button type="button" class="ig-ic-btn" title="Новый пост" aria-label="Новый пост" onclick="openCreatePostModal()">＋</button>
           <a href="/community/members" class="ig-ic-btn" title="Участники" aria-label="Участники" style="text-decoration:none;font-size:16px">👥</a>
           <button type="button" class="ig-ic-btn" title="Сообщения" aria-label="Сообщения" onclick="goSec('messages')">✉</button>
         </div>
@@ -726,7 +733,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
 
       {% if feed_raw %}
       <div class="ig-stories-wrap" aria-label="Участники ленты">
-        <div class="ig-story" role="button" tabindex="0" onclick="var t=document.getElementById('quickPostText');if(t){t.focus();t.scrollIntoView({behavior:'smooth',block:'center'})}">
+        <div class="ig-story" role="button" tabindex="0" onclick="openCreatePostModal()">
           <div class="ig-story-ring"><div class="ig-story-ring-inner">
             {% if user.avatar %}<img src="{{ user.avatar }}" alt="">
             {% else %}<span style="font-size:22px">🍄</span>{% endif %}
@@ -749,35 +756,6 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
         {% endfor %}
       </div>
       {% endif %}
-
-      <!-- Форма поста (в ленте — без дублирования профиля) -->
-      <div class="card" style="margin-bottom:16px;border-color:rgba(201,168,76,.2);border-radius:16px;padding:{% if ig_social %}14px{% else %}22px{% endif %}">
-        {% if not ig_social %}
-        <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px">
-          {% if user.avatar %}
-          <img src="{{ user.avatar }}" style="width:42px;height:42px;border-radius:50%;border:2px solid #C9A84C;object-fit:cover;flex-shrink:0;cursor:pointer" onclick="goSec('{{ dash_home }}')" alt="">
-          {% else %}
-          <div style="width:42px;height:42px;border-radius:50%;border:2px solid #C9A84C;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;cursor:pointer" onclick="goSec('{{ dash_home }}')">🍄</div>
-          {% endif %}
-          <div style="flex:1;min-width:0">
-            <div style="font-size:14px;font-weight:700;color:#e8e8e8;cursor:pointer" onclick="goSec('{{ dash_home }}')">{{ user.name or 'Участник' }}</div>
-            <div style="display:flex;gap:12px;font-size:12px;color:#555;margin-top:2px">
-              <span><span class="gold">{{ my_post_count }}</span> постов</span>
-              <span><span class="gold">{{ user.followers_count or 0 }}</span> подп.</span>
-              <span><span class="gold">{{ user.following_count or 0 }}</span> подписок</span>
-            </div>
-          </div>
-        </div>
-        {% endif %}
-        <textarea id="quickPostText" class="sinp" style="width:100%;min-height:72px;resize:vertical;box-sizing:border-box" placeholder="Поделитесь с сообществом..."></textarea>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
-          <a href="/community/members" style="font-size:12px;color:#666;text-decoration:none">Участники →</a>
-          <div style="display:flex;gap:8px;align-items:center">
-            <span id="quickPostOk" style="display:none;color:#4ade80;font-size:13px">✓ Опубликовано</span>
-            <button class="btn-g" style="font-size:13px;padding:8px 18px" onclick="quickPost()">Опубликовать</button>
-          </div>
-        </div>
-      </div>
 
       <!-- Tabs -->
       <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
@@ -813,10 +791,22 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
             {% endif %}
             <div style="font-size:11px;color:#888">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}{% if p.pinned %} · 📌{% endif %}</div>
           </div>
-          {% if is_mine or is_admin %}
+          {% if is_mine %}
+          <details class="ig-pm" onclick="event.stopPropagation()">
+            <summary title="Меню поста">⋯</summary>
+            <div class="ig-pm-panel" onclick="event.stopPropagation()">
+              <button type="button" onclick="openEditPostModal({{ p.id }}, {{ (p.title|default(''))|tojson }}, {{ (p.content|default(''))|tojson }})">Изменить</button>
+              <button type="button" onclick="openSharePostModal({{ p.id }})">Поделиться в личке</button>
+              <button type="button" onclick="deleteFeedPost({{ p.id }})" style="color:#f87171">Удалить</button>
+            </div>
+          </details>
+          {% elif is_admin %}
           <button type="button" class="ig-act" style="flex-shrink:0;align-self:flex-start;padding:6px;font-size:15px;opacity:.75" title="Удалить пост" aria-label="Удалить пост" onclick="deleteFeedPost({{ p.id }})">🗑</button>
           {% endif %}
         </div>
+        {% if p.title %}
+        <div style="padding:10px 14px 0;font-size:15px;font-weight:700;color:#e8e8e8">{{ p.title }}</div>
+        {% endif %}
         {% if p.image_url %}
         <img src="{{ p.image_url }}" class="ig-post-img" loading="lazy" alt="">
         {% elif p.content %}
@@ -845,7 +835,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
       <div style="text-align:center;padding:60px 0;color:#444">
         <div style="font-size:44px;margin-bottom:10px">🍄</div>
         <div>Лента пустая</div>
-        <div style="margin-top:8px;font-size:13px;color:#555">Будьте первым — создайте пост выше</div>
+        <div style="margin-top:8px;font-size:13px;color:#555">Создайте пост через «Создать» внизу или кнопку ＋</div>
       </div>
       {% endif %}
       </div>
@@ -905,7 +895,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
                   <span class="tg-ios-time" data-fmt-time="{{ _iso|e }}">{% if _iso|length > 16 %}{{ _iso[11:16] }}{% endif %}</span>
                 </div>
                 <div class="tg-ios-preview-row">
-                  <span class="tg-ios-preview">{{ _prev|e }}{% if g.is_member %}{% elif g.pending_join %} · заявка{% else %} · не в группе{% endif %}</span>
+                  <span class="tg-ios-preview">{{ _prev|e }}{% if g.is_member %}{% elif g.pending_join %} · заявка{% else %} · не в группе{% endif %} · {{ g.member_count or 0 }} уч.</span>
                   <span class="tg-ios-badge {% if g.is_member and _ur > 0 %}on{% endif %}">{{ _ur if g.is_member and _ur > 0 else '' }}</span>
                 </div>
               </div>
@@ -1429,19 +1419,13 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
     <button type="button" class="ig-tab" data-igtab="feed" onclick="goSec('feed')"><span class="ic">{{ ico('home') }}</span>Лента</button>
     <button type="button" class="ig-tab" data-igtab="create" onclick="igTabCreate()"><span class="ic">{{ ico('plus') }}</span>Создать</button>
     <button type="button" class="ig-tab" data-igtab="search" onclick="window.location.href='/community/members'"><span class="ic">{{ ico('search') }}</span>Поиск</button>
-    {% if 'community' in vbk %}
-    <button type="button" class="ig-tab" data-igtab="groups" onclick="goSec('groups')"><span class="ic">{{ ico('message_sq') }}</span>Чаты</button>
-    {% endif %}
-    {% if 'messages' in vbk %}
-    <button type="button" class="ig-tab" data-igtab="messages" onclick="goSec('messages')"><span class="ic">{{ ico('message') }}</span>Входящие</button>
-    {% endif %}
     {% if 'community' not in vbk and 'messages' not in vbk %}
     {% if 'shop' in vbk %}
     <button type="button" class="ig-tab" data-igtab="shop" onclick="goSec('shop')"><span class="ic">{{ ico('shop') }}</span>Магазин</button>
     {% elif 'tariffs' in vbk %}
     <button type="button" class="ig-tab" data-igtab="plan" onclick="goSec('plan')"><span class="ic">{{ ico('spark') }}</span>Тариф</button>
     {% else %}
-    <button type="button" class="ig-tab" data-igtab="groups" onclick="goSec('groups')"><span class="ic">{{ ico('message_sq') }}</span>Чаты</button>
+    <button type="button" class="ig-tab" data-igtab="plan" onclick="goSec('plan')"><span class="ic">{{ ico('spark') }}</span>Тариф</button>
     {% endif %}
     {% endif %}
   </nav>
@@ -1536,7 +1520,58 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
   </div>
 </div>
 
+<div id="createPostModal" style="display:none;position:fixed;inset:0;z-index:10021;align-items:center;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(4px)" onclick="if(event.target===this)this.style.display='none'">
+  <div class="card" style="max-width:440px;width:92%;padding:22px;border-color:rgba(201,168,76,.28)" onclick="event.stopPropagation()">
+    <div style="font-weight:700;margin-bottom:12px;color:#e8e8e8;font-size:17px">Новый пост</div>
+    <input id="createPostTitleInp" class="sinp" style="margin-bottom:10px;width:100%;box-sizing:border-box" placeholder="Название (необязательно)" maxlength="200">
+    <textarea id="createPostBodyInp" class="sinp" style="min-height:100px;margin-bottom:10px;width:100%;box-sizing:border-box" placeholder="Текст поста" maxlength="8000"></textarea>
+    <label style="font-size:12px;color:#888;display:block;margin-bottom:8px">Фото (необязательно)</label>
+    <input id="createPostFileInp" type="file" accept="image/jpeg,image/png,image/webp,image/gif" style="margin-bottom:14px;font-size:13px;color:#aaa">
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button type="button" class="btn-o" onclick="document.getElementById('createPostModal').style.display='none'">Отмена</button>
+      <button type="button" class="btn-g" onclick="submitCreatePostModal()">Опубликовать</button>
+    </div>
+    <p id="createPostErr" style="display:none;margin-top:10px;font-size:12px;color:#f87171"></p>
+  </div>
+</div>
+
+<div id="editPostModal" style="display:none;position:fixed;inset:0;z-index:10021;align-items:center;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(4px)" onclick="if(event.target===this)this.style.display='none'">
+  <div class="card" style="max-width:440px;width:92%;padding:22px;border-color:rgba(201,168,76,.28)" onclick="event.stopPropagation()">
+    <div style="font-weight:700;margin-bottom:12px;color:#e8e8e8;font-size:17px">Изменить пост</div>
+    <input type="hidden" id="editPostId" value="">
+    <input id="editPostTitleInp" class="sinp" style="margin-bottom:10px;width:100%;box-sizing:border-box" placeholder="Название" maxlength="200">
+    <textarea id="editPostBodyInp" class="sinp" style="min-height:100px;margin-bottom:10px;width:100%;box-sizing:border-box" placeholder="Текст" maxlength="8000"></textarea>
+    <label style="font-size:12px;color:#888;display:block;margin-bottom:8px">Новое фото (необязательно)</label>
+    <input id="editPostFileInp" type="file" accept="image/jpeg,image/png,image/webp,image/gif" style="margin-bottom:14px;font-size:13px;color:#aaa">
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button type="button" class="btn-o" onclick="document.getElementById('editPostModal').style.display='none'">Отмена</button>
+      <button type="button" class="btn-g" onclick="submitEditPostModal()">Сохранить</button>
+    </div>
+    <p id="editPostErr" style="display:none;margin-top:10px;font-size:12px;color:#f87171"></p>
+  </div>
+</div>
+
+<div id="sharePostModal" style="display:none;position:fixed;inset:0;z-index:10021;align-items:center;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(4px)" onclick="if(event.target===this)this.style.display='none'">
+  <div class="card" style="max-width:400px;width:92%;padding:22px;border-color:rgba(201,168,76,.28);max-height:min(80vh,520px);overflow:auto" onclick="event.stopPropagation()">
+    <div style="font-weight:700;margin-bottom:4px;color:#e8e8e8;font-size:16px">Кому отправить ссылку</div>
+    <p class="muted" style="font-size:12px;margin:0 0 12px;line-height:1.45">Из ваших подписок. Ссылка появится в личных сообщениях.</p>
+    <input type="hidden" id="sharePostId" value="">
+    <div id="sharePostUserList" style="display:flex;flex-direction:column;gap:6px"></div>
+    <p id="sharePostErr" style="display:none;margin-top:10px;font-size:12px;color:#f87171"></p>
+  </div>
+</div>
+
 <script>
+(function(){
+  function applyVvh(){
+    var vv=window.visualViewport;
+    var h=vv?vv.height:window.innerHeight;
+    document.documentElement.style.setProperty('--vvh', h+'px');
+  }
+  applyVvh();
+  window.addEventListener('resize', applyVvh);
+  if(window.visualViewport) window.visualViewport.addEventListener('resize', applyVvh);
+})();
 // MetaMask / SHEVELEV — объявить до любых вызовов initShevelevOnLoad (иначе TDZ: «before initialization»)
 const DSC_CHAIN_ID='0x4B';
 const DSC_PARAMS={chainId:DSC_CHAIN_ID,chainName:'Decimal Smart Chain',nativeCurrency:{name:'DEL',symbol:'DEL',decimals:18},rpcUrls:['https://node.decimalchain.com/web3/'],blockExplorerUrls:['https://explorer.decimalchain.com']};
@@ -1606,24 +1641,25 @@ function toggleDbDrawer(){
   const willOpen = dr && !dr.classList.contains('open');
   dr?.classList.toggle('open');
   bd?.classList.toggle('on');
-  if(willOpen){
-    if(window.__groupsLast && window.__groupsLast.length) syncDrawerGroupList(window.__groupsLast);
-    refreshGroupListFromApi();
-  }
+  if(willOpen){ refreshGroupListFromApi(); }
+}
+function openCreatePostModal(){
+  if(window._needTariffForCommunity){goSec('plan');return;}
+  const m=document.getElementById('createPostModal');
+  if(!m)return;
+  document.getElementById('createPostErr')&&(document.getElementById('createPostErr').style.display='none');
+  m.style.display='flex';
+  setTimeout(()=>{const b=document.getElementById('createPostBodyInp');if(b)b.focus();},100);
 }
 function igTabCreate(){
   goSec('feed');
-  setTimeout(()=>{
-    const t=document.getElementById('quickPostText');
-    if(t){t.focus();t.scrollIntoView({behavior:'smooth',block:'center'})}
-    else if(window._needTariffForCommunity){goSec('plan');}
-  },200);
+  setTimeout(()=>openCreatePostModal(),150);
 }
 function syncIgTabbar(id){
   const bar=document.getElementById('igTabbar');
   if(!bar)return;
   bar.querySelectorAll('.ig-tab').forEach(t=>t.classList.remove('on'));
-  const map={me:'me',feed:'feed',groups:'groups',messages:'messages',shop:'shop',plan:'plan'};
+  const map={me:'me',feed:'feed',create:'create',search:'search',shop:'shop',plan:'plan'};
   const key=map[id];
   if(key) bar.querySelector(`[data-igtab="${key}"]`)?.classList.add('on');
 }
@@ -2509,6 +2545,7 @@ async function refreshGroupListFromApi(){
       const jid = g.join_mode || 'approval';
       const pend = g.pending_join ? '1' : '0';
       const mem = g.is_member ? '1' : '0';
+      const memberCount = g.member_count != null ? (parseInt(g.member_count, 10) || 0) : 0;
       const owner = (g.created_by != null && g.created_by !== '') ? String(g.created_by) : '';
       let retAttr = '';
       if(g.message_retention_days != null && g.message_retention_days !== ''){
@@ -2540,7 +2577,7 @@ async function refreshGroupListFromApi(){
         avHtml+
         '<div class="tg-ios-mid">'+
         '<div class="tg-ios-title-row"><span class="tg-ios-name">'+escHtml(g.name)+'</span><span class="tg-ios-time" data-fmt-time="'+escAttr(iso)+'">'+escHtml(timeStr)+'</span></div>'+
-        '<div class="tg-ios-preview-row"><span class="tg-ios-preview">'+escHtml(prev)+statusSuf+'</span><span class="tg-ios-badge'+badgeOn+'">'+escHtml(badgeTxt)+'</span></div>'+
+        '<div class="tg-ios-preview-row"><span class="tg-ios-preview">'+escHtml(prev)+statusSuf+' · '+memberCount+' уч.</span><span class="tg-ios-badge'+badgeOn+'">'+escHtml(badgeTxt)+'</span></div>'+
         '</div></div>';
     }).join('');
   }catch(e){}
@@ -2850,19 +2887,105 @@ async function createGroupSubmit(){
   }catch(e){ showNotification('Ошибка сети','error'); }
 }
 
-// ── Quick post from feed section ──
-async function quickPost(){
-  const txt=document.getElementById('quickPostText').value.trim();if(!txt)return;
-  const fd=new FormData();fd.append('content',txt);
+// ── Посты: модалки создания / правки / шаринга в ЛС ──
+const DASH_UID={{ effective_user_id|default(0) }};
+async function submitCreatePostModal(){
+  const body=document.getElementById('createPostBodyInp');
+  const err=document.getElementById('createPostErr');
+  const txt=(body&&body.value||'').trim();
+  if(txt.length<2){if(err){err.style.display='block';err.textContent='Минимум 2 символа в тексте';}return;}
+  if(err)err.style.display='none';
+  const fd=new FormData();
+  fd.append('content',txt);
+  const t=document.getElementById('createPostTitleInp');
+  if(t&&t.value) fd.append('title',t.value.trim());
+  const fi=document.getElementById('createPostFileInp');
+  if(fi&&fi.files&&fi.files[0]) fd.append('image',fi.files[0]);
   try{
-    const r=await fetch('/community/post',{method:'POST',body:fd});
+    const r=await fetch('/community/post',{method:'POST',body:fd,credentials:'same-origin'});
     const d=await r.json().catch(()=>({}));
     if(d.ok||d.id){
-      document.getElementById('quickPostText').value='';
-      const ok=document.getElementById('quickPostOk');ok.style.display='inline';
-      setTimeout(()=>{ok.style.display='none';location.reload();},1500);
-    }else{showNotification('Ошибка публикации','error');}
-  }catch(e){showNotification('Ошибка публикации','error');}
+      document.getElementById('createPostModal').style.display='none';
+      if(body) body.value='';
+      if(t) t.value='';
+      if(fi) fi.value='';
+      showNotification('Пост опубликован','success');
+      setTimeout(()=>location.reload(),600);
+    }else{
+      if(err){err.style.display='block';err.textContent=d.error||'Не удалось опубликовать';}
+    }
+  }catch(e){ if(err){err.style.display='block';err.textContent='Сеть';} }
+}
+function openEditPostModal(pid, title, content){
+  document.getElementById('editPostId').value=String(pid);
+  document.getElementById('editPostTitleInp').value=title||'';
+  document.getElementById('editPostBodyInp').value=content||'';
+  document.getElementById('editPostFileInp').value='';
+  document.getElementById('editPostErr').style.display='none';
+  document.getElementById('editPostModal').style.display='flex';
+}
+async function submitEditPostModal(){
+  const pid=document.getElementById('editPostId').value;
+  const err=document.getElementById('editPostErr');
+  const body=document.getElementById('editPostBodyInp');
+  const txt=(body&&body.value||'').trim();
+  if(txt.length<2){if(err){err.style.display='block';err.textContent='Минимум 2 символа';}return;}
+  const fd=new FormData();
+  fd.append('content',txt);
+  const t=document.getElementById('editPostTitleInp');
+  if(t) fd.append('title',t.value.trim());
+  const fi=document.getElementById('editPostFileInp');
+  if(fi&&fi.files&&fi.files[0]) fd.append('image',fi.files[0]);
+  try{
+    const r=await fetch('/community/post/'+pid+'/edit',{method:'POST',body:fd,credentials:'same-origin'});
+    const d=await r.json().catch(()=>({}));
+    if(r.ok&&d.ok){
+      document.getElementById('editPostModal').style.display='none';
+      showNotification('Сохранено','success');
+      setTimeout(()=>location.reload(),500);
+    }else{
+      if(err){err.style.display='block';err.textContent=d.error||'Ошибка';}
+    }
+  }catch(e){ if(err){err.style.display='block';err.textContent='Сеть';} }
+}
+async function openSharePostModal(postId){
+  document.getElementById('sharePostId').value=String(postId);
+  const list=document.getElementById('sharePostUserList');
+  const err=document.getElementById('sharePostErr');
+  if(err) err.style.display='none';
+  if(list) list.innerHTML='<div style="color:#888;font-size:13px;padding:12px">Загрузка…</div>';
+  document.getElementById('sharePostModal').style.display='flex';
+  try{
+    const r=await fetch('/community/profile/'+DASH_UID+'/following',{credentials:'same-origin'});
+    const d=await r.json().catch(()=>({}));
+    const users=(d&&d.users)||[];
+    if(!list) return;
+    if(!users.length){
+      list.innerHTML='<div style="color:#888;font-size:13px">Нет подписок — подпишитесь на кого-нибудь в сообществе.</div>';
+      return;
+    }
+    list.innerHTML=users.map(function(u){
+      const nm=_escHtmlFl(u.name||'Участник');
+      return '<button type="button" class="btn-o" style="width:100%;justify-content:flex-start" onclick="sendPostShare('+postId+','+u.id+')">'+nm+'</button>';
+    }).join('');
+  }catch(e){
+    if(list) list.innerHTML='';
+    if(err){ err.style.display='block'; err.textContent='Не удалось загрузить список'; }
+  }
+}
+async function sendPostShare(postId, recipientId){
+  const err=document.getElementById('sharePostErr');
+  if(err) err.style.display='none';
+  try{
+    const r=await fetch('/community/post/'+postId+'/share-dm',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipient_id:recipientId})});
+    const d=await r.json().catch(()=>({}));
+    if(r.ok&&d.ok){
+      document.getElementById('sharePostModal').style.display='none';
+      showNotification('Ссылка отправлена в личку','success');
+    }else{
+      if(err){ err.style.display='block'; err.textContent=d.error||'Ошибка'; }
+    }
+  }catch(e){ if(err){ err.style.display='block'; err.textContent='Сеть'; } }
 }
 
 // ── Util ──

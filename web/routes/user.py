@@ -27,6 +27,8 @@ import logging
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 
+from config import settings
+
 _logger = logging.getLogger(__name__)
 
 router = APIRouter()
@@ -429,6 +431,7 @@ def _reputation(post_count: int) -> dict:
 async def create_post(
     request: Request,
     content: str = Form(...),
+    title: str = Form(""),
     folder_id: str = Form(""),
     image: UploadFile = File(None),
 ):
@@ -455,9 +458,11 @@ async def create_post(
 
     fid = int(folder_id) if folder_id.strip().isdigit() else None
     effective_uid = user.get("primary_user_id") or user["id"]
+    tit = (title or "").strip()[:200] or None
     post_id = await database.execute(
         community_posts.insert().values(
             user_id=effective_uid,
+            title=tit,
             content=content.strip(),
             image_url=image_url,
             folder_id=fid,
@@ -465,6 +470,92 @@ async def create_post(
         )
     )
     return JSONResponse({"ok": True, "id": post_id})
+
+
+@router.post("/community/post/{post_id}/edit")
+async def edit_community_post(
+    request: Request,
+    post_id: int,
+    content: str = Form(...),
+    title: str = Form(""),
+    image: UploadFile = File(None),
+):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = user.get("primary_user_id") or user["id"]
+    post = await database.fetch_one(community_posts.select().where(community_posts.c.id == post_id))
+    if not post:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    if post["user_id"] != uid and user.get("role") != "admin":
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    if len((content or "").strip()) < 2:
+        return JSONResponse({"error": "too short"}, status_code=400)
+    tit = (title or "").strip()[:200] or None
+    vals = {"content": content.strip(), "title": tit}
+    if image and image.filename and image.content_type in _POST_IMAGE_ALLOWED:
+        data = await image.read()
+        if len(data) <= _POST_IMAGE_MAX:
+            ext = image.filename.rsplit(".", 1)[-1].lower() if "." in image.filename else "jpg"
+            filename = f"{uuid.uuid4().hex}.{ext}"
+            base = "/data" if os.path.exists("/data") else "./media"
+            save_path = os.path.join(base, "community", filename)
+            os.makedirs(os.path.dirname(save_path), exist_ok=True)
+            with open(save_path, "wb") as f:
+                f.write(data)
+            vals["image_url"] = f"/media/community/{filename}"
+    await database.execute(
+        community_posts.update().where(community_posts.c.id == post_id).values(**vals)
+    )
+    return JSONResponse({"ok": True})
+
+
+@router.post("/community/post/{post_id}/share-dm")
+async def share_community_post_dm(request: Request, post_id: int):
+    """Отправить ссылку на пост в личку подписчику (подписка: я → он)."""
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = user.get("primary_user_id") or user["id"]
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    try:
+        recipient_id = int(body.get("recipient_id") or 0)
+    except (TypeError, ValueError):
+        recipient_id = 0
+    if recipient_id <= 0 or recipient_id == uid:
+        return JSONResponse({"error": "bad recipient"}, status_code=400)
+    post = await database.fetch_one(community_posts.select().where(community_posts.c.id == post_id))
+    if not post:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    if post["user_id"] != uid and user.get("role") != "admin":
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    fol = await database.fetch_one(
+        community_follows.select()
+        .where(community_follows.c.follower_id == uid)
+        .where(community_follows.c.following_id == recipient_id)
+    )
+    if not fol:
+        return JSONResponse({"error": "not following"}, status_code=403)
+    author_id = post["user_id"]
+    base = settings.SITE_URL.rstrip("/")
+    link = f"{base}/community/profile/{author_id}#pc-{post_id}"
+    ttitle = (post.get("title") or "").strip()
+    line = f"🔗 Пост: {ttitle}\n{link}" if ttitle else f"🔗 Пост в сообществе\n{link}"
+    try:
+        await database.execute(
+            sa.text(
+                "INSERT INTO direct_messages (sender_id, recipient_id, text, is_read, is_system) "
+                "VALUES (:s, :r, :t, false, false)"
+            ),
+            {"s": uid, "r": recipient_id, "t": line},
+        )
+    except Exception as e:
+        _logger.exception("share dm: %s", e)
+        return JSONResponse({"error": "db"}, status_code=500)
+    return JSONResponse({"ok": True, "link": link})
 
 
 @router.post("/community/like/{post_id}")

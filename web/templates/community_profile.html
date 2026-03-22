@@ -39,10 +39,10 @@
 @media(min-width:640px){.ig-profile-head{gap:32px}}
 .ig-profile-av-wrap{position:relative;flex-shrink:0}
 .ig-profile-av{width:min(150px,32vw);height:min(150px,32vw);min-width:96px;min-height:96px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.12);display:block}
-.ig-profile-stats{display:flex;gap:0;justify-content:space-around;flex:1;min-width:min(100%,280px);max-width:360px}
-.ig-profile-stat{text-align:center;flex:1}
-.ig-profile-stat b{display:block;font-size:clamp(16px,4vw,20px);color:#e8e8e8;font-weight:700}
-.ig-profile-stat span{display:block;font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+.ig-profile-stats{display:flex;gap:0;justify-content:space-around;align-items:stretch;flex:1;min-width:min(100%,280px);max-width:360px}
+.ig-profile-stat{text-align:center;flex:1;display:flex;flex-direction:column;justify-content:center;min-height:52px}
+.ig-profile-stat b{display:block;font-size:clamp(16px,4vw,20px);color:#e8e8e8;font-weight:700;line-height:1.2}
+.ig-profile-stat span{display:block;font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-top:4px;line-height:1.2}
 button.ig-profile-stat{width:100%;cursor:pointer;border:none;background:transparent;font:inherit;padding:10px 4px;margin:0;border-radius:12px;transition:background .15s}
 button.ig-profile-stat:hover{background:rgba(255,255,255,.06)}
 button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outline-offset:2px}
