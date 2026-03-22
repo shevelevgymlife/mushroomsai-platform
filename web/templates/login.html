@@ -86,9 +86,28 @@
 
     </div>
 
-    <!-- Email form — hidden (fallback) -->
-    <div id="email-block" style="display:none">
-      <form action="/login/email" method="post" class="space-y-4">
+    <!-- Email form — always visible for dev -->
+    <div id="email-block">
+      <div class="flex items-center gap-4 mb-4">
+        <div class="flex-1 h-px bg-border"></div>
+        <span class="text-xs text-muted">или через Email</span>
+        <div class="flex-1 h-px bg-border"></div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="flex gap-2 mb-4">
+        <button type="button" id="tab-login" onclick="switchTab('login')"
+          class="flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all">
+          Вход
+        </button>
+        <button type="button" id="tab-register" onclick="switchTab('register')"
+          class="flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all">
+          Регистрация
+        </button>
+      </div>
+
+      <!-- Login Form -->
+      <form id="form-login" action="/login/email" method="post" class="space-y-4" style="display:none">
         <input type="email" name="email" placeholder="Email" required
           class="w-full px-4 py-3 rounded-xl bg-surface border border-border text-text placeholder-muted text-sm focus:outline-none focus:border-gold/60 transition-colors duration-300" />
         <input type="password" name="password" placeholder="Пароль" required
@@ -96,6 +115,20 @@
         <button type="submit"
           class="w-full py-3 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-all duration-300">
           Войти
+        </button>
+      </form>
+
+      <!-- Register Form -->
+      <form id="form-register" action="/register/email" method="post" class="space-y-4" style="display:none">
+        <input type="text" name="name" placeholder="Имя" required
+          class="w-full px-4 py-3 rounded-xl bg-surface border border-border text-text placeholder-muted text-sm focus:outline-none focus:border-gold/60 transition-colors duration-300" />
+        <input type="email" name="email" placeholder="Email" required
+          class="w-full px-4 py-3 rounded-xl bg-surface border border-border text-text placeholder-muted text-sm focus:outline-none focus:border-gold/60 transition-colors duration-300" />
+        <input type="password" name="password" placeholder="Пароль" required
+          class="w-full px-4 py-3 rounded-xl bg-surface border border-border text-text placeholder-muted text-sm focus:outline-none focus:border-gold/60 transition-colors duration-300" />
+        <button type="submit"
+          class="w-full py-3 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-all duration-300">
+          Зарегистрироваться
         </button>
       </form>
     </div>
@@ -145,6 +178,29 @@ async function loginWithTelegram() {
   }
 }
 
+function switchTab(tab) {
+  const tabLogin = document.getElementById('tab-login');
+  const tabRegister = document.getElementById('tab-register');
+  const formLogin = document.getElementById('form-login');
+  const formRegister = document.getElementById('form-register');
+  
+  if (tab === 'login') {
+    tabLogin.style.background = 'rgba(201, 168, 76, 0.2)';
+    tabLogin.style.color = '#C9A84C';
+    tabRegister.style.background = 'transparent';
+    tabRegister.style.color = '#999';
+    formLogin.style.display = 'block';
+    formRegister.style.display = 'none';
+  } else {
+    tabRegister.style.background = 'rgba(201, 168, 76, 0.2)';
+    tabRegister.style.color = '#C9A84C';
+    tabLogin.style.background = 'transparent';
+    tabLogin.style.color = '#999';
+    formRegister.style.display = 'block';
+    formLogin.style.display = 'none';
+  }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   const isTelegram = !!(window.Telegram?.WebApp?.initData && window.Telegram.WebApp.initData !== '');
 
@@ -154,6 +210,10 @@ document.addEventListener('DOMContentLoaded', function() {
   } else {
     document.getElementById('web-auth-block').style.display = 'flex';
   }
+  
+  // Always show email block and default to register tab
+  document.getElementById('email-block').style.display = 'block';
+  switchTab('register');
 });
 </script>
 {% endblock %}
