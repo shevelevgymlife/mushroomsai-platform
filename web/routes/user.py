@@ -18,6 +18,7 @@ from services.plan_access import plan_allowed_block_keys, can_create_community_g
 import sqlalchemy as sa
 import secrets
 import traceback as _traceback
+from datetime import datetime
 
 router = APIRouter()
 templates = Jinja2Templates(directory="web/templates")
@@ -69,11 +70,8 @@ async def compute_visible_blocks(user_id: int, plan: str) -> list[str]:
 
 def build_dashboard_secs(visible_block_keys: list[str]) -> list[str]:
     keys = set(visible_block_keys)
-    # Соцсеть: главный экран — профиль в стиле Instagram, лента отдельно
-    if "community" in keys:
-        out = ["me", "feed", "groups"]
-    else:
-        out = ["home"]
+    # Единый каркас как Instagram у всех: профиль, лента, группы; наполнение внутри — по тарифу (vbk)
+    out = ["me", "feed", "groups"]
     if "messages" in keys:
         out.append("messages")
     if "ai_chat" in keys:
@@ -158,6 +156,13 @@ async def dashboard(request: Request):
 
     effective_user_id = user.get("primary_user_id") or user["id"]
 
+    try:
+        await database.execute(
+            users.update().where(users.c.id == effective_user_id).values(last_seen_at=datetime.utcnow())
+        )
+    except Exception:
+        pass
+
     # Full profile first (bio, followers_count, following_count, etc.)
     full_profile = await database.fetch_one(users.select().where(users.c.id == effective_user_id))
     if full_profile:
@@ -197,13 +202,13 @@ async def dashboard(request: Request):
                 "VALUES (:uid, :name, :pc, :fc, :fgc) ON CONFLICT (user_id) DO UPDATE SET "
                 "display_name = EXCLUDED.display_name, posts_count = EXCLUDED.posts_count, "
                 "followers_count = EXCLUDED.followers_count, following_count = EXCLUDED.following_count"
-            ),
-            {
-                "uid": effective_user_id, "name": user.get("name"),
-                "pc": my_post_count,
-                "fc": user.get("followers_count") or 0,
-                "fgc": user.get("following_count") or 0,
-            },
+            ).bindparams(
+                uid=effective_user_id,
+                name=user.get("name"),
+                pc=my_post_count,
+                fc=user.get("followers_count") or 0,
+                fgc=user.get("following_count") or 0,
+            )
         )
     except Exception:
         pass
@@ -291,10 +296,13 @@ async def dashboard(request: Request):
                     FROM community_groups g
                     ORDER BY g.created_at DESC
                     LIMIT 80
-                """),
-                {"uid": effective_user_id},
+                """).bindparams(uid=effective_user_id)
             )
-            group_list = [dict(r) for r in _gr]
+            group_list = []
+            for r in _gr:
+                d = dict(r)
+                d["is_member"] = bool(d.get("is_member"))
+                group_list.append(d)
     except Exception:
         group_list = []
 
@@ -447,6 +455,10 @@ async def like_post(request: Request, post_id: int):
         return JSONResponse({"error": "auth required"}, status_code=401)
 
     uid = user.get("primary_user_id") or user["id"]
+    post_row = await database.fetch_one(community_posts.select().where(community_posts.c.id == post_id))
+    if not post_row:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    author_id = post_row.get("user_id")
     existing = await database.fetch_one(
         community_likes.select()
         .where(community_likes.c.post_id == post_id)
@@ -468,8 +480,13 @@ async def like_post(request: Request, post_id: int):
         return JSONResponse({"liked": False})
     else:
         try:
+            seen = author_id is not None and author_id == uid
             await database.execute(
-                community_likes.insert().values(post_id=post_id, user_id=uid)
+                community_likes.insert().values(
+                    post_id=post_id,
+                    user_id=uid,
+                    seen_by_post_owner=seen,
+                )
             )
             await database.execute(
                 community_posts.update().where(community_posts.c.id == post_id)
@@ -494,9 +511,13 @@ async def add_comment(request: Request, post_id: int, content: str = Form(...)):
         return JSONResponse({"error": "not found"}, status_code=404)
 
     uid = user.get("primary_user_id") or user["id"]
+    c_seen = post["user_id"] is not None and post["user_id"] == uid
     comment_id = await database.execute(
         community_comments.insert().values(
-            post_id=post_id, user_id=uid, content=content.strip()
+            post_id=post_id,
+            user_id=uid,
+            content=content.strip(),
+            seen_by_post_owner=c_seen,
         )
     )
     await database.execute(
@@ -994,10 +1015,14 @@ async def community_groups_list_api(request: Request):
             FROM community_groups g
             ORDER BY g.created_at DESC
             LIMIT 80
-        """),
-        {"uid": uid},
+        """).bindparams(uid=uid)
     )
-    return JSONResponse({"groups": [dict(r) for r in rows]})
+    out = []
+    for r in rows:
+        d = dict(r)
+        d["is_member"] = bool(d.get("is_member"))
+        out.append(d)
+    return JSONResponse({"groups": out})
 
 
 @router.post("/community/groups/create")
@@ -1013,7 +1038,7 @@ async def community_group_create(
     pl = await check_subscription(uid)
     if not can_create_community_groups(pl, user):
         return JSONResponse(
-            {"error": "Создание групп доступно с тарифов Про и Макси"},
+            {"error": "Создание групп доступно с активной подпиской (Старт и выше)"},
             status_code=403,
         )
     nm = (name or "").strip()
@@ -1025,8 +1050,7 @@ async def community_group_create(
     row = await database.fetch_one(
         sa.text(
             "INSERT INTO community_groups (name, description, created_by) VALUES (:n, :d, :c) RETURNING id"
-        ),
-        {"n": nm, "d": desc, "c": uid},
+        ).bindparams(n=nm, d=desc, c=uid)
     )
     gid = row["id"] if row else None
     if gid:
@@ -1071,6 +1095,7 @@ async def community_group_messages_get(request: Request, group_id: int):
         .order_by(community_group_messages.c.created_at.asc())
         .limit(200)
     )
+    is_admin = user.get("role") == "admin"
     out = []
     for r in rows:
         snd = r["sender_id"]
@@ -1085,6 +1110,7 @@ async def community_group_messages_get(request: Request, group_id: int):
             "sender_name": uname,
             "text": r["text"],
             "is_mine": snd == uid,
+            "can_delete": (snd == uid) or is_admin,
             "created_at": r["created_at"].strftime("%d.%m %H:%M") if r["created_at"] else "",
         })
     return JSONResponse({"messages": out})
@@ -1105,4 +1131,101 @@ async def community_group_message_post(request: Request, group_id: int):
     await database.execute(
         community_group_messages.insert().values(group_id=group_id, sender_id=uid, text=text)
     )
+    return JSONResponse({"ok": True})
+
+
+@router.delete("/community/groups/{group_id}/messages/{message_id}")
+async def community_group_message_delete(request: Request, group_id: int, message_id: int):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = user.get("primary_user_id") or user["id"]
+    if not await _user_in_community_group(group_id, uid):
+        return JSONResponse({"error": "not a member"}, status_code=403)
+    msg = await database.fetch_one(
+        community_group_messages.select()
+        .where(community_group_messages.c.id == message_id)
+        .where(community_group_messages.c.group_id == group_id)
+    )
+    if not msg:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    is_admin = user.get("role") == "admin"
+    if msg["sender_id"] != uid and not is_admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    await database.execute(
+        community_group_messages.delete()
+        .where(community_group_messages.c.id == message_id)
+        .where(community_group_messages.c.group_id == group_id)
+    )
+    return JSONResponse({"ok": True})
+
+
+async def _delete_community_post_and_related(post_id: int) -> None:
+    await database.execute(community_likes.delete().where(community_likes.c.post_id == post_id))
+    await database.execute(community_comments.delete().where(community_comments.c.post_id == post_id))
+    await database.execute(community_saved.delete().where(community_saved.c.post_id == post_id))
+    await database.execute(community_posts.delete().where(community_posts.c.id == post_id))
+
+
+@router.delete("/community/post/{post_id}")
+async def delete_community_post_user(request: Request, post_id: int):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = user.get("primary_user_id") or user["id"]
+    post = await database.fetch_one(community_posts.select().where(community_posts.c.id == post_id))
+    if not post:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    is_admin = user.get("role") == "admin"
+    if post["user_id"] != uid and not is_admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    await _delete_community_post_and_related(post_id)
+    return JSONResponse({"ok": True})
+
+
+@router.get("/community/activity/unread-count")
+async def community_activity_unread_count(request: Request):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"likes": 0, "comments": 0, "total": 0})
+    uid = user.get("primary_user_id") or user["id"]
+    subq = sa.select(community_posts.c.id).where(community_posts.c.user_id == uid)
+    try:
+        n_likes = await database.fetch_val(
+            sa.select(sa.func.count())
+            .select_from(community_likes)
+            .where(community_likes.c.post_id.in_(subq))
+            .where(community_likes.c.seen_by_post_owner.is_(False))
+        ) or 0
+        n_com = await database.fetch_val(
+            sa.select(sa.func.count())
+            .select_from(community_comments)
+            .where(community_comments.c.post_id.in_(subq))
+            .where(community_comments.c.seen_by_post_owner.is_(False))
+        ) or 0
+    except Exception:
+        n_likes, n_com = 0, 0
+    return JSONResponse({"likes": int(n_likes), "comments": int(n_com), "total": int(n_likes + n_com)})
+
+
+@router.post("/community/activity/mark-read")
+async def community_activity_mark_read(request: Request):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = user.get("primary_user_id") or user["id"]
+    subq = sa.select(community_posts.c.id).where(community_posts.c.user_id == uid)
+    try:
+        await database.execute(
+            community_likes.update()
+            .where(community_likes.c.post_id.in_(subq))
+            .values(seen_by_post_owner=True)
+        )
+        await database.execute(
+            community_comments.update()
+            .where(community_comments.c.post_id.in_(subq))
+            .values(seen_by_post_owner=True)
+        )
+    except Exception:
+        pass
     return JSONResponse({"ok": True})

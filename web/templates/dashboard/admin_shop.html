@@ -23,17 +23,6 @@
     {% if products %}
     <div id="shop-products-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
       {% for p in products %}
-      {% set _p = {
-        'id': p.id,
-        'name': p.name or '',
-        'description': p.description or '',
-        'price': p.price|int if p.price is not none else 0,
-        'url': p.url or '',
-        'mushroom_type': p.mushroom_type or '',
-        'image_url': p.image_url or '',
-        'category': p.category or '',
-        'in_stock': p.in_stock != false
-      } %}
       <div class="p-5 rounded-2xl bg-surface border border-border hover:border-gold/30 transition-colors group">
         {% if p.image_url %}
         <div class="w-full h-40 rounded-xl overflow-hidden mb-4 bg-bg">
@@ -73,9 +62,15 @@
         <a href="{{ p.url }}" target="_blank" class="text-xs text-gold hover:underline block mb-4 truncate">{{ p.url }}</a>
         {% endif %}
 
+        <div class="flex flex-wrap gap-2 mb-2">
+          <a href="/shop/{{ p.id }}" target="_blank" rel="noopener"
+            class="text-xs px-3 py-1.5 rounded-lg border border-gold/25 text-gold hover:bg-gold/10 transition-colors" style="text-decoration:none">
+            Отзывы на сайте ↗
+          </a>
+        </div>
         <div class="flex gap-2">
           <button type="button" class="js-edit-shop-product"
-            data-product="{{ _p | tojson }}"
+            data-product-id="{{ p.id }}"
             style="min-height:44px;flex:1;padding:10px 14px;border-radius:10px;font-size:13px;border:1px solid rgba(255,255,255,.15);color:#aaa;background:none;cursor:pointer;transition:all .2s;touch-action:manipulation"
             onmouseover="this.style.borderColor='#C9A84C';this.style.color='#C9A84C'"
             onmouseout="this.style.borderColor='rgba(255,255,255,.15)';this.style.color='#aaa'">
@@ -368,17 +363,22 @@ function closeEditModal() {
 document.addEventListener('DOMContentLoaded', function() {
   var grid = document.getElementById('shop-products-grid');
   if (grid) {
-    grid.addEventListener('click', function(e) {
+    grid.addEventListener('click', async function(e) {
       var btn = e.target.closest('.js-edit-shop-product');
       if (!btn) return;
       e.preventDefault();
-      var raw = btn.getAttribute('data-product');
-      if (!raw) return;
+      var pid = btn.getAttribute('data-product-id');
+      if (!pid) return;
       try {
-        var pr = JSON.parse(raw);
+        var resp = await fetch('/admin/shop/product/' + pid, { credentials: 'same-origin' });
+        var pr = await resp.json();
+        if (!resp.ok || pr.error) {
+          alert(pr.error || 'Ошибка загрузки товара');
+          return;
+        }
         openEditModal(
-          pr.id, pr.name, pr.description, pr.price, pr.url,
-          pr.mushroom_type, pr.image_url, pr.category, pr.in_stock
+          pr.id, pr.name || '', pr.description || '', pr.price || 0, pr.url || '',
+          pr.mushroom_type || '', pr.image_url || '', pr.category || '', !!pr.in_stock
         );
       } catch (err) {
         console.error(err);

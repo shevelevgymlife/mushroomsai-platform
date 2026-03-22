@@ -37,6 +37,7 @@ users = sqlalchemy.Table(
     sqlalchemy.Column("needs_tariff_choice", sqlalchemy.Boolean, default=False, server_default="false"),
     sqlalchemy.Column("marketplace_seller", sqlalchemy.Boolean, default=False, server_default="false"),
     sqlalchemy.Column("referral_balance", sqlalchemy.Numeric(12, 2), default=0, server_default="0"),
+    sqlalchemy.Column("last_seen_at", sqlalchemy.DateTime, nullable=True),
 )
 
 sessions = sqlalchemy.Table(
@@ -249,6 +250,12 @@ community_comments = sqlalchemy.Table(
     sqlalchemy.Column("post_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("community_posts.id"), nullable=False),
     sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=True),
     sqlalchemy.Column("content", sqlalchemy.Text, nullable=False),
+    sqlalchemy.Column(
+        "seen_by_post_owner",
+        sqlalchemy.Boolean,
+        default=True,
+        server_default="true",
+    ),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
 
@@ -258,6 +265,12 @@ community_likes = sqlalchemy.Table(
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
     sqlalchemy.Column("post_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("community_posts.id"), nullable=False),
     sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=False),
+    sqlalchemy.Column(
+        "seen_by_post_owner",
+        sqlalchemy.Boolean,
+        default=True,
+        server_default="true",
+    ),
 )
 
 feedback = sqlalchemy.Table(
@@ -399,6 +412,13 @@ blocked_identities = sqlalchemy.Table(
     sqlalchemy.Column("id_value", sqlalchemy.String(512), nullable=False),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
     sqlalchemy.UniqueConstraint("id_type", "id_value", name="uq_blocked_identities_type_value"),
+)
+
+ai_training_folders = sqlalchemy.Table(
+    "ai_training_folders",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("name", sqlalchemy.Text, unique=True, nullable=False),
 )
 
 ai_training_posts = sqlalchemy.Table(

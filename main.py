@@ -91,6 +91,10 @@ async def lifespan(app: FastAPI):
             created_at TIMESTAMP DEFAULT NOW()
         )""",
         "CREATE INDEX IF NOT EXISTS idx_cggm_group_time ON community_group_messages(group_id, created_at)",
+        """CREATE TABLE IF NOT EXISTS ai_training_folders (
+            id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL UNIQUE
+        )""",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS needs_tariff_choice BOOLEAN DEFAULT false",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS marketplace_seller BOOLEAN DEFAULT false",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_balance NUMERIC(12,2) DEFAULT 0",
@@ -101,6 +105,9 @@ async def lifespan(app: FastAPI):
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_link_label TEXT",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_link_url TEXT",
         "ALTER TABLE ai_training_posts ADD COLUMN IF NOT EXISTS folder TEXT",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP",
+        "ALTER TABLE community_likes ADD COLUMN IF NOT EXISTS seen_by_post_owner BOOLEAN NOT NULL DEFAULT true",
+        "ALTER TABLE community_comments ADD COLUMN IF NOT EXISTS seen_by_post_owner BOOLEAN NOT NULL DEFAULT true",
     ]
     try:
         await database.execute(
@@ -135,8 +142,7 @@ async def lifespan(app: FastAPI):
                     sa.text(
                         "INSERT INTO dashboard_blocks (block_key, block_name, position, is_visible, access_level) "
                         "VALUES (:k, :n, :p, true, :al) ON CONFLICT (block_key) DO NOTHING"
-                    ),
-                    {"k": key, "n": name, "p": pos, "al": al},
+                    ).bindparams(k=key, n=name, p=pos, al=al)
                 )
             logger.info("Seeded dashboard_blocks defaults")
         else:
@@ -153,6 +159,18 @@ async def lifespan(app: FastAPI):
                     "UPDATE dashboard_blocks SET is_visible = true, access_level = 'all' "
                     "WHERE block_key = 'referral'"
                 )
+            )
+        # Блоки Про/Макси (если записей ещё не было при старой БД)
+        for key, name, pos, al in (
+            ("pro_telegram", "Подарок Telegram (Про)", 90, "pro"),
+            ("pro_pin_info", "Закреп в ленте (Про)", 91, "pro"),
+            ("seller_marketplace", "Кабинет продавца (Макси)", 92, "maxi"),
+        ):
+            await database.execute(
+                sa.text(
+                    "INSERT INTO dashboard_blocks (block_key, block_name, position, is_visible, access_level) "
+                    "VALUES (:k, :n, :p, true, :al) ON CONFLICT (block_key) DO NOTHING"
+                ).bindparams(k=key, n=name, p=pos, al=al)
             )
     except Exception as e:
         logger.warning(f"dashboard_blocks seed: {e}")

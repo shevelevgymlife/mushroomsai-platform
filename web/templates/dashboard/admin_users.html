@@ -22,14 +22,22 @@
     <div class="md:hidden space-y-3 mb-6">
       {% for u in users %}
       {% set is_protected = (u.role == 'admin' or u.tg_id == 742166400 or u.linked_tg_id == 742166400) %}
+      {% set is_super = (user.tg_id == 742166400 or user.linked_tg_id == 742166400) %}
       <div class="rounded-2xl bg-surface border border-border p-4 space-y-3">
         <div class="flex items-start justify-between gap-2">
           <div class="flex items-center gap-2 min-w-0">
+            {% if u.avatar %}
+            <img src="{{ u.avatar }}" alt="" class="w-10 h-10 rounded-full object-cover border border-gold/25 flex-shrink-0" />
+            {% else %}
             <div class="w-10 h-10 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center text-sm text-gold font-medium flex-shrink-0">
               {{ (u.name or 'U')[0]|upper }}
             </div>
+            {% endif %}
             <div class="min-w-0">
-              <a href="/community/profile/{{ u.id }}" target="_blank" class="font-medium text-text text-sm truncate block hover:text-gold" style="text-decoration:none">{{ u.name or '—' }}</a>
+              <div class="flex items-center gap-1.5">
+                <span class="inline-block w-2 h-2 rounded-full shrink-0 {{ 'bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.5)]' if u.is_online else 'bg-zinc-600' }}" title="{% if u.is_online %}Онлайн{% else %}Не в сети{% endif %}"></span>
+                <a href="/community/profile/{{ u.id }}" target="_blank" class="font-medium text-text text-sm truncate block hover:text-gold" style="text-decoration:none">{{ u.name or '—' }}</a>
+              </div>
               <p class="text-xs text-muted font-mono">{{ u.display_tg_id or '—' }}</p>
             </div>
           </div>
@@ -48,10 +56,21 @@
         </div>
         <button type="button" onclick="toggleAct('actm{{ u.id }}')" class="w-full py-2 rounded-xl border border-border text-sm text-muted">Действия ▾</button>
         <div id="actm{{ u.id }}" class="hidden rounded-xl border border-border overflow-hidden divide-y divide-border">
-          <a href="/admin/users/{{ u.id }}/dialogs" class="block px-3 py-2.5 text-sm text-text hover:bg-border/20" style="text-decoration:none">Диалоги AI</a>
-          <button type="button" onclick="closeAllActs();openSubModal({{ u.id }}, '{{ u.name | e }}', '{{ u.subscription_plan }}')" class="w-full text-left px-3 py-2.5 text-sm text-text hover:bg-border/20">Подписка</button>
+          <a href="/admin/users/{{ u.id }}/dialogs" class="block px-3 py-2.5 text-sm text-text hover:bg-border/20" style="text-decoration:none">💬 Диалоги с AI</a>
+          <button type="button" onclick="closeAllActs();openMsgModal({{ u.id }}, '{{ u.name | e }}', '{{ u.display_tg_id or '' }}')" class="w-full text-left px-3 py-2.5 text-sm text-text hover:bg-border/20">✉️ Написать в Telegram</button>
+          <button type="button" onclick="closeAllActs();openSubModal({{ u.id }}, '{{ u.name | e }}', '{{ u.subscription_plan }}')" class="w-full text-left px-3 py-2.5 text-sm text-text hover:bg-border/20">⭐ Подписка</button>
+          <button type="button" onclick="closeAllActs();toggleMarketplaceSeller({{ u.id }}, {{ 'true' if u.marketplace_seller else 'false' }})" class="w-full text-left px-3 py-2.5 text-sm text-text hover:bg-border/20">🏪 Продавец маркетплейса</button>
+          {% if is_super %}
+          <button type="button" onclick="closeAllActs();openPermModal({{ u.id }}, '{{ u.name | e }}')" class="w-full text-left px-3 py-2.5 text-sm text-gold hover:bg-border/20">🔑 Права доступа</button>
+          <button type="button" onclick="closeAllActs();openRoleModal({{ u.id }}, '{{ u.name | e }}', '{{ u.role }}')" class="w-full text-left px-3 py-2.5 text-sm text-text hover:bg-border/20">👤 Роль</button>
+          {% endif %}
+          {% if u.is_banned or (u.ban_until and u.ban_until > now) %}
+          <button type="button" onclick="closeAllActs();unbanUser({{ u.id }})" class="w-full text-left px-3 py-2.5 text-sm text-green-400 hover:bg-border/20">✅ Разбанить</button>
+          {% else %}
+          <button type="button" onclick="closeAllActs();banUser({{ u.id }}, '{{ u.name | e }}')" class="w-full text-left px-3 py-2.5 text-sm text-orange-400 hover:bg-border/20">🚫 Заблокировать</button>
+          {% endif %}
           {% if not is_protected %}
-          <button type="button" onclick="closeAllActs();banUser({{ u.id }}, '{{ u.name | e }}')" class="w-full text-left px-3 py-2.5 text-sm text-orange-400 hover:bg-border/20">Блок</button>
+          <button type="button" onclick="closeAllActs();deleteForever({{ u.id }}, '{{ u.name | e }}')" class="w-full text-left px-3 py-2.5 text-sm text-red-400 hover:bg-border/20">🗑️ Удалить навсегда</button>
           {% endif %}
         </div>
       </div>
@@ -74,13 +93,19 @@
           <tbody>
             {% for u in users %}
             {% set is_protected = (u.role == 'admin' or u.tg_id == 742166400 or u.linked_tg_id == 742166400) %}
+            {% set is_super = (user.tg_id == 742166400 or user.linked_tg_id == 742166400) %}
             <tr class="border-b border-border last:border-0 hover:bg-border/20 transition-colors">
               <td class="px-4 py-3 text-xs text-muted">{{ u.id }}</td>
               <td class="px-4 py-3">
                 <div class="flex items-center gap-2">
+                  {% if u.avatar %}
+                  <img src="{{ u.avatar }}" alt="" class="w-7 h-7 rounded-full object-cover border border-gold/25 flex-shrink-0" />
+                  {% else %}
                   <div class="w-7 h-7 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center text-xs text-gold font-medium flex-shrink-0">
                     {{ (u.name or 'U')[0]|upper }}
                   </div>
+                  {% endif %}
+                  <span class="inline-block w-2 h-2 rounded-full shrink-0 {{ 'bg-green-400' if u.is_online else 'bg-zinc-600' }}" title="{% if u.is_online %}Онлайн{% else %}Не в сети{% endif %}"></span>
                   <a href="/community/profile/{{ u.id }}" target="_blank" class="text-sm text-text hover:text-gold transition-colors" style="text-decoration:none">{{ u.name or '—' }}</a>
                 </div>
               </td>
@@ -132,7 +157,6 @@
               <td class="px-4 py-3 text-xs text-muted">{{ msg_counts.get(u.id, 0) }}</td>
               <td class="px-4 py-3 text-xs text-muted">{{ u.created_at.strftime('%d.%m.%Y') if u.created_at else '—' }}</td>
               <td class="px-4 py-3" style="overflow:visible">
-                {% set is_super = (user.tg_id == 742166400 or user.linked_tg_id == 742166400) %}
                 <div class="relative" style="z-index:{{ loop.revindex + 10 }}">
                   <button onclick="toggleAct('act{{ u.id }}')"
                     style="min-height:36px;padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.15);color:#aaa;background:none;cursor:pointer;font-size:12px;white-space:nowrap;touch-action:manipulation"
@@ -321,12 +345,22 @@ let currentUserId = null;
 // ── Dropdown actions ─────────────────────────────────────────────────────────
 function toggleAct(id) {
   const el = document.getElementById(id);
-  const isHidden = el.style.display === 'none';
+  if (!el) return;
+  if (id.startsWith('actm')) {
+    const wasHidden = el.classList.contains('hidden');
+    document.querySelectorAll('[id^="actm"]').forEach(x => x.classList.add('hidden'));
+    if (wasHidden) el.classList.remove('hidden');
+    return;
+  }
+  const isHidden = window.getComputedStyle(el).display === 'none';
   closeAllActs();
   el.style.display = isHidden ? 'block' : 'none';
 }
 function closeAllActs() {
-  document.querySelectorAll('[id^="act"]').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('[id^="act"]').forEach(el => {
+    if (el.id.startsWith('actm')) el.classList.add('hidden');
+    else el.style.display = 'none';
+  });
 }
 document.addEventListener('click', function(e) {
   if (!e.target.closest('[id^="act"]') && !e.target.closest('button[onclick*="toggleAct"]')) closeAllActs();

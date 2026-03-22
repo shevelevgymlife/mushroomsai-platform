@@ -1,16 +1,37 @@
-<!-- Social Network Block -->
+<!-- Social Network Block — мягкие формы, без острых углов, золотой акцент -->
 <section class="py-20 sm:py-28 overflow-hidden relative">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="max-w-3xl mx-auto text-center mb-12 sm:mb-16">
-      <div class="flex justify-center mb-6">
-        <span class="h-1 w-16 rounded-full bg-gradient-to-r from-transparent via-gold to-transparent opacity-90"></span>
+    <div class="max-w-3xl mx-auto mb-12 sm:mb-16">
+      <div class="relative rounded-[28px] p-8 sm:p-10 md:p-12 text-center overflow-hidden"
+        style="background:linear-gradient(155deg,rgba(28,28,28,.95) 0%,rgba(10,10,10,.98) 50%,rgba(18,16,12,.96) 100%);
+        box-shadow:0 24px 80px rgba(0,0,0,.55),0 0 0 1px rgba(201,168,76,.12),inset 0 1px 0 rgba(255,255,255,.06)">
+        <div class="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full opacity-[0.14] blur-3xl" style="background:radial-gradient(circle,#C9A84C 0%,transparent 70%)"></div>
+        <div class="pointer-events-none absolute -bottom-20 -left-10 w-64 h-64 rounded-full opacity-[0.1] blur-3xl" style="background:radial-gradient(circle,#e8e8e8 0%,transparent 65%)"></div>
+        <div class="relative z-[1]">
+          <p class="text-[11px] sm:text-xs font-semibold tracking-[0.2em] text-gold uppercase mb-4">MushroomsAI</p>
+          <h2 class="font-display text-2xl sm:text-3xl md:text-4xl lg:text-[2.65rem] font-semibold text-text mb-5 tracking-tight leading-tight">
+            {{ blocks.community.title if blocks and 'community' in blocks else 'Протоколы · консультации · сообщество' }}
+          </h2>
+          <p class="text-muted text-sm sm:text-base leading-relaxed max-w-lg mx-auto mb-8">
+            {{ blocks.community.subtitle if blocks and 'community' in blocks else 'Присоединяйся к ' ~ users_count ~ '+ участникам — мягкий тёмный интерфейс, общий чат и лента без лишнего шума' }}
+          </p>
+          <div class="h-px max-w-xs mx-auto mb-8 rounded-full opacity-40" style="background:linear-gradient(90deg,transparent,rgba(201,168,76,.5),transparent)"></div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-left max-w-2xl mx-auto text-xs sm:text-sm">
+            <div>
+              <div class="text-[10px] uppercase tracking-wider text-muted mb-1">Фокус</div>
+              <div class="text-gold font-medium">Функциональные грибы</div>
+            </div>
+            <div>
+              <div class="text-[10px] uppercase tracking-wider text-muted mb-1">Формат</div>
+              <div class="text-text font-medium">AI + эксперт · 24/7</div>
+            </div>
+            <div>
+              <div class="text-[10px] uppercase tracking-wider text-muted mb-1">Доступ</div>
+              <div class="text-text font-medium">Telegram · сайт · кабинет</div>
+            </div>
+          </div>
+        </div>
       </div>
-      <h2 class="font-display text-3xl sm:text-4xl lg:text-5xl font-semibold text-text mb-5 tracking-tight">
-        {{ blocks.community.title if blocks and 'community' in blocks else 'Соц. сеть MushroomsAI' }}
-      </h2>
-      <p class="text-muted text-base sm:text-lg leading-relaxed max-w-xl mx-auto">
-        {{ blocks.community.subtitle if blocks and 'community' in blocks else 'Присоединяйся к ' ~ users_count ~ '+ участникам — создавай страницу, публикуй опыт и получай советы от живого сообщества' }}
-      </p>
     </div>
 
     {% set static_cards = [
@@ -26,7 +47,7 @@
       {% for i in range(6) %}
         {% set sc = static_cards[i] %}
         {% set real = community_members[i] if community_members and i < community_members|length else none %}
-        <div class="panel-rise p-5 sm:p-6 text-center transition-all duration-300 hover:border-gold/25 hover:-translate-y-0.5 {{ 'ring-1 ring-gold/25 shadow-[0_0_40px_rgba(201,168,76,0.08)]' if i == 0 else '' }}">
+        <div class="panel-rise rounded-[22px] p-5 sm:p-6 text-center transition-all duration-300 hover:border-gold/25 hover:-translate-y-0.5 {{ 'ring-1 ring-gold/25 shadow-[0_0_40px_rgba(201,168,76,0.08)]' if i == 0 else '' }}">
           <div class="mx-auto mb-3 sm:mb-4 rounded-full border-2 border-gold/50 overflow-hidden {{ 'w-16 h-16' if i == 0 else 'w-14 h-14' }}">
             {% if real and real.avatar %}
             <img src="{{ real.avatar }}" class="w-full h-full object-cover" alt="">
@@ -46,7 +67,7 @@
 
     {% if last_community_posts %}
     {% set lp = last_community_posts[0] %}
-    <div class="panel-rise p-5 sm:p-6 mb-10 max-w-3xl mx-auto">
+    <div class="panel-rise rounded-[22px] p-5 sm:p-6 mb-10 max-w-3xl mx-auto">
       <p class="section-eyebrow mb-4">Последний пост в сообществе</p>
       <div class="flex gap-3 sm:gap-4 items-start">
         {% if lp.author_avatar %}

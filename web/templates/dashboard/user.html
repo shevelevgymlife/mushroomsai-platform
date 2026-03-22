@@ -132,10 +132,21 @@
 .ig-groups-chat{display:flex;flex-direction:column;min-height:420px;max-height:72vh}
 .ig-g-item{padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.08);margin-bottom:8px;cursor:pointer;transition:all .2s;background:rgba(255,255,255,.02)}
 .ig-g-item:hover,.ig-g-item.on{border-color:rgba(201,168,76,.45);background:rgba(201,168,76,.06)}
-.ig-g-msg-wrap{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;background:rgba(0,0,0,.25);border-radius:12px;border:1px solid rgba(255,255,255,.06)}
-.ig-g-bubble{max-width:88%;padding:10px 14px;border-radius:14px;font-size:14px;line-height:1.45;word-break:break-word}
-.ig-g-bubble.me{align-self:flex-end;background:rgba(201,168,76,.18);border:1px solid rgba(201,168,76,.35);color:#f5f0e6}
-.ig-g-bubble.them{align-self:flex-start;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);color:#ddd}
+.ig-g-msg-wrap{flex:1;overflow-y:auto;padding:10px 8px 12px;display:flex;flex-direction:column;gap:6px;background:#0e0e0e;border-radius:12px;border:1px solid rgba(255,255,255,.06)}
+.ig-g-row{display:flex;flex-direction:column;width:100%}
+.ig-g-row.me{align-items:flex-end}
+.ig-g-row.them{align-items:flex-start}
+.ig-g-bubble{max-width:min(82%,360px);padding:8px 12px 6px;border-radius:16px;font-size:14px;line-height:1.45;word-break:break-word;position:relative}
+.ig-g-bubble.me{border-bottom-right-radius:5px;background:#2d2a22;border:1px solid rgba(201,168,76,.28);color:#f2efe6;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.ig-g-bubble.them{border-bottom-left-radius:5px;background:#1f1f1f;border:1px solid rgba(255,255,255,.07);color:#e4e4e4}
+.ig-g-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;min-height:18px}
+.ig-g-name{font-size:12px;font-weight:600;color:#C9A84C;opacity:.95}
+.ig-g-bubble.them .ig-g-name{color:#9ca3af}
+.ig-g-del{border:none;background:transparent;color:#888;cursor:pointer;font-size:18px;line-height:1;padding:0 2px;opacity:.65}
+.ig-g-del:hover{color:#f87171;opacity:1}
+.ig-g-text{white-space:pre-wrap}
+.ig-g-time{font-size:10px;color:#555;margin-top:4px;text-align:right}
+.ig-g-bubble.them .ig-g-time{text-align:left}
 
 /* ── Util ── */
 .sect-title{font-size:22px;font-weight:700;color:#e8e8e8;margin-bottom:20px}
@@ -179,6 +190,9 @@
 .ig-tabbar .ig-tab.on .stroke-ico{color:#e8e8e8}
 .ig-ham .stroke-ico{color:#e8e8e8}
 .ig-head-msg .stroke-ico{width:22px;height:22px}
+.ig-head-row{display:flex;align-items:center;gap:6px}
+.ig-act-badge{position:relative}
+.ig-act-badge .ig-bell-count{position:absolute;top:-4px;right:-6px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:linear-gradient(135deg,#ef4444,#b91c1c);color:#fff;font-size:10px;font-weight:800;display:none;align-items:center;justify-content:center;line-height:1;box-shadow:0 0 12px rgba(239,68,68,.45)}
 .ig-me-shell{width:100%;max-width:min(100%,935px);margin:0 auto;padding-bottom:8px}
 .ig-profile-head{display:flex;gap:22px;align-items:center;padding:8px 0 24px;flex-wrap:wrap}
 @media(min-width:640px){.ig-profile-head{gap:32px}}
@@ -197,19 +211,28 @@
 
 {% from 'components/stroke_icons.html' import ico %}
 {% set vbk = visible_block_keys if visible_block_keys is defined else ['ai_chat','messages','community','shop','profile_photo','posts','tariffs','referral','knowledge_base'] %}
-{% set ig_social = 'community' in vbk %}
-{% set dash_home = 'me' if ig_social else 'home' %}
+{# Один интерфейс как Instagram у всех; блоки внутри (лента/посты) по тарифу — см. vbk #}
+{% set ig_social = true %}
+{% set dash_home = 'me' %}
 {% set grid_posts = my_grid_posts if my_grid_posts is defined else [] %}
 <div class="db-wrap{% if ig_social %} db-ig-mode{% endif %}">
   {% if ig_social %}
   <header class="ig-dash-header" aria-label="Панель ленты">
     <button type="button" class="ig-ham" onclick="toggleDbDrawer()" aria-label="Открыть меню">{{ ico('menu') }}</button>
-    <span class="ig-head-brand">MushroomsAI</span>
+    <button type="button" class="ig-head-brand" style="background:none;border:none;cursor:pointer;padding:0;font:inherit" onclick="goSec('me')" title="Мой профиль">MushroomsAI</button>
+    <div class="ig-head-row" style="margin-left:auto">
+    {% if 'community' in vbk %}
+    <button type="button" class="ig-head-msg ig-act-badge" style="border:none;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center" title="Лайки и комментарии к вашим постам" aria-label="Активность" onclick="goSec('feed')">
+      <span style="font-size:18px;line-height:1">🔔</span>
+      <span id="dashActivityBadge" class="ig-bell-count">0</span>
+    </button>
+    {% endif %}
     {% if 'messages' in vbk %}
     <button type="button" class="ig-head-msg" style="border:none;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center" title="Сообщения" aria-label="Сообщения" onclick="goSec('messages')">{{ ico('message') }}</button>
-    {% else %}
+    {% elif not ('community' in vbk) %}
     <span style="width:44px"></span>
     {% endif %}
+    </div>
   </header>
   <div class="ig-drawer-backdrop" id="dbDrawerBackdrop" onclick="closeDbDrawer()"></div>
   <aside class="ig-drawer" id="dbDrawer" aria-label="Меню">
@@ -247,6 +270,8 @@
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('referral')"><span class="e">{{ ico('gift') }}</span><span class="lbl">Реферальная программа</span></button>
       {% endif %}
       <div class="ig-drawer-sep"></div>
+      <a href="https://wallet.decimalchain.com/" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none"><span class="e">{{ ico('wallet') }}</span><span class="lbl">Кошелёк Decimal (web)</span></a>
+      <a href="https://play.google.com/store/apps/details?id=com.chain.decimal" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none"><span class="e">📱</span><span class="lbl">Decimal Wallet — Android</span></a>
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();connectMetaMask()"><span class="e">{{ ico('wallet') }}</span><span class="lbl">MetaMask / кошелёк</span></button>
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();document.getElementById('sync-modal').style.display='flex'"><span class="e">{{ ico('link') }}</span><span class="lbl">Синхронизация аккаунтов</span></button>
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('link')"><span class="e">{{ ico('link') }}</span><span class="lbl">Привязка Telegram / Google</span></button>
@@ -468,8 +493,8 @@
     {% endif %}
 
     <!-- ══ FEED ══ -->
-    {% if 'community' in vbk %}
     <section class="db-sec{% if not ig_social %} active{% endif %}" id="sec-feed">
+      {% if 'community' in vbk %}
       <div class="ig-feed-shell">
       {% if not ig_social %}
       <div class="ig-feed-topbar">
@@ -550,6 +575,7 @@
       {% for p in feed_raw %}
       {% set a = feed_authors.get(p.user_id) %}
       {% set is_mine = p.user_id == effective_user_id %}
+      {% set is_admin = (user.role | default('', true)) == 'admin' %}
       {% set is_following_author = p.user_id in following_ids %}
       {% set is_liked = p.id in liked_post_ids %}
       <div class="fp ig-post" id="fp-{{ p.id }}" data-uid="{{ p.user_id }}" data-mine="{{ 'true' if is_mine else 'false' }}" data-following="{{ 'true' if is_following_author else 'false' }}">
@@ -570,6 +596,9 @@
             {% endif %}
             <div style="font-size:11px;color:#888">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}{% if p.pinned %} · 📌{% endif %}</div>
           </div>
+          {% if is_mine or is_admin %}
+          <button type="button" class="ig-act" style="flex-shrink:0;align-self:flex-start;padding:6px;font-size:15px;opacity:.75" title="Удалить пост" aria-label="Удалить пост" onclick="deleteFeedPost({{ p.id }})">🗑</button>
+          {% endif %}
         </div>
         {% if p.image_url %}
         <img src="{{ p.image_url }}" class="ig-post-img" loading="lazy" alt="">
@@ -599,11 +628,24 @@
       {% endif %}
       </div>
       </div><!-- /ig-feed-shell -->
+      {% else %}
+      <div class="ig-feed-shell">
+        <div class="card" style="padding:28px 22px;text-align:center;border-radius:24px;border:1px solid rgba(201,168,76,.2);background:linear-gradient(165deg,rgba(28,28,28,.9),rgba(10,10,10,.95));box-shadow:0 20px 60px rgba(0,0,0,.45),0 0 0 1px rgba(201,168,76,.08)">
+          <div style="font-size:42px;margin-bottom:14px">🍄</div>
+          <h2 style="font-size:18px;font-weight:700;color:#e8e8e8;margin:0 0 10px">Лента сообщества</h2>
+          <p style="font-size:14px;color:#888;line-height:1.65;margin:0 0 20px;max-width:340px;margin-left:auto;margin-right:auto">Публикации, истории и общение с участниками доступны с тарифа <strong class="gold">Старт</strong> и выше.</p>
+          {% if 'tariffs' in vbk %}
+          <button type="button" class="btn-g" style="padding:12px 28px;border-radius:14px" onclick="goSec('plan')">Посмотреть тарифы</button>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
     </section>
 
-    <!-- ══ GROUP CHATS (тариф Старт+; создание групп — Про/Макси) ══ -->
+    <!-- ══ GROUP CHATS (общение — Старт+; создание групп — Старт+) ══ -->
     {% set group_list = group_list | default([]) %}
     <section class="db-sec" id="sec-groups">
+      {% if 'community' in vbk %}
       <div class="sect-title" style="margin-bottom:8px">Групповые чаты</div>
       <p class="muted" style="margin-bottom:18px;font-size:14px;line-height:1.5">Создайте тему — все участники смогут писать в общий чат. Цвета как на главной: тёмный фон и золото.</p>
       <div class="ig-groups-wrap">
@@ -611,7 +653,7 @@
           {% if can_create_groups %}
           <button type="button" class="btn-g" style="width:100%;margin-bottom:14px" onclick="document.getElementById('grpCreateModal').style.display='flex'">+ Создать группу</button>
           {% else %}
-          <p class="muted" style="font-size:12px;margin-bottom:14px;line-height:1.5">Создание групп доступно с тарифа <strong class="gold">Про</strong> и выше. В тарифе Старт можно общаться в существующих группах.</p>
+          <p class="muted" style="font-size:12px;margin-bottom:14px;line-height:1.5">Создание групп доступно с тарифа <strong class="gold">Старт</strong> и выше при активной подписке.</p>
           {% endif %}
           <div id="groupListEl" style="font-size:13px">
             {% if group_list %}
@@ -643,8 +685,17 @@
           </div>
         </div>
       </div>
+      {% else %}
+      <div class="sect-title" style="margin-bottom:8px">Групповые чаты</div>
+      <div class="card" style="padding:28px 22px;text-align:center;border-radius:24px;border:1px solid rgba(201,168,76,.2);background:linear-gradient(165deg,rgba(28,28,28,.9),rgba(10,10,10,.95))">
+        <div style="font-size:40px;margin-bottom:12px">💬</div>
+        <p style="font-size:14px;color:#888;line-height:1.65;margin:0;max-width:360px;margin-left:auto;margin-right:auto">Групповые чаты доступны с тарифа <strong class="gold">Старт</strong> и выше вместе с разделом «Сообщество».</p>
+        {% if 'tariffs' in vbk %}
+        <button type="button" class="btn-g" style="margin-top:18px;padding:10px 24px;border-radius:14px" onclick="goSec('plan')">Тарифы</button>
+        {% endif %}
+      </div>
+      {% endif %}
     </section>
-    {% endif %}
 
     <!-- ══ MESSAGES ══ -->
     {% if 'messages' in vbk %}
@@ -1168,14 +1219,15 @@
 </div>
 
 <script>
+window._needTariffForCommunity = {{ (('community' not in vbk) and ('tariffs' in vbk)) | tojson }};
 // Auto-open sync modal if ?linked= in URL
 if (window.location.search.includes('linked=')) {
   document.getElementById('sync-modal').style.display = 'flex';
 }
 
 // ── Section routing ──
-const SECS = {{ dashboard_secs | default(['home','feed','groups','messages','ai','knowledge','shop','plan','orders','referral','link','language','profile']) | tojson }};
-const DEFAULT_SEC = SECS.includes('home') ? 'home' : (SECS[0] || 'feed');
+const SECS = {{ dashboard_secs | default(['me','feed','groups','messages','ai','knowledge','shop','plan','orders','referral','link','language','profile']) | tojson }};
+const DEFAULT_SEC = SECS.includes('me') ? 'me' : (SECS.includes('home') ? 'home' : (SECS[0] || 'feed'));
 function closeDbDrawer(){
   document.getElementById('dbDrawer')?.classList.remove('open');
   document.getElementById('dbDrawerBackdrop')?.classList.remove('on');
@@ -1189,6 +1241,7 @@ function igTabCreate(){
   setTimeout(()=>{
     const t=document.getElementById('quickPostText');
     if(t){t.focus();t.scrollIntoView({behavior:'smooth',block:'center'})}
+    else if(window._needTariffForCommunity){goSec('plan');}
   },200);
 }
 function syncIgTabbar(id){
@@ -1213,7 +1266,9 @@ function goSec(id){
   syncIgTabbar(id);
   if(id==='ai'){setTimeout(()=>{const b=document.getElementById('chatBox');if(b)b.scrollTop=b.scrollHeight},100)}
   if(id==='messages')loadDMPreview();
+  if(id==='feed'){setTimeout(()=>{markActivityRead();},500);}
   if(id==='groups'){setTimeout(()=>{const p=document.getElementById('groupMsgBox');if(p)p.scrollTop=p.scrollHeight},80)}
+  else stopGroupPoll();
   if(id==='me'||id==='profile')setTimeout(initShevelevOnLoad,100);
 }
 
@@ -1227,6 +1282,32 @@ window.addEventListener('hashchange',()=>{
   const h=(location.hash||'').replace('#','');
   if(SECS.includes(h))goSec(h);
 });
+
+async function markActivityRead(){
+  try{
+    await fetch('/community/activity/mark-read',{method:'POST',credentials:'same-origin'});
+    refreshActivityCount();
+  }catch(e){}
+}
+async function refreshActivityCount(){
+  const el=document.getElementById('dashActivityBadge');
+  if(!el)return;
+  try{
+    const r=await fetch('/community/activity/unread-count',{credentials:'same-origin'});
+    const d=await r.json();
+    const n=(d&&d.total)||0;
+    el.textContent=n>99?'99+':String(n);
+    el.style.display=n>0?'flex':'none';
+  }catch(e){}
+}
+(function(){
+  function bootActivity(){
+    refreshActivityCount();
+    setInterval(refreshActivityCount,45000);
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',bootActivity);
+  else bootActivity();
+})();
 
 if(document.readyState==='loading'){
   document.addEventListener('DOMContentLoaded',initShevelevOnLoad);
@@ -1509,6 +1590,10 @@ function feedTab(tab, btn){
     if(!empty){empty=document.createElement('div');empty.id='feedEmpty';empty.style.cssText='text-align:center;padding:40px 0;color:#444';empty.innerHTML='<div style="font-size:36px;margin-bottom:8px">🍄</div><div>Нет постов</div>';document.getElementById('feedPosts').appendChild(empty);}
   }else{empty?.remove();}
 }
+function refreshFeedEmptyState(){
+  const active=document.querySelector('.feed-tab.feed-tab-active');
+  if(active) feedTab(active.dataset.tab, active);
+}
 
 // ── Like feed post ──
 async function likeFeedPost(postId, btn){
@@ -1521,10 +1606,38 @@ async function likeFeedPost(postId, btn){
   }catch(e){showNotification('Ошибка','error');}
 }
 
+async function deleteFeedPost(postId){
+  if(!postId||!confirm('Удалить этот пост? Комментарии и лайки тоже будут удалены.')) return;
+  try{
+    const r=await fetch('/community/post/'+postId,{method:'DELETE',credentials:'same-origin'});
+    const d=await r.json().catch(()=>({}));
+    if(r.ok&&d.ok){
+      document.getElementById('fp-'+postId)?.remove();
+      refreshFeedEmptyState();
+      showNotification('Пост удалён','success');
+    }else showNotification(d.error||'Не удалось удалить','error');
+  }catch(e){showNotification('Ошибка сети','error');}
+}
+
 // ── Group chats ──
 let selectedGroupId = null;
+let groupPollTimer = null;
+
+function stopGroupPoll(){
+  if(groupPollTimer){ clearInterval(groupPollTimer); groupPollTimer=null; }
+}
+function startGroupPoll(){
+  stopGroupPoll();
+  if(!selectedGroupId) return;
+  const item = document.querySelector('.ig-g-item[data-gid="'+selectedGroupId+'"]');
+  if(!item || item.dataset.member !== '1') return;
+  groupPollTimer = setInterval(()=>{
+    if(selectedGroupId) loadGroupMessages(selectedGroupId, { silent: true });
+  }, 3500);
+}
 
 function selectGroupChat(id, el){
+  stopGroupPoll();
   selectedGroupId = id;
   document.querySelectorAll('.ig-g-item').forEach(x=>x.classList.remove('on'));
   if(el) el.classList.add('on');
@@ -1540,41 +1653,71 @@ function selectGroupChat(id, el){
   if(panel){ panel.style.display = 'flex'; panel.style.flexDirection = 'column'; }
   const isMember = el && el.dataset && el.dataset.member === '1';
   if(joinBtn) joinBtn.style.display = isMember ? 'none' : 'inline-block';
-  if(inp){ inp.disabled = !isMember; if(isMember) inp.focus(); }
+  if(inp){ inp.disabled = !isMember; if(isMember) setTimeout(()=>inp.focus(), 50); }
   if(snd) snd.disabled = !isMember;
   const box = document.getElementById('groupMsgBox');
   if(!isMember){
     if(box) box.innerHTML = '<div style="color:#888;text-align:center;padding:24px;font-size:14px">Нажмите «Вступить», чтобы видеть переписку и писать в группе.</div>';
     return;
   }
-  loadGroupMessages(id);
+  loadGroupMessages(id).then(()=>{ startGroupPoll(); });
 }
 
 async function joinSelectedGroup(){
   if(!selectedGroupId) return;
   try{
     const r = await fetch('/community/groups/' + selectedGroupId + '/join', { method: 'POST', credentials: 'same-origin' });
-    if(r.ok) location.reload();
-    else alert('Не удалось вступить');
+    if(!r.ok){ alert('Не удалось вступить'); return; }
+    const item = document.querySelector('.ig-g-item[data-gid="'+selectedGroupId+'"]');
+    if(item){ item.dataset.member = '1'; item.classList.add('on'); }
+    const joinBtn = document.getElementById('groupJoinBtn');
+    if(joinBtn) joinBtn.style.display = 'none';
+    const inp = document.getElementById('groupMsgInput');
+    const snd = document.getElementById('groupMsgSend');
+    if(inp){ inp.disabled = false; inp.focus(); }
+    if(snd) snd.disabled = false;
+    const sub = item && item.querySelector('div + div');
+    if(sub && sub.textContent.indexOf('вы в чате')<0){
+      sub.textContent = (sub.textContent.replace(/\s*·\s*вы в чате\s*$/,'').trim()) + ' · вы в чате';
+    }
+    await loadGroupMessages(selectedGroupId);
+    startGroupPoll();
   }catch(e){ alert('Ошибка сети'); }
 }
 
-async function loadGroupMessages(gid){
+async function loadGroupMessages(gid, opts){
+  const silent = opts && opts.silent;
   const box = document.getElementById('groupMsgBox');
   if(!box) return;
+  const prev = box.scrollHeight - box.scrollTop;
+  const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
   try{
     const r = await fetch('/community/groups/' + gid + '/messages', { credentials: 'same-origin' });
     const d = await r.json();
-    if(d.error){ box.innerHTML = '<div style="color:#f87171;text-align:center;padding:16px">'+esc(d.error)+'</div>'; return; }
+    if(d.error){ if(!silent) box.innerHTML = '<div style="color:#f87171;text-align:center;padding:16px">'+esc(d.error)+'</div>'; return; }
     const msgs = d.messages || [];
     box.innerHTML = msgs.map(m =>
+      '<div class="ig-g-row '+(m.is_mine?'me':'them')+'">'+
       '<div class="ig-g-bubble '+(m.is_mine?'me':'them')+'">'+
-      '<span style="font-size:11px;color:#888;display:block;margin-bottom:4px">'+esc(m.sender_name)+'</span>'+
-      esc(m.text)+
-      '<div style="font-size:10px;color:#555;margin-top:6px">'+esc(m.created_at)+'</div></div>'
+      '<div class="ig-g-meta"><span class="ig-g-name">'+esc(m.sender_name)+'</span>'+
+      (m.can_delete ? '<button type="button" class="ig-g-del" onclick="deleteGroupMessage('+m.id+')" title="Удалить" aria-label="Удалить">×</button>' : '')+
+      '</div><div class="ig-g-text">'+esc(m.text)+'</div>'+
+      '<div class="ig-g-time">'+esc(m.created_at)+'</div></div></div>'
     ).join('');
-    box.scrollTop = box.scrollHeight;
-  }catch(e){ box.innerHTML = '<div style="color:#f87171;text-align:center">Ошибка загрузки</div>'; }
+    if(atBottom) box.scrollTop = box.scrollHeight;
+    else box.scrollTop = Math.max(0, box.scrollHeight - prev);
+  }catch(e){ if(!silent) box.innerHTML = '<div style="color:#f87171;text-align:center">Ошибка загрузки</div>'; }
+}
+
+async function deleteGroupMessage(mid){
+  if(!selectedGroupId || !mid) return;
+  if(!confirm('Удалить это сообщение?')) return;
+  try{
+    const r = await fetch('/community/groups/' + selectedGroupId + '/messages/' + mid, { method: 'DELETE', credentials: 'same-origin' });
+    const d = await r.json().catch(()=>({}));
+    if(r.ok && d.ok) await loadGroupMessages(selectedGroupId);
+    else showNotification(d.error || 'Не удалось удалить', 'error');
+  }catch(e){ showNotification('Ошибка сети', 'error'); }
 }
 
 async function sendGroupChatMessage(){
@@ -1602,7 +1745,7 @@ async function createGroupSubmit(){
   try{
     const r = await fetch('/community/groups/create', { method: 'POST', body: fd, credentials: 'same-origin' });
     const d = await r.json().catch(()=>({}));
-    if(d.ok || d.id){
+    if(d.ok && d.id){
       document.getElementById('grpCreateModal').style.display = 'none';
       location.reload();
     } else alert(d.error || 'Ошибка');

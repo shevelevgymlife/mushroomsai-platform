@@ -2,7 +2,7 @@ import os
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Request, Form, UploadFile, File
+from fastapi import APIRouter, Request, Form, UploadFile, File, Query
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from web.templates_utils import Jinja2Templates
 from services.subscription_service import PLANS
@@ -13,8 +13,9 @@ from db.models import (
     users, messages, leads, products, orders, posts,
     page_views, ai_settings, subscriptions, knowledge_base,
     shop_products, feedback, admin_permissions, product_reviews,
-    community_posts, community_comments, community_likes, community_folders,
+    community_posts, community_comments, community_likes, community_saved, community_folders,
     homepage_blocks, dashboard_blocks, user_block_overrides,
+    ai_training_posts, ai_training_folders,
 )
 import sqlalchemy
 from datetime import datetime, timedelta, date
@@ -250,6 +251,32 @@ async def shop_page(request: Request):
     )
 
 
+@router.get("/shop/product/{product_id}")
+async def admin_shop_product_json(request: Request, product_id: int):
+    admin = await require_permission(request, "can_shop")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    row = await database.fetch_one(shop_products.select().where(shop_products.c.id == product_id))
+    if not row:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    p = dict(row)
+    p["price"] = int(p["price"] or 0)
+    p["in_stock"] = p.get("in_stock") is not False
+    rv_avg = await database.fetch_val(
+        sqlalchemy.select(sqlalchemy.func.avg(product_reviews.c.rating)).where(
+            product_reviews.c.product_id == product_id
+        )
+    )
+    rv_n = await database.fetch_val(
+        sqlalchemy.select(sqlalchemy.func.count())
+        .select_from(product_reviews)
+        .where(product_reviews.c.product_id == product_id)
+    ) or 0
+    p["review_avg"] = round(float(rv_avg), 2) if rv_avg is not None else None
+    p["review_count"] = int(rv_n)
+    return JSONResponse(p)
+
+
 @router.post("/shop/add")
 async def add_shop_product(
     request: Request,
@@ -390,6 +417,7 @@ async def users_list(request: Request, search: str = ""):
     msg_counts = {}
     # Build enriched user list with display_tg_id = tg_id OR linked_tg_id
     enriched_users = []
+    online_threshold = datetime.utcnow() - timedelta(minutes=10)
     for u in all_users:
         count = await database.fetch_val(
             sqlalchemy.select(sqlalchemy.func.count())
@@ -399,6 +427,8 @@ async def users_list(request: Request, search: str = ""):
         msg_counts[u["id"]] = count or 0
         d = dict(u)
         d["display_tg_id"] = u["tg_id"] or u["linked_tg_id"]
+        ls = d.get("last_seen_at")
+        d["is_online"] = bool(ls and ls > online_threshold)
         enriched_users.append(d)
 
     return templates.TemplateResponse(
@@ -943,6 +973,9 @@ async def delete_community_post(request: Request, post_id: int):
     admin = await require_admin(request)
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
+    await database.execute(community_likes.delete().where(community_likes.c.post_id == post_id))
+    await database.execute(community_comments.delete().where(community_comments.c.post_id == post_id))
+    await database.execute(community_saved.delete().where(community_saved.c.post_id == post_id))
     await database.execute(community_posts.delete().where(community_posts.c.id == post_id))
     return JSONResponse({"ok": True})
 
@@ -1099,12 +1132,16 @@ async def ai_posts_page(request: Request):
     if not admin:
         return RedirectResponse("/login")
     try:
-        from db.models import ai_training_posts
         posts_list = await database.fetch_all(
             ai_training_posts.select().order_by(ai_training_posts.c.created_at.desc())
         )
     except Exception:
         posts_list = []
+    try:
+        folder_rows = await database.fetch_all(ai_training_folders.select().order_by(ai_training_folders.c.name))
+        extra_folder_names = [r["name"] for r in folder_rows]
+    except Exception:
+        extra_folder_names = []
     folder_order: list[str] = []
     posts_by_folder: dict[str, list] = {}
     for p in posts_list:
@@ -1113,6 +1150,13 @@ async def ai_posts_page(request: Request):
             folder_order.append(fn)
             posts_by_folder[fn] = []
         posts_by_folder[fn].append(p)
+    for fn in extra_folder_names:
+        if fn and fn not in posts_by_folder:
+            folder_order.append(fn)
+            posts_by_folder[fn] = []
+    if "Без папки" in folder_order:
+        folder_order = ["Без папки"] + [x for x in folder_order if x != "Без папки"]
+    folder_options = sorted(set(folder_order), key=lambda x: (0 if x == "Без папки" else 1, x.lower()))
     return templates.TemplateResponse(
         "dashboard/admin_ai_posts.html",
         {
@@ -1123,6 +1167,7 @@ async def ai_posts_page(request: Request):
             "posts": posts_list,
             "posts_by_folder": posts_by_folder,
             "folder_order": folder_order,
+            "folder_options": folder_options,
         },
     )
 
@@ -1139,18 +1184,100 @@ async def add_ai_post(
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     try:
-        from db.models import ai_training_posts
+        fn = folder.strip() or None
         await database.execute(
             ai_training_posts.insert().values(
                 title=title.strip(),
                 content=content.strip(),
                 category=category.strip() or None,
-                folder=folder.strip() or None,
+                folder=fn,
             )
         )
+        if fn:
+            try:
+                await database.execute(
+                    ai_training_folders.insert().values(name=fn)
+                )
+            except Exception:
+                pass
         return JSONResponse({"ok": True})
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@router.get("/ai-posts/{post_id}/one")
+async def get_ai_post_one(request: Request, post_id: int):
+    admin = await require_permission(request, "can_ai")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    row = await database.fetch_one(ai_training_posts.select().where(ai_training_posts.c.id == post_id))
+    if not row:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    p = dict(row)
+    if p.get("created_at"):
+        p["created_at"] = p["created_at"].isoformat()
+    return JSONResponse(p)
+
+
+@router.post("/ai-posts/{post_id}/update")
+async def update_ai_post(
+    request: Request,
+    post_id: int,
+    title: str = Form(...),
+    content: str = Form(...),
+    category: str = Form(""),
+    folder: str = Form(""),
+):
+    admin = await require_permission(request, "can_ai")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    row = await database.fetch_one(ai_training_posts.select().where(ai_training_posts.c.id == post_id))
+    if not row:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    fn = folder.strip() or None
+    await database.execute(
+        ai_training_posts.update()
+        .where(ai_training_posts.c.id == post_id)
+        .values(
+            title=title.strip(),
+            content=content.strip(),
+            category=category.strip() or None,
+            folder=fn,
+        )
+    )
+    if fn:
+        try:
+            await database.execute(ai_training_folders.insert().values(name=fn))
+        except Exception:
+            pass
+    return JSONResponse({"ok": True})
+
+
+@router.post("/ai-folders")
+async def add_ai_folder_only(request: Request, name: str = Form(...)):
+    admin = await require_permission(request, "can_ai")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    nm = name.strip()
+    if len(nm) < 1:
+        return JSONResponse({"error": "name required"}, status_code=400)
+    try:
+        await database.execute(ai_training_folders.insert().values(name=nm))
+        return JSONResponse({"ok": True})
+    except Exception:
+        return JSONResponse({"error": "уже есть или ошибка БД"}, status_code=400)
+
+
+@router.delete("/ai-folders")
+async def delete_ai_folder_label(request: Request, name: str = Query(default="")):
+    admin = await require_permission(request, "can_ai")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    nm = (name or "").strip()
+    if not nm:
+        return JSONResponse({"error": "name required"}, status_code=400)
+    await database.execute(ai_training_folders.delete().where(ai_training_folders.c.name == nm))
+    return JSONResponse({"ok": True})
 
 
 @router.delete("/ai-posts/{post_id}")
@@ -1159,7 +1286,6 @@ async def delete_ai_post(request: Request, post_id: int):
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     try:
-        from db.models import ai_training_posts
         await database.execute(ai_training_posts.delete().where(ai_training_posts.c.id == post_id))
         return JSONResponse({"ok": True})
     except Exception as e:
@@ -1172,7 +1298,6 @@ async def toggle_ai_post(request: Request, post_id: int):
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     try:
-        from db.models import ai_training_posts
         row = await database.fetch_one(ai_training_posts.select().where(ai_training_posts.c.id == post_id))
         if not row:
             return JSONResponse({"error": "not found"}, status_code=404)

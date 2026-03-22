@@ -18,13 +18,30 @@
       </button>
     </div>
 
+    <form id="folder-create-form" onsubmit="createFolderLabel(event)" class="flex flex-wrap gap-3 items-end mb-8 p-4 rounded-2xl bg-surface border border-border">
+      <div class="flex-1 min-w-[200px]">
+        <label class="block text-xs text-muted mb-1.5">Создать пустую папку</label>
+        <input type="text" name="name" required placeholder="Например: Протоколы"
+          class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm outline-none focus:border-gold/50 box-border" />
+      </div>
+      <button type="submit" class="px-5 py-2.5 rounded-xl border border-border text-text text-sm font-semibold hover:border-gold/40 cursor-pointer bg-bg">
+        Создать папку
+      </button>
+    </form>
+
     {% for folder in folder_order %}
     {% set fposts = posts_by_folder[folder] %}
     <section class="mb-10 rounded-2xl bg-surface border border-border overflow-hidden">
-      <div class="px-4 sm:px-5 py-3 border-b border-border flex items-center gap-2 bg-bg/40">
+      <div class="px-4 sm:px-5 py-3 border-b border-border flex items-center gap-2 bg-bg/40 flex-wrap">
         <span class="text-gold text-lg leading-none">📁</span>
         <h2 class="text-sm font-semibold text-text tracking-wide">{{ folder }}</h2>
         <span class="text-xs text-muted ml-auto">{{ fposts|length }} пост.</span>
+        {% if not fposts and folder != 'Без папки' %}
+        <button type="button" onclick="deleteFolderLabel({{ folder | tojson }})"
+          class="text-xs px-2 py-1 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 cursor-pointer shrink-0">
+          Удалить метку папки
+        </button>
+        {% endif %}
       </div>
       <div class="overflow-x-auto">
         <table class="w-full text-sm min-w-[640px]">
@@ -60,10 +77,16 @@
                 </button>
               </td>
               <td class="px-4 sm:px-5 py-3">
+                <div class="flex flex-wrap gap-2">
+                <button type="button" onclick="openAiPostEdit({{ post.id }})"
+                  class="text-xs px-3 py-1.5 rounded-lg bg-gold/15 text-gold border border-gold/25 cursor-pointer hover:bg-gold/25 transition-colors">
+                  Редактировать
+                </button>
                 <button type="button" onclick="deletePost({{ post.id }})"
                   class="text-xs px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 cursor-pointer hover:bg-red-500/20 transition-colors">
                   Удалить
                 </button>
+                </div>
               </td>
             </tr>
             {% endfor %}
@@ -80,6 +103,49 @@
   </div>
 </div>
 
+<!-- Edit modal -->
+<div id="edit-post-modal" class="hidden fixed inset-0 z-[9999] items-center justify-center bg-black/75 backdrop-blur-sm p-4" style="display:none" onclick="if(event.target===this)closeEditPostModal()">
+  <div class="bg-[#0e0e0e] border border-gold/30 rounded-2xl p-6 sm:p-8 max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl shadow-gold/10" onclick="event.stopPropagation()">
+    <div class="flex items-center justify-between mb-6">
+      <h3 class="text-lg font-bold text-text">Редактировать пост</h3>
+      <button type="button" onclick="closeEditPostModal()" class="bg-transparent border-0 text-muted text-2xl cursor-pointer leading-none">&times;</button>
+    </div>
+    <form id="edit-ap-form" onsubmit="submitEditPost(event)">
+      <input type="hidden" id="edit-ap-id" value="" />
+      <div class="mb-4">
+        <label class="block text-xs text-muted mb-1.5">Папка</label>
+        <input type="text" name="folder" id="edit-ap-folder" list="folder-datalist"
+          class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm outline-none focus:border-gold/50 box-border" />
+        <datalist id="folder-datalist">
+          {% for fn in folder_options|default(folder_order) %}
+          <option value="{{ fn }}"></option>
+          {% endfor %}
+        </datalist>
+      </div>
+      <div class="mb-4">
+        <label class="block text-xs text-muted mb-1.5">Заголовок *</label>
+        <input type="text" name="title" id="edit-ap-title" required
+          class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm outline-none focus:border-gold/50 box-border" />
+      </div>
+      <div class="mb-4">
+        <label class="block text-xs text-muted mb-1.5">Категория</label>
+        <input type="text" name="category" id="edit-ap-category"
+          class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm outline-none focus:border-gold/50 box-border" />
+      </div>
+      <div class="mb-6">
+        <label class="block text-xs text-muted mb-1.5">Содержание *</label>
+        <textarea name="content" id="edit-ap-content" rows="8" required
+          class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm outline-none focus:border-gold/50 resize-y font-inherit box-border"></textarea>
+      </div>
+      <div id="edit-ap-status" class="text-sm text-red-400 mb-3 hidden"></div>
+      <div class="flex gap-2">
+        <button type="submit" class="flex-1 py-3 rounded-xl bg-gold text-bg font-bold text-sm border-0 cursor-pointer hover:opacity-90">Сохранить</button>
+        <button type="button" onclick="closeEditPostModal()" class="px-5 py-3 rounded-xl border border-border text-muted text-sm cursor-pointer hover:border-gold/40">Отмена</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- Add modal -->
 <div id="add-modal" class="hidden fixed inset-0 z-[9999] items-center justify-center bg-black/75 backdrop-blur-sm p-4" style="display:none" onclick="if(event.target===this)closeAddModal()">
   <div class="bg-[#0e0e0e] border border-gold/30 rounded-2xl p-6 sm:p-8 max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl shadow-gold/10" onclick="event.stopPropagation()">
@@ -91,7 +157,13 @@
       <div class="mb-4">
         <label class="block text-xs text-muted mb-1.5">Папка *</label>
         <input type="text" name="folder" required placeholder="Например: Инструкции или Биохимия"
+          list="folder-datalist-add"
           class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm outline-none focus:border-gold/50 box-border" />
+        <datalist id="folder-datalist-add">
+          {% for fn in folder_options|default(folder_order) %}
+          <option value="{{ fn }}"></option>
+          {% endfor %}
+        </datalist>
         <p class="text-[11px] text-muted mt-1">Посты в одной папке читаются AI как один раздел</p>
       </div>
       <div class="mb-4">
@@ -169,6 +241,69 @@ async function togglePost(id, btn) {
   btn.dataset.active = active ? 'true' : 'false';
   btn.textContent = active ? '● Активен' : '○ Выключен';
   btn.className = 'text-xs font-semibold rounded-full px-3 py-1 border-0 cursor-pointer transition-all ' + (active ? 'bg-green-500/15 text-green-400' : 'bg-border/30 text-muted');
+}
+
+async function createFolderLabel(e) {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  try {
+    const r = await fetch('/admin/ai-folders', { method: 'POST', body: fd, credentials: 'same-origin' });
+    if (r.ok) location.reload();
+    else alert((await r.json().catch(() => ({}))).error || 'Ошибка');
+  } catch { alert('Ошибка сети'); }
+}
+
+async function deleteFolderLabel(name) {
+  if (!name || !confirm('Удалить метку папки «' + name + '»? Сами посты не удаляются.')) return;
+  try {
+    const r = await fetch('/admin/ai-folders?name=' + encodeURIComponent(name), { method: 'DELETE', credentials: 'same-origin' });
+    if (r.ok) location.reload();
+    else alert('Ошибка');
+  } catch { alert('Ошибка сети'); }
+}
+
+function closeEditPostModal() {
+  const m = document.getElementById('edit-post-modal');
+  m.style.display = 'none';
+  m.classList.add('hidden');
+}
+
+async function openAiPostEdit(id) {
+  const st = document.getElementById('edit-ap-status');
+  st.classList.add('hidden');
+  try {
+    const r = await fetch('/admin/ai-posts/' + id + '/one', { credentials: 'same-origin' });
+    const p = await r.json();
+    if (!r.ok || p.error) { alert(p.error || 'Ошибка'); return; }
+    document.getElementById('edit-ap-id').value = id;
+    document.getElementById('edit-ap-folder').value = (p.folder || '').trim();
+    document.getElementById('edit-ap-title').value = p.title || '';
+    document.getElementById('edit-ap-category').value = p.category || '';
+    document.getElementById('edit-ap-content').value = p.content || '';
+    const m = document.getElementById('edit-post-modal');
+    m.style.display = 'flex';
+    m.classList.remove('hidden');
+  } catch { alert('Ошибка загрузки'); }
+}
+
+async function submitEditPost(e) {
+  e.preventDefault();
+  const id = document.getElementById('edit-ap-id').value;
+  const st = document.getElementById('edit-ap-status');
+  st.classList.add('hidden');
+  const fd = new FormData(e.target);
+  try {
+    const r = await fetch('/admin/ai-posts/' + id + '/update', { method: 'POST', body: fd, credentials: 'same-origin' });
+    if (r.ok) location.reload();
+    else {
+      const d = await r.json().catch(() => ({}));
+      st.textContent = d.error || 'Ошибка';
+      st.classList.remove('hidden');
+    }
+  } catch {
+    st.textContent = 'Ошибка сети';
+    st.classList.remove('hidden');
+  }
 }
 </script>
 {% endblock %}
