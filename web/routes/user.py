@@ -24,7 +24,8 @@ import sqlalchemy as sa
 import secrets
 import traceback as _traceback
 import logging
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
+from decimal import Decimal
 
 _logger = logging.getLogger(__name__)
 
@@ -1322,6 +1323,7 @@ def _can_edit_group_image(g: dict, user: dict, uid: int) -> bool:
 
 
 def _group_rows_to_dicts(rows) -> list[dict]:
+    """Normalize rows for JSON/API and for Jinja |tojson (no raw datetime/Decimal)."""
     out = []
     for r in rows:
         d = dict(r)
@@ -1335,14 +1337,18 @@ def _group_rows_to_dicts(rows) -> list[dict]:
                     pass
         if not d.get("image_url"):
             d["image_url"] = None
-        for k in ("last_message_at",):
-            if k in d and d[k] is not None and hasattr(d[k], "isoformat"):
-                d[k] = d[k].isoformat()
         if "unread_count" in d and d["unread_count"] is not None:
             try:
                 d["unread_count"] = int(d["unread_count"])
             except (TypeError, ValueError):
                 d["unread_count"] = 0
+        for k, v in list(d.items()):
+            if isinstance(v, datetime):
+                d[k] = v.isoformat()
+            elif isinstance(v, date):
+                d[k] = v.isoformat()
+            elif isinstance(v, Decimal):
+                d[k] = float(v)
         out.append(d)
     return out
 
