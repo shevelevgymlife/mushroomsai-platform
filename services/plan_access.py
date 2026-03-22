@@ -7,7 +7,16 @@ from typing import Any
 
 # Ключи секций кабинета (как в dashboard_blocks.block_key)
 FREE_BLOCKS = frozenset(
-    {"ai_chat", "tariffs", "knowledge_base", "referral"}
+    {
+        "ai_chat",
+        "tariffs",
+        "knowledge_base",
+        "referral",
+        # Сообщество и групповые чаты — для всех зарегистрированных (как публичная часть соцсети)
+        "community",
+        "posts",
+        "profile_photo",
+    }
 )
 
 START_BLOCKS = frozenset(

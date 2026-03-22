@@ -196,6 +196,8 @@ async def lifespan(app: FastAPI):
             user_was_online BOOLEAN DEFAULT false,
             created_at TIMESTAMP DEFAULT NOW()
         )""",
+        # Группы и лента: бесплатный тариф видит блоки (раньше стоял access_level=start — free не получал community)
+        "UPDATE dashboard_blocks SET access_level = 'all' WHERE block_key IN ('community', 'posts', 'profile_photo')",
     ]
     try:
         await database.execute(

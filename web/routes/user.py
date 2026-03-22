@@ -21,7 +21,10 @@ from services.notify_admin import notify_admin_telegram
 import sqlalchemy as sa
 import secrets
 import traceback as _traceback
+import logging
 from datetime import datetime, timedelta
+
+_logger = logging.getLogger(__name__)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="web/templates")
@@ -1325,7 +1328,8 @@ async def community_group_create(
     try:
         row = await database.fetch_one(
             sa.text(
-                "INSERT INTO community_groups (name, description, created_by) VALUES (:n, :d, :c) RETURNING id"
+                "INSERT INTO community_groups (name, description, created_by, join_mode) "
+                "VALUES (:n, :d, :c, 'open') RETURNING id"
             ).bindparams(n=nm, d=desc, c=uid)
         )
     except Exception as e:

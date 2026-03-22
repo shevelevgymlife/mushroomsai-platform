@@ -716,7 +716,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
         <div class="card" style="padding:28px 22px;text-align:center;border-radius:24px;border:1px solid rgba(201,168,76,.2);background:linear-gradient(165deg,rgba(28,28,28,.9),rgba(10,10,10,.95));box-shadow:0 20px 60px rgba(0,0,0,.45),0 0 0 1px rgba(201,168,76,.08)">
           <div style="font-size:42px;margin-bottom:14px">🍄</div>
           <h2 style="font-size:18px;font-weight:700;color:#e8e8e8;margin:0 0 10px">Лента сообщества</h2>
-          <p style="font-size:14px;color:#888;line-height:1.65;margin:0 0 20px;max-width:340px;margin-left:auto;margin-right:auto">Публикации, истории и общение с участниками доступны с тарифа <strong class="gold">Старт</strong> и выше.</p>
+          <p style="font-size:14px;color:#888;line-height:1.65;margin:0 0 20px;max-width:340px;margin-left:auto;margin-right:auto">Раздел «Сообщество» сейчас скрыт настройками доступа или тарифом.</p>
           {% if 'tariffs' in vbk %}
           <button type="button" class="btn-g" style="padding:12px 28px;border-radius:14px" onclick="goSec('plan')">Посмотреть тарифы</button>
           {% endif %}
@@ -725,12 +725,12 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
       {% endif %}
     </section>
 
-    <!-- ══ GROUP CHATS (общение — Старт+; создание групп — Старт+) ══ -->
+    <!-- ══ GROUP CHATS (сообщество: лента + группы; новые группы — вступление без заявки) ══ -->
     {% set group_list = group_list | default([]) %}
     <section class="db-sec" id="sec-groups">
       {% if 'community' in vbk %}
       <div class="sect-title" style="margin-bottom:8px">Групповые чаты</div>
-      <p class="muted" style="margin-bottom:18px;font-size:14px;line-height:1.5">Создайте тему — все участники смогут писать в общий чат. Цвета как на главной: тёмный фон и золото.</p>
+      <p class="muted" style="margin-bottom:18px;font-size:14px;line-height:1.5">Создайте группу — участники вступают сами и пишут в общий чат (как в Telegram). Выберите группу слева, нажмите «Вступить», если ещё не в чате.</p>
       <div class="ig-groups-wrap">
         <div class="card ig-groups-sidebar" style="padding:16px">
           {% if can_create_groups %}
