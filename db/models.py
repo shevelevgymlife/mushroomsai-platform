@@ -459,8 +459,21 @@ community_group_messages = sqlalchemy.Table(
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
     sqlalchemy.Column("group_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("community_groups.id", ondelete="CASCADE"), nullable=False),
     sqlalchemy.Column("sender_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
+    sqlalchemy.Column("reply_to_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("community_group_messages.id", ondelete="SET NULL"), nullable=True),
     sqlalchemy.Column("text", sqlalchemy.Text, nullable=False),
+    sqlalchemy.Column("image_url", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("audio_url", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+community_group_message_likes = sqlalchemy.Table(
+    "community_group_message_likes",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("message_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("community_group_messages.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+    sqlalchemy.UniqueConstraint("message_id", "user_id", name="uq_cgm_like_user"),
 )
 
 community_messages = sqlalchemy.Table(

@@ -1,5 +1,6 @@
 import os
 import uuid
+from typing import Optional
 from fastapi import APIRouter, Request, Form, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from web.templates_utils import Jinja2Templates
@@ -9,6 +10,7 @@ from db.models import (
     users, messages, orders, posts, post_likes, community_posts, community_likes, community_comments,
     community_folders, community_follows, community_saved, community_messages, profile_likes, community_profiles,
     dashboard_blocks, user_block_overrides, community_groups, community_group_members, community_group_messages,
+    community_group_message_likes,
     community_group_join_requests,
 )
 from services.referral_service import get_referral_stats
@@ -413,6 +415,26 @@ async def api_chat(request: Request):
 
 _POST_IMAGE_ALLOWED = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 _POST_IMAGE_MAX = 8 * 1024 * 1024
+
+_GROUP_CHAT_IMG_MAX = 6 * 1024 * 1024
+_GROUP_CHAT_AUDIO_MAX = 2 * 1024 * 1024
+_GROUP_CHAT_AUDIO_TYPES = frozenset({
+    "audio/webm", "audio/ogg", "audio/mp4", "audio/mpeg", "audio/wav", "application/octet-stream",
+})
+
+
+def _compress_group_chat_image(raw: bytes) -> bytes:
+    from io import BytesIO
+
+    from PIL import Image
+
+    im = Image.open(BytesIO(raw))
+    if im.mode in ("RGBA", "P"):
+        im = im.convert("RGB")
+    im.thumbnail((1280, 1280), Image.Resampling.LANCZOS)
+    buf = BytesIO()
+    im.save(buf, format="JPEG", quality=82, optimize=True)
+    return buf.getvalue()
 
 
 def _reputation(post_count: int) -> dict:
@@ -1913,6 +1935,36 @@ async def community_group_upload_image(request: Request, group_id: int, file: Up
     return JSONResponse({"ok": True, "image_url": image_url})
 
 
+async def _group_slow_mode_block(group_id: int, uid: int, g_row) -> Optional[JSONResponse]:
+    sm = g_row.get("slow_mode_seconds") if g_row is not None else None
+    try:
+        sm_int = int(sm) if sm is not None else 0
+    except (TypeError, ValueError):
+        sm_int = 0
+    if sm_int <= 0:
+        return None
+    last = await database.fetch_one(
+        sa.text(
+            "SELECT created_at FROM community_group_messages "
+            "WHERE group_id = :gid AND sender_id = :uid "
+            "ORDER BY created_at DESC LIMIT 1"
+        ).bindparams(gid=group_id, uid=uid)
+    )
+    if last and last.get("created_at"):
+        ca = last["created_at"]
+        if isinstance(ca, datetime):
+            now = datetime.utcnow()
+            ca_naive = ca.replace(tzinfo=None) if getattr(ca, "tzinfo", None) else ca
+            elapsed = (now - ca_naive).total_seconds()
+            if elapsed < sm_int:
+                wait = max(1, int(sm_int - elapsed))
+                return JSONResponse(
+                    {"error": "slow_mode", "wait_sec": wait, "ok": False},
+                    status_code=429,
+                )
+    return None
+
+
 @router.get("/community/groups/{group_id}/messages")
 async def community_group_messages_get(request: Request, group_id: int):
     user = await require_auth(request)
@@ -1943,21 +1995,92 @@ async def community_group_messages_get(request: Request, group_id: int):
         q.order_by(community_group_messages.c.created_at.asc()).limit(200)
     )
     is_admin = user.get("role") == "admin"
+    is_group_owner = False
+    if g_row and g_row.get("created_by") is not None:
+        try:
+            is_group_owner = int(g_row["created_by"]) == int(uid)
+        except (TypeError, ValueError):
+            is_group_owner = False
+    can_mod = is_admin or is_platform_operator(user) or is_group_owner
+    ids = [r["id"] for r in rows]
+    snd_ids = {r["sender_id"] for r in rows if r.get("sender_id")}
+    name_by_id: dict = {}
+    if snd_ids:
+        urows = await database.fetch_all(users.select().where(users.c.id.in_(snd_ids)))
+        for u in urows:
+            name_by_id[u["id"]] = u["name"] or "Участник"
+
+    likes_map: dict = {}
+    liked_set: set = set()
+    if ids:
+        try:
+            lc = await database.fetch_all(
+                sa.select(
+                    community_group_message_likes.c.message_id,
+                    sa.func.count().label("c"),
+                )
+                .where(community_group_message_likes.c.message_id.in_(ids))
+                .group_by(community_group_message_likes.c.message_id)
+            )
+            for row in lc:
+                likes_map[row["message_id"]] = int(row["c"])
+            lk = await database.fetch_all(
+                sa.select(community_group_message_likes.c.message_id)
+                .where(community_group_message_likes.c.message_id.in_(ids))
+                .where(community_group_message_likes.c.user_id == uid)
+            )
+            liked_set = {x["message_id"] for x in lk}
+        except Exception:
+            _logger.exception("group message likes fetch")
+
+    reply_ids = {r["reply_to_id"] for r in rows if r.get("reply_to_id")}
+    parent_by_id: dict = {}
+    if reply_ids:
+        parents = await database.fetch_all(
+            community_group_messages.select().where(community_group_messages.c.id.in_(reply_ids))
+        )
+        for pr in parents:
+            parent_by_id[pr["id"]] = pr
+    parent_uids = {parent_by_id[rid]["sender_id"] for rid in reply_ids if rid in parent_by_id and parent_by_id[rid].get("sender_id")}
+    parent_names: dict = {}
+    if parent_uids:
+        pu = await database.fetch_all(users.select().where(users.c.id.in_(parent_uids)))
+        for u in pu:
+            parent_names[u["id"]] = u["name"] or "Участник"
+
     out = []
     for r in rows:
         snd = r["sender_id"]
-        uname = "Участник"
-        if snd:
-            u = await database.fetch_one(users.select().where(users.c.id == snd))
-            if u:
-                uname = u["name"] or uname
+        uname = name_by_id.get(snd, "Участник") if snd else "Участник"
+        reply_to = None
+        rid = r.get("reply_to_id")
+        if rid and rid in parent_by_id:
+            pr = parent_by_id[rid]
+            ps = pr.get("sender_id")
+            pn = parent_names.get(ps, "Участник") if ps else "Участник"
+            pv = (pr.get("text") or "").strip().replace("\n", " ")[:140]
+            if len((pr.get("text") or "")) > 140:
+                pv += "…"
+            if not pv:
+                if pr.get("image_url"):
+                    pv = "📷"
+                elif pr.get("audio_url"):
+                    pv = "🎤"
+                else:
+                    pv = "…"
+            reply_to = {"id": pr["id"], "sender_name": pn, "preview": pv}
         out.append({
             "id": r["id"],
             "sender_id": snd,
             "sender_name": uname,
-            "text": r["text"],
+            "text": r.get("text") or "",
+            "image_url": r.get("image_url"),
+            "audio_url": r.get("audio_url"),
+            "reply_to": reply_to,
             "is_mine": snd == uid,
-            "can_delete": (snd == uid) or is_admin,
+            "can_delete": (snd == uid) or can_mod,
+            "likes_count": likes_map.get(r["id"], 0),
+            "liked": r["id"] in liked_set,
             "created_at": r["created_at"].strftime("%d.%m %H:%M") if r["created_at"] else "",
         })
     return JSONResponse({"messages": out})
@@ -1971,45 +2094,149 @@ async def community_group_message_post(request: Request, group_id: int):
     uid = _effective_user_id(user)
     if not await _ensure_community_group_member(group_id, uid):
         return JSONResponse({"error": "not a member"}, status_code=403)
-    try:
-        body = await request.json()
-    except Exception:
-        body = {}
-    text = (body.get("text") or "").strip()
-    if not text or len(text) > 8000:
+
+    ct = (request.headers.get("content-type") or "").lower()
+    text = ""
+    reply_to = None
+    image_url = None
+    audio_url = None
+
+    if "multipart/form-data" in ct:
+        form = await request.form()
+        text = (form.get("text") or "").strip()
+        rid_raw = form.get("reply_to_id")
+        if rid_raw not in (None, ""):
+            try:
+                rti = int(rid_raw)
+                if rti > 0:
+                    reply_to = rti
+            except (TypeError, ValueError):
+                pass
+        img_f = form.get("image")
+        aud_f = form.get("audio")
+        if img_f and getattr(img_f, "read", None):
+            ict = (getattr(img_f, "content_type", None) or "").lower()
+            if ict not in _POST_IMAGE_ALLOWED:
+                return JSONResponse({"error": "Нужен JPEG, PNG, WebP или GIF"}, status_code=400)
+            raw = await img_f.read()
+            if len(raw) > _GROUP_CHAT_IMG_MAX:
+                return JSONResponse({"error": "Фото слишком большое"}, status_code=400)
+            try:
+                jpeg = _compress_group_chat_image(raw)
+            except Exception:
+                return JSONResponse({"error": "Не удалось обработать фото"}, status_code=400)
+            fn = f"m{uuid.uuid4().hex}.jpg"
+            base = "/data" if os.path.exists("/data") else "./media"
+            path = os.path.join(base, "community", "groups", "msg", fn)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "wb") as f:
+                f.write(jpeg)
+            image_url = f"/media/community/groups/msg/{fn}"
+        if aud_f and getattr(aud_f, "read", None):
+            act = (getattr(aud_f, "content_type", None) or "").lower()
+            if act not in _GROUP_CHAT_AUDIO_TYPES:
+                return JSONResponse({"error": "Неподдерживаемый формат аудио"}, status_code=400)
+            raw = await aud_f.read()
+            if len(raw) > _GROUP_CHAT_AUDIO_MAX:
+                return JSONResponse({"error": "Аудио слишком большое"}, status_code=400)
+            ext = "webm"
+            fnm = getattr(aud_f, "filename", None) or ""
+            if "." in fnm:
+                e = fnm.rsplit(".", 1)[-1].lower()[:8]
+                if e in ("webm", "ogg", "mp3", "m4a", "wav", "mpeg"):
+                    ext = e
+            fn = f"a{uuid.uuid4().hex}.{ext}"
+            base = "/data" if os.path.exists("/data") else "./media"
+            path = os.path.join(base, "community", "groups", "msg", fn)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "wb") as f:
+                f.write(raw)
+            audio_url = f"/media/community/groups/msg/{fn}"
+    else:
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        text = (body.get("text") or "").strip()
+        rid = body.get("reply_to_id")
+        if rid is not None:
+            try:
+                rti = int(rid)
+                if rti > 0:
+                    reply_to = rti
+            except (TypeError, ValueError):
+                pass
+
+    if len(text) > 8000:
         return JSONResponse({"error": "bad text"}, status_code=400)
-    g_row = await fetch_community_group_row(group_id)
-    sm = None
-    if g_row is not None:
-        sm = g_row.get("slow_mode_seconds")
-    try:
-        sm_int = int(sm) if sm is not None else 0
-    except (TypeError, ValueError):
-        sm_int = 0
-    if sm_int > 0:
-        last = await database.fetch_one(
-            sa.text(
-                "SELECT created_at FROM community_group_messages "
-                "WHERE group_id = :gid AND sender_id = :uid "
-                "ORDER BY created_at DESC LIMIT 1"
-            ).bindparams(gid=group_id, uid=uid)
+    if not text and not image_url and not audio_url:
+        return JSONResponse({"error": "empty"}, status_code=400)
+
+    if reply_to:
+        pr = await database.fetch_one(
+            community_group_messages.select()
+            .where(community_group_messages.c.id == reply_to)
+            .where(community_group_messages.c.group_id == group_id)
         )
-        if last and last.get("created_at"):
-            ca = last["created_at"]
-            if isinstance(ca, datetime):
-                now = datetime.utcnow()
-                ca_naive = ca.replace(tzinfo=None) if getattr(ca, "tzinfo", None) else ca
-                elapsed = (now - ca_naive).total_seconds()
-                if elapsed < sm_int:
-                    wait = max(1, int(sm_int - elapsed))
-                    return JSONResponse(
-                        {"error": "slow_mode", "wait_sec": wait, "ok": False},
-                        status_code=429,
-                    )
+        if not pr:
+            return JSONResponse({"error": "bad reply"}, status_code=400)
+
+    g_row = await fetch_community_group_row(group_id)
+    sm_block = await _group_slow_mode_block(group_id, uid, g_row)
+    if sm_block is not None:
+        return sm_block
+
     await database.execute(
-        community_group_messages.insert().values(group_id=group_id, sender_id=uid, text=text)
+        community_group_messages.insert().values(
+            group_id=group_id,
+            sender_id=uid,
+            text=text,
+            reply_to_id=reply_to,
+            image_url=image_url,
+            audio_url=audio_url,
+        )
     )
     return JSONResponse({"ok": True})
+
+
+@router.post("/community/groups/{group_id}/messages/{message_id}/like")
+async def community_group_message_like_toggle(request: Request, group_id: int, message_id: int):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = _effective_user_id(user)
+    if not await _ensure_community_group_member(group_id, uid):
+        return JSONResponse({"error": "not a member"}, status_code=403)
+    msg = await database.fetch_one(
+        community_group_messages.select()
+        .where(community_group_messages.c.id == message_id)
+        .where(community_group_messages.c.group_id == group_id)
+    )
+    if not msg:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    existing = await database.fetch_one(
+        community_group_message_likes.select()
+        .where(community_group_message_likes.c.message_id == message_id)
+        .where(community_group_message_likes.c.user_id == uid)
+    )
+    if existing:
+        await database.execute(
+            community_group_message_likes.delete()
+            .where(community_group_message_likes.c.message_id == message_id)
+            .where(community_group_message_likes.c.user_id == uid)
+        )
+        liked = False
+    else:
+        await database.execute(
+            community_group_message_likes.insert().values(message_id=message_id, user_id=uid)
+        )
+        liked = True
+    cnt = await database.fetch_val(
+        sa.select(sa.func.count())
+        .select_from(community_group_message_likes)
+        .where(community_group_message_likes.c.message_id == message_id)
+    ) or 0
+    return JSONResponse({"ok": True, "liked": liked, "likes_count": int(cnt)})
 
 
 @router.delete("/community/groups/{group_id}/messages/{message_id}")
@@ -2027,8 +2254,16 @@ async def community_group_message_delete(request: Request, group_id: int, messag
     )
     if not msg:
         return JSONResponse({"error": "not found"}, status_code=404)
+    g_row = await fetch_community_group_row(group_id)
     is_admin = user.get("role") == "admin"
-    if msg["sender_id"] != uid and not is_admin:
+    is_group_owner = False
+    if g_row and g_row.get("created_by") is not None:
+        try:
+            is_group_owner = int(g_row["created_by"]) == int(uid)
+        except (TypeError, ValueError):
+            is_group_owner = False
+    can_mod = is_admin or is_platform_operator(user) or is_group_owner
+    if msg["sender_id"] != uid and not can_mod:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     await database.execute(
         community_group_messages.delete()

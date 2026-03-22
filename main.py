@@ -47,6 +47,7 @@ async def lifespan(app: FastAPI):
     _base = "/data" if os.path.exists("/data") else "./media"
     os.makedirs(f"{_base}/products", exist_ok=True)
     os.makedirs(f"{_base}/community", exist_ok=True)
+    os.makedirs(f"{_base}/community/groups/msg", exist_ok=True)
     os.makedirs(f"{_base}/avatars", exist_ok=True)
     logger.info(f"Media dirs ready under {_base}")
 
@@ -201,6 +202,16 @@ async def lifespan(app: FastAPI):
         # Группы и лента: бесплатный тариф видит блоки (раньше стоял access_level=start — free не получал community)
         "UPDATE dashboard_blocks SET access_level = 'all' WHERE block_key IN ('community', 'posts', 'profile_photo')",
         "ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS title TEXT",
+        """CREATE TABLE IF NOT EXISTS community_group_message_likes (
+            id SERIAL PRIMARY KEY,
+            message_id INTEGER NOT NULL REFERENCES community_group_messages(id) ON DELETE CASCADE,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            created_at TIMESTAMP DEFAULT NOW(),
+            UNIQUE(message_id, user_id)
+        )""",
+        "ALTER TABLE community_group_messages ADD COLUMN IF NOT EXISTS reply_to_id INTEGER REFERENCES community_group_messages(id) ON DELETE SET NULL",
+        "ALTER TABLE community_group_messages ADD COLUMN IF NOT EXISTS image_url TEXT",
+        "ALTER TABLE community_group_messages ADD COLUMN IF NOT EXISTS audio_url TEXT",
     ]
     try:
         await database.execute(

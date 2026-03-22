@@ -1349,6 +1349,7 @@ async def delete_user_permanent(request: Request, user_id: int):
         "DELETE FROM community_follows WHERE follower_id=:uid OR following_id=:uid",
         "DELETE FROM profile_likes WHERE user_id=:uid OR liked_user_id=:uid",
         "DELETE FROM community_posts WHERE user_id=:uid",
+        "DELETE FROM community_group_message_likes WHERE user_id=:uid",
         "DELETE FROM community_group_messages WHERE sender_id=:uid",
         "DELETE FROM community_group_join_requests WHERE user_id=:uid",
         "DELETE FROM community_group_members WHERE user_id=:uid",

@@ -201,6 +201,14 @@
 .tg-chat-shell .ig-g-text{white-space:pre-wrap}
 .tg-chat-shell .ig-g-time{font-size:10px;color:rgba(255,255,255,.45)!important;margin-top:4px;text-align:right}
 .tg-chat-shell .ig-g-bubble.them .ig-g-time{text-align:left;color:rgba(255,255,255,.35)!important}
+.tg-chat-shell .ig-g-reply{font-size:11px;color:#9ca3af;border-left:2px solid rgba(201,168,76,.45);padding:4px 0 4px 8px;margin:0 0 6px;max-width:100%}
+.tg-chat-shell .ig-g-img{max-width:100%;max-height:min(220px,50vh);border-radius:12px;display:block;margin:4px 0;object-fit:cover}
+.tg-chat-shell .ig-g-audio{width:100%;max-width:280px;height:40px;margin:4px 0}
+.tg-chat-shell .ig-g-like-row{display:flex;align-items:center;gap:6px;margin-top:2px}
+.tg-chat-shell .ig-g-like{border:none;background:transparent;cursor:pointer;font-size:14px;padding:0;line-height:1;opacity:.9}
+.tg-chat-shell .ig-g-lc{font-size:11px;color:#888;min-width:1em}
+#groupReplyBar{display:none;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;background:rgba(201,168,76,.08);border-top:1px solid rgba(255,255,255,.06);font-size:12px;color:#bbb}
+#groupVoiceHint{font-size:11px;color:#f87171;max-width:120px;display:none}
 .tg-chat-input-row{padding:10px 12px calc(14px + env(safe-area-inset-bottom,0px));border-top:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.45);display:flex;gap:8px;align-items:center;flex-shrink:0;width:100%;max-width:100%;box-sizing:border-box}
 .tg-chat-input-row .sinp{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#e8e8e8;border-radius:22px;padding:10px 16px;flex:1;min-width:0}
 .tg-chat-input-row .btn-g{flex-shrink:0}
@@ -933,8 +941,16 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
               <button type="button" class="btn-o" id="groupJoinBtn" style="font-size:12px;padding:6px 12px;display:none;flex-shrink:0" onclick="joinSelectedGroup()">Вступить</button>
             </div>
             <div id="groupMsgBox" class="ig-g-msg-wrap" style="flex:1;min-height:200px"></div>
+            <div id="groupReplyBar">
+              <span class="group-reply-text" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+              <button type="button" class="btn-o" style="font-size:11px;padding:4px 10px;flex-shrink:0" onclick="clearGroupReply()">✕</button>
+            </div>
             <div class="tg-chat-input-row app-input-row">
-              <input type="text" id="groupMsgInput" class="sinp" placeholder="Сообщение..." disabled onkeydown="if(event.key==='Enter'){event.preventDefault();sendGroupChatMessage();}">
+              <input type="file" id="groupChatImgInp" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none" onchange="onGroupChatPickImage()">
+              <button type="button" class="btn-o" style="padding:8px 10px;font-size:17px;flex-shrink:0;border-radius:50%;width:40px;height:40px" title="Фото" onclick="document.getElementById('groupChatImgInp').value='';document.getElementById('groupChatImgInp').click()">＋</button>
+              <button type="button" id="groupMicBtn" class="btn-o" style="padding:8px 10px;font-size:16px;flex-shrink:0;border-radius:50%;width:40px;height:40px" title="Нажмите: старт / стоп записи" onclick="toggleGroupVoiceRecord()">🎤</button>
+              <span id="groupVoiceHint">● Запись…</span>
+              <input type="text" id="groupMsgInput" class="sinp" placeholder="Сообщение…" disabled onkeydown="if(event.key==='Enter'){event.preventDefault();sendGroupChatMessage();}">
               <button type="button" class="btn-g" id="groupMsgSend" style="padding:10px 16px" disabled onclick="sendGroupChatMessage()">→</button>
             </div>
           </div>
@@ -2459,6 +2475,10 @@ function finishGroupChatOverlayUI(){
   document.body.classList.remove('tg-group-mobile-chat');
   stopGroupPoll();
   selectedGroupId = null;
+  clearGroupReply();
+  window.__groupMsgsCache = [];
+  window.__groupChatAudioBlob = null;
+  window.__groupVoiceRec = null;
   document.querySelectorAll('.ig-g-item').forEach(function(x){ x.classList.remove('on'); });
   const panel = document.getElementById('groupChatPanel');
   const ph = document.getElementById('groupChatPlaceholder');
@@ -2466,6 +2486,51 @@ function finishGroupChatOverlayUI(){
   if(ph) ph.style.display = 'flex';
   const back = document.getElementById('groupMobileBack');
   if(back) back.style.display = 'none';
+}
+function clearGroupReply(){
+  window.__groupReplyToId = null;
+  const bar = document.getElementById('groupReplyBar');
+  if(bar){
+    bar.style.display = 'none';
+    const t = bar.querySelector('.group-reply-text');
+    if(t) t.textContent = '';
+  }
+}
+function setGroupReplyTo(mid){
+  const msgs = window.__groupMsgsCache || [];
+  const m = msgs.find(function(x){ return x.id === mid; });
+  window.__groupReplyToId = mid;
+  const bar = document.getElementById('groupReplyBar');
+  const tx = bar && bar.querySelector('.group-reply-text');
+  if(tx && m){
+    var raw = String(m.text||'').trim();
+    if(!raw && m.image_url) raw='📷';
+    else if(!raw && m.audio_url) raw='🎤';
+    tx.textContent = (m.sender_name||'')+': '+raw.slice(0,100)+(raw.length>100?'…':'');
+  } else if(tx){
+    tx.textContent = 'Ответ на #'+mid;
+  }
+  if(bar) bar.style.display = 'flex';
+}
+function initGroupSwipe(box){
+  if(!box || box._gSwipe) return;
+  box._gSwipe = true;
+  var sx=0,sy=0,rid=0,rowEl=null;
+  box.addEventListener('touchstart', function(e){
+    var row = e.target.closest('.ig-g-row');
+    if(!row) return;
+    rowEl = row;
+    rid = parseInt(row.dataset.mid||'0',10)||0;
+    sx = e.touches[0].clientX;
+    sy = e.touches[0].clientY;
+  }, {passive:true});
+  box.addEventListener('touchend', function(e){
+    if(!rid || !rowEl) { rid=0; rowEl=null; return; }
+    var dx = e.changedTouches[0].clientX - sx;
+    var dy = Math.abs(e.changedTouches[0].clientY - sy);
+    if(dx > 55 && dy < 100) setGroupReplyTo(rid);
+    rid = 0; rowEl = null;
+  }, {passive:true});
 }
 function updateGroupMobileChrome(){
   const back = document.getElementById('groupMobileBack');
@@ -2799,6 +2864,7 @@ async function loadGroupMessages(gid, opts){
   if(!box) return;
   const prev = box.scrollHeight - box.scrollTop;
   const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+  function escUrlAttr(s){ return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
   try{
     const r = await fetch('/community/groups/' + gid + '/messages', { credentials: 'same-origin' });
     let d = {};
@@ -2810,21 +2876,49 @@ async function loadGroupMessages(gid, opts){
     }
     if(d.error){ if(!silent) box.innerHTML = '<div style="color:#f87171;text-align:center;padding:16px">'+esc(d.error)+'</div>'; return; }
     const msgs = d.messages || [];
-    const sig = JSON.stringify(msgs.map(function(m){ return [m.id, m.text||'', m.created_at||'']; }));
+    const sig = JSON.stringify(msgs.map(function(m){
+      return [m.id, m.text||'', m.created_at||'', m.likes_count||0, m.image_url||'', m.audio_url||'', m.liked?1:0];
+    }));
     if(silent && _lastGroupMsgSig[String(gid)] === sig) return;
     _lastGroupMsgSig[String(gid)] = sig;
-    box.innerHTML = msgs.map(m =>
-      '<div class="ig-g-row '+(m.is_mine?'me':'them')+'">'+
-      '<div class="ig-g-bubble '+(m.is_mine?'me':'them')+'">'+
-      '<div class="ig-g-meta"><span class="ig-g-name">'+esc(m.sender_name)+'</span>'+
-      (m.can_delete ? '<button type="button" class="ig-g-del" onclick="deleteGroupMessage('+m.id+')" title="Удалить" aria-label="Удалить">×</button>' : '')+
-      '</div><div class="ig-g-text">'+esc(m.text)+'</div>'+
-      '<div class="ig-g-time">'+esc(m.created_at)+'</div></div></div>'
-    ).join('');
+    window.__groupMsgsCache = msgs;
+    box.innerHTML = msgs.map(function(m){
+      var replyHtml = '';
+      if(m.reply_to && m.reply_to.sender_name){
+        replyHtml = '<div class="ig-g-reply">↩ '+esc(m.reply_to.sender_name)+': '+esc(m.reply_to.preview||'')+'</div>';
+      }
+      var imgHtml = m.image_url ? '<img class="ig-g-img" src="'+escUrlAttr(m.image_url)+'" alt="">' : '';
+      var audHtml = m.audio_url ? '<audio class="ig-g-audio" controls preload="metadata" src="'+escUrlAttr(m.audio_url)+'"></audio>' : '';
+      var txtHtml = (m.text && String(m.text).trim()) ? '<div class="ig-g-text">'+esc(m.text)+'</div>' : '';
+      var likeN = Number(m.likes_count||0);
+      var liked = !!m.liked;
+      return '<div class="ig-g-row '+(m.is_mine?'me':'them')+'" data-mid="'+m.id+'">'+
+        '<div class="ig-g-bubble '+(m.is_mine?'me':'them')+'">'+
+        '<div class="ig-g-meta"><span class="ig-g-name">'+esc(m.sender_name)+'</span>'+
+        (m.can_delete ? '<button type="button" class="ig-g-del" onclick="deleteGroupMessage('+m.id+')" title="Удалить" aria-label="Удалить">×</button>' : '')+
+        '</div>'+replyHtml+imgHtml+audHtml+txtHtml+
+        '<div class="ig-g-like-row"><button type="button" class="ig-g-like" onclick="toggleGroupLike('+m.id+',this)">'+(liked?'❤':'🤍')+'</button> <span class="ig-g-lc">'+likeN+'</span></div>'+
+        '<div class="ig-g-time">'+esc(m.created_at)+'</div></div></div>';
+    }).join('');
+    initGroupSwipe(box);
     if(atBottom) box.scrollTop = box.scrollHeight;
     else box.scrollTop = Math.max(0, box.scrollHeight - prev);
     if(!silent) fetch('/community/groups/'+gid+'/mark-read',{method:'POST',credentials:'same-origin'}).catch(function(){});
   }catch(e){ if(!silent) box.innerHTML = '<div style="color:#f87171;text-align:center">Ошибка загрузки</div>'; }
+}
+
+async function toggleGroupLike(mid, btn){
+  if(!selectedGroupId || !mid) return;
+  try{
+    const r = await fetch('/community/groups/'+selectedGroupId+'/messages/'+mid+'/like', { method:'POST', credentials:'same-origin' });
+    const d = await r.json().catch(()=>({}));
+    if(r.ok && d.ok){
+      var row = btn && btn.closest('.ig-g-like-row');
+      var sp = row && row.querySelector('.ig-g-lc');
+      if(sp) sp.textContent = String(d.likes_count||0);
+      btn.textContent = d.liked ? '❤' : '🤍';
+    }
+  }catch(e){}
 }
 
 async function deleteGroupMessage(mid){
@@ -2838,19 +2932,71 @@ async function deleteGroupMessage(mid){
   }catch(e){ showNotification('Ошибка сети', 'error'); }
 }
 
+function onGroupChatPickImage(){
+  const h = document.getElementById('groupVoiceHint');
+  if(h){ h.style.display='inline'; h.textContent='✓ Фото'; h.style.color='#4ade80'; }
+}
+
+async function toggleGroupVoiceRecord(){
+  var g = window.__groupVoiceRec;
+  if(g && g.mr && g.mr.state === 'recording'){
+    g.mr.stop();
+    return;
+  }
+  try{
+    var stream = await navigator.mediaDevices.getUserMedia({audio:true});
+    var mr = new MediaRecorder(stream);
+    var chunks = [];
+    mr.ondataavailable = function(e){ if(e.data.size) chunks.push(e.data); };
+    mr.onstop = function(){
+      window.__groupChatAudioBlob = new Blob(chunks, {type:'audio/webm'});
+      stream.getTracks().forEach(function(t){ t.stop(); });
+      window.__groupVoiceRec = null;
+      var h = document.getElementById('groupVoiceHint');
+      if(h){ h.style.display='inline'; h.textContent='✓ Аудио'; h.style.color='#4ade80'; }
+    };
+    mr.start();
+    window.__groupVoiceRec = {mr:mr, stream:stream};
+    var h = document.getElementById('groupVoiceHint');
+    if(h){ h.style.display='inline'; h.textContent='● Запись…'; h.style.color='#f87171'; }
+  }catch(e){
+    showNotification('Нет доступа к микрофону','error');
+  }
+}
+
 async function sendGroupChatMessage(){
   const inp = document.getElementById('groupMsgInput');
   const t = inp && inp.value.trim();
-  if(!t || !selectedGroupId) return;
-  inp.value = '';
+  const imgInp = document.getElementById('groupChatImgInp');
+  const file = imgInp && imgInp.files && imgInp.files[0];
+  const blob = window.__groupChatAudioBlob;
+  if(!selectedGroupId) return;
+  if(!t && !file && !blob) return;
+  const replyId = window.__groupReplyToId || null;
+  const fd = new FormData();
+  if(t) fd.append('text', t);
+  if(replyId) fd.append('reply_to_id', String(replyId));
+  if(file) fd.append('image', file);
+  if(blob) fd.append('audio', blob, 'voice.webm');
+  if(inp) inp.value = '';
+  if(imgInp) imgInp.value = '';
+  window.__groupChatAudioBlob = null;
+  var vh = document.getElementById('groupVoiceHint');
+  if(vh) vh.style.display = 'none';
+  clearGroupReply();
+  const useMultipart = !!(file || blob);
   try{
     const r = await fetch('/community/groups/' + selectedGroupId + '/message', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
-      body: JSON.stringify({ text: t })
+      headers: useMultipart ? {} : { 'Content-Type': 'application/json' },
+      body: useMultipart ? fd : JSON.stringify({ text: t || '', reply_to_id: replyId || undefined })
     });
     if(r.ok) await loadGroupMessages(selectedGroupId);
+    else if(r.status===429){
+      const d = await r.json().catch(()=>({}));
+      showNotification('Подождите '+ (d.wait_sec||'') +' сек. (медленный режим)','error');
+    }
   }catch(e){}
 }
 
