@@ -97,6 +97,10 @@ async def lifespan(app: FastAPI):
         "UPDATE users SET needs_tariff_choice = false WHERE needs_tariff_choice IS NULL",
         "ALTER TABLE users ALTER COLUMN needs_tariff_choice SET DEFAULT true",
         "ALTER TABLE shop_products ADD COLUMN IF NOT EXISTS seller_id INTEGER REFERENCES users(id) ON DELETE SET NULL",
+        # v7: ссылка в профиле (Instagram) + папки обучающих постов AI
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_link_label TEXT",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_link_url TEXT",
+        "ALTER TABLE ai_training_posts ADD COLUMN IF NOT EXISTS folder TEXT",
     ]
     try:
         await database.execute(

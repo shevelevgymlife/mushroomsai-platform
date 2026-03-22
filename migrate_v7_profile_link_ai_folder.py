@@ -1,4 +1,8 @@
-"""v7: profile link fields + AI training post folders."""
+"""v7: profile link fields + AI training post folders.
+
+Дублирует автомиграцию в main.py при старте приложения — этот файл можно
+запускать вручную только если нужно применить схему без рестарта сервиса.
+"""
 import os
 import sqlalchemy as sa
 from config import settings
