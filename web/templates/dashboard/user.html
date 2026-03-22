@@ -125,28 +125,52 @@
 .ig-post-body{padding:0 12px 14px;font-size:14px;line-height:1.5;color:#c8c8c8;white-space:pre-wrap;word-break:break-word}
 .ig-post-body .ig-cap-user{font-weight:700;color:#e8e8e8;margin-right:6px}
 
-/* ── Group chats layout ── */
-.ig-groups-wrap{display:grid;grid-template-columns:minmax(240px,300px) 1fr;gap:16px;align-items:stretch}
-@media(max-width:900px){.ig-groups-wrap{grid-template-columns:1fr}}
-.ig-groups-sidebar{max-height:70vh;overflow-y:auto}
-.ig-groups-chat{display:flex;flex-direction:column;min-height:420px;max-height:72vh}
-.ig-g-item{padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.08);margin-bottom:8px;cursor:pointer;transition:all .2s;background:rgba(255,255,255,.02)}
-.ig-g-item:hover,.ig-g-item.on{border-color:rgba(201,168,76,.45);background:rgba(201,168,76,.06)}
-.ig-g-msg-wrap{flex:1;overflow-y:auto;padding:10px 8px 12px;display:flex;flex-direction:column;gap:6px;background:#0e0e0e;border-radius:12px;border:1px solid rgba(255,255,255,.06)}
-.ig-g-row{display:flex;flex-direction:column;width:100%}
-.ig-g-row.me{align-items:flex-end}
-.ig-g-row.them{align-items:flex-start}
-.ig-g-bubble{max-width:min(82%,360px);padding:8px 12px 6px;border-radius:16px;font-size:14px;line-height:1.45;word-break:break-word;position:relative;animation:igMsgIn .2s ease-out}
-.ig-g-bubble.me{border-bottom-right-radius:5px;background:#2d2a22;border:1px solid rgba(201,168,76,.28);color:#f2efe6;box-shadow:0 1px 2px rgba(0,0,0,.25)}
-.ig-g-bubble.them{border-bottom-left-radius:5px;background:#1f1f1f;border:1px solid rgba(255,255,255,.07);color:#e4e4e4}
-.ig-g-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;min-height:18px}
-.ig-g-name{font-size:12px;font-weight:600;color:#C9A84C;opacity:.95}
-.ig-g-bubble.them .ig-g-name{color:#9ca3af}
-.ig-g-del{border:none;background:transparent;color:#888;cursor:pointer;font-size:18px;line-height:1;padding:0 2px;opacity:.65}
-.ig-g-del:hover{color:#f87171;opacity:1}
-.ig-g-text{white-space:pre-wrap}
-.ig-g-time{font-size:10px;color:#555;margin-top:4px;text-align:right}
-.ig-g-bubble.them .ig-g-time{text-align:left}
+/* ── Group chats (Telegram-like) ── */
+.tg-chat-shell{display:grid;grid-template-columns:minmax(280px,340px) 1fr;gap:0;align-items:stretch;min-height:min(72vh,640px);max-height:85vh;border-radius:14px;overflow:hidden;border:1px solid #243445;background:#0e1621;box-shadow:0 8px 32px rgba(0,0,0,.45)}
+@media(max-width:900px){.tg-chat-shell{grid-template-columns:1fr;min-height:auto;max-height:none}}
+.tg-chat-sidebar{background:#17212b;border-right:1px solid #0e1621;display:flex;flex-direction:column;min-height:420px;max-height:72vh}
+@media(max-width:900px){.tg-chat-sidebar{max-height:42vh;border-right:none;border-bottom:1px solid #0e1621}}
+.tg-chat-sidebar-head{padding:12px 14px;border-bottom:1px solid #0e1621}
+.tg-chat-sidebar-head .tg-h{font-size:15px;font-weight:700;color:#fff;letter-spacing:.02em}
+.tg-chat-sidebar-head .tg-sub{font-size:12px;color:#708499;margin-top:4px;line-height:1.45}
+.tg-btn-new{width:calc(100% - 24px);margin:12px auto 8px;padding:10px 14px;border-radius:10px;border:none;background:#5288c1;color:#fff;font-weight:600;font-size:14px;cursor:pointer;transition:background .2s}
+.tg-btn-new:hover{background:#6a9fd4}
+.tg-chat-list{flex:1;overflow-y:auto;padding:0 0 8px;-webkit-overflow-scrolling:touch}
+.tg-chat-list::-webkit-scrollbar{width:6px}
+.tg-chat-list::-webkit-scrollbar-thumb{background:#243445;border-radius:3px}
+.ig-g-item.tg-chat-item{display:flex;align-items:center;gap:12px;padding:10px 12px;margin:0;border-radius:0;border:none;border-bottom:1px solid #0e1621;background:transparent;transition:background .15s;cursor:pointer}
+.ig-g-item.tg-chat-item:hover{background:#202b36}
+.ig-g-item.tg-chat-item.on{background:#2b5278}
+.ig-g-item.tg-chat-item.on:hover{background:#2b5278}
+.tg-chat-av{flex-shrink:0;width:48px;height:48px;border-radius:50%;background:linear-gradient(145deg,#5eb5f7,#3a7ebf);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;text-transform:uppercase;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.ig-g-item.tg-chat-item.on .tg-chat-av{background:linear-gradient(145deg,#7ec8ff,#4a9ae0)}
+.tg-chat-item-text{min-width:0;flex:1}
+.tg-chat-item-title{font-weight:600;font-size:15px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
+.tg-chat-item-sub{font-size:13px;color:#708499;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tg-chat-main{background:#0e1621;display:flex;flex-direction:column;min-height:420px;max-height:72vh;border-radius:0}
+@media(max-width:900px){.tg-chat-main{min-height:360px}}
+.tg-chat-header-row{padding:12px 16px;border-bottom:1px solid #17212b;display:flex;align-items:center;justify-content:space-between;gap:10px;background:#17212b;flex-shrink:0}
+.tg-chat-header-row #groupChatTitle{color:#fff;font-size:16px;font-weight:600}
+.tg-chat-shell .ig-g-msg-wrap{flex:1;overflow-y:auto;padding:12px 10px 14px;display:flex;flex-direction:column;gap:8px;background:#0e1621;border:none;border-radius:0;margin:0!important;min-height:220px}
+.tg-chat-shell .ig-g-row{display:flex;flex-direction:column;width:100%}
+.tg-chat-shell .ig-g-row.me{align-items:flex-end}
+.tg-chat-shell .ig-g-row.them{align-items:flex-start}
+.tg-chat-shell .ig-g-bubble{max-width:min(82%,380px);padding:9px 12px 7px;border-radius:18px;font-size:14px;line-height:1.45;word-break:break-word;position:relative;animation:igMsgIn .2s ease-out}
+.tg-chat-shell .ig-g-bubble.me{border-bottom-right-radius:6px;background:#2b5278!important;border:1px solid #2b5278!important;color:#fff!important;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.tg-chat-shell .ig-g-bubble.them{border-bottom-left-radius:6px;background:#182533!important;border:1px solid #182533!important;color:#e5ebf1!important}
+.tg-chat-shell .ig-g-name{font-size:12px;font-weight:600;color:#6ab7ff!important}
+.tg-chat-shell .ig-g-bubble.them .ig-g-name{color:#708499!important}
+.tg-chat-shell .ig-g-del{border:none;background:transparent;color:#b8d4f0;cursor:pointer;font-size:18px;line-height:1;padding:0 2px;opacity:.75}
+.tg-chat-shell .ig-g-del:hover{color:#fff;opacity:1}
+.tg-chat-shell .ig-g-text{white-space:pre-wrap}
+.tg-chat-shell .ig-g-time{font-size:10px;color:rgba(255,255,255,.45)!important;margin-top:4px;text-align:right}
+.tg-chat-shell .ig-g-bubble.them .ig-g-time{text-align:left;color:rgba(255,255,255,.35)!important}
+.tg-chat-input-row{padding:10px 12px 14px;border-top:1px solid #17212b;background:#17212b;display:flex;gap:8px;align-items:center;flex-shrink:0}
+.tg-chat-input-row .sinp{background:#0e1621;border:1px solid #243445;color:#fff;border-radius:22px;padding:10px 16px}
+.tg-chat-input-row .btn-g{background:#5288c1;color:#fff;border-radius:22px;padding:10px 18px;border:none}
+.tg-chat-input-row .btn-o{border-color:#5288c1;color:#9cc3e8}
+#groupChatPlaceholder{color:#708499!important;background:#0e1621!important}
+.tg-owner-bar{background:#17212b!important;border-bottom:1px solid #0e1621!important}
 
 /* ── Util ── */
 .sect-title{font-size:22px;font-weight:700;color:#e8e8e8;margin-bottom:20px}
@@ -730,48 +754,56 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
     <section class="db-sec" id="sec-groups">
       {% if 'community' in vbk %}
       <div class="sect-title" style="margin-bottom:8px">Групповые чаты</div>
-      <p class="muted" style="margin-bottom:18px;font-size:14px;line-height:1.5">Создайте группу — участники вступают сами и пишут в общий чат (как в Telegram). Выберите группу слева, нажмите «Вступить», если ещё не в чате.</p>
-      <div class="ig-groups-wrap">
-        <div class="card ig-groups-sidebar" style="padding:16px">
+      <p class="muted" style="margin-bottom:18px;font-size:14px;line-height:1.5">Интерфейс в духе Telegram: список чатов слева, переписка справа. Создавать группы могут тарифы <strong class="gold">Про</strong> и <strong class="gold">Макси</strong> и администратор.</p>
+      <div class="tg-chat-shell">
+        <aside class="tg-chat-sidebar">
+          <div class="tg-chat-sidebar-head">
+            <div class="tg-h">Чаты</div>
+            <div class="tg-sub">Группы сообщества</div>
+          </div>
           {% if can_create_groups %}
-          <button type="button" class="btn-g" style="width:100%;margin-bottom:14px" onclick="document.getElementById('grpCreateModal').style.display='flex'">+ Создать группу</button>
+          <button type="button" class="tg-btn-new" onclick="document.getElementById('grpCreateModal').style.display='flex'">+ Новая группа</button>
           {% else %}
-          <p class="muted" style="font-size:12px;margin-bottom:14px;line-height:1.5">Создавать группы могут только владельцы тарифов <strong class="gold">Про</strong> и <strong class="gold">Макси</strong> (и администраторы). Вы можете вступать в группы и писать в чатах.</p>
+          <p class="muted" style="font-size:12px;margin:0 14px 12px;line-height:1.5;color:#708499!important">Создание групп — только <strong class="gold">Про</strong> / <strong class="gold">Макси</strong> или админ. Вступайте в группы и пишите в чатах.</p>
           {% endif %}
-          <div id="groupListEl" style="font-size:13px">
+          <div id="groupListEl" class="tg-chat-list">
             {% if group_list %}
             {% for g in group_list %}
-            <div class="ig-g-item {% if g.is_member %}on{% endif %}" data-gid="{{ g.id }}" data-member="{{ '1' if g.is_member else '0' }}" data-join="{{ g.join_mode or 'approval' }}" data-owner="{{ g.created_by or '' }}" data-pending="{{ '1' if g.pending_join else '0' }}" data-retention="{% if g.message_retention_days is not none %}{{ g.message_retention_days }}{% endif %}" onclick="selectGroupChat({{ g.id }},this)">
-              <div style="font-weight:600;color:#e8e8e8;margin-bottom:4px">{{ g.name }}</div>
-              <div style="font-size:11px;color:#666">{{ g.member_count or 0 }} участн. {% if g.is_member %}· вы в чате{% elif g.pending_join %}· заявка{% endif %}</div>
+            {% set _gn = (g.name or '?') %}
+            <div class="ig-g-item tg-chat-item {% if g.is_member %}on{% endif %}" data-title="{{ g.name|e }}" data-gid="{{ g.id }}" data-member="{{ '1' if g.is_member else '0' }}" data-join="{{ g.join_mode or 'approval' }}" data-owner="{{ g.created_by or '' }}" data-pending="{{ '1' if g.pending_join else '0' }}" data-retention="{% if g.message_retention_days is not none %}{{ g.message_retention_days }}{% endif %}" onclick="selectGroupChat({{ g.id }},this)">
+              <div class="tg-chat-av">{{ (_gn[0:1] if _gn else '?')|e }}</div>
+              <div class="tg-chat-item-text">
+                <div class="tg-chat-item-title">{{ g.name }}</div>
+                <div class="tg-chat-item-sub">{{ g.member_count or 0 }} участн.{% if g.is_member %} · вы в чате{% elif g.pending_join %} · заявка{% endif %}</div>
+              </div>
             </div>
             {% endfor %}
             {% else %}
-            <div style="color:#555;text-align:center;padding:20px">{% if can_create_groups %}Пока нет групп — создайте первую{% else %}Пока нет групп{% endif %}</div>
+            <div style="color:#708499;text-align:center;padding:24px 16px;font-size:13px">{% if can_create_groups %}Нет групп — «Новая группа»{% else %}Пока нет групп{% endif %}</div>
             {% endif %}
           </div>
-        </div>
-        <div class="card ig-groups-chat" style="padding:0;overflow:hidden">
-          <div id="groupChatPlaceholder" style="flex:1;display:flex;align-items:center;justify-content:center;color:#555;font-size:14px;padding:32px;text-align:center">
-            Выберите группу слева или создайте новую. Чтобы писать, нажмите «Вступить».
+        </aside>
+        <div class="tg-chat-main" style="padding:0;overflow:hidden;display:flex;flex-direction:column">
+          <div id="groupChatPlaceholder" style="flex:1;display:flex;align-items:center;justify-content:center;font-size:14px;padding:32px;text-align:center">
+            Выберите чат слева или создайте группу.
           </div>
-          <div id="groupChatPanel" style="display:none;flex-direction:column;height:100%;min-height:420px">
-            <div id="groupOwnerBar" style="display:none;padding:10px 14px;background:rgba(201,168,76,.1);border-bottom:1px solid rgba(255,255,255,.08);font-size:12px;color:#ccc">
-              <div style="font-weight:600;color:#E8C96B;margin-bottom:6px">Заявки на вступление</div>
+          <div id="groupChatPanel" style="display:none;flex-direction:column;height:100%;min-height:420px;flex:1">
+            <div id="groupOwnerBar" class="tg-owner-bar" style="display:none;padding:10px 14px;font-size:12px;color:#9cc3e8">
+              <div style="font-weight:600;color:#7ec8ff;margin-bottom:6px">Заявки на вступление</div>
               <div id="groupPendingList" style="display:flex;flex-direction:column;gap:6px"></div>
             </div>
-            <div id="groupRetentionRow" style="display:none;padding:8px 14px;border-bottom:1px solid rgba(255,255,255,.06);align-items:center;gap:8px;flex-wrap:wrap">
-              <span style="font-size:11px;color:#888">Хранение сообщений (дней, пусто = без ограничения):</span>
+            <div id="groupRetentionRow" style="display:none;padding:8px 14px;border-bottom:1px solid #0e1621;align-items:center;gap:8px;flex-wrap:wrap;background:#17212b">
+              <span style="font-size:11px;color:#708499">Хранение сообщений (дней, пусто = без ограничения):</span>
               <input type="number" id="groupRetentionInp" min="1" max="36500" placeholder="∞" class="sinp" style="max-width:110px;padding:6px 10px;font-size:12px">
               <button type="button" class="btn-o" style="font-size:11px;padding:6px 10px" onclick="saveGroupRetention()">Сохранить</button>
             </div>
-            <div style="padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0">
-              <div id="groupChatTitle" style="font-weight:700;color:#e8e8e8;font-size:15px"></div>
+            <div class="tg-chat-header-row">
+              <div id="groupChatTitle"></div>
               <button type="button" class="btn-o" id="groupJoinBtn" style="font-size:12px;padding:6px 12px;display:none" onclick="joinSelectedGroup()">Вступить</button>
             </div>
-            <div id="groupMsgBox" class="ig-g-msg-wrap" style="margin:12px;border-radius:12px;flex:1;min-height:200px"></div>
-            <div style="padding:12px 14px;border-top:1px solid rgba(255,255,255,.08);display:flex;gap:8px;flex-shrink:0">
-              <input type="text" id="groupMsgInput" class="sinp" style="flex:1" placeholder="Сообщение в группу..." disabled onkeydown="if(event.key==='Enter'){event.preventDefault();sendGroupChatMessage();}">
+            <div id="groupMsgBox" class="ig-g-msg-wrap" style="flex:1;min-height:200px"></div>
+            <div class="tg-chat-input-row">
+              <input type="text" id="groupMsgInput" class="sinp" style="flex:1" placeholder="Сообщение..." disabled onkeydown="if(event.key==='Enter'){event.preventDefault();sendGroupChatMessage();}">
               <button type="button" class="btn-g" id="groupMsgSend" style="padding:10px 16px" disabled onclick="sendGroupChatMessage()">→</button>
             </div>
           </div>
@@ -2084,9 +2116,9 @@ async function refreshGroupListFromApi(){
     const d = await r.json().catch(()=>({}));
     if(!r.ok || !Array.isArray(d.groups)) return;
     const groups = d.groups;
-    const emptyMsg = window.__canCreateGroups ? 'Пока нет групп — создайте первую' : 'Пока нет групп';
+    const emptyMsg = window.__canCreateGroups ? 'Нет групп — нажмите «Новая группа»' : 'Пока нет групп';
     if(!groups.length){
-      el.innerHTML = '<div style="color:#555;text-align:center;padding:20px">'+ emptyMsg +'</div>';
+      el.innerHTML = '<div style="color:#708499;text-align:center;padding:24px 16px;font-size:13px">'+ emptyMsg +'</div>';
       return;
     }
     function escHtml(t){
@@ -2106,15 +2138,26 @@ async function refreshGroupListFromApi(){
         retAttr = ' data-retention="'+escAttr(String(g.message_retention_days))+'"';
       }
       let sub2 = '';
-      if(g.is_member) sub2 = '· вы в чате';
-      else if(g.pending_join) sub2 = '· заявка';
-      const subLine = (g.member_count||0) + ' участн. ' + (sub2 ? (' ' + sub2) : '');
-      return '<div class="ig-g-item'+on+'" data-gid="'+g.id+'" data-member="'+mem+'" data-join="'+escAttr(jid)+'" data-owner="'+escAttr(owner)+'" data-pending="'+pend+'"'+retAttr+' onclick="selectGroupChat('+g.id+',this)">'+
-        '<div style="font-weight:600;color:#e8e8e8;margin-bottom:4px">'+escHtml(g.name)+'</div>'+
-        '<div style="font-size:11px;color:#666">'+subLine+'</div></div>';
+      if(g.is_member) sub2 = ' · вы в чате';
+      else if(g.pending_join) sub2 = ' · заявка';
+      const subLine = (g.member_count||0) + ' участн.' + sub2;
+      const rawName = String(g.name||'').trim();
+      const letter = rawName ? rawName.charAt(0).toUpperCase() : '?';
+      const titleAttr = escAttr(rawName || ('Группа #'+g.id));
+      return '<div class="ig-g-item tg-chat-item'+on+'" data-title="'+titleAttr+'" data-gid="'+g.id+'" data-member="'+mem+'" data-join="'+escAttr(jid)+'" data-owner="'+escAttr(owner)+'" data-pending="'+pend+'"'+retAttr+' onclick="selectGroupChat('+g.id+',this)">'+
+        '<div class="tg-chat-av">'+escHtml(letter)+'</div>'+
+        '<div class="tg-chat-item-text"><div class="tg-chat-item-title">'+escHtml(g.name)+'</div>'+
+        '<div class="tg-chat-item-sub">'+escHtml(subLine)+'</div></div></div>';
     }).join('');
   }catch(e){}
 }
+(function(){
+  function bootGroupList(){
+    if(document.getElementById('groupListEl')) refreshGroupListFromApi();
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', bootGroupList);
+  else bootGroupList();
+})();
 
 async function loadOwnerPendingForGroup(gid){
   const bar=document.getElementById('groupOwnerBar');
@@ -2175,7 +2218,12 @@ function selectGroupChat(id, el){
   document.querySelectorAll('.ig-g-item').forEach(x=>x.classList.remove('on'));
   if(el) el.classList.add('on');
   const titleEl = document.getElementById('groupChatTitle');
-  const nm = el && el.querySelector('div') ? el.querySelector('div').textContent.trim() : ('Группа #' + id);
+  let nm = 'Группа #' + id;
+  if(el){
+    if(el.dataset && el.dataset.title) nm = el.dataset.title;
+    else if(el.querySelector('.tg-chat-item-title')) nm = el.querySelector('.tg-chat-item-title').textContent.trim();
+    else if(el.querySelector('div')) nm = el.querySelector('div').textContent.trim();
+  }
   if(titleEl) titleEl.textContent = nm;
   const ph = document.getElementById('groupChatPlaceholder');
   const panel = document.getElementById('groupChatPanel');
@@ -2335,7 +2383,7 @@ async function createGroupSubmit(){
       }, 150);
       return;
     }
-    const msg = d.error || (r.status===403 ? 'Нет доступа' : r.status===401 ? 'Войдите в аккаунт' : 'Не удалось создать группу');
+    const msg = d.error || d.detail || (r.status===403 ? 'Нужен тариф Про/Макси или права администратора' : r.status===401 ? 'Войдите в аккаунт' : (r.status===500 ? (d.error||'Ошибка сервера при сохранении') : 'Не удалось создать группу'));
     showNotification(msg,'error');
   }catch(e){ showNotification('Ошибка сети','error'); }
 }
