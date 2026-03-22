@@ -1317,8 +1317,12 @@ async def community_group_create(
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
     uid = user.get("primary_user_id") or user["id"]
-    if not can_create_community_groups(None, user):
-        return JSONResponse({"error": "Нет доступа"}, status_code=403)
+    pl = await check_subscription(uid)
+    if not can_create_community_groups(pl, user):
+        return JSONResponse(
+            {"error": "Создание групп доступно с тарифов Про и Макси (или администратору)"},
+            status_code=403,
+        )
     nm = (name or "").strip()
     if len(nm) < 2:
         return JSONResponse({"error": "Слишком короткое название"}, status_code=400)

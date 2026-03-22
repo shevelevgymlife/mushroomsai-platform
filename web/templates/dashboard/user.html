@@ -736,7 +736,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
           {% if can_create_groups %}
           <button type="button" class="btn-g" style="width:100%;margin-bottom:14px" onclick="document.getElementById('grpCreateModal').style.display='flex'">+ Создать группу</button>
           {% else %}
-          <p class="muted" style="font-size:12px;margin-bottom:14px;line-height:1.5">Создание групп доступно с тарифа <strong class="gold">Старт</strong> и выше при активной подписке.</p>
+          <p class="muted" style="font-size:12px;margin-bottom:14px;line-height:1.5">Создавать группы могут только владельцы тарифов <strong class="gold">Про</strong> и <strong class="gold">Макси</strong> (и администраторы). Вы можете вступать в группы и писать в чатах.</p>
           {% endif %}
           <div id="groupListEl" style="font-size:13px">
             {% if group_list %}
@@ -747,7 +747,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
             </div>
             {% endfor %}
             {% else %}
-            <div style="color:#555;text-align:center;padding:20px">Пока нет групп — создайте первую</div>
+            <div style="color:#555;text-align:center;padding:20px">{% if can_create_groups %}Пока нет групп — создайте первую{% else %}Пока нет групп{% endif %}</div>
             {% endif %}
           </div>
         </div>
@@ -781,7 +781,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(201,168,76,.5);outli
       <div class="sect-title" style="margin-bottom:8px">Групповые чаты</div>
       <div class="card" style="padding:28px 22px;text-align:center;border-radius:24px;border:1px solid rgba(201,168,76,.2);background:linear-gradient(165deg,rgba(28,28,28,.9),rgba(10,10,10,.95))">
         <div style="font-size:40px;margin-bottom:12px">💬</div>
-        <p style="font-size:14px;color:#888;line-height:1.65;margin:0;max-width:360px;margin-left:auto;margin-right:auto">Групповые чаты доступны с тарифа <strong class="gold">Старт</strong> и выше вместе с разделом «Сообщество».</p>
+        <p style="font-size:14px;color:#888;line-height:1.65;margin:0;max-width:360px;margin-left:auto;margin-right:auto">Групповые чаты — вместе с разделом «Сообщество». Создавать новые группы могут тарифы <strong class="gold">Про</strong> и <strong class="gold">Макси</strong>.</p>
         {% if 'tariffs' in vbk %}
         <button type="button" class="btn-g" style="margin-top:18px;padding:10px 24px;border-radius:14px" onclick="goSec('plan')">Тарифы</button>
         {% endif %}
