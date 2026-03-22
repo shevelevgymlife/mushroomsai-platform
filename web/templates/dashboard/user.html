@@ -272,7 +272,9 @@
       <div class="ig-drawer-sep"></div>
       <a href="https://wallet.decimalchain.com/" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none"><span class="e">{{ ico('wallet') }}</span><span class="lbl">Кошелёк Decimal (web)</span></a>
       <a href="https://play.google.com/store/apps/details?id=com.chain.decimal" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none"><span class="e">📱</span><span class="lbl">Decimal Wallet — Android</span></a>
-      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();connectMetaMask()"><span class="e">{{ ico('wallet') }}</span><span class="lbl">MetaMask / кошелёк</span></button>
+      <a href="https://apps.apple.com/app/decimal-blockchain-wallet/id1510802073" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none"><span class="e"></span><span class="lbl">Decimal Wallet — iPhone (App Store)</span></a>
+      <a href="https://metamask.app.link/dapp/{{ request.url.hostname }}/dashboard" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none"><span class="e">{{ ico('wallet') }}</span><span class="lbl">MetaMask — открыть в приложении (iOS / Android)</span></a>
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();connectMetaMask()"><span class="e">{{ ico('wallet') }}</span><span class="lbl">MetaMask в браузере</span></button>
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();document.getElementById('sync-modal').style.display='flex'"><span class="e">{{ ico('link') }}</span><span class="lbl">Синхронизация аккаунтов</span></button>
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('link')"><span class="e">{{ ico('link') }}</span><span class="lbl">Привязка Telegram / Google</span></button>
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('language')"><span class="e">{{ ico('globe') }}</span><span class="lbl">Язык интерфейса</span></button>
@@ -455,30 +457,15 @@
         {% if user.get('profile_link_url') %}
         <a href="{{ user.profile_link_url }}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:8px;color:#C9A84C;font-weight:600;font-size:14px;margin-bottom:14px;text-decoration:none;border-bottom:1px solid rgba(201,168,76,.35);padding-bottom:2px">{{ user.get('profile_link_label') or user.profile_link_url }}</a>
         {% endif %}
-        <div id="wltStMe" style="font-size:12px;color:#666;margin-bottom:12px">
-          {% if user.wallet_address %}<span style="color:#4ade80">Кошелёк: {{ user.wallet_address[:10] }}…{{ user.wallet_address[-4:] }}</span>{% endif %}
-        </div>
         {% if shevelev_token %}
         <div id="shevelevBalWrapMe" class="shevelev-bal-box" style="margin-bottom:16px;padding:14px 16px;border-radius:14px;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.28);max-width:420px">
-          <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Баланс SHEVELEV</div>
-          <div id="shevelevBalMe" style="font-size:20px;font-weight:700;color:#C9A84C">—</div>
+          <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">SHEVELEV (виден другим после синхронизации)</div>
+          <div id="shevelevBalMe" style="font-size:20px;font-weight:700;color:#C9A84C">{% if user.get('shevelev_balance_cached') %}{{ user.shevelev_balance_cached }}{% else %}—{% endif %}</div>
           <div id="shevelevBalErrMe" style="display:none;font-size:12px;color:#f87171;margin-top:6px"></div>
+          <button type="button" class="btn-o" style="margin-top:10px;font-size:12px" onclick="syncShevelevServer()">Синхронизировать с блокчейном</button>
+          <p style="font-size:11px;color:#555;margin-top:8px;line-height:1.4">Укажите адрес кошелька в расширенных настройках или через меню «MetaMask». Затем нажмите синхронизацию — число появится у вас и в профиле для других.</p>
         </div>
-        {% else %}
-        <p style="font-size:12px;color:#555;margin-bottom:12px">Баланс SHEVELEV: задайте <code>SHEVELEV_TOKEN_ADDRESS</code> на сервере.</p>
         {% endif %}
-        <div style="margin-bottom:16px;padding:14px 16px;border-radius:14px;background:rgba(147,197,253,.08);border:1px solid rgba(147,197,253,.28);max-width:420px">
-          <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Баланс DEL (Decimal Smart Chain)</div>
-          <div id="delBalMe" style="font-size:20px;font-weight:700;color:#93c5fd">
-            {% if user.get('decimal_del_balance') is not none and user.get('decimal_del_balance') != '' %}{{ user.decimal_del_balance }} DEL{% else %}—{% endif %}
-          </div>
-          {% if user.get('decimal_balance_cached_at') %}
-          <div style="font-size:11px;color:#666;margin-top:4px">Синхронизация: {{ user.decimal_balance_cached_at }}</div>
-          {% endif %}
-          <button type="button" class="btn-o" style="margin-top:10px;font-size:12px" onclick="syncDelBalance()">Синхронизировать с блокчейном</button>
-          <div id="delBalErrMe" style="display:none;font-size:12px;color:#f87171;margin-top:6px"></div>
-          <p style="font-size:11px;color:#555;margin-top:8px;line-height:1.4">Запрос идёт на RPC <code style="font-size:10px">node.decimalchain.com</code> по адресу из профиля. SHEVELEV в MetaMask по-прежнему читается в браузере.</p>
-        </div>
         <div id="meEditPanel" class="card" style="display:none;margin-bottom:20px;padding:18px;border-radius:16px">
           <div style="font-size:13px;font-weight:600;color:#888;margin-bottom:12px">Редактирование</div>
           <input id="meName" class="sinp" style="margin-bottom:10px" value="{{ user.name or '' }}" placeholder="Имя">
@@ -487,17 +474,29 @@
           <input id="meLinkUrl" class="sinp" style="margin-bottom:12px" value="{{ user.get('profile_link_url','') }}" placeholder="https://…">
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button type="button" class="btn-g" onclick="saveMeProfile()">Сохранить</button>
-            <button type="button" class="btn-o" onclick="connectMetaMask()">MetaMask</button>
           </div>
           <div id="meProfOk" style="display:none;margin-top:10px;font-size:13px;color:#4ade80">✓ Сохранено</div>
         </div>
         <div class="ig-post-grid">
           {% for p in grid_posts %}
-          <a href="/community/profile/{{ effective_user_id }}#pc-{{ p.id }}" class="ig-post-cell">
+          <a href="#" onclick="event.preventDefault();showMePost({{ p.id }});" class="ig-post-cell" aria-label="Открыть пост">
             {% if p.image_url %}<img src="{{ p.image_url }}" alt="" loading="lazy">{% else %}<div class="ig-post-cell-ph">{{ p.content[:100] }}{% if p.content|length > 100 %}…{% endif %}</div>{% endif %}
           </a>
           {% else %}
           <div style="grid-column:1/-1;text-align:center;padding:36px 16px;color:#555;font-size:14px">Пока нет публикаций. Во вкладке «Лента» нажмите «Создать» и опубликуйте пост.</div>
+          {% endfor %}
+        </div>
+        <div class="ig-me-post-details" style="margin-top:12px">
+          {% for p in grid_posts %}
+          <div id="me-p-{{ p.id }}" class="ig-post" style="display:none">
+            <div class="ig-post-header">
+              <div style="width:36px;height:36px;border-radius:50%;border:2px solid #C9A84C;overflow:hidden">{% if user.avatar %}<img src="{{ user.avatar }}" style="width:100%;height:100%;object-fit:cover" alt="">{% else %}<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px">🍄</div>{% endif %}</div>
+              <div style="flex:1"><div style="font-size:14px;font-weight:700;color:#e8e8e8">{{ user.name or 'Вы' }}</div><div style="font-size:11px;color:#888">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}</div></div>
+            </div>
+            {% if p.image_url %}<img src="{{ p.image_url }}" class="ig-post-img" loading="lazy" alt="">{% endif %}
+            {% if p.content %}<div class="ig-post-body" style="padding:12px">{{ p.content }}</div>{% endif %}
+            <div style="padding:10px"><a href="/community/profile/{{ effective_user_id }}#pc-{{ p.id }}" class="btn-o" style="font-size:12px;padding:8px 12px;text-decoration:none;display:inline-block">Открыть в профиле (комментарии)</a></div>
+          </div>
           {% endfor %}
         </div>
       </div>
@@ -620,12 +619,17 @@
         <div class="ig-post-actions">
           <div class="ig-post-actions-left">
             <button type="button" class="ig-act" id="like-btn-{{ p.id }}" onclick="likeFeedPost({{ p.id }},this)" title="Нравится" aria-label="Нравится">{{ '❤️' if is_liked else '🤍' }}</button>
+            {% if is_mine %}
+            <button type="button" class="ig-act" title="Комментарии" onclick="goSec('feed');setTimeout(function(){var x=document.getElementById('fp-{{ p.id }}');if(x)x.scrollIntoView({behavior:'smooth',block:'start'});},100);">💬</button>
+            <button type="button" class="ig-act" title="К посту" onclick="goSec('feed');setTimeout(function(){var x=document.getElementById('fp-{{ p.id }}');if(x)x.scrollIntoView({behavior:'smooth',block:'start'});},100);">↗</button>
+            {% else %}
             <a href="/community/profile/{{ p.user_id }}#pc-{{ p.id }}" class="ig-act" title="Комментарии" style="text-decoration:none">💬</a>
             <a href="/community/profile/{{ p.user_id }}#pc-{{ p.id }}" class="ig-act" title="Открыть пост" style="text-decoration:none">↗</a>
+            {% endif %}
           </div>
           <span class="ig-act" style="cursor:default;font-size:16px;opacity:.5" title="Сохранения">🔖 {{ p.saves_count }}</span>
         </div>
-        <div class="ig-post-likes">Нравится: <span id="like-count-{{ p.id }}">{{ p.likes_count }}</span>{% if p.comments_count %} · <a href="/community/profile/{{ p.user_id }}#pc-{{ p.id }}" style="color:#888;text-decoration:none;font-weight:500">{{ p.comments_count }} коммент.</a>{% endif %}</div>
+        <div class="ig-post-likes">Нравится: <span id="like-count-{{ p.id }}">{{ p.likes_count }}</span>{% if p.comments_count %} · {% if is_mine %}<span style="color:#888;font-weight:500">{{ p.comments_count }} коммент.</span>{% else %}<a href="/community/profile/{{ p.user_id }}#pc-{{ p.id }}" style="color:#888;text-decoration:none;font-weight:500">{{ p.comments_count }} коммент.</a>{% endif %}{% endif %}</div>
         {% if p.image_url and p.content %}
         <div class="ig-post-body"><span class="ig-cap-user">{{ a.name if a else 'Участник' }}</span>{{ p.content[:2000] }}{% if p.content|length > 2000 %}…{% endif %}</div>
         {% endif %}
@@ -1020,26 +1024,9 @@
 
     <!-- ══ PROFILE ══ -->
     <section class="db-sec" id="sec-profile">
-      <div class="sect-title">⚙️ Настройки профиля</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-        <div>
-          <div class="card" style="margin-bottom:16px">
-            <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:14px">Фото профиля</div>
-            <div style="display:flex;gap:16px;align-items:center">
-              <div class="av-wrap" onclick="document.getElementById('avInput2').click()">
-                {% if user.avatar %}
-                <img id="avImg2" src="{{ user.avatar }}" class="av-circle" style="width:70px;height:70px" alt="">
-                {% else %}
-                <div class="av-circle" style="width:70px;height:70px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:28px">🍄</div>
-                <img id="avImg2" src="" class="av-circle" style="width:70px;height:70px;display:none" alt="">
-                {% endif %}
-                <div class="av-overlay">✏️</div>
-                <input id="avInput2" type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="uploadAv(this,'avImg2')">
-              </div>
-              <div style="font-size:12px;color:#555;line-height:1.7">JPEG, PNG, WebP<br>Макс. 3 МБ</div>
-            </div>
-            <div id="avErr" style="font-size:12px;color:#f87171;margin-top:8px;display:none"></div>
-          </div>
+      <div class="sect-title">⚙️ Расширенные настройки</div>
+      <p style="font-size:12px;color:#666;margin:-8px 0 16px;max-width:520px">Фото меняется на экране профиля (аватар) или в шапке кабинета. Подключение MetaMask — в меню «гамбургер».</p>
+      <div style="max-width:560px;display:flex;flex-direction:column;gap:16px">
           <div class="card">
             <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:14px">Информация</div>
             <div style="margin-bottom:12px">
@@ -1065,17 +1052,14 @@
             <button class="btn-g" style="width:100%" onclick="saveProfile()">Сохранить</button>
             <div id="profOk" style="display:none;text-align:center;margin-top:8px;font-size:13px;color:#4ade80">✓ Сохранено</div>
           </div>
-        </div>
-        <div>
-          <div class="card" style="margin-bottom:16px">
-            <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:14px">🦊 Кошелёк SHEVELEV</div>
+          <div class="card">
+            <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:14px">Кошелёк и SHEVELEV</div>
             <div id="wltSt" style="font-size:12px;color:#666;margin-bottom:10px">
-              {% if user.wallet_address %}<span style="color:#4ade80">✓ {{ user.wallet_address[:12] }}...{{ user.wallet_address[-4:] }}</span>
-              {% else %}Кошелёк не подключён{% endif %}
+              {% if user.wallet_address %}<span style="color:#4ade80">✓ Адрес сохранён</span>
+              {% else %}Укажите адрес 0x… для синхронизации токена{% endif %}
             </div>
-            <button class="btn-o" style="width:100%;margin-bottom:10px" onclick="connectMetaMask()">🦊 Подключить MetaMask</button>
             <div>
-              <label style="font-size:12px;color:#666;display:block;margin-bottom:5px">Или вставьте адрес вручную</label>
+              <label style="font-size:12px;color:#666;display:block;margin-bottom:5px">Адрес кошелька (Decimal / MetaMask)</label>
               <div style="display:flex;gap:8px">
                 <input id="wltInp" class="sinp" style="flex:1" placeholder="0x..." value="{{ user.wallet_address or '' }}">
                 <button class="btn-g" style="flex-shrink:0" onclick="saveWallet()">✓</button>
@@ -1083,9 +1067,14 @@
             </div>
             {% if shevelev_token %}
             <div id="shevelevBalWrap" style="margin-top:14px;padding:14px;border-radius:12px;background:rgba(201,168,76,.08);border:1px solid rgba(201,168,76,.22)">
-              <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Баланс SHEVELEV</div>
-              <div id="shevelevBal" style="font-size:18px;font-weight:700;color:#C9A84C">—</div>
+              <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">SHEVELEV (в кошельке, через браузер)</div>
+              <div id="shevelevBal" style="font-size:18px;font-weight:700;color:#C9A84C">{% if user.get('shevelev_balance_cached') %}{{ user.shevelev_balance_cached }}{% else %}—{% endif %}</div>
               <div id="shevelevBalErr" style="display:none;font-size:12px;color:#f87171;margin-top:6px"></div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">
+                <button type="button" class="btn-o" style="font-size:12px;padding:8px 14px" onclick="syncShevelevServer()">Синхронизировать для профиля</button>
+                <button type="button" class="btn-g" style="font-size:12px;padding:8px 14px" onclick="openSendShevModal()">Отправить SHEVELEV</button>
+              </div>
+              <p style="font-size:11px;color:#555;margin-top:10px;line-height:1.4">«Синхронизировать» записывает баланс на сервер — другие увидят ⚗ в вашем профиле. Отправка — через MetaMask (сеть Decimal).</p>
             </div>
             {% endif %}
           </div>
@@ -1100,7 +1089,6 @@
             {% endfor %}
             <button class="btn-o" style="width:100%;margin-top:14px" onclick="document.getElementById('sync-modal').style.display='flex'">🔗 Синхронизировать аккаунты</button>
           </div>
-        </div>
       </div>
     </section>
 
@@ -1213,6 +1201,19 @@
         <span style="margin-left:auto;color:#ef4444">→</span>
       </a>
     </div>
+  </div>
+</div>
+
+<div id="sendShevModal" style="display:none;position:fixed;inset:0;z-index:10025;align-items:center;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(4px)" onclick="if(event.target===this)this.style.display='none'">
+  <div class="card" style="max-width:420px;width:92%;padding:24px;border-color:rgba(201,168,76,.3)" onclick="event.stopPropagation()">
+    <div style="font-weight:700;margin-bottom:4px;color:#C9A84C;font-size:17px">Отправить SHEVELEV</div>
+    <p style="font-size:12px;color:#666;margin-bottom:14px">Сеть Decimal Smart Chain в MetaMask. Комиссия в DEL.</p>
+    <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Адрес получателя</label>
+    <input id="sendShevTo" class="sinp" style="margin-bottom:12px;width:100%;box-sizing:border-box" placeholder="0x…">
+    <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Количество</label>
+    <input id="sendShevAmt" type="number" step="any" class="sinp" style="margin-bottom:14px;width:100%;box-sizing:border-box" placeholder="0">
+    <button type="button" class="btn-g" style="width:100%" onclick="submitSendShev()">Отправить через MetaMask</button>
+    <p id="sendShevSt" style="margin-top:12px;font-size:12px;text-align:center;color:#888;line-height:1.4"></p>
   </div>
 </div>
 
@@ -1495,10 +1496,8 @@ async function loadSHEVELEVBalance(addr){
     });
   };
   const setBal=(txt)=>{
-    ['shevelevBal','shevelevBalMe'].forEach(id=>{
-      const el=document.getElementById(id);
-      if(el)el.textContent=txt;
-    });
+    const el=document.getElementById('shevelevBal');
+    if(el)el.textContent=txt;
   };
   setErr('',true);
   setBal('…');
@@ -1526,27 +1525,90 @@ async function saveWallet(addr){
   const hid=document.getElementById('dashWalletAddr');if(hid)hid.value=a;
   const sh=a.slice(0,12)+'...'+a.slice(-4);
   const st=document.getElementById('wltSt');if(st)st.innerHTML=`<span style="color:#4ade80">✓ ${sh}</span>`;
-  const stm=document.getElementById('wltStMe');if(stm)stm.innerHTML=`<span style="color:#4ade80">Кошелёк: ${a.slice(0,10)}…${a.slice(-4)}</span>`;
   if(window.ethereum&&SHEVELEV_TOKEN)loadSHEVELEVBalance(a);
 }
 
-async function syncDelBalance(){
-  const el=document.getElementById('delBalMe');
-  const er=document.getElementById('delBalErrMe');
+function showMePost(id){
+  document.querySelectorAll('.ig-me-post-details .ig-post').forEach(e=>{e.style.display='none'});
+  const el=document.getElementById('me-p-'+id);
+  if(el){el.style.display='block';el.scrollIntoView({behavior:'smooth',block:'start'});}
+}
+
+async function syncShevelevServer(){
+  const el=document.getElementById('shevelevBalMe');
+  const er=document.getElementById('shevelevBalErrMe');
   if(er){er.style.display='none';er.textContent='';}
   if(el)el.textContent='…';
   try{
-    const r=await fetch('/profile/wallet/sync-decimal',{method:'POST'});
+    const r=await fetch('/profile/wallet/sync-shevelev',{method:'POST'});
     const d=await r.json();
     if(!d.ok){
       if(er){er.textContent=d.error||'Ошибка';er.style.display='block';}
       if(el)el.textContent='—';
       return;
     }
-    if(el)el.textContent=(d.formatted!=null?String(d.formatted):String(d.del))+' DEL';
+    if(el)el.textContent=d.formatted!=null?String(d.formatted):String(d.shevelev);
+    showNotification('Баланс SHEVELEV обновлён — другие увидят его в вашем профиле','success');
   }catch(e){
     if(er){er.textContent=e.message||'Сеть';er.style.display='block';}
     if(el)el.textContent='—';
+  }
+}
+
+function openSendShevModal(){
+  const m=document.getElementById('sendShevModal');
+  if(m)m.style.display='flex';
+  const st=document.getElementById('sendShevSt');
+  if(st){st.textContent='';st.style.color='#888';}
+}
+
+function _shevParseAmountToWei(s,decimals){
+  const t=String(s).replace(',','.').trim();
+  if(!/^\d+(\.\d+)?$/.test(t))return null;
+  const [ip,fp='']=t.split('.');
+  const frac=(fp+'0'.repeat(decimals)).slice(0,decimals).padEnd(decimals,'0');
+  try{
+    return BigInt(ip||'0')*BigInt(10)**BigInt(decimals)+BigInt(frac);
+  }catch(_){return null;}
+}
+
+function _shevEncodeTransfer(toAddr,wei){
+  const addr=toAddr.replace(/^0x/i,'').toLowerCase().padStart(64,'0');
+  let v=BigInt(wei);
+  if(v<0n)return null;
+  const hex=v.toString(16).padStart(64,'0');
+  return '0xa9059cbb'+addr+hex;
+}
+
+async function submitSendShev(){
+  const st=document.getElementById('sendShevSt');
+  if(st){st.textContent='';st.style.color='#888';}
+  if(!window.ethereum){if(st){st.style.color='#f87171';st.textContent='Нужен MetaMask';}return;}
+  if(!SHEVELEV_TOKEN){if(st){st.style.color='#f87171';st.textContent='Контракт SHEVELEV не настроен на сервере';}return;}
+  const to=(document.getElementById('sendShevTo')?.value||'').trim();
+  const rawAmt=(document.getElementById('sendShevAmt')?.value||'').trim();
+  if(!/^0x[a-fA-F0-9]{40}$/i.test(to)){if(st){st.style.color='#f87171';st.textContent='Укажите адрес получателя (0x + 40 hex)';}return;}
+  const dec=await erc20Decimals(SHEVELEV_TOKEN);
+  const wei=_shevParseAmountToWei(rawAmt,dec);
+  if(wei==null||wei<=0n){if(st){st.style.color='#f87171';st.textContent='Укажите положительную сумму';}return;}
+  const data=_shevEncodeTransfer(to,wei);
+  if(!data){if(st){st.style.color='#f87171';st.textContent='Слишком большая сумма';}return;}
+  try{
+    const accs=await window.ethereum.request({method:'eth_requestAccounts'});
+    const from=accs[0];
+    try{
+      await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:DSC_CHAIN_ID}]});
+    }catch(se){
+      if(se&&se.code===4902){
+        await window.ethereum.request({method:'wallet_addEthereumChain',params:[DSC_PARAMS]});
+      }else if(se&&se.code!==4001)throw se;
+    }
+    if(st)st.textContent='Подтвердите транзакцию в MetaMask…';
+    const txh=await window.ethereum.request({method:'eth_sendTransaction',params:[{from,to:SHEVELEV_TOKEN,data}]});
+    if(st){st.style.color='#4ade80';st.textContent='Отправлено: '+String(txh).slice(0,18)+'…';}
+  }catch(e){
+    if(e&&e.code===4001){if(st){st.style.color='#888';st.textContent='Отменено';}return;}
+    if(st){st.style.color='#f87171';st.textContent=e.message||String(e);}
   }
 }
 

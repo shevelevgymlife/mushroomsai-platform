@@ -122,6 +122,58 @@
       </div>
     </div>
 
+    <!-- Лайки и комментарии (как на маркетплейсе) -->
+    <div id="social" class="mb-16 scroll-mt-28">
+      <h2 class="text-2xl font-light text-text mb-4">Лайки и обсуждение</h2>
+      <div class="flex flex-wrap items-center gap-4 mb-6 p-4 rounded-2xl bg-surface border border-border">
+        {% if user %}
+        <button type="button" id="shopLikeBtn" onclick="toggleShopLike()"
+          data-liked="{{ 'true' if product_user_liked else 'false' }}"
+          class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-colors {% if product_user_liked %}border-gold bg-gold/15 text-gold{% else %}border-border text-text hover:border-gold/50{% endif %}">
+          <span id="shopLikeIcon">{% if product_user_liked %}♥{% else %}♡{% endif %}</span>
+          <span id="shopLikeLbl">{% if product_user_liked %}Вам нравится{% else %}Нравится{% endif %}</span>
+        </button>
+        {% else %}
+        <a href="/login?next=/shop/{{ product.id }}%23social"
+          class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gold/30 text-gold text-sm font-medium hover:bg-gold/10 transition-colors">
+          Войти, чтобы оценить товар
+        </a>
+        {% endif %}
+        <span class="text-sm text-muted"><span id="shopLikeCount" class="text-gold font-semibold tabular-nums">{{ product_like_count }}</span> оценили</span>
+      </div>
+
+      <div class="space-y-3 mb-6">
+        {% for item in shop_comments %}
+        <div class="p-4 rounded-xl bg-surface border border-border">
+          <p class="text-sm text-text whitespace-pre-wrap">{{ item.c.content }}</p>
+          <p class="text-xs text-muted mt-2">
+            {{ item.author.name if item.author and item.author.name else 'Участник' }}
+            {% if item.c.created_at %} · {{ item.c.created_at.strftime('%d.%m.%Y %H:%M') }}{% endif %}
+          </p>
+        </div>
+        {% endfor %}
+        {% if not shop_comments %}
+        <p class="text-sm text-muted">Комментариев пока нет — напишите первым.</p>
+        {% endif %}
+      </div>
+
+      {% if user %}
+      <form action="/shop/{{ product.id }}/product-comment" method="post" class="p-5 rounded-2xl bg-surface border border-border space-y-3">
+        <label class="block text-xs text-muted">Комментарий к товару</label>
+        <textarea name="content" required rows="3" minlength="1" maxlength="4000" placeholder="Впечатления, вопросы другим покупателям…"
+          class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm resize-none focus:outline-none focus:border-gold/60"></textarea>
+        <button type="submit"
+          class="px-5 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-colors">
+          Отправить
+        </button>
+      </form>
+      {% else %}
+      <div class="p-4 rounded-xl bg-surface border border-border text-sm text-muted text-center">
+        <a href="/login?next=/shop/{{ product.id }}%23social" class="text-gold hover:underline">Войдите</a>, чтобы комментировать товар
+      </div>
+      {% endif %}
+    </div>
+
     <!-- Questions to seller -->
     <div id="questions" class="mb-16">
       <h2 class="text-2xl font-light text-text mb-6">Вопросы о товаре</h2>
@@ -280,6 +332,34 @@
 </div>
 
 <script>
+const SHOP_PRODUCT_ID = {{ product.id }};
+async function toggleShopLike() {
+  const btn = document.getElementById('shopLikeBtn');
+  if (!btn) return;
+  btn.disabled = true;
+  try {
+    const r = await fetch('/shop/' + SHOP_PRODUCT_ID + '/like-toggle', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: '',
+    });
+    const d = await r.json().catch(function () { return {}; });
+    if (!d.ok) return;
+    const cnt = document.getElementById('shopLikeCount');
+    if (cnt) cnt.textContent = d.count;
+    const liked = !!d.liked;
+    btn.dataset.liked = liked ? 'true' : 'false';
+    btn.className = 'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-colors ' +
+      (liked ? 'border-gold bg-gold/15 text-gold' : 'border-border text-text hover:border-gold/50');
+    const ic = document.getElementById('shopLikeIcon');
+    const lb = document.getElementById('shopLikeLbl');
+    if (ic) ic.textContent = liked ? '♥' : '♡';
+    if (lb) lb.textContent = liked ? 'Вам нравится' : 'Нравится';
+  } finally {
+    btn.disabled = false;
+  }
+}
 async function postAnswer(qid) {
   const ta = document.getElementById('ans-' + qid);
   const err = document.getElementById('ans-err-' + qid);

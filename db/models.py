@@ -40,6 +40,8 @@ users = sqlalchemy.Table(
     sqlalchemy.Column("last_seen_at", sqlalchemy.DateTime, nullable=True),
     sqlalchemy.Column("decimal_del_balance", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("decimal_balance_cached_at", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("shevelev_balance_cached", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("shevelev_balance_cached_at", sqlalchemy.DateTime, nullable=True),
 )
 
 sessions = sqlalchemy.Table(
@@ -216,6 +218,26 @@ product_reviews = sqlalchemy.Table(
     sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=True),
     sqlalchemy.Column("rating", sqlalchemy.Integer, nullable=False),
     sqlalchemy.Column("text", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+shop_product_likes = sqlalchemy.Table(
+    "shop_product_likes",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("product_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("shop_products.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+    sqlalchemy.UniqueConstraint("user_id", "product_id", name="uq_shop_product_like_user"),
+)
+
+shop_product_comments = sqlalchemy.Table(
+    "shop_product_comments",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("product_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("shop_products.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
+    sqlalchemy.Column("content", sqlalchemy.Text, nullable=False),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
 

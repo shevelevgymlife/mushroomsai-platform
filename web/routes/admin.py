@@ -323,16 +323,23 @@ async def edit_shop_product(
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
 
+    exists = await database.fetch_one(shop_products.select().where(shop_products.c.id == product_id))
+    if not exists:
+        return JSONResponse({"ok": False, "error": "Товар не найден"}, status_code=404)
+
     price_val = _parse_form_price(price)
-    await database.execute(
-        shop_products.update().where(shop_products.c.id == product_id).values(
-            name=name, description=description, price=price_val,
-            url=url or None, mushroom_type=mushroom_type or None,
-            image_url=image_url or None, category=category or None,
-            in_stock=(in_stock == "true"),
+    try:
+        await database.execute(
+            shop_products.update().where(shop_products.c.id == product_id).values(
+                name=name, description=description, price=price_val,
+                url=url or None, mushroom_type=mushroom_type or None,
+                image_url=image_url or None, category=category or None,
+                in_stock=(in_stock == "true"),
+            )
         )
-    )
-    return JSONResponse({"ok": True})
+        return JSONResponse({"ok": True})
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
 
 @router.post("/shop/delete/{product_id}")
@@ -1183,6 +1190,19 @@ async def ai_posts_page(request: Request):
     if "Без папки" in folder_order:
         folder_order = ["Без папки"] + [x for x in folder_order if x != "Без папки"]
     folder_options = sorted(set(folder_order), key=lambda x: (0 if x == "Без папки" else 1, x.lower()))
+
+    focus_raw = (request.query_params.get("folder") or "").strip()
+    focused_folder: Optional[str] = None
+    relocatable_posts: list = []
+    if focus_raw:
+        match = next((x for x in folder_order if x == focus_raw), None)
+        if match is not None:
+            focused_folder = match
+            for p in posts_list:
+                fn = (p.get("folder") or "").strip() or "Без папки"
+                if fn != focused_folder:
+                    relocatable_posts.append(p)
+
     return templates.TemplateResponse(
         "dashboard/admin_ai_posts.html",
         {
@@ -1194,6 +1214,8 @@ async def ai_posts_page(request: Request):
             "posts_by_folder": posts_by_folder,
             "folder_order": folder_order,
             "folder_options": folder_options,
+            "focused_folder": focused_folder,
+            "relocatable_posts": relocatable_posts,
         },
     )
 
@@ -1229,6 +1251,43 @@ async def add_ai_post(
         return JSONResponse({"ok": True})
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@router.post("/ai-posts/bulk-move-folder")
+async def bulk_move_ai_posts_to_folder(
+    request: Request,
+    folder: str = Form(""),
+    post_ids: str = Form(""),
+):
+    admin = await require_permission(request, "can_ai")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    raw = (post_ids or "").replace(" ", "")
+    ids: list[int] = []
+    for part in raw.split(","):
+        if part.isdigit():
+            ids.append(int(part))
+    if not ids:
+        return JSONResponse({"error": "post_ids required"}, status_code=400)
+    fn = (folder or "").strip()
+    if fn == "Без папки":
+        fn = ""
+    db_folder = fn or None
+    for pid in ids:
+        row = await database.fetch_one(ai_training_posts.select().where(ai_training_posts.c.id == pid))
+        if not row:
+            continue
+        await database.execute(
+            ai_training_posts.update()
+            .where(ai_training_posts.c.id == pid)
+            .values(folder=db_folder)
+        )
+    if db_folder:
+        try:
+            await database.execute(ai_training_folders.insert().values(name=db_folder))
+        except Exception:
+            pass
+    return JSONResponse({"ok": True, "moved": len(ids)})
 
 
 @router.get("/ai-posts/{post_id}/one")

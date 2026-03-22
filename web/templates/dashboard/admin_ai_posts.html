@@ -7,6 +7,15 @@
 
     {% include "components/admin_nav.html" %}
 
+    {% if focused_folder %}
+    <div class="mb-6 p-4 rounded-2xl bg-gold/10 border border-gold/25 flex flex-wrap items-center gap-3">
+      <a href="/admin/ai-posts" class="text-sm font-semibold text-gold hover:underline">← Все папки</a>
+      <span class="text-sm text-muted">Открыта папка:</span>
+      <span class="text-sm font-semibold text-text">{{ focused_folder }}</span>
+      <span class="text-xs text-muted">Сюда можно перенести уже созданные посты из списка ниже.</span>
+    </div>
+    {% endif %}
+
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
       <div>
         <h1 class="text-3xl font-light text-text">Обучающие посты AI</h1>
@@ -30,12 +39,18 @@
     </form>
 
     {% for folder in folder_order %}
+    {% if not focused_folder or folder == focused_folder %}
     {% set fposts = posts_by_folder[folder] %}
     <section class="mb-10 rounded-2xl bg-surface border border-border overflow-hidden">
       <div class="px-4 sm:px-5 py-3 border-b border-border flex items-center gap-2 bg-bg/40 flex-wrap">
         <span class="text-gold text-lg leading-none">📁</span>
         <h2 class="text-sm font-semibold text-text tracking-wide">{{ folder }}</h2>
         <span class="text-xs text-muted ml-auto">{{ fposts|length }} пост.</span>
+        {% if not focused_folder %}
+        <a href="/admin/ai-posts?folder={{ folder|urlencode }}"
+          class="text-xs px-2.5 py-1 rounded-lg border border-gold/30 text-gold hover:bg-gold/10 shrink-0"
+          style="text-decoration:none">Открыть папку</a>
+        {% endif %}
         {% if not fposts and folder != 'Без папки' %}
         <button type="button" onclick="deleteFolderLabel({{ folder | tojson }})"
           class="text-xs px-2 py-1 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 cursor-pointer shrink-0">
@@ -93,7 +108,29 @@
           </tbody>
         </table>
       </div>
+      {% if focused_folder and folder == focused_folder and relocatable_posts|length > 0 %}
+      <div class="px-4 sm:px-5 py-4 border-t border-border bg-bg/30">
+        <h3 class="text-sm font-semibold text-text mb-2">Добавить в эту папку уже существующие посты</h3>
+        <p class="text-xs text-muted mb-3">Отметьте посты из других папок (или «Без папки») и нажмите «Перенести».</p>
+        <div class="max-h-56 overflow-y-auto space-y-2 mb-4 pr-1">
+          {% for post in relocatable_posts %}
+          <label class="flex items-start gap-2 text-sm text-text cursor-pointer select-none">
+            <input type="checkbox" class="bulk-move-cb mt-0.5 accent-gold" value="{{ post.id }}" />
+            <span><span class="font-medium">{{ post.title }}</span>
+              <span class="text-xs text-muted block mt-0.5">сейчас: {% if post.folder %}{{ post.folder }}{% else %}Без папки{% endif %}</span>
+            </span>
+          </label>
+          {% endfor %}
+        </div>
+        <input type="hidden" id="bulk-target-folder" value="{{ focused_folder }}" />
+        <button type="button" onclick="submitBulkMoveToFolder()"
+          class="px-4 py-2 rounded-xl bg-gold text-bg text-sm font-semibold border-0 cursor-pointer hover:opacity-90">
+          Перенести отмеченные в «{{ focused_folder }}»
+        </button>
+      </div>
+      {% endif %}
     </section>
+    {% endif %}
     {% else %}
     <div class="rounded-2xl border border-border bg-surface p-12 text-center text-muted text-sm">
       Постов ещё нет. Добавьте первый и укажите папку (например «Инструкции» или «Биохимия»).
@@ -114,13 +151,19 @@
       <input type="hidden" id="edit-ap-id" value="" />
       <div class="mb-4">
         <label class="block text-xs text-muted mb-1.5">Папка</label>
-        <input type="text" name="folder" id="edit-ap-folder" list="folder-datalist"
-          class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm outline-none focus:border-gold/50 box-border" />
-        <datalist id="folder-datalist">
+        <select id="edit-folder-sel" onchange="onEditFolderSelChange()"
+          class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm outline-none focus:border-gold/50 box-border">
+          <option value="">Без папки</option>
           {% for fn in folder_options|default(folder_order) %}
-          <option value="{{ fn }}"></option>
+          {% if fn != 'Без папки' %}
+          <option value="{{ fn }}">{{ fn }}</option>
+          {% endif %}
           {% endfor %}
-        </datalist>
+          <option value="__custom">Другая (ввести вручную)…</option>
+        </select>
+        <input type="text" id="edit-ap-folder-custom" placeholder="Название папки"
+          class="hidden w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm outline-none focus:border-gold/50 box-border mt-2" />
+        <input type="hidden" name="folder" id="edit-folder-send" value="" />
       </div>
       <div class="mb-4">
         <label class="block text-xs text-muted mb-1.5">Заголовок *</label>
@@ -155,16 +198,19 @@
     </div>
     <form id="add-form" onsubmit="submitPost(event)">
       <div class="mb-4">
-        <label class="block text-xs text-muted mb-1.5">Папка *</label>
-        <input type="text" name="folder" required placeholder="Например: Инструкции или Биохимия"
-          list="folder-datalist-add"
-          class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm outline-none focus:border-gold/50 box-border" />
-        <datalist id="folder-datalist-add">
+        <label class="block text-xs text-muted mb-1.5">Папка</label>
+        <select id="add-folder-select"
+          class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm outline-none focus:border-gold/50 box-border">
+          <option value="">Без папки</option>
           {% for fn in folder_options|default(folder_order) %}
-          <option value="{{ fn }}"></option>
+          {% if fn != 'Без папки' %}
+          <option value="{{ fn }}">{{ fn }}</option>
+          {% endif %}
           {% endfor %}
-        </datalist>
-        <p class="text-[11px] text-muted mt-1">Посты в одной папке читаются AI как один раздел</p>
+        </select>
+        <input type="text" id="add-folder-new" placeholder="Или новая папка (имя)…"
+          class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm outline-none focus:border-gold/50 box-border mt-2" />
+        <p class="text-[11px] text-muted mt-1">Выберите из списка или введите новое имя — посты в одной папке читаются AI как один раздел</p>
       </div>
       <div class="mb-4">
         <label class="block text-xs text-muted mb-1.5">Заголовок *</label>
@@ -206,11 +252,48 @@ function closeAddModal() {
   m.classList.add('hidden');
 }
 
+function onEditFolderSelChange() {
+  var sel = document.getElementById('edit-folder-sel');
+  var cust = document.getElementById('edit-ap-folder-custom');
+  if (!sel || !cust) return;
+  if (sel.value === '__custom') cust.classList.remove('hidden');
+  else { cust.classList.add('hidden'); }
+}
+function syncEditFolderField() {
+  var sel = document.getElementById('edit-folder-sel');
+  var cust = document.getElementById('edit-ap-folder-custom');
+  var send = document.getElementById('edit-folder-send');
+  if (!send) return;
+  if (!sel) { send.value = ''; return; }
+  if (sel.value === '__custom') send.value = (cust && cust.value || '').trim();
+  else send.value = sel.value || '';
+}
+
+async function submitBulkMoveToFolder() {
+  var hid = document.getElementById('bulk-target-folder');
+  if (!hid) return;
+  var ids = Array.from(document.querySelectorAll('.bulk-move-cb:checked')).map(function (c) { return c.value; });
+  if (!ids.length) { alert('Отметьте хотя бы один пост'); return; }
+  var fd = new FormData();
+  fd.append('folder', hid.value);
+  fd.append('post_ids', ids.join(','));
+  try {
+    var r = await fetch('/admin/ai-posts/bulk-move-folder', { method: 'POST', body: fd, credentials: 'same-origin' });
+    var d = await r.json().catch(function () { return {}; });
+    if (r.ok) location.reload();
+    else alert(d.error || 'Ошибка');
+  } catch (e) { alert('Ошибка сети'); }
+}
+
 async function submitPost(e) {
   e.preventDefault();
   const form = e.target;
   const status = document.getElementById('add-status');
   const data = new FormData(form);
+  var nw = (document.getElementById('add-folder-new') && document.getElementById('add-folder-new').value || '').trim();
+  var sel = document.getElementById('add-folder-select');
+  var folder = nw || (sel && sel.value || '') || '';
+  data.append('folder', folder);
   status.classList.add('hidden');
   try {
     const r = await fetch('/admin/ai-posts', { method: 'POST', body: data });
@@ -276,7 +359,20 @@ async function openAiPostEdit(id) {
     const p = await r.json();
     if (!r.ok || p.error) { alert(p.error || 'Ошибка'); return; }
     document.getElementById('edit-ap-id').value = id;
-    document.getElementById('edit-ap-folder').value = (p.folder || '').trim();
+    var cur = (p.folder || '').trim();
+    var sel = document.getElementById('edit-folder-sel');
+    var cust = document.getElementById('edit-ap-folder-custom');
+    if (sel) {
+      var found = false;
+      for (var i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value === cur) { sel.selectedIndex = i; found = true; break; }
+      }
+      if (!found) {
+        if (cur) { sel.value = '__custom'; if (cust) { cust.value = cur; cust.classList.remove('hidden'); } }
+        else { sel.value = ''; if (cust) { cust.value = ''; cust.classList.add('hidden'); } }
+      } else if (cust) { cust.value = ''; cust.classList.add('hidden'); }
+    }
+    syncEditFolderField();
     document.getElementById('edit-ap-title').value = p.title || '';
     document.getElementById('edit-ap-category').value = p.category || '';
     document.getElementById('edit-ap-content').value = p.content || '';
@@ -288,6 +384,7 @@ async function openAiPostEdit(id) {
 
 async function submitEditPost(e) {
   e.preventDefault();
+  syncEditFolderField();
   const id = document.getElementById('edit-ap-id').value;
   const st = document.getElementById('edit-ap-status');
   st.classList.add('hidden');

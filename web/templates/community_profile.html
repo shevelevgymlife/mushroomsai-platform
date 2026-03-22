@@ -55,6 +55,16 @@
 .pp-ig-cell-text{padding:10px;font-size:11px;line-height:1.35;color:#888;overflow:hidden;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical}
 .pp-ig-cell-ico{position:absolute;top:6px;right:6px;font-size:12px;opacity:.9;text-shadow:0 1px 4px #000}
 .pp-sec-label{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#C9A84C;margin:24px 0 12px;padding-left:4px}
+.pp-feed .ig-post{border:1px solid rgba(255,255,255,.08);border-radius:16px;overflow:hidden;background:linear-gradient(180deg,rgba(255,255,255,.04) 0%,rgba(17,17,17,.6) 100%);margin-bottom:20px;box-shadow:0 8px 32px rgba(0,0,0,.4),0 0 0 1px rgba(201,168,76,.05) inset}
+.pp-feed .ig-post-header{padding:10px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.05)}
+.pp-feed .ig-post-img{width:100%;aspect-ratio:1;object-fit:cover;background:#0a0a0a;display:block;max-height:min(470px,92vw)}
+.pp-feed .ig-post-textonly{min-height:80px;padding:16px 14px;font-size:14px;line-height:1.55;color:#ccc;white-space:pre-wrap;word-break:break-word;border-bottom:1px solid rgba(255,255,255,.05)}
+.pp-feed .ig-post-actions{display:flex;gap:8px;padding:10px 12px 6px;align-items:center;justify-content:space-between}
+.pp-feed .ig-post-actions-left{display:flex;gap:6px;align-items:center}
+.pp-feed .ig-post-actions .ig-act{background:none;border:none;cursor:pointer;padding:4px;font-size:20px;line-height:1;color:#aaa}
+.pp-feed .ig-post-likes{padding:0 12px 6px;font-size:13px;font-weight:600;color:#e8e8e8}
+.pp-feed .ig-post-body{padding:0 12px 14px;font-size:14px;line-height:1.5;color:#c8c8c8;white-space:pre-wrap;word-break:break-word}
+.pp-feed .ig-post-body .ig-cap-user{font-weight:700;color:#e8e8e8;margin-right:6px}
 </style>
 
 <div class="pp-wrap">
@@ -86,11 +96,10 @@
       <span style="background:rgba(248,113,113,.12);color:#f87171;border:1px solid rgba(248,113,113,.25);font-size:10px;padding:2px 8px;border-radius:20px;font-weight:700;margin-right:8px">Админ</span>
       {% endif %}
       <span class="dm-badge">{{ rep_emoji }} {{ rep_level }}</span>
-      <span style="color:#C9A84C" id="profileLikesStatInline">❤️ {{ profile_likes_count }} лайков на постах</span>
-      {% if profile.wallet_address %}
+      <span style="color:#888" id="profileLikesStatInline">❤️ {{ profile_likes_count }}</span>
+      {% if profile.shevelev_balance_cached %}
       <span style="margin-left:10px;color:#666">·</span>
-      <span style="margin-left:10px;color:#C9A84C;font-size:12px" id="walletBalVal">⚗ —</span>
-      <span style="font-size:11px;color:#555">SHEVELEV</span>
+      <span style="margin-left:10px;color:#C9A84C;font-size:13px;font-weight:700" title="SHEVELEV (после синхронизации в кабинете)">⚗ {{ profile.shevelev_balance_cached }}</span>
       {% endif %}
     </div>
 
@@ -140,10 +149,10 @@
     {% endif %}
   </div>
 
-  <!-- POSTS FEED (детали, комментарии) -->
+  <!-- POSTS FEED — тот же визуальный язык, что лента в кабинете -->
   <div class="pp-sec-label">Публикации</div>
   {% if feed %}
-  <p class="muted" style="margin:-8px 0 16px;font-size:13px">Нажмите на ячейку сетки выше, чтобы перейти к посту.</p>
+  <p class="muted" style="margin:-8px 0 16px;font-size:13px;color:#555">Нажмите на ячейку сетки выше — страница прокрутится к посту.</p>
   {% endif %}
 
   {% if not feed %}
@@ -151,46 +160,42 @@
     <div style="font-size:40px;margin-bottom:10px">🍄</div>
     <div style="color:#444">Пользователь ещё не публиковал посты</div>
     {% if is_own %}
-    <button class="btn-g" style="margin-top:16px" onclick="location.href='/community'">Написать первый пост</button>
+    <button class="btn-g" style="margin-top:16px" onclick="location.href='/dashboard#feed'">Написать первый пост</button>
     {% endif %}
   </div>
   {% endif %}
 
+  <div class="pp-feed">
   {% for item in feed %}
   {% set p = item.post %}
-  <div class="pcard" id="pc-{{ p.id }}">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
-      <div style="font-size:12px;color:#555;display:flex;align-items:center;gap:8px">
-        {% if p.pinned %}<span style="color:#C9A84C">📌 Закреплён</span>{% endif %}
-        <span>{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}</span>
-        {% if item.folder_name %}<span style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);padding:2px 8px;border-radius:20px">📁 {{ item.folder_name }}</span>{% endif %}
+  <div class="ig-post" id="pc-{{ p.id }}">
+    <div class="ig-post-header">
+      <div style="width:36px;height:36px;border-radius:50%;border:2px solid #C9A84C;overflow:hidden;flex-shrink:0">
+        {% if profile.avatar %}<img src="{{ profile.avatar }}" style="width:100%;height:100%;object-fit:cover" alt="">{% else %}<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px">🍄</div>{% endif %}
       </div>
-      {% if is_own %}
-      <span style="font-size:12px;color:#333">ID {{ p.id }}</span>
-      {% endif %}
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:700;color:#e8e8e8">{{ profile.name or 'Участник' }}</div>
+        <div style="font-size:11px;color:#888">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}{% if p.pinned %} · 📌{% endif %}{% if item.folder_name %} · 📁 {{ item.folder_name }}{% endif %}</div>
+      </div>
+      {% if is_own %}<span style="font-size:11px;color:#444">#{{ p.id }}</span>{% endif %}
     </div>
-
-    <div style="font-size:15px;color:#ddd;line-height:1.65;white-space:pre-wrap;word-break:break-word">{{ p.content }}</div>
-
     {% if p.image_url %}
-    <img src="{{ p.image_url }}" style="width:100%;max-height:400px;object-fit:cover;border-radius:12px;margin-top:12px" loading="lazy" alt="">
+    <img src="{{ p.image_url }}" class="ig-post-img" loading="lazy" alt="">
+    {% elif p.content %}
+    <div class="ig-post-textonly">{{ p.content | truncate(2000, True, '…') }}</div>
     {% endif %}
-
-    <!-- Actions -->
-    <div style="display:flex;gap:4px;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.05);flex-wrap:wrap">
-      <button class="abt {{ 'on' if item.liked }}" id="lk-{{ p.id }}" onclick="doLike({{ p.id }},this)">
-        {{ '❤️' if item.liked else '🤍' }}&nbsp;<span id="lkc-{{ p.id }}">{{ p.likes_count }}</span>
-      </button>
-      <button class="abt" onclick="togCmt({{ p.id }})">
-        💬&nbsp;<span id="cmc-{{ p.id }}">{{ p.comments_count }}</span>
-      </button>
-      <button class="abt {{ 'on' if item.saved }}" id="sv-{{ p.id }}" onclick="doSave({{ p.id }},this)">
-        {{ '🔖' if item.saved else '🏷️' }}&nbsp;<span id="svc-{{ p.id }}">{{ p.saves_count }}</span>
-      </button>
+    <div class="ig-post-actions">
+      <div class="ig-post-actions-left">
+        <button type="button" class="ig-act {{ 'on' if item.liked }}" id="lk-{{ p.id }}" onclick="doLike({{ p.id }},this)">{{ '❤️' if item.liked else '🤍' }}</button>
+        <button type="button" class="ig-act" onclick="togCmt({{ p.id }})">💬</button>
+        <button type="button" class="ig-act {{ 'on' if item.saved }}" id="sv-{{ p.id }}" onclick="doSave({{ p.id }},this)">{{ '🔖' if item.saved else '🏷️' }}</button>
+      </div>
     </div>
-
-    <!-- Comments section -->
-    <div class="csec" id="cs-{{ p.id }}">
+    <div class="ig-post-likes">Нравится: <span id="lkc-{{ p.id }}">{{ p.likes_count }}</span> · <span style="color:#888;font-weight:500"><span id="cmc-{{ p.id }}">{{ p.comments_count }}</span> коммент.</span> · 🔖 <span id="svc-{{ p.id }}">{{ p.saves_count }}</span></div>
+    {% if p.image_url and p.content %}
+    <div class="ig-post-body"><span class="ig-cap-user">{{ profile.name or '' }}</span>{{ p.content }}</div>
+    {% endif %}
+    <div class="csec" id="cs-{{ p.id }}" style="display:none;margin:0;padding:12px;border-top:1px solid rgba(255,255,255,.06)">
       <div id="cl-{{ p.id }}"></div>
       <div style="display:flex;gap:8px;margin-top:10px">
         <input type="text" id="ci-{{ p.id }}" class="sinp" style="flex:1" placeholder="Комментарий...">
@@ -199,6 +204,7 @@
     </div>
   </div>
   {% endfor %}
+  </div>
 
 </div><!-- /pp-wrap -->
 
@@ -227,31 +233,9 @@
 <script>
 const PROFILE_ID = {{ profile_id }};
 const IS_OWN = {{ 'true' if is_own else 'false' }};
-const SHEVELEV_TOKEN = "{{ shevelev_token or '' }}";
-const ERC20_ABI = [
-  {"constant":true,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"type":"function"},
-  {"constant":true,"inputs":[],"name":"decimals","outputs":[{"name":"","type":"uint8"}],"type":"function"}
-];
-
 function openM(id){document.getElementById(id).classList.add('open')}
 function closeM(id){document.getElementById(id).classList.remove('open')}
 document.querySelectorAll('.mover').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open')}));
-
-// ── Load SHEVELEV balance ──
-{% if profile.wallet_address and shevelev_token %}
-window.addEventListener('load', async()=>{
-  if(!window.Web3)return;
-  try{
-    const w3=new window.Web3('https://node.decimalchain.com/web3');
-    const ctr=new w3.eth.Contract(ERC20_ABI,SHEVELEV_TOKEN);
-    const dec=await ctr.methods.decimals().call();
-    const raw=await ctr.methods.balanceOf("{{ profile.wallet_address }}").call();
-    const bal=(Number(raw)/Math.pow(10,dec)).toFixed(2);
-    const el=document.getElementById('walletBalVal');
-    if(el)el.textContent='⚗ '+bal;
-  }catch(e){}
-});
-{% endif %}
 
 // ── Follow ──
 async function doFollow(){
@@ -281,14 +265,15 @@ async function doProfileLike(){
   const r=await fetch(`/community/profile/${PROFILE_ID}/like`,{method:'POST'});
   const d=await r.json();
   btn.disabled=false;
+  const h=btn.querySelector('span:first-child');
   if(d.liked){
-    btn.querySelector('span').textContent='❤️';
+    if(h)h.textContent='❤️';
     btn.classList.add('on');
   }else{
-    btn.querySelector('span').textContent='🤍';
+    if(h)h.textContent='🤍';
     btn.classList.remove('on');
   }
-  if(stat) stat.textContent='❤️ ' + d.count + ' лайков на постах';
+  if(stat) stat.textContent='❤️ ' + d.count;
 }
 
 // ── Post like ──
@@ -296,9 +281,9 @@ async function doLike(id,btn){
   const r=await fetch(`/community/like/${id}`,{method:'POST'});
   const d=await r.json();
   const c=document.getElementById(`lkc-${id}`);
-  const n=parseInt(c.textContent);
-  if(d.liked){btn.classList.add('on');btn.innerHTML=`❤️&nbsp;<span id="lkc-${id}">${n+1}</span>`}
-  else{btn.classList.remove('on');btn.innerHTML=`🤍&nbsp;<span id="lkc-${id}">${Math.max(0,n-1)}</span>`}
+  const n=parseInt(c&&c.textContent)||0;
+  if(d.liked){btn.classList.add('on');btn.textContent='❤️';if(c)c.textContent=String(n+1)}
+  else{btn.classList.remove('on');btn.textContent='🤍';if(c)c.textContent=String(Math.max(0,n-1))}
 }
 
 // ── Save ──
@@ -306,9 +291,9 @@ async function doSave(id,btn){
   const r=await fetch(`/community/save/${id}`,{method:'POST'});
   const d=await r.json();
   const c=document.getElementById(`svc-${id}`);
-  const n=parseInt(c.textContent);
-  if(d.saved){btn.classList.add('on');btn.innerHTML=`🔖&nbsp;<span id="svc-${id}">${n+1}</span>`}
-  else{btn.classList.remove('on');btn.innerHTML=`🏷️&nbsp;<span id="svc-${id}">${Math.max(0,n-1)}</span>`}
+  const n=parseInt(c&&c.textContent)||0;
+  if(d.saved){btn.classList.add('on');btn.textContent='🔖';if(c)c.textContent=String(n+1)}
+  else{btn.classList.remove('on');btn.textContent='🏷️';if(c)c.textContent=String(Math.max(0,n-1))}
 }
 
 // ── Comments ──

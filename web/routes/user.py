@@ -643,6 +643,35 @@ async def sync_decimal_del_balance(request: Request):
     return JSONResponse({"ok": True, "del": bal, "formatted": fmt})
 
 
+@router.post("/profile/wallet/sync-shevelev")
+async def sync_shevelev_balance(request: Request):
+    """Серверная синхронизация баланса SHEVELEV (ERC-20 на Decimal) — виден всем в профиле."""
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    from config import settings as _s
+    from services.decimal_chain import fetch_erc20_balance
+
+    uid = _effective_user_id(user)
+    row = await database.fetch_one(users.select().where(users.c.id == uid))
+    w = (row.get("wallet_address") or "").strip() if row else ""
+    tok = (_s.SHEVELEV_TOKEN_ADDRESS or "").strip()
+    if not tok:
+        return JSONResponse({"error": "SHEVELEV_TOKEN_ADDRESS не настроен на сервере"}, status_code=400)
+    if not w.startswith("0x"):
+        return JSONResponse({"error": "Укажите адрес кошелька (0x…)"}, status_code=400)
+    bal = await fetch_erc20_balance(tok, w)
+    if bal is None:
+        return JSONResponse({"error": "Не удалось прочитать баланс токена"}, status_code=502)
+    fmt = f"{bal:.10f}".rstrip("0").rstrip(".") or "0"
+    await database.execute(
+        users.update()
+        .where(users.c.id == uid)
+        .values(shevelev_balance_cached=fmt, shevelev_balance_cached_at=datetime.utcnow())
+    )
+    return JSONResponse({"ok": True, "shevelev": bal, "formatted": fmt})
+
+
 @router.post("/dashboard/language")
 async def update_language(request: Request, language: str = Form(...)):
     user = await require_auth(request)

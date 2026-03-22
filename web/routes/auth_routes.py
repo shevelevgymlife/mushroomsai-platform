@@ -142,14 +142,17 @@ async def telegram_auth(request: Request):
     if await is_identity_blocked("tg_id", str(tg_id)):
         return await _login_blocked_response(request)
 
+    from auth.avatar_policy import is_server_uploaded_avatar
+
     row = await database.fetch_one(users.select().where(users.c.tg_id == tg_id))
     if row:
         if await login_denied_for_user_row(dict(row)):
             return await _login_blocked_response(request)
         user_id = row["primary_user_id"] or row["id"]
-        await database.execute(
-            users.update().where(users.c.tg_id == tg_id).values(name=name, avatar=photo)
-        )
+        vals = {"name": name}
+        if not is_server_uploaded_avatar(row.get("avatar")) and photo:
+            vals["avatar"] = photo
+        await database.execute(users.update().where(users.c.tg_id == tg_id).values(**vals))
     else:
         ref_code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
         user_id = await database.execute(
@@ -181,14 +184,17 @@ async def telegram_miniapp_auth(request: Request):
         if await is_identity_blocked("tg_id", str(tg_id)):
             return JSONResponse({"error": "Аккаунт заблокирован"}, status_code=403)
 
+        from auth.avatar_policy import is_server_uploaded_avatar
+
         row = await database.fetch_one(users.select().where(users.c.tg_id == tg_id))
         if row:
             if await login_denied_for_user_row(dict(row)):
                 return JSONResponse({"error": "Аккаунт заблокирован"}, status_code=403)
             user_id = row["primary_user_id"] or row["id"]
-            await database.execute(
-                users.update().where(users.c.tg_id == tg_id).values(name=name, avatar=avatar)
-            )
+            vals = {"name": name}
+            if not is_server_uploaded_avatar(row.get("avatar")) and avatar:
+                vals["avatar"] = avatar
+            await database.execute(users.update().where(users.c.tg_id == tg_id).values(**vals))
         else:
             ref_code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
             user_id = await database.execute(
@@ -285,14 +291,17 @@ async def google_callback(request: Request):
             resp.set_cookie("access_token", token_str, httponly=True, max_age=30 * 24 * 3600)
             return resp
 
+        from auth.avatar_policy import is_server_uploaded_avatar
+
         row = await database.fetch_one(users.select().where(users.c.google_id == google_id))
         if row:
             if await login_denied_for_user_row(dict(row)):
                 return await _login_blocked_response(request)
             user_id = row["primary_user_id"] or row["id"]
-            await database.execute(
-                users.update().where(users.c.google_id == google_id).values(name=name, avatar=avatar)
-            )
+            vals = {"name": name}
+            if not is_server_uploaded_avatar(row.get("avatar")) and avatar:
+                vals["avatar"] = avatar
+            await database.execute(users.update().where(users.c.google_id == google_id).values(**vals))
         else:
             ref_code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
             user_id = await database.execute(

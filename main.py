@@ -110,6 +110,22 @@ async def lifespan(app: FastAPI):
         "ALTER TABLE community_comments ADD COLUMN IF NOT EXISTS seen_by_post_owner BOOLEAN NOT NULL DEFAULT true",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS decimal_del_balance TEXT",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS decimal_balance_cached_at TIMESTAMP",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS shevelev_balance_cached TEXT",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS shevelev_balance_cached_at TIMESTAMP",
+        """CREATE TABLE IF NOT EXISTS shop_product_likes (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            product_id INTEGER NOT NULL REFERENCES shop_products(id) ON DELETE CASCADE,
+            created_at TIMESTAMP DEFAULT NOW(),
+            UNIQUE(user_id, product_id)
+        )""",
+        """CREATE TABLE IF NOT EXISTS shop_product_comments (
+            id SERIAL PRIMARY KEY,
+            product_id INTEGER NOT NULL REFERENCES shop_products(id) ON DELETE CASCADE,
+            user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            content TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT NOW()
+        )""",
         """CREATE TABLE IF NOT EXISTS product_questions (
             id SERIAL PRIMARY KEY,
             product_id INTEGER NOT NULL REFERENCES shop_products(id) ON DELETE CASCADE,

@@ -15,6 +15,8 @@ from db.models import (
     shop_cart_items,
     shop_market_orders,
     shop_market_order_items,
+    shop_product_likes,
+    shop_product_comments,
     admin_permissions,
     community_posts,
     community_likes,
@@ -33,17 +35,18 @@ from datetime import datetime
 
 
 def get_public_user_data(row: dict) -> dict:
-    """Return only privacy-safe fields from a user row."""
+    """Публичные поля профиля (без адреса кошелька; баланс SHEVELEV — только после синхронизации)."""
     return {
         "id": row["id"],
         "name": row["name"],
         "avatar": row["avatar"],
         "bio": row.get("bio"),
         "role": row["role"],
-        "wallet_address": row.get("wallet_address"),
         "followers_count": row.get("followers_count") or 0,
         "following_count": row.get("following_count") or 0,
         "created_at": row.get("created_at"),
+        "shevelev_balance_cached": row.get("shevelev_balance_cached"),
+        "shevelev_balance_cached_at": row.get("shevelev_balance_cached_at"),
     }
 
 router = APIRouter()
@@ -287,10 +290,41 @@ async def product_page(request: Request, product_id: int):
 
     can_answer_questions = False
     cart_qty = 0
+    uid = None
     if current_user:
         uid = _shop_effective_uid(current_user)
         cart_qty = await _shop_cart_qty(uid)
         can_answer_questions = await _can_answer_product_question(uid, dict(product))
+
+    like_count = (
+        await database.fetch_val(
+            sa.select(sa.func.count())
+            .select_from(shop_product_likes)
+            .where(shop_product_likes.c.product_id == product_id)
+        )
+        or 0
+    )
+    user_liked = False
+    if uid:
+        lk = await database.fetch_one(
+            shop_product_likes.select()
+            .where(shop_product_likes.c.product_id == product_id)
+            .where(shop_product_likes.c.user_id == uid)
+        )
+        user_liked = lk is not None
+
+    comments_raw = await database.fetch_all(
+        shop_product_comments.select()
+        .where(shop_product_comments.c.product_id == product_id)
+        .order_by(shop_product_comments.c.created_at.desc())
+        .limit(80)
+    )
+    shop_comments = []
+    for c in comments_raw:
+        cu = None
+        if c["user_id"]:
+            cu = await database.fetch_one(users.select().where(users.c.id == c["user_id"]))
+        shop_comments.append({"c": c, "author": cu})
 
     return templates.TemplateResponse(
         "shop_product.html",
@@ -304,6 +338,10 @@ async def product_page(request: Request, product_id: int):
             "product_questions": questions,
             "can_answer_questions": can_answer_questions,
             "cart_qty": cart_qty,
+            "product_like_count": int(like_count),
+            "product_user_liked": user_liked,
+            "shop_comments": shop_comments,
+            "shevelev_token": settings.SHEVELEV_TOKEN_ADDRESS,
         },
     )
 
@@ -322,15 +360,81 @@ async def add_review(
     if not 1 <= rating <= 5:
         return RedirectResponse(f"/shop/{product_id}#reviews", status_code=302)
 
+    rv_uid = _shop_effective_uid(current_user)
     await database.execute(
         product_reviews.insert().values(
             product_id=product_id,
-            user_id=current_user["id"],
+            user_id=rv_uid,
             rating=rating,
             text=text.strip() or None,
         )
     )
     return RedirectResponse(f"/shop/{product_id}#reviews", status_code=302)
+
+
+@router.post("/shop/{product_id}/like-toggle")
+async def shop_product_like_toggle(request: Request, product_id: int):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    uid = _shop_effective_uid(current_user)
+    prod = await database.fetch_one(
+        shop_products.select().where(shop_products.c.id == product_id)
+    )
+    if not prod:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    row = await database.fetch_one(
+        shop_product_likes.select()
+        .where(shop_product_likes.c.product_id == product_id)
+        .where(shop_product_likes.c.user_id == uid)
+    )
+    if row:
+        await database.execute(
+            shop_product_likes.delete().where(shop_product_likes.c.id == row["id"])
+        )
+        liked = False
+    else:
+        await database.execute(
+            shop_product_likes.insert().values(user_id=uid, product_id=product_id)
+        )
+        liked = True
+    cnt = (
+        await database.fetch_val(
+            sa.select(sa.func.count())
+            .select_from(shop_product_likes)
+            .where(shop_product_likes.c.product_id == product_id)
+        )
+        or 0
+    )
+    return JSONResponse({"ok": True, "liked": liked, "count": int(cnt)})
+
+
+@router.post("/shop/{product_id}/product-comment")
+async def shop_product_add_comment(
+    request: Request,
+    product_id: int,
+    content: str = Form(...),
+):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return RedirectResponse(f"/login?next=/shop/{product_id}", status_code=302)
+    body = (content or "").strip()
+    if len(body) < 1:
+        return RedirectResponse(f"/shop/{product_id}#social", status_code=302)
+    uid = _shop_effective_uid(current_user)
+    prod = await database.fetch_one(
+        shop_products.select().where(shop_products.c.id == product_id)
+    )
+    if not prod:
+        return HTMLResponse("Не найдено", status_code=404)
+    await database.execute(
+        shop_product_comments.insert().values(
+            product_id=product_id,
+            user_id=uid,
+            content=body[:4000],
+        )
+    )
+    return RedirectResponse(f"/shop/{product_id}#social", status_code=302)
 
 
 @router.post("/shop/{product_id}/question")
@@ -1035,7 +1139,6 @@ async def community_profile(request: Request, user_id: int):
             "is_following": is_following,
             "is_own": is_own,
             "feed": feed,
-            "shevelev_token": settings.SHEVELEV_TOKEN_ADDRESS,
         },
     )
 
