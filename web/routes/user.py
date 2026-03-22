@@ -309,33 +309,8 @@ async def dashboard(request: Request):
     dashboard_secs = build_dashboard_secs(visible_block_keys)
 
     group_list = []
-    try:
-        if "community" in visible_block_keys:
-            _gr = await database.fetch_all(
-                sa.text("""
-                    SELECT g.id, g.name, g.description, g.created_at, g.created_by,
-                      COALESCE(g.join_mode, 'approval') AS join_mode,
-                      g.message_retention_days,
-                      (SELECT COUNT(*)::bigint FROM community_group_members m WHERE m.group_id = g.id) AS member_count,
-                      EXISTS(SELECT 1 FROM community_group_members m2 WHERE m2.group_id = g.id AND m2.user_id = :uid) AS is_member,
-                      (SELECT COUNT(*)::bigint FROM community_group_messages gm WHERE gm.group_id = g.id) AS msg_count,
-                      EXISTS(
-                        SELECT 1 FROM community_group_join_requests r
-                        WHERE r.group_id = g.id AND r.user_id = :uid AND r.status = 'pending'
-                      ) AS pending_join
-                    FROM community_groups g
-                    ORDER BY msg_count DESC NULLS LAST, g.created_at DESC
-                    LIMIT 80
-                """).bindparams(uid=effective_user_id)
-            )
-            group_list = []
-            for r in _gr:
-                d = dict(r)
-                d["is_member"] = bool(d.get("is_member"))
-                d["pending_join"] = bool(d.get("pending_join"))
-                group_list.append(d)
-    except Exception:
-        group_list = []
+    if "community" in visible_block_keys:
+        group_list = await fetch_community_groups_for_user(effective_user_id)
 
     response = templates.TemplateResponse(
         "dashboard/user.html",
@@ -1275,14 +1250,19 @@ async def _user_in_community_group(group_id: int, uid: int) -> bool:
     return row is not None
 
 
-@router.get("/community/groups")
-async def community_groups_list_api(request: Request):
-    user = await require_auth(request)
-    if not user:
-        return JSONResponse({"error": "auth required"}, status_code=401)
-    uid = user.get("primary_user_id") or user["id"]
-    rows = await database.fetch_all(
-        sa.text("""
+def _group_rows_to_dicts(rows) -> list[dict]:
+    out = []
+    for r in rows:
+        d = dict(r)
+        d["is_member"] = bool(d.get("is_member"))
+        d["pending_join"] = bool(d.get("pending_join"))
+        out.append(d)
+    return out
+
+
+async def fetch_community_groups_for_user(uid: int) -> list[dict]:
+    """Список групп для кабинета/API. Полный запрос с заявками; при ошибке — без join_requests (старая БД)."""
+    q_full = """
             SELECT g.id, g.name, g.description, g.created_at, g.created_by,
               COALESCE(g.join_mode, 'approval') AS join_mode,
               g.message_retention_days,
@@ -1296,14 +1276,39 @@ async def community_groups_list_api(request: Request):
             FROM community_groups g
             ORDER BY msg_count DESC NULLS LAST, g.created_at DESC
             LIMIT 80
-        """).bindparams(uid=uid)
-    )
-    out = []
-    for r in rows:
-        d = dict(r)
-        d["is_member"] = bool(d.get("is_member"))
-        d["pending_join"] = bool(d.get("pending_join"))
-        out.append(d)
+        """
+    q_simple = """
+            SELECT g.id, g.name, g.description, g.created_at, g.created_by,
+              COALESCE(g.join_mode, 'approval') AS join_mode,
+              g.message_retention_days,
+              (SELECT COUNT(*)::bigint FROM community_group_members m WHERE m.group_id = g.id) AS member_count,
+              EXISTS(SELECT 1 FROM community_group_members m2 WHERE m2.group_id = g.id AND m2.user_id = :uid) AS is_member,
+              (SELECT COUNT(*)::bigint FROM community_group_messages gm WHERE gm.group_id = g.id) AS msg_count,
+              false AS pending_join
+            FROM community_groups g
+            ORDER BY msg_count DESC NULLS LAST, g.created_at DESC
+            LIMIT 80
+        """
+    try:
+        rows = await database.fetch_all(sa.text(q_full).bindparams(uid=uid))
+        return _group_rows_to_dicts(rows)
+    except Exception as e:
+        _logger.warning("community groups full query failed, using fallback: %s", e)
+        try:
+            rows = await database.fetch_all(sa.text(q_simple).bindparams(uid=uid))
+            return _group_rows_to_dicts(rows)
+        except Exception:
+            _logger.exception("community groups fallback query failed")
+            return []
+
+
+@router.get("/community/groups")
+async def community_groups_list_api(request: Request):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = user.get("primary_user_id") or user["id"]
+    out = await fetch_community_groups_for_user(uid)
     return JSONResponse({"groups": out})
 
 

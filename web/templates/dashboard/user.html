@@ -1453,7 +1453,7 @@ function goSec(id){
   if(id==='ai'){setTimeout(()=>{const b=document.getElementById('chatBox');if(b)b.scrollTop=b.scrollHeight},100)}
   if(id==='messages')loadDMPreview();
   if(id==='feed'){setTimeout(()=>{markActivityRead();},500);}
-  if(id==='groups'){setTimeout(()=>{const p=document.getElementById('groupMsgBox');if(p)p.scrollTop=p.scrollHeight},80)}
+  if(id==='groups'){setTimeout(()=>{refreshGroupListFromApi();const p=document.getElementById('groupMsgBox');if(p)p.scrollTop=p.scrollHeight},80)}
   else stopGroupPoll();
   if(id==='me'||id==='profile'){
     setTimeout(initShevelevOnLoad,100);
@@ -2056,6 +2056,7 @@ async function submitPlanUpgradeRequest(){
 // ── Group chats ──
 let selectedGroupId = null;
 let groupPollTimer = null;
+window.__canCreateGroups = {{ can_create_groups | tojson }};
 
 function stopGroupPoll(){
   if(groupPollTimer){ clearInterval(groupPollTimer); groupPollTimer=null; }
@@ -2073,6 +2074,46 @@ function startGroupPoll(){
 function _dashUid(){
   const v=document.getElementById('dashUserId');
   return v?parseInt(v.value||'0',10)||0:0;
+}
+
+async function refreshGroupListFromApi(){
+  const el = document.getElementById('groupListEl');
+  if(!el) return;
+  try{
+    const r = await fetch('/community/groups', { credentials: 'same-origin' });
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok || !Array.isArray(d.groups)) return;
+    const groups = d.groups;
+    const emptyMsg = window.__canCreateGroups ? 'Пока нет групп — создайте первую' : 'Пока нет групп';
+    if(!groups.length){
+      el.innerHTML = '<div style="color:#555;text-align:center;padding:20px">'+ emptyMsg +'</div>';
+      return;
+    }
+    function escHtml(t){
+      return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+    function escAttr(s){
+      return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+    }
+    el.innerHTML = groups.map(function(g){
+      const on = g.is_member ? ' on' : '';
+      const jid = g.join_mode || 'approval';
+      const pend = g.pending_join ? '1' : '0';
+      const mem = g.is_member ? '1' : '0';
+      const owner = (g.created_by != null && g.created_by !== '') ? String(g.created_by) : '';
+      let retAttr = '';
+      if(g.message_retention_days != null && g.message_retention_days !== ''){
+        retAttr = ' data-retention="'+escAttr(String(g.message_retention_days))+'"';
+      }
+      let sub2 = '';
+      if(g.is_member) sub2 = '· вы в чате';
+      else if(g.pending_join) sub2 = '· заявка';
+      const subLine = (g.member_count||0) + ' участн. ' + (sub2 ? (' ' + sub2) : '');
+      return '<div class="ig-g-item'+on+'" data-gid="'+g.id+'" data-member="'+mem+'" data-join="'+escAttr(jid)+'" data-owner="'+escAttr(owner)+'" data-pending="'+pend+'"'+retAttr+' onclick="selectGroupChat('+g.id+',this)">'+
+        '<div style="font-weight:600;color:#e8e8e8;margin-bottom:4px">'+escHtml(g.name)+'</div>'+
+        '<div style="font-size:11px;color:#666">'+subLine+'</div></div>';
+    }).join('');
+  }catch(e){}
 }
 
 async function loadOwnerPendingForGroup(gid){
@@ -2285,7 +2326,13 @@ async function createGroupSubmit(){
     if(r.ok && d.ok && d.id){
       document.getElementById('grpCreateModal').style.display = 'none';
       showNotification('Группа создана','success');
-      location.reload();
+      await refreshGroupListFromApi();
+      goSec('groups');
+      const newId = d.id;
+      setTimeout(function(){
+        const row = document.querySelector('.ig-g-item[data-gid="'+newId+'"]');
+        if(row) selectGroupChat(newId, row);
+      }, 150);
       return;
     }
     const msg = d.error || (r.status===403 ? 'Нет доступа' : r.status===401 ? 'Войдите в аккаунт' : 'Не удалось создать группу');
