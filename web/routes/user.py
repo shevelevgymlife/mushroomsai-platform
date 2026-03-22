@@ -417,10 +417,40 @@ _POST_IMAGE_ALLOWED = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 _POST_IMAGE_MAX = 8 * 1024 * 1024
 
 _GROUP_CHAT_IMG_MAX = 6 * 1024 * 1024
-_GROUP_CHAT_AUDIO_MAX = 2 * 1024 * 1024
+# До ~1 мин голоса (webm/opus/mp4) с запасом под битрейт
+_GROUP_CHAT_AUDIO_MAX = 6 * 1024 * 1024
 _GROUP_CHAT_AUDIO_TYPES = frozenset({
-    "audio/webm", "audio/ogg", "audio/mp4", "audio/mpeg", "audio/wav", "application/octet-stream",
+    "audio/webm",
+    "audio/ogg",
+    "audio/mp4",
+    "audio/mpeg",
+    "audio/wav",
+    "audio/aac",
+    "application/octet-stream",
 })
+
+
+def _group_chat_audio_upload_ok(content_type: Optional[str], filename: Optional[str]) -> bool:
+    ct = (content_type or "").strip().lower()
+    if ct in _GROUP_CHAT_AUDIO_TYPES:
+        return True
+    if ct.startswith("audio/"):
+        return True
+    fn = (filename or "").lower()
+    return any(
+        fn.endswith(suf)
+        for suf in (
+            ".webm",
+            ".ogg",
+            ".opus",
+            ".mp3",
+            ".m4a",
+            ".mp4",
+            ".wav",
+            ".mpeg",
+            ".aac",
+        )
+    )
 
 
 def _compress_group_chat_image(raw: bytes) -> bytes:
@@ -2133,17 +2163,17 @@ async def community_group_message_post(request: Request, group_id: int):
                 f.write(jpeg)
             image_url = f"/media/community/groups/msg/{fn}"
         if aud_f and getattr(aud_f, "read", None):
+            fnm = getattr(aud_f, "filename", None) or ""
             act = (getattr(aud_f, "content_type", None) or "").lower()
-            if act not in _GROUP_CHAT_AUDIO_TYPES:
+            if not _group_chat_audio_upload_ok(act, fnm):
                 return JSONResponse({"error": "Неподдерживаемый формат аудио"}, status_code=400)
             raw = await aud_f.read()
             if len(raw) > _GROUP_CHAT_AUDIO_MAX:
-                return JSONResponse({"error": "Аудио слишком большое"}, status_code=400)
+                return JSONResponse({"error": "Аудио слишком большое (макс. ~1 мин)"}, status_code=400)
             ext = "webm"
-            fnm = getattr(aud_f, "filename", None) or ""
             if "." in fnm:
                 e = fnm.rsplit(".", 1)[-1].lower()[:8]
-                if e in ("webm", "ogg", "mp3", "m4a", "wav", "mpeg"):
+                if e in ("webm", "ogg", "mp3", "m4a", "wav", "mpeg", "mp4", "aac", "opus"):
                     ext = e
             fn = f"a{uuid.uuid4().hex}.{ext}"
             base = "/data" if os.path.exists("/data") else "./media"

@@ -203,7 +203,7 @@
 .tg-chat-shell .ig-g-bubble.them .ig-g-time{text-align:left;color:rgba(255,255,255,.35)!important}
 .tg-chat-shell .ig-g-reply{font-size:11px;color:#9ca3af;border-left:2px solid rgba(0,245,255,.45);padding:4px 0 4px 8px;margin:0 0 6px;max-width:100%}
 .tg-chat-shell .ig-g-img{max-width:100%;max-height:min(220px,50vh);border-radius:12px;display:block;margin:4px 0;object-fit:cover}
-.tg-chat-shell .ig-g-audio{width:100%;max-width:280px;height:40px;margin:4px 0}
+.tg-chat-shell .ig-g-audio{width:100%;max-width:min(100%,280px);min-width:200px;min-height:44px;height:auto;margin:6px 0;display:block}
 .tg-chat-shell .ig-g-like-row{display:flex;align-items:center;gap:6px;margin-top:2px}
 .tg-chat-shell .ig-g-like{border:none;background:transparent;cursor:pointer;font-size:14px;padding:0;line-height:1;opacity:.9}
 .tg-chat-shell .ig-g-lc{font-size:11px;color:#888;min-width:1em}
@@ -970,7 +970,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outlin
             <div class="tg-chat-input-row app-input-row">
               <input type="file" id="groupChatImgInp" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none" onchange="onGroupChatPickImage()">
               <button type="button" class="btn-o" style="padding:8px 10px;font-size:17px;flex-shrink:0;border-radius:50%;width:40px;height:40px" title="Фото" onclick="document.getElementById('groupChatImgInp').value='';document.getElementById('groupChatImgInp').click()">＋</button>
-              <button type="button" id="groupMicBtn" class="btn-o" style="padding:8px 10px;font-size:16px;flex-shrink:0;border-radius:50%;width:40px;height:40px" title="Нажмите: старт / стоп записи" onclick="toggleGroupVoiceRecord()">🎤</button>
+              <button type="button" id="groupMicBtn" class="btn-o" style="padding:8px 10px;font-size:16px;flex-shrink:0;border-radius:50%;width:40px;height:40px" title="Голосовое до 1 мин: нажмите начать / снова — остановить" onclick="toggleGroupVoiceRecord()">🎤</button>
               <span id="groupVoiceHint">● Запись…</span>
               <input type="text" id="groupMsgInput" class="sinp" placeholder="Сообщение…" disabled onkeydown="if(event.key==='Enter'){event.preventDefault();sendGroupChatMessage();}">
               <button type="button" class="btn-g" id="groupMsgSend" style="padding:10px 16px" disabled onclick="sendGroupChatMessage()">→</button>
@@ -2922,7 +2922,7 @@ async function loadGroupMessages(gid, opts){
         replyHtml = '<div class="ig-g-reply">↩ '+esc(m.reply_to.sender_name)+': '+esc(m.reply_to.preview||'')+'</div>';
       }
       var imgHtml = m.image_url ? '<img class="ig-g-img" src="'+escUrlAttr(m.image_url)+'" alt="">' : '';
-      var audHtml = m.audio_url ? '<audio class="ig-g-audio" controls preload="metadata" src="'+escUrlAttr(m.audio_url)+'"></audio>' : '';
+      var audHtml = m.audio_url ? '<audio class="ig-g-audio" controls playsinline preload="metadata" src="'+escUrlAttr(m.audio_url)+'">Ваш браузер не воспроизводит аудио</audio>' : '';
       var txtHtml = (m.text && String(m.text).trim()) ? '<div class="ig-g-text">'+esc(m.text)+'</div>' : '';
       var likeN = Number(m.likes_count||0);
       var liked = !!m.liked;
@@ -2971,28 +2971,74 @@ function onGroupChatPickImage(){
   if(h){ h.style.display='inline'; h.textContent='✓ Фото'; h.style.color='#4ade80'; }
 }
 
+function pickGroupVoiceMime(){
+  if(typeof MediaRecorder === 'undefined' || !MediaRecorder.isTypeSupported) return '';
+  var c = ['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/mp4;codecs=mp4a.40.2','audio/aac','audio/ogg;codecs=opus','audio/ogg'];
+  for(var i=0;i<c.length;i++){ if(MediaRecorder.isTypeSupported(c[i])) return c[i]; }
+  return '';
+}
+
 async function toggleGroupVoiceRecord(){
   var g = window.__groupVoiceRec;
   if(g && g.mr && g.mr.state === 'recording'){
+    if(g.maxTimer){ clearTimeout(g.maxTimer); g.maxTimer=null; }
     g.mr.stop();
     return;
   }
+  window.__groupChatAudioBlob = null;
+  var mime = pickGroupVoiceMime();
   try{
-    var stream = await navigator.mediaDevices.getUserMedia({audio:true});
-    var mr = new MediaRecorder(stream);
+    var stream = await navigator.mediaDevices.getUserMedia({
+      audio:{echoCancellation:true,noiseSuppression:true,channelCount:1}
+    });
+    var mr;
+    try{
+      mr = mime ? new MediaRecorder(stream,{mimeType:mime}) : new MediaRecorder(stream);
+    }catch(_e){
+      mr = new MediaRecorder(stream);
+      mime = '';
+    }
     var chunks = [];
-    mr.ondataavailable = function(e){ if(e.data.size) chunks.push(e.data); };
+    mr.ondataavailable = function(e){ if(e.data && e.data.size>0) chunks.push(e.data); };
+    var rec = {mr:mr, stream:stream, maxTimer:null};
+    var maxMs = 60000;
+    rec.maxTimer = setTimeout(function(){
+      if(rec.mr && rec.mr.state === 'recording'){
+        showNotification('Максимум 1 минута','success');
+        rec.mr.stop();
+      }
+    }, maxMs);
     mr.onstop = function(){
-      window.__groupChatAudioBlob = new Blob(chunks, {type:'audio/webm'});
-      stream.getTracks().forEach(function(t){ t.stop(); });
+      if(rec.maxTimer){ clearTimeout(rec.maxTimer); rec.maxTimer=null; }
+      try{ stream.getTracks().forEach(function(t){ t.stop(); }); }catch(_){}
       window.__groupVoiceRec = null;
+      var outType = (chunks[0] && chunks[0].type) ? chunks[0].type : (mime || 'audio/webm');
+      var blob = new Blob(chunks, {type: outType});
+      if(!blob.size){
+        window.__groupChatAudioBlob = null;
+        showNotification('Пустая запись — проверьте микрофон','error');
+      }else{
+        window.__groupChatAudioBlob = blob;
+      }
       var h = document.getElementById('groupVoiceHint');
-      if(h){ h.style.display='inline'; h.textContent='✓ Аудио'; h.style.color='#4ade80'; }
+      if(h){
+        h.style.display='inline';
+        if(window.__groupChatAudioBlob){
+          h.textContent='✓ Голосовое готово — нажмите →';
+          h.style.color='#4ade80';
+        }else{
+          h.style.display='none';
+        }
+      }
     };
-    mr.start();
-    window.__groupVoiceRec = {mr:mr, stream:stream};
+    window.__groupVoiceRec = rec;
+    try{
+      mr.start(250);
+    }catch(_){
+      mr.start();
+    }
     var h = document.getElementById('groupVoiceHint');
-    if(h){ h.style.display='inline'; h.textContent='● Запись…'; h.style.color='#f87171'; }
+    if(h){ h.style.display='inline'; h.textContent='● Запись… до 1 мин'; h.style.color='#f87171'; }
   }catch(e){
     showNotification('Нет доступа к микрофону','error');
   }
@@ -3011,7 +3057,13 @@ async function sendGroupChatMessage(){
   if(t) fd.append('text', t);
   if(replyId) fd.append('reply_to_id', String(replyId));
   if(file) fd.append('image', file);
-  if(blob) fd.append('audio', blob, 'voice.webm');
+  if(blob){
+    var mt = blob.type || 'audio/webm';
+    var ext = 'webm';
+    if(mt.indexOf('mp4')>=0 || mt.indexOf('m4a')>=0 || mt.indexOf('aac')>=0 || mt.indexOf('mp4a')>=0) ext = 'mp4';
+    else if(mt.indexOf('ogg')>=0) ext = 'ogg';
+    fd.append('audio', new File([blob], 'voice.'+ext, {type: mt}));
+  }
   if(inp) inp.value = '';
   if(imgInp) imgInp.value = '';
   window.__groupChatAudioBlob = null;
@@ -3026,12 +3078,18 @@ async function sendGroupChatMessage(){
       headers: useMultipart ? {} : { 'Content-Type': 'application/json' },
       body: useMultipart ? fd : JSON.stringify({ text: t || '', reply_to_id: replyId || undefined })
     });
-    if(r.ok) await loadGroupMessages(selectedGroupId);
-    else if(r.status===429){
+    if(r.ok){
+      await loadGroupMessages(selectedGroupId);
+    }else if(r.status===429){
       const d = await r.json().catch(()=>({}));
       showNotification('Подождите '+ (d.wait_sec||'') +' сек. (медленный режим)','error');
+    }else{
+      const d = await r.json().catch(()=>({}));
+      showNotification(d.error || d.detail || ('Ошибка '+r.status),'error');
     }
-  }catch(e){}
+  }catch(e){
+    showNotification('Ошибка сети','error');
+  }
 }
 
 async function createGroupSubmit(){
