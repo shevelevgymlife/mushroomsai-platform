@@ -12,6 +12,13 @@ class Settings(BaseSettings):
     JWT_SECRET: str = "change-me-in-production"
     ADMIN_TG_ID: int = 0
     ADMIN_EMAIL: str = ""  # опционально: email владельца (Google) = права оператора
+    DEPLOY_NOTIFY_EMAIL_TO: str = ""  # куда слать уведомление о деплое
+    DEPLOY_NOTIFY_EMAIL_FROM: str = ""  # от кого слать (если пусто, используем SMTP_USER)
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASS: str = ""
+    SMTP_USE_TLS: bool = True
     SITE_URL: str = "https://mushroomsai.ru"
     TELEGRAM_BOT_USERNAME: str = "mushrooms_ai_bot"
     SHEVELEV_TOKEN_ADDRESS: str = ""

@@ -41,6 +41,8 @@ cp .env.example .env
 | `JWT_SECRET` | любая случайная строка (32+ символа) |
 | `ADMIN_TG_ID` | свой Telegram ID (узнать у @userinfobot) |
 | `SITE_URL` | https://mushroomsai.ru |
+| `DEPLOY_NOTIFY_EMAIL_TO` | email для уведомлений о новом деплое (опционально) |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | SMTP-параметры для отправки уведомления (опционально) |
 
 ### 3. Запустить локально
 
