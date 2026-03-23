@@ -125,8 +125,10 @@
   -webkit-box-orient:vertical;
   overflow:hidden;
 }
-#feedPosts .ig-post-snippet{padding:10px 12px 6px;border-top:1px solid rgba(255,255,255,.06)}
-#feedPosts .ig-post-snippet-title{
+#feedPosts .ig-post-snippet,
+#profilePosts .ig-post-snippet{padding:10px 12px 6px;border-top:1px solid rgba(255,255,255,.06)}
+#feedPosts .ig-post-snippet-title,
+#profilePosts .ig-post-snippet-title{
   color:#f3f4f6;
   font-size:14px;
   font-weight:700;
@@ -135,7 +137,8 @@
   overflow:hidden;
   text-overflow:ellipsis;
 }
-#feedPosts .ig-post-snippet-text{
+#feedPosts .ig-post-snippet-text,
+#profilePosts .ig-post-snippet-text{
   color:#b7bcc8;
   margin-top:4px;
   font-size:12px;
@@ -145,13 +148,15 @@
   -webkit-box-orient:vertical;
   overflow:hidden;
 }
-#feedPosts .ig-post-metrics{
+#feedPosts .ig-post-metrics,
+#profilePosts .ig-post-metrics{
   display:grid;
   grid-template-columns:repeat(3,minmax(0,1fr));
   gap:8px;
   padding:8px 10px 11px;
 }
-#feedPosts .ig-post-metric{
+#feedPosts .ig-post-metric,
+#profilePosts .ig-post-metric{
   border:1px solid rgba(255,255,255,.14);
   border-radius:12px;
   min-height:46px;
@@ -164,10 +169,14 @@
   font-weight:700;
   color:#e5e7eb;
 }
-#feedPosts .ig-post-metric .n{font-size:16px;line-height:1}
-#feedPosts .ig-post-metric-star{color:#ffd84f;border-color:rgba(255,216,79,.45)}
-#feedPosts .ig-post-metric-chat{color:#8be9ff;border-color:rgba(139,233,255,.38)}
-#feedPosts .ig-post-metric-share{color:#f7b3ff;border-color:rgba(247,179,255,.38)}
+#feedPosts .ig-post-metric .n,
+#profilePosts .ig-post-metric .n{font-size:16px;line-height:1}
+#feedPosts .ig-post-metric-star,
+#profilePosts .ig-post-metric-star{color:#ffd84f;border-color:rgba(255,216,79,.45)}
+#feedPosts .ig-post-metric-chat,
+#profilePosts .ig-post-metric-chat{color:#8be9ff;border-color:rgba(139,233,255,.38)}
+#feedPosts .ig-post-metric-share,
+#profilePosts .ig-post-metric-share{color:#f7b3ff;border-color:rgba(247,179,255,.38)}
 #feedChaosWrap{
   display:flex;
   justify-content:flex-end;
@@ -253,11 +262,11 @@
   #feedPosts.feed-chaos-on .ig-post:nth-child(4n+4){transform:translateY(0) rotate(-1.8deg)}
   #feedPosts .ig-post-header{padding:8px 9px}
   #feedPosts .ig-post-img{max-height:180px}
-  #feedPosts .ig-post-metric{min-height:40px;font-size:14px}
-  #feedPosts .ig-post-metric .n{font-size:15px}
-  #feedPosts .ig-post-snippet{padding:8px 9px 6px}
-  #feedPosts .ig-post-snippet-title{font-size:12px}
-  #feedPosts .ig-post-snippet-text{font-size:11px}
+  #feedPosts .ig-post-metric,#profilePosts .ig-post-metric{min-height:40px;font-size:14px}
+  #feedPosts .ig-post-metric .n,#profilePosts .ig-post-metric .n{font-size:15px}
+  #feedPosts .ig-post-snippet,#profilePosts .ig-post-snippet{padding:8px 9px 6px}
+  #feedPosts .ig-post-snippet-title,#profilePosts .ig-post-snippet-title{font-size:12px}
+  #feedPosts .ig-post-snippet-text,#profilePosts .ig-post-snippet-text{font-size:11px}
   #profilePosts{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .my-tokens-inline{transform:none}
 }
