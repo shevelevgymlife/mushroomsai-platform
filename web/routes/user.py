@@ -188,57 +188,6 @@ async def dashboard(request: Request):
 
     effective_user_id = user.get("primary_user_id") or user["id"]
 
-    # Emergency-safe cabinet: avoid heavy client rendering path that causes black screens
-    # on some devices/webviews; keep social features available in server-rendered form.
-    plan = await check_subscription(effective_user_id)
-    plan_info = PLANS.get(plan, PLANS["free"])
-    ref_stats = await get_referral_stats(effective_user_id)
-    safe_feed_raw = await database.fetch_all(
-        community_posts.select()
-        .where(community_posts.c.approved == True)
-        .order_by(community_posts.c.pinned.desc(), community_posts.c.created_at.desc())
-        .limit(12)
-    )
-    safe_feed = []
-    for p in safe_feed_raw:
-        author_name = "Участник"
-        if p.get("user_id"):
-            a = await database.fetch_one(users.select().where(users.c.id == p["user_id"]))
-            if a and a.get("name"):
-                author_name = a["name"]
-        safe_feed.append(
-            {
-                "id": p["id"],
-                "user_id": p.get("user_id"),
-                "author_name": author_name,
-                "title": p.get("title") or "",
-                "content": p.get("content") or "",
-                "image_url": p.get("image_url"),
-                "likes_count": int(p.get("likes_count") or 0),
-                "comments_count": int(p.get("comments_count") or 0),
-                "created_at": p.get("created_at"),
-            }
-        )
-    try:
-        safe_groups = await fetch_community_groups_for_user(effective_user_id)
-    except Exception:
-        safe_groups = []
-    safe_resp = templates.TemplateResponse(
-        "dashboard/user_safe.html",
-        {
-            "request": request,
-            "user": user,
-            "plan": plan,
-            "plan_info": plan_info,
-            "ref_stats": ref_stats,
-            "safe_feed": safe_feed,
-            "safe_groups": safe_groups[:12],
-        },
-    )
-    safe_resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-    safe_resp.headers["Pragma"] = "no-cache"
-    return safe_resp
-
     try:
         await database.execute(
             users.update().where(users.c.id == effective_user_id).values(last_seen_at=datetime.utcnow())

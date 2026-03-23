@@ -78,48 +78,22 @@
 .shop-item:hover{border-color:rgba(61,212,224,.4)}
 .shop-img{width:100%;height:140px;object-fit:cover;background:#111}
 .shop-img-ph{width:100%;height:140px;background:#111;display:flex;align-items:center;justify-content:center;font-size:32px}
-/* Unified chaos-style cards for social/dashboard blocks */
-.card,.plan-card,.shop-item,.ig-post,.tg-chat-item,.ig-g-item{
-  border-radius:20px!important;
-  background:linear-gradient(165deg,rgba(255,255,255,.055),rgba(10,10,13,.9))!important;
-  border:1px solid rgba(255,255,255,.1)!important;
-  box-shadow:0 14px 46px rgba(0,0,0,.42),0 0 0 1px rgba(61,212,224,.05)!important;
-}
+/* Stable cards: no chaos transforms/rotations */
 #feedPosts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start}
-#feedPosts .ig-post:nth-child(odd){transform:rotate(-1.25deg)}
-#feedPosts .ig-post:nth-child(even){transform:rotate(1.15deg)}
-#groupListEl .ig-g-item:nth-child(odd){transform:rotate(-.75deg)}
-#groupListEl .ig-g-item:nth-child(even){transform:rotate(.75deg)}
-#shopGrid .shop-item:nth-child(3n+1){transform:rotate(-1.2deg)}
-#shopGrid .shop-item:nth-child(3n+2){transform:rotate(.95deg)}
-#shopGrid .shop-item:nth-child(3n+3){transform:rotate(-.55deg)}
-.plan-grid .plan-card:nth-child(odd){transform:rotate(-1.4deg)}
-.plan-grid .plan-card:nth-child(even){transform:rotate(1.3deg)}
 #feedPosts .ig-post,#groupListEl .ig-g-item,#shopGrid .shop-item,.plan-grid .plan-card{
-  transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease;
+  transition:border-color .2s ease,box-shadow .2s ease;
 }
 #feedPosts .ig-post:hover,#groupListEl .ig-g-item:hover,#shopGrid .shop-item:hover,.plan-grid .plan-card:hover{
-  transform:translateY(-4px) rotate(0deg)!important;
   border-color:rgba(61,212,224,.34)!important;
-  box-shadow:0 20px 60px rgba(0,0,0,.5),0 0 28px rgba(61,212,224,.08)!important;
 }
 .my-tokens-inline{
   border-radius:18px!important;
   background:linear-gradient(160deg,rgba(255,255,255,.06),rgba(12,12,15,.94))!important;
   border:1px solid rgba(61,212,224,.3)!important;
   box-shadow:0 14px 48px rgba(0,0,0,.42),0 0 22px rgba(61,212,224,.06)!important;
-  transform:rotate(-.9deg);
 }
 @media(max-width:768px){
   #feedPosts{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-  #feedPosts .ig-post:nth-child(odd),#feedPosts .ig-post:nth-child(even),
-  #groupListEl .ig-g-item:nth-child(odd),#groupListEl .ig-g-item:nth-child(even),
-  #shopGrid .shop-item:nth-child(3n+1),#shopGrid .shop-item:nth-child(3n+2),#shopGrid .shop-item:nth-child(3n+3),
-  .plan-grid .plan-card:nth-child(odd),.plan-grid .plan-card:nth-child(even),
-  .ig-post-grid .ig-post-cell:nth-child(odd),.ig-post-grid .ig-post-cell:nth-child(even){
-    transform:none;
-  }
-  .my-tokens-inline{transform:none}
 }
 @media(max-width:620px){.tg-chat-list{grid-template-columns:1fr}}
 @media(max-width:520px){#feedPosts{grid-template-columns:1fr}}
