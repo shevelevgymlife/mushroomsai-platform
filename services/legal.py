@@ -35,8 +35,15 @@ async def legal_acceptance_redirect(request: Request, user: dict[str, Any] | Non
     )
     if not row:
         return RedirectResponse("/login", status_code=302)
-    acc = row.get("legal_accepted_at")
-    ver = row.get("legal_docs_version") or ""
+    # databases.Record в разных драйверах может не иметь .get()
+    try:
+        acc = row["legal_accepted_at"]
+    except Exception:
+        acc = None
+    try:
+        ver = row["legal_docs_version"] or ""
+    except Exception:
+        ver = ""
     if acc and ver == LEGAL_DOCS_VERSION:
         return None
     nxt = legal_next_param(request)
