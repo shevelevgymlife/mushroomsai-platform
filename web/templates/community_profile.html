@@ -188,22 +188,6 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
       <a href="{{ profile.profile_link_url }}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:8px;color:#3dd4e0;font-weight:600;font-size:14px;margin-bottom:14px;text-decoration:none;border-bottom:1px solid rgba(61,212,224,.35);padding-bottom:2px">{{ profile.get('profile_link_label') or profile.profile_link_url }}</a>
       {% endif %}
 
-      <div class="ig-post-grid">
-        {% for item in feed %}
-        {% set p = item.post %}
-        <a href="#pc-{{ p.id }}" class="ig-post-cell" aria-label="К посту">
-          {% if p.image_url %}
-          <img src="{{ p.image_url }}" loading="lazy" alt="">
-          {% if p.content %}<span class="ig-post-cell-ico" title="Есть подпись">📷</span>{% endif %}
-          {% else %}
-          <div class="ig-post-cell-ph">{{ p.content[:100] }}{% if p.content|length > 100 %}…{% endif %}</div>
-          {% endif %}
-        </a>
-        {% else %}
-        <div style="grid-column:1/-1;text-align:center;padding:28px 16px;color:#555;font-size:14px">Пока нет публикаций</div>
-        {% endfor %}
-      </div>
-
       <div class="ig-feed-shell" style="margin-top:16px">
   {% for item in feed %}
   {% set p = item.post %}
@@ -243,6 +227,9 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
     </div>
   </div>
   {% endfor %}
+  {% if not feed %}
+  <div style="grid-column:1/-1;text-align:center;padding:28px 16px;color:#555;font-size:14px">Пока нет публикаций</div>
+  {% endif %}
       </div>
     </div>
   </main>
