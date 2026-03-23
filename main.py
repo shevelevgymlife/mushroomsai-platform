@@ -333,7 +333,25 @@ async def lifespan(app: FastAPI):
             bot_app = create_bot()
             await bot_app.initialize()
             await bot_app.start()
-            await bot_app.updater.start_polling(drop_pending_updates=True, allowed_updates=None)
+            await bot_app.updater.start_polling(
+                drop_pending_updates=True,
+                allowed_updates=[
+                    "message",
+                    "edited_message",
+                    "channel_post",
+                    "edited_channel_post",
+                    "inline_query",
+                    "chosen_inline_result",
+                    "callback_query",
+                    "shipping_query",
+                    "pre_checkout_query",
+                    "poll",
+                    "poll_answer",
+                    "my_chat_member",
+                    "chat_member",
+                    "chat_join_request",
+                ],
+            )
             logger.info("Telegram bot started")
 
             # Start scheduler
