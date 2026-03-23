@@ -229,8 +229,22 @@
   background:linear-gradient(160deg,rgba(255,255,255,.06),rgba(12,12,15,.94))!important;
   border:1px solid rgba(61,212,224,.3)!important;
   box-shadow:0 14px 48px rgba(0,0,0,.42),0 0 22px rgba(61,212,224,.06)!important;
-  transform:rotate(-.9deg);
+  transform:none!important;
 }
+#profilePosts{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+  align-items:start;
+  margin-top:10px;
+}
+#profilePosts.profile-chaos-on .ig-post:nth-child(4n+1){transform:translateY(8px) rotate(-4deg)}
+#profilePosts.profile-chaos-on .ig-post:nth-child(4n+2){transform:translateY(-5px) rotate(3.5deg)}
+#profilePosts.profile-chaos-on .ig-post:nth-child(4n+3){transform:translateY(4px) rotate(2deg)}
+#profilePosts.profile-chaos-on .ig-post:nth-child(4n+4){transform:translateY(-7px) rotate(-3deg)}
+#profilePosts.profile-chaos-off .ig-post{transform:none!important}
+#profilePosts.profile-chaos-off .ig-post:hover{transform:none!important}
+#profileChaosWrap{display:flex;justify-content:flex-end;margin:2px 0 10px}
 @media(max-width:768px){
   #feedPosts{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   #feedPosts.feed-chaos-on .ig-post:nth-child(4n+1){transform:translateY(0) rotate(-2.4deg)}
@@ -244,6 +258,7 @@
   #feedPosts .ig-post-snippet{padding:8px 9px 6px}
   #feedPosts .ig-post-snippet-title{font-size:12px}
   #feedPosts .ig-post-snippet-text{font-size:11px}
+  #profilePosts{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .my-tokens-inline{transform:none}
 }
 
@@ -594,37 +609,39 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
   margin-top:14px;
   max-width:min(100%,560px);
   padding:15px 17px 14px;
-  border-radius:26px 18px 24px 16px;
-  transform:rotate(-1.25deg) skewX(-1deg);
+  border-radius:20px;
   background:linear-gradient(160deg,rgba(24,24,20,.94),rgba(10,10,14,.96));
   border:1px solid rgba(61,212,224,.56);
-  box-shadow:0 18px 54px rgba(0,0,0,.52),0 0 34px rgba(61,212,224,.22),0 0 22px rgba(255,123,224,.14),inset 0 1px 0 rgba(255,255,255,.09);
+  box-shadow:0 18px 54px rgba(0,0,0,.52),0 0 26px rgba(61,212,224,.2),inset 0 1px 0 rgba(255,255,255,.09);
   overflow:visible;
 }
 .my-tokens-inline::before{
   content:"";
   position:absolute;
-  right:12px;
-  top:-62px;
-  width:46px;
-  height:72px;
-  border-radius:22px 22px 14px 14px;
+  left:50%;
+  top:-58px;
+  width:42px;
+  height:64px;
+  transform:translateX(-50%);
+  border-radius:22px 22px 12px 12px;
+  pointer-events:none;
   background:
-    linear-gradient(180deg,rgba(210,220,236,.8),rgba(120,132,150,.45)) 50% 8px/3px 28px no-repeat,
-    radial-gradient(ellipse at 50% 88%,rgba(255,232,176,.95) 0%,rgba(255,188,96,.92) 36%,rgba(190,110,28,.9) 72%,rgba(87,55,22,.95) 100%) 50% 100%/42px 28px no-repeat;
-  filter:drop-shadow(0 0 14px rgba(255,214,130,.45));
-  transform:rotate(8deg);
+    linear-gradient(180deg,rgba(210,220,236,.8),rgba(120,132,150,.45)) 50% 8px/3px 24px no-repeat,
+    radial-gradient(ellipse at 50% 88%,rgba(255,232,176,.95) 0%,rgba(255,188,96,.92) 36%,rgba(190,110,28,.9) 72%,rgba(87,55,22,.95) 100%) 50% 100%/38px 24px no-repeat;
+  filter:drop-shadow(0 0 12px rgba(255,214,130,.42));
 }
 .my-tokens-inline::after{
   content:"";
   position:absolute;
-  right:-10px;
-  top:-34px;
-  width:290px;
-  height:168px;
+  left:50%;
+  top:-6px;
+  transform:translateX(-50%);
+  width:320px;
+  max-width:calc(100% + 84px);
+  height:200px;
   pointer-events:none;
-  background:radial-gradient(ellipse at top right,rgba(255,235,176,.52) 0%,rgba(255,204,114,.22) 34%,rgba(61,212,224,.1) 66%,transparent 100%);
-  filter:blur(.6px);
+  background:radial-gradient(circle at 50% 18%,rgba(255,231,174,.28) 0%,rgba(255,204,114,.16) 28%,rgba(61,212,224,.11) 58%,rgba(61,212,224,.06) 70%,transparent 100%);
+  filter:blur(2.2px);
 }
 .my-tokens-inline__title{
   font-size:9px;
@@ -642,7 +659,6 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 .my-tokens-inline__cell .val.tok-shev{color:#ff7be0;text-shadow:0 0 18px rgba(255,123,224,.32)}
 @media(max-width:400px){
   .my-tokens-inline__grid{grid-template-columns:1fr;gap:8px}
-  .my-tokens-inline{transform:rotate(-.6deg)}
 }
 @keyframes igMsgIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 </style>
@@ -948,26 +964,47 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
           </div>
           <div id="meProfOk" style="display:none;margin-top:10px;font-size:13px;color:#4ade80">✓ Сохранено</div>
         </div>
-        <div class="ig-post-grid">
-          {% for p in grid_posts %}
-          <a href="#" onclick="event.preventDefault();showMePost({{ p.id }});" class="ig-post-cell" aria-label="Открыть пост">
-            {% if p.image_url %}<img src="{{ p.image_url }}" alt="" loading="lazy">{% else %}<div class="ig-post-cell-ph">{{ p.content[:100] }}{% if p.content|length > 100 %}…{% endif %}</div>{% endif %}
-          </a>
-          {% else %}
-          <div style="grid-column:1/-1;text-align:center;padding:36px 16px;color:#555;font-size:14px">Пока нет публикаций. Нажмите «Создать» внизу или «Написать пост» выше.</div>
-          {% endfor %}
+        <div id="profileChaosWrap">
+          <label class="feed-chaos-toggle" for="profileChaosToggle">
+            <span>Хаос</span>
+            <input id="profileChaosToggle" type="checkbox" checked onchange="setProfilePostsChaos(this.checked)">
+          </label>
         </div>
-        <div class="ig-me-post-details" style="margin-top:12px">
+        <div id="profilePosts" class="profile-chaos-on">
           {% for p in grid_posts %}
-          <div id="me-p-{{ p.id }}" class="ig-post" style="display:none">
+          {% set is_liked_me = p.id in liked_post_ids %}
+          <div class="fp ig-post" id="mfp-{{ p.id }}">
             <div class="ig-post-header">
               <div style="width:36px;height:36px;border-radius:50%;border:2px solid #3dd4e0;overflow:hidden">{% if user.avatar %}<img src="{{ user.avatar }}" style="width:100%;height:100%;object-fit:cover" alt="">{% else %}<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px">🍄</div>{% endif %}</div>
-              <div style="flex:1"><div style="font-size:14px;font-weight:700;color:#e8e8e8">{{ user.name or 'Вы' }}</div><div style="font-size:11px;color:#888">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}</div></div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:14px;font-weight:700;color:#e8e8e8">{{ user.name or 'Вы' }}</div>
+                <div style="font-size:11px;color:#888">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}</div>
+              </div>
             </div>
-            {% if p.image_url %}<img src="{{ p.image_url }}" class="ig-post-img" loading="lazy" alt="">{% endif %}
-            {% if p.content %}<div class="ig-post-body" style="padding:12px">{{ p.content }}</div>{% endif %}
-            <div style="padding:10px"><a href="/community/profile/{{ effective_user_id }}#pc-{{ p.id }}" class="btn-o" style="font-size:12px;padding:8px 12px;text-decoration:none;display:inline-block">Открыть в профиле (комментарии)</a></div>
+            {% if p.title %}<div style="padding:10px 14px 0;font-size:15px;font-weight:700;color:#e8e8e8">{{ p.title }}</div>{% endif %}
+            {% if p.image_url %}
+            <img src="{{ p.image_url }}" class="ig-post-img" loading="lazy" alt="">
+            {% elif p.content %}
+            <div class="ig-post-textonly">{{ p.content[:500] }}{% if p.content|length > 500 %}…{% endif %}</div>
+            {% endif %}
+            <div class="ig-post-snippet">
+              {% if p.title %}<div class="ig-post-snippet-title">{{ p.title }}</div>{% endif %}
+              <div class="ig-post-snippet-text">{% if p.content %}{{ p.content[:140] }}{% if p.content|length > 140 %}…{% endif %}{% else %}Новый пост{% endif %}</div>
+            </div>
+            <div class="ig-post-metrics">
+              <button type="button" class="ig-post-metric ig-post-metric-star" id="profile-like-btn-{{ p.id }}" onclick="likeProfilePost({{ p.id }},this)">
+                <span>{% if is_liked_me %}⭐{% else %}✩{% endif %}</span><span class="n" id="profile-like-count-{{ p.id }}">{{ p.likes_count }}</span>
+              </button>
+              <a href="/community/profile/{{ effective_user_id }}#pc-{{ p.id }}" class="ig-post-metric ig-post-metric-chat" style="text-decoration:none">
+                <span>💬</span><span class="n">{{ p.comments_count or 0 }}</span>
+              </a>
+              <button type="button" class="ig-post-metric ig-post-metric-share" onclick="openSharePostModal({{ p.id }})">
+                <span>↗</span><span class="n">{{ p.saves_count or 0 }}</span>
+              </button>
+            </div>
           </div>
+          {% else %}
+          <div style="grid-column:1/-1;text-align:center;padding:36px 16px;color:#555;font-size:14px">Пока нет публикаций. Нажмите «Создать» внизу или «Написать пост» выше.</div>
           {% endfor %}
         </div>
       </div>
@@ -2644,19 +2681,47 @@ function refreshFeedEmptyState(){
 // ── Like feed post ──
 async function likeFeedPost(postId, btn){
   try{
+    const cnt=document.getElementById('like-count-'+postId);
+    const icon=btn?btn.querySelector('span'):null;
+    const wasLiked=icon && icon.textContent==='⭐';
+    const base=parseInt(cnt&&cnt.textContent||0);
+    if(btn) btn.style.color=wasLiked?'':'#ffd84f';
+    if(icon) icon.textContent=wasLiked?'✩':'⭐';
+    if(cnt) cnt.textContent=String(Math.max(0, base + (wasLiked ? -1 : 1)));
     const r=await fetch('/community/like/'+postId,{method:'POST'});
     const d=await r.json();
-    const cnt=document.getElementById('like-count-'+postId);
-    const icon = btn ? btn.querySelector('span') : null;
     if(d.liked){
       btn.style.color='#ffd84f';
       if(icon) icon.textContent='⭐';
-      if(cnt)cnt.textContent=parseInt(cnt.textContent||0)+1;
     }else{
       btn.style.color='';
       if(icon) icon.textContent='✩';
-      if(cnt)cnt.textContent=Math.max(0,parseInt(cnt.textContent||0)-1);
     }
+    if(cnt && typeof d.count==='number')cnt.textContent=String(Math.max(0,d.count));
+  }catch(e){showNotification('Ошибка','error');}
+}
+
+async function likeProfilePost(postId, btn){
+  try{
+    const cnt=document.getElementById('profile-like-count-'+postId);
+    const icon=btn?btn.querySelector('span'):null;
+    const wasLiked=icon && icon.textContent==='⭐';
+    const base=parseInt(cnt&&cnt.textContent||0);
+    if(btn) btn.style.color=wasLiked?'':'#ffd84f';
+    if(icon) icon.textContent=wasLiked?'✩':'⭐';
+    if(cnt) cnt.textContent=String(Math.max(0, base + (wasLiked ? -1 : 1)));
+    const r=await fetch('/community/like/'+postId,{method:'POST'});
+    const d=await r.json();
+    if(d.liked){
+      if(btn) btn.style.color='#ffd84f';
+      if(icon) icon.textContent='⭐';
+    }else{
+      if(btn) btn.style.color='';
+      if(icon) icon.textContent='✩';
+    }
+    if(cnt && typeof d.count==='number')cnt.textContent=String(Math.max(0,d.count));
+    const feedCnt=document.getElementById('like-count-'+postId);
+    if(feedCnt && typeof d.count==='number')feedCnt.textContent=String(Math.max(0,d.count));
   }catch(e){showNotification('Ошибка','error');}
 }
 
@@ -3601,6 +3666,11 @@ function initFeedChaosToggle(){
   if(!sw) return;
   setFeedChaos(true);
 }
+function initProfileChaosToggle(){
+  const sw=document.getElementById('profileChaosToggle');
+  if(!sw) return;
+  setProfilePostsChaos(true);
+}
 function setFeedChaos(isOn){
   const grid=document.getElementById('feedPosts');
   const sw=document.getElementById('feedChaosToggle');
@@ -3614,7 +3684,21 @@ function setFeedChaos(isOn){
     grid.classList.add('feed-chaos-off');
   }
 }
+function setProfilePostsChaos(isOn){
+  const grid=document.getElementById('profilePosts');
+  const sw=document.getElementById('profileChaosToggle');
+  if(sw && sw.checked!==!!isOn) sw.checked=!!isOn;
+  if(!grid) return;
+  if(isOn){
+    grid.classList.add('profile-chaos-on');
+    grid.classList.remove('profile-chaos-off');
+  }else{
+    grid.classList.remove('profile-chaos-on');
+    grid.classList.add('profile-chaos-off');
+  }
+}
 initFeedChaosToggle();
+initProfileChaosToggle();
 
 // ── Util ──
 function esc(t){return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}

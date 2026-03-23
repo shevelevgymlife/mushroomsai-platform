@@ -56,31 +56,6 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 .ig-feed-shell{max-width:min(1100px,100%);margin:0 auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:start}
 .ig-post{position:relative;border:1px solid rgba(255,255,255,.12);border-radius:20px;overflow:visible;background:linear-gradient(165deg,rgba(255,255,255,.07),rgba(10,10,13,.92));margin-bottom:0;box-shadow:0 16px 50px rgba(0,0,0,.44),0 0 0 1px rgba(61,212,224,.06)}
 .ig-post::before{content:"";position:absolute;inset:0;border-radius:20px;pointer-events:none;background:linear-gradient(120deg,rgba(61,212,224,.08),transparent 40%,rgba(255,102,208,.06))}
-.ig-post::after{
-  content:"";
-  position:absolute;
-  top:-54px;
-  right:14px;
-  width:44px;
-  height:66px;
-  border-radius:18px 18px 12px 12px;
-  pointer-events:none;
-  background:
-    linear-gradient(180deg,rgba(205,214,230,.82),rgba(112,124,145,.4)) 50% 7px/3px 24px no-repeat,
-    radial-gradient(ellipse at 50% 88%,rgba(255,234,182,.96) 0%,rgba(255,198,98,.9) 36%,rgba(184,110,30,.88) 72%,rgba(90,58,24,.92) 100%) 50% 100%/40px 25px no-repeat;
-  filter:drop-shadow(0 0 14px rgba(255,214,130,.42));
-  transform:rotate(7deg);
-}
-.ig-post .ig-post-header::after{
-  content:"";
-  position:absolute;
-  top:-38px;
-  right:-6px;
-  width:240px;
-  height:145px;
-  pointer-events:none;
-  background:radial-gradient(ellipse at top right,rgba(255,235,180,.34) 0%,rgba(255,208,122,.16) 36%,rgba(61,212,224,.08) 66%,transparent 100%);
-}
 .ig-post:nth-child(6n+1){transform:translateY(8px) rotate(-3.4deg)}
 .ig-post:nth-child(6n+2){transform:translateY(-4px) rotate(2.8deg)}
 .ig-post:nth-child(6n+3){transform:translateY(5px) rotate(1.6deg)}
@@ -97,13 +72,15 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 .ig-post-actions-left{display:flex;gap:6px;align-items:center}
 .ig-post-actions .ig-act{background:none;border:none;cursor:pointer;padding:4px;font-size:20px;line-height:1;color:#aaa;transition:color .2s,transform .15s}
 .ig-post-actions .ig-act:hover{color:#3dd4e0;transform:scale(1.06)}
+.ig-post-actions .ig-act.on{color:#ffd84f}
 .ig-post-likes{padding:0 10px 6px;font-size:13px;font-weight:600;color:#e8e8e8}
 .ig-post-body{padding:0 10px 10px;font-size:13px;line-height:1.4;color:#c8c8c8;white-space:pre-wrap;word-break:break-word;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .ig-post-body .ig-cap-user{font-weight:700;color:#e8e8e8;margin-right:6px}
+.cp-bottom-nav{display:none}
 .cp-prof-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:6px 0 10px;font-size:13px;color:#888}
-.cp-tokens-strip{position:relative;margin-top:2px;margin-bottom:14px;padding:15px 17px 14px;max-width:min(100%,560px);border-radius:26px 18px 24px 16px;background:linear-gradient(160deg,rgba(24,24,20,.94),rgba(10,10,14,.96));border:1px solid rgba(61,212,224,.56);box-shadow:0 18px 54px rgba(0,0,0,.52),0 0 34px rgba(61,212,224,.22),0 0 22px rgba(255,123,224,.14),inset 0 1px 0 rgba(255,255,255,.09);transform:rotate(-1.25deg) skewX(-1deg);overflow:visible}
-.cp-tokens-strip::before{content:"";position:absolute;right:12px;top:-62px;width:46px;height:72px;border-radius:22px 22px 14px 14px;background:linear-gradient(180deg,rgba(210,220,236,.8),rgba(120,132,150,.45)) 50% 8px/3px 28px no-repeat,radial-gradient(ellipse at 50% 88%,rgba(255,232,176,.95) 0%,rgba(255,188,96,.92) 36%,rgba(190,110,28,.9) 72%,rgba(87,55,22,.95) 100%) 50% 100%/42px 28px no-repeat;filter:drop-shadow(0 0 14px rgba(255,214,130,.45));transform:rotate(8deg)}
-.cp-tokens-strip::after{content:"";position:absolute;right:-10px;top:-34px;width:290px;height:168px;pointer-events:none;background:radial-gradient(ellipse at top right,rgba(255,235,176,.52) 0%,rgba(255,204,114,.22) 34%,rgba(61,212,224,.1) 66%,transparent 100%);filter:blur(.6px)}
+.cp-tokens-strip{position:relative;margin-top:2px;margin-bottom:14px;padding:15px 17px 14px;max-width:min(100%,560px);border-radius:20px;background:linear-gradient(160deg,rgba(24,24,20,.94),rgba(10,10,14,.96));border:1px solid rgba(61,212,224,.56);box-shadow:0 18px 54px rgba(0,0,0,.52),0 0 26px rgba(61,212,224,.2),inset 0 1px 0 rgba(255,255,255,.09);overflow:visible}
+.cp-tokens-strip::before{content:"";position:absolute;left:50%;top:-58px;width:42px;height:64px;transform:translateX(-50%);border-radius:22px 22px 12px 12px;pointer-events:none;background:linear-gradient(180deg,rgba(210,220,236,.8),rgba(120,132,150,.45)) 50% 8px/3px 24px no-repeat,radial-gradient(ellipse at 50% 88%,rgba(255,232,176,.95) 0%,rgba(255,188,96,.92) 36%,rgba(190,110,28,.9) 72%,rgba(87,55,22,.95) 100%) 50% 100%/38px 24px no-repeat;filter:drop-shadow(0 0 12px rgba(255,214,130,.42))}
+.cp-tokens-strip::after{content:"";position:absolute;left:50%;top:-6px;transform:translateX(-50%);width:320px;max-width:calc(100% + 84px);height:200px;pointer-events:none;background:radial-gradient(circle at 50% 18%,rgba(255,231,174,.28) 0%,rgba(255,204,114,.16) 28%,rgba(61,212,224,.11) 58%,rgba(61,212,224,.06) 70%,transparent 100%);filter:blur(2.2px)}
 .cp-tokens-strip__title{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#ff9ce8;font-weight:800;margin-bottom:10px;text-shadow:0 0 14px rgba(255,124,223,.34)}
 .cp-tokens-strip__grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 20px;align-items:start}
 .cp-tokens-strip__cell{display:flex;flex-direction:column;gap:4px;min-width:0;text-align:left}
@@ -130,9 +107,11 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
   .ig-post-likes{font-size:12px}
   .ig-post-actions{padding:7px 8px 4px}
   .ig-post-actions .ig-act{font-size:16px}
-  .ig-post::after{top:-45px;right:8px;width:36px;height:54px}
-  .ig-post .ig-post-header::after{width:180px;height:108px;right:-8px}
-  .cp-tokens-strip{transform:rotate(-.6deg)}
+  .cp-bottom-nav{display:flex;position:fixed;left:0;right:0;bottom:0;height:calc(56px + env(safe-area-inset-bottom,0px));padding:6px 6px env(safe-area-inset-bottom,0px);background:rgba(6,8,16,.58);backdrop-filter:blur(25px);-webkit-backdrop-filter:blur(25px);border-top:1px solid rgba(61,212,224,.14);z-index:980;align-items:flex-start;justify-content:space-around;box-sizing:border-box;box-shadow:0 -8px 40px rgba(0,0,0,.35)}
+  .cp-bottom-nav a{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:2px;padding:4px 2px 0;color:#aaa;text-decoration:none;font-size:10px;font-weight:600}
+  .cp-bottom-nav a .ic{font-size:22px;line-height:1}
+  .cp-bottom-nav .cp-bottom-nav-plus .ic{font-size:24px;color:#3dd4e0}
+  .cp-ig-main{padding-bottom:calc(72px + env(safe-area-inset-bottom,0px))}
 }
 .shevelev-bal-box{margin-bottom:16px;padding:14px 16px;border-radius:14px;background:rgba(61,212,224,.1);border:1px solid rgba(61,212,224,.28);max-width:420px}
 </style>
@@ -250,12 +229,12 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
     {% endif %}
     <div class="ig-post-actions">
       <div class="ig-post-actions-left">
-        <button type="button" class="ig-act {{ 'on' if item.liked }}" id="lk-{{ p.id }}" onclick="doLike({{ p.id }},this)">{{ '❤️' if item.liked else '🤍' }}</button>
+        <button type="button" class="ig-act {{ 'on' if item.liked }}" id="lk-{{ p.id }}" onclick="doLike({{ p.id }},this)">{{ '⭐' if item.liked else '✩' }}</button>
         <button type="button" class="ig-act" onclick="togCmt({{ p.id }})">💬</button>
-        <button type="button" class="ig-act {{ 'on' if item.saved }}" id="sv-{{ p.id }}" onclick="doSave({{ p.id }},this)">{{ '🔖' if item.saved else '🏷️' }}</button>
+        <button type="button" class="ig-act" id="sv-{{ p.id }}" onclick="openSharePostModal({{ p.id }})">↗</button>
       </div>
     </div>
-    <div class="ig-post-likes">Нравится: <span id="lkc-{{ p.id }}">{{ p.likes_count }}</span> · <span style="color:#888;font-weight:500"><span id="cmc-{{ p.id }}">{{ p.comments_count }}</span> коммент.</span> · 🔖 <span id="svc-{{ p.id }}">{{ p.saves_count }}</span></div>
+    <div class="ig-post-likes">⭐ <span id="lkc-{{ p.id }}">{{ p.likes_count }}</span> · 💬 <span id="cmc-{{ p.id }}">{{ p.comments_count }}</span> · ↗ <span id="svc-{{ p.id }}">{{ p.saves_count }}</span></div>
     {% if p.image_url and p.content %}
     <div class="ig-post-body"><span class="ig-cap-user">{{ profile.name or '' }}</span>{{ p.content }}</div>
     {% endif %}
@@ -275,6 +254,12 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
     </div>
   </main>
 </div>
+<nav class="cp-bottom-nav" aria-label="Нижняя навигация">
+  <a href="/dashboard#feed"><span class="ic">🏠</span><span>Лента</span></a>
+  <a href="/dashboard#me"><span class="ic">👤</span><span>Профиль</span></a>
+  <a href="/dashboard#search"><span class="ic">🔍</span><span>Поиск</span></a>
+  <a href="/dashboard#feed" class="cp-bottom-nav-plus"><span class="ic">＋</span><span>Пост</span></a>
+</nav>
 
 <div id="followListModal" style="display:none;position:fixed;inset:0;z-index:10020;align-items:center;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(4px)" onclick="if(event.target===this)closeFollowListModal()">
   <div class="card" style="max-width:420px;width:92%;max-height:min(85vh,560px);padding:0;overflow:hidden;border-color:rgba(61,212,224,.28);background:#0e0e0e" onclick="event.stopPropagation()">
@@ -395,12 +380,17 @@ async function doProfileLike(){
 
 // ── Post like ──
 async function doLike(id,btn){
+  const c=document.getElementById(`lkc-${id}`);
+  const wasLiked=btn.classList.contains('on');
+  const base=parseInt(c&&c.textContent)||0;
+  btn.classList.toggle('on', !wasLiked);
+  btn.textContent=!wasLiked?'⭐':'✩';
+  if(c)c.textContent=String(Math.max(0, base + (!wasLiked ? 1 : -1)));
   const r=await fetch(`/community/like/${id}`,{method:'POST'});
   const d=await r.json();
-  const c=document.getElementById(`lkc-${id}`);
-  const n=parseInt(c&&c.textContent)||0;
-  if(d.liked){btn.classList.add('on');btn.textContent='❤️';if(c)c.textContent=String(n+1)}
-  else{btn.classList.remove('on');btn.textContent='🤍';if(c)c.textContent=String(Math.max(0,n-1))}
+  if(d.liked){btn.classList.add('on');btn.textContent='⭐'}
+  else{btn.classList.remove('on');btn.textContent='✩'}
+  if(c && typeof d.count === 'number') c.textContent=String(Math.max(0,d.count));
 }
 
 // ── Save ──
@@ -411,6 +401,13 @@ async function doSave(id,btn){
   const n=parseInt(c&&c.textContent)||0;
   if(d.saved){btn.classList.add('on');btn.textContent='🔖';if(c)c.textContent=String(n+1)}
   else{btn.classList.remove('on');btn.textContent='🏷️';if(c)c.textContent=String(Math.max(0,n-1))}
+}
+function openSharePostModal(postId){
+  const btn=document.getElementById(`sv-${postId}`);
+  if(btn){
+    btn.classList.add('on');
+    setTimeout(()=>btn.classList.remove('on'),500);
+  }
 }
 
 // ── Comments ──

@@ -173,13 +173,13 @@
 
       <div style="display:flex;gap:2px;margin-top:12px;padding-top:10px;border-top:1px solid #1a1a1a;flex-wrap:wrap">
         <button class="abt {{ 'on' if item.liked }}" id="lk-{{ p.id }}" onclick="doLike({{ p.id }},this)">
-          {{ '❤️' if item.liked else '🤍' }}&nbsp;<span id="lkc-{{ p.id }}">{{ p.likes_count }}</span>
+          {{ '⭐' if item.liked else '✩' }}&nbsp;<span id="lkc-{{ p.id }}">{{ p.likes_count }}</span>
         </button>
         <button class="abt" onclick="togComments({{ p.id }})">
           💬&nbsp;<span id="cmc-{{ p.id }}">{{ p.comments_count }}</span>
         </button>
         <button class="abt {{ 'on' if item.saved }}" id="sv-{{ p.id }}" onclick="doSave({{ p.id }},this)">
-          {{ '🔖' if item.saved else '🏷️' }}&nbsp;<span id="svc-{{ p.id }}">{{ p.saves_count }}</span>
+          ↗&nbsp;<span id="svc-{{ p.id }}">{{ p.saves_count }}</span>
         </button>
         {% if a and a.id != user.id %}
         <button class="abt" onclick="openDM({{ a.id }},'{{ (a.name or 'Участник')|e }}','{{ (a.avatar or '')|e }}')">✉️ Написать</button>
@@ -369,20 +369,25 @@ async function sendTokens(){
 
 // ---- LIKE / SAVE / FOLLOW ----
 async function doLike(id,btn){
+  const c=document.getElementById(`lkc-${id}`);
+  const icon=btn.firstChild;
+  const wasLiked=btn.classList.contains('on');
+  const n=parseInt(c.textContent||0);
+  btn.classList.toggle('on', !wasLiked);
+  if(icon && icon.nodeType===3) icon.textContent=(!wasLiked?'⭐':'✩')+'\u00A0';
+  if(c)c.textContent=String(Math.max(0,n+(!wasLiked?1:-1)));
   const r=await fetch(`/community/like/${id}`,{method:'POST'});
   const d=await r.json();
-  const c=document.getElementById(`lkc-${id}`);
-  const n=parseInt(c.textContent);
-  if(d.liked){btn.classList.add('on');btn.innerHTML=`❤️&nbsp;<span id="lkc-${id}">${n+1}</span>`}
-  else{btn.classList.remove('on');btn.innerHTML=`🤍&nbsp;<span id="lkc-${id}">${Math.max(0,n-1)}</span>`}
+  btn.classList.toggle('on', !!d.liked);
+  btn.innerHTML=`${d.liked?'⭐':'✩'}&nbsp;<span id="lkc-${id}">${typeof d.count==='number'?Math.max(0,d.count):Math.max(0,n+(!wasLiked?1:-1))}</span>`;
 }
 async function doSave(id,btn){
   const r=await fetch(`/community/save/${id}`,{method:'POST'});
   const d=await r.json();
   const c=document.getElementById(`svc-${id}`);
   const n=parseInt(c.textContent);
-  if(d.saved){btn.classList.add('on');btn.innerHTML=`🔖&nbsp;<span id="svc-${id}">${n+1}</span>`}
-  else{btn.classList.remove('on');btn.innerHTML=`🏷️&nbsp;<span id="svc-${id}">${Math.max(0,n-1)}</span>`}
+  if(d.saved){btn.classList.add('on');btn.innerHTML=`↗&nbsp;<span id="svc-${id}">${n+1}</span>`}
+  else{btn.classList.remove('on');btn.innerHTML=`↗&nbsp;<span id="svc-${id}">${Math.max(0,n-1)}</span>`}
 }
 async function doFollow(uid,btn){
   const r=await fetch(`/community/follow/${uid}`,{method:'POST'});
