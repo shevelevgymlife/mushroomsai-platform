@@ -644,15 +644,10 @@ async def community_users_search(request: Request, q: str = ""):
         return JSONResponse({"error": "auth required"}, status_code=401)
     uid = user.get("primary_user_id") or user["id"]
     needle = (q or "").strip()
-    if len(needle) < 2:
-        return JSONResponse({"users": []})
-    rows = await database.fetch_all(
-        users.select()
-        .where(users.c.id != uid)
-        .where(users.c.name.ilike(f"%{needle}%"))
-        .order_by(users.c.id.desc())
-        .limit(30)
-    )
+    qy = users.select().where(users.c.id != uid)
+    if needle:
+        qy = qy.where(users.c.name.ilike(f"%{needle}%"))
+    rows = await database.fetch_all(qy.order_by(users.c.id.desc()).limit(30))
     result = []
     for r in rows:
         result.append({
