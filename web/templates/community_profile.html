@@ -63,6 +63,8 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 .ig-post:nth-child(6n+5){transform:translateY(3px) rotate(2deg)}
 .ig-post:nth-child(6n+6){transform:translateY(-5px) rotate(-1.7deg)}
 .ig-post:hover{transform:translateY(-6px) rotate(0deg)!important;border-color:rgba(61,212,224,.34);box-shadow:0 22px 62px rgba(0,0,0,.5),0 0 28px rgba(61,212,224,.08)}
+.ig-feed-shell.cp-chaos-off .ig-post{transform:none!important}
+.ig-feed-shell.cp-chaos-off .ig-post:hover{transform:none!important}
 .ig-post-header{padding:10px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.05)}
 .ig-post-img{width:100%;aspect-ratio:4/5;object-fit:cover;background:#0a0a0a;display:block;max-height:260px}
 .ig-post-textonly{min-height:72px;padding:10px 10px;font-size:13px;line-height:1.45;color:#ccc;white-space:pre-wrap;word-break:break-word;border-bottom:1px solid rgba(255,255,255,.05);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
@@ -83,6 +85,12 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 .cp-ts-lbl{font-size:10px;color:#8e96a6;text-transform:uppercase;letter-spacing:.04em}
 .cp-ts-val{font-size:15px;font-weight:800;color:#ecf3ff;font-variant-numeric:tabular-nums;word-break:break-word;overflow-wrap:anywhere;line-height:1.35;min-height:1.35em;max-width:100%;text-shadow:0 0 16px rgba(61,212,224,.25)}
 .cp-ts-shev{color:#ff7be0;text-shadow:0 0 18px rgba(255,123,224,.32)}
+.cp-chaos-wrap{display:flex;justify-content:flex-end;margin:4px 0 12px}
+.cp-chaos-toggle{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid rgba(255,255,255,.14);border-radius:999px;background:rgba(255,255,255,.04);color:#d0d5df;font-size:12px;font-weight:600}
+.cp-chaos-toggle input{appearance:none;width:34px;height:20px;border-radius:999px;background:#20242f;border:1px solid rgba(255,255,255,.22);position:relative;cursor:pointer;transition:all .2s ease}
+.cp-chaos-toggle input::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#8a90a0;transition:all .2s ease}
+.cp-chaos-toggle input:checked{background:rgba(61,212,224,.35);border-color:rgba(61,212,224,.62)}
+.cp-chaos-toggle input:checked::after{left:16px;background:#d8fbff}
 @media(max-width:400px){.cp-tokens-strip__grid{grid-template-columns:1fr;gap:10px}}
 @media(max-width:768px){
   .ig-feed-shell{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
@@ -188,7 +196,13 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
       <a href="{{ profile.profile_link_url }}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:8px;color:#3dd4e0;font-weight:600;font-size:14px;margin-bottom:14px;text-decoration:none;border-bottom:1px solid rgba(61,212,224,.35);padding-bottom:2px">{{ profile.get('profile_link_label') or profile.profile_link_url }}</a>
       {% endif %}
 
-      <div class="ig-feed-shell" style="margin-top:16px">
+      <div class="cp-chaos-wrap">
+        <label class="cp-chaos-toggle" for="cpChaosToggle">
+          <span>Хаос</span>
+          <input id="cpChaosToggle" type="checkbox" checked onchange="setProfileChaos(this.checked)">
+        </label>
+      </div>
+      <div class="ig-feed-shell cp-chaos-on" id="profilePostsGrid" style="margin-top:16px">
   {% for item in feed %}
   {% set p = item.post %}
   <div class="ig-post" id="pc-{{ p.id }}">
@@ -440,6 +454,20 @@ async function sendMsg(){
 }
 
 function esc(t){return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function setProfileChaos(isOn){
+  const grid=document.getElementById('profilePostsGrid');
+  const sw=document.getElementById('cpChaosToggle');
+  if(sw && sw.checked!==!!isOn) sw.checked=!!isOn;
+  if(!grid) return;
+  if(isOn){
+    grid.classList.remove('cp-chaos-off');
+    grid.classList.add('cp-chaos-on');
+  }else{
+    grid.classList.remove('cp-chaos-on');
+    grid.classList.add('cp-chaos-off');
+  }
+}
+setProfileChaos(true);
 {% if shevelev_auto_sync %}
 (function(){
   const SYNC_MS=120000;
