@@ -3506,7 +3506,6 @@ async function submitEditPostModal(){
   const err=document.getElementById('editPostErr');
   const body=document.getElementById('editPostBodyInp');
   const txt=(body&&body.value||'').trim();
-  if(txt.length<2){if(err){err.style.display='block';err.textContent='Минимум 2 символа';}return;}
   const fd=new FormData();
   fd.append('content',txt);
   const t=document.getElementById('editPostTitleInp');

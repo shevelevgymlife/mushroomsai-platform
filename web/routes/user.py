@@ -560,7 +560,7 @@ async def create_post(
 async def edit_community_post(
     request: Request,
     post_id: int,
-    content: str = Form(...),
+    content: str = Form(""),
     title: str = Form(""),
     image: UploadFile = File(None),
 ):
@@ -573,11 +573,15 @@ async def edit_community_post(
         return JSONResponse({"error": "not found"}, status_code=404)
     if post["user_id"] != uid and user.get("role") != "admin":
         return JSONResponse({"error": "forbidden"}, status_code=403)
-    if len((content or "").strip()) < 2:
-        return JSONResponse({"error": "too short"}, status_code=400)
     tit = (title or "").strip()[:200] or None
-    vals = {"content": content.strip(), "title": tit}
-    if image and image.filename and image.content_type in _POST_IMAGE_ALLOWED:
+    # Allow editing title/photo even when text is not changed.
+    # If empty text is sent, keep previous content to avoid accidental wipes.
+    new_content = (content or "").strip()
+    if len(new_content) < 2:
+        new_content = (post["content"] or "").strip()
+    vals = {"content": new_content, "title": tit}
+    has_new_image = bool(image and image.filename)
+    if has_new_image and image.content_type in _POST_IMAGE_ALLOWED:
         data = await image.read()
         if len(data) <= _POST_IMAGE_MAX:
             ext = image.filename.rsplit(".", 1)[-1].lower() if "." in image.filename else "jpg"
@@ -588,6 +592,8 @@ async def edit_community_post(
             with open(save_path, "wb") as f:
                 f.write(data)
             vals["image_url"] = f"/media/community/{filename}"
+    if len((vals.get("content") or "").strip()) < 2 and not tit and not has_new_image:
+        return JSONResponse({"error": "too short"}, status_code=400)
     await database.execute(
         community_posts.update().where(community_posts.c.id == post_id).values(**vals)
     )
