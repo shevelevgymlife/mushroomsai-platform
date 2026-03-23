@@ -160,7 +160,7 @@
                 <div class="relative" style="z-index:{{ loop.revindex + 10 }}">
                   <button onclick="toggleAct('act{{ u.id }}')"
                     style="min-height:36px;padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.15);color:#aaa;background:none;cursor:pointer;font-size:12px;white-space:nowrap;touch-action:manipulation"
-                    onmouseover="this.style.borderColor='#00f5ff';this.style.color='#00f5ff'"
+                    onmouseover="this.style.borderColor='#3dd4e0';this.style.color='#3dd4e0'"
                     onmouseout="this.style.borderColor='rgba(255,255,255,.15)';this.style.color='#aaa'">
                     Действия ▾
                   </button>
@@ -170,7 +170,7 @@
                     <button onclick="closeAllActs();openSubModal({{ u.id }}, '{{ u.name | e }}', '{{ u.subscription_plan }}')" style="display:block;width:100%;text-align:left;padding:10px 16px;font-size:13px;color:#aaa;background:none;border:none;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='none'">⭐ Управление подпиской</button>
                     <button onclick="closeAllActs();toggleMarketplaceSeller({{ u.id }}, {{ 'true' if u.marketplace_seller else 'false' }})" style="display:block;width:100%;text-align:left;padding:10px 16px;font-size:13px;color:#aaa;background:none;border:none;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='none'">🏪 Продавец маркетплейса (Макси)</button>
                     {% if is_super %}
-                    <button onclick="closeAllActs();openPermModal({{ u.id }}, '{{ u.name | e }}')" style="display:block;width:100%;text-align:left;padding:10px 16px;font-size:13px;color:#00f5ff;background:none;border:none;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='none'">🔑 Права доступа</button>
+                    <button onclick="closeAllActs();openPermModal({{ u.id }}, '{{ u.name | e }}')" style="display:block;width:100%;text-align:left;padding:10px 16px;font-size:13px;color:#3dd4e0;background:none;border:none;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='none'">🔑 Права доступа</button>
                     <button onclick="closeAllActs();openRoleModal({{ u.id }}, '{{ u.name | e }}', '{{ u.role }}')" style="display:block;width:100%;text-align:left;padding:10px 16px;font-size:13px;color:#aaa;background:none;border:none;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='none'">👤 Изменить роль</button>
                     {% endif %}
                     <div style="border-top:1px solid rgba(255,255,255,.08);margin:4px 0"></div>

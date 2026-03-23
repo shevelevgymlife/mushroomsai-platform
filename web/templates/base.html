@@ -6,24 +6,24 @@
   <title>{% block title %}MushroomsAI{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Syne:wght@500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            bg: '#05050a',
-            surface: '#0a0a12',
-            border: 'rgba(255,255,255,0.08)',
-            gold: '#00f5ff',
-            'gold-light': '#ff00aa',
-            muted: '#8b8b9a',
-            text: '#e8e8f0',
+            bg: '#070708',
+            surface: '#0c0c0f',
+            border: 'rgba(255,255,255,0.07)',
+            gold: '#3dd4e0',
+            'gold-light': '#b85fa3',
+            muted: '#8e8e96',
+            text: '#eaeaec',
           },
           fontFamily: {
             sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-            display: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            display: ['Syne', 'Inter', 'system-ui', 'sans-serif'],
           },
           borderRadius: {
             neo: '28px',
@@ -61,14 +61,14 @@
 </script>
 <script>window._isLoggedIn = {{ 'true' if user else 'false' }};</script>
 
-<!-- Guest popup -->
-<div id="guest-popup" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;background:rgba(0,0,0,.78);backdrop-filter:blur(12px)" onclick="if(event.target===this)closeGuestPopup()">
-  <div style="background:rgba(12,14,24,.88);border:1px solid rgba(0,245,255,.35);border-radius:28px;padding:40px 32px;max-width:380px;width:90%;text-align:center;box-shadow:0 0 60px rgba(0,245,255,.12),0 0 80px rgba(255,0,170,.08);backdrop-filter:blur(20px)">
-    <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#00f5ff,#ff00aa);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px;box-shadow:0 0 28px rgba(0,245,255,.4)">🍄</div>
-    <h3 style="font-size:20px;font-weight:700;color:#e8e8f0;margin-bottom:10px">Добро пожаловать в MushroomsAI</h3>
-    <p style="font-size:14px;color:#8b8b9a;line-height:1.6;margin-bottom:28px">Зарегистрируйся или войди — получи полный доступ к AI-консультанту, маркетплейсу и соц. сети</p>
-    <a href="/login?next=/onboarding/tariff" style="display:block;padding:13px;background:linear-gradient(90deg,#00f5ff,#00c8d4);color:#05050a;border-radius:14px;font-weight:700;font-size:15px;text-decoration:none;margin-bottom:10px;transition:filter .2s;box-shadow:0 0 24px rgba(0,245,255,.35)" onmouseover="this.style.filter='brightness(1.08)'" onmouseout="this.style.filter='none'">Войти (бесплатный план)</a>
-    <button onclick="closeGuestPopup()" style="background:none;border:1px solid #333;color:#666;font-size:13px;cursor:pointer;padding:9px 20px;border-radius:10px;width:100%;transition:all .2s" onmouseover="this.style.borderColor='#555';this.style.color='#999'" onmouseout="this.style.borderColor='#333';this.style.color='#666'">Пока не надо</button>
+<!-- Guest popup — Editorial Grain -->
+<div id="guest-popup" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;background:rgba(3,3,5,.82);backdrop-filter:blur(14px)" onclick="if(event.target===this)closeGuestPopup()">
+  <div style="background:rgba(14,14,18,.94);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:40px 32px;max-width:380px;width:90%;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.04);backdrop-filter:blur(18px)">
+    <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(145deg,#3dd4e0,#2a9daa);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px;box-shadow:0 8px 32px rgba(61,212,224,.2)">🍄</div>
+    <h3 style="font-family:Syne,Inter,sans-serif;font-size:20px;font-weight:700;color:#eaeaec;margin-bottom:10px;letter-spacing:-.02em">Добро пожаловать в MushroomsAI</h3>
+    <p style="font-size:14px;color:#8e8e96;line-height:1.55;margin-bottom:28px">Зарегистрируйся или войди — получи полный доступ к AI-консультанту, маркетплейсу и соц. сети</p>
+    <a href="/login?next=/onboarding/tariff" style="display:block;padding:13px;background:#3dd4e0;color:#070708;border-radius:12px;font-weight:700;font-size:15px;text-decoration:none;margin-bottom:10px;transition:filter .2s,transform .15s;box-shadow:0 4px 24px rgba(61,212,224,.2)" onmouseover="this.style.filter='brightness(1.06)'" onmouseout="this.style.filter='none'">Войти (бесплатный план)</a>
+    <button onclick="closeGuestPopup()" style="background:none;border:1px solid rgba(255,255,255,.12);color:#8e8e96;font-size:13px;cursor:pointer;padding:9px 20px;border-radius:10px;width:100%;transition:all .2s" onmouseover="this.style.borderColor='rgba(255,255,255,.22)';this.style.color='#c8c8c8'" onmouseout="this.style.borderColor='rgba(255,255,255,.12)';this.style.color='#8e8e96'">Пока не надо</button>
   </div>
 </div>
 <script>

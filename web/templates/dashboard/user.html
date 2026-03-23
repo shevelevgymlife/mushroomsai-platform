@@ -15,7 +15,7 @@
 {% block content %}
 <style>
 /* ── Layout ── */
-.db-wrap{display:flex;min-height:100vh;min-height:100dvh;min-height:calc(var(--vvh, 100vh));padding-top:72px;background:#05050a;position:relative}
+.db-wrap{display:flex;min-height:100vh;min-height:100dvh;min-height:calc(var(--vvh, 100vh));padding-top:72px;background:#070708;position:relative}
 .db-main{flex:1;padding:28px 80px 60px 28px;max-width:100%;overflow-x:hidden}
 @media(max-width:768px){.db-main{padding:20px 60px 60px 16px}}
 @media(max-width:480px){.db-main{padding:14px 52px 60px 14px}}
@@ -23,10 +23,10 @@
 /* ── Nav sidebar (always RIGHT) ── */
 .nav-sidebar{position:fixed;right:12px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px;z-index:1000}
 .nav-item{width:56px;height:56px;border-radius:50%;border:1.5px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;transition:all .3s;text-decoration:none;font-size:20px;color:inherit;user-select:none;flex-shrink:0}
-.nav-item:hover{border-color:rgba(0,245,255,.5);background:rgba(0,245,255,.08);transform:scale(1.08)}
-.nav-item.active{border-color:#00f5ff;background:rgba(0,245,255,.15);box-shadow:0 0 12px rgba(0,245,255,.2);animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{box-shadow:0 0 12px rgba(0,245,255,.2)}50%{box-shadow:0 0 22px rgba(0,245,255,.4)}}
-.nav-tooltip{position:absolute;right:70px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.9);border:1px solid rgba(0,245,255,.3);border-radius:8px;padding:4px 12px;color:#e8e8e8;font-size:12px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .2s;z-index:1010}
+.nav-item:hover{border-color:rgba(61,212,224,.5);background:rgba(61,212,224,.08);transform:scale(1.08)}
+.nav-item.active{border-color:#3dd4e0;background:rgba(61,212,224,.15);box-shadow:0 0 12px rgba(61,212,224,.2);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 12px rgba(61,212,224,.2)}50%{box-shadow:0 0 22px rgba(61,212,224,.4)}}
+.nav-tooltip{position:absolute;right:70px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.9);border:1px solid rgba(61,212,224,.3);border-radius:8px;padding:4px 12px;color:#e8e8e8;font-size:12px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .2s;z-index:1010}
 .nav-item:hover .nav-tooltip{opacity:1}
 .nav-badge{position:absolute;top:0;right:0;min-width:18px;height:18px;border-radius:9px;background:#e74c3c;color:white;font-size:9px;display:none;align-items:center;justify-content:center;font-weight:700;padding:0 3px;border:2px solid #080808}
 .nav-sep{width:28px;height:1px;background:rgba(255,255,255,.07);margin:0 auto;flex-shrink:0}
@@ -34,15 +34,15 @@
 @media(max-width:480px){.nav-item{width:38px;height:38px;font-size:14px}.nav-sidebar{right:4px;gap:4px}.nav-tooltip{display:none!important}}
 
 /* ── Cards ── */
-.card{background:rgba(14,16,28,.45);border:1px solid rgba(0,245,255,.1);border-radius:28px;padding:22px;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 8px 40px rgba(0,0,0,.35)}
+.card{background:rgba(14,16,28,.45);border:1px solid rgba(61,212,224,.1);border-radius:28px;padding:22px;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 8px 40px rgba(0,0,0,.35)}
 .card-sm{background:rgba(14,16,28,.4);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:14px;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
-.hero-card{background:linear-gradient(135deg,rgba(0,245,255,.12) 0%,rgba(255,0,170,.06) 45%,rgba(8,8,8,0) 70%),rgba(255,255,255,.04);border:1px solid rgba(0,245,255,.22);border-radius:28px;padding:28px;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 12px 48px rgba(0,0,0,.4),0 0 40px rgba(0,245,255,.06)}
+.hero-card{background:linear-gradient(135deg,rgba(61,212,224,.12) 0%,rgba(184,95,163,.06) 45%,rgba(8,8,8,0) 70%),rgba(255,255,255,.04);border:1px solid rgba(61,212,224,.22);border-radius:28px;padding:28px;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 12px 48px rgba(0,0,0,.4),0 0 40px rgba(61,212,224,.06)}
 
 /* ── Buttons ── */
-.btn-g{background:#00f5ff;color:#000;font-weight:700;border-radius:10px;padding:10px 20px;border:none;cursor:pointer;transition:background .2s;text-decoration:none;display:inline-block;font-size:14px;text-align:center}
+.btn-g{background:#3dd4e0;color:#000;font-weight:700;border-radius:10px;padding:10px 20px;border:none;cursor:pointer;transition:background .2s;text-decoration:none;display:inline-block;font-size:14px;text-align:center}
 .btn-g:hover{background:#ff66d0}
-.btn-o{border:1px solid #00f5ff;color:#00f5ff;background:transparent;border-radius:10px;padding:9px 18px;cursor:pointer;font-weight:600;transition:all .2s;text-decoration:none;display:inline-block;font-size:14px;text-align:center}
-.btn-o:hover{background:rgba(0,245,255,.12)}
+.btn-o{border:1px solid #3dd4e0;color:#3dd4e0;background:transparent;border-radius:10px;padding:9px 18px;cursor:pointer;font-weight:600;transition:all .2s;text-decoration:none;display:inline-block;font-size:14px;text-align:center}
+.btn-o:hover{background:rgba(61,212,224,.12)}
 
 /* ── Sections ── */
 .db-sec{display:none;animation:fadein .28s ease}
@@ -51,17 +51,17 @@
 
 /* ── Avatar ── */
 .av-wrap{position:relative;display:inline-block;cursor:pointer}
-.av-wrap img,.av-circle{border:2px solid #00f5ff;border-radius:50%;object-fit:cover}
+.av-wrap img,.av-circle{border:2px solid #3dd4e0;border-radius:50%;object-fit:cover}
 .av-overlay{position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;font-size:18px}
 .av-wrap:hover .av-overlay{opacity:1}
 
 /* ── Chat ── */
 .chat-box{height:360px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:14px;background:rgba(0,0,0,.3);border-radius:12px;border:1px solid rgba(255,255,255,.07)}
-.msg-user{align-self:flex-end;background:rgba(0,245,255,.15);border:1px solid rgba(0,245,255,.25);padding:9px 14px;border-radius:14px 14px 4px 14px;max-width:78%;font-size:14px;line-height:1.55;color:#e8e8e8;white-space:pre-wrap;word-break:break-word}
+.msg-user{align-self:flex-end;background:rgba(61,212,224,.15);border:1px solid rgba(61,212,224,.25);padding:9px 14px;border-radius:14px 14px 4px 14px;max-width:78%;font-size:14px;line-height:1.55;color:#e8e8e8;white-space:pre-wrap;word-break:break-word}
 .msg-ai{align-self:flex-start;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);padding:9px 14px;border-radius:14px 14px 14px 4px;max-width:78%;font-size:14px;line-height:1.55;color:#ccc;white-space:pre-wrap;word-break:break-word}
-.msg-ai .ai-lbl{font-size:11px;color:#00f5ff;font-weight:700;margin-bottom:4px}
+.msg-ai .ai-lbl{font-size:11px;color:#3dd4e0;font-weight:700;margin-bottom:4px}
 .sinp{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#e8e8e8;border-radius:12px;padding:11px 16px;font-size:14px;outline:none;width:100%;box-sizing:border-box;transition:border-color .2s}
-.sinp:focus{border-color:rgba(0,245,255,.5)}
+.sinp:focus{border-color:rgba(61,212,224,.5)}
 
 /* ── Feed post ── */
 .fp{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:16px;margin-bottom:12px}
@@ -69,28 +69,28 @@
 /* ── Shop grid ── */
 .shop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px}
 .shop-item{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;overflow:hidden;transition:border-color .2s;cursor:pointer;text-decoration:none}
-.shop-item:hover{border-color:rgba(0,245,255,.4)}
+.shop-item:hover{border-color:rgba(61,212,224,.4)}
 .shop-img{width:100%;height:140px;object-fit:cover;background:#111}
 .shop-img-ph{width:100%;height:140px;background:#111;display:flex;align-items:center;justify-content:center;font-size:32px}
 
 /* ── Plan cards ── */
 .plan-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
 .plan-card{border-radius:16px;padding:22px;border:1.5px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);transition:border-color .2s}
-.plan-card.current{border-color:#00f5ff;background:rgba(0,245,255,.08)}
-.plan-card:hover:not(.current){border-color:rgba(0,245,255,.35)}
+.plan-card.current{border-color:#3dd4e0;background:rgba(61,212,224,.08)}
+.plan-card:hover:not(.current){border-color:rgba(61,212,224,.35)}
 
 /* ── Lang grid ── */
 .lang-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
 .lang-btn{border-radius:12px;padding:12px 14px;border:1.5px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);cursor:pointer;transition:all .2s;text-align:center;font-size:13px;color:#ccc}
-.lang-btn:hover{border-color:rgba(0,245,255,.4);background:rgba(0,245,255,.07)}
-.lang-btn.cur{border-color:#00f5ff;background:rgba(0,245,255,.12);color:#00f5ff;font-weight:600}
+.lang-btn:hover{border-color:rgba(61,212,224,.4);background:rgba(61,212,224,.07)}
+.lang-btn.cur{border-color:#3dd4e0;background:rgba(61,212,224,.12);color:#3dd4e0;font-weight:600}
 
 /* ── Status ── */
 .badge-plan{display:inline-flex;align-items:center;gap:6px;padding:5px 13px;border-radius:20px;font-size:12px;font-weight:700}
 .badge-free{background:rgba(255,255,255,.07);color:#888;border:1px solid rgba(255,255,255,.1)}
-.badge-start{background:rgba(0,245,255,.15);color:#00f5ff;border:1px solid rgba(0,245,255,.3)}
-.badge-pro{background:linear-gradient(135deg,rgba(0,245,255,.25),rgba(255,0,170,.15));color:#ff66d0;border:1px solid rgba(255,0,170,.4)}
-.badge-maxi{background:rgba(0,245,255,.2);color:#ff66d0;border:1px solid rgba(0,245,255,.45)}
+.badge-start{background:rgba(61,212,224,.15);color:#3dd4e0;border:1px solid rgba(61,212,224,.3)}
+.badge-pro{background:linear-gradient(135deg,rgba(61,212,224,.25),rgba(184,95,163,.15));color:#ff66d0;border:1px solid rgba(184,95,163,.4)}
+.badge-maxi{background:rgba(61,212,224,.2);color:#ff66d0;border:1px solid rgba(61,212,224,.45)}
 
 /* ── Stats row ── */
 .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px;align-items:stretch}
@@ -101,61 +101,61 @@
 .ig-pm[open]>summary{background:rgba(255,255,255,.06);color:#e8e8e8}
 .ig-pm-panel{position:absolute;right:0;top:100%;margin-top:4px;min-width:200px;background:#141414;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:6px;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.5)}
 .ig-pm-panel button{display:block;width:100%;text-align:left;padding:10px 12px;border:none;background:transparent;color:#e8e8e8;font-size:13px;cursor:pointer;border-radius:8px}
-.ig-pm-panel button:hover{background:rgba(0,245,255,.12)}
+.ig-pm-panel button:hover{background:rgba(61,212,224,.12)}
 
 /* ── Feed tabs ── */
 .feed-tab{padding:7px 16px;border-radius:20px;font-size:13px;font-weight:600;border:1px solid rgba(255,255,255,.1);background:transparent;color:#666;cursor:pointer;transition:all .2s;text-decoration:none;display:inline-block}
-.feed-tab:hover{border-color:rgba(0,245,255,.4);color:#00f5ff}
-.feed-tab-active{border-color:#00f5ff!important;color:#00f5ff!important;background:rgba(0,245,255,.1)!important}
+.feed-tab:hover{border-color:rgba(61,212,224,.4);color:#3dd4e0}
+.feed-tab-active{border-color:#3dd4e0!important;color:#3dd4e0!important;background:rgba(61,212,224,.1)!important}
 
 /* ── Instagram-like feed (narrow column, photo-first) ── */
 .ig-feed-shell{max-width:470px;margin:0 auto}
 .ig-feed-topbar{display:flex;align-items:center;justify-content:space-between;padding:6px 2px 14px;margin-bottom:4px;border-bottom:1px solid rgba(255,255,255,.06)}
-.ig-feed-topbar .ig-brand{font-family:Syne,Inter,system-ui,sans-serif;font-weight:700;font-size:1.15rem;letter-spacing:-0.02em;color:#e8e8e8;background:linear-gradient(90deg,#e8e8e8,#00f5ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.ig-feed-topbar .ig-brand{font-family:Syne,Inter,system-ui,sans-serif;font-weight:700;font-size:1.15rem;letter-spacing:-0.02em;color:#e8e8e8;background:linear-gradient(90deg,#e8e8e8,#3dd4e0);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 .ig-feed-actions-top{display:flex;align-items:center;gap:6px}
 .ig-ic-btn{width:40px;height:40px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:#ccc;transition:border-color .2s,background .2s}
-.ig-ic-btn:hover{border-color:rgba(0,245,255,.45);color:#00f5ff;background:rgba(0,245,255,.06)}
+.ig-ic-btn:hover{border-color:rgba(61,212,224,.45);color:#3dd4e0;background:rgba(61,212,224,.06)}
 .ig-stories-wrap{display:flex;gap:12px;overflow-x:auto;padding:6px 0 18px;margin:0 -2px 4px;-webkit-overflow-scrolling:touch;scrollbar-width:none;border-bottom:1px solid rgba(255,255,255,.05)}
 .ig-stories-wrap::-webkit-scrollbar{display:none}
 .ig-story{flex:0 0 auto;width:72px;text-align:center;text-decoration:none;color:inherit}
-.ig-story-ring{width:64px;height:64px;border-radius:50%;padding:2px;background:linear-gradient(145deg,#00f5ff,#006680,#ff66d0);margin:0 auto 6px;box-shadow:0 0 20px rgba(0,245,255,.12)}
+.ig-story-ring{width:64px;height:64px;border-radius:50%;padding:2px;background:linear-gradient(145deg,#3dd4e0,#006680,#ff66d0);margin:0 auto 6px;box-shadow:0 0 20px rgba(61,212,224,.12)}
 .ig-story-ring-inner{width:100%;height:100%;border-radius:50%;border:3px solid #080808;overflow:hidden;background:#111;display:flex;align-items:center;justify-content:center}
 .ig-story-name{font-size:11px;color:#888;max-width:72px;margin:0 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ig-story-ring-inner img{width:100%;height:100%;object-fit:cover;display:block}
-.ig-post{border:1px solid rgba(0,245,255,.12);border-radius:28px;overflow:hidden;background:linear-gradient(180deg,rgba(255,255,255,.06) 0%,rgba(12,14,24,.72) 100%);margin-bottom:20px;box-shadow:0 12px 48px rgba(0,0,0,.45),0 0 0 1px rgba(0,245,255,.08) inset,0 0 40px rgba(0,245,255,.04)}
+.ig-post{border:1px solid rgba(61,212,224,.12);border-radius:28px;overflow:hidden;background:linear-gradient(180deg,rgba(255,255,255,.06) 0%,rgba(12,14,24,.72) 100%);margin-bottom:20px;box-shadow:0 12px 48px rgba(0,0,0,.45),0 0 0 1px rgba(61,212,224,.08) inset,0 0 40px rgba(61,212,224,.04)}
 .ig-post-header{padding:10px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.05)}
 .ig-post-img{width:100%;aspect-ratio:1;object-fit:cover;background:#0a0a0a;display:block;max-height:min(470px,92vw)}
 .ig-post-textonly{min-height:100px;padding:16px 14px;font-size:14px;line-height:1.55;color:#ccc;white-space:pre-wrap;word-break:break-word;border-bottom:1px solid rgba(255,255,255,.05)}
 .ig-post-actions{display:flex;gap:8px;padding:10px 12px 6px;align-items:center;justify-content:space-between}
 .ig-post-actions-left{display:flex;gap:6px;align-items:center}
 .ig-post-actions .ig-act{background:none;border:none;cursor:pointer;padding:4px;font-size:20px;line-height:1;color:#aaa;transition:color .2s,transform .15s}
-.ig-post-actions .ig-act:hover{color:#00f5ff;transform:scale(1.06)}
+.ig-post-actions .ig-act:hover{color:#3dd4e0;transform:scale(1.06)}
 .ig-post-likes{padding:0 12px 6px;font-size:13px;font-weight:600;color:#e8e8e8}
 .ig-post-body{padding:0 12px 14px;font-size:14px;line-height:1.5;color:#c8c8c8;white-space:pre-wrap;word-break:break-word}
 .ig-post-body .ig-cap-user{font-weight:700;color:#e8e8e8;margin-right:6px}
 
 /* ── Group chats (layout как в TG, цвета как на сайте — золото / тёмный) ── */
-.tg-chat-shell{display:grid;grid-template-columns:minmax(280px,340px) 1fr;gap:0;align-items:stretch;min-height:min(72vh,640px);max-height:85vh;border-radius:16px;overflow:hidden;border:1px solid rgba(0,245,255,.22);background:linear-gradient(165deg,rgba(18,18,18,.98),rgba(8,8,8,.99));box-shadow:0 8px 32px rgba(0,0,0,.5),0 0 0 1px rgba(0,245,255,.06) inset}
+.tg-chat-shell{display:grid;grid-template-columns:minmax(280px,340px) 1fr;gap:0;align-items:stretch;min-height:min(72vh,640px);max-height:85vh;border-radius:16px;overflow:hidden;border:1px solid rgba(61,212,224,.22);background:linear-gradient(165deg,rgba(18,18,18,.98),rgba(8,8,8,.99));box-shadow:0 8px 32px rgba(0,0,0,.5),0 0 0 1px rgba(61,212,224,.06) inset}
 @media(max-width:900px){.tg-chat-shell{grid-template-columns:1fr;min-height:auto;max-height:none}}
 .tg-chat-sidebar{background:rgba(255,255,255,.02);border-right:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;min-height:420px;max-height:72vh}
 @media(max-width:900px){.tg-chat-sidebar{max-height:42vh;border-right:none;border-bottom:1px solid rgba(255,255,255,.08)}}
 .tg-chat-sidebar-head{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.07)}
 .tg-chat-sidebar-head .tg-h{font-size:15px;font-weight:700;color:#e8e8e8;letter-spacing:.02em}
 .tg-chat-sidebar-head .tg-sub{font-size:12px;color:#888;margin-top:4px;line-height:1.45}
-.tg-btn-new{width:calc(100% - 24px);margin:12px auto 8px;padding:10px 14px;border-radius:10px;border:none;background:#00f5ff;color:#0a0a0a;font-weight:700;font-size:14px;cursor:pointer;transition:background .2s,box-shadow .2s;box-shadow:0 2px 12px rgba(0,245,255,.2)}
-.tg-btn-new:hover{background:#ff66d0;box-shadow:0 4px 16px rgba(0,245,255,.28)}
+.tg-btn-new{width:calc(100% - 24px);margin:12px auto 8px;padding:10px 14px;border-radius:10px;border:none;background:#3dd4e0;color:#0a0a0a;font-weight:700;font-size:14px;cursor:pointer;transition:background .2s,box-shadow .2s;box-shadow:0 2px 12px rgba(61,212,224,.2)}
+.tg-btn-new:hover{background:#ff66d0;box-shadow:0 4px 16px rgba(61,212,224,.28)}
 .tg-chat-list{flex:1;overflow-y:auto;padding:0 0 8px;-webkit-overflow-scrolling:touch}
 .tg-chat-list::-webkit-scrollbar{width:6px}
-.tg-chat-list::-webkit-scrollbar-thumb{background:rgba(0,245,255,.25);border-radius:3px}
+.tg-chat-list::-webkit-scrollbar-thumb{background:rgba(61,212,224,.25);border-radius:3px}
 .ig-g-item.tg-chat-item{display:flex;align-items:center;gap:12px;padding:10px 12px;margin:0;border-radius:0;border:none;border-bottom:1px solid rgba(255,255,255,.06);background:transparent;transition:background .15s;cursor:pointer}
 .ig-g-item.tg-chat-item.tg-ios-row{align-items:flex-start;padding-top:11px;padding-bottom:11px}
-.ig-g-item.tg-chat-item:hover{background:rgba(0,245,255,.06)}
-.ig-g-item.tg-chat-item.on{background:rgba(0,245,255,.12);border-left:3px solid #00f5ff;padding-left:9px}
-.ig-g-item.tg-chat-item.on:hover{background:rgba(0,245,255,.14)}
-.tg-chat-av{flex-shrink:0;width:48px;height:48px;border-radius:50%;background:linear-gradient(145deg,#00f5ff,#006680);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#0a0a0a;text-transform:uppercase;box-shadow:0 2px 8px rgba(0,245,255,.25);border:1px solid rgba(0,245,255,.35);overflow:hidden}
+.ig-g-item.tg-chat-item:hover{background:rgba(61,212,224,.06)}
+.ig-g-item.tg-chat-item.on{background:rgba(61,212,224,.12);border-left:3px solid #3dd4e0;padding-left:9px}
+.ig-g-item.tg-chat-item.on:hover{background:rgba(61,212,224,.14)}
+.tg-chat-av{flex-shrink:0;width:48px;height:48px;border-radius:50%;background:linear-gradient(145deg,#3dd4e0,#006680);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#0a0a0a;text-transform:uppercase;box-shadow:0 2px 8px rgba(61,212,224,.25);border:1px solid rgba(61,212,224,.35);overflow:hidden}
 .tg-chat-av.tg-chat-av--img{background:#111;padding:0}
 .tg-chat-av.tg-chat-av--img img{width:100%;height:100%;object-fit:cover;display:block}
-.ig-g-item.tg-chat-item.on .tg-chat-av{background:linear-gradient(145deg,#ff66d0,#00f5ff);color:#0a0a0a}
+.ig-g-item.tg-chat-item.on .tg-chat-av{background:linear-gradient(145deg,#ff66d0,#3dd4e0);color:#0a0a0a}
 .ig-g-item.tg-chat-item.on .tg-chat-av.tg-chat-av--img{background:#111}
 .ig-g-msg-count{display:none}
 .tg-ios-mid{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
@@ -192,45 +192,45 @@
 .tg-chat-shell .ig-g-row.me{align-items:flex-end}
 .tg-chat-shell .ig-g-row.them{align-items:flex-start}
 .tg-chat-shell .ig-g-bubble{max-width:min(82%,380px);padding:9px 12px 7px;border-radius:18px;font-size:14px;line-height:1.45;word-break:break-word;position:relative;animation:igMsgIn .2s ease-out}
-.tg-chat-shell .ig-g-bubble.me{border-bottom-right-radius:6px;background:rgba(0,245,255,.18)!important;border:1px solid rgba(0,245,255,.35)!important;color:#f2efe6!important;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.tg-chat-shell .ig-g-bubble.me{border-bottom-right-radius:6px;background:rgba(61,212,224,.18)!important;border:1px solid rgba(61,212,224,.35)!important;color:#f2efe6!important;box-shadow:0 1px 2px rgba(0,0,0,.2)}
 .tg-chat-shell .ig-g-bubble.them{border-bottom-left-radius:6px;background:rgba(255,255,255,.06)!important;border:1px solid rgba(255,255,255,.1)!important;color:#e4e4e4!important}
-.tg-chat-shell .ig-g-name{font-size:12px;font-weight:600;color:#00f5ff!important}
+.tg-chat-shell .ig-g-name{font-size:12px;font-weight:600;color:#3dd4e0!important}
 .tg-chat-shell .ig-g-bubble.them .ig-g-name{color:#9ca3af!important}
 .tg-chat-shell .ig-g-del{border:none;background:transparent;color:#888;cursor:pointer;font-size:18px;line-height:1;padding:0 2px;opacity:.75}
 .tg-chat-shell .ig-g-del:hover{color:#f87171;opacity:1}
 .tg-chat-shell .ig-g-text{white-space:pre-wrap}
 .tg-chat-shell .ig-g-time{font-size:10px;color:rgba(255,255,255,.45)!important;margin-top:4px;text-align:right}
 .tg-chat-shell .ig-g-bubble.them .ig-g-time{text-align:left;color:rgba(255,255,255,.35)!important}
-.tg-chat-shell .ig-g-reply{font-size:11px;color:#9ca3af;border-left:2px solid rgba(0,245,255,.45);padding:4px 0 4px 8px;margin:0 0 6px;max-width:100%}
+.tg-chat-shell .ig-g-reply{font-size:11px;color:#9ca3af;border-left:2px solid rgba(61,212,224,.45);padding:4px 0 4px 8px;margin:0 0 6px;max-width:100%}
 .tg-chat-shell .ig-g-img{max-width:100%;max-height:min(220px,50vh);border-radius:12px;display:block;margin:4px 0;object-fit:cover}
 .tg-chat-shell .ig-g-audio{width:100%;max-width:min(100%,280px);min-width:200px;min-height:44px;height:auto;margin:6px 0;display:block}
 .tg-chat-shell .ig-g-like-row{display:flex;align-items:center;gap:6px;margin-top:2px}
 .tg-chat-shell .ig-g-like{border:none;background:transparent;cursor:pointer;font-size:14px;padding:0;line-height:1;opacity:.9}
 .tg-chat-shell .ig-g-lc{font-size:11px;color:#888;min-width:1em}
-#groupReplyBar{display:none;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;background:rgba(0,245,255,.08);border-top:1px solid rgba(255,255,255,.06);font-size:12px;color:#bbb}
+#groupReplyBar{display:none;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;background:rgba(61,212,224,.08);border-top:1px solid rgba(255,255,255,.06);font-size:12px;color:#bbb}
 #groupVoiceHint{font-size:11px;color:#f87171;max-width:120px;display:none}
 .tg-chat-input-row{padding:10px 12px calc(14px + env(safe-area-inset-bottom,0px));border-top:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.45);display:flex;gap:8px;align-items:center;flex-shrink:0;width:100%;max-width:100%;box-sizing:border-box}
 .tg-chat-input-row .sinp{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#e8e8e8;border-radius:22px;padding:10px 16px;flex:1;min-width:0}
 .tg-chat-input-row .btn-g{flex-shrink:0}
-.tg-chat-input-row .sinp:focus{border-color:rgba(0,245,255,.45)}
-.tg-chat-input-row .btn-g{background:#00f5ff;color:#0a0a0a;border-radius:22px;padding:10px 18px;border:none;font-weight:700}
+.tg-chat-input-row .sinp:focus{border-color:rgba(61,212,224,.45)}
+.tg-chat-input-row .btn-g{background:#3dd4e0;color:#0a0a0a;border-radius:22px;padding:10px 18px;border:none;font-weight:700}
 .tg-chat-input-row .btn-g:hover{background:#ff66d0}
-.tg-chat-input-row .btn-o{border-color:#00f5ff;color:#00f5ff}
+.tg-chat-input-row .btn-o{border-color:#3dd4e0;color:#3dd4e0}
 #groupChatPlaceholder{color:#666!important;background:#080808!important}
-.tg-owner-bar{background:rgba(0,245,255,.08)!important;border-bottom:1px solid rgba(255,255,255,.08)!important}
+.tg-owner-bar{background:rgba(61,212,224,.08)!important;border-bottom:1px solid rgba(255,255,255,.08)!important}
 
 /* Бургер: блок со списком групп */
-.drawer-groups-box{border:1px solid rgba(0,245,255,.25);border-radius:12px;margin:8px 12px;overflow:hidden;background:rgba(255,255,255,.03)}
+.drawer-groups-box{border:1px solid rgba(61,212,224,.25);border-radius:12px;margin:8px 12px;overflow:hidden;background:rgba(255,255,255,.03)}
 .drawer-groups-box .ig-drawer-summary{border-radius:12px 12px 0 0}
 #drawerGroupList{border-top:1px solid rgba(255,255,255,.08)}
 .drawer-group-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 8px;margin:0;border:none;background:transparent;color:#ddd;font-size:14px;font-family:inherit;cursor:pointer;border-radius:10px;transition:background .15s}
 .drawer-group-item:hover{background:rgba(255,255,255,.06)}
-.drawer-group-av{width:40px;height:40px;border-radius:50%;background:linear-gradient(145deg,#00f5ff,#006680);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#0a0a0a;flex-shrink:0;overflow:hidden;border:1px solid rgba(0,245,255,.35)}
+.drawer-group-av{width:40px;height:40px;border-radius:50%;background:linear-gradient(145deg,#3dd4e0,#006680);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#0a0a0a;flex-shrink:0;overflow:hidden;border:1px solid rgba(61,212,224,.35)}
 .drawer-group-av img{width:100%;height:100%;object-fit:cover;display:block}
 .drawer-group-meta{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .drawer-group-meta .t{font-weight:600;color:#e8e8e8;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .drawer-group-meta .s{font-size:12px;color:#888}
-.drawer-group-badge{font-size:11px;font-weight:700;color:#00f5ff;flex-shrink:0}
+.drawer-group-badge{font-size:11px;font-weight:700;color:#3dd4e0;flex-shrink:0}
 
 /* Мобильный полноэкранный чат (как Telegram) */
 @media(max-width:900px){
@@ -273,7 +273,7 @@
     background:rgba(5,5,10,.92)!important;
     backdrop-filter:blur(16px);
     -webkit-backdrop-filter:blur(16px);
-    border-top:1px solid rgba(0,245,255,.12);
+    border-top:1px solid rgba(61,212,224,.12);
   }
   body.tg-group-mobile-chat #sec-groups .ig-g-msg-wrap{
     /* место под строку ввода + таббар */
@@ -287,7 +287,7 @@
 /* ── Util ── */
 .sect-title{font-size:22px;font-weight:700;color:#e8e8e8;margin-bottom:20px}
 .muted{color:#666;font-size:13px}
-.gold{color:#00f5ff;text-shadow:0 0 18px rgba(0,245,255,.35)}
+.gold{color:#3dd4e0;text-shadow:0 0 18px rgba(61,212,224,.35)}
 .sep{height:1px;background:rgba(255,255,255,.07);margin:18px 0}
 .spin{animation:spin360 .9s linear infinite;display:inline-block}
 @keyframes spin360{to{transform:rotate(360deg)}}
@@ -297,19 +297,19 @@
 .db-ig-mode .db-main{padding:56px 12px calc(88px + env(safe-area-inset-bottom,0px)) 12px;max-width:100%;width:100%;box-sizing:border-box}
 @media(max-width:768px){.db-ig-mode .db-main{padding-left:12px;padding-right:12px}}
 @media(min-width:769px){.db-ig-mode .db-main{padding-left:24px;padding-right:24px}}
-.ig-dash-header{position:fixed;top:72px;left:0;right:0;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 12px 0 10px;background:rgba(6,8,16,.72);backdrop-filter:blur(25px);-webkit-backdrop-filter:blur(25px);border-bottom:1px solid rgba(0,245,255,.1);z-index:950;box-sizing:border-box;gap:8px;box-shadow:0 8px 32px rgba(0,0,0,.25)}
+.ig-dash-header{position:fixed;top:72px;left:0;right:0;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 12px 0 10px;background:rgba(6,8,16,.72);backdrop-filter:blur(25px);-webkit-backdrop-filter:blur(25px);border-bottom:1px solid rgba(61,212,224,.1);z-index:950;box-sizing:border-box;gap:8px;box-shadow:0 8px 32px rgba(0,0,0,.25)}
 .ig-dash-header-start{display:flex;align-items:center;gap:2px;flex-shrink:0}
 .ig-dash-header .ig-ham{width:44px;height:44px;border:none;border-radius:12px;background:transparent;color:#e8e8e8;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .ig-dash-header .ig-ham:hover{background:rgba(255,255,255,.06)}
 .ig-dash-back{width:44px;height:44px;border:none;border-radius:12px;background:transparent;color:#e8e8e8;cursor:pointer;display:none;align-items:center;justify-content:center;padding:0}
 .ig-dash-back:hover{background:rgba(255,255,255,.06)}
-.ig-dash-header .ig-head-brand{font-family:Syne,Inter,system-ui,sans-serif;font-weight:700;font-size:1.05rem;letter-spacing:-0.02em;background:linear-gradient(90deg,#e8e8e8,#00f5ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;pointer-events:auto}
+.ig-dash-header .ig-head-brand{font-family:Syne,Inter,system-ui,sans-serif;font-weight:700;font-size:1.05rem;letter-spacing:-0.02em;background:linear-gradient(90deg,#e8e8e8,#3dd4e0);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;pointer-events:auto}
 .ig-dash-header .ig-head-brand.ig-head-title--plain{background:none;-webkit-text-fill-color:#e8e8e8;color:#e8e8e8}
 .ig-dash-header .ig-head-msg{width:44px;height:44px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:18px;color:#ccc;transition:border-color .2s,background .2s}
-.ig-dash-header .ig-head-msg:hover{border-color:rgba(0,245,255,.45);color:#00f5ff}
+.ig-dash-header .ig-head-msg:hover{border-color:rgba(61,212,224,.45);color:#3dd4e0}
 .ig-drawer-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1040;opacity:0;pointer-events:none;transition:opacity .25s ease}
 .ig-drawer-backdrop.on{opacity:1;pointer-events:auto}
-.ig-drawer{position:fixed;top:0;left:0;bottom:0;width:min(300px,88vw);max-width:100%;background:rgba(8,10,20,.88);backdrop-filter:blur(25px);-webkit-backdrop-filter:blur(25px);border-right:1px solid rgba(0,245,255,.12);z-index:1050;transform:translateX(-102%);transition:transform .28s cubic-bezier(.22,1,.36,1);display:flex;flex-direction:column;padding:calc(72px + env(safe-area-inset-top,0px)) 0 calc(20px + env(safe-area-inset-bottom,0px));box-shadow:8px 0 48px rgba(0,0,0,.55),0 0 60px rgba(0,245,255,.06)}
+.ig-drawer{position:fixed;top:0;left:0;bottom:0;width:min(300px,88vw);max-width:100%;background:rgba(8,10,20,.88);backdrop-filter:blur(25px);-webkit-backdrop-filter:blur(25px);border-right:1px solid rgba(61,212,224,.12);z-index:1050;transform:translateX(-102%);transition:transform .28s cubic-bezier(.22,1,.36,1);display:flex;flex-direction:column;padding:calc(72px + env(safe-area-inset-top,0px)) 0 calc(20px + env(safe-area-inset-bottom,0px));box-shadow:8px 0 48px rgba(0,0,0,.55),0 0 60px rgba(61,212,224,.06)}
 .ig-drawer.open{transform:translateX(0)}
 .ig-drawer-head{padding:12px 18px 16px;border-bottom:1px solid rgba(255,255,255,.06)}
 .ig-drawer-head .nm{font-weight:700;color:#e8e8e8;font-size:16px}
@@ -323,25 +323,25 @@
 .ig-drawer-details .ig-drawer-summary{display:flex;align-items:center;width:100%;box-sizing:border-box}
 .ig-drawer-details[open] .ig-drawer-chev{transform:rotate(-180deg)}
 .ig-drawer-sub{display:block;padding:10px 8px;color:#bbb;text-decoration:none;border-radius:10px;font-size:14px}
-.ig-drawer-sub:hover{background:rgba(255,255,255,.06);color:#00f5ff}
+.ig-drawer-sub:hover{background:rgba(255,255,255,.06);color:#3dd4e0}
 .ig-drawer-subbtn{display:block;width:100%;text-align:left;padding:10px 8px;margin:0;border:none;background:transparent;color:#bbb;font-size:14px;cursor:pointer;border-radius:10px;font-family:inherit}
-.ig-drawer-subbtn:hover{background:rgba(255,255,255,.06);color:#00f5ff}
+.ig-drawer-subbtn:hover{background:rgba(255,255,255,.06);color:#3dd4e0}
 details.ig-drawer-details > summary::-webkit-details-marker{display:none}
 details.ig-drawer-details > summary{list-style:none}
-.ig-tabbar{position:fixed;left:0;right:0;bottom:0;height:calc(56px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);background:rgba(6,8,16,.58);backdrop-filter:blur(25px);-webkit-backdrop-filter:blur(25px);border-top:1px solid rgba(0,245,255,.14);display:flex;align-items:flex-start;justify-content:space-around;padding-top:6px;z-index:980;box-sizing:border-box;box-shadow:0 -8px 40px rgba(0,0,0,.35)}
+.ig-tabbar{position:fixed;left:0;right:0;bottom:0;height:calc(56px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);background:rgba(6,8,16,.58);backdrop-filter:blur(25px);-webkit-backdrop-filter:blur(25px);border-top:1px solid rgba(61,212,224,.14);display:flex;align-items:flex-start;justify-content:space-around;padding-top:6px;z-index:980;box-sizing:border-box;box-shadow:0 -8px 40px rgba(0,0,0,.35)}
 .ig-tabbar .ig-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:2px;padding:4px 4px 0;border:none;background:transparent;color:#777;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;max-width:88px;min-width:0;position:relative;z-index:1}
-.ig-tabbar .ig-tab--fab{flex:0 0 auto;position:relative;top:0;width:56px;height:56px;min-width:56px;max-width:none;padding:0;border-radius:50%;align-items:center;justify-content:center;background:linear-gradient(145deg,#00f5ff,#006680,#ff00aa);color:#05050a!important;box-shadow:0 0 28px rgba(0,245,255,.45),0 8px 28px rgba(255,0,170,.2);border:1px solid rgba(255,255,255,.2);z-index:5;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.ig-tabbar .ig-tab--fab{flex:0 0 auto;position:relative;top:0;width:56px;height:56px;min-width:56px;max-width:none;padding:0;border-radius:50%;align-items:center;justify-content:center;background:linear-gradient(145deg,#3dd4e0,#006680,#b85fa3);color:#05050a!important;box-shadow:0 0 28px rgba(61,212,224,.45),0 8px 28px rgba(184,95,163,.2);border:1px solid rgba(255,255,255,.2);z-index:5;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .ig-tabbar .ig-tab--fab .ig-tab-lbl{display:none}
 .ig-tabbar .ig-tab--fab .stroke-ico{color:#05050a!important;filter:none;width:28px;height:28px;pointer-events:none}
 .ig-tabbar .ig-tab--fab .ic{display:flex;align-items:center;justify-content:center;pointer-events:none}
-.ig-tabbar .ig-tab--fab.on{box-shadow:0 0 36px rgba(0,245,255,.55),0 0 24px rgba(255,0,170,.25)}
+.ig-tabbar .ig-tab--fab.on{box-shadow:0 0 36px rgba(61,212,224,.55),0 0 24px rgba(184,95,163,.25)}
 @media(max-width:420px){
   .ig-tabbar .ig-tab{font-size:8px;max-width:72px;padding-left:2px;padding-right:2px}
   .ig-tabbar .ig-tab .ic{font-size:20px}
 }
 .ig-tabbar .ig-tab .ic{font-size:24px;line-height:1;opacity:.85}
 .ig-tabbar .ig-tab.on,.ig-tabbar .ig-tab.on .ic{color:#e8e8e8;opacity:1}
-.ig-tabbar .ig-tab.on .ic{filter:drop-shadow(0 0 10px rgba(0,245,255,.35))}
+.ig-tabbar .ig-tab.on .ic{filter:drop-shadow(0 0 10px rgba(61,212,224,.35))}
 .stroke-ico{display:block;flex-shrink:0}
 .ig-drawer-item .stroke-ico{color:#888}
 .ig-tabbar .ig-tab .stroke-ico{width:26px;height:26px;margin:0 auto;color:#777}
@@ -377,7 +377,7 @@ details.ig-drawer-details > summary{list-style:none}
 .ig-profile-stat span{display:block;font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.04em;margin-top:4px;line-height:1.35;max-width:100%;padding:0 2px;overflow-wrap:break-word;word-break:normal}
 button.ig-profile-stat{width:auto;min-width:0;flex:1 1 0;cursor:pointer;border:none;background:transparent;font:inherit;margin:0;border-radius:12px;transition:background .15s}
 button.ig-profile-stat:hover{background:rgba(255,255,255,.06)}
-button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outline-offset:2px}
+button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outline-offset:2px}
 .ig-plan-pill{display:inline-flex;align-items:center;padding:5px 12px;border-radius:22px;font-size:11px;font-weight:700;letter-spacing:.02em}
 .ig-post-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;width:100%;border-top:1px solid rgba(255,255,255,.08);padding-top:3px}
 .ig-post-cell{aspect-ratio:1;position:relative;overflow:hidden;background:#121212}
@@ -391,14 +391,14 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outlin
   padding:12px 14px;
   border-radius:14px;
   background:linear-gradient(155deg,rgba(22,20,14,.88),rgba(10,10,10,.92));
-  border:1px solid rgba(0,245,255,.45);
-  box-shadow:0 0 20px rgba(0,245,255,.12),inset 0 1px 0 rgba(255,255,255,.05);
+  border:1px solid rgba(61,212,224,.45);
+  box-shadow:0 0 20px rgba(61,212,224,.12),inset 0 1px 0 rgba(255,255,255,.05);
 }
 .my-tokens-inline__title{
   font-size:9px;
   letter-spacing:.12em;
   text-transform:uppercase;
-  color:rgba(255,0,170,.95);
+  color:rgba(184,95,163,.95);
   font-weight:800;
   margin-bottom:10px;
 }
@@ -562,15 +562,15 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outlin
         {% if 'community' in vbk %}
         <div class="stats-row">
           <div class="stat-box" style="cursor:pointer" onclick="goSec('feed');setTimeout(()=>document.querySelector('[data-tab=mine]')?.click(),100)">
-            <div style="font-size:22px;font-weight:700;color:#00f5ff">{{ my_post_count }}</div>
+            <div style="font-size:22px;font-weight:700;color:#3dd4e0">{{ my_post_count }}</div>
             <div class="muted">постов</div>
           </div>
           <div class="stat-box">
-            <div style="font-size:22px;font-weight:700;color:#00f5ff">{{ user.followers_count or 0 }}</div>
+            <div style="font-size:22px;font-weight:700;color:#3dd4e0">{{ user.followers_count or 0 }}</div>
             <div class="muted">подписчиков</div>
           </div>
           <div class="stat-box">
-            <div style="font-size:22px;font-weight:700;color:#00f5ff">{{ user.following_count or 0 }}</div>
+            <div style="font-size:22px;font-weight:700;color:#3dd4e0">{{ user.following_count or 0 }}</div>
             <div class="muted">подписок</div>
           </div>
         </div>
@@ -586,8 +586,8 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outlin
         </div>
         {% for msg in messages[-4:] %}
         <div style="display:flex;gap:10px;margin-bottom:10px;{{ 'justify-content:flex-end' if msg.role=='user' else '' }}">
-          {% if msg.role == 'assistant' %}<div style="width:26px;height:26px;border-radius:50%;background:rgba(0,245,255,.2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#00f5ff;flex-shrink:0">AI</div>{% endif %}
-          <div style="max-width:70%;padding:8px 12px;border-radius:12px;font-size:13px;line-height:1.5;{{ 'background:rgba(0,245,255,.12);border:1px solid rgba(0,245,255,.2);color:#ddd' if msg.role=='user' else 'background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);color:#bbb' }}">
+          {% if msg.role == 'assistant' %}<div style="width:26px;height:26px;border-radius:50%;background:rgba(61,212,224,.2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#3dd4e0;flex-shrink:0">AI</div>{% endif %}
+          <div style="max-width:70%;padding:8px 12px;border-radius:12px;font-size:13px;line-height:1.5;{{ 'background:rgba(61,212,224,.12);border:1px solid rgba(61,212,224,.2);color:#ddd' if msg.role=='user' else 'background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);color:#bbb' }}">
             {{ msg.content[:160] }}{% if msg.content|length > 160 %}…{% endif %}
           </div>
         </div>
@@ -598,31 +598,31 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outlin
       <!-- Quick links -->
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px">
         {% if 'community' in vbk %}
-        <div class="card-sm" style="cursor:pointer;transition:border-color .2s" onclick="goSec('feed')" onmouseover="this.style.borderColor='rgba(0,245,255,.4)'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)'">
+        <div class="card-sm" style="cursor:pointer;transition:border-color .2s" onclick="goSec('feed')" onmouseover="this.style.borderColor='rgba(61,212,224,.4)'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)'">
           <div style="font-size:24px;margin-bottom:8px">👥</div>
           <div style="font-size:13px;font-weight:600;color:#ccc">Лента</div>
         </div>
         {% endif %}
         {% if 'ai_chat' in vbk %}
-        <div class="card-sm" style="cursor:pointer;transition:border-color .2s" onclick="goSec('ai')" onmouseover="this.style.borderColor='rgba(0,245,255,.4)'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)'">
+        <div class="card-sm" style="cursor:pointer;transition:border-color .2s" onclick="goSec('ai')" onmouseover="this.style.borderColor='rgba(61,212,224,.4)'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)'">
           <div style="font-size:24px;margin-bottom:8px">🤖</div>
           <div style="font-size:13px;font-weight:600;color:#ccc">AI чат</div>
         </div>
         {% endif %}
         {% if 'knowledge_base' in vbk %}
-        <a href="https://t.me/ShevelevVlog" target="_blank" rel="noopener noreferrer" class="card-sm" style="cursor:pointer;transition:border-color .2s;text-decoration:none;display:block" onmouseover="this.style.borderColor='rgba(0,245,255,.4)'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)'">
+        <a href="https://t.me/ShevelevVlog" target="_blank" rel="noopener noreferrer" class="card-sm" style="cursor:pointer;transition:border-color .2s;text-decoration:none;display:block" onmouseover="this.style.borderColor='rgba(61,212,224,.4)'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)'">
           <div style="font-size:24px;margin-bottom:8px">📚</div>
           <div style="font-size:13px;font-weight:600;color:#ccc">База знаний</div>
         </a>
         {% endif %}
         {% if 'shop' in vbk %}
-        <div class="card-sm" style="cursor:pointer;transition:border-color .2s" onclick="goSec('shop')" onmouseover="this.style.borderColor='rgba(0,245,255,.4)'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)'">
+        <div class="card-sm" style="cursor:pointer;transition:border-color .2s" onclick="goSec('shop')" onmouseover="this.style.borderColor='rgba(61,212,224,.4)'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)'">
           <div style="font-size:24px;margin-bottom:8px">🛒</div>
           <div style="font-size:13px;font-weight:600;color:#ccc">Магазин</div>
         </div>
         {% endif %}
         {% if 'tariffs' in vbk %}
-        <div class="card-sm" style="cursor:pointer;transition:border-color .2s" onclick="goSec('plan')" onmouseover="this.style.borderColor='rgba(0,245,255,.4)'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)'">
+        <div class="card-sm" style="cursor:pointer;transition:border-color .2s" onclick="goSec('plan')" onmouseover="this.style.borderColor='rgba(61,212,224,.4)'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)'">
           <div style="font-size:24px;margin-bottom:8px">💎</div>
           <div style="font-size:13px;font-weight:600;color:#ccc">Тарифы</div>
         </div>
@@ -700,7 +700,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outlin
         <div style="font-size:14px;color:#ccc;line-height:1.55;max-width:560px;margin-bottom:10px;white-space:pre-wrap">{{ user.bio }}</div>
         {% endif %}
         {% if user.get('profile_link_url') %}
-        <a href="{{ user.profile_link_url }}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:8px;color:#00f5ff;font-weight:600;font-size:14px;margin-bottom:14px;text-decoration:none;border-bottom:1px solid rgba(0,245,255,.35);padding-bottom:2px">{{ user.get('profile_link_label') or user.profile_link_url }}</a>
+        <a href="{{ user.profile_link_url }}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:8px;color:#3dd4e0;font-weight:600;font-size:14px;margin-bottom:14px;text-decoration:none;border-bottom:1px solid rgba(61,212,224,.35);padding-bottom:2px">{{ user.get('profile_link_label') or user.profile_link_url }}</a>
         {% endif %}
         <div id="meEditPanel" class="card" style="display:none;margin-bottom:20px;padding:18px;border-radius:16px">
           <div style="font-size:13px;font-weight:600;color:#888;margin-bottom:12px">Редактирование</div>
@@ -726,7 +726,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outlin
           {% for p in grid_posts %}
           <div id="me-p-{{ p.id }}" class="ig-post" style="display:none">
             <div class="ig-post-header">
-              <div style="width:36px;height:36px;border-radius:50%;border:2px solid #00f5ff;overflow:hidden">{% if user.avatar %}<img src="{{ user.avatar }}" style="width:100%;height:100%;object-fit:cover" alt="">{% else %}<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px">🍄</div>{% endif %}</div>
+              <div style="width:36px;height:36px;border-radius:50%;border:2px solid #3dd4e0;overflow:hidden">{% if user.avatar %}<img src="{{ user.avatar }}" style="width:100%;height:100%;object-fit:cover" alt="">{% else %}<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px">🍄</div>{% endif %}</div>
               <div style="flex:1"><div style="font-size:14px;font-weight:700;color:#e8e8e8">{{ user.name or 'Вы' }}</div><div style="font-size:11px;color:#888">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}</div></div>
             </div>
             {% if p.image_url %}<img src="{{ p.image_url }}" class="ig-post-img" loading="lazy" alt="">{% endif %}
@@ -803,12 +803,12 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outlin
           {% else %}
           <a href="/community/profile/{{ p.user_id }}" style="flex-shrink:0;text-decoration:none">
           {% endif %}
-            {% if a and a.avatar %}<img src="{{ a.avatar }}" style="width:36px;height:36px;border-radius:50%;border:2px solid #00f5ff;object-fit:cover" alt="">
-            {% else %}<div style="width:36px;height:36px;border-radius:50%;border:2px solid #00f5ff;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px">🍄</div>{% endif %}
+            {% if a and a.avatar %}<img src="{{ a.avatar }}" style="width:36px;height:36px;border-radius:50%;border:2px solid #3dd4e0;object-fit:cover" alt="">
+            {% else %}<div style="width:36px;height:36px;border-radius:50%;border:2px solid #3dd4e0;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px">🍄</div>{% endif %}
           {% if is_mine %}</div>{% else %}</a>{% endif %}
           <div style="flex:1;min-width:0">
             {% if is_mine %}
-            <div style="font-size:14px;font-weight:700;color:#e8e8e8;cursor:pointer" onclick="goSec('{{ dash_home }}')">{{ a.name if a else 'Участник' }} <span style="font-size:11px;color:#00f5ff">● я</span></div>
+            <div style="font-size:14px;font-weight:700;color:#e8e8e8;cursor:pointer" onclick="goSec('{{ dash_home }}')">{{ a.name if a else 'Участник' }} <span style="font-size:11px;color:#3dd4e0">● я</span></div>
             {% else %}
             <a href="/community/profile/{{ p.user_id }}" style="font-size:14px;font-weight:700;color:#e8e8e8;text-decoration:none">{{ a.name if a else 'Участник' }}</a>
             {% endif %}
@@ -865,7 +865,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outlin
       </div><!-- /ig-feed-shell -->
       {% else %}
       <div class="ig-feed-shell">
-        <div class="card" style="padding:28px 22px;text-align:center;border-radius:24px;border:1px solid rgba(0,245,255,.2);background:linear-gradient(165deg,rgba(28,28,28,.9),rgba(10,10,10,.95));box-shadow:0 20px 60px rgba(0,0,0,.45),0 0 0 1px rgba(0,245,255,.08)">
+        <div class="card" style="padding:28px 22px;text-align:center;border-radius:24px;border:1px solid rgba(61,212,224,.2);background:linear-gradient(165deg,rgba(28,28,28,.9),rgba(10,10,10,.95));box-shadow:0 20px 60px rgba(0,0,0,.45),0 0 0 1px rgba(61,212,224,.08)">
           <div style="font-size:42px;margin-bottom:14px">🍄</div>
           <h2 style="font-size:18px;font-weight:700;color:#e8e8e8;margin:0 0 10px">Лента сообщества</h2>
           <p style="font-size:14px;color:#888;line-height:1.65;margin:0 0 20px;max-width:340px;margin-left:auto;margin-right:auto">Раздел «Сообщество» сейчас скрыт настройками доступа или тарифом.</p>
@@ -980,7 +980,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outlin
       </div>
       {% else %}
       <div class="sect-title" style="margin-bottom:8px">Групповые чаты</div>
-      <div class="card" style="padding:28px 22px;text-align:center;border-radius:24px;border:1px solid rgba(0,245,255,.2);background:linear-gradient(165deg,rgba(28,28,28,.9),rgba(10,10,10,.95))">
+      <div class="card" style="padding:28px 22px;text-align:center;border-radius:24px;border:1px solid rgba(61,212,224,.2);background:linear-gradient(165deg,rgba(28,28,28,.9),rgba(10,10,10,.95))">
         <div style="font-size:40px;margin-bottom:12px">💬</div>
         <p style="font-size:14px;color:#888;line-height:1.65;margin:0;max-width:360px;margin-left:auto;margin-right:auto">Групповые чаты — вместе с разделом «Сообщество». Создавать новые группы могут тарифы <strong class="gold">Про</strong> и <strong class="gold">Макси</strong>.</p>
         {% if 'tariffs' in vbk %}
@@ -1059,7 +1059,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outlin
       </div>
       {% endif %}
       {% if 'pro_pin_info' in vbk %}
-      <div class="card" style="border-color:rgba(0,245,255,.35)">
+      <div class="card" style="border-color:rgba(61,212,224,.35)">
         <div class="sect-title" style="margin-bottom:8px;font-size:17px">⭐ Приоритет в соцсети (Про)</div>
         <p class="muted" style="font-size:13px;line-height:1.65">Аккаунт со значком MushroomsAI. Закреп поста в общей ленте до 3 дней — <strong class="gold">не чаще одного раза в сутки</strong>. Если много участников с Про, закрепы ставятся по очереди (сначала новые заявки).</p>
       </div>
@@ -1086,7 +1086,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outlin
           <div style="padding:12px">
             <div style="font-size:13px;font-weight:600;color:#ddd;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.name or '—' }}</div>
             {% if p.mushroom_type %}<div style="font-size:11px;color:#666;margin-bottom:6px">{{ p.mushroom_type }}</div>{% endif %}
-            {% if p.price %}<div style="font-size:14px;font-weight:700;color:#00f5ff">{{ p.price }} ₽</div>
+            {% if p.price %}<div style="font-size:14px;font-weight:700;color:#3dd4e0">{{ p.price }} ₽</div>
             {% else %}<div style="font-size:13px;color:#555">Цена по запросу</div>{% endif %}
           </div>
         </a>
@@ -1127,12 +1127,12 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outlin
         <div class="plan-card {{ 'current' if plan == pid }}">
           <div style="font-size:24px;margin-bottom:8px">{{ em }}</div>
           <div style="font-size:17px;font-weight:700;color:#e8e8e8;margin-bottom:4px">{{ pname }}</div>
-          <div style="font-size:20px;font-weight:700;color:#00f5ff;margin-bottom:12px">{{ price }}</div>
+          <div style="font-size:20px;font-weight:700;color:#3dd4e0;margin-bottom:12px">{{ price }}</div>
           <div style="font-size:12px;color:#777;line-height:1.9">
             {% for f in feats %}<div>• {{ f }}</div>{% endfor %}
           </div>
           {% if plan == pid %}
-          <div style="margin-top:14px;font-size:12px;color:#00f5ff;font-weight:600">✓ Текущий тариф</div>
+          <div style="margin-top:14px;font-size:12px;color:#3dd4e0;font-weight:600">✓ Текущий тариф</div>
           {% elif pid == 'free' %}
           {# free plan — no upgrade/downgrade button needed #}
           {% elif pid == 'maxi' %}
@@ -1171,7 +1171,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outlin
             <div style="font-size:12px;color:#555;margin-top:2px">{{ o.created_at.strftime('%d.%m.%Y') if o.created_at else '—' }}</div>
           </div>
           <div style="text-align:right">
-            <div style="font-size:15px;font-weight:700;color:#00f5ff">{{ o.amount | int }} ₽</div>
+            <div style="font-size:15px;font-weight:700;color:#3dd4e0">{{ o.amount | int }} ₽</div>
             <span style="font-size:11px;padding:3px 9px;border-radius:20px;{{ 'background:rgba(74,222,128,.12);color:#4ade80' if o.status=='paid' else 'background:rgba(255,255,255,.06);color:#666' }}">{{ o.status }}</span>
           </div>
         </div>
@@ -1207,11 +1207,11 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outlin
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px">
         <div class="card-sm" style="text-align:center">
-          <div style="font-size:28px;font-weight:700;color:#00f5ff">{{ ref_stats.total }}</div>
+          <div style="font-size:28px;font-weight:700;color:#3dd4e0">{{ ref_stats.total }}</div>
           <div class="muted">приглашено</div>
         </div>
         <div class="card-sm" style="text-align:center">
-          <div style="font-size:28px;font-weight:700;color:#00f5ff">{{ ref_stats.balance_rub }}</div>
+          <div style="font-size:28px;font-weight:700;color:#3dd4e0">{{ ref_stats.balance_rub }}</div>
           <div class="muted">баланс, ₽</div>
         </div>
       </div>
@@ -1219,7 +1219,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outlin
         <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:12px">Как это работает</div>
         {% for step in ['Отправьте другу ссылку (Telegram или сайт)','Друг регистрируется по ней впервые','На ваш счёт начисляется бонус','Бонус один раз на каждого приглашённого'] %}
         <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px">
-          <div style="width:24px;height:24px;border-radius:50%;background:rgba(0,245,255,.2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#00f5ff;flex-shrink:0">{{ loop.index }}</div>
+          <div style="width:24px;height:24px;border-radius:50%;background:rgba(61,212,224,.2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#3dd4e0;flex-shrink:0">{{ loop.index }}</div>
           <div style="font-size:13px;color:#aaa;padding-top:3px">{{ step }}</div>
         </div>
         {% endfor %}
@@ -1277,7 +1277,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outlin
       <div class="card" style="margin-top:16px">
         <div style="font-size:13px;font-weight:600;color:#888;margin-bottom:10px">Зачем привязывать аккаунты?</div>
         {% for t in ['Единая история диалогов с AI','Один профиль в сообществе','Синхронизация заказов и подписки','Войти с любого устройства'] %}
-        <div style="font-size:13px;color:#666;display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="color:#00f5ff">✦</span>{{ t }}</div>
+        <div style="font-size:13px;color:#666;display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="color:#3dd4e0">✦</span>{{ t }}</div>
         {% endfor %}
       </div>
     </section>
@@ -1352,7 +1352,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outlin
               {% if shevelev_token %}
               <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;font-size:13px;min-height:1.35em">
                 <span style="color:#888;flex-shrink:0">Токен SHEVELEV</span>
-                <span id="shevelevBal" style="font-weight:700;color:#00f5ff;text-align:right;min-width:0;max-width:min(100%,220px);overflow-wrap:anywhere;word-break:break-word;line-height:1.35;font-variant-numeric:tabular-nums">{% if user.get('shevelev_balance_cached') %}{{ user.shevelev_balance_cached }}{% else %}—{% endif %}</span>
+                <span id="shevelevBal" style="font-weight:700;color:#3dd4e0;text-align:right;min-width:0;max-width:min(100%,220px);overflow-wrap:anywhere;word-break:break-word;line-height:1.35;font-variant-numeric:tabular-nums">{% if user.get('shevelev_balance_cached') %}{{ user.shevelev_balance_cached }}{% else %}—{% endif %}</span>
               </div>
               <div id="shevelevBalErr" style="display:none;font-size:12px;color:#f87171;margin-top:8px"></div>
               {% else %}
@@ -1473,7 +1473,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outlin
 
 <!-- Sync modal -->
 <div id="sync-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;background:rgba(0,0,0,.75);backdrop-filter:blur(6px)" onclick="if(event.target===this)this.style.display='none'">
-  <div style="background:#0e0e0e;border:1px solid rgba(0,245,255,.3);border-radius:20px;padding:36px 32px;max-width:400px;width:90%;box-shadow:0 0 60px rgba(0,245,255,.1)">
+  <div style="background:#0e0e0e;border:1px solid rgba(61,212,224,.3);border-radius:20px;padding:36px 32px;max-width:400px;width:90%;box-shadow:0 0 60px rgba(61,212,224,.1)">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <h3 style="font-size:18px;font-weight:700;color:#e8e8e8">🔗 Привязка аккаунтов</h3>
       <button onclick="document.getElementById('sync-modal').style.display='none'" style="background:none;border:none;color:#555;font-size:22px;cursor:pointer;line-height:1">×</button>
@@ -1506,7 +1506,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outlin
 </div>
 
 <div id="planReqModal" style="display:none;position:fixed;inset:0;z-index:10024;align-items:center;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(4px)" onclick="if(event.target===this)this.style.display='none'">
-  <div class="card" style="max-width:420px;width:92%;padding:24px;border-color:rgba(0,245,255,.3)" onclick="event.stopPropagation()">
+  <div class="card" style="max-width:420px;width:92%;padding:24px;border-color:rgba(61,212,224,.3)" onclick="event.stopPropagation()">
     <div style="font-weight:700;margin-bottom:6px;color:#e8e8e8;font-size:17px">Запрос платного тарифа</div>
     <p style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.45">Оплата на сайте пока не подключена. Заявка уйдёт администратору в Telegram (или в личные сообщения при настройке). После ручной активации тарифа откроются функции плана.</p>
     <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Желаемый тариф</label>
@@ -1522,8 +1522,8 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outlin
   </div>
 </div>
 <div id="sendShevModal" style="display:none;position:fixed;inset:0;z-index:10025;align-items:center;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(4px)" onclick="if(event.target===this)this.style.display='none'">
-  <div class="card" style="max-width:420px;width:92%;padding:24px;border-color:rgba(0,245,255,.3)" onclick="event.stopPropagation()">
-    <div style="font-weight:700;margin-bottom:4px;color:#00f5ff;font-size:17px">Отправить SHEVELEV</div>
+  <div class="card" style="max-width:420px;width:92%;padding:24px;border-color:rgba(61,212,224,.3)" onclick="event.stopPropagation()">
+    <div style="font-weight:700;margin-bottom:4px;color:#3dd4e0;font-size:17px">Отправить SHEVELEV</div>
     <p style="font-size:12px;color:#666;margin-bottom:14px">Сеть Decimal Smart Chain в MetaMask. Комиссия в DEL.</p>
     <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Адрес получателя</label>
     <input id="sendShevTo" class="sinp" style="margin-bottom:12px;width:100%;box-sizing:border-box" placeholder="0x…">
@@ -1535,7 +1535,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outlin
 </div>
 
 <div id="followListModal" style="display:none;position:fixed;inset:0;z-index:10022;align-items:center;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(4px)" onclick="if(event.target===this)closeFollowListModal()">
-  <div class="card" style="max-width:420px;width:92%;max-height:min(85vh,560px);padding:0;overflow:hidden;border-color:rgba(0,245,255,.28);background:#0e0e0e" onclick="event.stopPropagation()">
+  <div class="card" style="max-width:420px;width:92%;max-height:min(85vh,560px);padding:0;overflow:hidden;border-color:rgba(61,212,224,.28);background:#0e0e0e" onclick="event.stopPropagation()">
     <div style="padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;gap:12px">
       <span id="followListModalTitle" style="font-weight:700;font-size:16px;color:#e8e8e8">Подписчики</span>
       <button type="button" onclick="closeFollowListModal()" style="background:none;border:none;color:#888;font-size:24px;cursor:pointer;line-height:1;padding:4px" aria-label="Закрыть">×</button>
@@ -1546,7 +1546,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outlin
 
 <!-- Create group modal -->
 <div id="grpCreateModal" style="display:none;position:fixed;inset:0;z-index:10020;align-items:center;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(4px)" onclick="if(event.target===this)this.style.display='none'">
-  <div class="card" style="max-width:420px;width:92%;padding:26px;border-color:rgba(0,245,255,.25)" onclick="event.stopPropagation()">
+  <div class="card" style="max-width:420px;width:92%;padding:26px;border-color:rgba(61,212,224,.25)" onclick="event.stopPropagation()">
     <div style="font-weight:700;margin-bottom:6px;color:#e8e8e8;font-size:17px">Новая группа</div>
     <p class="muted" style="font-size:13px;margin-bottom:14px">Все пользователи смогут вступить и писать в чате.</p>
     <input id="grpNameInp" class="sinp" placeholder="Название" style="margin-bottom:10px" maxlength="120">
@@ -1559,7 +1559,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outlin
 </div>
 
 <div id="createPostModal" style="display:none;position:fixed;inset:0;z-index:10021;align-items:center;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(4px)" onclick="if(event.target===this)this.style.display='none'">
-  <div class="card" style="max-width:440px;width:92%;padding:22px;border-color:rgba(0,245,255,.28)" onclick="event.stopPropagation()">
+  <div class="card" style="max-width:440px;width:92%;padding:22px;border-color:rgba(61,212,224,.28)" onclick="event.stopPropagation()">
     <div style="font-weight:700;margin-bottom:12px;color:#e8e8e8;font-size:17px">Новый пост</div>
     <input id="createPostTitleInp" class="sinp" style="margin-bottom:10px;width:100%;box-sizing:border-box" placeholder="Название (необязательно)" maxlength="200">
     <textarea id="createPostBodyInp" class="sinp" style="min-height:100px;margin-bottom:10px;width:100%;box-sizing:border-box" placeholder="Текст поста" maxlength="8000"></textarea>
@@ -1574,7 +1574,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outlin
 </div>
 
 <div id="editPostModal" style="display:none;position:fixed;inset:0;z-index:10021;align-items:center;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(4px)" onclick="if(event.target===this)this.style.display='none'">
-  <div class="card" style="max-width:440px;width:92%;padding:22px;border-color:rgba(0,245,255,.28)" onclick="event.stopPropagation()">
+  <div class="card" style="max-width:440px;width:92%;padding:22px;border-color:rgba(61,212,224,.28)" onclick="event.stopPropagation()">
     <div style="font-weight:700;margin-bottom:12px;color:#e8e8e8;font-size:17px">Изменить пост</div>
     <input type="hidden" id="editPostId" value="">
     <input id="editPostTitleInp" class="sinp" style="margin-bottom:10px;width:100%;box-sizing:border-box" placeholder="Название" maxlength="200">
@@ -1590,7 +1590,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(0,245,255,.5);outlin
 </div>
 
 <div id="sharePostModal" style="display:none;position:fixed;inset:0;z-index:10021;align-items:center;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(4px)" onclick="if(event.target===this)this.style.display='none'">
-  <div class="card" style="max-width:400px;width:92%;padding:22px;border-color:rgba(0,245,255,.28);max-height:min(80vh,520px);overflow:auto" onclick="event.stopPropagation()">
+  <div class="card" style="max-width:400px;width:92%;padding:22px;border-color:rgba(61,212,224,.28);max-height:min(80vh,520px);overflow:auto" onclick="event.stopPropagation()">
     <div style="font-weight:700;margin-bottom:4px;color:#e8e8e8;font-size:16px">Кому отправить ссылку</div>
     <p class="muted" style="font-size:12px;margin:0 0 12px;line-height:1.45">Из ваших подписок. Ссылка появится в личных сообщениях.</p>
     <input type="hidden" id="sharePostId" value="">
@@ -1650,7 +1650,7 @@ async function openFollowListModal(profileId, kind){
         ?'<img src="'+_escHtmlFl(u.avatar)+'" alt="" style="width:100%;height:100%;object-fit:cover">'
         :'<span style="font-size:20px">🍄</span>';
       return '<a href="/community/profile/'+u.id+'" class="follow-list-row" style="display:flex;align-items:center;gap:14px;padding:12px 18px;text-decoration:none;color:inherit;border-bottom:1px solid rgba(255,255,255,.06);transition:background .15s" onmouseover="this.style.background=\'rgba(255,255,255,.05)\'" onmouseout="this.style.background=\'transparent\'">'+
-        '<div style="width:48px;height:48px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid rgba(0,245,255,.3);background:#1a1a1a;display:flex;align-items:center;justify-content:center">'+av+'</div>'+
+        '<div style="width:48px;height:48px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid rgba(61,212,224,.3);background:#1a1a1a;display:flex;align-items:center;justify-content:center">'+av+'</div>'+
         '<span style="font-weight:600;font-size:15px;color:#e8e8e8">'+_escHtmlFl(u.name)+'</span></a>';
     }).join('');
   }catch(e){
@@ -1952,7 +1952,7 @@ function filterShop(q){
 
 // ── Toast notification ──
 function showNotification(msg, type='info'){
-  const colors={info:'rgba(0,245,255,.92)',error:'rgba(239,68,68,.92)',success:'rgba(74,222,128,.92)'};
+  const colors={info:'rgba(61,212,224,.92)',error:'rgba(239,68,68,.92)',success:'rgba(74,222,128,.92)'};
   const n=document.createElement('div');
   n.style.cssText=`position:fixed;top:20px;right:90px;z-index:9999;background:${colors[type]||colors.info};color:#000;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:700;box-shadow:0 4px 20px rgba(0,0,0,.5);animation:fadein .3s ease;max-width:280px`;
   n.textContent=msg;document.body.appendChild(n);

@@ -18,32 +18,32 @@
 .scard{background:#111;border:1px solid #222;border-radius:16px;padding:20px;margin-bottom:16px}
 .pcard{background:#111;border:1px solid #222;border-radius:16px;padding:20px;margin-bottom:14px;transition:border-color .2s}
 .pcard:hover{border-color:#2a2a2a}
-.avg{border:2px solid #00f5ff;border-radius:50%;object-fit:cover}
-.avp{border:2px solid #00f5ff;border-radius:50%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
-.bgold{background:#00f5ff;color:#000;font-weight:700;border-radius:10px;padding:10px 20px;border:none;cursor:pointer;transition:background .2s}
+.avg{border:2px solid #3dd4e0;border-radius:50%;object-fit:cover}
+.avp{border:2px solid #3dd4e0;border-radius:50%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.bgold{background:#3dd4e0;color:#000;font-weight:700;border-radius:10px;padding:10px 20px;border:none;cursor:pointer;transition:background .2s}
 .bgold:hover{background:#ff66d0}
-.bout{border:1px solid #00f5ff;color:#00f5ff;background:transparent;border-radius:10px;padding:8px 18px;cursor:pointer;font-weight:600;transition:all .2s}
-.bout:hover{background:#00f5ff22}
+.bout{border:1px solid #3dd4e0;color:#3dd4e0;background:transparent;border-radius:10px;padding:8px 18px;cursor:pointer;font-weight:600;transition:all .2s}
+.bout:hover{background:#3dd4e022}
 .tab{padding:8px 18px;border-radius:20px;font-size:14px;font-weight:600;border:none;cursor:pointer;transition:all .2s}
-.tab.on{background:#00f5ff;color:#000}
+.tab.on{background:#3dd4e0;color:#000}
 .tab:not(.on){background:#1a1a1a;color:#888}
-.tab:not(.on):hover{background:#222;color:#00f5ff}
+.tab:not(.on):hover{background:#222;color:#3dd4e0}
 .mover{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
 .mover.open{display:flex}
 .mbox{background:#111;border:1px solid #2a2a2a;border-radius:20px;padding:26px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;position:relative}
 .abt{background:none;border:none;cursor:pointer;color:#666;font-size:14px;display:flex;align-items:center;gap:5px;transition:color .2s;padding:5px 9px;border-radius:8px}
-.abt:hover{color:#00f5ff;background:#00f5ff11}
-.abt.on{color:#00f5ff}
+.abt:hover{color:#3dd4e0;background:#3dd4e011}
+.abt.on{color:#3dd4e0}
 .csec{display:none;margin-top:14px;border-top:1px solid #1a1a1a;padding-top:14px}
 .mbnav{display:none;position:fixed;bottom:0;left:0;right:0;background:#111;border-top:1px solid #222;z-index:200;padding:6px 0 12px}
 @media(max-width:760px){.mbnav{display:flex;justify-content:space-around}}
 .mbb{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;color:#666;background:none;border:none;cursor:pointer;padding:4px 12px}
-.mbb.on{color:#00f5ff}
+.mbb.on{color:#3dd4e0}
 .sinp{background:#1a1a1a;border:1px solid #2a2a2a;color:#fff;border-radius:12px;padding:10px 16px;width:100%;outline:none;font-size:14px;box-sizing:border-box}
-.sinp:focus{border-color:#00f5ff55}
-.ubadge{background:#00f5ff;color:#000;font-size:10px;font-weight:700;border-radius:50%;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center}
+.sinp:focus{border-color:#3dd4e055}
+.ubadge{background:#3dd4e0;color:#000;font-size:10px;font-weight:700;border-radius:50%;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center}
 .dmmsg{padding:8px 14px;border-radius:14px;max-width:80%;font-size:14px;line-height:1.5}
-.dmmsg.me{background:#00f5ff22;border:1px solid #00f5ff33;align-self:flex-end}
+.dmmsg.me{background:#3dd4e022;border:1px solid #3dd4e033;align-self:flex-end}
 .dmmsg.them{background:#1a1a1a;border:1px solid #222;align-self:flex-start}
 </style>
 
@@ -59,7 +59,7 @@
           {% else %}
           <div class="avp" style="width:70px;height:70px;font-size:30px">🍄</div>
           {% endif %}
-          <label for="sAvIn" style="position:absolute;bottom:0;right:0;background:#00f5ff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px">✏️</label>
+          <label for="sAvIn" style="position:absolute;bottom:0;right:0;background:#3dd4e0;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px">✏️</label>
           <input type="file" id="sAvIn" accept="image/*" style="display:none" onchange="upAvatar(this)">
         </div>
         <div style="font-weight:700;margin-top:10px">{{ user.name or 'Участник' }}</div>
@@ -80,24 +80,24 @@
           {% if user.wallet_address %}<span style="color:#4ade80">✓ {{ user.wallet_address[:8] }}...{{ user.wallet_address[-4:] }}</span>{% else %}Кошелёк не подключён{% endif %}
         </div>
         <button class="bout" style="width:100%;font-size:13px;padding:8px" onclick="connectWallet()">🦊 MetaMask</button>
-        <div id="shlBal" style="margin-top:8px;font-size:13px;text-align:center;display:none"><span style="color:#00f5ff">⚗ </span><span id="balAmt">0</span> SHEVELEV</div>
+        <div id="shlBal" style="margin-top:8px;font-size:13px;text-align:center;display:none"><span style="color:#3dd4e0">⚗ </span><span id="balAmt">0</span> SHEVELEV</div>
       </div>
     </div>
 
     <div class="scard" style="padding:10px 14px">
-      <a href="/community" style="display:flex;align-items:center;gap:10px;padding:10px 8px;border-radius:10px;text-decoration:none;transition:background .2s" onmouseover="this.style.background='rgba(0,245,255,.07)'" onmouseout="this.style.background=''">
+      <a href="/community" style="display:flex;align-items:center;gap:10px;padding:10px 8px;border-radius:10px;text-decoration:none;transition:background .2s" onmouseover="this.style.background='rgba(61,212,224,.07)'" onmouseout="this.style.background=''">
         <span style="font-size:18px">🏠</span>
         <span style="color:#e8e8e8;font-size:14px">Лента</span>
       </a>
-      <a href="/community?tab=popular" style="display:flex;align-items:center;gap:10px;padding:10px 8px;border-radius:10px;text-decoration:none;transition:background .2s" onmouseover="this.style.background='rgba(0,245,255,.07)'" onmouseout="this.style.background=''">
+      <a href="/community?tab=popular" style="display:flex;align-items:center;gap:10px;padding:10px 8px;border-radius:10px;text-decoration:none;transition:background .2s" onmouseover="this.style.background='rgba(61,212,224,.07)'" onmouseout="this.style.background=''">
         <span style="font-size:18px">🔥</span>
         <span style="color:#e8e8e8;font-size:14px">Популярное</span>
       </a>
-      <a href="/community/members" style="display:flex;align-items:center;gap:10px;padding:10px 8px;border-radius:10px;text-decoration:none;transition:background .2s" onmouseover="this.style.background='rgba(0,245,255,.07)'" onmouseout="this.style.background=''">
+      <a href="/community/members" style="display:flex;align-items:center;gap:10px;padding:10px 8px;border-radius:10px;text-decoration:none;transition:background .2s" onmouseover="this.style.background='rgba(61,212,224,.07)'" onmouseout="this.style.background=''">
         <span style="font-size:18px">👥</span>
         <span style="color:#e8e8e8;font-size:14px">Участники</span>
       </a>
-      <a href="/community?tab=saved" style="display:flex;align-items:center;gap:10px;padding:10px 8px;border-radius:10px;text-decoration:none;transition:background .2s" onmouseover="this.style.background='rgba(0,245,255,.07)'" onmouseout="this.style.background=''">
+      <a href="/community?tab=saved" style="display:flex;align-items:center;gap:10px;padding:10px 8px;border-radius:10px;text-decoration:none;transition:background .2s" onmouseover="this.style.background='rgba(61,212,224,.07)'" onmouseout="this.style.background=''">
         <span style="font-size:18px">🔖</span>
         <span style="color:#e8e8e8;font-size:14px">Сохранённое</span>
       </a>
@@ -107,9 +107,9 @@
       <div style="font-weight:700;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
         Папки <button class="abt" style="font-size:13px" onclick="openM('fldModal')">+ создать</button>
       </div>
-      <a href="/community" style="display:block;padding:5px 8px;border-radius:8px;font-size:13px;color:{{ '#00f5ff' if not sel_folder else '#888' }};text-decoration:none;background:{{ '#00f5ff11' if not sel_folder else 'transparent' }}">📋 Все посты</a>
+      <a href="/community" style="display:block;padding:5px 8px;border-radius:8px;font-size:13px;color:{{ '#3dd4e0' if not sel_folder else '#888' }};text-decoration:none;background:{{ '#3dd4e011' if not sel_folder else 'transparent' }}">📋 Все посты</a>
       {% for f in my_folders %}
-      <a href="/community?folder={{ f.id }}" style="display:block;padding:5px 8px;border-radius:8px;font-size:13px;color:{{ '#00f5ff' if sel_folder == f.id else '#888' }};text-decoration:none;background:{{ '#00f5ff11' if sel_folder == f.id else 'transparent' }}">📁 {{ f.name }}</a>
+      <a href="/community?folder={{ f.id }}" style="display:block;padding:5px 8px;border-radius:8px;font-size:13px;color:{{ '#3dd4e0' if sel_folder == f.id else '#888' }};text-decoration:none;background:{{ '#3dd4e011' if sel_folder == f.id else 'transparent' }}">📁 {{ f.name }}</a>
       {% endfor %}
     </div>
   </aside>
@@ -153,13 +153,13 @@
             {% else %}<div class="avp" style="width:40px;height:40px">🍄</div>{% endif %}
           </a>
           <div>
-            <a href="{{ '/community/profile/' + (a.id|string) if a else '#' }}" style="font-weight:600;font-size:14px;color:#e8e8e8;text-decoration:none;display:block" onmouseover="this.style.color='#00f5ff'" onmouseout="this.style.color='#e8e8e8'">{{ a.name if a else 'Участник' }}</a>
+            <a href="{{ '/community/profile/' + (a.id|string) if a else '#' }}" style="font-weight:600;font-size:14px;color:#e8e8e8;text-decoration:none;display:block" onmouseover="this.style.color='#3dd4e0'" onmouseout="this.style.color='#e8e8e8'">{{ a.name if a else 'Участник' }}</a>
             <div style="font-size:12px;color:#666">{{ rep(item.author_post_count) }} · {{ p.created_at.strftime('%d.%m %H:%M') if p.created_at else '' }}</div>
           </div>
         </div>
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
           {% if item.folder_name %}<span style="background:#1a1a1a;border:1px solid #2a2a2a;color:#666;font-size:11px;padding:2px 8px;border-radius:20px">📁 {{ item.folder_name }}</span>{% endif %}
-          {% if p.pinned %}<span style="color:#00f5ff;font-size:12px">📌</span>{% endif %}
+          {% if p.pinned %}<span style="color:#3dd4e0;font-size:12px">📌</span>{% endif %}
           {% if a and a.id != user.id %}
           <button class="bout" id="flw-{{ a.id }}" onclick="doFollow({{ a.id }},this)" style="font-size:11px;padding:4px 10px;border-radius:20px">{{ 'Отписаться' if item.is_following else '+ Подписаться' }}</button>
           {% endif %}
@@ -208,7 +208,7 @@
 
     {% if shevelev_token %}
     <div class="scard">
-      <div style="font-weight:700;margin-bottom:10px;color:#00f5ff">⚗ SHEVELEV</div>
+      <div style="font-weight:700;margin-bottom:10px;color:#3dd4e0">⚗ SHEVELEV</div>
       <div id="tokenRight">
         <div style="font-size:13px;color:#666;margin-bottom:10px">Подключите MetaMask</div>
         <button class="bgold" style="width:100%;font-size:13px;padding:10px" onclick="connectWallet()">🦊 Подключить</button>
@@ -222,7 +222,7 @@
 <nav class="mbnav">
   <button class="mbb on" onclick="location.href='/community'">🏠<span>Лента</span></button>
   <button class="mbb" onclick="document.querySelector('.sinp').focus()">🔍<span>Поиск</span></button>
-  <button class="mbb" style="color:#00f5ff" onclick="openM('postModal')"><span style="font-size:26px;line-height:1">+</span><span>Пост</span></button>
+  <button class="mbb" style="color:#3dd4e0" onclick="openM('postModal')"><span style="font-size:26px;line-height:1">+</span><span>Пост</span></button>
   <button class="mbb" onclick="loadConvos('convModal');openM('msgsModal')">✉️<span>Письма</span></button>
   <button class="mbb" onclick="location.href='/dashboard'">👤<span>Профиль</span></button>
 </nav>
@@ -235,7 +235,7 @@
     <form action="/community/post" method="post" enctype="multipart/form-data">
       <textarea name="content" class="sinp" style="resize:vertical;min-height:110px;font-size:15px" placeholder="Поделитесь опытом..."></textarea>
       <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <label style="cursor:pointer;color:#00f5ff;font-size:13px;display:flex;align-items:center;gap:5px">
+        <label style="cursor:pointer;color:#3dd4e0;font-size:13px;display:flex;align-items:center;gap:5px">
           📷 Фото <input type="file" name="image" accept="image/*" style="display:none" onchange="prvImg(this)">
         </label>
         <select name="folder_id" style="background:#1a1a1a;border:1px solid #2a2a2a;color:#888;border-radius:8px;padding:6px 10px;font-size:13px">
@@ -297,7 +297,7 @@
 <div class="mover" id="sendTokModal">
   <div class="mbox" style="max-width:380px">
     <button onclick="closeM('sendTokModal')" style="position:absolute;top:14px;right:14px;background:none;border:none;color:#888;font-size:20px;cursor:pointer">✕</button>
-    <h3 style="margin:0 0 14px;color:#00f5ff">⚗ Отправить SHEVELEV</h3>
+    <h3 style="margin:0 0 14px;color:#3dd4e0">⚗ Отправить SHEVELEV</h3>
     <div style="font-size:12px;color:#666;margin-bottom:10px">Получатель: <span id="sendToAddr" style="color:#ccc;font-family:monospace"></span></div>
     <input type="number" id="sendAmt" class="sinp" placeholder="Количество SHEVELEV" style="margin-bottom:12px">
     <button class="bgold" style="width:100%;padding:12px" onclick="sendTokens()">Отправить</button>
@@ -343,7 +343,7 @@ async function connectWallet(){
       const bal=(Number(raw)/Math.pow(10,dec)).toFixed(2);
       document.getElementById('shlBal').style.display='block';
       document.getElementById('balAmt').textContent=bal;
-      document.getElementById('tokenRight').innerHTML=`<div style="font-size:22px;font-weight:700;color:#00f5ff">${bal} SHEVELEV</div><div style="font-size:11px;color:#555;font-family:monospace;margin-top:4px">${sh}</div><button class="bgold" style="width:100%;margin-top:12px;font-size:13px;padding:10px" onclick="openSendTok('${curWallet}')">Отправить токены</button>`;
+      document.getElementById('tokenRight').innerHTML=`<div style="font-size:22px;font-weight:700;color:#3dd4e0">${bal} SHEVELEV</div><div style="font-size:11px;color:#555;font-family:monospace;margin-top:4px">${sh}</div><button class="bgold" style="width:100%;margin-top:12px;font-size:13px;padding:10px" onclick="openSendTok('${curWallet}')">Отправить токены</button>`;
     }
   }catch(e){console.error(e)}
 }
@@ -363,7 +363,7 @@ async function sendTokens(){
     const dec=await tokCtr.methods.decimals().call();
     const val=BigInt(Math.floor(amt*Math.pow(10,dec))).toString();
     const tx=await tokCtr.methods.transfer(sendToWallet,val).send({from:curWallet});
-    document.getElementById('txSt').innerHTML=`<span style="color:#4ade80">✓ Отправлено! <a href="https://explorer.decimalchain.com/transactions/${tx.transactionHash}" target="_blank" style="color:#00f5ff">Tx ↗</a></span>`;
+    document.getElementById('txSt').innerHTML=`<span style="color:#4ade80">✓ Отправлено! <a href="https://explorer.decimalchain.com/transactions/${tx.transactionHash}" target="_blank" style="color:#3dd4e0">Tx ↗</a></span>`;
   }catch(e){document.getElementById('txSt').innerHTML=`<span style="color:#f87171">Ошибка: ${e.message?.slice(0,60)}</span>`}
 }
 
@@ -436,7 +436,7 @@ async function openUserModal(uid){
   const sendBtn=d.wallet&&curWallet?`<button class="bout" style="font-size:12px;padding:6px 12px;margin-top:8px" onclick="openSendTok('${d.wallet}')">⚗ SHEVELEV</button>`:'';
   const fBtn=`<button class="bout" id="mflw-${d.id}" onclick="doFollow(${d.id},this);doFollow(${d.id},document.getElementById('flw-${d.id}'))" style="font-size:12px;padding:6px 12px">${d.is_following?'Отписаться':'+ Подписаться'}</button>`;
   const dmBtn=`<button class="abt" onclick="closeM('userModal');openDM(${d.id},'${esc2(d.name||'Участник')}','${esc2(d.avatar||'')}')" style="font-size:13px">✉️ Написать</button>`;
-  const profLink=`<a href="/community/profile/${d.id}" style="font-size:12px;color:#00f5ff;text-decoration:none;display:block;margin-top:12px">Открыть профиль →</a>`;
+  const profLink=`<a href="/community/profile/${d.id}" style="font-size:12px;color:#3dd4e0;text-decoration:none;display:block;margin-top:12px">Открыть профиль →</a>`;
   document.getElementById('userModalBody').innerHTML=`${av}<div style="font-weight:700;font-size:18px;margin-top:12px">${esc(d.name||'Участник')}</div>${d.bio?`<div style="font-size:13px;color:#888;margin-top:6px">${esc(d.bio)}</div>`:''}<div style="display:flex;gap:18px;justify-content:center;margin:14px 0;font-size:12px"><div style="text-align:center"><span style="color:#fff;font-weight:700">${d.followers_count||0}</span><br><span style="color:#666">подписчиков</span></div><div style="text-align:center"><span style="color:#fff;font-weight:700">${d.following_count||0}</span><br><span style="color:#666">подписок</span></div><div style="text-align:center"><span style="color:#fff;font-weight:700">${d.post_count||0}</span><br><span style="color:#666">постов</span></div></div>${wl}${sendBtn}<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px">${fBtn}${dmBtn}</div>${profLink}`;
 }
 
@@ -551,7 +551,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 {% endif %}
 
 <!-- ── FLOATING MESSAGES PANEL ── -->
-<div id="messages-panel" style="display:none;position:fixed;right:80px;bottom:20px;width:360px;height:520px;background:rgba(8,8,8,.98);border:1px solid rgba(0,245,255,.3);border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.6);z-index:999;flex-direction:column;overflow:hidden">
+<div id="messages-panel" style="display:none;position:fixed;right:80px;bottom:20px;width:360px;height:520px;background:rgba(8,8,8,.98);border:1px solid rgba(61,212,224,.3);border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.6);z-index:999;flex-direction:column;overflow:hidden">
   <div style="padding:16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
     <div id="panel-header" style="color:#e8e8e8;font-size:15px;font-weight:600">💬 Сообщения</div>
     <button onclick="closeMessages()" style="background:none;border:none;color:#666;font-size:22px;cursor:pointer;line-height:1">×</button>
@@ -562,13 +562,13 @@ document.addEventListener('DOMContentLoaded',()=>{
   <div id="dialogs-list" style="flex:1;overflow-y:auto;padding:8px"></div>
   <div id="chat-view" style="display:none;flex:1;flex-direction:column;overflow:hidden">
     <div style="padding:8px 16px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:10px;flex-shrink:0">
-      <button onclick="backToList()" style="background:none;border:none;color:#00f5ff;cursor:pointer;font-size:20px;padding:0">←</button>
+      <button onclick="backToList()" style="background:none;border:none;color:#3dd4e0;cursor:pointer;font-size:20px;padding:0">←</button>
       <div id="chat-user-info" style="flex:1;font-size:14px;font-weight:600;color:#e8e8e8"></div>
     </div>
     <div id="chat-messages" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px"></div>
     <div style="padding:12px;border-top:1px solid rgba(255,255,255,.06);display:flex;gap:8px;flex-shrink:0">
       <textarea id="chat-input" placeholder="Сообщение..." rows="1" style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px;color:#e8e8e8;font-size:13px;resize:none;outline:none;font-family:inherit" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();panelSendMsg();}"></textarea>
-      <button onclick="panelSendMsg()" style="background:#00f5ff;border:none;border-radius:12px;padding:10px 16px;color:#080808;cursor:pointer;font-weight:700;font-size:16px">→</button>
+      <button onclick="panelSendMsg()" style="background:#3dd4e0;border:none;border-radius:12px;padding:10px 16px;color:#080808;cursor:pointer;font-weight:700;font-size:16px">→</button>
     </div>
   </div>
 </div>
@@ -608,7 +608,7 @@ function panelRenderDialogs(dialogs){
   if(!dialogs.length){el.innerHTML='<p style="color:#444;text-align:center;padding:20px;font-size:13px">Нет сообщений</p>';return;}
   el.innerHTML=dialogs.map(d=>`
     <div onclick="panelOpenDialog(${d.user_id},'${esc2(d.name||'')}')" style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;cursor:pointer;transition:background .2s" onmouseover="this.style.background='rgba(255,255,255,.04)'" onmouseout="this.style.background=''">
-      <div style="width:40px;height:40px;border-radius:50%;background:rgba(0,245,255,.15);border:${d.unread>0?'2px solid #00f5ff':'1px solid rgba(255,255,255,.1)'};display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;overflow:hidden">
+      <div style="width:40px;height:40px;border-radius:50%;background:rgba(61,212,224,.15);border:${d.unread>0?'2px solid #3dd4e0':'1px solid rgba(255,255,255,.1)'};display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;overflow:hidden">
         ${d.avatar?`<img src="${esc(d.avatar)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover" alt="">`:(d.name||'?')[0].toUpperCase()}
       </div>
       <div style="flex:1;min-width:0">
@@ -645,8 +645,8 @@ async function panelLoadChat(){
     const box=document.getElementById('chat-messages');
     const atBottom=box.scrollHeight-box.scrollTop<=box.clientHeight+50;
     box.innerHTML=msgs.map(m=>{
-      if(m.is_system)return`<div style="text-align:center;color:#00f5ff;font-size:11px;font-style:italic;padding:4px 8px;background:rgba(0,245,255,.08);border-radius:8px">${esc(m.text)}</div>`;
-      return`<div style="display:flex;justify-content:${m.is_mine?'flex-end':'flex-start'}"><div style="max-width:75%;padding:10px 14px;border-radius:${m.is_mine?'16px 16px 4px 16px':'16px 16px 16px 4px'};background:${m.is_mine?'rgba(0,245,255,.15)':'rgba(255,255,255,.05)'};color:#e8e8e8;font-size:13px;line-height:1.4;word-break:break-word">${esc(m.text)}<div style="font-size:10px;color:rgba(232,232,232,.3);margin-top:3px;text-align:right">${m.time}</div></div></div>`;
+      if(m.is_system)return`<div style="text-align:center;color:#3dd4e0;font-size:11px;font-style:italic;padding:4px 8px;background:rgba(61,212,224,.08);border-radius:8px">${esc(m.text)}</div>`;
+      return`<div style="display:flex;justify-content:${m.is_mine?'flex-end':'flex-start'}"><div style="max-width:75%;padding:10px 14px;border-radius:${m.is_mine?'16px 16px 4px 16px':'16px 16px 16px 4px'};background:${m.is_mine?'rgba(61,212,224,.15)':'rgba(255,255,255,.05)'};color:#e8e8e8;font-size:13px;line-height:1.4;word-break:break-word">${esc(m.text)}<div style="font-size:10px;color:rgba(232,232,232,.3);margin-top:3px;text-align:right">${m.time}</div></div></div>`;
     }).join('');
     if(atBottom)box.scrollTop=box.scrollHeight;
   }catch(e){}

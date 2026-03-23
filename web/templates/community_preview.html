@@ -8,7 +8,7 @@
     <!-- Header -->
     <div class="text-center mb-12">
       <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-border text-xs text-gold mb-6"
-           style="background: rgba(0,245,255,0.06);">
+           style="background: rgba(61,212,224,0.06);">
         <span class="w-1.5 h-1.5 rounded-full bg-gold inline-block animate-pulse"></span>
         Живое сообщество
       </div>
@@ -40,10 +40,10 @@
           {% if member.avatar %}
             <img src="{{ member.avatar }}" alt=""
               class="w-7 h-7 rounded-full object-cover flex-shrink-0"
-              style="border: 2px solid #00f5ff;" />
+              style="border: 2px solid #3dd4e0;" />
           {% else %}
             <div class="w-7 h-7 rounded-full bg-surface flex items-center justify-center flex-shrink-0"
-                 style="border: 2px solid #00f5ff;">
+                 style="border: 2px solid #3dd4e0;">
               <span class="text-gold text-xs font-semibold">{{ (member.name or 'A')[0].upper() }}</span>
             </div>
           {% endif %}
@@ -64,7 +64,7 @@
           {% for post in preview_posts %}
           <div class="p-6 rounded-2xl bg-surface border border-border">
             <div class="flex items-center gap-3 mb-4">
-              <div class="w-9 h-9 rounded-full bg-surface" style="border: 2px solid #00f5ff;"></div>
+              <div class="w-9 h-9 rounded-full bg-surface" style="border: 2px solid #3dd4e0;"></div>
               <div>
                 <div class="h-3 bg-border rounded-full w-24 mb-1.5"></div>
                 <div class="h-2 bg-border rounded-full w-16"></div>

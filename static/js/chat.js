@@ -24,7 +24,7 @@ function appendMessage(role, text) {
       </div>`;
   } else {
     wrapper.innerHTML = `
-      <div class="max-w-sm px-4 py-3 rounded-2xl rounded-tr-sm bg-[#00f5ff]/10 border border-[#00f5ff]/25">
+      <div class="max-w-sm px-4 py-3 rounded-2xl rounded-tr-sm bg-[#3dd4e0]/10 border border-[#3dd4e0]/25">
         <p class="text-sm text-[#e8e8e8] leading-relaxed whitespace-pre-wrap">${escapeHtml(text)}</p>
       </div>`;
   }
