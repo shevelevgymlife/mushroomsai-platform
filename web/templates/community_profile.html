@@ -564,6 +564,21 @@ async function sendMsg(){
 }
 
 function esc(t){return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function _cpChaosKey(){
+  return 'mushrooms:chaos:' + String(Number(PROFILE_ID||0)||0) + ':profile';
+}
+function _cpLoadChaos(fallback){
+  try{
+    const raw=window.localStorage.getItem(_cpChaosKey());
+    if(raw===null||raw===undefined)return !!fallback;
+    return raw==='1'||raw==='true';
+  }catch(e){
+    return !!fallback;
+  }
+}
+function _cpSaveChaos(isOn){
+  try{ window.localStorage.setItem(_cpChaosKey(), isOn ? '1' : '0'); }catch(e){}
+}
 function setProfileChaos(isOn){
   const grid=document.getElementById('profilePostsGrid');
   const sw=document.getElementById('cpChaosToggle');
@@ -576,8 +591,9 @@ function setProfileChaos(isOn){
     grid.classList.remove('cp-chaos-on');
     grid.classList.add('cp-chaos-off');
   }
+  _cpSaveChaos(!!isOn);
 }
-setProfileChaos(true);
+setProfileChaos(_cpLoadChaos(true));
 {% if shevelev_auto_sync %}
 (function(){
   const SYNC_MS=120000;

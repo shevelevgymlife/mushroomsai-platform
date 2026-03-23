@@ -3679,12 +3679,29 @@ async function submitFeedPreviewComment(){
 function initFeedChaosToggle(){
   const sw=document.getElementById('feedChaosToggle');
   if(!sw) return;
-  setFeedChaos(true);
+  setFeedChaos(_loadChaosToggle('feed', true));
 }
 function initProfileChaosToggle(){
   const sw=document.getElementById('profileChaosToggle');
   if(!sw) return;
-  setProfilePostsChaos(true);
+  setProfilePostsChaos(_loadChaosToggle('profile', true));
+}
+function _chaosToggleKey(kind){
+  return 'mushrooms:chaos:' + String(_dashUid()) + ':' + String(kind || 'feed');
+}
+function _loadChaosToggle(kind, fallback){
+  try{
+    const raw=window.localStorage.getItem(_chaosToggleKey(kind));
+    if(raw===null||raw===undefined)return !!fallback;
+    return raw==='1'||raw==='true';
+  }catch(e){
+    return !!fallback;
+  }
+}
+function _saveChaosToggle(kind, isOn){
+  try{
+    window.localStorage.setItem(_chaosToggleKey(kind), isOn ? '1' : '0');
+  }catch(e){}
 }
 function setFeedChaos(isOn){
   const grid=document.getElementById('feedPosts');
@@ -3698,6 +3715,7 @@ function setFeedChaos(isOn){
     grid.classList.remove('feed-chaos-on');
     grid.classList.add('feed-chaos-off');
   }
+  _saveChaosToggle('feed', !!isOn);
 }
 function setProfilePostsChaos(isOn){
   const grid=document.getElementById('profilePosts');
@@ -3711,6 +3729,7 @@ function setProfilePostsChaos(isOn){
     grid.classList.remove('profile-chaos-on');
     grid.classList.add('profile-chaos-off');
   }
+  _saveChaosToggle('profile', !!isOn);
 }
 initFeedChaosToggle();
 initProfileChaosToggle();
