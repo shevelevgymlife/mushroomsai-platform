@@ -268,6 +268,13 @@ async def admin_shop_product_json(request: Request, product_id: int):
     p = dict(row)
     p["price"] = int(p["price"] or 0)
     p["in_stock"] = p.get("in_stock") is not False
+    # Keep response JSON-safe for frontend edit modal
+    created_at = p.get("created_at")
+    if created_at is not None:
+        try:
+            p["created_at"] = created_at.isoformat()
+        except Exception:
+            p["created_at"] = str(created_at)
     rv_avg = await database.fetch_val(
         sqlalchemy.select(sqlalchemy.func.avg(product_reviews.c.rating)).where(
             product_reviews.c.product_id == product_id

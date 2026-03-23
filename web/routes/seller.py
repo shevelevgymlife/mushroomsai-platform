@@ -114,9 +114,20 @@ async def seller_shop_product_json(request: Request, product_id: int):
     if not row or row.get("seller_id") != uid:
         return JSONResponse({"error": "not found"}, status_code=404)
     p = dict(row)
-    p["price"] = int(p["price"] or 0)
-    p["in_stock"] = p.get("in_stock") is not False
-    return JSONResponse(p)
+    # Возвращаем только поля формы редактирования, чтобы исключить несериализуемые типы
+    # (например datetime в created_at), которые ломали JSON и открытие модалки.
+    payload = {
+        "id": int(p.get("id") or 0),
+        "name": p.get("name") or "",
+        "description": p.get("description") or "",
+        "price": int(p.get("price") or 0),
+        "url": p.get("url") or "",
+        "mushroom_type": p.get("mushroom_type") or "",
+        "image_url": p.get("image_url") or "",
+        "category": p.get("category") or "",
+        "in_stock": p.get("in_stock") is not False,
+    }
+    return JSONResponse(payload)
 
 
 @router.get("/questions", response_class=HTMLResponse)
