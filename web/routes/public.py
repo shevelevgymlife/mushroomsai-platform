@@ -105,6 +105,8 @@ CATEGORIES = ["Экстракт", "Плодовое тело", "Капсулы",
 @router.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     current_user = await get_user_from_request(request)
+    if current_user:
+        return RedirectResponse("/dashboard", status_code=302)
     prods = await database.fetch_all(
         products.select().where(products.c.active == True).limit(6)
     )
