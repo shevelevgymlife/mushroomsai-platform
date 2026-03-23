@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Кабинет (легкий режим) — MushroomsAI{% endblock %}
+{% block content %}
+<section class="pt-24 pb-14 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
+  <div class="panel-rise p-6 mb-5">
+    <div class="flex items-center justify-between gap-3 flex-wrap">
+      <h1 class="font-display text-2xl text-text">Кабинет (легкий режим)</h1>
+      <a href="/dashboard" class="text-sm px-3 py-2 rounded-lg border border-white/15 text-text hover:border-gold/50 transition-colors no-underline">Полный кабинет</a>
+    </div>
+    <p class="text-sm text-muted mt-2">Этот режим без тяжелых скриптов. Используйте его, если основной кабинет открывается пустым экраном.</p>
+  </div>
+
+  <div class="panel-rise p-6 mb-5">
+    <div class="text-sm text-muted mb-2">Профиль</div>
+    <div class="text-lg text-text font-semibold">{{ user.name or 'Участник' }}</div>
+    <div class="text-sm text-muted mt-1">{{ user.email or ('Telegram ID: ' + (user.tg_id|string) if user.tg_id else '—') }}</div>
+    <div class="text-sm mt-3 text-text">Тариф: <span class="text-gold">{{ plan_info.name }}</span></div>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+    <a class="panel-rise p-4 no-underline text-text hover:border-gold/40 transition-colors" href="/community">Соцсеть</a>
+    <a class="panel-rise p-4 no-underline text-text hover:border-gold/40 transition-colors" href="/shop">Магазин</a>
+    <a class="panel-rise p-4 no-underline text-text hover:border-gold/40 transition-colors" href="/messages">Сообщения</a>
+    <a class="panel-rise p-4 no-underline text-text hover:border-gold/40 transition-colors" href="/chat">AI чат</a>
+  </div>
+
+  <div class="panel-rise p-6">
+    <div class="text-sm text-muted mb-2">Рефералы</div>
+    <div class="text-text">Приглашено: {{ ref_stats.invited_count if ref_stats else 0 }}</div>
+    <div class="text-text">Баланс: {{ ref_stats.balance if ref_stats else 0 }}</div>
+  </div>
+</section>
+{% endblock %}

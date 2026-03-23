@@ -366,6 +366,36 @@ async def dashboard(request: Request):
     return response
 
 
+@router.get("/dashboard-lite", response_class=HTMLResponse)
+async def dashboard_lite(request: Request):
+    user = await require_auth(request)
+    if not user:
+        return RedirectResponse("/login")
+    leg = await legal_acceptance_redirect(request, user)
+    if leg:
+        return leg
+    effective_user_id = user.get("primary_user_id") or user["id"]
+    full_profile = await database.fetch_one(users.select().where(users.c.id == effective_user_id))
+    if full_profile:
+        user = dict(full_profile)
+    plan = await check_subscription(effective_user_id)
+    plan_info = PLANS.get(plan, PLANS["free"])
+    ref_stats = await get_referral_stats(effective_user_id)
+    response = templates.TemplateResponse(
+        "dashboard/user_lite.html",
+        {
+            "request": request,
+            "user": user,
+            "plan": plan,
+            "plan_info": plan_info,
+            "ref_stats": ref_stats,
+        },
+    )
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    return response
+
+
 @router.post("/api/chat")
 async def api_chat(request: Request):
     try:
