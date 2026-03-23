@@ -83,6 +83,8 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 .ig-pm-panel{position:absolute;right:0;top:100%;margin-top:4px;min-width:180px;background:#141414;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:6px;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.5)}
 .ig-pm-panel button{display:block;width:100%;text-align:left;padding:10px 12px;border:none;background:transparent;color:#e8e8e8;font-size:13px;cursor:pointer;border-radius:8px}
 .ig-pm-panel button:hover{background:rgba(61,212,224,.12)}
+.ig-pm-toggle{width:32px;height:32px;border:none;background:transparent;color:#aab2c5;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:20px;line-height:1}
+.ig-pm-toggle:hover{background:rgba(255,255,255,.06);color:#fff}
 .cp-tabbar{display:none}
 .cp-create-fab{display:none}
 .cp-prof-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:6px 0 10px;font-size:13px;color:#888}
@@ -229,13 +231,13 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
         <div style="font-size:11px;color:#888">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}{% if p.pinned %} · 📌{% endif %}{% if item.folder_name %} · 📁 {{ item.folder_name }}{% endif %}</div>
       </div>
       {% if is_own %}
-      <details class="ig-pm" onclick="event.stopPropagation()">
-        <summary title="Меню поста">⋯</summary>
-        <div class="ig-pm-panel" onclick="event.stopPropagation()">
-          <button type="button" onclick="openEditPostModal({{ p.id }}, {{ (p.title|default(''))|tojson }}, {{ (p.content|default(''))|tojson }})">Изменить</button>
-          <button type="button" onclick="deleteOwnPost({{ p.id }})" style="color:#f87171">Удалить</button>
+      <div class="ig-pm" onclick="event.stopPropagation()">
+        <button type="button" class="ig-pm-toggle" title="Меню поста" aria-label="Меню поста" onclick="togglePostMenu(this,event)">⋯</button>
+        <div class="ig-pm-panel" style="display:none" onclick="event.stopPropagation()">
+          <button type="button" onclick='openEditPostModal({{ p.id }}, {{ (p.title|default(''))|tojson }}, {{ (p.content|default(''))|tojson }}); closePostMenus();'>Изменить</button>
+          <button type="button" onclick="deleteOwnPost({{ p.id }}); closePostMenus();" style="color:#f87171">Удалить</button>
         </div>
-      </details>
+      </div>
       {% endif %}
     </div>
     {% if p.image_url %}
@@ -332,6 +334,24 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 function _escHtml(t){
   const d=document.createElement('div');d.textContent=t==null?'':String(t);return d.innerHTML;
 }
+function closePostMenus(){
+  document.querySelectorAll('.ig-pm .ig-pm-panel').forEach(function(p){ p.style.display='none'; });
+}
+function togglePostMenu(btn, ev){
+  if(ev){ ev.preventDefault(); ev.stopPropagation(); }
+  const wrap = btn && btn.closest ? btn.closest('.ig-pm') : null;
+  if(!wrap) return;
+  const panel = wrap.querySelector('.ig-pm-panel');
+  if(!panel) return;
+  const willOpen = panel.style.display !== 'block';
+  closePostMenus();
+  panel.style.display = willOpen ? 'block' : 'none';
+}
+document.addEventListener('click', function(e){
+  if(!(e.target && e.target.closest && e.target.closest('.ig-pm'))){
+    closePostMenus();
+  }
+});
 function closeFollowListModal(){
   const m=document.getElementById('followListModal');if(m)m.style.display='none';
 }

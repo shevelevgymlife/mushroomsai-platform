@@ -987,9 +987,9 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
                 <div style="font-size:11px;color:#888">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}</div>
               </div>
               <details class="ig-pm" onclick="event.stopPropagation()">
-                <summary title="Меню поста">⋯</summary>
+                <summary title="Меню поста" onclick="togglePostMenu(event,this)">⋯</summary>
                 <div class="ig-pm-panel" onclick="event.stopPropagation()">
-                  <button type="button" onclick="openEditPostModal({{ p.id }}, {{ (p.title|default(''))|tojson }}, {{ (p.content|default(''))|tojson }})">Изменить</button>
+                  <button type="button" onclick='openEditPostModal({{ p.id }}, {{ (p.title|default(''))|tojson }}, {{ (p.content|default(''))|tojson }})'>Изменить</button>
                   <button type="button" onclick="deleteFeedPost({{ p.id }})" style="color:#f87171">Удалить</button>
                 </div>
               </details>
@@ -1107,9 +1107,9 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
           </div>
           {% if is_mine %}
           <details class="ig-pm" onclick="event.stopPropagation()">
-            <summary title="Меню поста">⋯</summary>
+            <summary title="Меню поста" onclick="togglePostMenu(event,this)">⋯</summary>
             <div class="ig-pm-panel" onclick="event.stopPropagation()">
-              <button type="button" onclick="openEditPostModal({{ p.id }}, {{ (p.title|default(''))|tojson }}, {{ (p.content|default(''))|tojson }})">Изменить</button>
+              <button type="button" onclick='openEditPostModal({{ p.id }}, {{ (p.title|default(''))|tojson }}, {{ (p.content|default(''))|tojson }})'>Изменить</button>
               <button type="button" onclick="openSharePostModal({{ p.id }})">Поделиться в личке</button>
               <button type="button" onclick="deleteFeedPost({{ p.id }})" style="color:#f87171">Удалить</button>
             </div>
@@ -1937,6 +1937,23 @@ let _shevelevVisBound=false;
 function _escHtmlFl(t){
   const d=document.createElement('div');d.textContent=t==null?'':String(t);return d.innerHTML;
 }
+function togglePostMenu(ev, summaryEl){
+  if(ev){ ev.preventDefault(); ev.stopPropagation(); }
+  const details = summaryEl && summaryEl.closest('details.ig-pm');
+  if(!details) return false;
+  const shouldOpen = !details.hasAttribute('open');
+  document.querySelectorAll('details.ig-pm[open]').forEach(function(el){
+    if(el !== details) el.removeAttribute('open');
+  });
+  if(shouldOpen) details.setAttribute('open','');
+  else details.removeAttribute('open');
+  return false;
+}
+document.addEventListener('click', function(ev){
+  if(!ev.target.closest('details.ig-pm')){
+    document.querySelectorAll('details.ig-pm[open]').forEach(function(el){ el.removeAttribute('open'); });
+  }
+});
 function closeFollowListModal(){
   const m=document.getElementById('followListModal');if(m)m.style.display='none';
 }
