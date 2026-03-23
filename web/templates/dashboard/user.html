@@ -1886,6 +1886,35 @@ window.addEventListener('hashchange',()=>{
   if(SECS.includes(h))goSec(h);
 });
 
+// Failsafe: if any runtime error breaks section switching on some devices,
+// keep dashboard visible (avoid empty "blue screen" with no burger/content).
+function ensureDashboardVisible(){
+  try{
+    const shown=document.querySelector('.db-sec.active');
+    if(!shown){
+      const fallback=document.getElementById('sec-me')
+        || document.getElementById('sec-feed')
+        || document.querySelector('.db-sec');
+      if(fallback) fallback.classList.add('active');
+    }
+    const hdr=document.querySelector('.ig-dash-header');
+    if(hdr && getComputedStyle(hdr).display==='none'){
+      hdr.style.display='flex';
+    }
+  }catch(_e){}
+}
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded',()=>{
+    ensureDashboardVisible();
+    setTimeout(ensureDashboardVisible, 120);
+    setTimeout(ensureDashboardVisible, 600);
+  });
+}else{
+  ensureDashboardVisible();
+  setTimeout(ensureDashboardVisible, 120);
+  setTimeout(ensureDashboardVisible, 600);
+}
+
 async function markActivityRead(){
   try{
     await fetch('/community/activity/mark-read',{method:'POST',credentials:'same-origin'});
