@@ -48,9 +48,6 @@
 /* ── Sections ── */
 /* Safe default: show sections even if JS fails to initialize. */
 .db-sec{display:block;animation:fadein .28s ease}
-/* After JS boot we switch to tab-like visibility via .dash-js on body. */
-body.dash-js .db-sec{display:none}
-body.dash-js .db-sec.active{display:block}
 @keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 
 /* ── Avatar ── */
@@ -1669,7 +1666,6 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 </div>
 
 <script>
-try{ document.body.classList.add('dash-js'); }catch(_e){}
 (function(){
   function applyVvh(){
     var vv=window.visualViewport;
