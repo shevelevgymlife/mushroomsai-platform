@@ -1179,6 +1179,7 @@ async def community_profile(request: Request, user_id: int):
         "community_profile.html",
         {
             "request": request,
+            "user": current_user,
             "current_user": current_user,
             "profile": profile,
             "profile_id": profile_id,
