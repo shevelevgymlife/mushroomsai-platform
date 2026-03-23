@@ -122,13 +122,15 @@ async def index(request: Request):
     )
     community_members = [{"name": r["name"] or "User", "avatar": r["avatar"]} for r in community_members_raw]
 
-    # Recent community posts with author info
+    # Recent community posts with author info (только видимые/approved,
+    # чтобы "последнее сообщение" совпадало с общим счётчиком в блоке)
     last_community_posts_raw = await database.fetch_all(
         sa.text("""
             SELECT cp.id, cp.content, cp.likes_count, cp.comments_count, cp.created_at,
                    u.name as author_name, u.avatar as author_avatar
             FROM community_posts cp
             LEFT JOIN users u ON u.id = cp.user_id
+            WHERE cp.approved = true
             ORDER BY cp.created_at DESC
             LIMIT 3
         """)
@@ -197,6 +199,10 @@ async def index(request: Request):
             "block_order": block_order,
         },
     )
+    # Главная страница с live-метриками: без кэша, чтобы блок всегда обновлялся.
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
     attach_invite_ref_from_query(request, response)
     return response
 
