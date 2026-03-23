@@ -10,7 +10,7 @@ from email.message import EmailMessage
 from socket import gethostname
 
 from config import settings
-from services.task_notify import notify_status
+from services.task_notify import notify_deploy_finished
 
 logger = logging.getLogger(__name__)
 
@@ -70,21 +70,7 @@ async def send_deploy_email() -> None:
         logger.warning(f"Deploy notification email failed: {e}")
 
 
-async def send_deploy_completed_notification() -> None:
-    """Best-effort: уведомить в Telegram/email, что деплой успешно поднялся."""
-    service = os.getenv("RENDER_SERVICE_NAME", "mushroomsai")
-    commit = os.getenv("RENDER_GIT_COMMIT", "")[:12] or "unknown"
-    site = (settings.SITE_URL or "").strip() or "unknown-site"
-    summary = f"✅ Deploy завершен: {service} ({commit})"
-    details = (
-        f"Сервис: {service}\n"
-        f"Коммит: {commit}\n"
-        f"Проверка: {site}"
-    )
-    await notify_status(
-        stage="deploy_completed",
-        summary=summary,
-        details=details,
-        site_url=site,
-        include_email=True,
-    )
+async def send_deploy_notifications() -> None:
+    """Best-effort: email старт деплоя + Telegram/email о завершении запуска."""
+    await send_deploy_email()
+    await notify_deploy_finished("Приложение успешно запущено на Render.")

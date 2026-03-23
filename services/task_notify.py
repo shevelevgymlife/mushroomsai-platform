@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import smtplib
 from datetime import datetime, timezone
 from email.message import EmailMessage
@@ -14,35 +15,89 @@ from config import settings
 logger = logging.getLogger(__name__)
 
 
+def _first_nonempty(*values: str) -> str:
+    for v in values:
+        s = str(v or "").strip()
+        if s:
+            return s
+    return ""
+
+
 def _now_utc() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
 
 def _site_url() -> str:
-    return (settings.SITE_URL or "").strip() or "https://mushroomsai.ru"
+    return _first_nonempty(settings.SITE_URL, "https://mushroomsai.ru")
 
 
 def _render_service() -> str:
-    import os
-
     return os.getenv("RENDER_SERVICE_NAME", "mushroomsai")
 
 
 def _render_commit() -> str:
-    import os
-
     return (os.getenv("RENDER_GIT_COMMIT", "") or "")[:12] or "unknown"
 
 
 def _render_deploy_id() -> str:
-    import os
-
     return os.getenv("RENDER_DEPLOY_ID", "") or "unknown"
 
 
-def _smtp_is_configured() -> bool:
+def _task_chat_id_raw() -> str:
+    return _first_nonempty(
+        getattr(settings, "TASK_NOTIFY_TELEGRAM_CHAT_ID", ""),
+        getattr(settings, "DEPLOY_NOTIFY_TASK_CHAT_ID", ""),
+        getattr(settings, "TASK_NOTIFY_TG_CHAT_ID", ""),
+    )
+
+
+def _deploy_chat_id_raw() -> str:
+    return _first_nonempty(
+        getattr(settings, "DEPLOY_NOTIFY_TELEGRAM_CHAT_ID", ""),
+        getattr(settings, "DEPLOY_NOTIFY_TG_CHAT_ID", ""),
+    )
+
+
+def _chat_id_for_stage(stage: str) -> int:
+    if stage in ("task_accepted", "deploy_sent"):
+        raw = _first_nonempty(_task_chat_id_raw(), _deploy_chat_id_raw())
+    else:
+        raw = _first_nonempty(_deploy_chat_id_raw(), _task_chat_id_raw())
+    try:
+        return int(raw or 0)
+    except Exception:
+        return 0
+
+
+def _telegram_token() -> str:
+    return _first_nonempty(
+        getattr(settings, "NOTIFY_TELEGRAM_TOKEN", ""),
+        settings.TELEGRAM_TOKEN,
+    )
+
+
+def _email_to_for_stage(stage: str) -> str:
+    task_email = _first_nonempty(
+        getattr(settings, "TASK_NOTIFY_EMAIL_TO", ""),
+        getattr(settings, "DEPLOY_NOTIFY_TASK_EMAIL_TO", ""),
+    )
+    deploy_email = _first_nonempty(settings.DEPLOY_NOTIFY_EMAIL_TO)
+    if stage in ("task_accepted", "deploy_sent"):
+        return _first_nonempty(task_email, deploy_email)
+    return _first_nonempty(deploy_email, task_email)
+
+
+def _email_from_for_stage() -> str:
+    return _first_nonempty(
+        getattr(settings, "TASK_NOTIFY_EMAIL_FROM", ""),
+        settings.DEPLOY_NOTIFY_EMAIL_FROM,
+        settings.SMTP_USER,
+    )
+
+
+def _smtp_is_configured(to_email: str) -> bool:
     return bool(
-        (settings.DEPLOY_NOTIFY_EMAIL_TO or "").strip()
+        to_email
         and (settings.SMTP_HOST or "").strip()
         and int(getattr(settings, "SMTP_PORT", 0) or 0) > 0
         and (settings.SMTP_USER or "").strip()
@@ -50,9 +105,7 @@ def _smtp_is_configured() -> bool:
     )
 
 
-def _send_email_sync(subject: str, body: str) -> None:
-    to_email = (settings.DEPLOY_NOTIFY_EMAIL_TO or "").strip()
-    from_email = (settings.DEPLOY_NOTIFY_EMAIL_FROM or settings.SMTP_USER or "").strip()
+def _send_email_sync(subject: str, body: str, to_email: str, from_email: str) -> None:
     if not to_email or not from_email:
         return
 
@@ -69,11 +122,11 @@ def _send_email_sync(subject: str, body: str) -> None:
         server.send_message(msg)
 
 
-async def _notify_telegram(text: str) -> None:
+async def _notify_telegram(text: str, stage: str) -> None:
     if not text:
         return
-    token = (settings.TELEGRAM_NOTIFY_BOT_TOKEN or settings.TELEGRAM_TOKEN or "").strip()
-    chat_id = int(getattr(settings, "TELEGRAM_NOTIFY_CHAT_ID", 0) or 0)
+    token = _telegram_token()
+    chat_id = _chat_id_for_stage(stage)
     if not token or not chat_id:
         return
     try:
@@ -86,69 +139,85 @@ async def _notify_telegram(text: str) -> None:
         logger.warning(f"Telegram notify failed: {e}")
 
 
-async def _notify_email(subject: str, body: str) -> None:
-    if not _smtp_is_configured():
+async def _notify_email(subject: str, body: str, stage: str) -> None:
+    to_email = _email_to_for_stage(stage)
+    from_email = _email_from_for_stage()
+    if not _smtp_is_configured(to_email):
         return
     try:
-        await asyncio.to_thread(_send_email_sync, subject, body)
+        await asyncio.to_thread(_send_email_sync, subject, body, to_email, from_email)
     except Exception as e:
         logger.warning(f"Email notify failed: {e}")
 
 
-async def notify_task_accepted(task_text: str) -> None:
-    text = (task_text or "").strip() or "Задача принята в обработку."
-    service = _render_service()
-    commit = _render_commit()
-    site = _site_url()
+async def notify_status(
+    stage: str,
+    summary: str,
+    details: str = "",
+    site_url: str = "",
+    include_email: bool = True,
+) -> None:
+    stage = (stage or "").strip().lower()
+    stages = {
+        "task_accepted": ("🟡", "задача принята"),
+        "task_done": ("✅", "задача завершена"),
+        "deploy_sent": ("🔵", "отправлено на деплой в Render"),
+        "deploy_completed": ("🟢", "деплой закончился, можно смотреть сайт"),
+    }
+    icon, stage_title = stages.get(stage, ("ℹ️", stage or "статус"))
+    site = (site_url or "").strip() or _site_url()
     ts = _now_utc()
+    details_text = (details or "").strip()
+    core = summary.strip() or "Обновление по задаче."
     msg = (
-        "🟡 MushroomsAI Agent\n"
-        "Статус: задача принята в работу\n\n"
-        f"Задача: {text}\n"
-        f"Service: {service}\n"
-        f"Commit: {commit}\n"
-        f"Site: {site}\n"
-        f"Time: {ts}"
-    )
-    subject = f"[MushroomsAI] Task accepted ({service}) {commit}"
-    await asyncio.gather(_notify_telegram(msg), _notify_email(subject, msg), return_exceptions=True)
-
-
-async def notify_deploy_sent(task_text: str = "") -> None:
-    service = _render_service()
-    commit = _render_commit()
-    site = _site_url()
-    ts = _now_utc()
-    task_line = f"Задача: {task_text.strip()}\n" if (task_text or "").strip() else ""
-    msg = (
-        "🔵 MushroomsAI Agent\n"
-        "Статус: отправлено в Render на деплой\n\n"
-        f"{task_line}"
-        f"Service: {service}\n"
-        f"Commit: {commit}\n"
-        f"Deploy ID: {_render_deploy_id()}\n"
-        f"Site: {site}\n"
-        f"Time: {ts}"
-    )
-    subject = f"[MushroomsAI] Deploy sent ({service}) {commit}"
-    await asyncio.gather(_notify_telegram(msg), _notify_email(subject, msg), return_exceptions=True)
-
-
-async def notify_deploy_finished(short_result: str = "Деплой завершён успешно.") -> None:
-    service = _render_service()
-    commit = _render_commit()
-    site = _site_url()
-    ts = _now_utc()
-    result = (short_result or "").strip() or "Деплой завершён успешно."
-    msg = (
-        "🟢 MushroomsAI Agent\n"
-        "Статус: деплой завершён\n\n"
-        f"Итог: {result}\n"
-        f"Service: {service}\n"
-        f"Commit: {commit}\n"
-        f"Deploy ID: {_render_deploy_id()}\n"
+        f"{icon} {core}\n"
+        f"{stage_title.capitalize()}.\n"
+        f"{details_text + chr(10) if details_text else ''}"
         f"Проверка: {site}\n"
         f"Time: {ts}"
     )
-    subject = f"[MushroomsAI] Deploy finished ({service}) {commit}"
-    await asyncio.gather(_notify_telegram(msg), _notify_email(subject, msg), return_exceptions=True)
+    subject = f"[MushroomsAI] {stage_title} ({_render_service()}) {_render_commit()}"
+    tasks = [_notify_telegram(msg, stage)]
+    if include_email:
+        tasks.append(_notify_email(subject, msg, stage))
+    await asyncio.gather(*tasks, return_exceptions=True)
+
+
+async def notify_task_accepted(task_text: str) -> None:
+    text = (task_text or "").strip() or "Задача принята в обработку."
+    await notify_status(
+        stage="task_accepted",
+        summary=f"Задача: {text}",
+        details=f"Service: {_render_service()}\nCommit: {_render_commit()}",
+        include_email=True,
+    )
+
+
+async def notify_deploy_sent(task_text: str = "") -> None:
+    task_line = f"Задача: {task_text.strip()}" if (task_text or "").strip() else "Задача: —"
+    await notify_status(
+        stage="deploy_sent",
+        summary=task_line,
+        details=f"Service: {_render_service()}\nCommit: {_render_commit()}\nDeploy ID: {_render_deploy_id()}",
+        include_email=True,
+    )
+
+
+async def notify_task_done(done_text: str) -> None:
+    text = (done_text or "").strip() or "Изменения по задаче выполнены."
+    await notify_status(
+        stage="task_done",
+        summary=text,
+        details=f"Service: {_render_service()}\nCommit: {_render_commit()}",
+        include_email=True,
+    )
+
+
+async def notify_deploy_finished(short_result: str = "Деплой завершён успешно.") -> None:
+    result = (short_result or "").strip() or "Деплой завершён успешно."
+    await notify_status(
+        stage="deploy_completed",
+        summary=f"Итог: {result}",
+        details=f"Service: {_render_service()}\nCommit: {_render_commit()}\nDeploy ID: {_render_deploy_id()}",
+        include_email=True,
+    )
