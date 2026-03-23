@@ -139,6 +139,7 @@ async def lifespan(app: FastAPI):
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS shevelev_balance_cached_at TIMESTAMP",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS show_del_to_public BOOLEAN DEFAULT true",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS show_shev_to_public BOOLEAN DEFAULT true",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS token_lamp_enabled BOOLEAN DEFAULT true",
         """CREATE TABLE IF NOT EXISTS shop_product_likes (
             id SERIAL PRIMARY KEY,
             user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

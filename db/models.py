@@ -44,6 +44,7 @@ users = sqlalchemy.Table(
     sqlalchemy.Column("shevelev_balance_cached_at", sqlalchemy.DateTime, nullable=True),
     sqlalchemy.Column("show_del_to_public", sqlalchemy.Boolean, default=True, server_default="true"),
     sqlalchemy.Column("show_shev_to_public", sqlalchemy.Boolean, default=True, server_default="true"),
+    sqlalchemy.Column("token_lamp_enabled", sqlalchemy.Boolean, default=True, server_default="true"),
     sqlalchemy.Column("legal_accepted_at", sqlalchemy.DateTime, nullable=True),
     sqlalchemy.Column("legal_docs_version", sqlalchemy.Text, nullable=True),
 )

@@ -54,6 +54,7 @@ def get_public_user_data(row: dict) -> dict:
         "profile_link_url": row.get("profile_link_url"),
         "show_del_to_public": True if row.get("show_del_to_public") is None else bool(row.get("show_del_to_public")),
         "show_shev_to_public": True if row.get("show_shev_to_public") is None else bool(row.get("show_shev_to_public")),
+        "token_lamp_enabled": True if row.get("token_lamp_enabled") is None else bool(row.get("token_lamp_enabled")),
     }
 
 

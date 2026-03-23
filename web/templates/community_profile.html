@@ -89,8 +89,17 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 .cp-create-fab{display:none}
 .cp-prof-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:6px 0 10px;font-size:13px;color:#888}
 .cp-tokens-strip{position:relative;margin-top:2px;margin-bottom:14px;padding:15px 17px 14px;max-width:min(100%,560px);border-radius:26px 18px 24px 16px;background:linear-gradient(160deg,rgba(24,24,20,.94),rgba(10,10,14,.96));border:1px solid rgba(61,212,224,.56);box-shadow:0 18px 54px rgba(0,0,0,.52),0 0 34px rgba(61,212,224,.22),0 0 22px rgba(255,123,224,.14),inset 0 1px 0 rgba(255,255,255,.09);transform:rotate(-1.25deg) skewX(-1deg);overflow:visible}
-.cp-tokens-strip::before{content:"";position:absolute;right:4px;top:-42px;width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 50% 50%,rgba(255,232,176,.98) 0%,rgba(255,188,96,.94) 44%,rgba(190,110,28,.9) 72%,rgba(87,55,22,.95) 100%);filter:drop-shadow(0 0 12px rgba(255,214,130,.45));transform:rotate(8deg)}
-.cp-tokens-strip::after{content:"";position:absolute;right:-22px;top:-34px;width:250px;height:148px;pointer-events:none;background:radial-gradient(ellipse at top right,rgba(255,235,176,.52) 0%,rgba(255,204,114,.22) 34%,rgba(61,212,224,.1) 66%,transparent 100%);filter:blur(.6px)}
+.cp-tokens-strip::before{content:"";position:absolute;left:8px;top:-34px;width:32px;height:32px;border-radius:50%;background:radial-gradient(circle at 50% 50%,rgba(255,236,190,.98) 0%,rgba(255,196,112,.92) 48%,rgba(188,112,36,.88) 74%,rgba(78,52,24,.92) 100%);filter:drop-shadow(0 0 12px rgba(255,214,130,.45));transform:rotate(-8deg);opacity:.95;transition:opacity .2s ease}
+.cp-tokens-strip::after{content:"";position:absolute;left:-36px;top:-88px;width:188px;height:188px;pointer-events:none;background:radial-gradient(circle at 30% 30%,rgba(255,238,186,.52) 0%,rgba(255,212,132,.28) 32%,rgba(255,194,116,.12) 56%,rgba(61,212,224,.06) 72%,transparent 100%);filter:blur(12px);opacity:.86;transition:opacity .2s ease}
+.cp-tokens-strip[data-lamp-off="1"]::before,.cp-tokens-strip[data-lamp-off="1"]::after{opacity:0}
+.cp-tokens-strip__head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.cp-lamp-toggle{display:inline-flex;align-items:center;gap:8px;padding:4px 8px;border:1px solid rgba(255,255,255,.14);border-radius:999px;background:rgba(255,255,255,.04);color:#d0d5df;font-size:11px;font-weight:600}
+.cp-lamp-toggle input{appearance:none;width:30px;height:18px;border-radius:999px;background:#20242f;border:1px solid rgba(255,255,255,.22);position:relative;cursor:pointer;transition:all .2s ease}
+.cp-lamp-toggle input::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#8a90a0;transition:all .2s ease}
+.cp-lamp-toggle input:checked{background:rgba(61,212,224,.35);border-color:rgba(61,212,224,.62)}
+.cp-lamp-toggle input:checked::after{left:14px;background:#d8fbff}
+.ig-profile-av-wrap.lamp-on::after{content:"";position:absolute;inset:-34px;pointer-events:none;border-radius:50%;background:radial-gradient(circle at 45% 38%,rgba(255,242,198,.58) 0%,rgba(255,220,152,.32) 28%,rgba(255,201,118,.14) 48%,rgba(61,212,224,.07) 64%,transparent 84%);filter:blur(14px);opacity:.86;z-index:0}
+.ig-profile-av-wrap .ig-profile-av{position:relative;z-index:1}
 .cp-tokens-strip__title{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#ff9ce8;font-weight:800;margin-bottom:10px;text-shadow:0 0 14px rgba(255,124,223,.34)}
 .cp-tokens-strip__grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 20px;align-items:start}
 .cp-tokens-strip__cell{display:flex;flex-direction:column;gap:4px;min-width:0;text-align:left}
@@ -103,7 +112,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 .cp-chaos-toggle input::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#8a90a0;transition:all .2s ease}
 .cp-chaos-toggle input:checked{background:rgba(61,212,224,.35);border-color:rgba(61,212,224,.62)}
 .cp-chaos-toggle input:checked::after{left:16px;background:#d8fbff}
-@media(max-width:400px){.cp-tokens-strip__grid{grid-template-columns:1fr;gap:10px}}
+@media(max-width:400px){.cp-tokens-strip__grid{grid-template-columns:1fr;gap:10px}.cp-lamp-toggle{font-size:10px;padding:3px 7px}}
 @media(max-width:768px){
   .ig-feed-shell{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .ig-post:nth-child(6n+1){transform:translateY(0) rotate(-2.2deg)}
@@ -139,7 +148,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
   <main class="cp-ig-main">
     <div class="ig-me-shell">
       <div class="ig-profile-head">
-        <div class="ig-profile-av-wrap">
+        <div class="ig-profile-av-wrap{% if profile.get('token_lamp_enabled') is not sameas false %} lamp-on{% endif %}">
           {% if profile.avatar %}
           <img src="{{ profile.avatar }}" class="ig-profile-av" alt="{{ profile.name }}">
           {% else %}
@@ -184,8 +193,16 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
           {% set show_del_cell = is_own or profile.decimal_del_balance is not none %}
           {% set show_shev_cell = is_own or profile.shevelev_balance_cached is not none %}
           {% if show_del_cell or show_shev_cell %}
-          <div class="cp-tokens-strip" aria-label="Токены в сети Decimal">
-            <div class="cp-tokens-strip__title">Токены · Decimal</div>
+          <div id="cpTokensStrip" class="cp-tokens-strip" data-lamp-off="{% if profile.get('token_lamp_enabled') is sameas false %}1{% else %}0{% endif %}" aria-label="Токены в сети Decimal">
+            <div class="cp-tokens-strip__head">
+              <div class="cp-tokens-strip__title">Токены · Decimal</div>
+              {% if is_own %}
+              <label class="cp-lamp-toggle" for="cpLampToggle">
+                <span>Свет</span>
+                <input id="cpLampToggle" type="checkbox" {% if profile.get('token_lamp_enabled') is not sameas false %}checked{% endif %} onchange="saveTokenLampEnabled(this.checked)">
+              </label>
+              {% endif %}
+            </div>
             <div class="cp-tokens-strip__grid" style="{% if show_del_cell and show_shev_cell %}grid-template-columns:1fr 1fr{% else %}grid-template-columns:1fr{% endif %}">
               {% if show_del_cell %}
               <div class="cp-tokens-strip__cell">
@@ -333,6 +350,33 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 <script>
 function _escHtml(t){
   const d=document.createElement('div');d.textContent=t==null?'':String(t);return d.innerHTML;
+}
+function applyTokenLampState(isOn){
+  const on=!!isOn;
+  const strip=document.getElementById('cpTokensStrip');
+  const avWrap=document.querySelector('.ig-profile-av-wrap');
+  const sw=document.getElementById('cpLampToggle');
+  if(strip){ strip.dataset.lampOff = on ? '0' : '1'; }
+  if(avWrap){ avWrap.classList.toggle('lamp-on', on); }
+  if(sw && sw.checked!==on){ sw.checked=on; }
+}
+async function saveTokenLampEnabled(isOn){
+  applyTokenLampState(!!isOn);
+  try{
+    const r=await fetch('/profile/token-lamp',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      credentials:'same-origin',
+      body:JSON.stringify({token_lamp_enabled:!!isOn})
+    });
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.ok){
+      throw new Error(d.error||'Не удалось сохранить');
+    }
+  }catch(e){
+    applyTokenLampState(!isOn);
+    alert((e&&e.message)||'Не удалось сохранить свет');
+  }
 }
 function closePostMenus(){
   document.querySelectorAll('.ig-pm .ig-pm-panel').forEach(function(p){ p.style.display='none'; });

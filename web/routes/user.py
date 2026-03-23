@@ -903,6 +903,26 @@ async def profile_token_visibility(request: Request):
     return JSONResponse({"ok": True})
 
 
+@router.post("/profile/token-lamp")
+async def profile_token_lamp(request: Request):
+    """Персональный переключатель лампы подсветки токенов/аватара (сохраняется в профиле)."""
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = user.get("primary_user_id") or user["id"]
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    enabled = bool(body.get("token_lamp_enabled", True))
+    await database.execute(
+        users.update()
+        .where(users.c.id == uid)
+        .values(token_lamp_enabled=enabled)
+    )
+    return JSONResponse({"ok": True, "token_lamp_enabled": enabled})
+
+
 @router.post("/profile/plan-upgrade-request")
 async def profile_plan_upgrade_request(
     request: Request,
