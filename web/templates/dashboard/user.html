@@ -627,30 +627,30 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 .my-tokens-inline::before{
   content:"";
   position:absolute;
-  right:-6px;
-  top:-52px;
-  width:64px;
-  height:62px;
+  right:10px;
+  top:-64px;
+  width:82px;
+  height:84px;
   pointer-events:none;
-  border-top:3px solid rgba(230,189,118,.92);
-  border-right:3px solid rgba(203,154,78,.86);
+  border-top:4px solid rgba(230,189,118,.95);
+  border-right:4px solid rgba(203,154,78,.9);
   border-left:none;
   border-bottom:none;
-  border-radius:0 72px 0 0;
-  transform:rotate(10deg);
-  filter:drop-shadow(0 0 4px rgba(255,204,120,.24));
+  border-radius:0 88px 0 0;
+  transform:rotate(8deg);
+  filter:drop-shadow(0 0 8px rgba(255,204,120,.32));
 }
 .my-tokens-inline::after{
   content:"";
   position:absolute;
-  right:-14px;
-  top:-24px;
-  width:140px;
-  max-width:calc(100% + 28px);
-  height:108px;
+  right:-24px;
+  top:-40px;
+  width:210px;
+  max-width:calc(100% + 64px);
+  height:190px;
   pointer-events:none;
-  background:radial-gradient(circle at 78% 8%,rgba(255,232,176,.26) 0%,rgba(255,208,122,.14) 18%,rgba(61,212,224,.05) 44%,transparent 70%);
-  filter:blur(1.4px);
+  background:radial-gradient(circle at 76% 12%,rgba(255,232,176,.44) 0%,rgba(255,208,122,.24) 24%,rgba(61,212,224,.1) 56%,transparent 100%);
+  filter:blur(2px);
 }
 .my-tokens-inline__title{
   font-size:9px;
@@ -989,6 +989,13 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
                 <div style="font-size:14px;font-weight:700;color:#e8e8e8">{{ user.name or 'Вы' }}</div>
                 <div style="font-size:11px;color:#888">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}</div>
               </div>
+              <details class="ig-pm" onclick="event.stopPropagation()">
+                <summary title="Меню поста">⋯</summary>
+                <div class="ig-pm-panel" onclick="event.stopPropagation()">
+                  <button type="button" onclick="openEditPostModal({{ p.id }}, {{ (p.title|default(''))|tojson }}, {{ (p.content|default(''))|tojson }})">Изменить</button>
+                  <button type="button" onclick="deleteFeedPost({{ p.id }})" style="color:#f87171">Удалить</button>
+                </div>
+              </details>
             </div>
             {% if p.title %}<div style="padding:10px 14px 0;font-size:15px;font-weight:700;color:#e8e8e8">{{ p.title }}</div>{% endif %}
             {% if p.image_url %}
@@ -1004,9 +1011,9 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
               <button type="button" class="ig-post-metric ig-post-metric-star" id="profile-like-btn-{{ p.id }}" onclick="likeProfilePost({{ p.id }},this)">
                 <span>{% if is_liked_me %}⭐{% else %}✩{% endif %}</span><span class="n" id="profile-like-count-{{ p.id }}">{{ p.likes_count }}</span>
               </button>
-              <a href="/community/profile/{{ effective_user_id }}#pc-{{ p.id }}" class="ig-post-metric ig-post-metric-chat" style="text-decoration:none">
+              <button type="button" class="ig-post-metric ig-post-metric-chat" onclick="goSec('feed');setTimeout(function(){var x=document.getElementById('fp-{{ p.id }}');if(x)x.scrollIntoView({behavior:'smooth',block:'start'});},120)">
                 <span>💬</span><span class="n">{{ p.comments_count or 0 }}</span>
-              </a>
+              </button>
               <button type="button" class="ig-post-metric ig-post-metric-share" onclick="openSharePostModal({{ p.id }})">
                 <span>↗</span><span class="n">{{ p.saves_count or 0 }}</span>
               </button>
