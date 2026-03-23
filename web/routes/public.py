@@ -135,10 +135,15 @@ async def index(request: Request):
     )
     last_community_posts = [dict(r) for r in last_community_posts_raw]
 
+    # Community totals for chaos stat cards
+    community_posts_count = await database.fetch_val(
+        sa.select(sa.func.count()).select_from(community_posts).where(community_posts.c.approved == True)
+    ) or 0
+
     # Featured marketplace products with avg ratings
     featured_raw = await database.fetch_all(
         shop_products.select().where(shop_products.c.in_stock == True)
-        .order_by(shop_products.c.created_at.desc()).limit(4)
+        .order_by(shop_products.c.created_at.desc()).limit(6)
     )
     featured_products = []
     for p in featured_raw:
@@ -184,6 +189,7 @@ async def index(request: Request):
             "user": current_user,
             "products": prods,
             "users_count": users_count,
+            "community_posts_count": community_posts_count,
             "featured_products": featured_products,
             "community_members": community_members,
             "last_community_posts": last_community_posts,

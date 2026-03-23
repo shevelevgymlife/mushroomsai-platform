@@ -20,9 +20,34 @@
     </style>
 
     {% if featured_products %}
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-6 mb-12">
-      {% for p in featured_products %}
-      <div class="relative panel-rise overflow-hidden group hover:border-gold/20 transition-all duration-300">
+    {% set chaos_shop = featured_products[:6] %}
+    {% set shop_pos = [
+      "top:24px;left:18px;transform:rotate(-5deg);z-index:4",
+      "top:10px;left:34%;transform:rotate(4deg);z-index:2",
+      "top:30px;right:18px;transform:rotate(-3deg);z-index:3",
+      "bottom:18px;left:8%;transform:rotate(5deg);z-index:1",
+      "bottom:8px;left:41%;transform:rotate(-4deg);z-index:5",
+      "bottom:24px;right:8%;transform:rotate(6deg);z-index:2",
+    ] %}
+    <style>
+      .shop-chaos-stage{position:relative;height:540px;border-radius:26px;border:1px solid rgba(255,255,255,.06);background:linear-gradient(160deg,rgba(255,255,255,.015),rgba(8,8,10,.2));overflow:hidden}
+      .shop-chaos-card{position:absolute;width:min(250px,29vw);border-radius:20px;overflow:hidden}
+      .shop-chaos-card:hover{transform:translateY(-4px) rotate(0deg)!important;z-index:9!important}
+      @media(max-width:1024px){.shop-chaos-stage{height:620px}.shop-chaos-card{width:min(43vw,230px)}}
+      @media(max-width:640px){
+        .shop-chaos-stage{height:760px}
+        .shop-chaos-card{width:min(46vw,210px)}
+        .shop-chaos-card:nth-child(1){top:18px!important;left:8px!important;transform:rotate(-7deg)!important}
+        .shop-chaos-card:nth-child(2){top:26px!important;right:8px!important;left:auto!important;transform:rotate(6deg)!important}
+        .shop-chaos-card:nth-child(3){top:252px!important;left:10px!important;right:auto!important;transform:rotate(-5deg)!important}
+        .shop-chaos-card:nth-child(4){top:272px!important;right:8px!important;left:auto!important;transform:rotate(7deg)!important}
+        .shop-chaos-card:nth-child(5){top:494px!important;left:10px!important;right:auto!important;transform:rotate(-6deg)!important}
+        .shop-chaos-card:nth-child(6){top:516px!important;right:8px!important;left:auto!important;transform:rotate(5deg)!important}
+      }
+    </style>
+    <div class="shop-chaos-stage mb-12">
+      {% for p in chaos_shop %}
+      <div class="shop-chaos-card relative panel-rise overflow-hidden group hover:border-gold/20 transition-all duration-300" style="{{ shop_pos[loop.index0] if loop.index0 < shop_pos|length else 'top:20px;left:20px' }}">
         {% if not user %}
         <div class="mp-blur-overlay" onclick="showRegisterPopup()">
           <div class="text-3xl">🔒</div>

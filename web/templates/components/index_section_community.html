@@ -104,8 +104,35 @@
         .community-chaos-card .font-display{font-size:18px!important;line-height:1.15}
       }
       @media(max-width:540px){
-        .community-chaos-stage{height:700px}
+        .community-chaos-stage{height:620px}
         .community-chaos-card{width:min(47vw,182px)}
+      }
+      .community-metrics-chaos{
+        position:relative;
+        width:min(860px,100%);
+        margin:6px auto 16px;
+        min-height:170px;
+      }
+      .community-metric-card{
+        position:absolute;
+        width:min(250px,31vw);
+        min-width:180px;
+        border-radius:18px;
+        padding:14px 14px 12px;
+        background:linear-gradient(165deg,rgba(255,255,255,.07),rgba(11,11,14,.92));
+        border:1px solid rgba(255,255,255,.12);
+        box-shadow:0 14px 42px rgba(0,0,0,.45),0 0 22px rgba(61,212,224,.06);
+      }
+      .community-metric-card b{display:block;font-size:28px;line-height:1;color:#3dd4e0;margin-bottom:6px}
+      .community-metric-card span{display:block;font-size:11px;letter-spacing:.11em;text-transform:uppercase;color:#a8a8b0}
+      @media(max-width:900px){
+        .community-metrics-chaos{min-height:190px}
+        .community-metric-card{width:min(46vw,220px);min-width:unset}
+      }
+      @media(max-width:540px){
+        .community-metrics-chaos{min-height:214px}
+        .community-metric-card{padding:12px 10px}
+        .community-metric-card b{font-size:24px}
       }
     </style>
 
@@ -153,33 +180,25 @@
       {% endfor %}
     </div>
 
-    {% if last_community_posts %}
-    {% set lp = last_community_posts[0] %}
-    <div class="community-chaos-card panel-rise rounded-[22px] p-5 sm:p-6 mb-10 max-w-3xl mx-auto" style="position:relative;left:-14px;transform:rotate(-2deg) scale(1.01);z-index:2">
-      <p class="section-eyebrow mb-4">Последний пост в сообществе</p>
-      <div class="flex gap-3 sm:gap-4 items-start">
-        {% if lp.author_avatar %}
-        <img src="{{ lp.author_avatar }}" class="w-9 h-9 rounded-full object-cover flex-shrink-0 border border-gold/30" alt="">
-        {% else %}
-        <div class="w-9 h-9 rounded-full bg-gold flex items-center justify-center font-bold text-bg text-sm flex-shrink-0">{{ ((lp.author_name or 'U')[0]).upper() }}</div>
-        {% endif %}
-        <div class="flex-1 min-w-0">
-          <div class="text-sm font-semibold text-text mb-1">{{ lp.author_name or 'Участник' }}</div>
-          <p class="text-sm text-muted leading-relaxed line-clamp-2 m-0">{{ lp.content[:180] }}</p>
-        </div>
-        <div class="flex-shrink-0 flex gap-2 text-xs text-muted">
-          <span>❤️ {{ lp.likes_count or 0 }}</span>
-          <span>💬 {{ lp.comments_count or 0 }}</span>
-        </div>
+    {% set lp = last_community_posts[0] if last_community_posts else none %}
+    <div class="community-metrics-chaos">
+      <div class="community-metric-card" style="top:0;left:0;transform:rotate(-4deg)">
+        <b>{{ users_count }}</b>
+        <span>участников</span>
+      </div>
+      <div class="community-metric-card" style="top:14px;right:0;transform:rotate(5deg)">
+        <b>{{ community_posts_count or 0 }}</b>
+        <span>сообщений в сообществе</span>
+      </div>
+      <div class="community-metric-card" style="top:92px;left:50%;transform:translateX(-50%) rotate(-2deg)">
+        <b style="font-size:18px;line-height:1.2;margin-bottom:8px;color:#e8e8e8">{% if lp and lp.author_name %}{{ lp.author_name }}{% else %}Нет постов{% endif %}</b>
+        <span style="letter-spacing:.08em;text-transform:none;color:#8f8f99;line-height:1.35">
+          {% if lp and lp.content %}{{ lp.content[:58] }}{% if lp.content|length > 58 %}…{% endif %}{% else %}Последний пост появится здесь{% endif %}
+        </span>
       </div>
     </div>
-    {% endif %}
 
-    <div class="text-center" style="transform:rotate(2deg);position:relative;z-index:3">
-      <div class="inline-flex items-center gap-2 px-6 py-3 rounded-[999px] bg-gold/10 border border-gold/25 text-gold text-sm mb-6 shadow-[0_16px_48px_rgba(0,0,0,.4)]">
-        🍄 Уже {{ users_count }} участников в сообществе
-      </div>
-      <br>
+    <div class="text-center mt-2 sm:mt-4">
       <a href="/dashboard#feed" class="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-gold text-bg font-semibold hover:bg-gold-light transition-all duration-300 shadow-[0_8px_40px_rgba(61,212,224,0.22)]">
         Войти в сообщество →
       </a>
