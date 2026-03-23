@@ -43,6 +43,24 @@ cp .env.example .env
 | `SITE_URL` | https://mushroomsai.ru |
 | `DEPLOY_NOTIFY_EMAIL_TO` | email для уведомлений о новом деплое (опционально) |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | SMTP-параметры для отправки уведомления (опционально) |
+| `TASK_NOTIFY_TG_CHAT_ID` | Telegram chat id для служебных сообщений по задачам/деплою (опционально) |
+| `TASK_NOTIFY_EMAIL_TO` | email для служебных сообщений по задачам/деплою (опционально) |
+
+### Служебные уведомления в Telegram/Email (этапы задачи и деплоя)
+
+Можно получать 3 сообщения:
+1. `Задача принята`  
+2. `Отправил в Render на деплой`  
+3. `Деплой завершён` (отправляется автоматически при старте нового инстанса на Render)
+
+Быстрые команды (локально/на сервере CI):
+
+```bash
+python scripts/task_notify.py accepted --task "Короткое описание задачи"
+python scripts/task_notify.py deploying --task "Короткое описание задачи"
+```
+
+Третье сообщение (`deploy_done`) отправляется автоматически кодом приложения при успешном старте (`main.py` lifecycle).
 
 ### 3. Запустить локально
 
