@@ -38,25 +38,50 @@
       </button>
     </form>
 
-    {% for folder in folder_order %}
-    {% if not focused_folder or folder == focused_folder %}
-    {% set fposts = posts_by_folder[folder] %}
+    {% if not focused_folder %}
+    <section class="mb-10">
+      <div class="mb-4 relative">
+        <label class="block text-xs text-muted mb-1.5">Поиск папки</label>
+        <input id="folderSearchInput" type="text" autocomplete="off" placeholder="Начните вводить имя папки..."
+          class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm outline-none focus:border-gold/50 box-border"
+          oninput="onFolderSearchInput(this.value)" />
+        <div id="folderSearchSuggest" class="hidden absolute left-0 right-0 mt-1 rounded-xl border border-border bg-[#0f1014] shadow-xl z-20 max-h-56 overflow-y-auto"></div>
+      </div>
+      <div id="folderGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% for folder in folder_order %}
+        {% set fposts = posts_by_folder[folder] %}
+        <a href="/admin/ai-posts?folder={{ folder|urlencode }}" data-folder-name="{{ folder|lower }}"
+          class="folder-card rounded-2xl bg-surface border border-border p-4 hover:border-gold/40 transition-colors" style="text-decoration:none">
+          <div class="flex items-center justify-between gap-3">
+            <div class="min-w-0">
+              <div class="text-gold text-lg leading-none mb-1">📁</div>
+              <div class="text-sm font-semibold text-text truncate">{{ folder }}</div>
+            </div>
+            <span class="text-xs text-muted shrink-0">{{ fposts|length }} пост.</span>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+      {% if not folder_order %}
+      <div class="rounded-2xl border border-border bg-surface p-12 text-center text-muted text-sm">
+        Папок пока нет. Создайте папку или добавьте первый пост.
+      </div>
+      {% endif %}
+    </section>
+    {% else %}
+    {% set fposts = posts_by_folder[focused_folder] if focused_folder in posts_by_folder else [] %}
     <section class="mb-10 rounded-2xl bg-surface border border-border overflow-hidden">
       <div class="px-4 sm:px-5 py-3 border-b border-border flex items-center gap-2 bg-bg/40 flex-wrap">
         <span class="text-gold text-lg leading-none">📁</span>
-        <h2 class="text-sm font-semibold text-text tracking-wide">{{ folder }}</h2>
+        <h2 class="text-sm font-semibold text-text tracking-wide">{{ focused_folder }}</h2>
         <span class="text-xs text-muted ml-auto">{{ fposts|length }} пост.</span>
-        {% if not focused_folder %}
-        <a href="/admin/ai-posts?folder={{ folder|urlencode }}"
-          class="text-xs px-2.5 py-1 rounded-lg border border-gold/30 text-gold hover:bg-gold/10 shrink-0"
-          style="text-decoration:none">Открыть папку</a>
-        {% endif %}
-        {% if not fposts and folder != 'Без папки' %}
-        <button type="button" onclick="deleteFolderLabel({{ folder | tojson }})"
-          class="text-xs px-2 py-1 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 cursor-pointer shrink-0">
-          Удалить метку папки
-        </button>
-        {% endif %}
+      </div>
+      <div class="p-4 border-b border-border bg-bg/20 relative">
+        <label class="block text-xs text-muted mb-1.5">Поиск файла (поста) в папке</label>
+        <input id="fileSearchInput" type="text" autocomplete="off" placeholder="Начните вводить заголовок поста..."
+          class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm outline-none focus:border-gold/50 box-border"
+          oninput="onFileSearchInput(this.value)" />
+        <div id="fileSearchSuggest" class="hidden absolute left-4 right-4 mt-1 rounded-xl border border-border bg-[#0f1014] shadow-xl z-20 max-h-56 overflow-y-auto"></div>
       </div>
       <div class="overflow-x-auto">
         <table class="w-full text-sm min-w-[640px]">
@@ -69,9 +94,9 @@
               <th class="px-4 sm:px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Действия</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-border">
+          <tbody id="fileTableBody" class="divide-y divide-border">
             {% for post in fposts %}
-            <tr class="hover:bg-border/20 transition-colors">
+            <tr id="post-row-{{ post.id }}" class="post-row hover:bg-border/20 transition-colors" data-post-id="{{ post.id }}" data-post-title="{{ (post.title or '')|lower }}">
               <td class="px-4 sm:px-5 py-3">
                 <div class="font-medium text-text">{{ post.title }}</div>
                 <div class="text-xs text-muted mt-1 line-clamp-2 max-w-md">{{ post.content[:120] }}{% if post.content|length > 120 %}…{% endif %}</div>
@@ -108,7 +133,7 @@
           </tbody>
         </table>
       </div>
-      {% if focused_folder and folder == focused_folder and relocatable_posts|length > 0 %}
+      {% if focused_folder and relocatable_posts|length > 0 %}
       <div class="px-4 sm:px-5 py-4 border-t border-border bg-bg/30">
         <h3 class="text-sm font-semibold text-text mb-2">Добавить в эту папку уже существующие посты</h3>
         <p class="text-xs text-muted mb-3">Отметьте посты из других папок (или «Без папки») и нажмите «Перенести».</p>
@@ -131,11 +156,6 @@
       {% endif %}
     </section>
     {% endif %}
-    {% else %}
-    <div class="rounded-2xl border border-border bg-surface p-12 text-center text-muted text-sm">
-      Постов ещё нет. Добавьте первый и укажите папку (например «Инструкции» или «Биохимия»).
-    </div>
-    {% endfor %}
 
   </div>
 </div>
@@ -402,5 +422,79 @@ async function submitEditPost(e) {
     st.classList.remove('hidden');
   }
 }
+
+function renderSuggestBox(boxEl, items, onPick) {
+  if (!boxEl) return;
+  if (!items.length) {
+    boxEl.innerHTML = '';
+    boxEl.classList.add('hidden');
+    return;
+  }
+  boxEl.innerHTML = items.map(function (it) {
+    return '<button type="button" class="w-full text-left px-3 py-2 text-sm text-text bg-transparent border-0 cursor-pointer hover:bg-border/40" data-val="' + String(it.id || '') + '">' + String(it.label || '') + '</button>';
+  }).join('');
+  boxEl.classList.remove('hidden');
+  boxEl.querySelectorAll('button[data-val]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      onPick(btn.getAttribute('data-val'));
+      boxEl.classList.add('hidden');
+    });
+  });
+}
+
+function onFolderSearchInput(val) {
+  var q = String(val || '').trim().toLowerCase();
+  var cards = Array.from(document.querySelectorAll('.folder-card'));
+  if (!cards.length) return;
+  var suggest = document.getElementById('folderSearchSuggest');
+  cards.forEach(function (c) {
+    var nm = (c.getAttribute('data-folder-name') || '').toLowerCase();
+    c.style.display = !q || nm.indexOf(q) === 0 ? '' : 'none';
+  });
+  if (!q) {
+    if (suggest) suggest.classList.add('hidden');
+    return;
+  }
+  var items = cards
+    .map(function (c) { return { id: c.getAttribute('href') || '', label: c.querySelector('.text-sm.font-semibold')?.textContent || '' }; })
+    .filter(function (x) { return (x.label || '').toLowerCase().indexOf(q) === 0; })
+    .slice(0, 12);
+  renderSuggestBox(suggest, items, function (href) {
+    if (href) window.location.href = href;
+  });
+}
+
+function onFileSearchInput(val) {
+  var q = String(val || '').trim().toLowerCase();
+  var rows = Array.from(document.querySelectorAll('.post-row'));
+  if (!rows.length) return;
+  var suggest = document.getElementById('fileSearchSuggest');
+  rows.forEach(function (r) {
+    var nm = (r.getAttribute('data-post-title') || '').toLowerCase();
+    r.style.display = !q || nm.indexOf(q) === 0 ? '' : 'none';
+  });
+  if (!q) {
+    if (suggest) suggest.classList.add('hidden');
+    return;
+  }
+  var items = rows
+    .map(function (r) {
+      var pid = r.getAttribute('data-post-id') || '';
+      var nm = r.querySelector('td .font-medium')?.textContent || '';
+      return { id: pid, label: nm };
+    })
+    .filter(function (x) { return (x.label || '').toLowerCase().indexOf(q) === 0; })
+    .slice(0, 12);
+  renderSuggestBox(suggest, items, function (postId) {
+    var pid = Number(postId || 0);
+    if (pid > 0) openAiPostEdit(pid);
+  });
+}
+document.addEventListener('click', function (e) {
+  var f1 = document.getElementById('folderSearchSuggest');
+  var f2 = document.getElementById('fileSearchSuggest');
+  if (f1 && !e.target.closest('#folderSearchSuggest') && !e.target.closest('#folderSearchInput')) f1.classList.add('hidden');
+  if (f2 && !e.target.closest('#fileSearchSuggest') && !e.target.closest('#fileSearchInput')) f2.classList.add('hidden');
+});
 </script>
 {% endblock %}

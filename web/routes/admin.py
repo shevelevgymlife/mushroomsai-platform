@@ -1444,9 +1444,15 @@ async def ai_posts_page(request: Request):
         if fn and fn not in posts_by_folder:
             folder_order.append(fn)
             posts_by_folder[fn] = []
-    if "Без папки" in folder_order:
-        folder_order = ["Без папки"] + [x for x in folder_order if x != "Без папки"]
-    folder_options = sorted(set(folder_order), key=lambda x: (0 if x == "Без папки" else 1, x.lower()))
+    # Alphabetical folder ordering (with "Без папки" first for convenience)
+    folder_order = sorted(set(folder_order), key=lambda x: (0 if x == "Без папки" else 1, x.lower()))
+    folder_options = list(folder_order)
+    # Alphabetical post ordering inside each folder
+    for fn in list(posts_by_folder.keys()):
+        posts_by_folder[fn] = sorted(
+            posts_by_folder[fn],
+            key=lambda p: ((p.get("title") or "").strip().lower(), str(p.get("id") or "")),
+        )
 
     focus_raw = (request.query_params.get("folder") or "").strip()
     focused_folder: Optional[str] = None
@@ -1459,6 +1465,10 @@ async def ai_posts_page(request: Request):
                 fn = (p.get("folder") or "").strip() or "Без папки"
                 if fn != focused_folder:
                     relocatable_posts.append(p)
+    relocatable_posts = sorted(
+        relocatable_posts,
+        key=lambda p: ((p.get("title") or "").strip().lower(), str(p.get("id") or "")),
+    )
 
     return templates.TemplateResponse(
         "dashboard/admin_ai_posts.html",
