@@ -1096,10 +1096,18 @@ async def community_profile(request: Request, user_id: int):
     profile = get_public_user_data(dict(raw))
     apply_token_privacy_for_viewer(profile, viewer_id, profile_id)
 
+    # Unified account family (primary + linked secondary IDs)
+    family_rows = await database.fetch_all(
+        users.select().with_only_columns(users.c.id).where(
+            sa.or_(users.c.id == profile_id, users.c.primary_user_id == profile_id)
+        )
+    )
+    family_ids = sorted({int(r["id"]) for r in family_rows} | {int(profile_id)})
+
     # Post count & reputation
     post_count = await database.fetch_val(
         sa.select(sa.func.count()).select_from(community_posts)
-        .where(community_posts.c.user_id == profile_id)
+        .where(community_posts.c.user_id.in_(family_ids))
         .where(community_posts.c.approved == True)
     ) or 0
     rep_emoji, rep_level = _rep_level(post_count)
@@ -1131,7 +1139,7 @@ async def community_profile(request: Request, user_id: int):
     # User's posts
     raw_posts = await database.fetch_all(
         community_posts.select()
-        .where(community_posts.c.user_id == profile_id)
+        .where(community_posts.c.user_id.in_(family_ids))
         .where(community_posts.c.approved == True)
         .order_by(community_posts.c.pinned.desc(), community_posts.c.created_at.desc())
         .limit(30)

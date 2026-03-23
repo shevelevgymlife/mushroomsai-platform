@@ -1085,7 +1085,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
       {% if feed_raw %}
       {% for p in feed_raw %}
       {% set a = feed_authors.get(p.user_id) %}
-      {% set is_mine = p.user_id == effective_user_id %}
+      {% set is_mine = p.user_id in (my_account_ids or [effective_user_id]) %}
       {% set is_admin = (user.role | default('', true)) == 'admin' %}
       {% set is_following_author = p.user_id in following_ids %}
       {% set is_liked = p.id in liked_post_ids %}

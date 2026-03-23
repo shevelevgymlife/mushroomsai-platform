@@ -220,9 +220,12 @@ async def dashboard(request: Request):
         orders.select().where(orders.c.user_id == user["id"]).order_by(orders.c.created_at.desc())
     )
 
+    my_account_ids = await _account_family_ids(effective_user_id)
+    my_ids_list = sorted(my_account_ids)
+
     my_post_count = await database.fetch_val(
         sa.select(sa.func.count()).select_from(community_posts)
-        .where(community_posts.c.user_id == effective_user_id)
+        .where(community_posts.c.user_id.in_(my_ids_list))
     ) or 0
     ai_questions_today = user.get("daily_questions") or 0
 
@@ -248,14 +251,14 @@ async def dashboard(request: Request):
     # Last 5 posts by user (for classic home screen)
     recent_posts = await database.fetch_all(
         community_posts.select()
-        .where(community_posts.c.user_id == effective_user_id)
+        .where(community_posts.c.user_id.in_(my_ids_list))
         .order_by(community_posts.c.created_at.desc())
         .limit(5)
     )
     # Сетка профиля (Instagram): до 120 постов пользователя
     my_grid_posts = await database.fetch_all(
         community_posts.select()
-        .where(community_posts.c.user_id == effective_user_id)
+        .where(community_posts.c.user_id.in_(my_ids_list))
         .order_by(community_posts.c.created_at.desc())
         .limit(120)
     )
@@ -357,6 +360,7 @@ async def dashboard(request: Request):
             "comm_profile": dict(comm_profile) if comm_profile else None,
             "shevelev_token": shevelev_tok,
             "effective_user_id": effective_user_id,
+            "my_account_ids": my_ids_list,
             "visible_block_keys": visible_block_keys,
             "dashboard_secs": dashboard_secs,
             "group_list": group_list,
@@ -571,7 +575,7 @@ async def edit_community_post(
     post = await database.fetch_one(community_posts.select().where(community_posts.c.id == post_id))
     if not post:
         return JSONResponse({"error": "not found"}, status_code=404)
-    if post["user_id"] != uid and user.get("role") != "admin":
+    if not await _can_manage_community_post(user, post):
         return JSONResponse({"error": "forbidden"}, status_code=403)
     tit = (title or "").strip()[:200] or None
     # Allow editing title/photo even when text is not changed.
@@ -623,7 +627,7 @@ async def share_community_post_dm(request: Request, post_id: int):
     post = await database.fetch_one(community_posts.select().where(community_posts.c.id == post_id))
     if not post:
         return JSONResponse({"error": "not found"}, status_code=404)
-    if post["user_id"] != uid and user.get("role") != "admin":
+    if not await _can_manage_community_post(user, post):
         return JSONResponse({"error": "forbidden"}, status_code=403)
     author_id = post["user_id"]
     base = settings.SITE_URL.rstrip("/")
@@ -811,6 +815,43 @@ def _effective_user_id(user: dict) -> int:
         except (TypeError, ValueError):
             pass
     return int(user["id"])
+
+
+async def _account_family_ids(root_user_id: int) -> set[int]:
+    ids: set[int] = set()
+    try:
+        rows = await database.fetch_all(
+            users.select().with_only_columns(users.c.id, users.c.primary_user_id).where(
+                sa.or_(users.c.id == root_user_id, users.c.primary_user_id == root_user_id)
+            )
+        )
+        for r in rows:
+            try:
+                ids.add(int(r["id"]))
+            except Exception:
+                continue
+    except Exception:
+        pass
+    ids.add(int(root_user_id))
+    return ids
+
+
+async def _can_manage_community_post(user: dict, post_row) -> bool:
+    if not user or not post_row:
+        return False
+    if user.get("role") == "admin":
+        return True
+    uid = _effective_user_id(user)
+    try:
+        owner_id = int(post_row["user_id"] or 0)
+    except Exception:
+        owner_id = 0
+    if owner_id <= 0:
+        return False
+    if owner_id == uid:
+        return True
+    family_ids = await _account_family_ids(uid)
+    return owner_id in family_ids
 
 
 def _normalize_profile_url(raw: str) -> str | None:
@@ -2395,8 +2436,7 @@ async def delete_community_post_user(request: Request, post_id: int):
     post = await database.fetch_one(community_posts.select().where(community_posts.c.id == post_id))
     if not post:
         return JSONResponse({"error": "not found"}, status_code=404)
-    is_admin = user.get("role") == "admin"
-    if post["user_id"] != uid and not is_admin:
+    if not await _can_manage_community_post(user, post):
         return JSONResponse({"error": "forbidden"}, status_code=403)
     await _delete_community_post_and_related(post_id)
     return JSONResponse({"ok": True})
