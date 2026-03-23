@@ -601,8 +601,7 @@ async def share_community_post_dm(request: Request, post_id: int):
             sa.text(
                 "INSERT INTO direct_messages (sender_id, recipient_id, text, is_read, is_system) "
                 "VALUES (:s, :r, :t, false, false)"
-            ),
-            {"s": uid, "r": recipient_id, "t": line},
+            ).bindparams(s=uid, r=recipient_id, t=line)
         )
     except Exception as e:
         _logger.exception("share dm: %s", e)
@@ -888,8 +887,7 @@ async def shevelev_transfer_notify(request: Request):
             sa.text(
                 "INSERT INTO direct_messages (sender_id, recipient_id, text, is_read, is_system) "
                 "VALUES (:s, :r, :t, false, false)"
-            ),
-            {"s": uid, "r": rid, "t": msg},
+            ).bindparams(s=uid, r=rid, t=msg)
         )
     except Exception:
         return JSONResponse({"error": "dm"}, status_code=500)
@@ -1575,13 +1573,35 @@ async def fetch_community_groups_for_user(uid: int) -> list[dict]:
         """
     _no_img = "g.created_by, g.image_url"
     _no_img_rep = "g.created_by, NULL::text AS image_url"
+    _slow_col = "g.slow_mode_seconds,"
+    _slow_null = "NULL::integer AS slow_mode_seconds,"
+    _show_hist_col = "COALESCE(g.show_history_to_new_members, true) AS show_history_to_new_members,"
+    _show_hist_true = "true AS show_history_to_new_members,"
     for q in (
         q_rich,
+        q_rich.replace(_slow_col, _slow_null),
+        q_rich.replace(_show_hist_col, _show_hist_true),
+        q_rich.replace(_slow_col, _slow_null).replace(_show_hist_col, _show_hist_true),
         q_rich.replace(_no_img, _no_img_rep),
+        q_rich.replace(_no_img, _no_img_rep).replace(_slow_col, _slow_null),
+        q_rich.replace(_no_img, _no_img_rep).replace(_show_hist_col, _show_hist_true),
+        q_rich.replace(_no_img, _no_img_rep).replace(_slow_col, _slow_null).replace(_show_hist_col, _show_hist_true),
         q_full,
+        q_full.replace(_slow_col, _slow_null),
+        q_full.replace(_show_hist_col, _show_hist_true),
+        q_full.replace(_slow_col, _slow_null).replace(_show_hist_col, _show_hist_true),
         q_full.replace(_no_img, _no_img_rep),
+        q_full.replace(_no_img, _no_img_rep).replace(_slow_col, _slow_null),
+        q_full.replace(_no_img, _no_img_rep).replace(_show_hist_col, _show_hist_true),
+        q_full.replace(_no_img, _no_img_rep).replace(_slow_col, _slow_null).replace(_show_hist_col, _show_hist_true),
         q_simple,
+        q_simple.replace(_slow_col, _slow_null),
+        q_simple.replace(_show_hist_col, _show_hist_true),
+        q_simple.replace(_slow_col, _slow_null).replace(_show_hist_col, _show_hist_true),
         q_simple.replace(_no_img, _no_img_rep),
+        q_simple.replace(_no_img, _no_img_rep).replace(_slow_col, _slow_null),
+        q_simple.replace(_no_img, _no_img_rep).replace(_show_hist_col, _show_hist_true),
+        q_simple.replace(_no_img, _no_img_rep).replace(_slow_col, _slow_null).replace(_show_hist_col, _show_hist_true),
         q_minimal,
     ):
         try:
