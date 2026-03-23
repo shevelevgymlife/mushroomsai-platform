@@ -1,0 +1,171 @@
+from __future__ import annotations
+
+import os
+import time
+from typing import Any
+
+import sqlalchemy as sa
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, CommandHandler, filters
+
+from config import settings
+from db.database import database
+from services.task_notify import notify_task_accepted, notify_task_done, notify_deploy_sent
+
+
+ASK_TASK_TEXT, ASK_PHOTO_CHOICE, WAIT_PHOTO = range(3)
+
+
+def _task_chat_id() -> int:
+    raw = (
+        (settings.DEPLOY_NOTIFY_TASK_CHAT_ID or "").strip()
+        or (settings.DEPLOY_NOTIFY_TG_CHAT_ID or "").strip()
+        or str(int(getattr(settings, "ADMIN_TG_ID", 0) or 0))
+    )
+    try:
+        return int(raw or 0)
+    except Exception:
+        return 0
+
+
+def _is_owner(uid: int) -> bool:
+    if not uid:
+        return False
+    if int(uid) == int(getattr(settings, "ADMIN_TG_ID", 0) or 0):
+        return True
+    extras = str(getattr(settings, "TASK_APPROVAL_ALLOWED_TG_IDS", "") or "")
+    allowed = {s.strip() for s in extras.split(",") if s.strip()}
+    return str(int(uid)) in allowed
+
+
+async def _ensure_task_inbox_table() -> None:
+    await database.execute(
+        sa.text(
+            """CREATE TABLE IF NOT EXISTS task_inbox (
+                id SERIAL PRIMARY KEY,
+                tg_user_id BIGINT NOT NULL,
+                task_text TEXT NOT NULL,
+                need_photo BOOLEAN NOT NULL DEFAULT false,
+                photo_file_id TEXT,
+                status VARCHAR(24) NOT NULL DEFAULT 'new',
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW()
+            )"""
+        )
+    )
+
+
+async def _create_task(tg_user_id: int, text: str) -> int:
+    row = await database.fetch_one_write(
+        sa.text(
+            "INSERT INTO task_inbox (tg_user_id, task_text, status, updated_at) "
+            "VALUES (:uid, :txt, 'new', NOW()) "
+            "RETURNING id"
+        ).bindparams(uid=int(tg_user_id), txt=(text or "").strip()[:6000])
+    )
+    return int((row or {}).get("id") or 0)
+
+
+async def _update_task(task_id: int, **kwargs: Any) -> None:
+    if not task_id:
+        return
+    sets = []
+    params: dict[str, Any] = {"id": int(task_id)}
+    for k, v in kwargs.items():
+        sets.append(f"{k} = :{k}")
+        params[k] = v
+    sets.append("updated_at = NOW()")
+    await database.execute(
+        sa.text(f"UPDATE task_inbox SET {', '.join(sets)} WHERE id = :id").bindparams(**params)
+    )
+
+
+async def task_give_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message:
+        return ConversationHandler.END
+    uid = int(update.effective_user.id) if update.effective_user else 0
+    if not _is_owner(uid):
+        await update.message.reply_text("Эта функция доступна только владельцу.")
+        return ConversationHandler.END
+    await update.message.reply_text("Евгений Алексеевич, что бы вы хотели добавить/изменить?")
+    return ASK_TASK_TEXT
+
+
+async def task_text_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message:
+        return ConversationHandler.END
+    uid = int(update.effective_user.id) if update.effective_user else 0
+    txt = (update.message.text or "").strip()
+    if not txt:
+        await update.message.reply_text("Пожалуйста, отправьте текст задачи.")
+        return ASK_TASK_TEXT
+    task_id = await _create_task(uid, txt)
+    context.user_data["task_intake_id"] = task_id
+    context.user_data["task_intake_text"] = txt
+    kb = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("✅ Да", callback_data="task_photo:yes"),
+            InlineKeyboardButton("❌ Нет", callback_data="task_photo:no"),
+        ]
+    ])
+    await update.message.reply_text(
+        "Фото прилагаться будут к задаче?",
+        reply_markup=kb,
+    )
+    return ASK_PHOTO_CHOICE
+
+
+async def task_photo_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    if not q:
+        return ConversationHandler.END
+    await q.answer()
+    decision = str(q.data or "").split(":")[-1]
+    task_id = int(context.user_data.get("task_intake_id") or 0)
+    task_text = str(context.user_data.get("task_intake_text") or "")
+    if decision == "yes":
+        await _update_task(task_id, need_photo=True, status="wait_photo")
+        await q.edit_message_text("Жду фото.")
+        return WAIT_PHOTO
+
+    await _update_task(task_id, need_photo=False, status="in_progress")
+    await q.edit_message_text("Принял. Начал выполнять задачу без фото.")
+    await notify_task_accepted(task_text=f"Принял задачу: {task_text}")
+    return ConversationHandler.END
+
+
+async def task_photo_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not update.message.photo:
+        await update.message.reply_text("Пожалуйста, отправьте фото одним сообщением.")
+        return WAIT_PHOTO
+    task_id = int(context.user_data.get("task_intake_id") or 0)
+    task_text = str(context.user_data.get("task_intake_text") or "")
+    file_id = update.message.photo[-1].file_id
+    await _update_task(task_id, photo_file_id=file_id, status="in_progress")
+    await update.message.reply_text("Фото к заданию принял.")
+    await notify_task_accepted(task_text=f"Принял задачу: {task_text} (с фото)")
+    return ConversationHandler.END
+
+
+async def task_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message:
+        await update.message.reply_text("Отменил ввод задачи.")
+    return ConversationHandler.END
+
+
+def get_task_intake_conversation() -> ConversationHandler:
+    return ConversationHandler(
+        entry_points=[
+            MessageHandler(filters.Regex("^Дать задачу$"), task_give_entry),
+            CommandHandler("task", task_give_entry),
+        ],
+        states={
+            ASK_TASK_TEXT: [MessageHandler(filters.TEXT & ~filters.COMMAND, task_text_received)],
+            ASK_PHOTO_CHOICE: [CallbackQueryHandler(task_photo_choice, pattern=r"^task_photo:(yes|no)$")],
+            WAIT_PHOTO: [MessageHandler(filters.PHOTO, task_photo_received)],
+        },
+        fallbacks=[CommandHandler("cancel", task_cancel)],
+        per_user=True,
+        per_chat=True,
+        per_message=False,
+    )

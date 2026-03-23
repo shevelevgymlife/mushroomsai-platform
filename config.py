@@ -14,9 +14,13 @@ class Settings(BaseSettings):
     ADMIN_EMAIL: str = ""  # опционально: email владельца (Google) = права оператора
     DEPLOY_NOTIFY_EMAIL_TO: str = ""  # куда слать уведомление о деплое
     DEPLOY_NOTIFY_EMAIL_FROM: str = ""  # от кого слать (если пусто, используем SMTP_USER)
+    DEPLOY_NOTIFY_TG_BOT_TOKEN: str = ""  # отдельный токен Telegram-бота для уведомлений/подтверждений
     DEPLOY_NOTIFY_TG_CHAT_ID: str = ""  # chat_id для deploy-уведомлений (личка/группа)
     DEPLOY_NOTIFY_TASK_CHAT_ID: str = ""  # chat_id для статусов задач (если пусто = DEPLOY_NOTIFY_TG_CHAT_ID)
     DEPLOY_NOTIFY_TASK_EMAIL_TO: str = ""  # email для статусов задач (если пусто = DEPLOY_NOTIFY_EMAIL_TO)
+    TASK_APPROVAL_BOT_TOKEN: str = ""  # токен для интерактивных подтверждений Да/Нет
+    TASK_APPROVAL_CHAT_ID: str = ""  # чат для вопросов подтверждения (если пусто, берем DEPLOY_NOTIFY_TASK_CHAT_ID)
+    TASK_APPROVAL_ALLOWED_TG_IDS: str = ""  # доп. TG ID через запятую, кто может нажимать Да/Нет
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
@@ -26,6 +30,7 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_USERNAME: str = "mushrooms_ai_bot"
     SHEVELEV_TOKEN_ADDRESS: str = ""
     DECIMAL_RPC_URL: str = "https://node.decimalchain.com/web3/"
+    TASK_APPROVAL_ALLOWED_TG_IDS: str = ""
 
     class Config:
         env_file = ".env"

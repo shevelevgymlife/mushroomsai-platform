@@ -140,6 +140,17 @@ async def lifespan(app: FastAPI):
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS show_del_to_public BOOLEAN DEFAULT true",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS show_shev_to_public BOOLEAN DEFAULT true",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS token_lamp_enabled BOOLEAN DEFAULT true",
+        """CREATE TABLE IF NOT EXISTS task_approvals (
+            id SERIAL PRIMARY KEY,
+            token VARCHAR(64) UNIQUE NOT NULL,
+            question TEXT NOT NULL,
+            details TEXT,
+            requested_by VARCHAR(64),
+            status VARCHAR(16) NOT NULL DEFAULT 'pending',
+            decided_by_tg_id BIGINT,
+            decided_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT NOW()
+        )""",
         """CREATE TABLE IF NOT EXISTS shop_product_likes (
             id SERIAL PRIMARY KEY,
             user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -215,6 +226,24 @@ async def lifespan(app: FastAPI):
         "ALTER TABLE community_group_messages ADD COLUMN IF NOT EXISTS reply_to_id INTEGER REFERENCES community_group_messages(id) ON DELETE SET NULL",
         "ALTER TABLE community_group_messages ADD COLUMN IF NOT EXISTS image_url TEXT",
         "ALTER TABLE community_group_messages ADD COLUMN IF NOT EXISTS audio_url TEXT",
+        """CREATE TABLE IF NOT EXISTS task_confirmations (
+            id SERIAL PRIMARY KEY,
+            request_id VARCHAR(128) UNIQUE NOT NULL,
+            payload_json TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT NOW()
+        )""",
+        """CREATE TABLE IF NOT EXISTS bot_task_requests (
+            id SERIAL PRIMARY KEY,
+            tg_user_id BIGINT NOT NULL,
+            username TEXT,
+            full_name TEXT,
+            task_text TEXT NOT NULL,
+            needs_photo BOOLEAN NOT NULL DEFAULT false,
+            photo_file_id TEXT,
+            status VARCHAR(32) NOT NULL DEFAULT 'accepted',
+            created_at TIMESTAMP DEFAULT NOW(),
+            updated_at TIMESTAMP DEFAULT NOW()
+        )""",
     ]
     try:
         await database.execute(
