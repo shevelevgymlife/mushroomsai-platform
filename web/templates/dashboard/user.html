@@ -627,30 +627,30 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 .my-tokens-inline::before{
   content:"";
   position:absolute;
-  left:50%;
-  top:-58px;
-  width:42px;
-  height:64px;
-  transform:translateX(-50%);
-  border-radius:22px 22px 12px 12px;
+  right:10px;
+  top:-64px;
+  width:82px;
+  height:84px;
   pointer-events:none;
-  background:
-    linear-gradient(180deg,rgba(210,220,236,.8),rgba(120,132,150,.45)) 50% 8px/3px 24px no-repeat,
-    radial-gradient(ellipse at 50% 88%,rgba(255,232,176,.95) 0%,rgba(255,188,96,.92) 36%,rgba(190,110,28,.9) 72%,rgba(87,55,22,.95) 100%) 50% 100%/38px 24px no-repeat;
-  filter:drop-shadow(0 0 12px rgba(255,214,130,.42));
+  border-top:4px solid rgba(230,189,118,.95);
+  border-right:4px solid rgba(203,154,78,.9);
+  border-left:none;
+  border-bottom:none;
+  border-radius:0 88px 0 0;
+  transform:rotate(8deg);
+  filter:drop-shadow(0 0 8px rgba(255,204,120,.32));
 }
 .my-tokens-inline::after{
   content:"";
   position:absolute;
-  left:50%;
-  top:-6px;
-  transform:translateX(-50%);
-  width:320px;
-  max-width:calc(100% + 84px);
-  height:200px;
+  right:-24px;
+  top:-40px;
+  width:210px;
+  max-width:calc(100% + 64px);
+  height:190px;
   pointer-events:none;
-  background:radial-gradient(circle at 50% 18%,rgba(255,231,174,.28) 0%,rgba(255,204,114,.16) 28%,rgba(61,212,224,.11) 58%,rgba(61,212,224,.06) 70%,transparent 100%);
-  filter:blur(2.2px);
+  background:radial-gradient(circle at 76% 12%,rgba(255,232,176,.44) 0%,rgba(255,208,122,.24) 24%,rgba(61,212,224,.1) 56%,transparent 100%);
+  filter:blur(2px);
 }
 .my-tokens-inline__title{
   font-size:9px;
