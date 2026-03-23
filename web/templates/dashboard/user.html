@@ -590,27 +590,53 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 
 /* ── Мои токены (под «Редактировать профиль», не поверх аватара) ── */
 .my-tokens-inline{
+  position:relative;
   margin-top:14px;
-  max-width:min(100%,420px);
-  padding:12px 14px;
-  border-radius:14px;
-  background:linear-gradient(155deg,rgba(22,20,14,.88),rgba(10,10,10,.92));
-  border:1px solid rgba(61,212,224,.45);
-  box-shadow:0 0 20px rgba(61,212,224,.12),inset 0 1px 0 rgba(255,255,255,.05);
+  max-width:min(100%,560px);
+  padding:14px 16px 13px;
+  border-radius:18px;
+  background:linear-gradient(155deg,rgba(26,24,18,.92),rgba(12,12,14,.95));
+  border:1px solid rgba(61,212,224,.52);
+  box-shadow:0 16px 48px rgba(0,0,0,.5),0 0 28px rgba(61,212,224,.2),inset 0 1px 0 rgba(255,255,255,.07);
+  overflow:visible;
+}
+.my-tokens-inline::before{
+  content:"";
+  position:absolute;
+  right:-14px;
+  top:-20px;
+  width:30px;
+  height:30px;
+  border-radius:50%;
+  background:radial-gradient(circle at 35% 35%,#fff4c7 0%,#ffd87a 36%,#dba742 64%,#7a561c 100%);
+  box-shadow:0 0 16px rgba(255,220,130,.55),0 0 40px rgba(255,204,102,.32);
+  transform:rotate(9deg);
+}
+.my-tokens-inline::after{
+  content:"";
+  position:absolute;
+  right:8px;
+  top:0;
+  width:220px;
+  height:120px;
+  pointer-events:none;
+  background:radial-gradient(ellipse at top right,rgba(255,226,150,.34) 0%,rgba(255,201,102,.16) 36%,rgba(61,212,224,.08) 62%,transparent 100%);
+  filter:blur(.3px);
 }
 .my-tokens-inline__title{
   font-size:9px;
   letter-spacing:.12em;
   text-transform:uppercase;
-  color:rgba(184,95,163,.95);
+  color:#ff9ce8;
   font-weight:800;
   margin-bottom:10px;
+  text-shadow:0 0 14px rgba(255,124,223,.34);
 }
 .my-tokens-inline__grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;align-items:center}
 .my-tokens-inline__cell{display:flex;flex-direction:column;gap:4px;min-width:0}
-.my-tokens-inline__cell .lbl{font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.04em}
-.my-tokens-inline__cell .val{font-size:13px;font-weight:700;color:#e8e8e8;font-variant-numeric:tabular-nums;line-height:1.35;min-height:1.35em;overflow-wrap:anywhere;word-break:break-word;max-width:100%}
-.my-tokens-inline__cell .val.tok-shev{color:#ff66d0}
+.my-tokens-inline__cell .lbl{font-size:10px;color:#8e96a6;text-transform:uppercase;letter-spacing:.04em}
+.my-tokens-inline__cell .val{font-size:15px;font-weight:800;color:#ecf3ff;font-variant-numeric:tabular-nums;line-height:1.35;min-height:1.35em;overflow-wrap:anywhere;word-break:break-word;max-width:100%;text-shadow:0 0 16px rgba(61,212,224,.25)}
+.my-tokens-inline__cell .val.tok-shev{color:#ff7be0;text-shadow:0 0 18px rgba(255,123,224,.32)}
 @media(max-width:400px){
   .my-tokens-inline__grid{grid-template-columns:1fr;gap:8px}
 }
