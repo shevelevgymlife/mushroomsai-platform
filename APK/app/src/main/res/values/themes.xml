@@ -1,0 +1,9 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.MushroomsAI" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">#3DD4E0</item>
+        <item name="colorPrimaryVariant">#2CAAB4</item>
+        <item name="colorOnPrimary">#000000</item>
+        <item name="android:statusBarColor" tools:targetApi="l">#070708</item>
+        <item name="android:navigationBarColor">#070708</item>
+    </style>
+</resources>
