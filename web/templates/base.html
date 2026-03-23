@@ -34,6 +34,19 @@
   </script>
   <link rel="stylesheet" href="/static/css/custom.css?v=3" />
   <link rel="stylesheet" href="/static/css/design-system.css?v=3" />
+  <style>
+    /* Global anti-overflow guard for browser + Telegram WebApp */
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
+    main { width: 100%; max-width: 100%; overflow-x: clip; }
+    img, video, canvas, svg, iframe { max-width: 100%; height: auto; }
+    input, textarea, select, button { max-width: 100%; min-width: 0; }
+    textarea { width: 100%; }
+    .container, .wrap, .card, .grid, .row, form { min-width: 0; max-width: 100%; }
+    @media (max-width: 768px) {
+      input, textarea, select { font-size: 16px; }
+    }
+  </style>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   {% block extra_head %}{% endblock %}
 </head>
