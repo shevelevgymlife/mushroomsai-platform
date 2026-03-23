@@ -155,7 +155,7 @@
 
     {% if last_community_posts %}
     {% set lp = last_community_posts[0] %}
-    <div class="panel-rise rounded-[22px] p-5 sm:p-6 mb-10 max-w-3xl mx-auto">
+    <div class="community-chaos-card panel-rise rounded-[22px] p-5 sm:p-6 mb-10 max-w-3xl mx-auto" style="position:relative;left:-14px;transform:rotate(-2deg) scale(1.01);z-index:2">
       <p class="section-eyebrow mb-4">Последний пост в сообществе</p>
       <div class="flex gap-3 sm:gap-4 items-start">
         {% if lp.author_avatar %}
@@ -175,8 +175,8 @@
     </div>
     {% endif %}
 
-    <div class="text-center">
-      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gold/10 border border-gold/25 text-gold text-sm mb-6">
+    <div class="text-center" style="transform:rotate(2deg);position:relative;z-index:3">
+      <div class="inline-flex items-center gap-2 px-6 py-3 rounded-[999px] bg-gold/10 border border-gold/25 text-gold text-sm mb-6 shadow-[0_16px_48px_rgba(0,0,0,.4)]">
         🍄 Уже {{ users_count }} участников в сообществе
       </div>
       <br>

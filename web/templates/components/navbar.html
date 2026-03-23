@@ -1,45 +1,10 @@
 <nav class="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.06] glass">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="flex items-center justify-between h-16">
-      <a href="{% if user %}/dashboard#feed{% else %}/{% endif %}" class="flex items-center gap-3 group">
-        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-gold to-gold-light flex items-center justify-center shadow-[0_0_20px_rgba(61,212,224,0.25)]">
-          <span class="text-bg font-bold text-sm font-display">M</span>
-        </div>
-        <span class="font-display font-semibold text-text group-hover:text-gold transition-colors duration-300">MushroomsAI</span>
+      <a href="{% if user %}/dashboard#feed{% else %}/{% endif %}" class="flex items-center gap-3 group no-underline">
+        <span class="font-display font-semibold text-text group-hover:text-gold transition-colors duration-300 text-lg tracking-tight">MushroomsAI</span>
       </a>
-      {% set _hide_social = user and (user.subscription_plan|default('free') == 'free' or user.needs_tariff_choice|default(false)) %}
-      <div class="hidden md:flex items-center gap-8">
-        <a href="/chat" onclick="return guestGuard(event)" class="text-sm text-muted hover:text-gold transition-colors duration-300">{{ t.nav_consultation }}</a>
-        {% if not _hide_social %}
-        <a href="/shop" onclick="return guestGuard(event)" class="text-sm text-muted hover:text-gold transition-colors duration-300">{{ t.nav_shop }}</a>
-        <a href="/community" class="text-sm text-muted hover:text-gold transition-colors duration-300">{{ t.nav_community }}</a>
-        {% endif %}
-      </div>
       <div class="flex items-center gap-3">
-
-        {% if user %}
-          <a href="/dashboard" class="flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border-2 border-gold/80 bg-gold/[0.06] shadow-[0_0_14px_rgba(61,212,224,0.15)] hover:bg-gold/[0.12] transition-colors max-w-[200px] no-underline">
-            {% if user.avatar %}
-              <img src="{{ user.avatar }}" class="w-9 h-9 rounded-full object-cover shrink-0" alt="" />
-            {% else %}
-              <div class="w-9 h-9 rounded-full bg-gold/20 flex items-center justify-center shrink-0">
-                <span class="text-gold text-sm font-bold">{{ (user.name or 'U')[0].upper() }}</span>
-              </div>
-            {% endif %}
-            {% set _pn = user.subscription_plan|default('free') %}
-            <span class="text-xs font-medium text-text truncate" title="{{ _pn }}">{% if user.needs_tariff_choice|default(false) %}{{ t.nav_choose_tariff }}{% elif _pn == 'maxi' %}{{ t.plan_maxi }}{% elif _pn == 'pro' %}{{ t.plan_pro }}{% elif _pn == 'start' %}{{ t.plan_start }}{% else %}{{ t.plan_free }}{% endif %}</span>
-          </a>
-        {% else %}
-          <a href="/login?next=/onboarding/tariff" class="flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border-2 border-gold/40 bg-gold/[0.03] hover:border-gold hover:bg-gold/10 transition-all max-w-[140px] no-underline">
-            <div class="w-9 h-9 rounded-full bg-gold/10 flex items-center justify-center shrink-0">
-              <svg width="18" height="18" fill="none" stroke="#3dd4e0" stroke-width="1.8" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"/>
-              </svg>
-            </div>
-            <span class="text-xs font-medium text-text truncate">{{ t.nav_login }}</span>
-          </a>
-        {% endif %}
-
         <!-- Language switcher -->
         <div class="relative" id="lang-switcher">
           <button onclick="toggleLangMenu(event)"
@@ -64,9 +29,6 @@
           </div>
         </div>
 
-        {% if user %}
-          <a href="/logout" class="text-xs text-muted hover:text-red-400 transition-colors duration-300">{{ t.nav_logout }}</a>
-        {% endif %}
       </div>
     </div>
   </div>

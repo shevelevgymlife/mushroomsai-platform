@@ -16,7 +16,9 @@
 .members-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
 @media(max-width:900px){.members-grid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:640px){.members-grid{grid-template-columns:repeat(2,1fr);gap:10px}}
-.member-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:18px 14px;text-align:center;transition:all .2s;position:relative}
+.member-card{background:linear-gradient(165deg,rgba(255,255,255,.055),rgba(10,10,13,.9));border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:18px 14px;text-align:center;transition:all .2s;position:relative;box-shadow:0 14px 46px rgba(0,0,0,.42),0 0 0 1px rgba(61,212,224,.05)}
+.member-card:nth-child(odd){transform:rotate(-.9deg)}
+.member-card:nth-child(even){transform:rotate(.9deg)}
 .member-card:hover{border-color:rgba(61,212,224,.3);background:rgba(255,255,255,.07);transform:translateY(-2px)}
 .mc-avatar{width:64px;height:64px;border-radius:50%;object-fit:cover;margin:0 auto 10px;display:block;border:2px solid rgba(255,255,255,.1)}
 .mc-avatar-placeholder{width:64px;height:64px;border-radius:50%;background:rgba(61,212,224,.15);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:24px;color:#3dd4e0;border:2px solid rgba(61,212,224,.2)}
@@ -37,6 +39,7 @@
 .members-wrap--embed{padding-top:4px;padding-bottom:40px}
 .members-wrap--embed .members-header{margin-bottom:14px}
 .members-wrap--embed .members-header h1{font-size:18px}
+@media(max-width:768px){.member-card:nth-child(odd),.member-card:nth-child(even){transform:none}}
 </style>
 
 <div class="members-wrap{% if embed %} members-wrap--embed{% endif %}">
