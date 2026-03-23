@@ -167,8 +167,8 @@ async def dashboard(request: Request):
     user = await require_auth(request)
     if not user:
         return RedirectResponse("/login")
-    # Emergency-safe mode: route to lightweight cabinet until client rendering issue is resolved.
-    return RedirectResponse("/dashboard-lite", status_code=302)
+    if (request.query_params.get("lite") or "").strip() == "1":
+        return RedirectResponse("/dashboard-lite", status_code=302)
 
     # If secondary account slips through session, re-issue token for primary
     if user.get("primary_user_id"):
