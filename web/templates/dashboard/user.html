@@ -12,13 +12,7 @@
   {%- endif %}
 {%- endmacro %}
 
-{% from 'components/stroke_icons.html' import ico %}
 {% block content %}
-<a href="/dashboard-lite"
-   style="position:fixed;left:12px;bottom:12px;z-index:12050;background:#3dd4e0;color:#070708;padding:10px 12px;border-radius:10px;font-size:12px;font-weight:700;text-decoration:none;box-shadow:0 10px 28px rgba(0,0,0,.45)"
-   title="Если кабинет не грузится, откройте легкую версию">
-  Открыть легкий кабинет
-</a>
 <style>
 /* ── Layout ── */
 .db-wrap{display:flex;min-height:100vh;min-height:100dvh;min-height:calc(var(--vvh, 100vh));padding-top:72px;background:#070708;position:relative}
@@ -51,8 +45,8 @@
 .btn-o:hover{background:rgba(61,212,224,.12)}
 
 /* ── Sections ── */
-/* Safe default: show sections even if JS fails to initialize. */
-.db-sec{display:block;animation:fadein .28s ease}
+.db-sec{display:none;animation:fadein .28s ease}
+.db-sec.active{display:block}
 @keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 
 /* ── Avatar ── */
@@ -78,33 +72,52 @@
 .shop-item:hover{border-color:rgba(61,212,224,.4)}
 .shop-img{width:100%;height:140px;object-fit:cover;background:#111}
 .shop-img-ph{width:100%;height:140px;background:#111;display:flex;align-items:center;justify-content:center;font-size:32px}
-/* Stable cards: no chaos transforms/rotations */
-#feedPosts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start}
+/* Unified chaos-style cards for social/dashboard blocks */
+.card,.plan-card,.shop-item,.ig-post,.tg-chat-item,.ig-g-item{
+  border-radius:20px!important;
+  background:linear-gradient(165deg,rgba(255,255,255,.055),rgba(10,10,13,.9))!important;
+  border:1px solid rgba(255,255,255,.1)!important;
+  box-shadow:0 14px 46px rgba(0,0,0,.42),0 0 0 1px rgba(61,212,224,.05)!important;
+}
+#feedPosts .ig-post:nth-child(odd){transform:rotate(-1.15deg)}
+#feedPosts .ig-post:nth-child(even){transform:rotate(1.05deg)}
+#groupListEl .ig-g-item:nth-child(odd){transform:rotate(-.75deg)}
+#groupListEl .ig-g-item:nth-child(even){transform:rotate(.75deg)}
+#shopGrid .shop-item:nth-child(3n+1){transform:rotate(-1.2deg)}
+#shopGrid .shop-item:nth-child(3n+2){transform:rotate(.95deg)}
+#shopGrid .shop-item:nth-child(3n+3){transform:rotate(-.55deg)}
+.plan-grid .plan-card:nth-child(odd){transform:rotate(-1deg)}
+.plan-grid .plan-card:nth-child(even){transform:rotate(1deg)}
 #feedPosts .ig-post,#groupListEl .ig-g-item,#shopGrid .shop-item,.plan-grid .plan-card{
-  transition:border-color .2s ease,box-shadow .2s ease;
+  transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease;
 }
 #feedPosts .ig-post:hover,#groupListEl .ig-g-item:hover,#shopGrid .shop-item:hover,.plan-grid .plan-card:hover{
+  transform:translateY(-4px) rotate(0deg)!important;
   border-color:rgba(61,212,224,.34)!important;
+  box-shadow:0 20px 60px rgba(0,0,0,.5),0 0 28px rgba(61,212,224,.08)!important;
 }
 .my-tokens-inline{
   border-radius:18px!important;
   background:linear-gradient(160deg,rgba(255,255,255,.06),rgba(12,12,15,.94))!important;
   border:1px solid rgba(61,212,224,.3)!important;
   box-shadow:0 14px 48px rgba(0,0,0,.42),0 0 22px rgba(61,212,224,.06)!important;
+  transform:rotate(-.9deg);
 }
 @media(max-width:768px){
-  #feedPosts{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  #feedPosts .ig-post:nth-child(odd),#feedPosts .ig-post:nth-child(even),
+  #groupListEl .ig-g-item:nth-child(odd),#groupListEl .ig-g-item:nth-child(even),
+  #shopGrid .shop-item:nth-child(3n+1),#shopGrid .shop-item:nth-child(3n+2),#shopGrid .shop-item:nth-child(3n+3),
+  .plan-grid .plan-card:nth-child(odd),.plan-grid .plan-card:nth-child(even){
+    transform:none;
+  }
+  .my-tokens-inline{transform:none}
 }
-@media(max-width:620px){.tg-chat-list{grid-template-columns:1fr}}
-@media(max-width:520px){#feedPosts{grid-template-columns:1fr}}
 
 /* ── Plan cards ── */
-.plan-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.plan-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
 .plan-card{border-radius:16px;padding:22px;border:1.5px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);transition:border-color .2s}
 .plan-card.current{border-color:#3dd4e0;background:rgba(61,212,224,.08)}
 .plan-card:hover:not(.current){border-color:rgba(61,212,224,.35)}
-@media(max-width:980px){.plan-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:560px){.plan-grid{grid-template-columns:1fr}}
 
 /* ── Lang grid ── */
 .lang-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
@@ -136,7 +149,7 @@
 .feed-tab-active{border-color:#3dd4e0!important;color:#3dd4e0!important;background:rgba(61,212,224,.1)!important}
 
 /* ── Instagram-like feed (narrow column, photo-first) ── */
-.ig-feed-shell{max-width:1200px;margin:0 auto}
+.ig-feed-shell{max-width:470px;margin:0 auto}
 .ig-feed-topbar{display:flex;align-items:center;justify-content:space-between;padding:6px 2px 14px;margin-bottom:4px;border-bottom:1px solid rgba(255,255,255,.06)}
 .ig-feed-topbar .ig-brand{font-family:Syne,Inter,system-ui,sans-serif;font-weight:700;font-size:1.15rem;letter-spacing:-0.02em;color:#e8e8e8;background:linear-gradient(90deg,#e8e8e8,#3dd4e0);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 .ig-feed-actions-top{display:flex;align-items:center;gap:6px}
@@ -162,7 +175,7 @@
 .ig-post-body .ig-cap-user{font-weight:700;color:#e8e8e8;margin-right:6px}
 
 /* ── Group chats (layout как в TG, цвета как на сайте — золото / тёмный) ── */
-.tg-chat-shell{display:grid;grid-template-columns:minmax(520px,620px) 1fr;gap:0;align-items:stretch;min-height:min(72vh,640px);max-height:85vh;border-radius:16px;overflow:hidden;border:1px solid rgba(61,212,224,.22);background:linear-gradient(165deg,rgba(18,18,18,.98),rgba(8,8,8,.99));box-shadow:0 8px 32px rgba(0,0,0,.5),0 0 0 1px rgba(61,212,224,.06) inset}
+.tg-chat-shell{display:grid;grid-template-columns:minmax(280px,340px) 1fr;gap:0;align-items:stretch;min-height:min(72vh,640px);max-height:85vh;border-radius:16px;overflow:hidden;border:1px solid rgba(61,212,224,.22);background:linear-gradient(165deg,rgba(18,18,18,.98),rgba(8,8,8,.99));box-shadow:0 8px 32px rgba(0,0,0,.5),0 0 0 1px rgba(61,212,224,.06) inset}
 @media(max-width:900px){.tg-chat-shell{grid-template-columns:1fr;min-height:auto;max-height:none}}
 .tg-chat-sidebar{background:rgba(255,255,255,.02);border-right:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;min-height:420px;max-height:72vh}
 @media(max-width:900px){.tg-chat-sidebar{max-height:42vh;border-right:none;border-bottom:1px solid rgba(255,255,255,.08)}}
@@ -171,17 +184,14 @@
 .tg-chat-sidebar-head .tg-sub{font-size:12px;color:#888;margin-top:4px;line-height:1.45}
 .tg-btn-new{width:calc(100% - 24px);margin:12px auto 8px;padding:10px 14px;border-radius:10px;border:none;background:#3dd4e0;color:#0a0a0a;font-weight:700;font-size:14px;cursor:pointer;transition:background .2s,box-shadow .2s;box-shadow:0 2px 12px rgba(61,212,224,.2)}
 .tg-btn-new:hover{background:#ff66d0;box-shadow:0 4px 16px rgba(61,212,224,.28)}
-.tg-chat-list{flex:1;overflow-y:auto;padding:10px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;-webkit-overflow-scrolling:touch}
+.tg-chat-list{flex:1;overflow-y:auto;padding:0 0 8px;-webkit-overflow-scrolling:touch}
 .tg-chat-list::-webkit-scrollbar{width:6px}
 .tg-chat-list::-webkit-scrollbar-thumb{background:rgba(61,212,224,.25);border-radius:3px}
-.ig-g-item.tg-chat-item{display:flex;align-items:center;gap:12px;padding:12px;margin:0;border-radius:18px;border:1px solid rgba(255,255,255,.1);background:linear-gradient(165deg,rgba(255,255,255,.05),rgba(10,10,13,.9));transition:background .15s,border-color .2s,transform .2s;cursor:pointer;box-shadow:0 10px 36px rgba(0,0,0,.4)}
+.ig-g-item.tg-chat-item{display:flex;align-items:center;gap:12px;padding:10px 12px;margin:0;border-radius:0;border:none;border-bottom:1px solid rgba(255,255,255,.06);background:transparent;transition:background .15s;cursor:pointer}
 .ig-g-item.tg-chat-item.tg-ios-row{align-items:flex-start;padding-top:11px;padding-bottom:11px}
 .ig-g-item.tg-chat-item:hover{background:rgba(61,212,224,.06)}
-.ig-g-item.tg-chat-item.on{background:rgba(61,212,224,.12);border-color:#3dd4e0;padding-left:12px}
+.ig-g-item.tg-chat-item.on{background:rgba(61,212,224,.12);border-left:3px solid #3dd4e0;padding-left:9px}
 .ig-g-item.tg-chat-item.on:hover{background:rgba(61,212,224,.14)}
-.ig-g-item.tg-chat-item:nth-child(odd){transform:rotate(-1.1deg)}
-.ig-g-item.tg-chat-item:nth-child(even){transform:rotate(1deg)}
-.ig-g-item.tg-chat-item:hover{transform:translateY(-3px) rotate(0deg)!important}
 .tg-chat-av{flex-shrink:0;width:48px;height:48px;border-radius:50%;background:linear-gradient(145deg,#3dd4e0,#006680);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#0a0a0a;text-transform:uppercase;box-shadow:0 2px 8px rgba(61,212,224,.25);border:1px solid rgba(61,212,224,.35);overflow:hidden}
 .tg-chat-av.tg-chat-av--img{background:#111;padding:0}
 .tg-chat-av.tg-chat-av--img img{width:100%;height:100%;object-fit:cover;display:block}
@@ -420,13 +430,10 @@ button.ig-profile-stat{width:auto;min-width:0;flex:1 1 0;cursor:pointer;border:n
 button.ig-profile-stat:hover{background:rgba(255,255,255,.06)}
 button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outline-offset:2px}
 .ig-plan-pill{display:inline-flex;align-items:center;padding:5px 12px;border-radius:22px;font-size:11px;font-weight:700;letter-spacing:.02em}
-.ig-post-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%;border-top:1px solid rgba(255,255,255,.08);padding-top:10px}
-.ig-post-cell{aspect-ratio:1;position:relative;overflow:hidden;background:#121212;border-radius:14px;border:1px solid rgba(255,255,255,.08)}
+.ig-post-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;width:100%;border-top:1px solid rgba(255,255,255,.08);padding-top:3px}
+.ig-post-cell{aspect-ratio:1;position:relative;overflow:hidden;background:#121212}
 .ig-post-cell img{width:100%;height:100%;object-fit:cover;display:block}
 .ig-post-cell-ph{display:flex;align-items:center;justify-content:center;font-size:10px;color:#666;padding:8px;text-align:center;line-height:1.35;overflow:hidden}
-.ig-post-grid .ig-post-cell:nth-child(odd){transform:rotate(-1deg)}
-.ig-post-grid .ig-post-cell:nth-child(even){transform:rotate(1deg)}
-.ig-post-grid .ig-post-cell:hover{transform:translateY(-2px) rotate(0deg)!important;border-color:rgba(61,212,224,.32)}
 
 /* ── Мои токены (под «Редактировать профиль», не поверх аватара) ── */
 .my-tokens-inline{
@@ -1864,35 +1871,6 @@ window.addEventListener('hashchange',()=>{
   const h=(location.hash||'').replace('#','');
   if(SECS.includes(h))goSec(h);
 });
-
-// Failsafe: if any runtime error breaks section switching on some devices,
-// keep dashboard visible (avoid empty "blue screen" with no burger/content).
-function ensureDashboardVisible(){
-  try{
-    const shown=document.querySelector('.db-sec.active');
-    if(!shown){
-      const fallback=document.getElementById('sec-me')
-        || document.getElementById('sec-feed')
-        || document.querySelector('.db-sec');
-      if(fallback) fallback.classList.add('active');
-    }
-    const hdr=document.querySelector('.ig-dash-header');
-    if(hdr && getComputedStyle(hdr).display==='none'){
-      hdr.style.display='flex';
-    }
-  }catch(_e){}
-}
-if(document.readyState==='loading'){
-  document.addEventListener('DOMContentLoaded',()=>{
-    ensureDashboardVisible();
-    setTimeout(ensureDashboardVisible, 120);
-    setTimeout(ensureDashboardVisible, 600);
-  });
-}else{
-  ensureDashboardVisible();
-  setTimeout(ensureDashboardVisible, 120);
-  setTimeout(ensureDashboardVisible, 600);
-}
 
 async function markActivityRead(){
   try{

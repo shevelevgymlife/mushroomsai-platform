@@ -87,23 +87,11 @@
     </div>
     {% endif %}
 
-    <style>
-      .shop-chaos-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;align-items:start}
-      .shop-chaos-item{transform-origin:center;box-shadow:0 12px 40px rgba(0,0,0,.42)}
-      .shop-chaos-item:nth-child(odd){transform:rotate(-1.2deg)}
-      .shop-chaos-item:nth-child(even){transform:rotate(1.15deg)}
-      .shop-chaos-item:nth-child(3n){transform:rotate(-.7deg)}
-      .shop-chaos-item:hover{transform:translateY(-4px) rotate(0deg)!important;z-index:3;position:relative}
-      @media(max-width:1200px){.shop-chaos-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
-      @media(max-width:900px){.shop-chaos-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-      @media(max-width:560px){.shop-chaos-grid{grid-template-columns:1fr}.shop-chaos-item:nth-child(odd),.shop-chaos-item:nth-child(even),.shop-chaos-item:nth-child(3n){transform:none}}
-    </style>
-
     <!-- Products grid -->
     {% if products %}
-    <div class="shop-chaos-grid">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
       {% for p in products %}
-      <a href="/shop/{{ p.id }}" class="shop-chaos-item group block p-0 rounded-2xl bg-surface border border-border hover:border-gold/40 transition-all duration-300 overflow-hidden">
+      <a href="/shop/{{ p.id }}" class="group block p-0 rounded-2xl bg-surface border border-border hover:border-gold/40 transition-all duration-300 overflow-hidden">
         <!-- Image -->
         <div class="relative w-full aspect-square bg-bg overflow-hidden">
           {% if p.image_url %}
