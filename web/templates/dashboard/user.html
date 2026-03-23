@@ -97,10 +97,6 @@
   pointer-events:none;
   background:linear-gradient(120deg,rgba(61,212,224,.08),transparent 40%,rgba(255,102,208,.06));
 }
-#feedPosts .ig-post:nth-child(4n+1){transform:translateY(8px) rotate(-3.1deg)}
-#feedPosts .ig-post:nth-child(4n+2){transform:translateY(-5px) rotate(2.6deg)}
-#feedPosts .ig-post:nth-child(4n+3){transform:translateY(4px) rotate(1.2deg)}
-#feedPosts .ig-post:nth-child(4n+4){transform:translateY(-7px) rotate(-2.2deg)}
 #feedPosts .ig-post{
   transition:transform .22s ease,border-color .2s ease,box-shadow .2s ease;
 }
@@ -109,10 +105,15 @@
   border-color:rgba(61,212,224,.34)!important;
   box-shadow:0 24px 72px rgba(0,0,0,.54),0 0 30px rgba(61,212,224,.1)!important;
 }
+#feedPosts.feed-chaos-on .ig-post:nth-child(4n+1){transform:translateY(8px) rotate(-4deg)}
+#feedPosts.feed-chaos-on .ig-post:nth-child(4n+2){transform:translateY(-5px) rotate(3.5deg)}
+#feedPosts.feed-chaos-on .ig-post:nth-child(4n+3){transform:translateY(4px) rotate(2deg)}
+#feedPosts.feed-chaos-on .ig-post:nth-child(4n+4){transform:translateY(-7px) rotate(-3deg)}
+#feedPosts.feed-chaos-off .ig-post{transform:none!important}
 #feedPosts .ig-post-header{padding:9px 11px}
 #feedPosts .ig-post-img{
-  aspect-ratio:1/0.82;
-  max-height:220px;
+  aspect-ratio:1/1;
+  max-height:260px;
 }
 #feedPosts .ig-post-textonly{
   min-height:70px;
@@ -166,6 +167,53 @@
 #feedPosts .ig-post-metric-star{color:#ffd84f;border-color:rgba(255,216,79,.45)}
 #feedPosts .ig-post-metric-chat{color:#8be9ff;border-color:rgba(139,233,255,.38)}
 #feedPosts .ig-post-metric-share{color:#f7b3ff;border-color:rgba(247,179,255,.38)}
+#feedChaosWrap{
+  display:flex;
+  justify-content:flex-end;
+  margin:-2px 0 12px;
+}
+.feed-chaos-toggle{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 10px;
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:999px;
+  background:rgba(255,255,255,.04);
+  color:#d0d5df;
+  font-size:12px;
+  font-weight:600;
+}
+.feed-chaos-toggle input{
+  appearance:none;
+  width:34px;
+  height:20px;
+  border-radius:999px;
+  background:#20242f;
+  border:1px solid rgba(255,255,255,.22);
+  position:relative;
+  cursor:pointer;
+  transition:all .2s ease;
+}
+.feed-chaos-toggle input::after{
+  content:"";
+  position:absolute;
+  top:2px;
+  left:2px;
+  width:14px;
+  height:14px;
+  border-radius:50%;
+  background:#8a90a0;
+  transition:all .2s ease;
+}
+.feed-chaos-toggle input:checked{
+  background:rgba(61,212,224,.35);
+  border-color:rgba(61,212,224,.62);
+}
+.feed-chaos-toggle input:checked::after{
+  left:16px;
+  background:#d8fbff;
+}
 #feedPosts .ig-post-likes{font-size:12px;padding:0 12px 7px}
 #feedPosts .ig-post-body{
   font-size:13px;
@@ -184,12 +232,12 @@
 }
 @media(max-width:768px){
   #feedPosts{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-  #feedPosts .ig-post:nth-child(4n+1){transform:translateY(0) rotate(-1.8deg)}
-  #feedPosts .ig-post:nth-child(4n+2){transform:translateY(0) rotate(1.9deg)}
-  #feedPosts .ig-post:nth-child(4n+3){transform:translateY(0) rotate(.9deg)}
-  #feedPosts .ig-post:nth-child(4n+4){transform:translateY(0) rotate(-1.3deg)}
+  #feedPosts.feed-chaos-on .ig-post:nth-child(4n+1){transform:translateY(0) rotate(-2.4deg)}
+  #feedPosts.feed-chaos-on .ig-post:nth-child(4n+2){transform:translateY(0) rotate(2.5deg)}
+  #feedPosts.feed-chaos-on .ig-post:nth-child(4n+3){transform:translateY(0) rotate(1.4deg)}
+  #feedPosts.feed-chaos-on .ig-post:nth-child(4n+4){transform:translateY(0) rotate(-1.8deg)}
   #feedPosts .ig-post-header{padding:8px 9px}
-  #feedPosts .ig-post-img{max-height:170px}
+  #feedPosts .ig-post-img{max-height:160px}
   #feedPosts .ig-post-metric{min-height:42px;font-size:14px}
   #feedPosts .ig-post-metric .n{font-size:15px}
   .my-tokens-inline{transform:none}
@@ -920,9 +968,15 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
         <button data-tab="following" class="feed-tab" onclick="feedTab('following',this)">Подписки</button>
         <button data-tab="mine" class="feed-tab" onclick="feedTab('mine',this)">Мои посты</button>
       </div>
+      <div id="feedChaosWrap">
+        <label class="feed-chaos-toggle" for="feedChaosToggle">
+          <span>Хаос</span>
+          <input id="feedChaosToggle" type="checkbox" checked>
+        </label>
+      </div>
 
       <!-- Posts -->
-      <div id="feedPosts">
+      <div id="feedPosts" class="feed-chaos-on">
       {% if feed_raw %}
       {% for p in feed_raw %}
       {% set a = feed_authors.get(p.user_id) %}
@@ -930,7 +984,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
       {% set is_admin = (user.role | default('', true)) == 'admin' %}
       {% set is_following_author = p.user_id in following_ids %}
       {% set is_liked = p.id in liked_post_ids %}
-      <div class="fp ig-post" id="fp-{{ p.id }}" data-uid="{{ p.user_id }}" data-mine="{{ 'true' if is_mine else 'false' }}" data-following="{{ 'true' if is_following_author else 'false' }}" data-author="{{ (a.name if a else 'Участник')|e }}" data-title="{{ (p.title or '')|e }}" data-content="{{ (p.content or '')|e }}" data-image="{{ (p.image_url or '')|e }}" data-created="{{ (p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '')|e }}" onclick="openFeedPostPreview(event,this)">
+      <div class="fp ig-post" id="fp-{{ p.id }}" data-pid="{{ p.id }}" data-uid="{{ p.user_id }}" data-mine="{{ 'true' if is_mine else 'false' }}" data-following="{{ 'true' if is_following_author else 'false' }}" data-author="{{ (a.name if a else 'Участник')|e }}" data-title="{{ (p.title or '')|e }}" data-content="{{ (p.content or '')|e }}" data-image="{{ (p.image_url or '')|e }}" data-created="{{ (p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '')|e }}" onclick="openFeedPostPreview(event,this)">
         <div class="ig-post-header">
           {% if is_mine %}
           <div onclick="goSec('{{ dash_home }}')" style="cursor:pointer;flex-shrink:0">
@@ -985,11 +1039,11 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
           </button>
           {% if is_mine %}
           <button type="button" class="ig-post-metric ig-post-metric-chat" title="Комментарии" onclick="goSec('feed');setTimeout(function(){var x=document.getElementById('fp-{{ p.id }}');if(x)x.scrollIntoView({behavior:'smooth',block:'start'});},100);">
-            <span>💬</span><span class="n">{{ p.comments_count or 0 }}</span>
+            <span>💬</span><span class="n" id="comment-count-{{ p.id }}">{{ p.comments_count or 0 }}</span>
           </button>
           {% else %}
           <a href="/community/profile/{{ p.user_id }}#pc-{{ p.id }}" class="ig-post-metric ig-post-metric-chat" title="Комментарии" style="text-decoration:none">
-            <span>💬</span><span class="n">{{ p.comments_count or 0 }}</span>
+            <span>💬</span><span class="n" id="comment-count-{{ p.id }}">{{ p.comments_count or 0 }}</span>
           </a>
           {% endif %}
           <button type="button" class="ig-post-metric ig-post-metric-share" title="Пересылки" onclick="openSharePostModal({{ p.id }})">
@@ -1736,8 +1790,9 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 <div id="sharePostModal" style="display:none;position:fixed;inset:0;z-index:10021;align-items:center;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(4px)" onclick="if(event.target===this)this.style.display='none'">
   <div class="card" style="max-width:400px;width:92%;padding:22px;border-color:rgba(61,212,224,.28);max-height:min(80vh,520px);overflow:auto" onclick="event.stopPropagation()">
     <div style="font-weight:700;margin-bottom:4px;color:#e8e8e8;font-size:16px">Кому отправить ссылку</div>
-    <p class="muted" style="font-size:12px;margin:0 0 12px;line-height:1.45">Из ваших подписок. Ссылка появится в личных сообщениях.</p>
+    <p class="muted" style="font-size:12px;margin:0 0 12px;line-height:1.45">Можно выбрать из подписок или найти любого участника по имени.</p>
     <input type="hidden" id="sharePostId" value="">
+    <input id="sharePostSearchInp" class="sinp" style="margin-bottom:10px" placeholder="Поиск участника по имени">
     <div id="sharePostUserList" style="display:flex;flex-direction:column;gap:6px"></div>
     <p id="sharePostErr" style="display:none;margin-top:10px;font-size:12px;color:#f87171"></p>
   </div>
@@ -1756,6 +1811,12 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
     <div style="padding:14px 14px 18px">
       <div id="feedPreviewTitle" style="display:none;font-size:18px;font-weight:700;color:#f3f4f6;line-height:1.25;margin-bottom:8px"></div>
       <div id="feedPreviewContent" style="font-size:14px;color:#c4c8d3;line-height:1.55;white-space:pre-wrap;word-break:break-word"></div>
+      <input type="hidden" id="feedPreviewPostId" value="">
+      <div style="display:flex;gap:8px;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)">
+        <input id="feedPreviewCommentInp" class="sinp" style="flex:1" placeholder="Написать комментарий...">
+        <button type="button" class="btn-g" style="padding:10px 14px" onclick="submitFeedPreviewComment()">Отправить</button>
+      </div>
+      <p id="feedPreviewCommentErr" style="display:none;margin-top:8px;font-size:12px;color:#f87171"></p>
     </div>
   </div>
 </div>
@@ -3359,25 +3420,55 @@ async function openSharePostModal(postId){
   document.getElementById('sharePostId').value=String(postId);
   const list=document.getElementById('sharePostUserList');
   const err=document.getElementById('sharePostErr');
+  const searchInp=document.getElementById('sharePostSearchInp');
   if(err) err.style.display='none';
   if(list) list.innerHTML='<div style="color:#888;font-size:13px;padding:12px">Загрузка…</div>';
   document.getElementById('sharePostModal').style.display='flex';
   try{
     const r=await fetch('/community/profile/'+DASH_UID+'/following',{credentials:'same-origin'});
     const d=await r.json().catch(()=>({}));
-    const users=(d&&d.users)||[];
-    if(!list) return;
-    if(!users.length){
-      list.innerHTML='<div style="color:#888;font-size:13px">Нет подписок — подпишитесь на кого-нибудь в сообществе.</div>';
-      return;
+    window.__shareFollowUsers=(d&&d.users)||[];
+    renderShareUserList(window.__shareFollowUsers, postId, false);
+    if(searchInp){
+      searchInp.value='';
+      searchInp.oninput=handleShareSearchInput;
     }
-    list.innerHTML=users.map(function(u){
-      const nm=_escHtmlFl(u.name||'Участник');
-      return '<button type="button" class="btn-o" style="width:100%;justify-content:flex-start" onclick="sendPostShare('+postId+','+u.id+')">'+nm+'</button>';
-    }).join('');
   }catch(e){
     if(list) list.innerHTML='';
     if(err){ err.style.display='block'; err.textContent='Не удалось загрузить список'; }
+  }
+}
+function renderShareUserList(users, postId, fromSearch){
+  const list=document.getElementById('sharePostUserList');
+  if(!list) return;
+  if(!users || !users.length){
+    list.innerHTML='<div style="color:#888;font-size:13px">'+(fromSearch ? 'Ничего не найдено' : 'Нет подписок — используйте поиск по имени')+'</div>';
+    return;
+  }
+  list.innerHTML=users.map(function(u){
+    const nm=_escHtmlFl(u.name||'Участник');
+    const av=(u.avatar||'').trim();
+    const avHtml = av
+      ? '<img src="'+_escHtmlFl(av)+'" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover">'
+      : '<span style="width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:#1f2430;color:#9aa3b2;font-size:12px">👤</span>';
+    return '<button type="button" class="btn-o" style="width:100%;justify-content:flex-start;gap:8px" onclick="sendPostShare('+postId+','+u.id+')">'+avHtml+'<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+nm+'</span></button>';
+  }).join('');
+}
+async function handleShareSearchInput(ev){
+  const q=((ev&&ev.target&&ev.target.value)||'').trim();
+  const postId=Number(document.getElementById('sharePostId')&&document.getElementById('sharePostId').value||0);
+  const err=document.getElementById('sharePostErr');
+  if(err) err.style.display='none';
+  if(q.length<2){
+    renderShareUserList(window.__shareFollowUsers||[], postId, false);
+    return;
+  }
+  try{
+    const r=await fetch('/community/users/search?q='+encodeURIComponent(q),{credentials:'same-origin'});
+    const d=await r.json().catch(()=>({}));
+    renderShareUserList((d&&d.users)||[], postId, true);
+  }catch(e){
+    if(err){ err.style.display='block'; err.textContent='Ошибка поиска'; }
   }
 }
 async function sendPostShare(postId, recipientId){
@@ -3406,11 +3497,15 @@ function openFeedPostPreview(event, card){
   const content=card.getAttribute('data-content')||'';
   const image=card.getAttribute('data-image')||'';
   const created=card.getAttribute('data-created')||'';
+  const pid=card.getAttribute('data-pid')||'';
   const aEl=document.getElementById('feedPreviewAuthor');
   const dEl=document.getElementById('feedPreviewDate');
   const tEl=document.getElementById('feedPreviewTitle');
   const cEl=document.getElementById('feedPreviewContent');
   const iEl=document.getElementById('feedPreviewImage');
+  const pEl=document.getElementById('feedPreviewPostId');
+  const ci=document.getElementById('feedPreviewCommentInp');
+  const ce=document.getElementById('feedPreviewCommentErr');
   if(aEl) aEl.textContent=author;
   if(dEl) dEl.textContent=created;
   if(tEl){
@@ -3422,8 +3517,59 @@ function openFeedPostPreview(event, card){
     if(image){ iEl.style.display='block'; iEl.src=image; }
     else{ iEl.style.display='none'; iEl.removeAttribute('src'); }
   }
+  if(pEl) pEl.value=String(pid||'');
+  if(ci) ci.value='';
+  if(ce) ce.style.display='none';
   modal.style.display='flex';
 }
+async function submitFeedPreviewComment(){
+  const pid=Number(document.getElementById('feedPreviewPostId')&&document.getElementById('feedPreviewPostId').value||0);
+  const inp=document.getElementById('feedPreviewCommentInp');
+  const err=document.getElementById('feedPreviewCommentErr');
+  const txt=((inp&&inp.value)||'').trim();
+  if(!pid || txt.length<2){
+    if(err){ err.style.display='block'; err.textContent='Минимум 2 символа'; }
+    return;
+  }
+  if(err) err.style.display='none';
+  try{
+    const fd=new FormData();
+    fd.append('content', txt);
+    const r=await fetch('/community/comment/'+pid,{method:'POST',body:fd,credentials:'same-origin'});
+    const d=await r.json().catch(()=>({}));
+    if(r.ok && d.ok){
+      if(inp) inp.value='';
+      const cc=document.getElementById('comment-count-'+pid);
+      if(cc){
+        const cur=parseInt(cc.textContent||'0',10)||0;
+        cc.textContent=String(cur+1);
+      }
+      showNotification('Комментарий отправлен','success');
+    }else{
+      if(err){ err.style.display='block'; err.textContent=d.error||'Ошибка'; }
+    }
+  }catch(e){
+    if(err){ err.style.display='block'; err.textContent='Сеть'; }
+  }
+}
+function initFeedChaosToggle(){
+  const sw=document.getElementById('feedChaosToggle');
+  const grid=document.getElementById('feedPosts');
+  if(!sw || !grid) return;
+  sw.checked=true;
+  grid.classList.add('feed-chaos-on');
+  grid.classList.remove('feed-chaos-off');
+  sw.addEventListener('change', function(){
+    if(sw.checked){
+      grid.classList.add('feed-chaos-on');
+      grid.classList.remove('feed-chaos-off');
+    }else{
+      grid.classList.remove('feed-chaos-on');
+      grid.classList.add('feed-chaos-off');
+    }
+  });
+}
+initFeedChaosToggle();
 
 // ── Util ──
 function esc(t){return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}

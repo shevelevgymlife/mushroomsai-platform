@@ -596,7 +596,7 @@ async def edit_community_post(
 
 @router.post("/community/post/{post_id}/share-dm")
 async def share_community_post_dm(request: Request, post_id: int):
-    """Отправить ссылку на пост в личку подписчику (подписка: я → он)."""
+    """Отправить ссылку на пост в личку любому пользователю."""
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
@@ -611,18 +611,14 @@ async def share_community_post_dm(request: Request, post_id: int):
         recipient_id = 0
     if recipient_id <= 0 or recipient_id == uid:
         return JSONResponse({"error": "bad recipient"}, status_code=400)
+    recipient = await database.fetch_one(users.select().where(users.c.id == recipient_id))
+    if not recipient:
+        return JSONResponse({"error": "recipient not found"}, status_code=404)
     post = await database.fetch_one(community_posts.select().where(community_posts.c.id == post_id))
     if not post:
         return JSONResponse({"error": "not found"}, status_code=404)
     if post["user_id"] != uid and user.get("role") != "admin":
         return JSONResponse({"error": "forbidden"}, status_code=403)
-    fol = await database.fetch_one(
-        community_follows.select()
-        .where(community_follows.c.follower_id == uid)
-        .where(community_follows.c.following_id == recipient_id)
-    )
-    if not fol:
-        return JSONResponse({"error": "not following"}, status_code=403)
     author_id = post["user_id"]
     base = settings.SITE_URL.rstrip("/")
     link = f"{base}/community/profile/{author_id}#pc-{post_id}"
@@ -639,6 +635,32 @@ async def share_community_post_dm(request: Request, post_id: int):
         _logger.exception("share dm: %s", e)
         return JSONResponse({"error": "db"}, status_code=500)
     return JSONResponse({"ok": True, "link": link})
+
+
+@router.get("/community/users/search")
+async def community_users_search(request: Request, q: str = ""):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = user.get("primary_user_id") or user["id"]
+    needle = (q or "").strip()
+    if len(needle) < 2:
+        return JSONResponse({"users": []})
+    rows = await database.fetch_all(
+        users.select()
+        .where(users.c.id != uid)
+        .where(users.c.name.ilike(f"%{needle}%"))
+        .order_by(users.c.id.desc())
+        .limit(30)
+    )
+    result = []
+    for r in rows:
+        result.append({
+            "id": r["id"],
+            "name": (r["name"] or "Участник"),
+            "avatar": (r.get("avatar") or ""),
+        })
+    return JSONResponse({"users": result})
 
 
 @router.post("/community/like/{post_id}")
