@@ -19,7 +19,7 @@ from web.routes.account import router as account_router
 from web.routes.language import router as language_router
 from web.routes.seller import router as seller_router
 from web.translations import TRANSLATIONS, parse_accept_language, SUPPORTED_LANGS
-from services.deploy_notify import send_deploy_start_email
+from services.deploy_notify import send_deploy_email
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -43,7 +43,7 @@ async def lifespan(app: FastAPI):
     # Startup
     await database.connect()
     logger.info("Database connected")
-    send_deploy_start_email()
+    await send_deploy_email()
 
     # Ensure persistent storage directories exist (Render Disk at /data or local ./media)
     _base = "/data" if os.path.exists("/data") else "./media"
