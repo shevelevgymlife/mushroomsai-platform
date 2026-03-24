@@ -21,8 +21,6 @@ from bot.handlers.mushrooms import mushrooms_handler, mushroom_deep_callback
 from bot.handlers.subscriptions import subscriptions_handler, show_tariffs_callback
 from bot.handlers.referral import referral_handler
 from bot.handlers.language import show_language_selector, handle_language_callback
-from bot.handlers.task_approval import approval_status_command, task_approval_callback
-from bot.handlers.task_intake import get_task_intake_conversation
 from bot.handlers.lead import lead_start, lead_name, lead_phone, lead_question, lead_cancel, ASK_NAME, ASK_PHONE, ASK_QUESTION
 from bot.handlers.feedback_handler import get_feedback_conversation
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -80,7 +78,6 @@ def create_bot() -> Application:
     app.add_handler(CommandHandler("tariffs", subscriptions_handler))
     app.add_handler(CommandHandler("referral", referral_handler))
     app.add_handler(CommandHandler("language", show_language_selector))
-    app.add_handler(CommandHandler("approval_status", approval_status_command))
 
     # Conversation: lead (consultation request)
     lead_conv = ConversationHandler(
@@ -93,9 +90,6 @@ def create_bot() -> Application:
         fallbacks=[CommandHandler("cancel", lead_cancel)],
     )
     app.add_handler(lead_conv)
-
-    # Conversation: task intake from Telegram owner
-    app.add_handler(get_task_intake_conversation())
 
     # Feedback conversation
     app.add_handler(get_feedback_conversation())
@@ -113,8 +107,6 @@ def create_bot() -> Application:
     app.add_handler(CallbackQueryHandler(mushroom_deep_callback, pattern="^mushroom_deep$"))
     app.add_handler(CallbackQueryHandler(show_tariffs_callback, pattern="^show_tariffs$"))
     app.add_handler(CallbackQueryHandler(handle_language_callback, pattern="^lang_"))
-    app.add_handler(CallbackQueryHandler(task_approval_callback, pattern=r"^confirm:(yes|no):"))
-
     # AI chat — all other text messages
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
 
