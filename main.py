@@ -25,6 +25,9 @@ from services.deploy_notify import send_deploy_notifications
 from web.templates_utils import Jinja2Templates
 
 logging.basicConfig(level=logging.INFO)
+# httpx логирует каждый запрос на INFO вместе с URL (в т.ч. токен бота) — оставляем только предупреждения и выше
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 bot_app = None
