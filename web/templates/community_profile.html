@@ -335,9 +335,9 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 <a href="/dashboard#feed" class="cp-create-fab" aria-label="Создать пост">+</a>
 
 <div id="profilePostPreviewModal" style="display:none;position:fixed;inset:0;z-index:10026;align-items:stretch;justify-content:center;background:rgba(0,0,0,.92);backdrop-filter:blur(6px)" onclick="if(event.target===this)closeProfilePostPreview()">
+  <button type="button" class="btn-o" style="position:fixed;top:12px;left:12px;z-index:3;padding:8px 12px" onclick="closeProfilePostPreview()">✕</button>
   <div class="card" style="max-width:min(880px,100vw);width:100%;height:calc(var(--vvh,100vh));max-height:calc(var(--vvh,100vh));padding:0;overflow:hidden;border-color:rgba(61,212,224,.32);background:linear-gradient(165deg,rgba(255,255,255,.08),rgba(8,8,12,.96));border-radius:0" onclick="event.stopPropagation()">
     <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0">
-      <button type="button" class="btn-o" style="padding:6px 10px;flex-shrink:0" onclick="closeProfilePostPreview()">✕</button>
       <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
         <strong id="profilePreviewAuthor" style="font-size:14px;color:#e8e8e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Пост</strong>
         <span id="profilePreviewDate" style="font-size:11px;color:#8a8fa0"></span>
