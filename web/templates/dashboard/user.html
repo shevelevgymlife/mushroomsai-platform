@@ -653,18 +653,21 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 }
 .my-lamp-toggle input:checked{background:rgba(61,212,224,.35);border-color:rgba(61,212,224,.62)}
 .my-lamp-toggle input:checked::after{left:14px;background:#d8fbff}
-.my-lamp-top{
-  position:absolute;
-  top:0;
-  left:0;
-  transform:translate(-10px,-10px);
-  z-index:3;
+.ig-lamp-topbar{
+  position:fixed;
+  left:10px;
+  top:calc(4rem + 52px + 6px);
+  z-index:951;
   display:inline-flex;
   align-items:center;
   gap:8px;
-  pointer-events:auto;
+  padding:6px 8px;
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:999px;
+  background:rgba(9,12,18,.72);
+  backdrop-filter:blur(4px);
 }
-.my-lamp-top::before{
+.ig-lamp-topbar::before{
   content:"";
   width:30px;
   height:30px;
@@ -676,7 +679,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
   opacity:.95;
   transition:opacity .2s ease;
 }
-.my-lamp-top[data-lamp-off="1"]::before{opacity:0}
+.ig-lamp-topbar[data-lamp-off="1"]::before{opacity:0}
 .ig-profile-av-wrap.lamp-on::after{
   content:"";position:absolute;inset:-34px;pointer-events:none;border-radius:50%;
   background:radial-gradient(circle at 45% 38%,rgba(255,242,198,.58) 0%,rgba(255,220,152,.32) 28%,rgba(255,201,118,.14) 48%,rgba(61,212,224,.07) 64%,transparent 84%);
@@ -686,8 +689,11 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 @media(max-width:400px){
   .my-tokens-inline__grid{grid-template-columns:1fr;gap:8px}
   .my-lamp-toggle{font-size:10px;padding:3px 7px}
-  .my-lamp-top{transform:translate(-6px,-8px);gap:6px}
-  .my-lamp-top::before{width:26px;height:26px}
+  .ig-lamp-topbar{left:8px;top:calc(4rem + 52px + 4px);gap:6px}
+  .ig-lamp-topbar::before{width:26px;height:26px}
+}
+body.dash-ig-app .ig-lamp-topbar{
+  top:calc(64px + env(safe-area-inset-top,0px) + 52px + 6px);
 }
 @keyframes igMsgIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 </style>
@@ -931,15 +937,15 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
     <!-- ══ ME — профиль как в Instagram ══ -->
     {% if ig_social %}
     <section class="db-sec active" id="sec-me">
+      <div id="myLampTopBar" class="ig-lamp-topbar" data-lamp-off="{% if user.get('token_lamp_enabled') is sameas false %}1{% else %}0{% endif %}">
+        <label class="my-lamp-toggle" for="tokenLampToggleMe">
+          <span id="tokenLampToggleMeText">{% if user.get('token_lamp_enabled') is not sameas false %}выкл свет{% else %}вкл свет{% endif %}</span>
+          <input id="tokenLampToggleMe" type="checkbox" {% if user.get('token_lamp_enabled') is not sameas false %}checked{% endif %} onchange="saveTokenLampEnabled(this.checked)">
+        </label>
+      </div>
       <div class="ig-me-shell">
         <div class="ig-profile-head">
           <div class="ig-profile-av-wrap{% if user.get('token_lamp_enabled') is not sameas false %} lamp-on{% endif %}" onclick="document.getElementById('avInputMe').click()" title="Сменить фото">
-            <div id="myLampTop" class="my-lamp-top" data-lamp-off="{% if user.get('token_lamp_enabled') is sameas false %}1{% else %}0{% endif %}" onclick="event.stopPropagation()">
-              <label class="my-lamp-toggle" for="tokenLampToggleMe">
-                <span id="tokenLampToggleMeText">{% if user.get('token_lamp_enabled') is not sameas false %}выкл свет{% else %}вкл свет{% endif %}</span>
-                <input id="tokenLampToggleMe" type="checkbox" {% if user.get('token_lamp_enabled') is not sameas false %}checked{% endif %} onchange="saveTokenLampEnabled(this.checked)">
-              </label>
-            </div>
             {% if user.avatar %}
             <img id="avImgMe" src="{{ user.avatar }}" class="ig-profile-av" alt="">
             {% else %}
@@ -1977,7 +1983,7 @@ function _escHtmlFl(t){
 function applyTokenLampState(isOn){
   const dock=document.getElementById('myTokensDock');
   const avWrap=document.querySelector('.ig-profile-av-wrap');
-  const lampTop=document.getElementById('myLampTop');
+  const lampTop=document.getElementById('myLampTopBar');
   const sw=document.getElementById('tokenLampToggleMe');
   const swTxt=document.getElementById('tokenLampToggleMeText');
   const swSettings=document.getElementById('tokenLampToggleSettings');
