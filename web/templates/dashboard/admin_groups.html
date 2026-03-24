@@ -386,8 +386,18 @@ async function uploadGroupImageAdmin(gid, inp){
   if(!inp || !inp.files || !inp.files[0]) return;
   const root = inp.closest('[data-gid]');
   const msg = root ? root.querySelector('.g-msg') : null;
+  let file = inp.files[0];
+  try{
+    if(window.MAIImageCropper && /^image\//i.test(file.type||'')){
+      const cropped = await window.MAIImageCropper.open(file, { aspectRatio: 1 });
+      if(cropped) file = new File([cropped], 'chat.jpg', { type: 'image/jpeg' });
+    }
+  }catch(e){
+    inp.value = '';
+    return;
+  }
   const fd = new FormData();
-  fd.append('file', inp.files[0]);
+  fd.append('file', file);
   try{
     const r = await fetch('/admin/groups/'+gid+'/upload-image', {
       method:'POST',

@@ -2440,7 +2440,19 @@ async function uploadAv(input,imgId='avImg'){
   const file=input.files[0];if(!file)return;
   const err=document.getElementById('avErr');
   if(err){err.style.display='none'}
-  const fd=new FormData();fd.append('file',file);
+  let finalFile = file;
+  try{
+    if(window.MAIImageCropper && /^image\//i.test(file.type||'')){
+      const cropped = await window.MAIImageCropper.open(file,{aspectRatio:1});
+      if(cropped){
+        finalFile = new File([cropped], 'avatar.jpg', {type:'image/jpeg'});
+      }
+    }
+  }catch(e){
+    input.value='';
+    return;
+  }
+  const fd=new FormData();fd.append('file',finalFile);
   try{
     const r=await fetch('/profile/upload-avatar',{method:'POST',body:fd});
     const d=await r.json();
@@ -3388,8 +3400,21 @@ async function uploadGroupImage(inp){
   if(!selectedGroupId||!inp||!inp.files||!inp.files[0]) return;
   const st=document.getElementById('groupImageSt');
   if(st) st.textContent='Загрузка…';
+  let file = inp.files[0];
+  try{
+    if(window.MAIImageCropper && /^image\//i.test(file.type||'')){
+      const cropped = await window.MAIImageCropper.open(file,{aspectRatio:1});
+      if(cropped){
+        file = new File([cropped], 'group.jpg', {type:'image/jpeg'});
+      }
+    }
+  }catch(e){
+    if(st) st.textContent='';
+    inp.value='';
+    return;
+  }
   const fd=new FormData();
-  fd.append('file', inp.files[0]);
+  fd.append('file', file);
   try{
     const r=await fetch('/community/groups/'+selectedGroupId+'/upload-image',{method:'POST',body:fd,credentials:'same-origin'});
     const d=await r.json().catch(()=>({}));
@@ -3724,8 +3749,28 @@ async function deleteGroupMessage(mid){
 }
 
 function onGroupChatPickImage(){
-  const h = document.getElementById('groupVoiceHint');
-  if(h){ h.style.display='inline'; h.textContent='✓ Фото'; h.style.color='#4ade80'; }
+  const inp = document.getElementById('groupChatImgInp');
+  const file = inp && inp.files && inp.files[0];
+  if(!file){
+    window.__groupChatImageFile = null;
+    return;
+  }
+  const done = function(f){
+    window.__groupChatImageFile = f || file;
+    const h = document.getElementById('groupVoiceHint');
+    if(h){ h.style.display='inline'; h.textContent='✓ Фото'; h.style.color='#4ade80'; }
+  };
+  if(window.MAIImageCropper && /^image\//i.test(file.type||'')){
+    window.MAIImageCropper.open(file,{aspectRatio:1}).then(function(blob){
+      const cropped = new File([blob], 'chat.jpg', {type:'image/jpeg'});
+      done(cropped);
+    }).catch(function(){
+      if(inp) inp.value='';
+      window.__groupChatImageFile = null;
+    });
+    return;
+  }
+  done(file);
 }
 
 function pickGroupVoiceMime(){
@@ -3805,7 +3850,7 @@ async function sendGroupChatMessage(){
   const inp = document.getElementById('groupMsgInput');
   const t = inp && inp.value.trim();
   const imgInp = document.getElementById('groupChatImgInp');
-  const file = imgInp && imgInp.files && imgInp.files[0];
+  const file = window.__groupChatImageFile || (imgInp && imgInp.files && imgInp.files[0]);
   const blob = window.__groupChatAudioBlob;
   if(!selectedGroupId) return;
   if(!t && !file && !blob) return;
@@ -3826,6 +3871,7 @@ async function sendGroupChatMessage(){
   }
   if(inp) inp.value = '';
   if(imgInp) imgInp.value = '';
+  window.__groupChatImageFile = null;
   window.__groupChatAudioBlob = null;
   var vh = document.getElementById('groupVoiceHint');
   if(vh) vh.style.display = 'none';

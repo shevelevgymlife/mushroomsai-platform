@@ -232,7 +232,7 @@
   <div class="mbox">
     <button onclick="closeM('postModal')" style="position:absolute;top:14px;right:14px;background:none;border:none;color:#888;font-size:20px;cursor:pointer">✕</button>
     <h3 style="margin:0 0 16px;font-size:18px">Новый пост</h3>
-    <form action="/community/post" method="post" enctype="multipart/form-data">
+    <form id="communityPostForm" action="/community/post" method="post" enctype="multipart/form-data">
       <textarea name="content" class="sinp" style="resize:vertical;min-height:110px;font-size:15px" placeholder="Поделитесь опытом..."></textarea>
       <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <label style="cursor:pointer;color:#3dd4e0;font-size:13px;display:flex;align-items:center;gap:5px">
@@ -507,17 +507,42 @@ async function saveBio(){
 // ---- AVATAR ----
 async function upAvatar(input){
   const file=input.files[0];if(!file)return;
-  const fd=new FormData();fd.append('file',file);
+  let finalFile=file;
+  try{
+    if(window.MAIImageCropper && /^image\//i.test(file.type||'')){
+      const blob=await window.MAIImageCropper.open(file,{aspectRatio:1});
+      if(blob) finalFile=new File([blob],'avatar.jpg',{type:'image/jpeg'});
+    }
+  }catch(e){
+    input.value='';
+    return;
+  }
+  const fd=new FormData();fd.append('file',finalFile);
   const r=await fetch('/profile/upload-avatar',{method:'POST',body:fd});
   const d=await r.json();if(d.ok)location.reload();
 }
 
 // ---- IMAGE PREVIEW ----
-function prvImg(input){
+async function prvImg(input){
   const f=input.files[0];if(!f)return;
+  let finalFile=f;
+  try{
+    if(window.MAIImageCropper && /^image\//i.test(f.type||'')){
+      const blob=await window.MAIImageCropper.open(f,{aspectRatio:1});
+      if(blob) finalFile=new File([blob],'post.jpg',{type:'image/jpeg'});
+    }
+  }catch(e){
+    input.value='';
+    return;
+  }
+  try{
+    const dt=new DataTransfer();
+    dt.items.add(finalFile);
+    input.files=dt.files;
+  }catch(e){}
   const rd=new FileReader();
   rd.onload=e=>{document.getElementById('imgPrvI').src=e.target.result;document.getElementById('imgPrv').style.display='block'};
-  rd.readAsDataURL(f);
+  rd.readAsDataURL(finalFile);
 }
 
 // ---- UTILS ----

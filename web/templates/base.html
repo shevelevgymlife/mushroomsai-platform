@@ -34,6 +34,7 @@
   </script>
   <link rel="stylesheet" href="/static/css/custom.css?v=3" />
   <link rel="stylesheet" href="/static/css/design-system.css?v=3" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" />
   <style>
     /* Global anti-overflow guard for browser + Telegram WebApp */
     *, *::before, *::after { box-sizing: border-box; }
@@ -97,6 +98,22 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
   <!-- Grain overlay -->
   <div class="grain-overlay"></div>
 
+  <div id="globalCropModal" style="display:none;position:fixed;inset:0;z-index:10080;background:rgba(0,0,0,.84);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this){window.MAIImageCropper && window.MAIImageCropper.cancel()}">
+    <div style="width:min(560px,95vw);max-height:92vh;overflow:hidden;background:#0e1015;border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:14px;box-shadow:0 18px 56px rgba(0,0,0,.5)">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
+        <div style="font-size:14px;font-weight:700;color:#eaeaec">Выберите область фото</div>
+        <button type="button" onclick="window.MAIImageCropper && window.MAIImageCropper.cancel()" style="border:none;background:transparent;color:#aaa;font-size:22px;line-height:1;cursor:pointer">×</button>
+      </div>
+      <div style="max-height:min(68vh,560px);overflow:auto;border-radius:12px;background:#070708">
+        <img id="globalCropImage" src="" alt="" style="display:block;max-width:100%" />
+      </div>
+      <div style="display:flex;gap:10px;margin-top:12px">
+        <button type="button" id="globalCropApplyBtn" onclick="window.MAIImageCropper && window.MAIImageCropper.apply()" style="flex:1;border:none;border-radius:10px;padding:10px 12px;background:#3dd4e0;color:#070708;font-weight:700;cursor:pointer">Применить</button>
+        <button type="button" onclick="window.MAIImageCropper && window.MAIImageCropper.cancel()" style="border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:10px 14px;background:transparent;color:#ddd;cursor:pointer">Отмена</button>
+      </div>
+    </div>
+  </div>
+
   {% include "components/navbar.html" %}
 
   <main>
@@ -106,8 +123,95 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
   {% include "components/footer.html" %}
 
   <script src="/static/js/app.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
   <script src="/static/js/mobile-shell.js" defer></script>
   {% block extra_scripts %}{% endblock %}
+  <script>
+  (function(){
+    var cropper = null;
+    var resolveFn = null;
+    var rejectFn = null;
+    var modalEl = null;
+    var imgEl = null;
+    var applyBtn = null;
+    function ensureEls(){
+      if(modalEl) return true;
+      modalEl = document.getElementById('globalCropModal');
+      imgEl = document.getElementById('globalCropImage');
+      applyBtn = document.getElementById('globalCropApplyBtn');
+      return !!(modalEl && imgEl && applyBtn && window.Cropper);
+    }
+    function cleanup(){
+      if(cropper){ try{ cropper.destroy(); }catch(e){} cropper = null; }
+      if(imgEl){ imgEl.src = ''; }
+      if(modalEl){ modalEl.style.display = 'none'; }
+      if(applyBtn){ applyBtn.disabled = false; applyBtn.textContent = 'Применить'; }
+    }
+    window.MAIImageCropper = {
+      open: function(file, opts){
+        opts = opts || {};
+        if(!file) return Promise.reject(new Error('file_required'));
+        if(!ensureEls()) return Promise.reject(new Error('cropper_unavailable'));
+        return new Promise(function(resolve, reject){
+          resolveFn = resolve;
+          rejectFn = reject;
+          var reader = new FileReader();
+          reader.onload = function(ev){
+            imgEl.src = ev.target.result;
+            modalEl.style.display = 'flex';
+            if(cropper){ try{ cropper.destroy(); }catch(e){} cropper = null; }
+            cropper = new Cropper(imgEl, {
+              aspectRatio: Number(opts.aspectRatio) > 0 ? Number(opts.aspectRatio) : 1,
+              viewMode: 1,
+              autoCropArea: 0.92,
+              responsive: true,
+              background: false
+            });
+          };
+          reader.onerror = function(){
+            cleanup();
+            reject(new Error('read_failed'));
+          };
+          reader.readAsDataURL(file);
+        });
+      },
+      apply: function(){
+        if(!cropper || !resolveFn) return;
+        var w = 800;
+        var h = 800;
+        try{
+          var data = cropper.getData(true);
+          if(data && data.width && data.height){
+            var side = Math.max(320, Math.min(1600, Math.round(Math.min(data.width, data.height))));
+            w = side; h = side;
+          }
+        }catch(e){}
+        if(applyBtn){ applyBtn.disabled = true; applyBtn.textContent = 'Готовим...'; }
+        var canvas = cropper.getCroppedCanvas({width:w,height:h,imageSmoothingQuality:'high'});
+        if(!canvas){
+          var rej1 = rejectFn;
+          cleanup();
+          if(rej1) rej1(new Error('canvas_failed'));
+          resolveFn = null; rejectFn = null;
+          return;
+        }
+        canvas.toBlob(function(blob){
+          var res1 = resolveFn, rej2 = rejectFn;
+          cleanup();
+          resolveFn = null; rejectFn = null;
+          if(!blob){ if(rej2) rej2(new Error('blob_failed')); return; }
+          if(res1) res1(blob);
+        }, 'image/jpeg', 0.92);
+      },
+      cancel: function(){
+        var rej = rejectFn;
+        cleanup();
+        resolveFn = null; rejectFn = null;
+        if(rej) rej(new Error('cancelled'));
+      }
+    };
+  })();
+  </script>
   <script>
   function updateUnreadCount(){
     fetch('/messages/unread-count').then(r=>r.json()).then(data=>{
