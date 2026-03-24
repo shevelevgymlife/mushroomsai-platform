@@ -11,9 +11,8 @@
 .cp-input{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:0 12px 12px}
 .sinp{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#e8e8e8;border-radius:12px;padding:10px 16px;font-size:16px;outline:none;width:100%;box-sizing:border-box}
 .btn-g{background:#3dd4e0;color:#000;border:none;border-radius:999px;padding:11px 14px;font-weight:700;cursor:pointer;min-height:44px;display:inline-flex;align-items:center;justify-content:center}
-@media (max-width:560px){
-  .cp-actions{grid-template-columns:1fr}
-}
+.cp-act-btn{min-height:52px;border-radius:14px;border:1px solid rgba(255,255,255,.18);background:linear-gradient(160deg,rgba(255,255,255,.07),rgba(12,13,20,.92));color:#e7ebf5;font-size:16px;font-weight:800}
+.cp-share-modal{display:none;position:fixed;inset:0;z-index:10110;align-items:center;justify-content:center;background:rgba(0,0,0,.86);backdrop-filter:blur(4px)}
 </style>
 <div class="cp-wrap">
   <div class="cp-card">
@@ -24,9 +23,9 @@
       </div>
     </div>
     <div class="cp-actions">
-      <button class="btn-g" type="button" onclick="goBackPost()">Закрыть</button>
-      <button class="btn-g" type="button" onclick="toggleReadText()">Почитать текст</button>
-      <button class="btn-g" type="button" onclick="openPhotoPage()" {% if not post.image_url %}style="display:none"{% endif %}>Фото</button>
+      <button class="cp-act-btn" type="button" onclick="goBackPost()">Закрыть</button>
+      <button class="cp-act-btn" type="button" onclick="toggleReadText()">Почитать текст</button>
+      <button class="cp-act-btn" type="button" onclick="openPhotoPage()" {% if not post.image_url %}style="display:none"{% endif %}>Фото</button>
     </div>
     {% if post.title %}<div style="padding:12px 12px 0;font-size:18px;font-weight:700;color:#f3f4f6">{{ post.title }}</div>{% endif %}
     <div id="textWrap" style="display:none;margin:12px;border:1px solid rgba(255,255,255,.12);border-radius:12px;background:rgba(8,10,16,.55);padding:10px;max-height:34vh;overflow:auto">
@@ -35,7 +34,7 @@
     <div class="cp-metrics">
       <button type="button" class="cp-metric" id="likeBtn" onclick="toggleLike()" style="border-color:rgba(255,216,79,.45);color:#ffe57f"> <span id="likeIcon">{{ '⭐' if is_liked else '✩' }}</span> <span id="likeCnt">{{ post.likes_count or 0 }}</span> </button>
       <div class="cp-metric" style="border-color:rgba(139,233,255,.4);color:#9df0ff">💬 <span id="cmtCnt">{{ post.comments_count or 0 }}</span></div>
-      <button type="button" class="cp-metric" onclick="toggleSave()" style="border-color:rgba(247,179,255,.4);color:#ffc6ff">↗ <span id="saveCnt">{{ post.saves_count or 0 }}</span></button>
+      <button type="button" class="cp-metric" onclick="openShareModal()" style="border-color:rgba(247,179,255,.4);color:#ffc6ff">↗ <span id="saveCnt">{{ post.saves_count or 0 }}</span></button>
     </div>
     {% if is_owner %}
     <div style="padding:0 12px 12px">
@@ -55,6 +54,18 @@
     </div>
   </div>
 </div>
+<div id="shareModal" class="cp-share-modal" onclick="if(event.target===this)closeShareModal()">
+  <div style="width:min(560px,92vw);max-height:min(86vh,760px);background:#0f1118;border:1px solid rgba(255,255,255,.14);border-radius:16px;overflow:hidden" onclick="event.stopPropagation()">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.1)">
+      <strong style="color:#e8e8e8;font-size:16px">Поделиться в личку</strong>
+      <button type="button" class="cp-act-btn" style="min-height:36px;padding:6px 10px;font-size:13px" onclick="closeShareModal()">Закрыть</button>
+    </div>
+    <div style="padding:12px 14px">
+      <input id="shareSearchInp" class="sinp" placeholder="Поиск по имени..." oninput="loadShareUsers(this.value)">
+    </div>
+    <div id="shareUsersList" style="padding:0 14px 14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-height:min(62vh,560px);overflow:auto"></div>
+  </div>
+</div>
 <script>
 const POST_ID={{ post.id }};
 const BACK_URL={{ back_url|tojson }};
@@ -69,9 +80,52 @@ async function toggleLike(){
   i.textContent=was?'✩':'⭐'; c.textContent=String(Math.max(0,b+(was?-1:1)));
   try{ const r=await fetch('/community/like/'+POST_ID,{method:'POST'}); const d=await r.json(); if(typeof d.count==='number') c.textContent=String(Math.max(0,d.count)); i.textContent=d.liked?'⭐':'✩'; }catch(e){ i.textContent=was?'⭐':'✩'; c.textContent=String(b); }
 }
-async function toggleSave(){
-  const c=document.getElementById('saveCnt'); const b=parseInt(c.textContent||'0',10)||0;
-  try{ const r=await fetch('/community/save/'+POST_ID,{method:'POST'}); const d=await r.json(); c.textContent=String(Math.max(0,b+(d.saved?1:-1))); }catch(e){}
+function closeShareModal(){ const m=document.getElementById('shareModal'); if(m)m.style.display='none'; }
+async function openShareModal(){
+  const m=document.getElementById('shareModal');
+  if(m) m.style.display='flex';
+  const inp=document.getElementById('shareSearchInp');
+  if(inp) inp.value='';
+  await loadShareUsers('');
+}
+async function loadShareUsers(q){
+  const list=document.getElementById('shareUsersList');
+  if(!list) return;
+  list.innerHTML='<div style="grid-column:1/-1;color:#8a8fa0;font-size:13px;padding:8px">Загрузка...</div>';
+  try{
+    const r=await fetch('/community/users/share-candidates?q='+encodeURIComponent(q||''),{credentials:'same-origin'});
+    const d=await r.json().catch(()=>({}));
+    const arr=(d&&d.users)||[];
+    if(!arr.length){
+      list.innerHTML='<div style="grid-column:1/-1;color:#8a8fa0;font-size:13px;padding:8px">Никого не найдено</div>';
+      return;
+    }
+    list.innerHTML=arr.map(function(u){
+      const av=u.avatar
+        ?'<img src="'+u.avatar+'" alt="" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid rgba(61,212,224,.35)">'
+        :'<div style="width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#1a1a1a;border:2px solid rgba(61,212,224,.25);font-size:12px">🍄</div>';
+      return '<button type="button" onclick="shareToUser('+u.id+')" style="text-align:left;display:flex;align-items:center;gap:8px;padding:8px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.03);color:#e8e8e8;cursor:pointer">'+
+        av+
+        '<span style="min-width:0;display:flex;flex-direction:column"><span style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(u.name||'Участник')+'</span><span style="font-size:11px;color:#8a8fa0">подписчиков: '+(u.followers_count||0)+'</span></span>'+
+      '</button>';
+    }).join('');
+  }catch(e){
+    list.innerHTML='<div style="grid-column:1/-1;color:#f87171;font-size:13px;padding:8px">Ошибка загрузки</div>';
+  }
+}
+async function shareToUser(uid){
+  try{
+    const r=await fetch('/community/post/'+POST_ID+'/share-dm',{
+      method:'POST',
+      credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({recipient_id:uid})
+    });
+    const d=await r.json().catch(()=>({}));
+    if(r.ok && d.ok){
+      closeShareModal();
+    }
+  }catch(e){}
 }
 function cHtml(c){ return '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:8px 10px"><div style="font-size:11px;color:#8a8fa0"><strong style="color:#d8deec">'+(c.author_name||'Участник')+'</strong> · '+(c.created_at||'')+'</div><div style="font-size:13px;color:#e6e8ef;white-space:pre-wrap;word-break:break-word">'+(c.content||'')+'</div></div>'; }
 async function loadComments(){ try{ const r=await fetch('/community/comments/'+POST_ID,{credentials:'same-origin'}); const d=await r.json(); const arr=d.comments||[]; document.getElementById('commentsList').innerHTML=arr.length?arr.map(cHtml).join(''):'<div style="font-size:12px;color:#8a8fa0">Комментариев пока нет</div>'; }catch(e){} }

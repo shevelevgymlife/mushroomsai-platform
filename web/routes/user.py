@@ -630,11 +630,9 @@ async def share_community_post_dm(request: Request, post_id: int):
     post = await database.fetch_one(community_posts.select().where(community_posts.c.id == post_id))
     if not post:
         return JSONResponse({"error": "not found"}, status_code=404)
-    if not await _can_manage_community_post(user, post):
-        return JSONResponse({"error": "forbidden"}, status_code=403)
     author_id = post["user_id"]
     base = settings.SITE_URL.rstrip("/")
-    link = f"{base}/community/profile/{author_id}#pc-{post_id}"
+    link = f"{base}/community/post/{post_id}"
     ttitle = (post.get("title") or "").strip()
     line = f"🔗 Пост: {ttitle}\n{link}" if ttitle else f"🔗 Пост в сообществе\n{link}"
     try:
@@ -669,6 +667,33 @@ async def community_users_search(request: Request, q: str = ""):
             "avatar": (r.get("avatar") or ""),
         })
     return JSONResponse({"users": result})
+
+
+@router.get("/community/users/share-candidates")
+async def community_share_candidates(request: Request, q: str = ""):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = user.get("primary_user_id") or user["id"]
+    needle = (q or "").strip()
+    qy = users.select().where(users.c.id != uid).where(users.c.primary_user_id == None)
+    if needle:
+        qy = qy.where(users.c.name.ilike(f"%{needle}%"))
+        qy = qy.order_by(users.c.followers_count.desc().nullslast(), users.c.id.desc()).limit(40)
+    else:
+        qy = qy.order_by(users.c.followers_count.desc().nullslast(), users.c.id.desc()).limit(6)
+    rows = await database.fetch_all(qy)
+    return JSONResponse({
+        "users": [
+            {
+                "id": r["id"],
+                "name": (r.get("name") or "Участник"),
+                "avatar": (r.get("avatar") or ""),
+                "followers_count": int(r.get("followers_count") or 0),
+            }
+            for r in rows
+        ]
+    })
 
 
 @router.post("/community/like/{post_id}")
