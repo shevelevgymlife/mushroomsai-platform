@@ -47,7 +47,15 @@ class ProbeBlockMiddleware(BaseHTTPMiddleware):
 
     _WP_DIR_SEGMENTS = frozenset({"wp-admin", "wp-includes", "wp-content", "wordpress"})
     _WP_PROBE_FILES = frozenset(
-        {"xmlrpc.php", "wp-login.php", "readme.html", "license.txt", "wlwmanifest.xml"}
+        {
+            "xmlrpc.php",
+            "wp-login.php",
+            "readme.html",
+            "license.txt",
+            "wlwmanifest.xml",
+            "setup-config.php",
+            "install.php",
+        }
     )
 
     @classmethod
