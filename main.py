@@ -20,18 +20,20 @@ _shielded_handler_ids: set[int] = set()
 _shielded_logger_names: set[str] = set()
 _root_tg_filter_added: bool = False
 _httpx_info_patched: bool = False
-_ptb_updater_filter_added: bool = False
+_ptb_invalid_token_filter_loggers: set[str] = set()
 
 
 class _DropPTBInvalidTokenSpam(logging.Filter):
-    """PTB пишет _LOGGER.exception(\"Invalid token; aborting\") — огромный traceback рядом с apscheduler."""
+    """PTB / asyncio: InvalidToken в логах (polling, process_error) — не засорять вывод рядом с apscheduler."""
 
     def filter(self, record: logging.LogRecord) -> bool:
         try:
             msg = record.getMessage()
         except Exception:
             return True
-        if "Invalid token" in msg:
+        if "Invalid token" in msg or "Invalid token; aborting" in msg:
+            return False
+        if "telegram.error.InvalidToken" in msg or "InvalidToken: Unauthorized" in msg:
             return False
         ei = record.exc_info
         if ei and ei[0] is not None and getattr(ei[0], "__name__", "") == "InvalidToken":
@@ -90,10 +92,11 @@ def _shield_telegram_token_logs() -> None:
             _lg.addFilter(_TG_LOG_FILTER)
             _shielded_logger_names.add(_name)
     _patch_httpx_client_info_drop_telegram()
-    global _ptb_updater_filter_added
-    if not _ptb_updater_filter_added:
-        logging.getLogger("telegram.ext.Updater").addFilter(_DropPTBInvalidTokenSpam())
-        _ptb_updater_filter_added = True
+    global _ptb_invalid_token_filter_loggers
+    for _n in ("telegram.ext.Updater", "telegram.ext.Application", "telegram.ext"):
+        if _n not in _ptb_invalid_token_filter_loggers:
+            logging.getLogger(_n).addFilter(_DropPTBInvalidTokenSpam())
+            _ptb_invalid_token_filter_loggers.add(_n)
 
 
 logging.basicConfig(level=logging.INFO)
@@ -151,6 +154,12 @@ def _install_asyncio_invalid_token_handler() -> None:
                     return
             except Exception:
                 pass
+        msg = str(context.get("message", "") or "")
+        if "InvalidToken" in msg or "Invalid token" in msg.lower():
+            logger.warning(
+                "Telegram: ошибка токена в asyncio (см. TELEGRAM_TOKEN на Render). Сайт может работать без бота."
+            )
+            return
         if prev is not None:
             prev(loop, context)
         else:
@@ -502,7 +511,12 @@ async def lifespan(app: FastAPI):
     # Start primary Telegram bot (website/app bot)
     global bot_app, ops_bot_app
     primary_token = (settings.TELEGRAM_TOKEN or "").strip()
-    if primary_token:
+    _disable_bot = os.environ.get("TELEGRAM_DISABLE_BOT", "").strip().lower() in ("1", "true", "yes")
+    if _disable_bot:
+        logger.warning(
+            "TELEGRAM_DISABLE_BOT включён — бот не запускается. Уберите переменную в Render после починки TELEGRAM_TOKEN."
+        )
+    elif primary_token:
         try:
             # В логах видно только bot id (число до ":"), без секрета — сверяйте с Render → Environment → TELEGRAM_TOKEN
             _bid = primary_token.split(":")[0] if ":" in primary_token else "?"
