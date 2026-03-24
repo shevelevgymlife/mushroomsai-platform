@@ -169,7 +169,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 <div class="cp-ig-root">
   <header class="ig-dash-header" aria-label="Профиль">
     <a href="/dashboard#feed" class="ig-ham" aria-label="Назад к ленте">←</a>
-    <a href="/dashboard#feed" class="ig-head-brand">MushroomsAI</a>
+    <a href="/dashboard#me" class="ig-head-brand">MushroomsAI</a>
     <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
       <a href="/dashboard#feed" class="ig-head-msg" title="Лента" aria-label="Лента">{{ ico('feed') }}</a>
       <a href="/dashboard" class="ig-head-msg" title="Кабинет" aria-label="Кабинет">{{ ico('user') }}</a>
@@ -336,12 +336,12 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 
 <div id="profilePostPreviewModal" style="display:none;position:fixed;inset:0;z-index:10026;align-items:stretch;justify-content:center;background:rgba(0,0,0,.92);backdrop-filter:blur(6px)" onclick="if(event.target===this)closeProfilePostPreview()">
   <div class="card" style="max-width:min(880px,100vw);width:100%;height:calc(var(--vvh,100vh));max-height:calc(var(--vvh,100vh));padding:0;overflow:hidden;border-color:rgba(61,212,224,.32);background:linear-gradient(165deg,rgba(255,255,255,.08),rgba(8,8,12,.96));border-radius:0" onclick="event.stopPropagation()">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0">
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0">
+      <button type="button" class="btn-o" style="padding:6px 10px;flex-shrink:0" onclick="closeProfilePostPreview()">✕</button>
       <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
         <strong id="profilePreviewAuthor" style="font-size:14px;color:#e8e8e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Пост</strong>
         <span id="profilePreviewDate" style="font-size:11px;color:#8a8fa0"></span>
       </div>
-      <button type="button" class="btn-o" style="padding:6px 10px" onclick="closeProfilePostPreview()">✕</button>
     </div>
     <div style="overflow-y:auto;flex:1;min-height:0;padding-bottom:calc(70px + env(safe-area-inset-bottom,0px))">
       <img id="profilePreviewImage" src="" alt="" onclick="openProfilePreviewImageFull()" style="display:none;width:100%;max-height:56vh;object-fit:cover;background:#0a0a0a;cursor:zoom-in">
