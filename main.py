@@ -378,6 +378,16 @@ async def lifespan(app: FastAPI):
                     "callback_query",
                 ],
             )
+            try:
+                from config import settings as _settings
+                chat_id = int((_settings.DEPLOY_NOTIFY_TG_CHAT_ID or "0").strip() or 0)
+                if chat_id:
+                    await ops_bot_app.bot.send_message(
+                        chat_id=chat_id,
+                        text="✅ Ops-бот запущен и готов принимать /task",
+                    )
+            except Exception:
+                pass
             logger.info("Ops Telegram bot started")
         except Exception as e:
             logger.error(f"Ops bot startup error: {e}")

@@ -36,6 +36,17 @@ async def _ops_start(update, context):
     return
 
 
+async def _ops_any_command(update, context):
+    """Fail-safe command handler so /task is always handled."""
+    if not update.message:
+        return
+    text = (update.message.text or "").strip().lower()
+    if text.startswith("/task") or text.startswith("/start"):
+        await task_give_entry(update, context)
+        return
+    await update.message.reply_text("Команда не распознана. Используйте /task или кнопку «Указать задачу».")
+
+
 def _ops_token() -> str:
     return (
         (getattr(settings, "TASK_APPROVAL_BOT_TOKEN", "") or "").strip()
@@ -58,6 +69,7 @@ def create_ops_bot() -> Application:
     app.add_handler(CallbackQueryHandler(task_approval_callback, pattern=r"^confirm:(yes|no):"))
     app.add_handler(MessageHandler(filters.PHOTO, task_photo_received))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, task_text_received))
+    app.add_handler(MessageHandler(filters.COMMAND, _ops_any_command))
 
     logger.info("Ops bot handlers configured")
     return app
