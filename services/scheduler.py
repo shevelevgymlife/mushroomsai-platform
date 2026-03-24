@@ -87,21 +87,29 @@ def start_scheduler(bot):
         "interval",
         minutes=30,
         args=[bot],
+        id="send_followup_messages_primary",
+        replace_existing=True,
     )
     scheduler.add_job(
         purge_expired_group_messages,
         "interval",
         hours=1,
+        id="purge_expired_group_messages",
+        replace_existing=True,
     )
     scheduler.add_job(
         maybe_notify_billing,
         "interval",
         hours=12,
+        id="maybe_notify_billing",
+        replace_existing=True,
     )
     scheduler.add_job(
         send_daily_summary,
         "cron",
         hour=int(getattr(settings, "OPS_NOTIFY_DAILY_SUMMARY_HOUR_UTC", 9) or 9),
         minute=0,
+        id="send_daily_summary",
+        replace_existing=True,
     )
     scheduler.start()

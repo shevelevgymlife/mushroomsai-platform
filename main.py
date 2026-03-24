@@ -186,6 +186,16 @@ async def lifespan(app: FastAPI):
     _install_asyncio_invalid_token_handler()
     await database.connect()
     logger.info("Database connected")
+    _commit = (os.environ.get("RENDER_GIT_COMMIT") or "")[:12] or "n/a"
+    _tg_nonempty = bool((settings.TELEGRAM_TOKEN or "").strip())
+    _tg_key = "TELEGRAM_TOKEN" in os.environ
+    logger.info(
+        "Boot: render_git=%s tg_token_nonempty=%s TELEGRAM_TOKEN_key_in_env=%s "
+        "(если снова InvalidToken — сравните render_git с последним коммитом в GitHub; старые строки в логе возможны до рестарта)",
+        _commit,
+        _tg_nonempty,
+        _tg_key,
+    )
     await send_deploy_notifications()
 
     # Ensure persistent storage directories exist (Render Disk at /data or local ./media)
