@@ -428,8 +428,8 @@
 .tg-chat-shell .ig-g-row{display:flex;flex-direction:row;width:100%;max-width:100%;align-items:flex-end;gap:8px;box-sizing:border-box}
 .tg-chat-shell .ig-g-row{animation:msgSoftIn .22s ease-out}
 @keyframes msgSoftIn{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
-.tg-chat-shell .ig-g-row.me{align-items:flex-end}
-.tg-chat-shell .ig-g-row.them{align-items:flex-start}
+.tg-chat-shell .ig-g-row.me{align-items:flex-end;justify-content:flex-end}
+.tg-chat-shell .ig-g-row.them{align-items:flex-start;justify-content:flex-start}
 .tg-chat-shell .ig-g-bubble{max-width:min(82%,390px);padding:10px 13px 8px;border-radius:20px;font-size:14px;line-height:1.45;word-break:break-word;position:relative;animation:igMsgIn .2s ease-out;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-sizing:border-box}
 .tg-chat-shell .ig-g-bubble.me{border-bottom-right-radius:7px;background:linear-gradient(155deg,rgba(242,173,120,.28),rgba(126,75,65,.3))!important;border:1px solid rgba(255,216,184,.28)!important;color:#fff6ef!important;box-shadow:0 10px 26px rgba(0,0,0,.24)}
 .tg-chat-shell .ig-g-bubble.them{border-bottom-left-radius:7px;background:linear-gradient(155deg,rgba(168,190,255,.18),rgba(70,84,111,.24))!important;border:1px solid rgba(210,224,255,.22)!important;color:#f2f6ff!important}
@@ -437,12 +437,15 @@
 .tg-msg-av img{width:100%;height:100%;object-fit:cover;display:block}
 .tg-chat-shell .ig-g-row.me .tg-msg-av{visibility:hidden}
 .tg-chat-shell .ig-g-name{font-size:12px;font-weight:600;color:#3dd4e0!important}
+.tg-chat-shell .ig-g-meta{display:flex;align-items:center;gap:6px}
 .tg-chat-shell .ig-g-bubble.them .ig-g-name{color:#9ca3af!important}
 .tg-chat-shell .ig-g-del{border:none;background:transparent;color:#888;cursor:pointer;font-size:18px;line-height:1;padding:0 2px;opacity:.75}
 .tg-chat-shell .ig-g-del:hover{color:#f87171;opacity:1}
 .tg-chat-shell .ig-g-text{white-space:pre-wrap}
 .tg-chat-shell .ig-g-time{font-size:10px;color:rgba(255,255,255,.45)!important;margin-top:4px;text-align:right}
 .tg-chat-shell .ig-g-bubble.them .ig-g-time{text-align:left;color:rgba(255,255,255,.35)!important}
+.tg-chat-shell .ig-g-reply-btn{margin-left:auto;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.05);color:#cfd8ea;border-radius:10px;padding:3px 8px;font-size:11px;cursor:pointer}
+.tg-chat-shell .ig-g-reply-btn:hover{border-color:rgba(61,212,224,.45);color:#8be9ff}
 .tg-chat-shell .ig-g-reply{font-size:11px;color:#9ca3af;border-left:2px solid rgba(61,212,224,.45);padding:4px 0 4px 8px;margin:0 0 6px;max-width:100%}
 .tg-chat-shell .ig-g-img{max-width:100%;max-height:min(220px,50vh);border-radius:12px;display:block;margin:4px 0;object-fit:cover}
 .tg-chat-shell .ig-g-audio{width:100%;max-width:min(100%,280px);min-width:200px;min-height:44px;height:auto;margin:6px 0;display:block}
@@ -3751,6 +3754,7 @@ async function loadGroupMessages(gid, opts){
         '<div class="ig-g-bubble '+(m.is_mine?'me':'them')+'" ondblclick="toggleGroupLike('+m.id+', this.closest(\'.ig-g-row\').querySelector(\'.ig-g-like\'))">'+
         '<div class="ig-g-meta"><span class="ig-g-name">'+esc(m.sender_name)+'</span>'+
         (m.can_delete ? '<button type="button" class="ig-g-del" onclick="deleteGroupMessage('+m.id+')" title="Удалить" aria-label="Удалить">×</button>' : '')+
+        '<button type="button" class="ig-g-reply-btn" onclick="setGroupReplyTo('+m.id+')" title="Ответить" aria-label="Ответить">↩ Ответить</button>'+
         '</div>'+replyHtml+addressedHtml+imgHtml+audHtml+txtHtml+
         '<div class="ig-g-like-row"><button type="button" class="ig-g-like" onclick="toggleGroupLike('+m.id+',this)">'+(liked?'⭐':'✩')+'</button> <span class="ig-g-lc">'+likeN+'</span>'+likedUsersHtml+'</div>'+
         '<div class="ig-g-time">'+esc(m.created_at)+'</div></div></div>';
