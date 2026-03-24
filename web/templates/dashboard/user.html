@@ -1464,7 +1464,7 @@ body.dash-ig-app .ig-lamp-topbar{
             <div class="tg-chat-input-row app-input-row">
               <input type="file" id="groupChatImgInp" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none" onchange="onGroupChatPickImage()">
               <button type="button" class="btn-o" style="padding:8px 10px;font-size:17px;flex-shrink:0;border-radius:50%;width:40px;height:40px" title="Фото" onclick="document.getElementById('groupChatImgInp').value='';document.getElementById('groupChatImgInp').click()">＋</button>
-              <button type="button" id="groupMicBtn" class="btn-o" style="padding:8px 10px;font-size:16px;flex-shrink:0;border-radius:50%;width:40px;height:40px" title="Голосовое до 1 мин: нажмите начать / снова — остановить" onclick="toggleGroupVoiceRecord()">🎤</button>
+              <button type="button" id="groupMicBtn" class="btn-o" style="padding:8px 10px;font-size:16px;flex-shrink:0;border-radius:50%;width:40px;height:40px" title="Голосовое до 30 сек: нажмите, затем отправьте кнопкой →" onclick="toggleGroupVoiceRecord()">🎤</button>
               <span id="groupVoiceHint">● Запись…</span>
               <input type="text" id="groupMsgInput" class="sinp" placeholder="Сообщение…" disabled onkeydown="if(event.key==='Enter'){event.preventDefault();sendGroupChatMessage();}">
               <button type="button" class="btn-g" id="groupMsgSend" style="padding:10px 16px" disabled onclick="sendGroupChatMessage()">→</button>
@@ -3780,11 +3780,40 @@ function pickGroupVoiceMime(){
   return '';
 }
 
+function _groupVoiceFmtSec(sec){
+  var s = Math.max(0, Math.floor(sec || 0));
+  return String(s).padStart(2, '0');
+}
+
+function _groupVoiceHintTextRecording(leftSec){
+  return '● Запись… осталось: 00:' + _groupVoiceFmtSec(leftSec);
+}
+
+function _groupVoiceSetHint(text, color){
+  var h = document.getElementById('groupVoiceHint');
+  if(!h) return;
+  if(!text){
+    h.style.display='none';
+    return;
+  }
+  h.style.display='inline';
+  h.textContent=text;
+  if(color) h.style.color=color;
+}
+
+async function stopGroupVoiceRecordAndWait(){
+  var g = window.__groupVoiceRec;
+  if(!g || !g.mr || g.mr.state !== 'recording') return;
+  await new Promise(function(resolve){
+    g._resolveStop = resolve;
+    try{ g.mr.stop(); }catch(_){ resolve(); }
+  });
+}
+
 async function toggleGroupVoiceRecord(){
   var g = window.__groupVoiceRec;
   if(g && g.mr && g.mr.state === 'recording'){
-    if(g.maxTimer){ clearTimeout(g.maxTimer); g.maxTimer=null; }
-    g.mr.stop();
+    await stopGroupVoiceRecordAndWait();
     return;
   }
   window.__groupChatAudioBlob = null;
@@ -3802,16 +3831,24 @@ async function toggleGroupVoiceRecord(){
     }
     var chunks = [];
     mr.ondataavailable = function(e){ if(e.data && e.data.size>0) chunks.push(e.data); };
-    var rec = {mr:mr, stream:stream, maxTimer:null};
-    var maxMs = 60000;
+    var rec = {mr:mr, stream:stream, maxTimer:null, tickTimer:null, startedAt:Date.now(), maxMs:30000, _resolveStop:null};
+    var maxMs = rec.maxMs;
+    var updateRemain = function(){
+      var left = Math.max(0, Math.ceil((rec.maxMs - (Date.now() - rec.startedAt)) / 1000));
+      _groupVoiceSetHint(_groupVoiceHintTextRecording(left), '#f87171');
+    };
+    updateRemain();
+    rec.tickTimer = setInterval(updateRemain, 250);
     rec.maxTimer = setTimeout(function(){
       if(rec.mr && rec.mr.state === 'recording'){
-        showNotification('Максимум 1 минута','success');
+        _groupVoiceSetHint('✓ 30 секунд записано — нажмите →', '#4ade80');
+        showNotification('Максимум 30 секунд','success');
         rec.mr.stop();
       }
     }, maxMs);
     mr.onstop = function(){
       if(rec.maxTimer){ clearTimeout(rec.maxTimer); rec.maxTimer=null; }
+      if(rec.tickTimer){ clearInterval(rec.tickTimer); rec.tickTimer=null; }
       try{ stream.getTracks().forEach(function(t){ t.stop(); }); }catch(_){}
       window.__groupVoiceRec = null;
       var outType = (chunks[0] && chunks[0].type) ? chunks[0].type : (mime || 'audio/webm');
@@ -3824,13 +3861,16 @@ async function toggleGroupVoiceRecord(){
       }
       var h = document.getElementById('groupVoiceHint');
       if(h){
-        h.style.display='inline';
         if(window.__groupChatAudioBlob){
-          h.textContent='✓ Голосовое готово — нажмите →';
-          h.style.color='#4ade80';
+          _groupVoiceSetHint('✓ Голосовое готово — нажмите →', '#4ade80');
         }else{
-          h.style.display='none';
+          _groupVoiceSetHint('', '');
         }
+      }
+      if(typeof rec._resolveStop === 'function'){
+        var fn = rec._resolveStop;
+        rec._resolveStop = null;
+        try{ fn(); }catch(_){}
       }
     };
     window.__groupVoiceRec = rec;
@@ -3839,14 +3879,16 @@ async function toggleGroupVoiceRecord(){
     }catch(_){
       mr.start();
     }
-    var h = document.getElementById('groupVoiceHint');
-    if(h){ h.style.display='inline'; h.textContent='● Запись… до 1 мин'; h.style.color='#f87171'; }
+    _groupVoiceSetHint(_groupVoiceHintTextRecording(30), '#f87171');
   }catch(e){
     showNotification('Нет доступа к микрофону','error');
   }
 }
 
 async function sendGroupChatMessage(){
+  if(window.__groupVoiceRec && window.__groupVoiceRec.mr && window.__groupVoiceRec.mr.state === 'recording'){
+    await stopGroupVoiceRecordAndWait();
+  }
   const inp = document.getElementById('groupMsgInput');
   const t = inp && inp.value.trim();
   const imgInp = document.getElementById('groupChatImgInp');
