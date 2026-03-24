@@ -257,6 +257,13 @@ async def lifespan(app: FastAPI):
             created_at TIMESTAMP DEFAULT NOW(),
             UNIQUE(group_id, user_id)
         )""",
+        """CREATE TABLE IF NOT EXISTS community_group_typing_status (
+            id SERIAL PRIMARY KEY,
+            group_id INTEGER NOT NULL REFERENCES community_groups(id) ON DELETE CASCADE,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+            UNIQUE(group_id, user_id)
+        )""",
         """CREATE TABLE IF NOT EXISTS task_confirmations (
             id SERIAL PRIMARY KEY,
             request_id VARCHAR(128) UNIQUE NOT NULL,

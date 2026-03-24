@@ -375,10 +375,10 @@
 .tg-chat-list{flex:1;overflow-y:auto;padding:0 0 8px;-webkit-overflow-scrolling:touch}
 .tg-chat-list::-webkit-scrollbar{width:6px}
 .tg-chat-list::-webkit-scrollbar-thumb{background:rgba(61,212,224,.25);border-radius:3px}
-.ig-g-item.tg-chat-item{display:flex;align-items:center;gap:12px;padding:10px 12px;margin:0;border-radius:0;border:none;border-bottom:1px solid rgba(255,255,255,.06);background:transparent;transition:background .15s;cursor:pointer}
+.ig-g-item.tg-chat-item{display:flex;align-items:center;gap:12px;padding:10px 12px;margin:8px 10px;border-radius:16px;border:1px solid rgba(255,255,255,.09);background:linear-gradient(160deg,rgba(255,255,255,.08),rgba(10,12,18,.9));transition:background .15s,border-color .2s,transform .2s;cursor:pointer}
 .ig-g-item.tg-chat-item.tg-ios-row{align-items:flex-start;padding-top:11px;padding-bottom:11px}
 .ig-g-item.tg-chat-item:hover{background:rgba(61,212,224,.06)}
-.ig-g-item.tg-chat-item.on{background:rgba(61,212,224,.12);border-left:3px solid #3dd4e0;padding-left:9px}
+.ig-g-item.tg-chat-item.on{background:linear-gradient(160deg,rgba(61,212,224,.14),rgba(15,18,26,.92));border-color:rgba(61,212,224,.45);transform:translateY(-1px)}
 .ig-g-item.tg-chat-item.on:hover{background:rgba(61,212,224,.14)}
 .tg-chat-av{flex-shrink:0;width:48px;height:48px;border-radius:50%;background:linear-gradient(145deg,#3dd4e0,#006680);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#0a0a0a;text-transform:uppercase;box-shadow:0 2px 8px rgba(61,212,224,.25);border:1px solid rgba(61,212,224,.35);overflow:hidden}
 .tg-chat-av.tg-chat-av--img{background:#111;padding:0}
@@ -1333,6 +1333,8 @@ body.dash-ig-app .ig-lamp-topbar{
             <div class="tg-chat-header-row">
               <button type="button" class="btn-o" id="groupMobileBack" style="font-size:12px;padding:6px 10px;display:none;flex-shrink:0" onclick="if(window.__groupChatHistoryPushed){history.back();}else{finishGroupChatOverlayUI();}">← Чаты</button>
               <div id="groupChatTitle"></div>
+              <span id="groupTypingNow" style="display:none;font-size:11px;color:#9ca3af;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+              <input id="groupAddressedSearch" class="sinp" style="max-width:150px;font-size:11px;padding:6px 8px;display:none" placeholder="Поиск участника">
               <select id="groupAddressedSelect" class="sinp" style="max-width:200px;font-size:12px;padding:6px 10px;display:none"></select>
               <span id="groupAddressedUnread" style="display:none;font-size:11px;color:#8be9ff;white-space:nowrap"></span>
               <button type="button" class="btn-o" id="groupNotifyBtn" style="font-size:12px;padding:6px 12px;display:none;flex-shrink:0" onclick="toggleGroupNotifications()">Уведомления: ВКЛ</button>
@@ -2928,6 +2930,7 @@ let selectedGroupId = null;
 let groupPollTimer = null;
 let _lastGroupMsgSig = {};
 let _groupNotificationsEnabled = true;
+let _typingPingTimer = null;
 window.__canCreateGroups = {{ can_create_groups | tojson }};
 window.__canManageGroupSettings = {{ can_manage_group_settings | default(false) | tojson }};
 
@@ -3036,6 +3039,7 @@ function clearGroupReply(){
 
 async function loadGroupParticipants(gid){
   const sel = document.getElementById('groupAddressedSelect');
+  const search = document.getElementById('groupAddressedSearch');
   if(!sel) return;
   try{
     const r = await fetch('/community/groups/'+gid+'/participants', { credentials:'same-origin' });
@@ -3045,8 +3049,20 @@ async function loadGroupParticipants(gid){
       return '<option value="'+p.id+'">'+esc(p.name||('ID '+p.id))+'</option>';
     }).join('');
     sel.style.display = d.participants.length ? 'inline-block' : 'none';
+    if(search){
+      search.style.display = d.participants.length ? 'inline-block' : 'none';
+      search.value = '';
+      search.oninput = function(){
+        const q = (search.value || '').trim().toLowerCase();
+        Array.from(sel.options).forEach(function(opt, idx){
+          if(idx === 0){ opt.hidden = false; return; }
+          opt.hidden = q && String(opt.text || '').toLowerCase().indexOf(q) < 0;
+        });
+      };
+    }
   }catch(e){
     sel.style.display='none';
+    if(search) search.style.display='none';
   }
 }
 function setGroupReplyTo(mid){
@@ -3081,9 +3097,16 @@ function initGroupSwipe(box){
     if(!rid || !rowEl) { rid=0; rowEl=null; return; }
     var dx = e.changedTouches[0].clientX - sx;
     var dy = Math.abs(e.changedTouches[0].clientY - sy);
-    if(dx > 55 && dy < 100) setGroupReplyTo(rid);
+    if(dx < -55 && dy < 100) setGroupReplyTo(rid);
     rid = 0; rowEl = null;
   }, {passive:true});
+}
+
+async function pingGroupTyping(){
+  if(!selectedGroupId) return;
+  try{
+    await fetch('/community/groups/'+selectedGroupId+'/typing', { method:'POST', credentials:'same-origin' });
+  }catch(e){}
 }
 function updateGroupMobileChrome(){
   const back = document.getElementById('groupMobileBack');
@@ -3378,7 +3401,9 @@ function selectGroupChat(id, el){
     else msg='Нажмите «Вступить», чтобы видеть переписку и писать в группе.';
     if(box) box.innerHTML = '<div style="color:#888;text-align:center;padding:24px;font-size:14px">'+msg+'</div>';
     const ap = document.getElementById('groupAddressedSelect'); if(ap) ap.style.display='none';
+    const as = document.getElementById('groupAddressedSearch'); if(as) as.style.display='none';
     const ur = document.getElementById('groupAddressedUnread'); if(ur) ur.style.display='none';
+    const tp = document.getElementById('groupTypingNow'); if(tp) tp.style.display='none';
     updateGroupMobileChrome();
     return;
   }
@@ -3489,6 +3514,17 @@ async function loadGroupMessages(gid, opts){
         const n = parseInt(d.group.addressed_unread_count||0,10)||0;
         ur.style.display = n>0 ? 'inline-block' : 'none';
         ur.textContent = n>0 ? ('Адресовано вам: '+n) : '';
+      }
+      const tp = document.getElementById('groupTypingNow');
+      if(tp){
+        const tu = Array.isArray(d.group.typing_users) ? d.group.typing_users : [];
+        if(tu.length){
+          tp.style.display = 'inline-block';
+          tp.textContent = 'Печатает: ' + tu.join(', ');
+        }else{
+          tp.style.display = 'none';
+          tp.textContent = '';
+        }
       }
       const pin = document.getElementById('groupPinnedRow');
       if(pin){
@@ -3670,6 +3706,7 @@ async function sendGroupChatMessage(){
   var vh = document.getElementById('groupVoiceHint');
   if(vh) vh.style.display = 'none';
   clearGroupReply();
+  if(_typingPingTimer){ clearTimeout(_typingPingTimer); _typingPingTimer = null; }
   const useMultipart = !!(file || blob);
   try{
     const r = await fetch('/community/groups/' + selectedGroupId + '/message', {
@@ -3724,6 +3761,22 @@ async function createGroupSubmit(){
     showNotification(msg,'error');
   }catch(e){ showNotification('Ошибка сети','error'); }
 }
+
+(function initGroupInputTyping(){
+  function wire(){
+    const inp = document.getElementById('groupMsgInput');
+    if(!inp || inp._typingWired) return;
+    inp._typingWired = true;
+    inp.addEventListener('input', function(){
+      if(!selectedGroupId) return;
+      pingGroupTyping();
+      if(_typingPingTimer) clearTimeout(_typingPingTimer);
+      _typingPingTimer = setTimeout(pingGroupTyping, 2200);
+    });
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire);
+  else wire();
+})();
 
 // ── Посты: модалки создания / правки / шаринга в ЛС ──
 const DASH_UID={{ effective_user_id|default(0) }};

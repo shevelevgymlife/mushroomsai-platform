@@ -503,6 +503,16 @@ community_group_member_bans = sqlalchemy.Table(
     sqlalchemy.UniqueConstraint("group_id", "user_id", name="uq_cg_member_ban"),
 )
 
+community_group_typing_status = sqlalchemy.Table(
+    "community_group_typing_status",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("group_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("community_groups.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("updated_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now(), nullable=False),
+    sqlalchemy.UniqueConstraint("group_id", "user_id", name="uq_cg_typing"),
+)
+
 community_group_message_likes = sqlalchemy.Table(
     "community_group_message_likes",
     metadata,

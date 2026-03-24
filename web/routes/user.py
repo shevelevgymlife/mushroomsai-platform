@@ -14,6 +14,7 @@ from db.models import (
     community_group_join_requests,
     community_group_member_permissions,
     community_group_member_bans,
+    community_group_typing_status,
 )
 from services.referral_service import get_referral_stats
 from services.subscription_service import check_subscription, PLANS
@@ -2431,6 +2432,21 @@ async def community_group_messages_get(request: Request, group_id: int):
             """
         ).bindparams(gid=group_id, uid=uid)
     ) or 0
+    typing_rows = await database.fetch_all(
+        sa.text(
+            """
+            SELECT u.name
+            FROM community_group_typing_status t
+            JOIN users u ON u.id = t.user_id
+            WHERE t.group_id = :gid
+              AND t.user_id != :uid
+              AND t.updated_at > (NOW() - INTERVAL '6 seconds')
+            ORDER BY t.updated_at DESC
+            LIMIT 3
+            """
+        ).bindparams(gid=group_id, uid=uid)
+    )
+    typing_names = [str(r.get("name") or "Участник") for r in typing_rows]
     return JSONResponse({
         "messages": out,
         "group": {
@@ -2439,8 +2455,33 @@ async def community_group_messages_get(request: Request, group_id: int):
             "allow_audio": bool((g_row or {}).get("allow_audio", True)),
             "notifications_enabled": bool((mem_row or {}).get("notifications_enabled", True)),
             "addressed_unread_count": int(addressed_unread),
+            "typing_users": typing_names,
         },
     })
+
+
+@router.post("/community/groups/{group_id}/typing")
+async def community_group_typing_ping(request: Request, group_id: int):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = _effective_user_id(user)
+    if not await _ensure_community_group_member(group_id, uid):
+        return JSONResponse({"error": "not a member"}, status_code=403)
+    try:
+        await database.execute(
+            sa.text(
+                """
+                INSERT INTO community_group_typing_status (group_id, user_id, updated_at)
+                VALUES (:gid, :uid, NOW())
+                ON CONFLICT (group_id, user_id)
+                DO UPDATE SET updated_at = EXCLUDED.updated_at
+                """
+            ).bindparams(gid=group_id, uid=uid)
+        )
+    except Exception:
+        pass
+    return JSONResponse({"ok": True})
 
 
 @router.post("/community/groups/{group_id}/message")
