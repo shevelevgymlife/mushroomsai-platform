@@ -370,8 +370,8 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
         <div id="profilePreviewInlinePhotoWrap" style="display:none;margin-top:10px;border:1px solid rgba(255,255,255,.14);border-radius:14px;overflow:hidden;background:#050607">
           <img id="profilePreviewImage" src="" alt="" style="display:block;width:100%;height:min(50vh,360px);object-fit:contain;background:#000">
         </div>
-        <div id="profilePreviewCommentRow" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;margin-top:10px;max-width:100%">
-          <input id="profilePreviewCommentInp" class="sinp" style="min-width:0;width:100%;max-width:100%" placeholder="Написать комментарий...">
+        <div id="profilePreviewCommentRow" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;margin-top:10px;max-width:100%;width:100%;overflow:hidden;box-sizing:border-box">
+          <input id="profilePreviewCommentInp" class="sinp" style="min-width:0;width:100%;max-width:100%;box-sizing:border-box;font-size:16px" placeholder="Написать комментарий...">
           <button type="button" class="btn-g" style="padding:10px 12px;white-space:nowrap" onclick="submitProfilePreviewComment()">Отправить</button>
         </div>
         <p id="profilePreviewCommentErr" style="display:none;margin-top:8px;font-size:12px;color:#f87171"></p>
@@ -723,6 +723,7 @@ function closeProfilePostPreview(){
   const m=document.getElementById('profilePostPreviewModal');
   if(m) m.style.display='none';
   try{ document.body.style.overflow=''; }catch(e){}
+  try{ document.documentElement.style.overflowX=''; document.body.style.overflowX=''; }catch(e){}
 }
 function openProfilePreviewImageFull(){
   const src=(document.getElementById('profilePreviewImage')&&document.getElementById('profilePreviewImage').src)||'';
@@ -807,6 +808,7 @@ function openProfilePostPreview(event, card){
   if(savesEl) savesEl.textContent=String(saves);
   modal.style.display='flex';
   try{ document.body.style.overflow='hidden'; }catch(e){}
+  try{ document.documentElement.style.overflowX='hidden'; document.body.style.overflowX='hidden'; }catch(e){}
   loadProfilePreviewComments(pid);
 }
 async function submitProfilePreviewComment(){

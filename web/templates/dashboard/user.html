@@ -1208,8 +1208,8 @@ body.dash-ig-app .ig-lamp-topbar{
                 <span>↗</span><span class="n">{{ p.saves_count or 0 }}</span>
               </button>
             </div>
-            <div id="inline-cmt-profile-{{ p.id }}" style="display:none;padding:10px 12px;border-top:1px solid rgba(255,255,255,.08);gap:8px;align-items:center">
-              <input id="inline-cmt-inp-profile-{{ p.id }}" class="sinp" style="flex:1" placeholder="Комментарий..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendInlineComment({{ p.id }}, 'profile');}">
+            <div id="inline-cmt-profile-{{ p.id }}" style="display:none;padding:10px 12px;border-top:1px solid rgba(255,255,255,.08);gap:8px;align-items:center;overflow:hidden;max-width:100%;box-sizing:border-box">
+              <input id="inline-cmt-inp-profile-{{ p.id }}" class="sinp" style="flex:1;min-width:0;max-width:100%;width:100%;box-sizing:border-box;font-size:16px" placeholder="Комментарий..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendInlineComment({{ p.id }}, 'profile');}">
               <button type="button" class="btn-g" style="padding:9px 12px;white-space:nowrap" onclick="sendInlineComment({{ p.id }}, 'profile')">Отправить</button>
             </div>
           </div>
@@ -1350,8 +1350,8 @@ body.dash-ig-app .ig-lamp-topbar{
             <span>↗</span><span class="n">{{ p.saves_count or 0 }}</span>
           </button>
         </div>
-        <div id="inline-cmt-feed-{{ p.id }}" style="display:none;padding:10px 12px;border-top:1px solid rgba(255,255,255,.08);gap:8px;align-items:center">
-          <input id="inline-cmt-inp-feed-{{ p.id }}" class="sinp" style="flex:1" placeholder="Комментарий..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendInlineComment({{ p.id }}, 'feed');}">
+        <div id="inline-cmt-feed-{{ p.id }}" style="display:none;padding:10px 12px;border-top:1px solid rgba(255,255,255,.08);gap:8px;align-items:center;overflow:hidden;max-width:100%;box-sizing:border-box">
+          <input id="inline-cmt-inp-feed-{{ p.id }}" class="sinp" style="flex:1;min-width:0;max-width:100%;width:100%;box-sizing:border-box;font-size:16px" placeholder="Комментарий..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendInlineComment({{ p.id }}, 'feed');}">
           <button type="button" class="btn-g" style="padding:9px 12px;white-space:nowrap" onclick="sendInlineComment({{ p.id }}, 'feed')">Отправить</button>
         </div>
       </div>
@@ -2135,8 +2135,8 @@ body.dash-ig-app .ig-lamp-topbar{
       <div id="feedPreviewInlinePhotoWrap" style="display:none;margin-top:10px;border:1px solid rgba(255,255,255,.14);border-radius:14px;overflow:hidden;background:#050607">
         <img id="feedPreviewImage" src="" alt="" style="display:block;width:100%;height:min(50vh,360px);object-fit:contain;background:#000">
       </div>
-      <div id="feedPreviewCommentRow" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;margin-top:10px;max-width:100%">
-        <input id="feedPreviewCommentInp" class="sinp" style="min-width:0;width:100%;max-width:100%" placeholder="Написать комментарий...">
+      <div id="feedPreviewCommentRow" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;margin-top:10px;max-width:100%;width:100%;overflow:hidden;box-sizing:border-box">
+        <input id="feedPreviewCommentInp" class="sinp" style="min-width:0;width:100%;max-width:100%;box-sizing:border-box;font-size:16px" placeholder="Написать комментарий...">
         <button type="button" class="btn-g" style="padding:10px 12px;white-space:nowrap" onclick="submitFeedPreviewComment()">Отправить</button>
       </div>
       <p id="feedPreviewCommentErr" style="display:none;margin-top:8px;font-size:12px;color:#f87171"></p>
@@ -4207,12 +4207,14 @@ function openFeedPostPreview(event, card){
   if(savesEl) savesEl.textContent=String(saves);
   modal.style.display='flex';
   try{ document.body.style.overflow='hidden'; }catch(e){}
+  try{ document.documentElement.style.overflowX='hidden'; document.body.style.overflowX='hidden'; }catch(e){}
   loadFeedPreviewComments(Number(pid||0));
 }
 function closeFeedPostPreview(){
   const modal=document.getElementById('feedPostPreviewModal');
   if(modal) modal.style.display='none';
   try{ document.body.style.overflow=''; }catch(e){}
+  try{ document.documentElement.style.overflowX=''; document.body.style.overflowX=''; }catch(e){}
 }
 function openFeedPreviewImageFull(){
   const src=(document.getElementById('feedPreviewImage')&&document.getElementById('feedPreviewImage').src)||'';
