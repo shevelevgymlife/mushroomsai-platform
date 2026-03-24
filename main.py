@@ -335,7 +335,7 @@ async def lifespan(app: FastAPI):
     if primary_token:
         try:
             from bot.main_bot import create_bot
-            bot_app = create_bot(primary_token)
+            bot_app = create_bot()
             await bot_app.initialize()
             await bot_app.start()
             await bot_app.updater.start_polling(
@@ -366,11 +366,8 @@ async def lifespan(app: FastAPI):
             logger.error(f"Primary bot startup error: {e}")
 
     # Start ops Telegram bot (tasks/approvals/notifications)
-    ops_token = (
-        (getattr(settings, "OPS_TELEGRAM_TOKEN", "") or "").strip()
-        or (getattr(settings, "TASK_APPROVAL_BOT_TOKEN", "") or "").strip()
-        or (settings.DEPLOY_NOTIFY_TG_BOT_TOKEN or "").strip()
-    )
+    # Run ops bot only when explicitly configured.
+    ops_token = (getattr(settings, "OPS_TELEGRAM_TOKEN", "") or "").strip()
     if ops_token and ops_token != primary_token:
         try:
             from bot.ops_bot import create_ops_bot
