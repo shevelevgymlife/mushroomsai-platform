@@ -416,9 +416,12 @@ async def lifespan(app: FastAPI):
         try:
             # В логах видно только bot id (число до ":"), без секрета — сверяйте с Render → Environment → TELEGRAM_TOKEN
             _bid = primary_token.split(":")[0] if ":" in primary_token else "?"
+            _from_os = "TELEGRAM_TOKEN" in os.environ
             logger.info(
-                "Telegram polling: TELEGRAM_TOKEN bot id=%s (если не совпадает с новым ботом — обновите переменную на Render и перезапустите сервис)",
+                "Telegram polling: bot id=%s, TELEGRAM_TOKEN в окружении процесса=%s "
+                "(сверьте id с токеном в @BotFather; если нет — другой сервис Render или не тот Environment)",
                 _bid,
+                _from_os,
             )
             _shield_telegram_token_logs()
             from bot.main_bot import create_bot

@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 def _env_file_for_settings() -> str | None:
     """Локально — .env; на Render только Dashboard → Environment (без файла .env на диске)."""
-    if os.environ.get("RENDER"):
+    if os.environ.get("RENDER") or os.environ.get("RENDER_SERVICE_NAME"):
         return None
     return ".env"
 
@@ -51,6 +51,9 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+# Render и другие хостинги задают секреты в окружении процесса; pydantic мог собрать значение иначе.
+if "TELEGRAM_TOKEN" in os.environ:
+    settings = settings.model_copy(update={"TELEGRAM_TOKEN": os.environ["TELEGRAM_TOKEN"].strip()})
 
 
 def _shevelev_address_from_file() -> str:
