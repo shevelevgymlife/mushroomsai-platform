@@ -51,8 +51,11 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-# Render и другие хостинги задают секреты в окружении процесса; pydantic мог собрать значение иначе.
-if "TELEGRAM_TOKEN" in os.environ:
+# TELEGRAM_TOKEN только из окружения процесса: если ключ удалили на Render — явно "" (после рестарта).
+if os.environ.get("RENDER") or os.environ.get("RENDER_SERVICE_NAME"):
+    _tg = os.environ.get("TELEGRAM_TOKEN")
+    settings = settings.model_copy(update={"TELEGRAM_TOKEN": (_tg or "").strip()})
+elif "TELEGRAM_TOKEN" in os.environ:
     settings = settings.model_copy(update={"TELEGRAM_TOKEN": os.environ["TELEGRAM_TOKEN"].strip()})
 
 

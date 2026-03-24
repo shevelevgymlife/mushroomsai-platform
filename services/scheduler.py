@@ -13,11 +13,14 @@ from services.ops_alerts import maybe_notify_billing, send_daily_summary
 scheduler = AsyncIOScheduler()
 _logger = logging.getLogger(__name__)
 _followup_invalid_token_logged: bool = False
+_scheduler_started: bool = False
 
 
 async def send_followup_messages(bot):
     """Send scheduled follow-up messages to users."""
     global _followup_invalid_token_logged
+    if bot is None:
+        return
     now = datetime.utcnow()
     pending = await database.fetch_all(
         followups.select()
@@ -71,6 +74,14 @@ async def purge_expired_group_messages():
 
 
 def start_scheduler(bot):
+    global _scheduler_started
+    if _scheduler_started:
+        _logger.warning("start_scheduler: планировщик уже запущен, повторный вызов пропущен")
+        return
+    if bot is None:
+        _logger.warning("start_scheduler: bot is None — джобы с Telegram не добавляем")
+        return
+    _scheduler_started = True
     scheduler.add_job(
         send_followup_messages,
         "interval",

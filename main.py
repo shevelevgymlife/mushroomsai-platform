@@ -516,6 +516,11 @@ async def lifespan(app: FastAPI):
         logger.warning(
             "TELEGRAM_DISABLE_BOT включён — бот не запускается. Уберите переменную в Render после починки TELEGRAM_TOKEN."
         )
+    elif not primary_token:
+        logger.info(
+            "Telegram bot: не запускается (TELEGRAM_TOKEN пустой или ключ удалён из Environment). "
+            "После смены переменных на Render нужен Restart / новый deploy — иначе в логах может быть старый процесс."
+        )
     elif primary_token:
         try:
             # В логах видно только bot id (число до ":"), без секрета — сверяйте с Render → Environment → TELEGRAM_TOKEN
