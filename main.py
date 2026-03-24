@@ -365,36 +365,8 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"Primary bot startup error: {e}")
 
-    # Start ops Telegram bot (tasks/approvals/notifications)
-    # Run ops bot only when explicitly configured.
-    ops_token = (getattr(settings, "OPS_TELEGRAM_TOKEN", "") or "").strip()
-    if ops_token and ops_token != primary_token:
-        try:
-            from bot.ops_bot import create_ops_bot
-            ops_bot_app = create_ops_bot()
-            await ops_bot_app.initialize()
-            await ops_bot_app.start()
-            await ops_bot_app.updater.start_polling(
-                drop_pending_updates=True,
-                allowed_updates=[
-                    "message",
-                    "edited_message",
-                    "callback_query",
-                ],
-            )
-            try:
-                from config import settings as _settings
-                chat_id = int((_settings.DEPLOY_NOTIFY_TG_CHAT_ID or "0").strip() or 0)
-                if chat_id:
-                    await ops_bot_app.bot.send_message(
-                        chat_id=chat_id,
-                        text="✅ Ops-бот запущен и готов принимать /task",
-                    )
-            except Exception:
-                pass
-            logger.info("Ops Telegram bot started")
-        except Exception as e:
-            logger.error(f"Ops bot startup error: {e}")
+    # Ops bot runtime is disabled here.
+    # Deploy notifications are sent directly via Telegram Bot API in services/task_notify.py.
 
     yield
 
