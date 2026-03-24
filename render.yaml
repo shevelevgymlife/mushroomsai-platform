@@ -3,10 +3,12 @@ services:
     name: mushroomsai
     env: python
     # 3.11.0 на Render часто недоступен → failed build; см. https://render.com/docs/python-version
-    buildCommand: pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
+    # --no-cache-dir: меньше диска/RAM на билде (частые OOM на free/starter).
+    buildCommand: pip install --upgrade pip setuptools wheel && pip install --no-cache-dir -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
-    # Тяжёлый старт в фоне (services/heavy_startup.py) — /health отвечает сразу после ping БД.
-    healthCheckPath: /health
+    # healthCheckPath не задаём в Blueprint: при расхождении с уже созданным сервисом или ZDT
+    # деплой иногда «Deploy failed» без явной ошибки в коде. В Dashboard → Settings задайте вручную:
+    # Health Check Path = /health (приложение отдаёт JSON сразу после подключения к БД).
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.11"
