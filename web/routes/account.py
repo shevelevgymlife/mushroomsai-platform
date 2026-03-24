@@ -264,10 +264,6 @@ async def merge_accounts(primary_id: int, secondary_id: int):
 
     # Carry over stronger fields.
     updates = {}
-    if not primary.get("tg_id") and secondary.get("tg_id"):
-        updates["tg_id"] = secondary["tg_id"]
-    if not primary.get("google_id") and secondary.get("google_id"):
-        updates["google_id"] = secondary["google_id"]
     if not primary.get("linked_tg_id") and (secondary.get("linked_tg_id") or secondary.get("tg_id")):
         updates["linked_tg_id"] = secondary.get("linked_tg_id") or secondary.get("tg_id")
     if not primary.get("linked_google_id") and (secondary.get("linked_google_id") or secondary.get("google_id")):
@@ -291,9 +287,6 @@ async def merge_accounts(primary_id: int, secondary_id: int):
         if secondary.get("legal_docs_version"):
             updates["legal_docs_version"] = secondary.get("legal_docs_version")
 
-    if updates:
-        await database.execute(users.update().where(users.c.id == primary_id).values(**updates))
-
     # Mark secondary as merged and remove direct login identifiers.
     await database.execute(
         users.update().where(users.c.id == secondary_id).values(
@@ -306,6 +299,9 @@ async def merge_accounts(primary_id: int, secondary_id: int):
             password_hash=None,
         )
     )
+
+    if updates:
+        await database.execute(users.update().where(users.c.id == primary_id).values(**updates))
 
 
 async def attach_telegram_login(primary_user_id: int, tg_id: int, name: str = "", avatar: str = "") -> tuple[bool, str]:
