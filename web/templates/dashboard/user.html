@@ -1201,12 +1201,16 @@ body.dash-ig-app .ig-lamp-topbar{
               <button type="button" class="ig-post-metric ig-post-metric-star" id="profile-like-btn-{{ p.id }}" onclick="likeProfilePost({{ p.id }},this)">
                 <span>{% if is_liked_me %}⭐{% else %}✩{% endif %}</span><span class="n" id="profile-like-count-{{ p.id }}">{{ p.likes_count }}</span>
               </button>
-              <button type="button" class="ig-post-metric ig-post-metric-chat" onclick="goSec('feed');setTimeout(function(){var x=document.getElementById('fp-{{ p.id }}');if(x)x.scrollIntoView({behavior:'smooth',block:'start'});},120)">
+              <button type="button" class="ig-post-metric ig-post-metric-chat" onclick="toggleInlineComment({{ p.id }}, 'profile')">
                 <span>💬</span><span class="n" id="profile-comment-count-{{ p.id }}" data-comment-count-for="{{ p.id }}">{{ p.comments_count or 0 }}</span>
               </button>
               <button type="button" class="ig-post-metric ig-post-metric-share" onclick="openSharePostModal({{ p.id }})">
                 <span>↗</span><span class="n">{{ p.saves_count or 0 }}</span>
               </button>
+            </div>
+            <div id="inline-cmt-profile-{{ p.id }}" style="display:none;padding:10px 12px;border-top:1px solid rgba(255,255,255,.08);gap:8px;align-items:center">
+              <input id="inline-cmt-inp-profile-{{ p.id }}" class="sinp" style="flex:1" placeholder="Комментарий..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendInlineComment({{ p.id }}, 'profile');}">
+              <button type="button" class="btn-g" style="padding:9px 12px;white-space:nowrap" onclick="sendInlineComment({{ p.id }}, 'profile')">Отправить</button>
             </div>
           </div>
           {% else %}
@@ -1334,17 +1338,21 @@ body.dash-ig-app .ig-lamp-topbar{
             <span>{% if is_liked %}⭐{% else %}✩{% endif %}</span><span class="n" id="like-count-{{ p.id }}">{{ p.likes_count }}</span>
           </button>
           {% if is_mine %}
-          <button type="button" class="ig-post-metric ig-post-metric-chat" title="Комментарии" onclick="goSec('feed');setTimeout(function(){var x=document.getElementById('fp-{{ p.id }}');if(x)x.scrollIntoView({behavior:'smooth',block:'start'});},100);">
+          <button type="button" class="ig-post-metric ig-post-metric-chat" title="Комментарии" onclick="toggleInlineComment({{ p.id }}, 'feed')">
             <span>💬</span><span class="n" id="comment-count-{{ p.id }}" data-comment-count-for="{{ p.id }}">{{ p.comments_count or 0 }}</span>
           </button>
           {% else %}
-          <a href="/community/profile/{{ p.user_id }}#pc-{{ p.id }}" class="ig-post-metric ig-post-metric-chat" title="Комментарии" style="text-decoration:none">
+          <button type="button" class="ig-post-metric ig-post-metric-chat" title="Комментарии" onclick="toggleInlineComment({{ p.id }}, 'feed')">
             <span>💬</span><span class="n" id="comment-count-{{ p.id }}" data-comment-count-for="{{ p.id }}">{{ p.comments_count or 0 }}</span>
-          </a>
+          </button>
           {% endif %}
           <button type="button" class="ig-post-metric ig-post-metric-share" title="Пересылки" onclick="openSharePostModal({{ p.id }})">
             <span>↗</span><span class="n">{{ p.saves_count or 0 }}</span>
           </button>
+        </div>
+        <div id="inline-cmt-feed-{{ p.id }}" style="display:none;padding:10px 12px;border-top:1px solid rgba(255,255,255,.08);gap:8px;align-items:center">
+          <input id="inline-cmt-inp-feed-{{ p.id }}" class="sinp" style="flex:1" placeholder="Комментарий..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendInlineComment({{ p.id }}, 'feed');}">
+          <button type="button" class="btn-g" style="padding:9px 12px;white-space:nowrap" onclick="sendInlineComment({{ p.id }}, 'feed')">Отправить</button>
         </div>
       </div>
       {% endfor %}
@@ -2120,9 +2128,10 @@ body.dash-ig-app .ig-lamp-topbar{
         <div id="feedPreviewCommentsList" style="display:flex;flex-direction:column;gap:8px;max-height:38vh;overflow-y:auto;padding-right:2px"></div>
       </div>
       <input type="hidden" id="feedPreviewPostId" value="">
-      <div id="feedPreviewActionRow" style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);position:sticky;bottom:0;background:linear-gradient(180deg,rgba(11,12,18,.2),rgba(11,12,18,.95) 35%,rgba(11,12,18,.98));padding-bottom:calc(8px + env(safe-area-inset-bottom,0px));overflow-x:hidden">
+      <div id="feedPreviewActionRow" style="display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:8px;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);position:sticky;top:0;z-index:2;background:linear-gradient(180deg,rgba(11,12,18,.98),rgba(11,12,18,.93));padding-bottom:8px;overflow-x:hidden">
         <input id="feedPreviewCommentInp" class="sinp" style="min-width:0;width:100%" placeholder="Написать комментарий...">
         <button type="button" class="btn-g" style="padding:10px 12px;white-space:nowrap" onclick="submitFeedPreviewComment()">Отправить</button>
+        <button type="button" class="btn-g" id="feedPreviewViewPhotoBtn" style="padding:10px 12px;white-space:nowrap" onclick="openFeedPreviewImageFull()">Посмотреть фото</button>
         <button type="button" class="btn-g" style="padding:10px 12px;white-space:nowrap" onclick="closeFeedPostPreview()">Закрыть</button>
       </div>
       <p id="feedPreviewCommentErr" style="display:none;margin-top:8px;font-size:12px;color:#f87171"></p>
@@ -4170,6 +4179,7 @@ function openFeedPostPreview(event, card){
   const likesEl=document.getElementById('feedPreviewLikes');
   const commentsEl=document.getElementById('feedPreviewComments');
   const savesEl=document.getElementById('feedPreviewSaves');
+  const viewPhotoBtn=document.getElementById('feedPreviewViewPhotoBtn');
   if(aEl) aEl.textContent=author;
   if(dEl) dEl.textContent=created;
   if(tEl){
@@ -4178,12 +4188,15 @@ function openFeedPostPreview(event, card){
   }
   if(cEl) cEl.textContent=content || 'Без текста';
   if(iEl){
-    if(image){ iEl.style.display='block'; iEl.src=image; }
+    if(image){ iEl.style.display='none'; iEl.src=image; }
     else{ iEl.style.display='none'; iEl.removeAttribute('src'); }
   }
   if(pEl) pEl.value=String(pid||'');
   if(ci) ci.value='';
   if(ce) ce.style.display='none';
+  if(viewPhotoBtn){
+    viewPhotoBtn.style.display=image ? 'inline-flex' : 'none';
+  }
   if(cl) cl.innerHTML='<div style="font-size:12px;color:#8a8fa0">Загрузка комментариев…</div>';
   if(likesEl) likesEl.textContent=String(likes);
   if(commentsEl) commentsEl.textContent=String(comments);
@@ -4191,19 +4204,6 @@ function openFeedPostPreview(event, card){
   modal.style.display='flex';
   try{ document.body.style.overflow='hidden'; }catch(e){}
   loadFeedPreviewComments(Number(pid||0));
-}
-function _setFeedPreviewInputDockToTop(isTop){
-  const row=document.getElementById('feedPreviewActionRow');
-  if(!row) return;
-  if(isTop){
-    row.style.top='0';
-    row.style.bottom='auto';
-    row.style.zIndex='2';
-  }else{
-    row.style.top='auto';
-    row.style.bottom='0';
-    row.style.zIndex='1';
-  }
 }
 function closeFeedPostPreview(){
   const modal=document.getElementById('feedPostPreviewModal');
@@ -4289,16 +4289,40 @@ async function submitFeedPreviewComment(){
     if(err){ err.style.display='block'; err.textContent='Сеть'; }
   }
 }
-document.addEventListener('focusin', function(e){
-  if(e && e.target && e.target.id === 'feedPreviewCommentInp'){
-    _setFeedPreviewInputDockToTop(true);
+function toggleInlineComment(pid, scope){
+  const box=document.getElementById('inline-cmt-'+scope+'-'+pid);
+  const inp=document.getElementById('inline-cmt-inp-'+scope+'-'+pid);
+  if(!box) return;
+  const on=box.style.display==='flex';
+  box.style.display=on?'none':'flex';
+  if(!on && inp){
+    setTimeout(function(){ try{ inp.focus(); }catch(e){} }, 40);
   }
-});
-document.addEventListener('focusout', function(e){
-  if(e && e.target && e.target.id === 'feedPreviewCommentInp'){
-    setTimeout(function(){ _setFeedPreviewInputDockToTop(false); }, 120);
+}
+async function sendInlineComment(pid, scope){
+  const inp=document.getElementById('inline-cmt-inp-'+scope+'-'+pid);
+  if(!inp) return;
+  const txt=(inp.value||'').trim();
+  if(txt.length<2) return;
+  const fd=new FormData();
+  fd.append('content', txt);
+  try{
+    const r=await fetch('/community/comment/'+pid,{method:'POST',body:fd,credentials:'same-origin'});
+    const d=await r.json().catch(()=>({}));
+    if(r.ok && d.ok){
+      inp.value='';
+      document.querySelectorAll('[data-comment-count-for="'+String(pid)+'"]').forEach(function(cc){
+        const cur=parseInt(cc.textContent||'0',10)||0;
+        cc.textContent=String(cur+1);
+      });
+      showNotification('Комментарий отправлен','success');
+    }else{
+      showNotification(d.error||'Ошибка','error');
+    }
+  }catch(e){
+    showNotification('Сеть','error');
   }
-});
+}
 function initFeedChaosToggle(){
   const sw=document.getElementById('feedChaosToggle');
   if(!sw) return;
