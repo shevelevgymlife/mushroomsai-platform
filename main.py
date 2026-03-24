@@ -30,9 +30,10 @@ def _shield_telegram_token_logs() -> None:
         if hid not in _shielded_handler_ids:
             h.addFilter(_TG_LOG_FILTER)
             _shielded_handler_ids.add(hid)
+    # WARNING недостаточно, если что-то сбрасывает уровень; INFO с полным URL и токеном не должны попадать в лог.
     for _name in ("httpx", "httpcore", "telegram.request"):
         _lg = logging.getLogger(_name)
-        _lg.setLevel(logging.WARNING)
+        _lg.setLevel(logging.ERROR)
         if _name not in _shielded_logger_names:
             _lg.addFilter(_TG_LOG_FILTER)
             _shielded_logger_names.add(_name)
@@ -489,6 +490,7 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+_shield_telegram_token_logs()
 templates = Jinja2Templates(directory="web/templates")
 
 # Middleware

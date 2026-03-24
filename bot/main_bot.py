@@ -11,7 +11,7 @@ class _DropTelegramBotUrlLogs(logging.Filter):
 
 for _log in ("httpx", "httpcore", "telegram.request"):
     _lg = logging.getLogger(_log)
-    _lg.setLevel(logging.WARNING)
+    _lg.setLevel(logging.ERROR)
     _lg.addFilter(_DropTelegramBotUrlLogs())
 
 from telegram import MenuButtonWebApp, WebAppInfo
