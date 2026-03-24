@@ -116,6 +116,7 @@ async def task_text_received(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if not txt:
         await update.message.reply_text("Пожалуйста, отправьте текст задачи.")
         return ASK_TASK_TEXT
+    task_id = 0
     try:
         user = update.effective_user
         task_id = await _create_task(
@@ -125,8 +126,8 @@ async def task_text_received(update: Update, context: ContextTypes.DEFAULT_TYPE)
             full_name=(getattr(user, "full_name", "") or ""),
         )
     except Exception:
-        await update.message.reply_text("Не удалось сохранить задачу. Попробуйте ещё раз.")
-        return ConversationHandler.END
+        # Do not block the flow if DB write fails; still ask photo choice.
+        pass
     context.user_data["task_intake_id"] = task_id
     context.user_data["task_intake_text"] = txt
     kb = InlineKeyboardMarkup([
