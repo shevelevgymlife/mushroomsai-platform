@@ -10,9 +10,18 @@ def _sync_url(url: str) -> str:
            .replace("postgresql+psycopg2://", "postgresql://")
     )
 
+
+_database_url = (settings.DATABASE_URL or "").strip()
+if not _database_url:
+    raise RuntimeError(
+        "MushroomsAI: DATABASE_URL не задан или пустой. "
+        "На Render: открой PostgreSQL → Connect → Internal Database URL, "
+        "вставь в Web Service → Environment как DATABASE_URL → Save → Manual Deploy."
+    )
+
 metadata = sqlalchemy.MetaData()
 engine = sqlalchemy.create_engine(
-    _sync_url(settings.DATABASE_URL),
+    _sync_url(_database_url),
     pool_pre_ping=True,
     pool_size=5,
     max_overflow=10,

@@ -184,7 +184,17 @@ async def lifespan(app: FastAPI):
     # Startup (после uvicorn: повторно — на root могли добавиться новые handlers)
     _shield_telegram_token_logs()
     _install_asyncio_invalid_token_handler()
-    await database.connect()
+    try:
+        await database.connect()
+    except Exception as e:
+        logger.critical(
+            "Старт прерван: не удалось подключиться к PostgreSQL. "
+            "Проверь DATABASE_URL (Internal URL базы на Render), статус Postgres «Available», "
+            "что URL не обрезан и без лишних кавычек. Детали: %s",
+            e,
+            exc_info=True,
+        )
+        raise
     logger.info("Database connected")
     _commit = (os.environ.get("RENDER_GIT_COMMIT") or "")[:12] or "n/a"
     _tg_nonempty = bool((settings.TELEGRAM_TOKEN or "").strip())
