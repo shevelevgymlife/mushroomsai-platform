@@ -162,17 +162,19 @@ async def task_photo_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     decision = str(q.data or "").split(":")[-1]
     task_id = int(context.user_data.get("task_intake_id") or 0)
     task_text = str(context.user_data.get("task_intake_text") or "")
-    if not task_id or not task_text:
-        await q.edit_message_text("Не вижу активной задачи. Отправьте /task ещё раз.")
+    if not task_text:
+        await q.edit_message_text("Не вижу текста задачи. Отправьте /task ещё раз.")
         context.user_data["task_intake_stage"] = ""
         return ConversationHandler.END
     if decision == "yes":
-        await _update_task(task_id, needs_photo=True, status="wait_photo")
+        if task_id:
+            await _update_task(task_id, needs_photo=True, status="wait_photo")
         await q.edit_message_text("Жду фото.")
         context.user_data["task_intake_stage"] = "wait_photo"
         return WAIT_PHOTO
 
-    await _update_task(task_id, needs_photo=False, status="in_progress")
+    if task_id:
+        await _update_task(task_id, needs_photo=False, status="in_progress")
     await q.edit_message_text("Принял. Начал выполнять задачу без фото.")
     await notify_task_accepted(task_text=f"Принял задачу: {task_text}")
     context.user_data["task_intake_stage"] = ""
