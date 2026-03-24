@@ -301,7 +301,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
       <button type="button" class="ig-post-metric ig-post-metric-star" id="lk-{{ p.id }}" onclick="doLike({{ p.id }},this)">
         <span>{{ '⭐' if item.liked else '✩' }}</span><span class="n" id="lkc-{{ p.id }}">{{ p.likes_count }}</span>
       </button>
-      <button type="button" class="ig-post-metric ig-post-metric-chat" onclick="togCmt({{ p.id }})">
+      <button type="button" class="ig-post-metric ig-post-metric-chat" onclick="openCommunityPostPage(event, {{ p.id }})">
         <span>💬</span><span class="n" id="cmc-{{ p.id }}">{{ p.comments_count }}</span>
       </button>
       <button type="button" class="ig-post-metric ig-post-metric-share" id="sv-{{ p.id }}" onclick="openSharePostModal({{ p.id }})">

@@ -175,7 +175,7 @@
         <button class="abt {{ 'on' if item.liked }}" id="lk-{{ p.id }}" onclick="doLike({{ p.id }},this)">
           {{ '⭐' if item.liked else '✩' }}&nbsp;<span id="lkc-{{ p.id }}">{{ p.likes_count }}</span>
         </button>
-        <button class="abt" onclick="togComments({{ p.id }})">
+        <button class="abt" onclick="openCommunityPostPage(event, {{ p.id }})">
           💬&nbsp;<span id="cmc-{{ p.id }}">{{ p.comments_count }}</span>
         </button>
         <button class="abt {{ 'on' if item.saved }}" id="sv-{{ p.id }}" onclick="doSave({{ p.id }},this)">

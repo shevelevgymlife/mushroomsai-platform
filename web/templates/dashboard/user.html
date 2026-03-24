@@ -1204,7 +1204,7 @@ body.dash-ig-app .ig-lamp-topbar{
               <button type="button" class="ig-post-metric ig-post-metric-star" id="profile-like-btn-{{ p.id }}" onclick="likeProfilePost({{ p.id }},this)">
                 <span>{% if is_liked_me %}⭐{% else %}✩{% endif %}</span><span class="n" id="profile-like-count-{{ p.id }}">{{ p.likes_count }}</span>
               </button>
-              <button type="button" class="ig-post-metric ig-post-metric-chat" onclick="toggleInlineComment({{ p.id }}, 'profile')">
+              <button type="button" class="ig-post-metric ig-post-metric-chat" onclick="openCommunityPostPage(event, {{ p.id }})">
                 <span>💬</span><span class="n" id="profile-comment-count-{{ p.id }}" data-comment-count-for="{{ p.id }}">{{ p.comments_count or 0 }}</span>
               </button>
               <button type="button" class="ig-post-metric ig-post-metric-share" onclick="openSharePostModal({{ p.id }})">
@@ -1341,11 +1341,11 @@ body.dash-ig-app .ig-lamp-topbar{
             <span>{% if is_liked %}⭐{% else %}✩{% endif %}</span><span class="n" id="like-count-{{ p.id }}">{{ p.likes_count }}</span>
           </button>
           {% if is_mine %}
-          <button type="button" class="ig-post-metric ig-post-metric-chat" title="Комментарии" onclick="toggleInlineComment({{ p.id }}, 'feed')">
+          <button type="button" class="ig-post-metric ig-post-metric-chat" title="Комментарии" onclick="openCommunityPostPage(event, {{ p.id }})">
             <span>💬</span><span class="n" id="comment-count-{{ p.id }}" data-comment-count-for="{{ p.id }}">{{ p.comments_count or 0 }}</span>
           </button>
           {% else %}
-          <button type="button" class="ig-post-metric ig-post-metric-chat" title="Комментарии" onclick="toggleInlineComment({{ p.id }}, 'feed')">
+          <button type="button" class="ig-post-metric ig-post-metric-chat" title="Комментарии" onclick="openCommunityPostPage(event, {{ p.id }})">
             <span>💬</span><span class="n" id="comment-count-{{ p.id }}" data-comment-count-for="{{ p.id }}">{{ p.comments_count or 0 }}</span>
           </button>
           {% endif %}
