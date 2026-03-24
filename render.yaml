@@ -1,14 +1,12 @@
 services:
   - type: web
     name: mushroomsai
-    # Поле env: устарело в Blueprint; runtime — рекомендуемый вариант (render.com/docs/blueprint-spec).
-    runtime: python
+    env: python
     # 3.11.0 на Render часто недоступен → failed build; см. https://render.com/docs/python-version
     buildCommand: pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
-    # healthCheckPath в blueprint не задаём: пока идёт lifespan (БД + миграции), приложение
-    # не отвечает HTTP; проверка /health с таймаутом ~5s даёт срыв zero-downtime deploy.
-    # При необходимости задайте Health Check Path вручную в Dashboard после стабильного старта.
+    # Тяжёлый старт в фоне (services/heavy_startup.py) — /health отвечает сразу после ping БД.
+    healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.11"
