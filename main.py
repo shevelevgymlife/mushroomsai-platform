@@ -1,16 +1,11 @@
 import asyncio
 import logging
 import os
-
-# Сразу после stdlib: до импорта FastAPI/config, иначе httpx может залогировать URL с токеном на INFO
-logging.basicConfig(level=logging.INFO)
-logging.getLogger("httpx").setLevel(logging.WARNING)
-logging.getLogger("httpcore").setLevel(logging.WARNING)
-
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse, PlainTextResponse
+from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.responses import Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -30,6 +25,9 @@ from web.translations import TRANSLATIONS, parse_accept_language, SUPPORTED_LANG
 from services.deploy_notify import send_deploy_notifications
 from web.templates_utils import Jinja2Templates
 
+logging.basicConfig(level=logging.INFO)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 bot_app = None
@@ -474,7 +472,7 @@ async def favicon_ico():
 @app.get("/robots.txt", include_in_schema=False)
 async def robots_txt():
     """Минимальный robots.txt — убирает 404 в логах для поисковых ботов."""
-    return PlainTextResponse("User-agent: *\nDisallow:\n", media_type="text/plain")
+    return Response("User-agent: *\nDisallow:\n", media_type="text/plain")
 
 # Persistent media (Render Disk at /data, fallback to ./media locally)
 if os.path.exists("/data"):
