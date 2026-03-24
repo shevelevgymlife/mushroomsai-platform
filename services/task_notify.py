@@ -69,6 +69,29 @@ def _chat_id_for_stage(stage: str) -> int:
         return 0
 
 
+def _chat_id_candidates(stage: str) -> list[int]:
+    """Return ordered unique chat ids with fallback."""
+    raw_primary = ""
+    raw_fallback = ""
+    if stage in ("task_accepted", "task_done"):
+        raw_primary = _task_chat_id_raw()
+        raw_fallback = _deploy_chat_id_raw()
+    else:
+        # Deploy-related notices should primarily go to deploy chat.
+        raw_primary = _deploy_chat_id_raw()
+        raw_fallback = _task_chat_id_raw()
+
+    ids: list[int] = []
+    for raw in (raw_primary, raw_fallback):
+        try:
+            cid = int((raw or "").strip() or 0)
+        except Exception:
+            cid = 0
+        if cid and cid not in ids:
+            ids.append(cid)
+    return ids
+
+
 def _telegram_token() -> str:
     return _first_nonempty(
         getattr(settings, "OPS_TELEGRAM_TOKEN", ""),
@@ -129,17 +152,26 @@ async def _notify_telegram(text: str, stage: str) -> None:
     if not text:
         return
     token = _telegram_token()
-    chat_id = _chat_id_for_stage(stage)
-    if not token or not chat_id:
+    candidates = _chat_id_candidates(stage)
+    if not token or not candidates:
         return
-    try:
-        async with httpx.AsyncClient(timeout=8) as client:
-            await client.post(
-                f"https://api.telegram.org/bot{token}/sendMessage",
-                json={"chat_id": chat_id, "text": text[:3900]},
-            )
-    except Exception as e:
-        logger.warning(f"Telegram notify failed: {e}")
+    last_error: str = ""
+    for chat_id in candidates:
+        try:
+            async with httpx.AsyncClient(timeout=8) as client:
+                resp = await client.post(
+                    f"https://api.telegram.org/bot{token}/sendMessage",
+                    json={"chat_id": chat_id, "text": text[:3900]},
+                )
+            if 200 <= resp.status_code < 300:
+                return
+            last_error = f"status={resp.status_code} body={resp.text[:300]}"
+            logger.warning("Telegram notify non-2xx for chat_id=%s: %s", chat_id, last_error)
+        except Exception as e:
+            last_error = str(e)
+            logger.warning("Telegram notify failed for chat_id=%s: %s", chat_id, e)
+    if last_error:
+        logger.warning("Telegram notify failed for all candidate chats: %s", last_error)
 
 
 async def _notify_email(subject: str, body: str, stage: str) -> None:
