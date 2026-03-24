@@ -71,6 +71,8 @@ def _chat_id_for_stage(stage: str) -> int:
 
 def _telegram_token() -> str:
     return _first_nonempty(
+        getattr(settings, "TASK_APPROVAL_BOT_TOKEN", ""),
+        getattr(settings, "DEPLOY_NOTIFY_TG_BOT_TOKEN", ""),
         getattr(settings, "NOTIFY_TELEGRAM_TOKEN", ""),
         settings.TELEGRAM_TOKEN,
     )
