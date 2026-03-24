@@ -10,7 +10,7 @@ from email.message import EmailMessage
 from socket import gethostname
 
 from config import settings
-from services.task_notify import notify_deploy_finished
+from services.task_notify import notify_deploy_finished, notify_deploy_sent
 
 logger = logging.getLogger(__name__)
 
@@ -72,5 +72,6 @@ async def send_deploy_email() -> None:
 
 async def send_deploy_notifications() -> None:
     """Best-effort: email старт деплоя + Telegram/email о завершении запуска."""
+    await notify_deploy_sent("Render начал выкладку новой версии.")
     await send_deploy_email()
     await notify_deploy_finished("Приложение успешно запущено на Render.")
