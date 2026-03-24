@@ -1211,6 +1211,53 @@ async def community_profile(request: Request, user_id: int):
     )
 
 
+@router.get("/community/post/{post_id}", response_class=HTMLResponse)
+async def community_post_page(request: Request, post_id: int, back: str = ""):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return RedirectResponse(f"/login?next=/community/post/{post_id}")
+    leg = await legal_acceptance_redirect(request, current_user)
+    if leg:
+        return leg
+
+    viewer_id = current_user.get("primary_user_id") or current_user["id"]
+    post = await database.fetch_one(
+        community_posts.select()
+        .where(community_posts.c.id == post_id)
+        .where(community_posts.c.approved == True)
+    )
+    if not post:
+        return HTMLResponse("Пост не найден", status_code=404)
+
+    author = await database.fetch_one(users.select().where(users.c.id == post["user_id"]))
+    liked = await database.fetch_one(
+        community_likes.select()
+        .where(community_likes.c.post_id == post_id)
+        .where(community_likes.c.user_id == viewer_id)
+    )
+    saved = await database.fetch_one(
+        community_saved.select()
+        .where(community_saved.c.post_id == post_id)
+        .where(community_saved.c.user_id == viewer_id)
+    )
+    is_owner = int(post["user_id"] or 0) == int(viewer_id)
+    back_url = (back or "").strip() or request.headers.get("referer") or "/dashboard#feed"
+
+    return templates.TemplateResponse(
+        "community_post.html",
+        {
+            "request": request,
+            "user": current_user,
+            "post": post,
+            "author": author,
+            "is_liked": liked is not None,
+            "is_saved": saved is not None,
+            "is_owner": is_owner,
+            "back_url": back_url,
+        },
+    )
+
+
 async def _resolve_community_profile_id(user_id: int):
     """Как на странице профиля: id в URL → основной аккаунт."""
     raw = await database.fetch_one(users.select().where(users.c.id == user_id))

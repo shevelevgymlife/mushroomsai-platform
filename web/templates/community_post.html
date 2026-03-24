@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Пост — MushroomsAI{% endblock %}
+{% block content %}
+<style>
+.cp-wrap{max-width:900px;margin:calc(4rem + 16px) auto 20px;padding:0 12px}
+.cp-card{border:1px solid rgba(255,255,255,.12);border-radius:18px;background:linear-gradient(165deg,rgba(255,255,255,.07),rgba(10,10,13,.92));overflow:hidden}
+.cp-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.08)}
+.cp-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px}
+.cp-metric{min-height:52px;border-radius:14px;border:1px solid rgba(255,255,255,.16);font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px}
+.cp-input{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:0 12px 12px}
+.sinp{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#e8e8e8;border-radius:12px;padding:10px 16px;font-size:16px;outline:none;width:100%;box-sizing:border-box}
+.btn-g{background:#3dd4e0;color:#000;border:none;border-radius:10px;padding:10px 12px;font-weight:700;cursor:pointer}
+</style>
+<div class="cp-wrap">
+  <div class="cp-card">
+    <div class="cp-head">
+      <button class="btn-g" type="button" onclick="goBackPost()">Закрыть</button>
+      <div style="min-width:0;flex:1">
+        <div style="font-size:14px;font-weight:700;color:#e8e8e8">{{ author.name if author else 'Участник' }}</div>
+        <div style="font-size:11px;color:#8a8fa0">{{ post.created_at.strftime('%d.%m.%Y %H:%M') if post.created_at else '' }}</div>
+      </div>
+      <button class="btn-g" type="button" onclick="toggleReadText()">Почитать текст</button>
+      <button class="btn-g" type="button" onclick="togglePhoto()" {% if not post.image_url %}style="display:none"{% endif %}>Посмотреть фото</button>
+    </div>
+    {% if post.title %}<div style="padding:12px 12px 0;font-size:18px;font-weight:700;color:#f3f4f6">{{ post.title }}</div>{% endif %}
+    <div id="textWrap" style="display:none;margin:12px;border:1px solid rgba(255,255,255,.12);border-radius:12px;background:rgba(8,10,16,.55);padding:10px;max-height:34vh;overflow:auto">
+      <div style="font-size:14px;color:#c4c8d3;line-height:1.55;white-space:pre-wrap;word-break:break-word">{{ post.content or 'Без текста' }}</div>
+    </div>
+    <div id="photoWrap" style="display:none;margin:12px;border:1px solid rgba(255,255,255,.14);border-radius:14px;overflow:hidden;background:#050607">
+      <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end;padding:8px;border-bottom:1px solid rgba(255,255,255,.1);background:rgba(8,10,16,.9)">
+        <button class="btn-g" type="button" onclick="zoomOut()">−</button>
+        <button class="btn-g" type="button" onclick="zoomIn()">+</button>
+        <button class="btn-g" type="button" onclick="togglePhoto(false)">Закрыть</button>
+      </div>
+      <div style="height:min(50vh,420px);overflow:auto;touch-action:pan-x pan-y pinch-zoom;background:#000;display:flex;align-items:center;justify-content:center">
+        <img id="postPhoto" src="{{ post.image_url or '' }}" alt="" style="display:block;max-width:100%;max-height:100%;transform-origin:center center;transform:scale(1);background:#000">
+      </div>
+    </div>
+    <div class="cp-metrics">
+      <button type="button" class="cp-metric" id="likeBtn" onclick="toggleLike()" style="border-color:rgba(255,216,79,.45);color:#ffe57f"> <span id="likeIcon">{{ '⭐' if is_liked else '✩' }}</span> <span id="likeCnt">{{ post.likes_count or 0 }}</span> </button>
+      <div class="cp-metric" style="border-color:rgba(139,233,255,.4);color:#9df0ff">💬 <span id="cmtCnt">{{ post.comments_count or 0 }}</span></div>
+      <button type="button" class="cp-metric" onclick="toggleSave()" style="border-color:rgba(247,179,255,.4);color:#ffc6ff">↗ <span id="saveCnt">{{ post.saves_count or 0 }}</span></button>
+    </div>
+    {% if is_owner %}
+    <div style="padding:0 12px 12px">
+      <button class="btn-g" type="button" onclick="toggleEdit()" style="margin-right:8px">Редактировать</button>
+    </div>
+    <div id="editWrap" style="display:none;padding:0 12px 12px">
+      <input id="editTitle" class="sinp" style="margin-bottom:8px" value="{{ post.title or '' }}" placeholder="Название">
+      <textarea id="editContent" class="sinp" style="min-height:90px;margin-bottom:8px">{{ post.content or '' }}</textarea>
+      <input id="editFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" style="margin-bottom:8px">
+      <button class="btn-g" type="button" onclick="saveEdit()">Сохранить</button>
+    </div>
+    {% endif %}
+    <div id="commentsList" style="padding:0 12px 12px;display:flex;flex-direction:column;gap:8px;max-height:36vh;overflow:auto"></div>
+    <div class="cp-input">
+      <input id="commentInp" class="sinp" placeholder="Написать комментарий...">
+      <button class="btn-g" type="button" onclick="sendComment()">Отправить</button>
+    </div>
+  </div>
+</div>
+<script>
+let _zoom=1;
+const POST_ID={{ post.id }};
+const BACK_URL={{ back_url|tojson }};
+function goBackPost(){ if(history.length>1){ history.back(); } else { location.href=BACK_URL||'/dashboard#feed'; } }
+function toggleReadText(){ const w=document.getElementById('textWrap'); w.style.display=(w.style.display==='block'?'none':'block'); }
+function togglePhoto(force){ const w=document.getElementById('photoWrap'); const show=(typeof force==='boolean')?force:(w.style.display!=='block'); w.style.display=show?'block':'none'; if(show){_zoom=1;document.getElementById('postPhoto').style.transform='scale(1)';} }
+function zoomIn(){ _zoom=Math.min(4,_zoom+0.25); document.getElementById('postPhoto').style.transform='scale('+_zoom+')'; }
+function zoomOut(){ _zoom=Math.max(1,_zoom-0.25); document.getElementById('postPhoto').style.transform='scale('+_zoom+')'; }
+async function toggleLike(){
+  const i=document.getElementById('likeIcon'); const c=document.getElementById('likeCnt'); const was=i.textContent==='⭐'; const b=parseInt(c.textContent||'0',10)||0;
+  i.textContent=was?'✩':'⭐'; c.textContent=String(Math.max(0,b+(was?-1:1)));
+  try{ const r=await fetch('/community/like/'+POST_ID,{method:'POST'}); const d=await r.json(); if(typeof d.count==='number') c.textContent=String(Math.max(0,d.count)); i.textContent=d.liked?'⭐':'✩'; }catch(e){ i.textContent=was?'⭐':'✩'; c.textContent=String(b); }
+}
+async function toggleSave(){
+  const c=document.getElementById('saveCnt'); const b=parseInt(c.textContent||'0',10)||0;
+  try{ const r=await fetch('/community/save/'+POST_ID,{method:'POST'}); const d=await r.json(); c.textContent=String(Math.max(0,b+(d.saved?1:-1))); }catch(e){}
+}
+function cHtml(c){ return '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:8px 10px"><div style="font-size:11px;color:#8a8fa0"><strong style="color:#d8deec">'+(c.author_name||'Участник')+'</strong> · '+(c.created_at||'')+'</div><div style="font-size:13px;color:#e6e8ef;white-space:pre-wrap;word-break:break-word">'+(c.content||'')+'</div></div>'; }
+async function loadComments(){ try{ const r=await fetch('/community/comments/'+POST_ID,{credentials:'same-origin'}); const d=await r.json(); const arr=d.comments||[]; document.getElementById('commentsList').innerHTML=arr.length?arr.map(cHtml).join(''):'<div style="font-size:12px;color:#8a8fa0">Комментариев пока нет</div>'; }catch(e){} }
+async function sendComment(){ const inp=document.getElementById('commentInp'); const t=(inp.value||'').trim(); if(t.length<1)return; const fd=new FormData(); fd.append('content',t); const r=await fetch('/community/comment/'+POST_ID,{method:'POST',body:fd}); const d=await r.json().catch(()=>({})); if(d.ok){ inp.value=''; const c=document.getElementById('cmtCnt'); c.textContent=String((parseInt(c.textContent||'0',10)||0)+1); loadComments(); } }
+function toggleEdit(){ const w=document.getElementById('editWrap'); if(w) w.style.display=(w.style.display==='block'?'none':'block'); }
+async function saveEdit(){
+  const fd=new FormData(); fd.append('title',document.getElementById('editTitle').value||''); fd.append('content',document.getElementById('editContent').value||'');
+  const f=document.getElementById('editFile'); if(f&&f.files&&f.files[0]) fd.append('image',f.files[0]);
+  const r=await fetch('/community/post/'+POST_ID+'/edit',{method:'POST',body:fd,credentials:'same-origin'}); const d=await r.json().catch(()=>({}));
+  if(r.ok&&d.ok){ location.reload(); }
+}
+loadComments();
+</script>
+{% endblock %}

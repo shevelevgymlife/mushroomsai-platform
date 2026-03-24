@@ -145,7 +145,7 @@
     {% endif %}
 
     {% for item in feed %}{% set p = item.post %}{% set a = item.author %}
-    <div class="pcard" id="pc-{{ p.id }}">
+    <div class="pcard" id="pc-{{ p.id }}" onclick="openCommunityPostPage(event, {{ p.id }})" style="cursor:pointer">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
         <div style="display:flex;gap:10px;align-items:center">
           <a href="{{ '/community/profile/' + (a.id|string) if a else '#' }}" style="text-decoration:none">
@@ -547,6 +547,12 @@ async function prvImg(input){
 
 // ---- UTILS ----
 function esc(t){return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function openCommunityPostPage(event, postId){
+  const t=event&&event.target;
+  if(t && t.closest('a,button,input,textarea,details,summary,.abt,.sinp')) return;
+  const back=encodeURIComponent(location.href);
+  location.href='/community/post/'+postId+'?back='+back;
+}
 function esc2(t){return String(t||'').replace(/'/g,"\\'")}
 
 // ---- INIT ----

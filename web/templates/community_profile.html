@@ -273,7 +273,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
       <div class="ig-feed-shell cp-chaos-on" id="profilePostsGrid" style="margin-top:16px">
   {% for item in feed %}
   {% set p = item.post %}
-  <div class="ig-post" id="pc-{{ p.id }}" data-pid="{{ p.id }}" data-author="{{ (profile.name or 'Участник')|e }}" data-title="{{ (p.title or '')|e }}" data-content="{{ (p.content or '')|e }}" data-image="{{ (p.image_url or '')|e }}" data-created="{{ (p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '')|e }}" data-likes="{{ p.likes_count or 0 }}" data-comments="{{ p.comments_count or 0 }}" data-saves="{{ p.saves_count or 0 }}" onclick="openProfilePostPreview(event,this)">
+  <div class="ig-post" id="pc-{{ p.id }}" data-pid="{{ p.id }}" data-author="{{ (profile.name or 'Участник')|e }}" data-title="{{ (p.title or '')|e }}" data-content="{{ (p.content or '')|e }}" data-image="{{ (p.image_url or '')|e }}" data-created="{{ (p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '')|e }}" data-likes="{{ p.likes_count or 0 }}" data-comments="{{ p.comments_count or 0 }}" data-saves="{{ p.saves_count or 0 }}" onclick="openCommunityPostPage(event, {{ p.id }})">
     <div class="ig-post-header">
       <div style="width:36px;height:36px;border-radius:50%;border:2px solid #3dd4e0;overflow:hidden;flex-shrink:0">
         {% if profile.avatar %}<img src="{{ profile.avatar }}" style="width:100%;height:100%;object-fit:cover" alt="">{% else %}<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px">🍄</div>{% endif %}
@@ -895,6 +895,12 @@ function openProfilePostPreview(event, card){
   try{ document.body.style.overflow='hidden'; }catch(e){}
   try{ document.documentElement.style.overflowX='hidden'; document.body.style.overflowX='hidden'; }catch(e){}
   loadProfilePreviewComments(pid);
+}
+function openCommunityPostPage(event, postId){
+  const t=event&&event.target;
+  if(t && t.closest('a,button,input,textarea,details,summary,.ig-post-metric,.ig-pm')) return;
+  const back=encodeURIComponent(location.href);
+  location.href='/community/post/'+postId+'?back='+back;
 }
 async function submitProfilePreviewComment(){
   const pid=Number(document.getElementById('profilePreviewPostId')&&document.getElementById('profilePreviewPostId').value||0);
