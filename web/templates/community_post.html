@@ -5,12 +5,15 @@
 .cp-wrap{max-width:900px;margin:calc(4rem + 16px) auto 20px;padding:0 12px}
 .cp-card{border:1px solid rgba(255,255,255,.12);border-radius:18px;background:linear-gradient(165deg,rgba(255,255,255,.07),rgba(10,10,13,.92));overflow:hidden}
 .cp-head{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.08)}
-.cp-actions{display:flex;gap:8px;flex-wrap:wrap;padding:10px 12px 0}
+.cp-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:10px 12px 0}
 .cp-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px}
 .cp-metric{min-height:52px;border-radius:14px;border:1px solid rgba(255,255,255,.16);font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px}
 .cp-input{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:0 12px 12px}
 .sinp{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#e8e8e8;border-radius:12px;padding:10px 16px;font-size:16px;outline:none;width:100%;box-sizing:border-box}
-.btn-g{background:#3dd4e0;color:#000;border:none;border-radius:10px;padding:10px 12px;font-weight:700;cursor:pointer}
+.btn-g{background:#3dd4e0;color:#000;border:none;border-radius:999px;padding:11px 14px;font-weight:700;cursor:pointer;min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+@media (max-width:560px){
+  .cp-actions{grid-template-columns:1fr}
+}
 </style>
 <div class="cp-wrap">
   <div class="cp-card">
@@ -23,7 +26,7 @@
     <div class="cp-actions">
       <button class="btn-g" type="button" onclick="goBackPost()">Закрыть</button>
       <button class="btn-g" type="button" onclick="toggleReadText()">Почитать текст</button>
-      <button class="btn-g" type="button" onclick="openPhotoPage()" {% if not post.image_url %}style="display:none"{% endif %}>Посмотреть фото</button>
+      <button class="btn-g" type="button" onclick="openPhotoPage()" {% if not post.image_url %}style="display:none"{% endif %}>Фото</button>
     </div>
     {% if post.title %}<div style="padding:12px 12px 0;font-size:18px;font-weight:700;color:#f3f4f6">{{ post.title }}</div>{% endif %}
     <div id="textWrap" style="display:none;margin:12px;border:1px solid rgba(255,255,255,.12);border-radius:12px;background:rgba(8,10,16,.55);padding:10px;max-height:34vh;overflow:auto">

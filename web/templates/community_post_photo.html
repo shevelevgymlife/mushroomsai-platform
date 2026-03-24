@@ -10,8 +10,6 @@
 <div class="pp-wrap">
   <div class="pp-card">
     <div class="pp-bar">
-      <button class="btn-g" type="button" onclick="zoomOut()">−</button>
-      <button class="btn-g" type="button" onclick="zoomIn()">+</button>
       <button class="btn-g" type="button" onclick="goBack()">Закрыть</button>
     </div>
     <div style="height:calc(var(--vvh,100vh) - 160px);min-height:340px;overflow:auto;touch-action:pan-x pan-y pinch-zoom;background:#000;display:flex;align-items:center;justify-content:center">
@@ -20,10 +18,7 @@
   </div>
 </div>
 <script>
-let _z=1;
 const BACK_URL={{ back_url|tojson }};
 function goBack(){ if(history.length>1){ history.back(); } else { location.href=BACK_URL||'/dashboard#feed'; } }
-function zoomIn(){ _z=Math.min(4,_z+0.25); document.getElementById('photoEl').style.transform='scale('+_z+')'; }
-function zoomOut(){ _z=Math.max(1,_z-0.25); document.getElementById('photoEl').style.transform='scale('+_z+')'; }
 </script>
 {% endblock %}
