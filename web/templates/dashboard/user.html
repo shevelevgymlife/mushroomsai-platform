@@ -1172,7 +1172,7 @@ body.dash-ig-app .ig-lamp-topbar{
         <div id="profilePosts" class="profile-chaos-on">
           {% for p in grid_posts %}
           {% set is_liked_me = p.id in liked_post_ids %}
-          <div class="fp ig-post" id="mfp-{{ p.id }}">
+          <div class="fp ig-post" id="mfp-{{ p.id }}" data-pid="{{ p.id }}" data-author="{{ (user.name or 'Вы')|e }}" data-title="{{ (p.title or '')|e }}" data-content="{{ (p.content or '')|e }}" data-image="{{ (p.image_url or '')|e }}" data-created="{{ (p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '')|e }}" onclick="openFeedPostPreview(event,this)">
             <div class="ig-post-header">
               <div style="width:36px;height:36px;border-radius:50%;border:2px solid #3dd4e0;overflow:hidden">{% if user.avatar %}<img src="{{ user.avatar }}" style="width:100%;height:100%;object-fit:cover" alt="">{% else %}<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px">🍄</div>{% endif %}</div>
               <div style="flex:1;min-width:0">
@@ -1202,7 +1202,7 @@ body.dash-ig-app .ig-lamp-topbar{
                 <span>{% if is_liked_me %}⭐{% else %}✩{% endif %}</span><span class="n" id="profile-like-count-{{ p.id }}">{{ p.likes_count }}</span>
               </button>
               <button type="button" class="ig-post-metric ig-post-metric-chat" onclick="goSec('feed');setTimeout(function(){var x=document.getElementById('fp-{{ p.id }}');if(x)x.scrollIntoView({behavior:'smooth',block:'start'});},120)">
-                <span>💬</span><span class="n">{{ p.comments_count or 0 }}</span>
+                <span>💬</span><span class="n" id="profile-comment-count-{{ p.id }}" data-comment-count-for="{{ p.id }}">{{ p.comments_count or 0 }}</span>
               </button>
               <button type="button" class="ig-post-metric ig-post-metric-share" onclick="openSharePostModal({{ p.id }})">
                 <span>↗</span><span class="n">{{ p.saves_count or 0 }}</span>
@@ -1335,11 +1335,11 @@ body.dash-ig-app .ig-lamp-topbar{
           </button>
           {% if is_mine %}
           <button type="button" class="ig-post-metric ig-post-metric-chat" title="Комментарии" onclick="goSec('feed');setTimeout(function(){var x=document.getElementById('fp-{{ p.id }}');if(x)x.scrollIntoView({behavior:'smooth',block:'start'});},100);">
-            <span>💬</span><span class="n" id="comment-count-{{ p.id }}">{{ p.comments_count or 0 }}</span>
+            <span>💬</span><span class="n" id="comment-count-{{ p.id }}" data-comment-count-for="{{ p.id }}">{{ p.comments_count or 0 }}</span>
           </button>
           {% else %}
           <a href="/community/profile/{{ p.user_id }}#pc-{{ p.id }}" class="ig-post-metric ig-post-metric-chat" title="Комментарии" style="text-decoration:none">
-            <span>💬</span><span class="n" id="comment-count-{{ p.id }}">{{ p.comments_count or 0 }}</span>
+            <span>💬</span><span class="n" id="comment-count-{{ p.id }}" data-comment-count-for="{{ p.id }}">{{ p.comments_count or 0 }}</span>
           </a>
           {% endif %}
           <button type="button" class="ig-post-metric ig-post-metric-share" title="Пересылки" onclick="openSharePostModal({{ p.id }})">
@@ -4236,11 +4236,10 @@ async function submitFeedPreviewComment(){
     const d=await r.json().catch(()=>({}));
     if(r.ok && d.ok){
       if(inp) inp.value='';
-      const cc=document.getElementById('comment-count-'+pid);
-      if(cc){
+      document.querySelectorAll('[data-comment-count-for="'+String(pid)+'"]').forEach(function(cc){
         const cur=parseInt(cc.textContent||'0',10)||0;
         cc.textContent=String(cur+1);
-      }
+      });
       await loadFeedPreviewComments(pid);
       showNotification('Комментарий отправлен','success');
     }else{
