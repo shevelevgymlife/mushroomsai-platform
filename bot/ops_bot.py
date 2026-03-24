@@ -31,6 +31,8 @@ async def _ops_start(update, context):
             "Евгений Алексеевич, что бы вы хотели добавить/изменить?",
             reply_markup=kb,
         )
+        # Start task intake immediately after /start as a fail-safe.
+        await task_give_entry(update, context)
     return
 
 
