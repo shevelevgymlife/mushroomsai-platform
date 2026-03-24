@@ -1,3 +1,4 @@
+import logging
 import os
 import uuid
 import sqlalchemy as sa
@@ -1761,7 +1762,7 @@ async def messages_unread_count(request: Request):
         ), {"uid": uid}) or 0
         return JSONResponse({"count": count})
     except Exception as e:
-        print(f"[messages] unread-count error: {e}")
+        logging.getLogger(__name__).warning("messages unread-count: %s", e)
         return JSONResponse({"count": 0})
 
 

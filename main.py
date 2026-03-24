@@ -76,7 +76,14 @@ _STARTUP_SKIP_PATHS = frozenset({"/health", "/healthz", "/favicon.ico", "/robots
 
 
 class StartupGateMiddleware(BaseHTTPMiddleware):
-    """Пока идёт тяжёлый старт в фоне: /health сразу 200; HTML-запросы к сайту — 503; пробы без text/html — 200 ok."""
+    """Пока идут миграции в фоне: HTML-страницы — 503; API/поллинг (без text/html в Accept) — сразу в приложение.
+
+    Иначе фронт получает 503 на /messages/unread-count и «ломается», хотя БД уже доступна.
+    """
+
+    @staticmethod
+    def _wants_html_page(request: Request) -> bool:
+        return "text/html" in (request.headers.get("accept") or "").lower()
 
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
@@ -84,15 +91,18 @@ class StartupGateMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         if getattr(request.app.state, "startup_complete", False):
             return await call_next(request)
+
+        if not self._wants_html_page(request):
+            if path == "/":
+                return Response("ok", status_code=200, media_type="text/plain")
+            return await call_next(request)
+
         if path == "/":
-            accept = (request.headers.get("accept") or "").lower()
-            if "text/html" in accept:
-                return JSONResponse(
-                    {"detail": "starting", "retry": True},
-                    status_code=503,
-                    headers={"Retry-After": "5"},
-                )
-            return Response("ok", status_code=200, media_type="text/plain")
+            return JSONResponse(
+                {"detail": "starting", "retry": True},
+                status_code=503,
+                headers={"Retry-After": "5"},
+            )
         return JSONResponse(
             {"detail": "starting", "retry": True},
             status_code=503,
