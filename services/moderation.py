@@ -1,6 +1,8 @@
 """Moderation service: handle violations, bans, system DMs."""
 from datetime import datetime, timedelta
 
+from config import settings
+
 SUPER_ADMIN_TG_ID = 742166400
 
 
@@ -62,9 +64,8 @@ async def handle_violation(user_id: int, reason: str, content: str, db) -> dict:
 
     # Telegram notify
     tg_id = user.get("tg_id") or user.get("linked_tg_id")
-    if tg_id:
+    if settings.TELEGRAM_ENABLED and tg_id:
         try:
-            from config import settings
             import httpx
             async with httpx.AsyncClient(timeout=5) as client:
                 await client.post(
@@ -75,23 +76,24 @@ async def handle_violation(user_id: int, reason: str, content: str, db) -> dict:
             print(f"TG notify error: {e}")
 
     # Notify admin
-    try:
-        from config import settings
-        import httpx
-        admin_msg = (
-            f"⚠️ Нарушение #{count}\n"
-            f"Пользователь: {user['name']} (id={user_id})\n"
-            f"Причина: {reason}\n"
-            f"Действие: {action}\n"
-            f"Контент: {content[:100]}"
-        )
-        async with httpx.AsyncClient(timeout=5) as client:
-            await client.post(
-                f"https://api.telegram.org/bot{settings.TELEGRAM_TOKEN}/sendMessage",
-                json={"chat_id": SUPER_ADMIN_TG_ID, "text": admin_msg},
+    if settings.TELEGRAM_ENABLED:
+        try:
+            import httpx
+
+            admin_msg = (
+                f"⚠️ Нарушение #{count}\n"
+                f"Пользователь: {user['name']} (id={user_id})\n"
+                f"Причина: {reason}\n"
+                f"Действие: {action}\n"
+                f"Контент: {content[:100]}"
             )
-    except Exception as e:
-        print(f"Admin notify error: {e}")
+            async with httpx.AsyncClient(timeout=5) as client:
+                await client.post(
+                    f"https://api.telegram.org/bot{settings.TELEGRAM_TOKEN}/sendMessage",
+                    json={"chat_id": SUPER_ADMIN_TG_ID, "text": admin_msg},
+                )
+        except Exception as e:
+            print(f"Admin notify error: {e}")
 
     # Moderation log
     await db.execute(

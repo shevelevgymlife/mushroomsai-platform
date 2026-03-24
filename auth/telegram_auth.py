@@ -8,6 +8,10 @@ from config import settings
 
 
 def verify_telegram_auth(data: dict) -> bool:
+    if not settings.TELEGRAM_ENABLED:
+        return False
+    if not (settings.TELEGRAM_TOKEN or "").strip():
+        return False
     check_hash = data.pop("hash", None)
     if not check_hash:
         return False
@@ -25,6 +29,8 @@ def verify_telegram_auth(data: dict) -> bool:
 def verify_telegram_miniapp(init_data: str) -> Optional[dict]:
     """Verify Telegram Mini App initData - упрощённая версия"""
     try:
+        if not settings.TELEGRAM_ENABLED:
+            return None
         if not init_data:
             return None
 

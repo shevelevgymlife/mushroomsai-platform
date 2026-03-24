@@ -14,6 +14,11 @@
       ✓ {{ success }}
     </div>
     {% endif %}
+    {% if error %}
+    <div class="mb-6 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-sm">
+      {{ error }}
+    </div>
+    {% endif %}
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 

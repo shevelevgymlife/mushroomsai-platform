@@ -87,6 +87,8 @@ async def _has_json_schema() -> bool:
 
 
 async def _send_approval_prompt(request_id: str, question: str, details: str = "") -> None:
+    if not settings.TELEGRAM_ENABLED:
+        return
     bot_token = _token()
     chat_id = _chat_id()
     if not bot_token or not chat_id:
@@ -114,6 +116,8 @@ async def _send_approval_prompt(request_id: str, question: str, details: str = "
 
 
 async def _answer_callback(callback_query_id: str, text: str = "") -> None:
+    if not settings.TELEGRAM_ENABLED:
+        return
     bot_token = _token()
     if not bot_token or not callback_query_id:
         return
@@ -129,6 +133,8 @@ async def _answer_callback(callback_query_id: str, text: str = "") -> None:
 
 async def _fetch_callback_updates() -> list[dict[str, Any]]:
     global _UPDATES_OFFSET
+    if not settings.TELEGRAM_ENABLED:
+        return []
     bot_token = _token()
     if not bot_token:
         return []

@@ -7,6 +7,7 @@ from typing import Any, Optional
 
 from db.database import database
 from db.models import direct_messages, support_message_deliveries, users
+from config import settings
 from bot.handlers.notify import notify_user
 
 ONLINE_THRESHOLD_MINUTES = 10
@@ -71,7 +72,7 @@ async def deliver_support_message(
     tg_id = _tg_chat_id(dict(target))
     telegram_attempted = False
     telegram_ok = False
-    if not online and tg_id:
+    if settings.TELEGRAM_ENABLED and not online and tg_id:
         telegram_attempted = True
         safe = html.escape(body)
         footer = (

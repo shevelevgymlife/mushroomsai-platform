@@ -1,106 +1,7 @@
 import logging
 import os
 
-# До импортов, подтягивающих httpx (например web.routes.auth_routes): иначе httpx остаётся INFO и шумит.
-class _DropTelegramBotUrlLogs(logging.Filter):
-    """Отсекает логи с URL api.telegram.org (в т.ч. /bot<TOKEN>/...)."""
-
-    def filter(self, record: logging.LogRecord) -> bool:
-        try:
-            msg = record.getMessage()
-        except Exception:
-            return True
-        if "api.telegram.org" in msg:
-            return False
-        return True
-
-
-_TG_LOG_FILTER = _DropTelegramBotUrlLogs()
-_shielded_handler_ids: set[int] = set()
-_shielded_logger_names: set[str] = set()
-_root_tg_filter_added: bool = False
-_httpx_info_patched: bool = False
-_ptb_invalid_token_filter_loggers: set[str] = set()
-
-
-class _DropPTBInvalidTokenSpam(logging.Filter):
-    """PTB / asyncio: InvalidToken в логах (polling, process_error) — не засорять вывод рядом с apscheduler."""
-
-    def filter(self, record: logging.LogRecord) -> bool:
-        try:
-            msg = record.getMessage()
-        except Exception:
-            return True
-        if "Invalid token" in msg or "Invalid token; aborting" in msg:
-            return False
-        if "telegram.error.InvalidToken" in msg or "InvalidToken: Unauthorized" in msg:
-            return False
-        ei = record.exc_info
-        if ei and ei[0] is not None and getattr(ei[0], "__name__", "") == "InvalidToken":
-            return False
-        return True
-
-
-def _patch_httpx_client_info_drop_telegram() -> None:
-    """Оборачивает httpx._client.logger.info: даже при сбросе setLevel() не логировать запросы к api.telegram.org."""
-    global _httpx_info_patched
-    if _httpx_info_patched:
-        return
-    try:
-        import httpx._client as _hpx_client
-
-        _orig = _hpx_client.logger.info
-
-        def _safe_info(*args, **kwargs):
-            try:
-                for a in args:
-                    if "api.telegram.org" in str(a):
-                        return
-                for v in kwargs.values():
-                    if "api.telegram.org" in str(v):
-                        return
-            except Exception:
-                pass
-            return _orig(*args, **kwargs)
-
-        _hpx_client.logger.info = _safe_info  # type: ignore[method-assign]
-        _hpx_client.logger.setLevel(logging.ERROR)
-        _httpx_info_patched = True
-    except Exception:
-        pass
-
-
-def _shield_telegram_token_logs() -> None:
-    """
-    Uvicorn после старта вешает свои handlers на root — записи httpx идут в stdout через них,
-    минуя фильтры только на логгере httpx. Дублируем фильтр на каждый handler root + уровни httpx.
-    """
-    global _root_tg_filter_added
-    if not _root_tg_filter_added:
-        logging.root.addFilter(_TG_LOG_FILTER)
-        _root_tg_filter_added = True
-    for h in logging.root.handlers:
-        hid = id(h)
-        if hid not in _shielded_handler_ids:
-            h.addFilter(_TG_LOG_FILTER)
-            _shielded_handler_ids.add(hid)
-    # WARNING недостаточно, если что-то сбрасывает уровень; INFO с полным URL и токеном не должны попадать в лог.
-    for _name in ("httpx", "httpcore", "telegram.request"):
-        _lg = logging.getLogger(_name)
-        _lg.setLevel(logging.ERROR)
-        if _name not in _shielded_logger_names:
-            _lg.addFilter(_TG_LOG_FILTER)
-            _shielded_logger_names.add(_name)
-    _patch_httpx_client_info_drop_telegram()
-    global _ptb_invalid_token_filter_loggers
-    for _n in ("telegram.ext.Updater", "telegram.ext.Application", "telegram.ext"):
-        if _n not in _ptb_invalid_token_filter_loggers:
-            logging.getLogger(_n).addFilter(_DropPTBInvalidTokenSpam())
-            _ptb_invalid_token_filter_loggers.add(_n)
-
-
 logging.basicConfig(level=logging.INFO)
-_shield_telegram_token_logs()
 
 import asyncio
 from contextlib import asynccontextmanager
@@ -128,44 +29,6 @@ from services.deploy_notify import send_deploy_notifications
 from web.templates_utils import Jinja2Templates
 
 logger = logging.getLogger(__name__)
-
-bot_app = None
-ops_bot_app = None
-
-
-def _install_asyncio_invalid_token_handler() -> None:
-    """InvalidToken из фонового polling часто уходит в asyncio Task — не через logging, фильтры его не видят."""
-    import asyncio
-
-    loop = asyncio.get_running_loop()
-    prev = loop.get_exception_handler()
-
-    def _handler(loop: asyncio.AbstractEventLoop, context: dict) -> None:
-        exc = context.get("exception")
-        if exc is not None:
-            try:
-                from telegram.error import InvalidToken
-
-                if isinstance(exc, InvalidToken):
-                    logger.warning(
-                        "Telegram: токен отклонён API (InvalidToken). Обновите TELEGRAM_TOKEN в Render → Environment "
-                        "и перезапустите сервис. Сайт при этом может работать."
-                    )
-                    return
-            except Exception:
-                pass
-        msg = str(context.get("message", "") or "")
-        if "InvalidToken" in msg or "Invalid token" in msg.lower():
-            logger.warning(
-                "Telegram: ошибка токена в asyncio (см. TELEGRAM_TOKEN на Render). Сайт может работать без бота."
-            )
-            return
-        if prev is not None:
-            prev(loop, context)
-        else:
-            loop.default_exception_handler(context)
-
-    loop.set_exception_handler(_handler)
 
 
 class LanguageMiddleware(BaseHTTPMiddleware):
@@ -208,9 +71,6 @@ class ProbeBlockMiddleware(BaseHTTPMiddleware):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup (после uvicorn: повторно — на root могли добавиться новые handlers)
-    _shield_telegram_token_logs()
-    _install_asyncio_invalid_token_handler()
     try:
         await database.connect()
     except Exception as e:
@@ -224,14 +84,10 @@ async def lifespan(app: FastAPI):
         raise
     logger.info("Database connected")
     _commit = (os.environ.get("RENDER_GIT_COMMIT") or "")[:12] or "n/a"
-    _tg_nonempty = bool((settings.TELEGRAM_TOKEN or "").strip())
-    _tg_key = "TELEGRAM_TOKEN" in os.environ
     logger.info(
-        "Boot: render_git=%s tg_token_nonempty=%s TELEGRAM_TOKEN_key_in_env=%s "
-        "(если снова InvalidToken — сравните render_git с последним коммитом в GitHub; старые строки в логе возможны до рестарта)",
+        "Boot: render_git=%s TELEGRAM_ENABLED=%s",
         _commit,
-        _tg_nonempty,
-        _tg_key,
+        settings.TELEGRAM_ENABLED,
     )
     await send_deploy_notifications()
 
@@ -555,114 +411,18 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"AI settings init: {e}")
 
-    # Start primary Telegram bot (website/app bot)
-    global bot_app, ops_bot_app
-    primary_token = (settings.TELEGRAM_TOKEN or "").strip()
-    _disable_bot = os.environ.get("TELEGRAM_DISABLE_BOT", "").strip().lower() in ("1", "true", "yes")
-    if _disable_bot:
+    # Telegram polling-бот убран из процесса веб-сервера (стабильный деплой). Вернуть: TELEGRAM_ENABLED + зависимость PTB.
+    if settings.TELEGRAM_ENABLED:
         logger.warning(
-            "TELEGRAM_DISABLE_BOT включён — бот не запускается. Уберите переменную в Render после починки TELEGRAM_TOKEN."
+            "TELEGRAM_ENABLED=true, но polling-бот в этой версии не поднимается — выключите флаг или дождитесь восстановления бота."
         )
-    elif not primary_token:
-        logger.info(
-            "Telegram bot: не запускается (TELEGRAM_TOKEN пустой или ключ удалён из Environment). "
-            "После смены переменных на Render нужен Restart / новый deploy — иначе в логах может быть старый процесс."
-        )
-    elif primary_token:
-        try:
-            # В логах видно только bot id (число до ":"), без секрета — сверяйте с Render → Environment → TELEGRAM_TOKEN
-            _bid = primary_token.split(":")[0] if ":" in primary_token else "?"
-            _from_os = "TELEGRAM_TOKEN" in os.environ
-            logger.info(
-                "Telegram polling: bot id=%s, TELEGRAM_TOKEN в окружении процесса=%s "
-                "(сверьте id с токеном в @BotFather; если нет — другой сервис Render или не тот Environment)",
-                _bid,
-                _from_os,
-            )
-            _shield_telegram_token_logs()
-            from bot.main_bot import create_bot
-            from telegram.error import InvalidToken
+    from services.scheduler import start_scheduler
 
-            bot_app = create_bot()
-            await bot_app.initialize()
-            await bot_app.start()
-            # Явная проверка токена до long polling (иначе 401 валится в фоне)
-            _me = await bot_app.bot.get_me()
-            _api_u = (_me.username or "").strip().lower()
-            _cfg_u = (settings.TELEGRAM_BOT_USERNAME or "").strip().lower()
-            if _api_u and _cfg_u and _api_u != _cfg_u:
-                logger.warning(
-                    "Telegram: @username из API (@%s) не совпадает с TELEGRAM_BOT_USERNAME в настройках (%s). "
-                    "На Render → Environment задайте TELEGRAM_BOT_USERNAME=%s (без @), Save, Restart — иначе виджет входа и ссылки на сайте указывают не на этого бота.",
-                    _me.username,
-                    settings.TELEGRAM_BOT_USERNAME,
-                    _me.username,
-                )
-            await bot_app.updater.start_polling(
-                drop_pending_updates=True,
-                allowed_updates=[
-                    "message",
-                    "edited_message",
-                    "channel_post",
-                    "edited_channel_post",
-                    "inline_query",
-                    "chosen_inline_result",
-                    "callback_query",
-                    "shipping_query",
-                    "pre_checkout_query",
-                    "poll",
-                    "poll_answer",
-                    "my_chat_member",
-                    "chat_member",
-                    "chat_join_request",
-                ],
-            )
-            logger.info("Primary Telegram bot started")
-
-            # Start scheduler tied to primary bot
-            from services.scheduler import start_scheduler
-            start_scheduler(bot_app.bot)
-        except InvalidToken:
-            logger.error(
-                "TELEGRAM_TOKEN недействителен (Unauthorized). Возьмите новый токен в @BotFather → /token, "
-                "обновите TELEGRAM_TOKEN на Render и перезапустите сервис. Сайт продолжит работу без бота."
-            )
-            if bot_app:
-                try:
-                    await bot_app.updater.stop()
-                except Exception:
-                    pass
-                try:
-                    await bot_app.stop()
-                    await bot_app.shutdown()
-                except Exception:
-                    pass
-                bot_app = None
-        except Exception as e:
-            logger.error(f"Primary bot startup error: {e}")
-
-    # Ops bot runtime is disabled here.
-    # Deploy notifications are sent directly via Telegram Bot API in services/task_notify.py.
+    start_scheduler(None)
 
     yield
 
     # Shutdown
-    if bot_app:
-        try:
-            await bot_app.updater.stop()
-            await bot_app.stop()
-            await bot_app.shutdown()
-        except Exception as e:
-            logger.error(f"Bot shutdown error: {e}")
-
-    if ops_bot_app:
-        try:
-            await ops_bot_app.updater.stop()
-            await ops_bot_app.stop()
-            await ops_bot_app.shutdown()
-        except Exception as e:
-            logger.error(f"Ops bot shutdown error: {e}")
-
     await database.disconnect()
     logger.info("Database disconnected")
 
@@ -673,7 +433,6 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
-_shield_telegram_token_logs()
 templates = Jinja2Templates(directory="web/templates")
 
 # Middleware

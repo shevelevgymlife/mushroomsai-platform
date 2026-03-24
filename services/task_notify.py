@@ -149,6 +149,8 @@ def _send_email_sync(subject: str, body: str, to_email: str, from_email: str) ->
 
 
 async def _notify_telegram(text: str, stage: str) -> None:
+    if not settings.TELEGRAM_ENABLED:
+        return
     if not text:
         return
     token = _telegram_token()

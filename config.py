@@ -12,6 +12,9 @@ def _env_file_for_settings() -> str | None:
 
 
 class Settings(BaseSettings):
+    # Вся интеграция с Telegram (бот polling, sendMessage, Login Widget) выключена, пока false.
+    # После стабильного деплоя: true + TELEGRAM_TOKEN + переустановить python-telegram-bot и бота.
+    TELEGRAM_ENABLED: bool = False
     TELEGRAM_TOKEN: str = ""
     OPS_TELEGRAM_TOKEN: str = ""  # отдельный бот для задач/подтверждений (ops bot)
     OPENAI_API_KEY: str = ""

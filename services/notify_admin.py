@@ -7,6 +7,8 @@ from config import settings
 
 
 async def notify_admin_telegram(text: str) -> None:
+    if not settings.TELEGRAM_ENABLED:
+        return
     if not text or not settings.TELEGRAM_TOKEN or not settings.ADMIN_TG_ID:
         return
     try:

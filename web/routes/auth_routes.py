@@ -142,6 +142,11 @@ async def register_email(
 
 @router.get("/auth/telegram")
 async def telegram_auth(request: Request):
+    from config import settings as _cfg
+
+    if not _cfg.TELEGRAM_ENABLED:
+        return RedirectResponse("/login?error=telegram_disabled", status_code=302)
+
     data = dict(request.query_params)
     if not verify_telegram_auth(data.copy()):
         try:
@@ -187,6 +192,11 @@ async def telegram_auth(request: Request):
 
 @router.post("/auth/telegram/miniapp")
 async def telegram_miniapp_auth(request: Request):
+    from config import settings as _cfg
+
+    if not _cfg.TELEGRAM_ENABLED:
+        return JSONResponse({"error": "telegram_disabled"}, status_code=503)
+
     try:
         body = await request.json()
         init_data = body.get("init_data", "")

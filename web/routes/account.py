@@ -63,6 +63,10 @@ async def link_telegram_page(request: Request):
     if not user:
         return RedirectResponse("/login")
     from config import settings
+
+    if not settings.TELEGRAM_ENABLED:
+        return RedirectResponse("/dashboard?notice=telegram_disabled", status_code=302)
+
     return templates.TemplateResponse(
         "account/link_telegram.html",
         {"request": request, "user": user, "site_url": settings.SITE_URL,
@@ -72,6 +76,11 @@ async def link_telegram_page(request: Request):
 
 @router.get("/link-telegram-callback")
 async def link_telegram_callback(request: Request):
+    from config import settings
+
+    if not settings.TELEGRAM_ENABLED:
+        return RedirectResponse("/dashboard?notice=telegram_disabled", status_code=302)
+
     user = await get_user_from_request(request)
     if not user:
         print("TG CALLBACK: no session user, redirecting to login")

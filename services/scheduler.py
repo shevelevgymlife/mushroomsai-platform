@@ -12,13 +12,11 @@ from services.ops_alerts import maybe_notify_billing, send_daily_summary
 
 scheduler = AsyncIOScheduler()
 _logger = logging.getLogger(__name__)
-_followup_invalid_token_logged: bool = False
 _scheduler_started: bool = False
 
 
 async def send_followup_messages(bot):
     """Send scheduled follow-up messages to users."""
-    global _followup_invalid_token_logged
     if bot is None:
         return
     now = datetime.utcnow()
@@ -43,18 +41,8 @@ async def send_followup_messages(bot):
                     .where(followups.c.id == followup["id"])
                     .values(sent=True)
                 )
-            except Exception as e:
-                try:
-                    from telegram.error import InvalidToken
-
-                    if isinstance(e, InvalidToken) and not _followup_invalid_token_logged:
-                        _followup_invalid_token_logged = True
-                        _logger.warning(
-                            "followup: TELEGRAM_TOKEN недействителен (Unauthorized). "
-                            "Рассылка не отправляется — обновите токен на Render."
-                        )
-                except Exception:
-                    pass
+            except Exception:
+                pass
 
 
 async def purge_expired_group_messages():
@@ -78,18 +66,18 @@ def start_scheduler(bot):
     if _scheduler_started:
         _logger.warning("start_scheduler: планировщик уже запущен, повторный вызов пропущен")
         return
-    if bot is None:
-        _logger.warning("start_scheduler: bot is None — джобы с Telegram не добавляем")
-        return
     _scheduler_started = True
-    scheduler.add_job(
-        send_followup_messages,
-        "interval",
-        minutes=30,
-        args=[bot],
-        id="send_followup_messages_primary",
-        replace_existing=True,
-    )
+    if settings.TELEGRAM_ENABLED and bot is not None:
+        scheduler.add_job(
+            send_followup_messages,
+            "interval",
+            minutes=30,
+            args=[bot],
+            id="send_followup_messages_primary",
+            replace_existing=True,
+        )
+    elif bot is None:
+        _logger.info("start_scheduler: без бота — follow-up в Telegram не планируется")
     scheduler.add_job(
         purge_expired_group_messages,
         "interval",
