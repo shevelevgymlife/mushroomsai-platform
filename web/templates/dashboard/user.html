@@ -1738,6 +1738,8 @@ body.dash-ig-app .ig-lamp-topbar{
       <div class="sect-title">🔗 Привязка аккаунтов</div>
       {% set has_tg = user.tg_id or user.linked_tg_id %}
       {% set has_google = user.google_id or user.linked_google_id %}
+      {% set is_tg_only = has_tg and not has_google %}
+      {% set is_google_only = has_google and not has_tg %}
       {% if has_tg and has_google %}
       <div class="card" style="border-color:rgba(74,222,128,.25);background:rgba(74,222,128,.05);margin-bottom:16px">
         <div style="display:flex;align-items:center;gap:10px;font-size:15px;color:#4ade80;font-weight:600">
@@ -1747,29 +1749,28 @@ body.dash-ig-app .ig-lamp-topbar{
           <div style="font-size:13px;color:#666;display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:#38bdf8;display:inline-block"></span> Telegram привязан</div>
           <div style="font-size:13px;color:#666;display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block"></span> Google аккаунт привязан</div>
         </div>
-        {% if user.linked_tg_id or user.linked_google_id %}
-        <button id="syncBtn" onclick="syncHist()" class="btn-o" style="margin-top:16px;width:100%">🔄 Синхронизировать историю</button>
-        <div id="syncOk" style="display:none;margin-top:8px;font-size:13px;color:#4ade80;text-align:center">✓ История синхронизирована</div>
-        {% endif %}
+        <div style="margin-top:14px;font-size:12px;color:#666;line-height:1.45">
+          У вас один профиль и два метода входа: Google + Telegram (Web и Mini App).
+        </div>
       </div>
       {% else %}
       <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">
-        {% if not has_tg %}
+        {% if is_google_only or (not has_tg and not has_google) %}
         <a href="/account/link-telegram" class="card" style="display:flex;align-items:center;gap:14px;text-decoration:none;border-color:rgba(56,189,248,.25);background:rgba(56,189,248,.05);transition:border-color .2s" onmouseover="this.style.borderColor='rgba(56,189,248,.5)'" onmouseout="this.style.borderColor='rgba(56,189,248,.25)'">
           <span style="font-size:28px">📱</span>
           <div>
-            <div style="font-weight:600;color:#38bdf8;margin-bottom:2px">Привязать Telegram</div>
-            <div style="font-size:13px;color:#666">Объедините чат-бот и веб-кабинет</div>
+            <div style="font-weight:600;color:#38bdf8;margin-bottom:2px">Подключить вход через Telegram</div>
+            <div style="font-size:13px;color:#666">Подтвердите Telegram, чтобы входить в этот же аккаунт из App и Web</div>
           </div>
           <span style="margin-left:auto;color:#38bdf8">→</span>
         </a>
         {% endif %}
-        {% if not has_google %}
+        {% if is_tg_only or (not has_tg and not has_google) %}
         <a href="/account/link-google" class="card" style="display:flex;align-items:center;gap:14px;text-decoration:none;border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.05);transition:border-color .2s" onmouseover="this.style.borderColor='rgba(239,68,68,.5)'" onmouseout="this.style.borderColor='rgba(239,68,68,.25)'">
           <span style="font-size:28px">🔴</span>
           <div>
-            <div style="font-weight:600;color:#ef4444;margin-bottom:2px">Привязать Google</div>
-            <div style="font-size:13px;color:#666">Войти через Google аккаунт</div>
+            <div style="font-weight:600;color:#ef4444;margin-bottom:2px">Подключить вход через Google</div>
+            <div style="font-size:13px;color:#666">Откроется браузерная привязка Google к вашему текущему аккаунту</div>
           </div>
           <span style="margin-left:auto;color:#ef4444">→</span>
         </a>
@@ -1781,7 +1782,7 @@ body.dash-ig-app .ig-lamp-topbar{
       {% endif %}
       <div class="card" style="margin-top:16px">
         <div style="font-size:13px;font-weight:600;color:#888;margin-bottom:10px">Зачем привязывать аккаунты?</div>
-        {% for t in ['Единая история диалогов с AI','Один профиль в сообществе','Синхронизация заказов и подписки','Войти с любого устройства'] %}
+        {% for t in ['Всегда один и тот же профиль','Вход через Telegram App / Telegram Web / Google','Без создания второго аккаунта','Единая история, подписка и настройки'] %}
         <div style="font-size:13px;color:#666;display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="color:#3dd4e0">✦</span>{{ t }}</div>
         {% endfor %}
       </div>

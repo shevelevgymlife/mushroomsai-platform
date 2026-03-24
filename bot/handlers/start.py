@@ -1,5 +1,6 @@
 import secrets
 import string
+import sqlalchemy as sa
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, WebAppInfo
 from telegram.ext import ContextTypes
 from db.database import database
@@ -19,16 +20,36 @@ async def ensure_user(tg_user) -> dict | None:
     if await is_identity_blocked("tg_id", tid):
         return None
 
-    row = await database.fetch_one(users.select().where(users.c.tg_id == tg_user.id))
+    row = await database.fetch_one(
+        users.select().where(
+            sa.or_(users.c.tg_id == tg_user.id, users.c.linked_tg_id == tg_user.id)
+        )
+    )
     if not row:
         referral_code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
         user_id = await database.execute(
             users.insert().values(
                 tg_id=tg_user.id,
+                linked_tg_id=tg_user.id,
                 name=tg_user.full_name,
                 avatar=tg_user.username,
                 referral_code=referral_code,
                 role="user",
+            )
+        )
+        row = await database.fetch_one(users.select().where(users.c.id == user_id))
+    else:
+        # Backfill canonical tg identifiers on resolved/legacy linked accounts.
+        base_row = dict(row)
+        user_id = int(base_row.get("primary_user_id") or base_row["id"])
+        if user_id != int(base_row["id"]):
+            primary = await database.fetch_one(users.select().where(users.c.id == user_id))
+            if primary:
+                row = primary
+        await database.execute(
+            users.update().where(users.c.id == user_id).values(
+                tg_id=tg_user.id,
+                linked_tg_id=tg_user.id,
             )
         )
         row = await database.fetch_one(users.select().where(users.c.id == user_id))

@@ -21,6 +21,52 @@ templates = Jinja2Templates(directory="web/templates")
 _logger = logging.getLogger(__name__)
 
 
+async def _find_user_by_tg_login_id(tg_id: int):
+    rows = await database.fetch_all(
+        users.select().where(
+            (users.c.tg_id == tg_id) | (users.c.linked_tg_id == tg_id)
+        )
+    )
+    if not rows:
+        return None
+    chosen = None
+    for row in rows:
+        r = dict(row)
+        if not r.get("primary_user_id"):
+            chosen = r
+            break
+    if chosen is None:
+        chosen = dict(rows[0])
+    if chosen.get("primary_user_id"):
+        primary = await database.fetch_one(users.select().where(users.c.id == chosen["primary_user_id"]))
+        if primary:
+            chosen = dict(primary)
+    return chosen
+
+
+async def _find_user_by_google_login_id(google_id: str):
+    rows = await database.fetch_all(
+        users.select().where(
+            (users.c.google_id == google_id) | (users.c.linked_google_id == google_id)
+        )
+    )
+    if not rows:
+        return None
+    chosen = None
+    for row in rows:
+        r = dict(row)
+        if not r.get("primary_user_id"):
+            chosen = r
+            break
+    if chosen is None:
+        chosen = dict(rows[0])
+    if chosen.get("primary_user_id"):
+        primary = await database.fetch_one(users.select().where(users.c.id == chosen["primary_user_id"]))
+        if primary:
+            chosen = dict(primary)
+    return chosen
+
+
 def _safe_next_path(raw: str | None) -> str | None:
     if not raw or not isinstance(raw, str):
         return None
@@ -162,7 +208,7 @@ async def telegram_auth(request: Request):
 
     from auth.avatar_policy import is_server_uploaded_avatar
 
-    row = await database.fetch_one(users.select().where(users.c.tg_id == tg_id))
+    row = await _find_user_by_tg_login_id(tg_id)
     if row:
         if await login_denied_for_user_row(dict(row)):
             return await _login_blocked_response(request)
@@ -170,11 +216,21 @@ async def telegram_auth(request: Request):
         vals = {"name": name}
         if not is_server_uploaded_avatar(row.get("avatar")) and photo:
             vals["avatar"] = photo
-        await database.execute(users.update().where(users.c.tg_id == tg_id).values(**vals))
+        existing_tg = row.get("tg_id")
+        if not existing_tg or int(existing_tg) == int(tg_id):
+            vals["tg_id"] = tg_id
+        vals["linked_tg_id"] = tg_id
+        await database.execute(users.update().where(users.c.id == user_id).values(**vals))
     else:
         ref_code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
         user_id = await database.execute(
-            users.insert().values(tg_id=tg_id, name=name, avatar=photo, referral_code=ref_code)
+            users.insert().values(
+                tg_id=tg_id,
+                linked_tg_id=tg_id,
+                name=name,
+                avatar=photo,
+                referral_code=ref_code,
+            )
         )
 
     token = create_access_token(user_id)
@@ -211,7 +267,7 @@ async def telegram_miniapp_auth(request: Request):
 
         from auth.avatar_policy import is_server_uploaded_avatar
 
-        row = await database.fetch_one(users.select().where(users.c.tg_id == tg_id))
+        row = await _find_user_by_tg_login_id(tg_id)
         if row:
             if await login_denied_for_user_row(dict(row)):
                 return JSONResponse({"error": "Аккаунт заблокирован"}, status_code=403)
@@ -219,11 +275,21 @@ async def telegram_miniapp_auth(request: Request):
             vals = {"name": name}
             if not is_server_uploaded_avatar(row.get("avatar")) and avatar:
                 vals["avatar"] = avatar
-            await database.execute(users.update().where(users.c.tg_id == tg_id).values(**vals))
+            existing_tg = row.get("tg_id")
+            if not existing_tg or int(existing_tg) == int(tg_id):
+                vals["tg_id"] = tg_id
+            vals["linked_tg_id"] = tg_id
+            await database.execute(users.update().where(users.c.id == user_id).values(**vals))
         else:
             ref_code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
             user_id = await database.execute(
-                users.insert().values(tg_id=tg_id, name=name, avatar=avatar, referral_code=ref_code)
+                users.insert().values(
+                    tg_id=tg_id,
+                    linked_tg_id=tg_id,
+                    name=name,
+                    avatar=avatar,
+                    referral_code=ref_code,
+                )
             )
 
         token = create_access_token(user_id)
@@ -303,22 +369,16 @@ async def google_callback(request: Request):
         link_user_id = request.session.pop("link_user_id", None)
         state = request.query_params.get("state", "")
         if link_user_id and state == "link":
-            from web.routes.account import merge_accounts
-            existing_google_user = await database.fetch_one(
-                users.select().where(users.c.google_id == google_id)
+            from web.routes.account import attach_google_login
+            ok, _msg = await attach_google_login(
+                primary_user_id=int(link_user_id),
+                google_id=google_id,
+                email=email,
+                name=name,
+                avatar=avatar,
             )
-            if existing_google_user and existing_google_user["id"] != link_user_id:
-                # Separate Google account exists — merge into current user
-                await merge_accounts(primary_id=link_user_id, secondary_id=existing_google_user["id"])
-            elif not existing_google_user:
-                # Link google_id directly to current user
-                await database.execute(
-                    users.update().where(users.c.id == link_user_id).values(
-                        google_id=google_id,
-                        linked_google_id=google_id,
-                        email=email,
-                    )
-                )
+            if not ok:
+                return RedirectResponse("/dashboard?error=google_link_conflict", status_code=302)
             token_str = create_access_token(link_user_id)
             resp = RedirectResponse("/dashboard?linked=google", status_code=302)
             resp.set_cookie("access_token", token_str, httponly=True, max_age=30 * 24 * 3600)
@@ -326,7 +386,7 @@ async def google_callback(request: Request):
 
         from auth.avatar_policy import is_server_uploaded_avatar
 
-        row = await database.fetch_one(users.select().where(users.c.google_id == google_id))
+        row = await _find_user_by_google_login_id(google_id)
         if row:
             if await login_denied_for_user_row(dict(row)):
                 return await _login_blocked_response(request)
@@ -334,12 +394,23 @@ async def google_callback(request: Request):
             vals = {"name": name}
             if not is_server_uploaded_avatar(row.get("avatar")) and avatar:
                 vals["avatar"] = avatar
-            await database.execute(users.update().where(users.c.google_id == google_id).values(**vals))
+            existing_google = (row.get("google_id") or "").strip()
+            if not existing_google or existing_google == google_id:
+                vals["google_id"] = google_id
+            vals["linked_google_id"] = google_id
+            if email and not row.get("email"):
+                vals["email"] = email
+            await database.execute(users.update().where(users.c.id == user_id).values(**vals))
         else:
             ref_code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
             user_id = await database.execute(
                 users.insert().values(
-                    google_id=google_id, email=email, name=name, avatar=avatar, referral_code=ref_code
+                    google_id=google_id,
+                    linked_google_id=google_id,
+                    email=email,
+                    name=name,
+                    avatar=avatar,
+                    referral_code=ref_code,
                 )
             )
 
