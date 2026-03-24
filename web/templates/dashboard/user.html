@@ -425,12 +425,12 @@
 .tg-chat-header-row #groupChatTitle{color:#e8e8e8;font-size:16px;font-weight:600;flex:1;min-width:0}
 .tg-chat-header-row #groupMobileBack{display:none}
 .tg-chat-shell .ig-g-msg-wrap{flex:1;overflow-y:auto;padding:12px 10px 14px;display:flex;flex-direction:column;gap:8px;background:#0a0a0a;border:none;border-radius:0;margin:0!important;min-height:220px}
-.tg-chat-shell .ig-g-row{display:flex;flex-direction:row;width:100%;align-items:flex-end;gap:8px}
+.tg-chat-shell .ig-g-row{display:flex;flex-direction:row;width:100%;max-width:100%;align-items:flex-end;gap:8px;box-sizing:border-box}
 .tg-chat-shell .ig-g-row{animation:msgSoftIn .22s ease-out}
 @keyframes msgSoftIn{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
 .tg-chat-shell .ig-g-row.me{align-items:flex-end}
 .tg-chat-shell .ig-g-row.them{align-items:flex-start}
-.tg-chat-shell .ig-g-bubble{max-width:min(82%,390px);padding:10px 13px 8px;border-radius:20px;font-size:14px;line-height:1.45;word-break:break-word;position:relative;animation:igMsgIn .2s ease-out;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.tg-chat-shell .ig-g-bubble{max-width:min(82%,390px);padding:10px 13px 8px;border-radius:20px;font-size:14px;line-height:1.45;word-break:break-word;position:relative;animation:igMsgIn .2s ease-out;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-sizing:border-box}
 .tg-chat-shell .ig-g-bubble.me{border-bottom-right-radius:7px;background:linear-gradient(155deg,rgba(242,173,120,.28),rgba(126,75,65,.3))!important;border:1px solid rgba(255,216,184,.28)!important;color:#fff6ef!important;box-shadow:0 10px 26px rgba(0,0,0,.24)}
 .tg-chat-shell .ig-g-bubble.them{border-bottom-left-radius:7px;background:linear-gradient(155deg,rgba(168,190,255,.18),rgba(70,84,111,.24))!important;border:1px solid rgba(210,224,255,.22)!important;color:#f2f6ff!important}
 .tg-msg-av{width:28px;height:28px;border-radius:50%;overflow:hidden;flex-shrink:0;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:11px;color:#d8e7ff}
@@ -451,7 +451,7 @@
 .tg-chat-shell .ig-g-lc{font-size:11px;color:#888;min-width:1em}
 #groupReplyBar{display:none;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;background:rgba(61,212,224,.08);border-top:1px solid rgba(255,255,255,.06);font-size:12px;color:#bbb}
 #groupVoiceHint{font-size:11px;color:#f87171;max-width:120px;display:none}
-.tg-chat-input-row{padding:10px 12px calc(14px + env(safe-area-inset-bottom,0px));border-top:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);display:flex;gap:8px;align-items:center;flex-shrink:0;width:100%;max-width:100%;box-sizing:border-box}
+.tg-chat-input-row{padding:10px 12px calc(14px + env(safe-area-inset-bottom,0px));border-top:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);display:flex;gap:8px;align-items:center;flex-shrink:0;width:100%;max-width:100%;box-sizing:border-box;overflow:hidden}
 .tg-chat-input-row .sinp{background:rgba(12,14,20,.65);border:1px solid rgba(255,255,255,.2);color:#f4f6fb;border-radius:18px;padding:10px 16px;flex:1;min-width:0}
 .tg-chat-input-row .btn-g{flex-shrink:0}
 .tg-chat-input-row .sinp:focus{border-color:rgba(61,212,224,.45)}
@@ -502,6 +502,10 @@ body.tg-chat-open #sec-groups .tg-chat-main{
   z-index:980;
   min-height:calc(var(--vvh, 100vh) - 72px);
   max-height:none;
+  width:100vw;
+  max-width:100vw;
+  overflow-x:hidden;
+  box-sizing:border-box;
 }
 @media(max-width:900px){
   #sec-groups .tg-chat-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
@@ -510,6 +514,9 @@ body.tg-chat-open #sec-groups .tg-chat-main{
   #sec-groups .ig-g-item.tg-chat-item:nth-child(4n+3){transform:translateY(0) rotate(1.2deg)}
   #sec-groups .ig-g-item.tg-chat-item:nth-child(4n+4){transform:translateY(0) rotate(-1.7deg)}
   body.tg-chat-open #sec-groups .tg-chat-main{inset:64px 0 0 0}
+  body.tg-chat-open #sec-groups .ig-g-msg-wrap{padding-left:8px;padding-right:8px}
+  body.tg-chat-open #sec-groups .ig-g-bubble{max-width:calc(100vw - 64px)}
+  body.tg-chat-open #sec-groups .tg-chat-input-row .sinp{font-size:16px}
 }
 
 /* Бургер: блок со списком групп */
@@ -3541,6 +3548,7 @@ async function toggleGroupNotifications(){
 
 async function loadGroupMessages(gid, opts){
   const silent = opts && opts.silent;
+  const forceBottom = !!(opts && opts.forceBottom);
   const box = document.getElementById('groupMsgBox');
   if(!box) return;
   const prev = box.scrollHeight - box.scrollTop;
@@ -3632,7 +3640,7 @@ async function loadGroupMessages(gid, opts){
         '<div class="ig-g-time">'+esc(m.created_at)+'</div></div></div>';
     }).join('');
     initGroupSwipe(box);
-    if(atBottom) box.scrollTop = box.scrollHeight;
+    if(forceBottom || atBottom) box.scrollTop = box.scrollHeight;
     else box.scrollTop = Math.max(0, box.scrollHeight - prev);
     if(!silent) fetch('/community/groups/'+gid+'/mark-read',{method:'POST',credentials:'same-origin'}).catch(function(){});
   }catch(e){ if(!silent) box.innerHTML = '<div style="color:#f87171;text-align:center">Ошибка загрузки</div>'; }
@@ -3781,7 +3789,7 @@ async function sendGroupChatMessage(){
       body: useMultipart ? fd : JSON.stringify({ text: t || '', reply_to_id: replyId || undefined, addressed_user_id: addressedUserId || undefined })
     });
     if(r.ok){
-      await loadGroupMessages(selectedGroupId);
+      await loadGroupMessages(selectedGroupId, { forceBottom: true });
     }else if(r.status===429){
       const d = await r.json().catch(()=>({}));
       showNotification('Подождите '+ (d.wait_sec||'') +' сек. (медленный режим)','error');
