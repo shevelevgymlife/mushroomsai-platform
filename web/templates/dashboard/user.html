@@ -507,6 +507,50 @@ body.tg-chat-open #sec-groups .tg-chat-main{
   overflow-x:hidden;
   box-sizing:border-box;
 }
+body.tg-chat-open .ig-create-fab{display:none!important}
+body.tg-chat-open .tg-chat-header-row{
+  justify-content:flex-start;
+  flex-wrap:wrap;
+  gap:8px;
+  padding:10px;
+}
+body.tg-chat-open .tg-chat-header-row #groupChatTitle{
+  order:1;
+  flex:1 1 100%;
+  max-width:100%;
+}
+body.tg-chat-open .tg-chat-header-row #groupMobileBack{order:2}
+body.tg-chat-open .tg-chat-header-row #groupAddressedSearch{
+  order:3;
+  flex:1 1 130px;
+  min-width:110px;
+  max-width:100%;
+}
+body.tg-chat-open .tg-chat-header-row #groupAddressedSelect{
+  order:4;
+  flex:1 1 130px;
+  min-width:110px;
+  max-width:100%;
+}
+body.tg-chat-open .tg-chat-header-row #groupNotifyBtn{order:5}
+body.tg-chat-open .tg-chat-header-row #groupLeaveBtn{order:6}
+body.tg-chat-open .tg-chat-header-row #groupJoinBtn{order:7}
+body.tg-chat-open .tg-chat-header-row #groupAddressedUnread{
+  order:8;
+  flex:1 1 100%;
+}
+body.tg-chat-open .tg-chat-header-row #groupTypingNow{
+  order:9;
+  flex:1 1 100%;
+}
+body.tg-chat-open #groupRetentionRow,
+body.tg-chat-open #groupImageRow{
+  position:relative;
+  z-index:1;
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
 @media(max-width:900px){
   #sec-groups .tg-chat-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   #sec-groups .ig-g-item.tg-chat-item:nth-child(4n+1){transform:translateY(0) rotate(-2.2deg)}
@@ -514,6 +558,8 @@ body.tg-chat-open #sec-groups .tg-chat-main{
   #sec-groups .ig-g-item.tg-chat-item:nth-child(4n+3){transform:translateY(0) rotate(1.2deg)}
   #sec-groups .ig-g-item.tg-chat-item:nth-child(4n+4){transform:translateY(0) rotate(-1.7deg)}
   body.tg-chat-open #sec-groups .tg-chat-main{inset:64px 0 0 0}
+  body.tg-chat-open .tg-chat-header-row #groupChatTitle{font-size:15px}
+  body.tg-chat-open .tg-chat-header-row .btn-o{padding:6px 10px!important;font-size:12px!important}
   body.tg-chat-open #sec-groups .ig-g-msg-wrap{padding-left:8px;padding-right:8px}
   body.tg-chat-open #sec-groups .ig-g-bubble{max-width:calc(100vw - 64px)}
   body.tg-chat-open #sec-groups .tg-chat-input-row .sinp{font-size:16px}
