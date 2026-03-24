@@ -20,6 +20,23 @@ _shielded_handler_ids: set[int] = set()
 _shielded_logger_names: set[str] = set()
 _root_tg_filter_added: bool = False
 _httpx_info_patched: bool = False
+_ptb_updater_filter_added: bool = False
+
+
+class _DropPTBInvalidTokenSpam(logging.Filter):
+    """PTB пишет _LOGGER.exception(\"Invalid token; aborting\") — огромный traceback рядом с apscheduler."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        try:
+            msg = record.getMessage()
+        except Exception:
+            return True
+        if "Invalid token" in msg:
+            return False
+        ei = record.exc_info
+        if ei and ei[0] is not None and getattr(ei[0], "__name__", "") == "InvalidToken":
+            return False
+        return True
 
 
 def _patch_httpx_client_info_drop_telegram() -> None:
@@ -73,6 +90,10 @@ def _shield_telegram_token_logs() -> None:
             _lg.addFilter(_TG_LOG_FILTER)
             _shielded_logger_names.add(_name)
     _patch_httpx_client_info_drop_telegram()
+    global _ptb_updater_filter_added
+    if not _ptb_updater_filter_added:
+        logging.getLogger("telegram.ext.Updater").addFilter(_DropPTBInvalidTokenSpam())
+        _ptb_updater_filter_added = True
 
 
 logging.basicConfig(level=logging.INFO)

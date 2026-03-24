@@ -1,3 +1,5 @@
+import logging
+
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from datetime import datetime
 
@@ -9,10 +11,13 @@ from config import settings
 from services.ops_alerts import maybe_notify_billing, send_daily_summary
 
 scheduler = AsyncIOScheduler()
+_logger = logging.getLogger(__name__)
+_followup_invalid_token_logged: bool = False
 
 
 async def send_followup_messages(bot):
     """Send scheduled follow-up messages to users."""
+    global _followup_invalid_token_logged
     now = datetime.utcnow()
     pending = await database.fetch_all(
         followups.select()
@@ -35,8 +40,18 @@ async def send_followup_messages(bot):
                     .where(followups.c.id == followup["id"])
                     .values(sent=True)
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                try:
+                    from telegram.error import InvalidToken
+
+                    if isinstance(e, InvalidToken) and not _followup_invalid_token_logged:
+                        _followup_invalid_token_logged = True
+                        _logger.warning(
+                            "followup: TELEGRAM_TOKEN недействителен (Unauthorized). "
+                            "Рассылка не отправляется — обновите токен на Render."
+                        )
+                except Exception:
+                    pass
 
 
 async def purge_expired_group_messages():
