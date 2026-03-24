@@ -65,8 +65,12 @@
 <script>
 (function(){
   function setAppVh(){
-    var h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    var vv = window.visualViewport;
+    var h = vv ? vv.height : window.innerHeight;
+    var isMobile = window.matchMedia('(max-width: 768px)').matches;
+    var bottomOffset = (vv && isMobile) ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
     document.documentElement.style.setProperty('--vvh', h + 'px');
+    document.documentElement.style.setProperty('--vv-bottom-offset', bottomOffset + 'px');
   }
   setAppVh();
   window.addEventListener('resize', setAppVh);

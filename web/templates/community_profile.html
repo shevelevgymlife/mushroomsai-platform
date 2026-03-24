@@ -338,7 +338,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
   <button
     type="button"
     aria-label="Закрыть пост"
-    style="position:fixed;top:calc(10px + env(safe-area-inset-top,0px));left:10px;z-index:10040;width:42px;height:42px;border-radius:12px;border:1px solid rgba(255,255,255,.34);background:rgba(8,10,16,.88);color:#fff;font-size:24px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;pointer-events:auto"
+    style="position:fixed;top:calc(10px + env(safe-area-inset-top,0px));right:10px;z-index:10040;width:42px;height:42px;border-radius:12px;border:1px solid rgba(255,255,255,.34);background:rgba(8,10,16,.88);color:#fff;font-size:24px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;pointer-events:auto"
     onclick="closeProfilePostPreview()"
   >×</button>
   <div class="card" style="max-width:min(880px,100vw);width:100%;height:calc(var(--vvh,100vh));max-height:calc(var(--vvh,100vh));padding:0;overflow:hidden;border-color:rgba(61,212,224,.32);background:linear-gradient(165deg,rgba(255,255,255,.08),rgba(8,8,12,.96));border-radius:0" onclick="event.stopPropagation()">
@@ -348,7 +348,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
         <span id="profilePreviewDate" style="font-size:11px;color:#8a8fa0"></span>
       </div>
     </div>
-    <div style="overflow-y:auto;flex:1;min-height:0;padding-bottom:calc(70px + env(safe-area-inset-bottom,0px))">
+    <div style="overflow-y:auto;flex:1;min-height:0;padding-bottom:calc(136px + env(safe-area-inset-bottom,0px) + var(--vv-bottom-offset,0px))">
       <img id="profilePreviewImage" src="" alt="" onclick="openProfilePreviewImageFull()" style="display:none;width:100%;max-height:56vh;object-fit:cover;background:#0a0a0a;cursor:zoom-in">
       <div style="padding:14px 14px 18px">
         <div id="profilePreviewTitle" style="display:none;font-size:18px;font-weight:700;color:#f3f4f6;line-height:1.25;margin-bottom:8px"></div>
@@ -358,10 +358,9 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
           <div id="profilePreviewCommentsList" style="display:flex;flex-direction:column;gap:8px;max-height:38vh;overflow-y:auto;padding-right:2px"></div>
         </div>
         <input type="hidden" id="profilePreviewPostId" value="">
-        <div style="display:flex;gap:8px;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);position:sticky;bottom:0;background:linear-gradient(180deg,rgba(11,12,18,.2),rgba(11,12,18,.95) 35%,rgba(11,12,18,.98));padding-bottom:calc(8px + env(safe-area-inset-bottom,0px))">
+        <div style="display:flex;gap:8px;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);position:sticky;bottom:var(--vv-bottom-offset,0px);background:linear-gradient(180deg,rgba(11,12,18,.2),rgba(11,12,18,.95) 35%,rgba(11,12,18,.98));padding-bottom:calc(8px + env(safe-area-inset-bottom,0px) + var(--vv-bottom-offset,0px))">
           <input id="profilePreviewCommentInp" class="sinp" style="flex:1" placeholder="Написать комментарий...">
           <button type="button" class="btn-g" style="padding:10px 14px" onclick="submitProfilePreviewComment()">Отправить</button>
-          <button type="button" class="btn-g" style="padding:10px 14px" onclick="closeProfilePostPreview()">Закрыть</button>
         </div>
         <p id="profilePreviewCommentErr" style="display:none;margin-top:8px;font-size:12px;color:#f87171"></p>
       </div>
