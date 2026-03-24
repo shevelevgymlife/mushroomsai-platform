@@ -60,16 +60,26 @@ public class MainActivity extends AppCompatActivity {
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
                 String scheme = uri.getScheme() == null ? "" : uri.getScheme();
+                String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase();
+                String path = uri.getPath() == null ? "" : uri.getPath();
+
+                // Google OAuth must run in external browser, otherwise Google blocks embedded WebView.
+                boolean isGoogleOAuth =
+                        host.contains("accounts.google.com")
+                                || host.contains("oauth2.googleapis.com")
+                                || host.contains("googleusercontent.com")
+                                || (host.contains("mushroomsai.ru") && "/auth/google".equals(path));
+
+                if (isGoogleOAuth) {
+                    openExternal(uri);
+                    return true;
+                }
 
                 if ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) {
                     return false;
                 }
 
-                try {
-                    Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-                    startActivity(intent);
-                } catch (ActivityNotFoundException ignored) {
-                }
+                openExternal(uri);
                 return true;
             }
         });
@@ -146,8 +156,16 @@ public class MainActivity extends AppCompatActivity {
         super.onNewIntent(intent);
         setIntent(intent);
         Uri data = intent.getData();
-        if (data != null && webView != null) {
+        if (data != null && webView != null && ("https".equalsIgnoreCase(data.getScheme()) || "http".equalsIgnoreCase(data.getScheme()))) {
             webView.loadUrl(data.toString());
+        }
+    }
+
+    private void openExternal(Uri uri) {
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+            startActivity(intent);
+        } catch (ActivityNotFoundException ignored) {
         }
     }
 
