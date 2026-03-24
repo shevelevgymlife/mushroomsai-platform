@@ -1,5 +1,6 @@
 import logging
 
+from telegram import KeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
@@ -22,7 +23,14 @@ logger = logging.getLogger(__name__)
 
 async def _ops_start(update, context):
     if update.message:
-        await update.message.reply_text("Евгений Алексеевич, что бы вы хотели добавить/изменить?")
+        kb = ReplyKeyboardMarkup(
+            [[KeyboardButton("Указать задачу")]],
+            resize_keyboard=True,
+        )
+        await update.message.reply_text(
+            "Евгений Алексеевич, что бы вы хотели добавить/изменить?",
+            reply_markup=kb,
+        )
     return
 
 
@@ -43,6 +51,7 @@ def create_ops_bot() -> Application:
     app.add_handler(CommandHandler("task", task_give_entry))
     app.add_handler(CommandHandler("approval_status", approval_status_command))
     app.add_handler(MessageHandler(filters.Regex("^Дать задачу$"), task_give_entry))
+    app.add_handler(MessageHandler(filters.Regex("^Указать задачу$"), task_give_entry))
     app.add_handler(CallbackQueryHandler(task_photo_choice, pattern=r"^task_photo:(yes|no)$"))
     app.add_handler(CallbackQueryHandler(task_approval_callback, pattern=r"^confirm:(yes|no):"))
     app.add_handler(MessageHandler(filters.PHOTO, task_photo_received))
