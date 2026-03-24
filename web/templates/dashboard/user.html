@@ -224,6 +224,36 @@
   left:16px;
   background:#d8fbff;
 }
+.profile-light-toggle{
+  appearance:none;
+  width:38px;
+  height:22px;
+  border-radius:999px;
+  background:#20242f;
+  border:1px solid rgba(255,255,255,.24);
+  position:relative;
+  cursor:pointer;
+  transition:all .2s ease;
+}
+.profile-light-toggle::after{
+  content:"";
+  position:absolute;
+  top:2px;
+  left:2px;
+  width:16px;
+  height:16px;
+  border-radius:50%;
+  background:#8a90a0;
+  transition:all .2s ease;
+}
+.profile-light-toggle:checked{
+  background:rgba(61,212,224,.35);
+  border-color:rgba(61,212,224,.62);
+}
+.profile-light-toggle:checked::after{
+  left:18px;
+  background:#d8fbff;
+}
 #feedPosts .ig-post-likes{font-size:12px;padding:0 12px 7px}
 #feedPosts .ig-post-body{
   font-size:13px;
@@ -968,7 +998,10 @@ body.dash-ig-app .ig-lamp-topbar{
               <span style="font-size:clamp(18px,4.5vw,22px);font-weight:700;color:#e8e8e8">{{ user.name or 'Участник' }}</span>
               <span class="badge-plan badge-{{ plan }} ig-plan-pill">{{ plan_info.name }}</span>
             </div>
-            <button type="button" class="btn-o" style="margin-top:12px;font-size:13px;padding:8px 18px" onclick="(function(){var p=document.getElementById('meEditPanel');if(!p)return;p.style.display=p.style.display==='none'||!p.style.display?'block':'none';})()">Редактировать профиль</button>
+            <div style="margin-top:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <button type="button" class="btn-o" style="font-size:13px;padding:8px 18px" onclick="(function(){var p=document.getElementById('meEditPanel');if(!p)return;p.style.display=p.style.display==='none'||!p.style.display?'block':'none';})()">Редактировать профиль</button>
+              <input id="profileLightToggle" class="profile-light-toggle" type="checkbox" {% if user.get('token_lamp_enabled') is not sameas false %}checked{% endif %} onchange="saveTokenLampEnabled(this.checked)" aria-label="Свет токенов">
+            </div>
             <div id="myTokensDock" class="my-tokens-inline{% if user.get('token_lamp_enabled') is not sameas false %} lamp-on{% endif %}" data-lamp-off="{% if user.get('token_lamp_enabled') is sameas false %}1{% else %}0{% endif %}" aria-label="Мои токены в сети Decimal" title="Обновляются автоматически, пока вы на сайте">
               <div class="my-tokens-inline__head">
                 <div class="my-tokens-inline__title">Мои токены · Decimal</div>
@@ -1987,6 +2020,7 @@ function applyTokenLampState(isOn){
   const sw=document.getElementById('tokenLampToggleMe');
   const swTxt=document.getElementById('tokenLampToggleMeText');
   const swSettings=document.getElementById('tokenLampToggleSettings');
+  const swRight=document.getElementById('profileLightToggle');
   const on=!!isOn;
   if(dock){
     dock.dataset.lampOff = on ? '0' : '1';
@@ -2000,6 +2034,9 @@ function applyTokenLampState(isOn){
   }
   if(sw && sw.checked!==on){
     sw.checked=on;
+  }
+  if(swRight && swRight.checked!==on){
+    swRight.checked=on;
   }
   if(swTxt){
     swTxt.textContent = on ? 'выкл свет' : 'вкл свет';

@@ -132,6 +132,10 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 .cp-chaos-toggle input::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#8a90a0;transition:all .2s ease}
 .cp-chaos-toggle input:checked{background:rgba(61,212,224,.35);border-color:rgba(61,212,224,.62)}
 .cp-chaos-toggle input:checked::after{left:16px;background:#d8fbff}
+.cp-light-toggle{appearance:none;width:34px;height:20px;border-radius:999px;background:#20242f;border:1px solid rgba(255,255,255,.22);position:relative;cursor:pointer;transition:all .2s ease}
+.cp-light-toggle::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#8a90a0;transition:all .2s ease}
+.cp-light-toggle:checked{background:rgba(61,212,224,.35);border-color:rgba(61,212,224,.62)}
+.cp-light-toggle:checked::after{left:16px;background:#d8fbff}
 @media(max-width:400px){.cp-tokens-strip__grid{grid-template-columns:1fr;gap:10px}.cp-lamp-toggle{font-size:10px;padding:3px 7px}}
 @media(max-width:768px){
   .cp-header-lamp{
@@ -211,6 +215,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
           <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
             {% if is_own %}
             <a href="/dashboard#profile" class="btn-o" style="font-size:13px;padding:8px 18px;text-decoration:none;display:inline-flex">Редактировать профиль</a>
+            <input id="cpLightToggle" class="cp-light-toggle" type="checkbox" {% if profile.get('token_lamp_enabled') is not sameas false %}checked{% endif %} onchange="saveTokenLampEnabled(this.checked)" aria-label="Свет токенов">
             <a href="/dashboard#feed" class="btn-muted" style="font-size:13px;padding:8px 16px;text-decoration:none;display:inline-flex">Лента</a>
             {% else %}
             <button type="button" class="btn-g" style="font-size:13px;padding:8px 18px" id="followBtn" onclick="doFollow()">
@@ -387,12 +392,14 @@ function applyTokenLampState(isOn){
   const avWrap=document.querySelector('.ig-profile-av-wrap');
   const lamp=document.getElementById('cpHeaderLamp');
   const sw=document.getElementById('cpLampToggle');
+  const swRight=document.getElementById('cpLightToggle');
   const txt=document.getElementById('cpLampToggleText');
   const hint=document.getElementById('cpLampHintText');
   if(strip){ strip.dataset.lampOff = on ? '0' : '1'; }
   if(avWrap){ avWrap.classList.toggle('lamp-on', on); }
   if(lamp){ lamp.dataset.lampOff = on ? '0' : '1'; }
   if(sw && sw.checked!==on){ sw.checked=on; }
+  if(swRight && swRight.checked!==on){ swRight.checked=on; }
   const label=on?'выкл свет':'вкл свет';
   if(txt){ txt.textContent=label; }
   if(hint){ hint.textContent=label; }
