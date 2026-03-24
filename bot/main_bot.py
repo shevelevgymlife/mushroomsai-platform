@@ -29,6 +29,10 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 
+def _bot_token() -> str:
+    return (settings.TELEGRAM_TOKEN or settings.DEPLOY_NOTIFY_TG_BOT_TOKEN or "").strip()
+
+
 def _mini_app_url() -> str:
     base = (settings.SITE_URL or "https://mushroomsai.ru").strip().rstrip("/")
     if not base.startswith("http"):
@@ -66,7 +70,10 @@ async def community_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def create_bot() -> Application:
-    app = Application.builder().token(settings.TELEGRAM_TOKEN).post_init(post_init).build()
+    token = _bot_token()
+    if not token:
+        raise RuntimeError("Telegram bot token is not configured")
+    app = Application.builder().token(token).post_init(post_init).build()
 
     # Commands
     app.add_handler(CommandHandler("start", start_handler))

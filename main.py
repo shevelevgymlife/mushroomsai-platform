@@ -327,7 +327,8 @@ async def lifespan(app: FastAPI):
 
     # Start Telegram bot
     global bot_app
-    if settings.TELEGRAM_TOKEN:
+    bot_token = (settings.TELEGRAM_TOKEN or "").strip() or (settings.DEPLOY_NOTIFY_TG_BOT_TOKEN or "").strip()
+    if bot_token:
         try:
             from bot.main_bot import create_bot
             bot_app = create_bot()
