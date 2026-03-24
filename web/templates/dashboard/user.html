@@ -936,7 +936,7 @@ body.dash-ig-app .ig-lamp-topbar{
           <button type="button" class="ig-drawer-subbtn" onclick="closeDbDrawer();goSec('profile')">Кошелёк и синхронизация →</button>
         </div>
       </details>
-      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('link')"><span class="e">{{ ico('link') }}</span><span class="lbl">Привязать аккаунт</span></button>
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('link')"><span class="e">{{ ico('link') }}</span><span class="lbl">Синхронизация аккаунтов</span></button>
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('language')"><span class="e">{{ ico('globe') }}</span><span class="lbl">Язык интерфейса</span></button>
       <details class="ig-drawer-details" style="border-bottom:1px solid rgba(255,255,255,.06)">
         <summary class="ig-drawer-item ig-drawer-summary" style="list-style:none;cursor:pointer"><span class="e">📄</span><span class="lbl">Документы</span><span class="ig-drawer-chev" style="margin-left:auto;opacity:.5;font-size:10px">▼</span></summary>
@@ -1899,7 +1899,7 @@ body.dash-ig-app .ig-lamp-topbar{
               <span style="color:#aaa">{{ val }}</span>
             </div>
             {% endfor %}
-            <button class="btn-o" style="width:100%;margin-top:14px" onclick="document.getElementById('sync-modal').style.display='flex'">🔗 Синхронизировать аккаунты</button>
+            <button class="btn-o" style="width:100%;margin-top:14px" onclick="goSec('link')">🔗 Синхронизация аккаунтов</button>
           </div>
       </div>
     </section>
@@ -2285,9 +2285,9 @@ async function openFollowListModal(profileId, kind){
 window.__groupsInitial = {{ group_list | default([]) | tojson }};
 window.__groupsLast = window.__groupsInitial || [];
 window.__groupChatHistoryPushed = false;
-// Auto-open sync modal if ?linked= in URL
+// Auto-open account linking section if ?linked= in URL
 if (window.location.search.includes('linked=')) {
-  document.getElementById('sync-modal').style.display = 'flex';
+  goSec('link');
 }
 
 // ── Section routing ──
