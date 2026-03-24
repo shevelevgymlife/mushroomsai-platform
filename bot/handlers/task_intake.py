@@ -97,6 +97,9 @@ async def task_give_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         await update.message.reply_text("Не удалось подготовить прием задач. Повторите через минуту.")
         return ConversationHandler.END
+    context.user_data["task_intake_stage"] = "wait_text"
+    context.user_data.pop("task_intake_id", None)
+    context.user_data.pop("task_intake_text", None)
     await update.message.reply_text("Евгений Алексеевич, что бы вы хотели добавить/изменить?")
     return ASK_TASK_TEXT
 
@@ -105,6 +108,10 @@ async def task_text_received(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if not update.message:
         return ConversationHandler.END
     uid = int(update.effective_user.id) if update.effective_user else 0
+    if not _is_owner(uid):
+        return ConversationHandler.END
+    if str(context.user_data.get("task_intake_stage") or "") != "wait_text":
+        return ConversationHandler.END
     txt = (update.message.text or "").strip()
     if not txt:
         await update.message.reply_text("Пожалуйста, отправьте текст задачи.")
@@ -132,6 +139,7 @@ async def task_text_received(update: Update, context: ContextTypes.DEFAULT_TYPE)
         "Фото прилагаться будут к задаче?",
         reply_markup=kb,
     )
+    context.user_data["task_intake_stage"] = "wait_photo_choice"
     return ASK_PHOTO_CHOICE
 
 
@@ -139,18 +147,31 @@ async def task_photo_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     if not q:
         return ConversationHandler.END
+    uid = int(update.effective_user.id) if update.effective_user else 0
+    if not _is_owner(uid):
+        await q.answer("Нет прав", show_alert=True)
+        return ConversationHandler.END
+    if str(context.user_data.get("task_intake_stage") or "") != "wait_photo_choice":
+        await q.answer("Сначала отправьте задачу через /task", show_alert=True)
+        return ConversationHandler.END
     await q.answer()
     decision = str(q.data or "").split(":")[-1]
     task_id = int(context.user_data.get("task_intake_id") or 0)
     task_text = str(context.user_data.get("task_intake_text") or "")
+    if not task_id or not task_text:
+        await q.edit_message_text("Не вижу активной задачи. Отправьте /task ещё раз.")
+        context.user_data["task_intake_stage"] = ""
+        return ConversationHandler.END
     if decision == "yes":
         await _update_task(task_id, needs_photo=True, status="wait_photo")
         await q.edit_message_text("Жду фото.")
+        context.user_data["task_intake_stage"] = "wait_photo"
         return WAIT_PHOTO
 
     await _update_task(task_id, needs_photo=False, status="in_progress")
     await q.edit_message_text("Принял. Начал выполнять задачу без фото.")
     await notify_task_accepted(task_text=f"Принял задачу: {task_text}")
+    context.user_data["task_intake_stage"] = ""
     return ConversationHandler.END
 
 
@@ -158,18 +179,30 @@ async def task_photo_received(update: Update, context: ContextTypes.DEFAULT_TYPE
     if not update.message or not update.message.photo:
         await update.message.reply_text("Пожалуйста, отправьте фото одним сообщением.")
         return WAIT_PHOTO
+    uid = int(update.effective_user.id) if update.effective_user else 0
+    if not _is_owner(uid):
+        return ConversationHandler.END
+    if str(context.user_data.get("task_intake_stage") or "") != "wait_photo":
+        await update.message.reply_text("Сначала отправьте /task и текст задачи.")
+        return ConversationHandler.END
     task_id = int(context.user_data.get("task_intake_id") or 0)
     task_text = str(context.user_data.get("task_intake_text") or "")
+    if not task_id or not task_text:
+        await update.message.reply_text("Не вижу активной задачи. Отправьте /task ещё раз.")
+        context.user_data["task_intake_stage"] = ""
+        return ConversationHandler.END
     file_id = update.message.photo[-1].file_id
     await _update_task(task_id, photo_file_id=file_id, status="in_progress")
     await update.message.reply_text("Фото к заданию принял.")
     await notify_task_accepted(task_text=f"Принял задачу: {task_text} (с фото)")
+    context.user_data["task_intake_stage"] = ""
     return ConversationHandler.END
 
 
 async def task_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message:
         await update.message.reply_text("Отменил ввод задачи.")
+    context.user_data["task_intake_stage"] = ""
     return ConversationHandler.END
 
 
