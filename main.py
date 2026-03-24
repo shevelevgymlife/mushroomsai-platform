@@ -27,7 +27,7 @@ from web.templates_utils import Jinja2Templates
 
 
 class _DropTelegramBotUrlLogs(logging.Filter):
-    """Отсекает строки httpx с полным URL api.telegram.org/bot<TOKEN>/... (утечка в логах)."""
+    """Отсекает строки с URL api.telegram.org/bot<TOKEN>/... (утечка токена в логах)."""
 
     def filter(self, record: logging.LogRecord) -> bool:
         try:
@@ -39,11 +39,31 @@ class _DropTelegramBotUrlLogs(logging.Filter):
         return True
 
 
+_TG_LOG_FILTER = _DropTelegramBotUrlLogs()
+_shielded_handler_ids: set[int] = set()
+_shielded_logger_names: set[str] = set()
+
+
+def _shield_telegram_token_logs() -> None:
+    """
+    Uvicorn после старта вешает свои handlers на root — записи httpx идут в stdout через них,
+    минуя фильтры только на логгере httpx. Дублируем фильтр на каждый handler root + уровни httpx.
+    """
+    for h in logging.root.handlers:
+        hid = id(h)
+        if hid not in _shielded_handler_ids:
+            h.addFilter(_TG_LOG_FILTER)
+            _shielded_handler_ids.add(hid)
+    for _name in ("httpx", "httpcore", "telegram.request"):
+        _lg = logging.getLogger(_name)
+        _lg.setLevel(logging.WARNING)
+        if _name not in _shielded_logger_names:
+            _lg.addFilter(_TG_LOG_FILTER)
+            _shielded_logger_names.add(_name)
+
+
 logging.basicConfig(level=logging.INFO)
-for _name in ("httpx", "httpcore", "telegram.request"):
-    _lg = logging.getLogger(_name)
-    _lg.setLevel(logging.WARNING)
-    _lg.addFilter(_DropTelegramBotUrlLogs())
+_shield_telegram_token_logs()
 logger = logging.getLogger(__name__)
 
 bot_app = None
@@ -63,7 +83,8 @@ class LanguageMiddleware(BaseHTTPMiddleware):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
+    # Startup (после uvicorn: повторно — на root могли добавиться новые handlers)
+    _shield_telegram_token_logs()
     await database.connect()
     logger.info("Database connected")
     await send_deploy_notifications()
@@ -393,6 +414,7 @@ async def lifespan(app: FastAPI):
     primary_token = (settings.TELEGRAM_TOKEN or "").strip()
     if primary_token:
         try:
+            _shield_telegram_token_logs()
             from bot.main_bot import create_bot
             bot_app = create_bot()
             await bot_app.initialize()
