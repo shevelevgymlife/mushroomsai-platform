@@ -90,83 +90,97 @@
     <!-- Список групп -->
     <div>
       <h2 class="text-lg font-medium text-text mb-4">Все группы ({{ groups|length }})</h2>
-      <div class="space-y-4">
+      <div class="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
         {% for g in groups %}
-        <div class="p-5 rounded-2xl bg-surface border border-border" data-gid="{{ g.id }}">
-          <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
+        <div class="p-4 rounded-2xl bg-surface border border-border" data-gid="{{ g.id }}">
+          <div class="flex items-start gap-3 mb-3">
+            {% if g.image_url %}
+            <img src="{{ g.image_url }}" alt="" class="w-14 h-14 rounded-xl object-cover border border-border g-preview-img">
+            {% else %}
+            <div class="w-14 h-14 rounded-xl border border-border bg-background text-muted flex items-center justify-center g-preview-img">💬</div>
+            {% endif %}
             <div>
               <p class="font-medium text-text">{{ g.name }}</p>
               <p class="text-xs text-muted mt-1">#{{ g.id }} · создал: {{ g.creator_name or '—' }} (id {{ g.created_by or '—' }}) · {{ g.member_count or 0 }} уч. · {{ g.msg_count or 0 }} сообщ.</p>
             </div>
-            <div class="flex items-center gap-2">
-              {% if g.image_url %}
-              <img src="{{ g.image_url }}" alt="" class="w-10 h-10 rounded-lg object-cover border border-border">
-              {% endif %}
-              <input type="file" id="gimg-{{ g.id }}" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none" onchange="uploadGroupImageAdmin({{ g.id }}, this)">
-              <button type="button" onclick="document.getElementById('gimg-{{ g.id }}').click()" class="text-xs px-3 py-1.5 rounded-lg bg-cyan-500/15 text-cyan-200 hover:bg-cyan-500/25">Фото</button>
-              <button type="button" onclick="deleteGroup({{ g.id }})" class="text-xs px-3 py-1.5 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25">Удалить группу</button>
-            </div>
           </div>
-          <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
-            <div>
-              <label class="text-xs text-muted">Название</label>
-              <input type="text" class="g-name w-full rounded-lg bg-background border border-border px-2 py-1.5 text-text" value="{{ g.name|e }}" />
+          <details class="rounded-xl border border-border/60 bg-background/30">
+            <summary class="cursor-pointer list-none px-3 py-2 text-sm text-cyan-200 select-none">Действия и настройки</summary>
+            <div class="p-3 pt-0">
+              <div class="grid sm:grid-cols-2 gap-3 text-sm">
+                <div>
+                  <label class="text-xs text-muted">Название</label>
+                  <input type="text" class="g-name w-full rounded-lg bg-background border border-border px-2 py-1.5 text-text" value="{{ g.name|e }}" />
+                </div>
+                <div>
+                  <label class="text-xs text-muted">Описание</label>
+                  <input type="text" class="g-desc w-full rounded-lg bg-background border border-border px-2 py-1.5 text-text" value="{{ (g.description or '')|e }}" />
+                </div>
+                <div>
+                  <label class="text-xs text-muted">Вступление</label>
+                  <select class="g-join w-full rounded-lg bg-background border border-border px-2 py-1.5 text-text">
+                    <option value="open" {% if (g.join_mode or 'approval') == 'open' %}selected{% endif %}>Свободный вход</option>
+                    <option value="approval" {% if (g.join_mode or 'approval') != 'open' %}selected{% endif %}>По заявкам</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-xs text-muted">Хранение (дней)</label>
+                  <input type="text" class="g-ret w-full rounded-lg bg-background border border-border px-2 py-1.5 text-text" placeholder="без лимита" value="{% if g.message_retention_days is not none %}{{ g.message_retention_days }}{% endif %}" />
+                </div>
+                <div>
+                  <label class="text-xs text-muted">Slow mode (сек)</label>
+                  <input type="number" class="g-slow w-full rounded-lg bg-background border border-border px-2 py-1.5 text-text" min="0" max="86400" value="{% if g.slow_mode_seconds %}{{ g.slow_mode_seconds }}{% endif %}" />
+                </div>
+                <div>
+                  <label class="text-xs text-muted">История для новых</label>
+                  <select class="g-hist w-full rounded-lg bg-background border border-border px-2 py-1.5 text-text">
+                    <option value="1" {% if g.show_history_to_new_members != false %}selected{% endif %}>Вся история</option>
+                    <option value="0" {% if g.show_history_to_new_members == false %}selected{% endif %}>Со вступления</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-xs text-muted">Фото в чат</label>
+                  <select class="g-photo w-full rounded-lg bg-background border border-border px-2 py-1.5 text-text">
+                    <option value="1" {% if g.allow_photo != false %}selected{% endif %}>Разрешены</option>
+                    <option value="0" {% if g.allow_photo == false %}selected{% endif %}>Запрещены</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-xs text-muted">Аудио в чат</label>
+                  <select class="g-audio w-full rounded-lg bg-background border border-border px-2 py-1.5 text-text">
+                    <option value="1" {% if g.allow_audio != false %}selected{% endif %}>Разрешены</option>
+                    <option value="0" {% if g.allow_audio == false %}selected{% endif %}>Запрещены</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-xs text-muted">Автоудаление</label>
+                  <select class="g-autodel w-full rounded-lg bg-background border border-border px-2 py-1.5 text-text">
+                    <option value="0" {% if g.auto_delete_enabled != true %}selected{% endif %}>Выключено</option>
+                    <option value="1" {% if g.auto_delete_enabled == true %}selected{% endif %}>Каждый день по сроку</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-xs text-muted">Фото чата</label>
+                  <div class="flex items-center gap-2">
+                    <input type="file" id="gimg-{{ g.id }}" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none" onchange="uploadGroupImageAdmin({{ g.id }}, this)">
+                    <button type="button" onclick="document.getElementById('gimg-{{ g.id }}').click()" class="text-xs px-3 py-1.5 rounded-lg bg-cyan-500/15 text-cyan-200 hover:bg-cyan-500/25">Загрузить</button>
+                    <button type="button" onclick="clearGroupImageAdmin({{ g.id }})" class="text-xs px-3 py-1.5 rounded-lg bg-zinc-500/15 text-zinc-200 hover:bg-zinc-500/25">Сбросить</button>
+                  </div>
+                </div>
+                <div class="sm:col-span-2">
+                  <label class="text-xs text-muted">Закреплённое сообщение</label>
+                  <input type="text" class="g-pin w-full rounded-lg bg-background border border-border px-2 py-1.5 text-text" value="{{ (g.pinned_message_text or '')|e }}" />
+                </div>
+              </div>
+              <div class="mt-3 flex flex-wrap gap-2">
+                <button type="button" onclick="saveOne({{ g.id }}, this)" class="text-xs px-4 py-2 rounded-lg bg-gold/15 text-gold hover:bg-gold/25">Сохранить изменения</button>
+                <button type="button" onclick="openMembers({{ g.id }})" class="text-xs px-4 py-2 rounded-lg bg-cyan-500/15 text-cyan-200 hover:bg-cyan-500/25">Участники / модерация</button>
+                <button type="button" onclick="deleteGroup({{ g.id }})" class="text-xs px-3 py-2 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25">Удалить чат</button>
+              </div>
             </div>
-            <div class="sm:col-span-2">
-              <label class="text-xs text-muted">Описание</label>
-              <input type="text" class="g-desc w-full rounded-lg bg-background border border-border px-2 py-1.5 text-text" value="{{ (g.description or '')|e }}" />
-            </div>
-            <div>
-              <label class="text-xs text-muted">Вступление</label>
-              <select class="g-join w-full rounded-lg bg-background border border-border px-2 py-1.5 text-text">
-                <option value="open" {% if (g.join_mode or 'approval') == 'open' %}selected{% endif %}>Свободный вход</option>
-                <option value="approval" {% if (g.join_mode or 'approval') != 'open' %}selected{% endif %}>По заявкам</option>
-              </select>
-            </div>
-            <div>
-              <label class="text-xs text-muted">Хранение (дней)</label>
-              <input type="text" class="g-ret w-full rounded-lg bg-background border border-border px-2 py-1.5 text-text" placeholder="без лимита" value="{% if g.message_retention_days is not none %}{{ g.message_retention_days }}{% endif %}" />
-            </div>
-            <div>
-              <label class="text-xs text-muted">Slow mode (сек)</label>
-              <input type="number" class="g-slow w-full rounded-lg bg-background border border-border px-2 py-1.5 text-text" min="0" max="86400" value="{% if g.slow_mode_seconds %}{{ g.slow_mode_seconds }}{% endif %}" />
-            </div>
-            <div>
-              <label class="text-xs text-muted">История для новых</label>
-              <select class="g-hist w-full rounded-lg bg-background border border-border px-2 py-1.5 text-text">
-                <option value="1" {% if g.show_history_to_new_members != false %}selected{% endif %}>Вся история</option>
-                <option value="0" {% if g.show_history_to_new_members == false %}selected{% endif %}>Со вступления</option>
-              </select>
-            </div>
-            <div>
-              <label class="text-xs text-muted">Фото в чат</label>
-              <select class="g-photo w-full rounded-lg bg-background border border-border px-2 py-1.5 text-text">
-                <option value="1" {% if g.allow_photo != false %}selected{% endif %}>Разрешены</option>
-                <option value="0" {% if g.allow_photo == false %}selected{% endif %}>Запрещены</option>
-              </select>
-            </div>
-            <div>
-              <label class="text-xs text-muted">Аудио в чат</label>
-              <select class="g-audio w-full rounded-lg bg-background border border-border px-2 py-1.5 text-text">
-                <option value="1" {% if g.allow_audio != false %}selected{% endif %}>Разрешены</option>
-                <option value="0" {% if g.allow_audio == false %}selected{% endif %}>Запрещены</option>
-              </select>
-            </div>
-            <div>
-              <label class="text-xs text-muted">Автоудаление</label>
-              <select class="g-autodel w-full rounded-lg bg-background border border-border px-2 py-1.5 text-text">
-                <option value="0" {% if g.auto_delete_enabled != true %}selected{% endif %}>Выключено</option>
-                <option value="1" {% if g.auto_delete_enabled == true %}selected{% endif %}>Каждый день по сроку</option>
-              </select>
-            </div>
-            <div class="sm:col-span-2 lg:col-span-3">
-              <label class="text-xs text-muted">Закреплённое сообщение (видят все, менять может только админ)</label>
-              <input type="text" class="g-pin w-full rounded-lg bg-background border border-border px-2 py-1.5 text-text" value="{{ (g.pinned_message_text or '')|e }}" />
-            </div>
-          </div>
-          <button type="button" onclick="saveOne({{ g.id }}, this)" class="mt-3 text-xs px-4 py-2 rounded-lg bg-gold/15 text-gold hover:bg-gold/25">Сохранить эту группу</button>
-          <button type="button" onclick="openMembers({{ g.id }})" class="mt-3 ml-2 text-xs px-4 py-2 rounded-lg bg-cyan-500/15 text-cyan-200 hover:bg-cyan-500/25">Участники / модерация</button>
+          </details>
           <p class="g-msg text-xs text-muted mt-2"></p>
+          <p class="text-[11px] text-muted">Все изменения применяются к этому чату после кнопки «Сохранить изменения».</p>
         </div>
         {% else %}
         <p class="text-sm text-muted">Групп пока нет.</p>
@@ -262,6 +276,11 @@ async function saveOne(gid, btn){
   const root = btn.closest('[data-gid]');
   const msg = root.querySelector('.g-msg');
   const name = (root.querySelector('.g-name') && root.querySelector('.g-name').value || '').trim();
+  if(name.length < 2 || name.length > 120){
+    msg.textContent = 'Название: от 2 до 120 символов';
+    msg.style.color = '#fca5a5';
+    return;
+  }
   const desc = root.querySelector('.g-desc') ? root.querySelector('.g-desc').value : '';
   const join_mode = root.querySelector('.g-join').value;
   const retRaw = (root.querySelector('.g-ret').value || '').trim();
@@ -285,6 +304,7 @@ async function saveOne(gid, btn){
   const autoDelete = root.querySelector('.g-autodel').value === '1';
   const pinText = (root.querySelector('.g-pin').value || '').trim();
   try{
+    btn.disabled = true;
     const r = await fetch('/admin/groups/'+gid, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -306,6 +326,7 @@ async function saveOne(gid, btn){
     if(r.ok && d.ok){ msg.textContent = 'Сохранено'; msg.style.color = '#86efac'; }
     else { msg.textContent = d.error || 'Ошибка'; msg.style.color = '#fca5a5'; }
   }catch(e){ msg.textContent = 'Сеть'; msg.style.color = '#fca5a5'; }
+  finally { btn.disabled = false; }
 }
 
 async function openMembers(gid){
@@ -363,6 +384,8 @@ async function deleteGroup(gid){
 
 async function uploadGroupImageAdmin(gid, inp){
   if(!inp || !inp.files || !inp.files[0]) return;
+  const root = inp.closest('[data-gid]');
+  const msg = root ? root.querySelector('.g-msg') : null;
   const fd = new FormData();
   fd.append('file', inp.files[0]);
   try{
@@ -372,12 +395,42 @@ async function uploadGroupImageAdmin(gid, inp){
       credentials:'same-origin'
     });
     const d = await r.json().catch(()=>({}));
-    if(r.ok && d.ok){ location.reload(); }
-    else { alert(d.error || 'Ошибка загрузки'); }
+    if(r.ok && d.ok){
+      if(msg){ msg.textContent = 'Фото обновлено'; msg.style.color = '#86efac'; }
+      location.reload();
+    } else {
+      if(msg){ msg.textContent = d.error || 'Ошибка загрузки'; msg.style.color = '#fca5a5'; }
+      else { alert(d.error || 'Ошибка загрузки'); }
+    }
   }catch(e){
-    alert('Сеть');
+    if(msg){ msg.textContent = 'Сеть'; msg.style.color = '#fca5a5'; }
+    else { alert('Сеть'); }
   }finally{
     inp.value = '';
+  }
+}
+
+async function clearGroupImageAdmin(gid){
+  const root = document.querySelector('[data-gid="'+gid+'"]');
+  const msg = root ? root.querySelector('.g-msg') : null;
+  try{
+    const r = await fetch('/admin/groups/'+gid, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ image_url: '' })
+    });
+    const d = await r.json().catch(()=>({}));
+    if(r.ok && d.ok){
+      if(msg){ msg.textContent = 'Фото удалено'; msg.style.color = '#86efac'; }
+      location.reload();
+    } else {
+      if(msg){ msg.textContent = d.error || 'Ошибка'; msg.style.color = '#fca5a5'; }
+      else { alert(d.error || 'Ошибка'); }
+    }
+  }catch(e){
+    if(msg){ msg.textContent = 'Сеть'; msg.style.color = '#fca5a5'; }
+    else { alert('Сеть'); }
   }
 }
 

@@ -1197,6 +1197,12 @@ async def admin_group_patch(request: Request, group_id: int):
         ptxt = (body.get("pinned_message_text") or "").strip()
         vals["pinned_message_text"] = ptxt[:4000] if ptxt else None
         vals["pinned_message_updated_at"] = sqlalchemy.func.now() if ptxt else None
+    if "image_url" in body:
+        raw = (body.get("image_url") or "").strip()
+        if raw == "":
+            vals["image_url"] = None
+        elif raw.startswith("/media/") or raw.startswith("/static/") or raw.startswith("http://") or raw.startswith("https://"):
+            vals["image_url"] = raw[:2000]
     if vals:
         await database.execute(
             community_groups.update().where(community_groups.c.id == group_id).values(**vals)
