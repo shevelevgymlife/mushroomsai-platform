@@ -98,8 +98,7 @@ async def _run_task_auto(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await _update_task(task_id, auto_requested=True, status="queued")
     try:
         from services.task_autorun import trigger_task_autorun
-
-        ok = await trigger_task_autorun(task_text=task_text, task_id=task_id)
+        ok, _ = await trigger_task_autorun(task_text=task_text, task_id=task_id)
     except Exception:
         ok = False
     if update.message:
