@@ -80,7 +80,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 .ig-pm>summary{list-style:none;cursor:pointer;font-size:18px;line-height:1;padding:4px 8px;border-radius:8px;color:#888}
 .ig-pm>summary::-webkit-details-marker{display:none}
 .ig-pm[open]>summary{background:rgba(255,255,255,.06);color:#e8e8e8}
-.ig-pm-panel{position:absolute;right:0;top:100%;margin-top:4px;min-width:180px;background:#141414;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:6px;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.ig-pm-panel{position:absolute;right:-10px;top:100%;margin-top:4px;min-width:180px;background:#141414;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:6px;z-index:90;box-shadow:0 8px 24px rgba(0,0,0,.5)}
 .ig-pm-panel button{display:block;width:100%;text-align:left;padding:10px 12px;border:none;background:transparent;color:#e8e8e8;font-size:13px;cursor:pointer;border-radius:8px}
 .ig-pm-panel button:hover{background:rgba(61,212,224,.12)}
 .ig-pm-toggle{width:32px;height:32px;border:none;background:transparent;color:#aab2c5;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:20px;line-height:1}
@@ -301,7 +301,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
       <button type="button" class="ig-post-metric ig-post-metric-star" id="lk-{{ p.id }}" onclick="doLike({{ p.id }},this)">
         <span>{{ '⭐' if item.liked else '✩' }}</span><span class="n" id="lkc-{{ p.id }}">{{ p.likes_count }}</span>
       </button>
-      <button type="button" class="ig-post-metric ig-post-metric-chat" onclick="openCommunityPostPage(event, {{ p.id }})">
+      <button type="button" class="ig-post-metric ig-post-metric-chat" onclick="event.stopPropagation();openCommunityPostDirect({{ p.id }})">
         <span>💬</span><span class="n" id="cmc-{{ p.id }}">{{ p.comments_count }}</span>
       </button>
       <button type="button" class="ig-post-metric ig-post-metric-share" id="sv-{{ p.id }}" onclick="openSharePostModal({{ p.id }})">
@@ -899,6 +899,10 @@ function openProfilePostPreview(event, card){
 function openCommunityPostPage(event, postId){
   const t=event&&event.target;
   if(t && t.closest('a,button,input,textarea,details,summary,.ig-post-metric,.ig-pm')) return;
+  const back=encodeURIComponent(location.href);
+  location.href='/community/post/'+postId+'?back='+back;
+}
+function openCommunityPostDirect(postId){
   const back=encodeURIComponent(location.href);
   location.href='/community/post/'+postId+'?back='+back;
 }

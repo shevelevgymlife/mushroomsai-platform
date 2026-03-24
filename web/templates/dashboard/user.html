@@ -335,7 +335,7 @@
 .ig-pm>summary{list-style:none;cursor:pointer;font-size:18px;line-height:1;padding:4px 8px;border-radius:8px;color:#888}
 .ig-pm>summary::-webkit-details-marker{display:none}
 .ig-pm[open]>summary{background:rgba(255,255,255,.06);color:#e8e8e8}
-.ig-pm-panel{position:absolute;right:0;top:100%;margin-top:4px;min-width:200px;background:#141414;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:6px;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.ig-pm-panel{position:absolute;right:-10px;top:100%;margin-top:4px;min-width:200px;background:#141414;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:6px;z-index:90;box-shadow:0 8px 24px rgba(0,0,0,.5)}
 .ig-pm-panel button{display:block;width:100%;text-align:left;padding:10px 12px;border:none;background:transparent;color:#e8e8e8;font-size:13px;cursor:pointer;border-radius:8px}
 .ig-pm-panel button:hover{background:rgba(61,212,224,.12)}
 
@@ -1177,7 +1177,7 @@ body.dash-ig-app .ig-lamp-topbar{
           {% set is_liked_me = p.id in liked_post_ids %}
           <div class="fp ig-post" id="mfp-{{ p.id }}" data-pid="{{ p.id }}" data-author="{{ (user.name or 'Вы')|e }}" data-title="{{ (p.title or '')|e }}" data-content="{{ (p.content or '')|e }}" data-image="{{ (p.image_url or '')|e }}" data-created="{{ (p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '')|e }}" data-likes="{{ p.likes_count or 0 }}" data-comments="{{ p.comments_count or 0 }}" data-saves="{{ p.saves_count or 0 }}" onclick="openCommunityPostPage(event, {{ p.id }})">
             <div class="ig-post-header">
-              <div style="width:36px;height:36px;border-radius:50%;border:2px solid #3dd4e0;overflow:hidden">{% if user.avatar %}<img src="{{ user.avatar }}" style="width:100%;height:100%;object-fit:cover" alt="">{% else %}<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px">🍄</div>{% endif %}</div>
+              <a href="/community/profile/{{ effective_user_id }}" style="display:block;width:36px;height:36px;border-radius:50%;border:2px solid #3dd4e0;overflow:hidden;text-decoration:none">{% if user.avatar %}<img src="{{ user.avatar }}" style="width:100%;height:100%;object-fit:cover" alt="">{% else %}<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px">🍄</div>{% endif %}</a>
               <div style="flex:1;min-width:0">
                 <div style="font-size:14px;font-weight:700;color:#e8e8e8">{{ user.name or 'Вы' }}</div>
                 <div style="font-size:11px;color:#888">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}</div>
@@ -1204,7 +1204,7 @@ body.dash-ig-app .ig-lamp-topbar{
               <button type="button" class="ig-post-metric ig-post-metric-star" id="profile-like-btn-{{ p.id }}" onclick="likeProfilePost({{ p.id }},this)">
                 <span>{% if is_liked_me %}⭐{% else %}✩{% endif %}</span><span class="n" id="profile-like-count-{{ p.id }}">{{ p.likes_count }}</span>
               </button>
-              <button type="button" class="ig-post-metric ig-post-metric-chat" onclick="openCommunityPostPage(event, {{ p.id }})">
+              <button type="button" class="ig-post-metric ig-post-metric-chat" onclick="event.stopPropagation();openCommunityPostDirect({{ p.id }})">
                 <span>💬</span><span class="n" id="profile-comment-count-{{ p.id }}" data-comment-count-for="{{ p.id }}">{{ p.comments_count or 0 }}</span>
               </button>
               <button type="button" class="ig-post-metric ig-post-metric-share" onclick="openSharePostModal({{ p.id }})">
@@ -1290,13 +1290,13 @@ body.dash-ig-app .ig-lamp-topbar{
       <div class="fp ig-post" id="fp-{{ p.id }}" data-pid="{{ p.id }}" data-uid="{{ p.user_id }}" data-mine="{{ 'true' if is_mine else 'false' }}" data-following="{{ 'true' if is_following_author else 'false' }}" data-author="{{ (a.name if a else 'Участник')|e }}" data-title="{{ (p.title or '')|e }}" data-content="{{ (p.content or '')|e }}" data-image="{{ (p.image_url or '')|e }}" data-created="{{ (p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '')|e }}" data-likes="{{ p.likes_count or 0 }}" data-comments="{{ p.comments_count or 0 }}" data-saves="{{ p.saves_count or 0 }}" onclick="openCommunityPostPage(event, {{ p.id }})">
         <div class="ig-post-header">
           {% if is_mine %}
-          <div onclick="goSec('{{ dash_home }}')" style="cursor:pointer;flex-shrink:0">
+          <a href="/community/profile/{{ p.user_id }}" style="cursor:pointer;flex-shrink:0;text-decoration:none">
           {% else %}
           <a href="/community/profile/{{ p.user_id }}" style="flex-shrink:0;text-decoration:none">
           {% endif %}
             {% if a and a.avatar %}<img src="{{ a.avatar }}" style="width:36px;height:36px;border-radius:50%;border:2px solid #3dd4e0;object-fit:cover" alt="">
             {% else %}<div style="width:36px;height:36px;border-radius:50%;border:2px solid #3dd4e0;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px">🍄</div>{% endif %}
-          {% if is_mine %}</div>{% else %}</a>{% endif %}
+          {% if is_mine %}</a>{% else %}</a>{% endif %}
           <div style="flex:1;min-width:0">
             {% if is_mine %}
             <div style="font-size:14px;font-weight:700;color:#e8e8e8;cursor:pointer" onclick="goSec('{{ dash_home }}')">{{ a.name if a else 'Участник' }} <span style="font-size:11px;color:#3dd4e0">● я</span></div>
@@ -1341,11 +1341,11 @@ body.dash-ig-app .ig-lamp-topbar{
             <span>{% if is_liked %}⭐{% else %}✩{% endif %}</span><span class="n" id="like-count-{{ p.id }}">{{ p.likes_count }}</span>
           </button>
           {% if is_mine %}
-          <button type="button" class="ig-post-metric ig-post-metric-chat" title="Комментарии" onclick="openCommunityPostPage(event, {{ p.id }})">
+          <button type="button" class="ig-post-metric ig-post-metric-chat" title="Комментарии" onclick="event.stopPropagation();openCommunityPostDirect({{ p.id }})">
             <span>💬</span><span class="n" id="comment-count-{{ p.id }}" data-comment-count-for="{{ p.id }}">{{ p.comments_count or 0 }}</span>
           </button>
           {% else %}
-          <button type="button" class="ig-post-metric ig-post-metric-chat" title="Комментарии" onclick="openCommunityPostPage(event, {{ p.id }})">
+          <button type="button" class="ig-post-metric ig-post-metric-chat" title="Комментарии" onclick="event.stopPropagation();openCommunityPostDirect({{ p.id }})">
             <span>💬</span><span class="n" id="comment-count-{{ p.id }}" data-comment-count-for="{{ p.id }}">{{ p.comments_count or 0 }}</span>
           </button>
           {% endif %}
@@ -4241,6 +4241,10 @@ function openFeedPostPreview(event, card){
 function openCommunityPostPage(event, postId){
   const t=event&&event.target;
   if(t && t.closest('a,button,input,textarea,details,summary,.ig-post-metric,.ig-pm')) return;
+  const back=encodeURIComponent(location.href);
+  location.href='/community/post/'+postId+'?back='+back;
+}
+function openCommunityPostDirect(postId){
   const back=encodeURIComponent(location.href);
   location.href='/community/post/'+postId+'?back='+back;
 }
