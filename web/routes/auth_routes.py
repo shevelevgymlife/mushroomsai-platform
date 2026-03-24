@@ -83,7 +83,7 @@ def _pop_login_redirect(request: Request) -> str:
 async def _login_blocked_response(request: Request):
     from config import settings as _s
 
-    _tid = _s.TELEGRAM_TOKEN.split(":")[0] if ":" in _s.TELEGRAM_TOKEN else ""
+    _tg_bot_username = (_s.TELEGRAM_BOT_USERNAME or "").strip() or "mushrooms_ai_bot"
     return templates.TemplateResponse(
         "login.html",
         {
@@ -91,7 +91,7 @@ async def _login_blocked_response(request: Request):
             "user": None,
             "error": "Этот аккаунт заблокирован администратором.",
             "site_url": _s.SITE_URL,
-            "tg_bot_id": _tid,
+            "tg_bot_username": _tg_bot_username,
         },
         status_code=403,
     )
@@ -112,10 +112,10 @@ async def login_page(request: Request):
         return RedirectResponse(go, status_code=302)
 
     from config import settings
-    tg_bot_id = settings.TELEGRAM_TOKEN.split(":")[0] if ":" in settings.TELEGRAM_TOKEN else ""
+    tg_bot_username = (settings.TELEGRAM_BOT_USERNAME or "").strip() or "mushrooms_ai_bot"
     response = templates.TemplateResponse(
         "login.html",
-        {"request": request, "user": None, "site_url": settings.SITE_URL, "tg_bot_id": tg_bot_id},
+        {"request": request, "user": None, "site_url": settings.SITE_URL, "tg_bot_username": tg_bot_username},
     )
     attach_invite_ref_from_query(request, response)
     return response
@@ -138,7 +138,7 @@ async def login_email(
         except Exception:
             pass
         from config import settings as _s
-        _tid = _s.TELEGRAM_TOKEN.split(":")[0] if ":" in _s.TELEGRAM_TOKEN else ""
+        _tg_bot_username = (_s.TELEGRAM_BOT_USERNAME or "").strip() or "mushrooms_ai_bot"
         return templates.TemplateResponse(
             "login.html",
             {
@@ -146,7 +146,7 @@ async def login_email(
                 "user": None,
                 "error": "Неверный email или пароль",
                 "site_url": _s.SITE_URL,
-                "tg_bot_id": _tid,
+                "tg_bot_username": _tg_bot_username,
             },
         )
     token = create_access_token(user["id"])
@@ -167,7 +167,7 @@ async def register_email(
     user = await register_user(email, password, name)
     if not user:
         from config import settings as _s
-        _tid = _s.TELEGRAM_TOKEN.split(":")[0] if ":" in _s.TELEGRAM_TOKEN else ""
+        _tg_bot_username = (_s.TELEGRAM_BOT_USERNAME or "").strip() or "mushrooms_ai_bot"
         return templates.TemplateResponse(
             "login.html",
             {
@@ -175,7 +175,7 @@ async def register_email(
                 "user": None,
                 "error": "Email уже зарегистрирован",
                 "site_url": _s.SITE_URL,
-                "tg_bot_id": _tid,
+                "tg_bot_username": _tg_bot_username,
             },
         )
     token = create_access_token(user["id"])
@@ -431,7 +431,7 @@ async def google_callback(request: Request):
         except Exception:
             pass
         from config import settings as _s
-        _tid = _s.TELEGRAM_TOKEN.split(":")[0] if ":" in _s.TELEGRAM_TOKEN else ""
+        _tg_bot_username = (_s.TELEGRAM_BOT_USERNAME or "").strip() or "mushrooms_ai_bot"
         return templates.TemplateResponse(
             "login.html",
             {
@@ -439,7 +439,7 @@ async def google_callback(request: Request):
                 "user": None,
                 "error": f"Ошибка входа: {str(e)}",
                 "site_url": _s.SITE_URL,
-                "tg_bot_id": _tid,
+                "tg_bot_username": _tg_bot_username,
             },
         )
 
