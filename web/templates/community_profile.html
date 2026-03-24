@@ -348,8 +348,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
         <span id="profilePreviewDate" style="font-size:11px;color:#8a8fa0"></span>
       </div>
     </div>
-    <div style="overflow-y:auto;overflow-x:hidden;flex:1;min-height:0;padding-bottom:calc(78px + env(safe-area-inset-bottom,0px))">
-      <img id="profilePreviewImage" src="" alt="" onclick="openProfilePreviewImageFull()" style="display:none;width:100%;max-height:56vh;object-fit:cover;background:#0a0a0a;cursor:zoom-in">
+    <div style="overflow-y:auto;overflow-x:hidden;flex:1;min-height:0;padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));max-width:100vw">
       <div style="padding:14px 14px 18px">
         <div id="profilePreviewTitle" style="display:none;font-size:18px;font-weight:700;color:#f3f4f6;line-height:1.25;margin-bottom:8px"></div>
         <div id="profilePreviewContent" style="font-size:14px;color:#c4c8d3;line-height:1.55;white-space:pre-wrap;word-break:break-word"></div>
@@ -363,22 +362,22 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
           <div id="profilePreviewCommentsList" style="display:flex;flex-direction:column;gap:8px;max-height:38vh;overflow-y:auto;padding-right:2px"></div>
         </div>
         <input type="hidden" id="profilePreviewPostId" value="">
-        <div id="profilePreviewActionRow" style="display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:8px;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);position:sticky;top:0;z-index:2;background:linear-gradient(180deg,rgba(11,12,18,.98),rgba(11,12,18,.93));padding-bottom:8px;overflow-x:hidden">
-          <input id="profilePreviewCommentInp" class="sinp" style="min-width:0;width:100%" placeholder="Написать комментарий...">
+        <div id="profilePreviewActionRow" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);position:sticky;top:0;z-index:2;background:linear-gradient(180deg,rgba(11,12,18,.98),rgba(11,12,18,.93));padding-bottom:8px;overflow:hidden;max-width:100%">
           <button type="button" class="btn-g" style="padding:10px 12px;white-space:nowrap" onclick="submitProfilePreviewComment()">Отправить</button>
           <button type="button" class="btn-g" id="profilePreviewViewPhotoBtn" style="padding:10px 12px;white-space:nowrap" onclick="openProfilePreviewImageFull()">Посмотреть фото</button>
           <button type="button" class="btn-g" style="padding:10px 12px;white-space:nowrap" onclick="closeProfilePostPreview()">Закрыть</button>
+        </div>
+        <div id="profilePreviewInlinePhotoWrap" style="display:none;margin-top:10px;border:1px solid rgba(255,255,255,.14);border-radius:14px;overflow:hidden;background:#050607">
+          <img id="profilePreviewImage" src="" alt="" style="display:block;width:100%;height:min(50vh,360px);object-fit:contain;background:#000">
+        </div>
+        <div id="profilePreviewCommentRow" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;margin-top:10px;max-width:100%">
+          <input id="profilePreviewCommentInp" class="sinp" style="min-width:0;width:100%;max-width:100%" placeholder="Написать комментарий...">
+          <button type="button" class="btn-g" style="padding:10px 12px;white-space:nowrap" onclick="submitProfilePreviewComment()">Отправить</button>
         </div>
         <p id="profilePreviewCommentErr" style="display:none;margin-top:8px;font-size:12px;color:#f87171"></p>
       </div>
     </div>
   </div>
-</div>
-<div id="profilePreviewImageModal" style="display:none;position:fixed;inset:0;z-index:10027;background:#000" onclick="if(event.target===this)closeProfilePreviewImageFull()">
-  <div style="position:fixed;top:0;left:0;right:0;z-index:10050;padding:calc(8px + env(safe-area-inset-top,0px)) 10px 8px;background:linear-gradient(180deg,rgba(0,0,0,.85),rgba(0,0,0,.35) 70%,rgba(0,0,0,0));pointer-events:none">
-    <button id="profilePreviewImageCloseBtn" type="button" style="pointer-events:auto;border:1px solid rgba(255,255,255,.5);background:#0f172a;color:#fff;border-radius:10px;padding:9px 14px;font-size:14px;font-weight:700;line-height:1;cursor:pointer" onclick="closeProfilePreviewImageFull()">Закрыть</button>
-  </div>
-  <img id="profilePreviewImageFull" src="" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000">
 </div>
 
 <div id="followListModal" style="display:none;position:fixed;inset:0;z-index:10020;align-items:center;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(4px)" onclick="if(event.target===this)closeFollowListModal()">
@@ -728,18 +727,15 @@ function closeProfilePostPreview(){
 function openProfilePreviewImageFull(){
   const src=(document.getElementById('profilePreviewImage')&&document.getElementById('profilePreviewImage').src)||'';
   if(!src) return;
-  const m=document.getElementById('profilePreviewImageModal');
-  const i=document.getElementById('profilePreviewImageFull');
-  const closeBtn=document.getElementById('profilePreviewImageCloseBtn');
-  if(i) i.src=src;
-  if(m) m.style.display='block';
-  if(closeBtn) closeBtn.style.display='inline-block';
+  const wrap=document.getElementById('profilePreviewInlinePhotoWrap');
+  if(wrap){
+    wrap.style.display='block';
+    setTimeout(function(){ try{ wrap.scrollIntoView({behavior:'smooth', block:'nearest'}); }catch(e){} }, 20);
+  }
 }
 function closeProfilePreviewImageFull(){
-  const m=document.getElementById('profilePreviewImageModal');
-  const i=document.getElementById('profilePreviewImageFull');
-  if(m) m.style.display='none';
-  if(i) i.removeAttribute('src');
+  const wrap=document.getElementById('profilePreviewInlinePhotoWrap');
+  if(wrap) wrap.style.display='none';
 }
 function _profilePreviewCommentHtml(c){
   const av=(c.author_avatar||'').trim();
@@ -789,9 +785,13 @@ function openProfilePostPreview(event, card){
   document.getElementById('profilePreviewContent').textContent=(card.getAttribute('data-content')||'').trim()||'Без текста';
   const img=(card.getAttribute('data-image')||'').trim();
   const ii=document.getElementById('profilePreviewImage');
+  const inlinePhotoWrap=document.getElementById('profilePreviewInlinePhotoWrap');
   const viewPhotoBtn=document.getElementById('profilePreviewViewPhotoBtn');
   if(ii){
-    if(img){ ii.style.display='none'; ii.src=img; } else { ii.style.display='none'; ii.removeAttribute('src'); }
+    if(img){ ii.src=img; } else { ii.removeAttribute('src'); }
+  }
+  if(inlinePhotoWrap){
+    inlinePhotoWrap.style.display='none';
   }
   if(viewPhotoBtn){ viewPhotoBtn.style.display=img ? 'inline-flex' : 'none'; }
   document.getElementById('profilePreviewPostId').value=String(pid||'');
@@ -838,6 +838,14 @@ async function submitProfilePreviewComment(){
     if(err){ err.style.display='block'; err.textContent='Сеть'; }
   }
 }
+document.addEventListener('focusin', function(e){
+  if(e && e.target && e.target.id === 'profilePreviewCommentInp'){
+    const row=document.getElementById('profilePreviewCommentRow');
+    if(row){
+      setTimeout(function(){ try{ row.scrollIntoView({behavior:'smooth', block:'nearest'}); }catch(err){} }, 120);
+    }
+  }
+});
 function _cpChaosKey(){
   return 'mushrooms:chaos:' + String(Number(PROFILE_ID||0)||0) + ':profile';
 }
