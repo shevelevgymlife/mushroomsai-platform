@@ -2315,10 +2315,12 @@ async def community_group_messages_get(request: Request, group_id: int):
     ids = [r["id"] for r in rows]
     snd_ids = {r["sender_id"] for r in rows if r.get("sender_id")}
     name_by_id: dict = {}
+    avatar_by_id: dict = {}
     if snd_ids:
         urows = await database.fetch_all(users.select().where(users.c.id.in_(snd_ids)))
         for u in urows:
             name_by_id[u["id"]] = u["name"] or "Участник"
+            avatar_by_id[u["id"]] = u.get("avatar")
 
     likes_map: dict = {}
     like_users_map: dict[int, list[dict]] = {}
@@ -2408,6 +2410,7 @@ async def community_group_messages_get(request: Request, group_id: int):
             "id": r["id"],
             "sender_id": snd,
             "sender_name": uname,
+            "sender_avatar": avatar_by_id.get(snd),
             "text": r.get("text") or "",
             "image_url": r.get("image_url"),
             "audio_url": r.get("audio_url"),
