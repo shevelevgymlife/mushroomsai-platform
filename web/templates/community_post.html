@@ -6,6 +6,7 @@
 .cp-card{border:1px solid rgba(255,255,255,.12);border-radius:18px;background:linear-gradient(165deg,rgba(255,255,255,.07),rgba(10,10,13,.92));overflow:hidden}
 .cp-head{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.08)}
 .cp-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:10px 12px 0}
+.cp-actions.no-photo{grid-template-columns:repeat(2,minmax(0,1fr))}
 .cp-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px}
 .cp-metric{min-height:52px;border-radius:14px;border:1px solid rgba(255,255,255,.16);font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px}
 .cp-input{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:0 12px 12px}
@@ -22,7 +23,7 @@
         <div style="font-size:11px;color:#8a8fa0">{{ post.created_at.strftime('%d.%m.%Y %H:%M') if post.created_at else '' }}</div>
       </div>
     </div>
-    <div class="cp-actions">
+    <div class="cp-actions{% if not post.image_url %} no-photo{% endif %}">
       <button class="cp-act-btn" type="button" onclick="goBackPost()">Закрыть</button>
       <button class="cp-act-btn" type="button" onclick="toggleReadText()">Почитать текст</button>
       <button class="cp-act-btn" type="button" onclick="openPhotoPage()" {% if not post.image_url %}style="display:none"{% endif %}>Фото</button>
