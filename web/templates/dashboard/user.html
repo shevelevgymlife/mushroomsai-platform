@@ -495,6 +495,7 @@
   border-color:rgba(61,212,224,.52)!important;
 }
 #sec-groups .tg-chat-main{display:none}
+#sec-groups .tg-chat-input-row{display:none}
 body.tg-chat-open #sec-groups .tg-chat-main{
   display:flex!important;
   position:fixed;
@@ -507,7 +508,9 @@ body.tg-chat-open #sec-groups .tg-chat-main{
   overflow-x:hidden;
   box-sizing:border-box;
 }
+body.tg-chat-open #sec-groups .tg-chat-input-row{display:flex}
 body.tg-chat-open .ig-create-fab{display:none!important}
+body.tg-group-mobile-chat .ig-create-fab{display:none!important}
 body.tg-chat-open .tg-chat-header-row{
   justify-content:flex-start;
   flex-wrap:wrap;
@@ -543,6 +546,8 @@ body.tg-chat-open .tg-chat-header-row #groupTypingNow{
   order:9;
   flex:1 1 100%;
 }
+body.tg-chat-open .ig-tabbar{z-index:900}
+body.tg-chat-open #sec-groups .tg-chat-main{z-index:980}
 body.tg-chat-open #groupRetentionRow,
 body.tg-chat-open #groupImageRow{
   position:relative;

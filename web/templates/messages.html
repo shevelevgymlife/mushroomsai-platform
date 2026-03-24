@@ -3,7 +3,7 @@
 
 {% block content %}
 <style>
-.msg-wrap{display:flex;height:calc(100vh - 72px);padding-top:72px;background:#080808;overflow:hidden}
+.msg-wrap{display:flex;height:calc(100vh - 72px);height:calc(100dvh - 72px);padding-top:72px;background:#080808;overflow:hidden;max-width:100vw}
 
 /* Sidebar */
 .msg-sidebar{width:300px;flex-shrink:0;border-right:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;background:#0a0a0a}
@@ -26,11 +26,11 @@
 /* Chat pane */
 .msg-chat{flex:1;display:flex;flex-direction:column;overflow:hidden}
 .chat-header{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid rgba(255,255,255,.07);background:#0a0a0a;flex-shrink:0}
-.chat-messages{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:10px}
+.chat-messages{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:10px;overflow-x:hidden}
 .chat-empty{display:flex;align-items:center;justify-content:center;flex:1;flex-direction:column;gap:10px;color:#333;font-size:15px}
 
 /* Bubbles */
-.bubble{max-width:70%;padding:10px 14px;border-radius:4px;font-size:14px;line-height:1.55;word-break:break-word;white-space:pre-wrap;position:relative}
+.bubble{max-width:min(70%,calc(100vw - 54px));padding:10px 14px;border-radius:4px;font-size:14px;line-height:1.55;word-break:break-word;overflow-wrap:anywhere;white-space:pre-wrap;position:relative;box-sizing:border-box}
 .bubble-own{align-self:flex-end;background:rgba(61,212,224,.15);border:1px solid rgba(61,212,224,.2);color:#e8e8e8;border-radius:16px 16px 4px 16px}
 .bubble-other{align-self:flex-start;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:#ccc;border-radius:16px 16px 16px 4px}
 .bubble-system{align-self:center;background:rgba(61,212,224,.08);border:1px solid rgba(61,212,224,.2);color:#3dd4e0;font-style:italic;font-size:13px;border-radius:12px;text-align:center;max-width:80%}
@@ -52,6 +52,10 @@
   .msg-chat{display:none}
   .msg-chat.mob-show{display:flex}
   .chat-back{display:flex}
+  .chat-messages{padding:12px 10px}
+  .bubble{max-width:calc(100vw - 42px)}
+  .chat-input-wrap{padding:10px 10px calc(10px + env(safe-area-inset-bottom,0px));box-sizing:border-box;overflow:hidden}
+  .chat-textarea{font-size:16px}
 }
 @media(min-width:769px){
   .chat-back{display:none!important}
