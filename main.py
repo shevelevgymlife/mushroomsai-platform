@@ -130,6 +130,35 @@ bot_app = None
 ops_bot_app = None
 
 
+def _install_asyncio_invalid_token_handler() -> None:
+    """InvalidToken из фонового polling часто уходит в asyncio Task — не через logging, фильтры его не видят."""
+    import asyncio
+
+    loop = asyncio.get_running_loop()
+    prev = loop.get_exception_handler()
+
+    def _handler(loop: asyncio.AbstractEventLoop, context: dict) -> None:
+        exc = context.get("exception")
+        if exc is not None:
+            try:
+                from telegram.error import InvalidToken
+
+                if isinstance(exc, InvalidToken):
+                    logger.warning(
+                        "Telegram: токен отклонён API (InvalidToken). Обновите TELEGRAM_TOKEN в Render → Environment "
+                        "и перезапустите сервис. Сайт при этом может работать."
+                    )
+                    return
+            except Exception:
+                pass
+        if prev is not None:
+            prev(loop, context)
+        else:
+            loop.default_exception_handler(context)
+
+    loop.set_exception_handler(_handler)
+
+
 class LanguageMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         lang = request.cookies.get("lang")
@@ -145,6 +174,7 @@ class LanguageMiddleware(BaseHTTPMiddleware):
 async def lifespan(app: FastAPI):
     # Startup (после uvicorn: повторно — на root могли добавиться новые handlers)
     _shield_telegram_token_logs()
+    _install_asyncio_invalid_token_handler()
     await database.connect()
     logger.info("Database connected")
     await send_deploy_notifications()
