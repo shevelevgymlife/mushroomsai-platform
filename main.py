@@ -587,7 +587,17 @@ async def lifespan(app: FastAPI):
             await bot_app.initialize()
             await bot_app.start()
             # Явная проверка токена до long polling (иначе 401 валится в фоне)
-            await bot_app.bot.get_me()
+            _me = await bot_app.bot.get_me()
+            _api_u = (_me.username or "").strip().lower()
+            _cfg_u = (settings.TELEGRAM_BOT_USERNAME or "").strip().lower()
+            if _api_u and _cfg_u and _api_u != _cfg_u:
+                logger.warning(
+                    "Telegram: @username из API (@%s) не совпадает с TELEGRAM_BOT_USERNAME в настройках (%s). "
+                    "На Render → Environment задайте TELEGRAM_BOT_USERNAME=%s (без @), Save, Restart — иначе виджет входа и ссылки на сайте указывают не на этого бота.",
+                    _me.username,
+                    settings.TELEGRAM_BOT_USERNAME,
+                    _me.username,
+                )
             await bot_app.updater.start_polling(
                 drop_pending_updates=True,
                 allowed_updates=[
