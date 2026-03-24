@@ -45,26 +45,29 @@ class LanguageMiddleware(BaseHTTPMiddleware):
 class ProbeBlockMiddleware(BaseHTTPMiddleware):
     """Ранний 404 для массовых сканов WordPress — меньше работы, чем через сессии и роутеры."""
 
-    _WP_PREFIXES = (
-        "/wp-admin",
-        "/wp-includes",
-        "/wp-content",
-        "/wordpress",
-        "/wp-json/",
-    )
-    _WP_FILES = frozenset(
-        {
-            "/xmlrpc.php",
-            "/wp-login.php",
-            "/readme.html",
-            "/license.txt",
-            "/wlwmanifest.xml",
-        }
+    _WP_DIR_SEGMENTS = frozenset({"wp-admin", "wp-includes", "wp-content", "wordpress"})
+    _WP_PROBE_FILES = frozenset(
+        {"xmlrpc.php", "wp-login.php", "readme.html", "license.txt", "wlwmanifest.xml"}
     )
 
+    @classmethod
+    def _is_wp_probe(cls, raw_path: str) -> bool:
+        p = (raw_path or "/").lower()
+        while "//" in p:
+            p = p.replace("//", "/")
+        if not p.startswith("/"):
+            p = "/" + p
+        segments = [s for s in p.split("/") if s]
+        if any(s in cls._WP_DIR_SEGMENTS for s in segments):
+            return True
+        if "wp-json" in segments:
+            return True
+        if segments and segments[-1] in cls._WP_PROBE_FILES:
+            return True
+        return False
+
     async def dispatch(self, request: Request, call_next):
-        p = request.url.path.lower()
-        if p in self._WP_FILES or any(p.startswith(x) for x in self._WP_PREFIXES):
+        if self._is_wp_probe(request.url.path):
             return Response(status_code=404)
         return await call_next(request)
 
