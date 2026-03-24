@@ -461,6 +461,57 @@
 #groupChatPlaceholder{color:#666!important;background:#080808!important}
 .tg-owner-bar{background:rgba(61,212,224,.08)!important;border-bottom:1px solid rgba(255,255,255,.08)!important}
 
+/* Раздел "Чаты": только карточки чатов в хаос-стиле */
+#sec-groups .tg-chat-shell{display:block;min-height:auto;max-height:none;border:none;box-shadow:none;background:transparent;border-radius:0}
+#sec-groups .tg-chat-sidebar{max-height:none;min-height:auto;border:none;background:transparent}
+#sec-groups .tg-chat-sidebar-head{display:none}
+#sec-groups .tg-chat-list{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+  padding:2px 2px 24px;
+}
+#sec-groups .ig-g-item.tg-chat-item{
+  margin:0!important;
+  border-radius:24px!important;
+  background:linear-gradient(165deg,rgba(255,255,255,.075),rgba(9,10,16,.92))!important;
+  border:1px solid rgba(255,255,255,.13)!important;
+  box-shadow:0 18px 54px rgba(0,0,0,.46),0 0 0 1px rgba(61,212,224,.08) inset,0 0 28px rgba(61,212,224,.05)!important;
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  transition:transform .22s ease,border-color .2s ease,box-shadow .2s ease;
+}
+#sec-groups .ig-g-item.tg-chat-item:nth-child(4n+1){transform:translateY(8px) rotate(-4deg)}
+#sec-groups .ig-g-item.tg-chat-item:nth-child(4n+2){transform:translateY(-5px) rotate(3.5deg)}
+#sec-groups .ig-g-item.tg-chat-item:nth-child(4n+3){transform:translateY(4px) rotate(2deg)}
+#sec-groups .ig-g-item.tg-chat-item:nth-child(4n+4){transform:translateY(-7px) rotate(-3deg)}
+#sec-groups .ig-g-item.tg-chat-item:hover{
+  transform:translateY(-8px) rotate(0)!important;
+  border-color:rgba(61,212,224,.34)!important;
+  box-shadow:0 24px 72px rgba(0,0,0,.54),0 0 30px rgba(61,212,224,.1)!important;
+}
+#sec-groups .ig-g-item.tg-chat-item.on{
+  background:linear-gradient(165deg,rgba(61,212,224,.16),rgba(14,16,24,.95))!important;
+  border-color:rgba(61,212,224,.52)!important;
+}
+#sec-groups .tg-chat-main{display:none}
+body.tg-chat-open #sec-groups .tg-chat-main{
+  display:flex!important;
+  position:fixed;
+  inset:72px 0 0 0;
+  z-index:980;
+  min-height:calc(var(--vvh, 100vh) - 72px);
+  max-height:none;
+}
+@media(max-width:900px){
+  #sec-groups .tg-chat-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  #sec-groups .ig-g-item.tg-chat-item:nth-child(4n+1){transform:translateY(0) rotate(-2.2deg)}
+  #sec-groups .ig-g-item.tg-chat-item:nth-child(4n+2){transform:translateY(0) rotate(2.4deg)}
+  #sec-groups .ig-g-item.tg-chat-item:nth-child(4n+3){transform:translateY(0) rotate(1.2deg)}
+  #sec-groups .ig-g-item.tg-chat-item:nth-child(4n+4){transform:translateY(0) rotate(-1.7deg)}
+  body.tg-chat-open #sec-groups .tg-chat-main{inset:64px 0 0 0}
+}
+
 /* Бургер: блок со списком групп */
 .drawer-groups-box{border:1px solid rgba(61,212,224,.25);border-radius:12px;margin:8px 12px;overflow:hidden;background:rgba(255,255,255,.03)}
 .drawer-groups-box .ig-drawer-summary{border-radius:12px 12px 0 0}
@@ -1272,15 +1323,8 @@ body.dash-ig-app .ig-lamp-topbar{
     {% set group_list = group_list | default([]) %}
     <section class="db-sec" id="sec-groups">
       {% if 'community' in vbk %}
-      <div class="sect-title groups-page-intro" style="margin-bottom:8px">Групповые чаты</div>
-      <p class="muted groups-page-intro" style="margin-bottom:18px;font-size:14px;line-height:1.5">Здесь только чаты. Создание и настройки перенесены в админку.</p>
       <div class="tg-chat-shell">
         <aside class="tg-chat-sidebar">
-          <div class="tg-chat-sidebar-head">
-            <div class="tg-h">Чаты</div>
-            <div class="tg-sub">Группы сообщества</div>
-          </div>
-          <p class="muted" style="font-size:12px;margin:0 14px 12px;line-height:1.5;color:#888!important">Создавать чаты может только админ. Выберите чат и вступите.</p>
           <div id="groupListEl" class="tg-chat-list">
             {% if group_list %}
             {% for g in group_list %}
@@ -3023,6 +3067,7 @@ async function openGroupFromDrawer(gid){
   else showNotification('Не удалось открыть чат. Откройте раздел «Чаты» внизу.','error');
 }
 function finishGroupChatOverlayUI(){
+  document.body.classList.remove('tg-chat-open');
   document.body.classList.remove('tg-group-mobile-chat');
   stopGroupPoll();
   selectedGroupId = null;
@@ -3366,6 +3411,7 @@ function selectGroupChat(id, el){
   const pending=el&&el.dataset&&el.dataset.pending==='1';
   if(ph) ph.style.display = 'none';
   if(panel){ panel.style.display = 'flex'; panel.style.flexDirection = 'column'; }
+  document.body.classList.add('tg-chat-open');
   if(ownerBar){
     ownerBar.style.display=canManage?'block':'none';
     if(canManage) loadOwnerPendingForGroup(id);
