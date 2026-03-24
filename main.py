@@ -179,6 +179,33 @@ class LanguageMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+class ProbeBlockMiddleware(BaseHTTPMiddleware):
+    """Ранний 404 для массовых сканов WordPress — меньше работы, чем через сессии и роутеры."""
+
+    _WP_PREFIXES = (
+        "/wp-admin",
+        "/wp-includes",
+        "/wp-content",
+        "/wordpress",
+        "/wp-json/",
+    )
+    _WP_FILES = frozenset(
+        {
+            "/xmlrpc.php",
+            "/wp-login.php",
+            "/readme.html",
+            "/license.txt",
+            "/wlwmanifest.xml",
+        }
+    )
+
+    async def dispatch(self, request: Request, call_next):
+        p = request.url.path.lower()
+        if p in self._WP_FILES or any(p.startswith(x) for x in self._WP_PREFIXES):
+            return Response(status_code=404)
+        return await call_next(request)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup (после uvicorn: повторно — на root могли добавиться новые handlers)
@@ -655,6 +682,7 @@ app.add_middleware(
     same_site="lax",
 )
 app.add_middleware(LanguageMiddleware)
+app.add_middleware(ProbeBlockMiddleware)
 
 # Static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
