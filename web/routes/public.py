@@ -1129,6 +1129,9 @@ async def community_profile(request: Request, user_id: int):
         if primary:
             raw = primary
     profile_id = raw["id"]
+    if int(profile_id) == int(viewer_id):
+        # For own account always open the single dashboard profile view.
+        return RedirectResponse("/dashboard#me", status_code=302)
 
     # Public-safe profile data only
     profile = get_public_user_data(dict(raw))
