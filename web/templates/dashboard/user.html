@@ -2116,7 +2116,9 @@ body.dash-ig-app .ig-lamp-topbar{
     <div style="overflow-y:auto;overflow-x:hidden;flex:1;min-height:0;padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));max-width:100vw" id="feedPreviewScroll">
     <div style="padding:14px 14px 18px">
       <div id="feedPreviewTitle" style="display:none;font-size:18px;font-weight:700;color:#f3f4f6;line-height:1.25;margin-bottom:8px"></div>
-      <div id="feedPreviewContent" style="font-size:14px;color:#c4c8d3;line-height:1.55;white-space:pre-wrap;word-break:break-word"></div>
+      <div id="feedPreviewContentWrap" style="display:none;margin-top:8px;border:1px solid rgba(255,255,255,.12);border-radius:12px;background:rgba(8,10,16,.55);padding:10px;max-height:34vh;overflow:auto">
+        <div id="feedPreviewContent" style="font-size:14px;color:#c4c8d3;line-height:1.55;white-space:pre-wrap;word-break:break-word"></div>
+      </div>
       <div id="feedPreviewMetrics" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px">
         <button type="button" onclick="feedPreviewLike()" style="display:flex;align-items:center;justify-content:center;gap:8px;min-height:54px;border-radius:14px;border:1px solid rgba(255,216,79,.45);background:linear-gradient(160deg,rgba(255,216,79,.2),rgba(12,13,20,.92));color:#ffe57f;font-size:19px;font-weight:800;cursor:pointer"><span id="feedPreviewLikeIcon">✩</span><span id="feedPreviewLikes" style="font-size:22px;line-height:1">0</span></button>
         <div style="display:flex;align-items:center;justify-content:center;gap:8px;min-height:54px;border-radius:14px;border:1px solid rgba(139,233,255,.4);background:linear-gradient(160deg,rgba(139,233,255,.18),rgba(12,13,20,.92));color:#9df0ff;font-size:19px;font-weight:800">💬 <span id="feedPreviewComments" style="font-size:22px;line-height:1">0</span></div>
@@ -2128,6 +2130,7 @@ body.dash-ig-app .ig-lamp-topbar{
       </div>
       <input type="hidden" id="feedPreviewPostId" value="">
       <div id="feedPreviewActionRow" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);position:sticky;top:0;z-index:2;background:linear-gradient(180deg,rgba(11,12,18,.98),rgba(11,12,18,.93));padding-bottom:8px;overflow:hidden;max-width:100%">
+        <button type="button" class="btn-g" id="feedPreviewReadTextBtn" style="padding:10px 12px;white-space:nowrap" onclick="toggleFeedPreviewText()">Почитать текст</button>
         <button type="button" class="btn-g" id="feedPreviewViewPhotoBtn" style="padding:10px 12px;white-space:nowrap" onclick="openFeedPreviewImageFull()">Посмотреть фото</button>
         <button type="button" class="btn-g" style="padding:10px 12px;white-space:nowrap" onclick="closeFeedPostPreview()">Закрыть</button>
       </div>
@@ -4176,6 +4179,7 @@ function openFeedPostPreview(event, card){
   const aEl=document.getElementById('feedPreviewAuthor');
   const dEl=document.getElementById('feedPreviewDate');
   const tEl=document.getElementById('feedPreviewTitle');
+  const cWrap=document.getElementById('feedPreviewContentWrap');
   const cEl=document.getElementById('feedPreviewContent');
   const iEl=document.getElementById('feedPreviewImage');
   const inlinePhotoWrap=document.getElementById('feedPreviewInlinePhotoWrap');
@@ -4187,6 +4191,7 @@ function openFeedPostPreview(event, card){
   const commentsEl=document.getElementById('feedPreviewComments');
   const savesEl=document.getElementById('feedPreviewSaves');
   const viewPhotoBtn=document.getElementById('feedPreviewViewPhotoBtn');
+  const readTextBtn=document.getElementById('feedPreviewReadTextBtn');
   if(aEl) aEl.textContent=author;
   if(dEl) dEl.textContent=created;
   if(tEl){
@@ -4194,6 +4199,11 @@ function openFeedPostPreview(event, card){
     else{ tEl.style.display='none'; tEl.textContent=''; }
   }
   if(cEl) cEl.textContent=content || 'Без текста';
+  if(cWrap) cWrap.style.display='none';
+  if(readTextBtn){
+    readTextBtn.style.display=(content && String(content).trim()) ? 'inline-flex' : 'none';
+    readTextBtn.textContent='Почитать текст';
+  }
   if(iEl){
     if(image){ iEl.src=image; }
     else{ iEl.removeAttribute('src'); }
@@ -4245,6 +4255,17 @@ function openFeedPreviewImageFull(){
 function closeFeedPreviewImageFull(){
   const wrap=document.getElementById('feedPreviewInlinePhotoWrap');
   if(wrap) wrap.style.display='none';
+}
+function toggleFeedPreviewText(){
+  const wrap=document.getElementById('feedPreviewContentWrap');
+  const btn=document.getElementById('feedPreviewReadTextBtn');
+  if(!wrap) return;
+  const open=wrap.style.display==='block';
+  wrap.style.display=open?'none':'block';
+  if(btn) btn.textContent=open?'Почитать текст':'Скрыть текст';
+  if(!open){
+    setTimeout(function(){ try{ wrap.scrollIntoView({behavior:'smooth', block:'nearest'}); }catch(e){} }, 20);
+  }
 }
 async function feedPreviewLike(){
   const pid=Number(document.getElementById('feedPreviewPostId')&&document.getElementById('feedPreviewPostId').value||0);
