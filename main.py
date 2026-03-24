@@ -1,40 +1,16 @@
-import asyncio
 import logging
 import os
-from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
-from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.responses import Response
-from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.middleware.sessions import SessionMiddleware
 
-from config import settings
-from db.database import database, metadata, engine
-from web.routes.public import router as public_router
-from web.routes.auth_routes import router as auth_router
-from web.routes.user import router as user_router
-from web.routes.legal_routes import router as legal_router
-from web.routes.admin import router as admin_router
-from web.routes.account import router as account_router
-from web.routes.language import router as language_router
-from web.routes.seller import router as seller_router
-from web.translations import TRANSLATIONS, parse_accept_language, SUPPORTED_LANGS
-from services.deploy_notify import send_deploy_notifications
-from web.templates_utils import Jinja2Templates
-
-
+# До импортов, подтягивающих httpx (например web.routes.auth_routes): иначе httpx остаётся INFO и шумит.
 class _DropTelegramBotUrlLogs(logging.Filter):
-    """Отсекает строки с URL api.telegram.org/bot<TOKEN>/... (утечка токена в логах)."""
+    """Отсекает логи с URL api.telegram.org (в т.ч. /bot<TOKEN>/...)."""
 
     def filter(self, record: logging.LogRecord) -> bool:
         try:
             msg = record.getMessage()
         except Exception:
             return True
-        if "api.telegram.org/bot" in msg:
+        if "api.telegram.org" in msg:
             return False
         return True
 
@@ -64,6 +40,32 @@ def _shield_telegram_token_logs() -> None:
 
 logging.basicConfig(level=logging.INFO)
 _shield_telegram_token_logs()
+
+import asyncio
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.responses import Response
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.sessions import SessionMiddleware
+
+from config import settings
+from db.database import database, metadata, engine
+from web.routes.public import router as public_router
+from web.routes.auth_routes import router as auth_router
+from web.routes.user import router as user_router
+from web.routes.legal_routes import router as legal_router
+from web.routes.admin import router as admin_router
+from web.routes.account import router as account_router
+from web.routes.language import router as language_router
+from web.routes.seller import router as seller_router
+from web.translations import TRANSLATIONS, parse_accept_language, SUPPORTED_LANGS
+from services.deploy_notify import send_deploy_notifications
+from web.templates_utils import Jinja2Templates
+
 logger = logging.getLogger(__name__)
 
 bot_app = None

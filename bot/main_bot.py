@@ -4,7 +4,7 @@ import logging
 class _DropTelegramBotUrlLogs(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         try:
-            return "api.telegram.org/bot" not in record.getMessage()
+            return "api.telegram.org" not in record.getMessage()
         except Exception:
             return True
 
