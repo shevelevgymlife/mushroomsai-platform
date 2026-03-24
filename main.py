@@ -114,7 +114,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
 from config import settings
-from db.database import database, metadata, engine
+from db.database import database, metadata, get_engine
 from web.routes.public import router as public_router
 from web.routes.auth_routes import router as auth_router
 from web.routes.user import router as user_router
@@ -245,7 +245,7 @@ async def lifespan(app: FastAPI):
 
     # Create tables
     try:
-        metadata.create_all(engine)
+        metadata.create_all(get_engine())
         logger.info("Tables created")
     except Exception as e:
         logger.warning(f"Table creation: {e}")
