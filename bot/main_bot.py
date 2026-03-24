@@ -15,6 +15,7 @@ for _log in ("httpx", "httpcore", "telegram.request"):
     _lg.addFilter(_DropTelegramBotUrlLogs())
 
 from telegram import MenuButtonWebApp, WebAppInfo
+from telegram.error import InvalidToken
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -62,6 +63,8 @@ async def _set_menu_webapp_button(application: Application) -> None:
             ),
         )
         logger.info("Bot menu button set to WebApp MushroomsAI → %s", _mini_app_url())
+    except InvalidToken:
+        raise
     except Exception as e:
         logger.warning("set_chat_menu_button failed: %s", e)
 

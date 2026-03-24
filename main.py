@@ -464,9 +464,13 @@ async def lifespan(app: FastAPI):
             )
             _shield_telegram_token_logs()
             from bot.main_bot import create_bot
+            from telegram.error import InvalidToken
+
             bot_app = create_bot()
             await bot_app.initialize()
             await bot_app.start()
+            # Явная проверка токена до long polling (иначе 401 валится в фоне)
+            await bot_app.bot.get_me()
             await bot_app.updater.start_polling(
                 drop_pending_updates=True,
                 allowed_updates=[
@@ -491,6 +495,22 @@ async def lifespan(app: FastAPI):
             # Start scheduler tied to primary bot
             from services.scheduler import start_scheduler
             start_scheduler(bot_app.bot)
+        except InvalidToken:
+            logger.error(
+                "TELEGRAM_TOKEN недействителен (Unauthorized). Возьмите новый токен в @BotFather → /token, "
+                "обновите TELEGRAM_TOKEN на Render и перезапустите сервис. Сайт продолжит работу без бота."
+            )
+            if bot_app:
+                try:
+                    await bot_app.updater.stop()
+                except Exception:
+                    pass
+                try:
+                    await bot_app.stop()
+                    await bot_app.shutdown()
+                except Exception:
+                    pass
+                bot_app = None
         except Exception as e:
             logger.error(f"Primary bot startup error: {e}")
 
