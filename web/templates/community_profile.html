@@ -136,18 +136,17 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 .cp-light-toggle::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#8a90a0;transition:all .2s ease}
 .cp-light-toggle:checked{background:rgba(61,212,224,.35);border-color:rgba(61,212,224,.62)}
 .cp-light-toggle:checked::after{left:16px;background:#d8fbff}
-.cp-stories-mini{display:none}
+.cp-stories-mini{display:flex;align-items:flex-start;gap:10px;overflow-x:auto;padding:2px 0 12px;margin:-2px 0 8px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.cp-stories-mini::-webkit-scrollbar{display:none}
+.cp-story-mini{flex:0 0 auto;width:72px;text-align:center;text-decoration:none;color:inherit}
+.cp-story-ring{width:64px;height:64px;border-radius:50%;padding:2px;background:linear-gradient(145deg,#3dd4e0,#006680,#ff66d0);margin:0 auto 6px;box-shadow:0 0 20px rgba(61,212,224,.12)}
+.cp-story-ring-inner{width:100%;height:100%;border-radius:50%;border:3px solid #080808;overflow:hidden;background:#111;display:flex;align-items:center;justify-content:center}
+.cp-story-ring-inner img{width:100%;height:100%;object-fit:cover;display:block}
+.cp-story-name{font-size:11px;color:#888;max-width:72px;margin:0 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cp-story-add{width:64px;height:64px;border-radius:50%;border:2px dashed rgba(61,212,224,.55);background:rgba(8,10,16,.88);display:flex;align-items:center;justify-content:center;color:#3dd4e0;font-size:34px;font-weight:300;line-height:1;text-decoration:none;box-shadow:0 0 16px rgba(61,212,224,.12)}
+.cp-story-add:active{transform:scale(.98)}
 @media(max-width:400px){.cp-tokens-strip__grid{grid-template-columns:1fr;gap:10px}.cp-lamp-toggle{font-size:10px;padding:3px 7px}}
 @media(max-width:768px){
-  .cp-stories-mini{display:flex;align-items:flex-start;gap:10px;overflow-x:auto;padding:2px 0 12px;margin:-2px 0 8px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-  .cp-stories-mini::-webkit-scrollbar{display:none}
-  .cp-story-mini{flex:0 0 auto;width:72px;text-align:center;text-decoration:none;color:inherit}
-  .cp-story-ring{width:64px;height:64px;border-radius:50%;padding:2px;background:linear-gradient(145deg,#3dd4e0,#006680,#ff66d0);margin:0 auto 6px;box-shadow:0 0 20px rgba(61,212,224,.12)}
-  .cp-story-ring-inner{width:100%;height:100%;border-radius:50%;border:3px solid #080808;overflow:hidden;background:#111;display:flex;align-items:center;justify-content:center}
-  .cp-story-ring-inner img{width:100%;height:100%;object-fit:cover;display:block}
-  .cp-story-name{font-size:11px;color:#888;max-width:72px;margin:0 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .cp-story-add{width:64px;height:64px;border-radius:50%;border:2px dashed rgba(61,212,224,.55);background:rgba(8,10,16,.88);display:flex;align-items:center;justify-content:center;color:#3dd4e0;font-size:34px;font-weight:300;line-height:1;text-decoration:none;box-shadow:0 0 16px rgba(61,212,224,.12)}
-  .cp-story-add:active{transform:scale(.98)}
   .cp-header-lamp{
     top:calc(64px + env(safe-area-inset-top,0px) + 56px);
     left:10px;
