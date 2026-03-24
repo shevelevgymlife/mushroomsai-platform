@@ -89,9 +89,29 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 .cp-create-fab{display:none}
 .cp-prof-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:6px 0 10px;font-size:13px;color:#888}
 .cp-tokens-strip{position:relative;margin-top:2px;margin-bottom:14px;padding:15px 17px 14px;max-width:min(100%,560px);border-radius:26px 18px 24px 16px;background:linear-gradient(160deg,rgba(24,24,20,.94),rgba(10,10,14,.96));border:1px solid rgba(61,212,224,.56);box-shadow:0 18px 54px rgba(0,0,0,.52),0 0 34px rgba(61,212,224,.22),0 0 22px rgba(255,123,224,.14),inset 0 1px 0 rgba(255,255,255,.09);transform:rotate(-1.25deg) skewX(-1deg);overflow:visible}
-.cp-tokens-strip::before{content:"";position:absolute;left:8px;top:-34px;width:32px;height:32px;border-radius:50%;background:radial-gradient(circle at 50% 50%,rgba(255,236,190,.98) 0%,rgba(255,196,112,.92) 48%,rgba(188,112,36,.88) 74%,rgba(78,52,24,.92) 100%);filter:drop-shadow(0 0 12px rgba(255,214,130,.45));transform:rotate(-8deg);opacity:.95;transition:opacity .2s ease}
-.cp-tokens-strip::after{content:"";position:absolute;left:-36px;top:-88px;width:188px;height:188px;pointer-events:none;background:radial-gradient(circle at 30% 30%,rgba(255,238,186,.52) 0%,rgba(255,212,132,.28) 32%,rgba(255,194,116,.12) 56%,rgba(61,212,224,.06) 72%,transparent 100%);filter:blur(12px);opacity:.86;transition:opacity .2s ease}
-.cp-tokens-strip[data-lamp-off="1"]::before,.cp-tokens-strip[data-lamp-off="1"]::after{opacity:0}
+.cp-profile-lamp{
+  position:absolute;
+  top:-10px;
+  left:-10px;
+  z-index:3;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 8px;
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:999px;
+  background:rgba(9,12,18,.72);
+  backdrop-filter:blur(4px);
+}
+.cp-profile-lamp::before{
+  content:"";
+  width:20px;
+  height:20px;
+  border-radius:50%;
+  background:radial-gradient(circle at 50% 50%,rgba(255,236,190,.98) 0%,rgba(255,196,112,.92) 48%,rgba(188,112,36,.88) 74%,rgba(78,52,24,.92) 100%);
+  filter:drop-shadow(0 0 10px rgba(255,214,130,.45));
+}
+.cp-profile-lamp[data-lamp-off="1"]::before{opacity:.42;filter:none}
 .cp-tokens-strip__head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
 .cp-lamp-toggle{display:inline-flex;align-items:center;gap:8px;padding:4px 8px;border:1px solid rgba(255,255,255,.14);border-radius:999px;background:rgba(255,255,255,.04);color:#d0d5df;font-size:11px;font-weight:600}
 .cp-lamp-toggle input{appearance:none;width:30px;height:18px;border-radius:999px;background:#20242f;border:1px solid rgba(255,255,255,.22);position:relative;cursor:pointer;transition:all .2s ease}
@@ -149,6 +169,12 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
     <div class="ig-me-shell">
       <div class="ig-profile-head">
         <div class="ig-profile-av-wrap{% if profile.get('token_lamp_enabled') is not sameas false %} lamp-on{% endif %}">
+          {% if is_own %}
+          <label id="cpProfileLamp" class="cp-profile-lamp" data-lamp-off="{% if profile.get('token_lamp_enabled') is sameas false %}1{% else %}0{% endif %}" for="cpLampToggle" title="Свет у аватара">
+            <input id="cpLampToggle" type="checkbox" {% if profile.get('token_lamp_enabled') is not sameas false %}checked{% endif %} onchange="saveTokenLampEnabled(this.checked)">
+            <span id="cpLampToggleText">{% if profile.get('token_lamp_enabled') is not sameas false %}выкл свет{% else %}вкл свет{% endif %}</span>
+          </label>
+          {% endif %}
           {% if profile.avatar %}
           <img src="{{ profile.avatar }}" class="ig-profile-av" alt="{{ profile.name }}">
           {% else %}
@@ -197,10 +223,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
             <div class="cp-tokens-strip__head">
               <div class="cp-tokens-strip__title">Токены · Decimal</div>
               {% if is_own %}
-              <label class="cp-lamp-toggle" for="cpLampToggle">
-                <span>Свет</span>
-                <input id="cpLampToggle" type="checkbox" {% if profile.get('token_lamp_enabled') is not sameas false %}checked{% endif %} onchange="saveTokenLampEnabled(this.checked)">
-              </label>
+              <span class="cp-lamp-toggle"><span id="cpLampHintText">{% if profile.get('token_lamp_enabled') is not sameas false %}выкл свет{% else %}вкл свет{% endif %}</span></span>
               {% endif %}
             </div>
             <div class="cp-tokens-strip__grid" style="{% if show_del_cell and show_shev_cell %}grid-template-columns:1fr 1fr{% else %}grid-template-columns:1fr{% endif %}">
@@ -355,10 +378,17 @@ function applyTokenLampState(isOn){
   const on=!!isOn;
   const strip=document.getElementById('cpTokensStrip');
   const avWrap=document.querySelector('.ig-profile-av-wrap');
+  const lamp=document.getElementById('cpProfileLamp');
   const sw=document.getElementById('cpLampToggle');
+  const txt=document.getElementById('cpLampToggleText');
+  const hint=document.getElementById('cpLampHintText');
   if(strip){ strip.dataset.lampOff = on ? '0' : '1'; }
   if(avWrap){ avWrap.classList.toggle('lamp-on', on); }
+  if(lamp){ lamp.dataset.lampOff = on ? '0' : '1'; }
   if(sw && sw.checked!==on){ sw.checked=on; }
+  const label=on?'выкл свет':'вкл свет';
+  if(txt){ txt.textContent=label; }
+  if(hint){ hint.textContent=label; }
 }
 async function saveTokenLampEnabled(isOn){
   applyTokenLampState(!!isOn);
