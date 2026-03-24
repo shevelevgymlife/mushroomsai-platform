@@ -13,9 +13,12 @@ import secrets
 import string
 import httpx
 import urllib.parse
+import logging
+from services.ops_alerts import notify_security_event
 
 router = APIRouter()
 templates = Jinja2Templates(directory="web/templates")
+_logger = logging.getLogger(__name__)
 
 
 def _safe_next_path(raw: str | None) -> str | None:
@@ -80,6 +83,14 @@ async def login_email(
 ):
     user = await authenticate_user(email, password)
     if not user:
+        try:
+            safe_email = (email or "").strip()[:120]
+            await notify_security_event(
+                event="Неуспешный вход по email",
+                details=f"Email: {safe_email or '—'}",
+            )
+        except Exception:
+            pass
         from config import settings as _s
         _tid = _s.TELEGRAM_TOKEN.split(":")[0] if ":" in _s.TELEGRAM_TOKEN else ""
         return templates.TemplateResponse(
@@ -133,6 +144,13 @@ async def register_email(
 async def telegram_auth(request: Request):
     data = dict(request.query_params)
     if not verify_telegram_auth(data.copy()):
+        try:
+            await notify_security_event(
+                event="Невалидный Telegram auth payload",
+                details=f"IP: {request.client.host if request.client else '—'}",
+            )
+        except Exception:
+            pass
         return JSONResponse({"error": "Invalid auth"}, status_code=400)
 
     tg_id = int(data.get("id"))
@@ -175,6 +193,13 @@ async def telegram_miniapp_auth(request: Request):
 
         user_data = verify_telegram_miniapp(init_data)
         if not user_data:
+            try:
+                await notify_security_event(
+                    event="Невалидный Telegram MiniApp auth",
+                    details=f"IP: {request.client.host if request.client else '—'}",
+                )
+            except Exception:
+                pass
             return JSONResponse({"error": "Invalid Telegram data"}, status_code=400)
 
         tg_id = int(user_data.get("id"))
@@ -209,6 +234,14 @@ async def telegram_miniapp_auth(request: Request):
         return resp
 
     except Exception as e:
+        _logger.warning("telegram_miniapp_auth error: %s", e)
+        try:
+            await notify_security_event(
+                event="Ошибка авторизации Telegram MiniApp",
+                details=str(e)[:600],
+            )
+        except Exception:
+            pass
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
@@ -318,6 +351,14 @@ async def google_callback(request: Request):
         return resp
 
     except Exception as e:
+        _logger.warning("google_callback error: %s", e)
+        try:
+            await notify_security_event(
+                event="Ошибка входа через Google",
+                details=str(e)[:600],
+            )
+        except Exception:
+            pass
         from config import settings as _s
         _tid = _s.TELEGRAM_TOKEN.split(":")[0] if ":" in _s.TELEGRAM_TOKEN else ""
         return templates.TemplateResponse(

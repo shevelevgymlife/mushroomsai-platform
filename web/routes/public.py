@@ -32,6 +32,11 @@ from auth.session import get_user_from_request
 from config import settings, shevelev_token_address
 from services.legal import legal_acceptance_redirect
 from services.referral_service import attach_invite_ref_from_query
+from services.ops_alerts import (
+    notify_new_feedback,
+    notify_new_order,
+    notify_product_question,
+)
 from datetime import datetime
 
 
@@ -494,6 +499,10 @@ async def add_product_question(
             question_text=text[:4000],
         )
     )
+    try:
+        await notify_product_question(product_id=product_id, question_text=text, user_id=uid)
+    except Exception:
+        pass
     return RedirectResponse(f"/shop/{product_id}#questions", status_code=302)
 
 
@@ -746,6 +755,10 @@ async def shop_checkout_post(
         await database.execute(
             shop_cart_items.delete().where(shop_cart_items.c.id == it["line"]["id"])
         )
+    try:
+        await notify_new_order(order_id=int(oid or 0), user_id=uid, total_amount=total)
+    except Exception:
+        pass
     return RedirectResponse(f"/shop/order/{oid}", status_code=302)
 
 
@@ -1587,6 +1600,10 @@ async def contact_feedback(request: Request):
                 f"https://api.telegram.org/bot{settings.TELEGRAM_TOKEN}/sendMessage",
                 json={"chat_id": settings.ADMIN_TG_ID, "text": text},
             )
+    except Exception:
+        pass
+    try:
+        await notify_new_feedback(text=message, user_label="Гость")
     except Exception:
         pass
     return JSONResponse({"ok": True})

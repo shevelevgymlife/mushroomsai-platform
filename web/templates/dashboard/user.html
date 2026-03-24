@@ -625,34 +625,6 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
   transform:rotate(-1.25deg) skewX(-1deg);
   overflow:visible;
 }
-.my-tokens-inline::before{
-  content:"";
-  position:absolute;
-  left:8px;
-  top:-34px;
-  width:32px;
-  height:32px;
-  border-radius:50%;
-  pointer-events:none;
-  background:radial-gradient(circle at 50% 50%,rgba(255,236,190,.98) 0%,rgba(255,196,112,.92) 48%,rgba(188,112,36,.88) 74%,rgba(78,52,24,.92) 100%);
-  transform:rotate(-8deg);
-  filter:drop-shadow(0 0 12px rgba(255,214,130,.45));
-  opacity:.95;
-  transition:opacity .2s ease;
-}
-.my-tokens-inline::after{
-  content:"";
-  position:absolute;
-  left:-36px;
-  top:-88px;
-  width:188px;
-  height:188px;
-  pointer-events:none;
-  background:radial-gradient(circle at 30% 30%,rgba(255,238,186,.52) 0%,rgba(255,212,132,.28) 32%,rgba(255,194,116,.12) 56%,rgba(61,212,224,.06) 72%,transparent 100%);
-  filter:blur(12px);
-  opacity:.86;
-  transition:opacity .2s ease;
-}
 .my-tokens-inline[data-lamp-off="1"]::before,
 .my-tokens-inline[data-lamp-off="1"]::after{opacity:0}
 .my-tokens-inline__title{
@@ -681,6 +653,30 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 }
 .my-lamp-toggle input:checked{background:rgba(61,212,224,.35);border-color:rgba(61,212,224,.62)}
 .my-lamp-toggle input:checked::after{left:14px;background:#d8fbff}
+.my-lamp-top{
+  position:absolute;
+  top:0;
+  left:0;
+  transform:translate(-10px,-10px);
+  z-index:3;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  pointer-events:auto;
+}
+.my-lamp-top::before{
+  content:"";
+  width:30px;
+  height:30px;
+  border-radius:50%;
+  pointer-events:none;
+  background:radial-gradient(circle at 50% 50%,rgba(255,236,190,.98) 0%,rgba(255,196,112,.92) 48%,rgba(188,112,36,.88) 74%,rgba(78,52,24,.92) 100%);
+  transform:rotate(-8deg);
+  filter:drop-shadow(0 0 12px rgba(255,214,130,.45));
+  opacity:.95;
+  transition:opacity .2s ease;
+}
+.my-lamp-top[data-lamp-off="1"]::before{opacity:0}
 .ig-profile-av-wrap.lamp-on::after{
   content:"";position:absolute;inset:-34px;pointer-events:none;border-radius:50%;
   background:radial-gradient(circle at 45% 38%,rgba(255,242,198,.58) 0%,rgba(255,220,152,.32) 28%,rgba(255,201,118,.14) 48%,rgba(61,212,224,.07) 64%,transparent 84%);
@@ -690,6 +686,8 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 @media(max-width:400px){
   .my-tokens-inline__grid{grid-template-columns:1fr;gap:8px}
   .my-lamp-toggle{font-size:10px;padding:3px 7px}
+  .my-lamp-top{transform:translate(-6px,-8px);gap:6px}
+  .my-lamp-top::before{width:26px;height:26px}
 }
 @keyframes igMsgIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 </style>
@@ -936,6 +934,12 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
       <div class="ig-me-shell">
         <div class="ig-profile-head">
           <div class="ig-profile-av-wrap{% if user.get('token_lamp_enabled') is not sameas false %} lamp-on{% endif %}" onclick="document.getElementById('avInputMe').click()" title="Сменить фото">
+            <div id="myLampTop" class="my-lamp-top" data-lamp-off="{% if user.get('token_lamp_enabled') is sameas false %}1{% else %}0{% endif %}" onclick="event.stopPropagation()">
+              <label class="my-lamp-toggle" for="tokenLampToggleMe">
+                <span id="tokenLampToggleMeText">{% if user.get('token_lamp_enabled') is not sameas false %}выкл свет{% else %}вкл свет{% endif %}</span>
+                <input id="tokenLampToggleMe" type="checkbox" {% if user.get('token_lamp_enabled') is not sameas false %}checked{% endif %} onchange="saveTokenLampEnabled(this.checked)">
+              </label>
+            </div>
             {% if user.avatar %}
             <img id="avImgMe" src="{{ user.avatar }}" class="ig-profile-av" alt="">
             {% else %}
@@ -962,10 +966,6 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
             <div id="myTokensDock" class="my-tokens-inline{% if user.get('token_lamp_enabled') is not sameas false %} lamp-on{% endif %}" data-lamp-off="{% if user.get('token_lamp_enabled') is sameas false %}1{% else %}0{% endif %}" aria-label="Мои токены в сети Decimal" title="Обновляются автоматически, пока вы на сайте">
               <div class="my-tokens-inline__head">
                 <div class="my-tokens-inline__title">Мои токены · Decimal</div>
-                <label class="my-lamp-toggle" for="tokenLampToggleMe">
-                  <span>Свет</span>
-                  <input id="tokenLampToggleMe" type="checkbox" {% if user.get('token_lamp_enabled') is not sameas false %}checked{% endif %} onchange="saveTokenLampEnabled(this.checked)">
-                </label>
               </div>
               <div class="my-tokens-inline__grid">
                 <div class="my-tokens-inline__cell">
@@ -1977,18 +1977,26 @@ function _escHtmlFl(t){
 function applyTokenLampState(isOn){
   const dock=document.getElementById('myTokensDock');
   const avWrap=document.querySelector('.ig-profile-av-wrap');
+  const lampTop=document.getElementById('myLampTop');
   const sw=document.getElementById('tokenLampToggleMe');
+  const swTxt=document.getElementById('tokenLampToggleMeText');
   const swSettings=document.getElementById('tokenLampToggleSettings');
   const on=!!isOn;
   if(dock){
     dock.dataset.lampOff = on ? '0' : '1';
     dock.classList.toggle('lamp-on', on);
   }
+  if(lampTop){
+    lampTop.dataset.lampOff = on ? '0' : '1';
+  }
   if(avWrap){
     avWrap.classList.toggle('lamp-on', on);
   }
   if(sw && sw.checked!==on){
     sw.checked=on;
+  }
+  if(swTxt){
+    swTxt.textContent = on ? 'выкл свет' : 'вкл свет';
   }
   if(swSettings && swSettings.checked!==on){
     swSettings.checked=on;
