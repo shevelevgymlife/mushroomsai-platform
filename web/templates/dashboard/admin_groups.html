@@ -98,7 +98,14 @@
               <p class="font-medium text-text">{{ g.name }}</p>
               <p class="text-xs text-muted mt-1">#{{ g.id }} · создал: {{ g.creator_name or '—' }} (id {{ g.created_by or '—' }}) · {{ g.member_count or 0 }} уч. · {{ g.msg_count or 0 }} сообщ.</p>
             </div>
-            <button type="button" onclick="deleteGroup({{ g.id }})" class="text-xs px-3 py-1.5 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25">Удалить группу</button>
+            <div class="flex items-center gap-2">
+              {% if g.image_url %}
+              <img src="{{ g.image_url }}" alt="" class="w-10 h-10 rounded-lg object-cover border border-border">
+              {% endif %}
+              <input type="file" id="gimg-{{ g.id }}" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none" onchange="uploadGroupImageAdmin({{ g.id }}, this)">
+              <button type="button" onclick="document.getElementById('gimg-{{ g.id }}').click()" class="text-xs px-3 py-1.5 rounded-lg bg-cyan-500/15 text-cyan-200 hover:bg-cyan-500/25">Фото</button>
+              <button type="button" onclick="deleteGroup({{ g.id }})" class="text-xs px-3 py-1.5 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25">Удалить группу</button>
+            </div>
           </div>
           <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
             <div>
@@ -352,6 +359,26 @@ async function deleteGroup(gid){
     if(r.ok && d.ok){ location.reload(); }
     else { alert(d.error || 'Ошибка'); }
   }catch(e){ alert('Сеть'); }
+}
+
+async function uploadGroupImageAdmin(gid, inp){
+  if(!inp || !inp.files || !inp.files[0]) return;
+  const fd = new FormData();
+  fd.append('file', inp.files[0]);
+  try{
+    const r = await fetch('/admin/groups/'+gid+'/upload-image', {
+      method:'POST',
+      body: fd,
+      credentials:'same-origin'
+    });
+    const d = await r.json().catch(()=>({}));
+    if(r.ok && d.ok){ location.reload(); }
+    else { alert(d.error || 'Ошибка загрузки'); }
+  }catch(e){
+    alert('Сеть');
+  }finally{
+    inp.value = '';
+  }
 }
 
 document.addEventListener('DOMContentLoaded', initPolicyUI);

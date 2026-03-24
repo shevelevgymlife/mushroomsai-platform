@@ -1434,6 +1434,41 @@ async def admin_group_delete(request: Request, group_id: int):
     return JSONResponse({"ok": True})
 
 
+@router.post("/groups/{group_id}/upload-image")
+async def admin_group_upload_image(request: Request, group_id: int, file: UploadFile = File(...)):
+    admin = await require_admin(request)
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    g = await fetch_community_group_row(group_id)
+    if not g:
+        return JSONResponse({"error": "not found"}, status_code=404)
+
+    allowed = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+    ct = (file.content_type or "").lower()
+    if ct not in allowed:
+        return JSONResponse({"error": "Нужен JPEG, PNG, WebP или GIF"}, status_code=400)
+
+    data = await file.read()
+    if len(data) > 6 * 1024 * 1024:
+        return JSONResponse({"error": "Файл слишком большой (макс. 6 МБ)"}, status_code=400)
+
+    ext = file.filename.rsplit(".", 1)[-1].lower() if file.filename and "." in file.filename else "jpg"
+    if ext not in ("jpg", "jpeg", "png", "webp", "gif"):
+        ext = "jpg"
+    filename = f"g{group_id}_{uuid.uuid4().hex}.{ext}"
+    base = "/data" if os.path.exists("/data") else "./media"
+    save_path = os.path.join(base, "community", "groups", filename)
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    with open(save_path, "wb") as f:
+        f.write(data)
+
+    image_url = f"/media/community/groups/{filename}"
+    await database.execute(
+        community_groups.update().where(community_groups.c.id == group_id).values(image_url=image_url)
+    )
+    return JSONResponse({"ok": True, "image_url": image_url})
+
+
 # ─── Legacy routes ────────────────────────────────────────────────────────────
 
 @router.get("/analytics", response_class=HTMLResponse)
