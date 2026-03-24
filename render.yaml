@@ -5,6 +5,8 @@ services:
     # 3.11.0 на Render часто недоступен → failed build; см. https://render.com/docs/python-version
     buildCommand: pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    # Лёгкий путь: не грузить главную и шаблоны при health check / zero-downtime.
+    healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.11"
