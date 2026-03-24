@@ -1065,6 +1065,7 @@ body.dash-ig-app .ig-lamp-topbar{
             </div>
             <div style="margin-top:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
               <button type="button" class="btn-o" style="font-size:13px;padding:8px 18px" onclick="(function(){var p=document.getElementById('meEditPanel');if(!p)return;p.style.display=p.style.display==='none'||!p.style.display?'block':'none';})()">Редактировать профиль</button>
+              <input id="profileLightToggle" class="profile-light-toggle" type="checkbox" {% if user.get('token_lamp_enabled') is not sameas false %}checked{% endif %} onchange="saveTokenLampEnabled(this.checked)" aria-label="Свет токенов">
             </div>
             <div id="myTokensDock" class="my-tokens-inline{% if user.get('token_lamp_enabled') is not sameas false %} lamp-on{% endif %}" data-lamp-off="{% if user.get('token_lamp_enabled') is sameas false %}1{% else %}0{% endif %}" aria-label="Мои токены в сети Decimal" title="Обновляются автоматически, пока вы на сайте">
               <div class="my-tokens-inline__head">
