@@ -3,7 +3,7 @@ import logging
 import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -458,6 +458,12 @@ app.add_middleware(LanguageMiddleware)
 
 # Static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon_ico():
+    """Browsers request /favicon.ico by default; redirect to SVG in static."""
+    return RedirectResponse(url="/static/favicon.svg?v=1", status_code=302)
 
 # Persistent media (Render Disk at /data, fallback to ./media locally)
 if os.path.exists("/data"):
