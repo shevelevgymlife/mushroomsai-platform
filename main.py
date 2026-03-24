@@ -377,6 +377,8 @@ async def lifespan(app: FastAPI):
     primary_token = (settings.TELEGRAM_TOKEN or "").strip()
     if primary_token:
         try:
+            for _log in ("httpx", "httpcore", "telegram.request"):
+                logging.getLogger(_log).setLevel(logging.WARNING)
             from bot.main_bot import create_bot
             bot_app = create_bot()
             await bot_app.initialize()

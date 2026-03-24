@@ -1,5 +1,9 @@
 import logging
 
+# До импорта telegram: иначе httpx может снова слать INFO с полным URL (токен в логах)
+for _log in ("httpx", "httpcore", "telegram.request"):
+    logging.getLogger(_log).setLevel(logging.WARNING)
+
 from telegram import MenuButtonWebApp, WebAppInfo
 from telegram.ext import (
     Application,
