@@ -353,9 +353,9 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
         <div id="profilePreviewTitle" style="display:none;font-size:18px;font-weight:700;color:#f3f4f6;line-height:1.25;margin-bottom:8px"></div>
         <div id="profilePreviewContent" style="font-size:14px;color:#c4c8d3;line-height:1.55;white-space:pre-wrap;word-break:break-word"></div>
         <div id="profilePreviewMetrics" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px">
-          <div style="display:flex;align-items:center;justify-content:center;gap:8px;min-height:54px;border-radius:14px;border:1px solid rgba(255,216,79,.45);background:linear-gradient(160deg,rgba(255,216,79,.2),rgba(12,13,20,.92));color:#ffe57f;font-size:19px;font-weight:800">⭐ <span id="profilePreviewLikes" style="font-size:22px;line-height:1">0</span></div>
+          <button type="button" onclick="profilePreviewLike()" style="display:flex;align-items:center;justify-content:center;gap:8px;min-height:54px;border-radius:14px;border:1px solid rgba(255,216,79,.45);background:linear-gradient(160deg,rgba(255,216,79,.2),rgba(12,13,20,.92));color:#ffe57f;font-size:19px;font-weight:800;cursor:pointer"><span id="profilePreviewLikeIcon">✩</span><span id="profilePreviewLikes" style="font-size:22px;line-height:1">0</span></button>
           <div style="display:flex;align-items:center;justify-content:center;gap:8px;min-height:54px;border-radius:14px;border:1px solid rgba(139,233,255,.4);background:linear-gradient(160deg,rgba(139,233,255,.18),rgba(12,13,20,.92));color:#9df0ff;font-size:19px;font-weight:800">💬 <span id="profilePreviewComments" style="font-size:22px;line-height:1">0</span></div>
-          <div style="display:flex;align-items:center;justify-content:center;gap:8px;min-height:54px;border-radius:14px;border:1px solid rgba(247,179,255,.4);background:linear-gradient(160deg,rgba(247,179,255,.18),rgba(12,13,20,.92));color:#ffc6ff;font-size:19px;font-weight:800">↗ <span id="profilePreviewSaves" style="font-size:22px;line-height:1">0</span></div>
+          <button type="button" onclick="profilePreviewShare()" style="display:flex;align-items:center;justify-content:center;gap:8px;min-height:54px;border-radius:14px;border:1px solid rgba(247,179,255,.4);background:linear-gradient(160deg,rgba(247,179,255,.18),rgba(12,13,20,.92));color:#ffc6ff;font-size:19px;font-weight:800;cursor:pointer">↗ <span id="profilePreviewSaves" style="font-size:22px;line-height:1">0</span></button>
         </div>
         <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)">
           <div style="font-size:12px;color:#8a8fa0;margin-bottom:8px">Комментарии</div>
@@ -747,6 +747,39 @@ function closeProfilePreviewImageFull(){
   const wrap=document.getElementById('profilePreviewInlinePhotoWrap');
   if(wrap) wrap.style.display='none';
 }
+async function profilePreviewLike(){
+  const pid=Number(document.getElementById('profilePreviewPostId')&&document.getElementById('profilePreviewPostId').value||0);
+  if(!pid) return;
+  const likeIcon=document.getElementById('profilePreviewLikeIcon');
+  const likeCnt=document.getElementById('profilePreviewLikes');
+  const wasLiked=likeIcon&&likeIcon.textContent==='⭐';
+  const base=parseInt(likeCnt&&likeCnt.textContent||'0',10)||0;
+  if(likeIcon) likeIcon.textContent=wasLiked?'✩':'⭐';
+  if(likeCnt) likeCnt.textContent=String(Math.max(0, base + (wasLiked?-1:1)));
+  try{
+    const r=await fetch('/community/like/'+pid,{method:'POST'});
+    const d=await r.json().catch(()=>({}));
+    const liked=!!d.liked;
+    const count=(typeof d.count==='number')?Math.max(0,d.count):Math.max(0, base + (wasLiked?-1:1));
+    if(likeIcon) likeIcon.textContent=liked?'⭐':'✩';
+    if(likeCnt) likeCnt.textContent=String(count);
+    const baseBtn=document.getElementById('lk-'+pid);
+    const baseCnt=document.getElementById('lkc-'+pid);
+    if(baseBtn){
+      const icon=baseBtn.querySelector('span');
+      if(icon) icon.textContent=liked?'⭐':'✩';
+    }
+    if(baseCnt) baseCnt.textContent=String(count);
+  }catch(e){
+    if(likeIcon) likeIcon.textContent=wasLiked?'⭐':'✩';
+    if(likeCnt) likeCnt.textContent=String(base);
+  }
+}
+function profilePreviewShare(){
+  const pid=Number(document.getElementById('profilePreviewPostId')&&document.getElementById('profilePreviewPostId').value||0);
+  if(!pid) return;
+  openSharePostModal(pid);
+}
 function profilePreviewApplyZoom(){
   const img=document.getElementById('profilePreviewImage');
   if(!img) return;
@@ -826,10 +859,16 @@ function openProfilePostPreview(event, card){
   const likesEl=document.getElementById('profilePreviewLikes');
   const commentsEl=document.getElementById('profilePreviewComments');
   const savesEl=document.getElementById('profilePreviewSaves');
+  const likeIconEl=document.getElementById('profilePreviewLikeIcon');
   if(err) err.style.display='none';
   if(likesEl) likesEl.textContent=String(likes);
   if(commentsEl) commentsEl.textContent=String(comments);
   if(savesEl) savesEl.textContent=String(saves);
+  const baseLikeBtn=document.getElementById('lk-'+pid);
+  const baseLikeIcon=baseLikeBtn?baseLikeBtn.querySelector('span'):null;
+  if(likeIconEl){
+    likeIconEl.textContent=(baseLikeIcon&&baseLikeIcon.textContent==='⭐')?'⭐':'✩';
+  }
   modal.style.display='flex';
   try{ document.body.style.overflow='hidden'; }catch(e){}
   try{ document.documentElement.style.overflowX='hidden'; document.body.style.overflowX='hidden'; }catch(e){}

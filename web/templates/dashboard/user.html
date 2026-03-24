@@ -2118,9 +2118,9 @@ body.dash-ig-app .ig-lamp-topbar{
       <div id="feedPreviewTitle" style="display:none;font-size:18px;font-weight:700;color:#f3f4f6;line-height:1.25;margin-bottom:8px"></div>
       <div id="feedPreviewContent" style="font-size:14px;color:#c4c8d3;line-height:1.55;white-space:pre-wrap;word-break:break-word"></div>
       <div id="feedPreviewMetrics" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px">
-        <div style="display:flex;align-items:center;justify-content:center;gap:8px;min-height:54px;border-radius:14px;border:1px solid rgba(255,216,79,.45);background:linear-gradient(160deg,rgba(255,216,79,.2),rgba(12,13,20,.92));color:#ffe57f;font-size:19px;font-weight:800">⭐ <span id="feedPreviewLikes" style="font-size:22px;line-height:1">0</span></div>
+        <button type="button" onclick="feedPreviewLike()" style="display:flex;align-items:center;justify-content:center;gap:8px;min-height:54px;border-radius:14px;border:1px solid rgba(255,216,79,.45);background:linear-gradient(160deg,rgba(255,216,79,.2),rgba(12,13,20,.92));color:#ffe57f;font-size:19px;font-weight:800;cursor:pointer"><span id="feedPreviewLikeIcon">✩</span><span id="feedPreviewLikes" style="font-size:22px;line-height:1">0</span></button>
         <div style="display:flex;align-items:center;justify-content:center;gap:8px;min-height:54px;border-radius:14px;border:1px solid rgba(139,233,255,.4);background:linear-gradient(160deg,rgba(139,233,255,.18),rgba(12,13,20,.92));color:#9df0ff;font-size:19px;font-weight:800">💬 <span id="feedPreviewComments" style="font-size:22px;line-height:1">0</span></div>
-        <div style="display:flex;align-items:center;justify-content:center;gap:8px;min-height:54px;border-radius:14px;border:1px solid rgba(247,179,255,.4);background:linear-gradient(160deg,rgba(247,179,255,.18),rgba(12,13,20,.92));color:#ffc6ff;font-size:19px;font-weight:800">↗ <span id="feedPreviewSaves" style="font-size:22px;line-height:1">0</span></div>
+        <button type="button" onclick="feedPreviewShare()" style="display:flex;align-items:center;justify-content:center;gap:8px;min-height:54px;border-radius:14px;border:1px solid rgba(247,179,255,.4);background:linear-gradient(160deg,rgba(247,179,255,.18),rgba(12,13,20,.92));color:#ffc6ff;font-size:19px;font-weight:800;cursor:pointer">↗ <span id="feedPreviewSaves" style="font-size:22px;line-height:1">0</span></button>
       </div>
       <div id="feedPreviewCommentsWrap" style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)">
         <div style="font-size:12px;color:#8a8fa0;margin-bottom:8px">Комментарии</div>
@@ -4211,6 +4211,14 @@ function openFeedPostPreview(event, card){
   if(likesEl) likesEl.textContent=String(likes);
   if(commentsEl) commentsEl.textContent=String(comments);
   if(savesEl) savesEl.textContent=String(saves);
+  const likeIconEl=document.getElementById('feedPreviewLikeIcon');
+  const feedLikeBtn=document.getElementById('like-btn-'+pid);
+  const profileLikeBtn=document.getElementById('profile-like-btn-'+pid);
+  const baseLikeBtn=feedLikeBtn||profileLikeBtn;
+  const baseLikeIcon=baseLikeBtn?baseLikeBtn.querySelector('span'):null;
+  if(likeIconEl){
+    likeIconEl.textContent=(baseLikeIcon&&baseLikeIcon.textContent==='⭐')?'⭐':'✩';
+  }
   modal.style.display='flex';
   try{ document.body.style.overflow='hidden'; }catch(e){}
   try{ document.documentElement.style.overflowX='hidden'; document.body.style.overflowX='hidden'; }catch(e){}
@@ -4237,6 +4245,43 @@ function openFeedPreviewImageFull(){
 function closeFeedPreviewImageFull(){
   const wrap=document.getElementById('feedPreviewInlinePhotoWrap');
   if(wrap) wrap.style.display='none';
+}
+async function feedPreviewLike(){
+  const pid=Number(document.getElementById('feedPreviewPostId')&&document.getElementById('feedPreviewPostId').value||0);
+  if(!pid) return;
+  const likeIcon=document.getElementById('feedPreviewLikeIcon');
+  const likeCnt=document.getElementById('feedPreviewLikes');
+  const wasLiked=likeIcon&&likeIcon.textContent==='⭐';
+  const base=parseInt(likeCnt&&likeCnt.textContent||'0',10)||0;
+  if(likeIcon) likeIcon.textContent=wasLiked?'✩':'⭐';
+  if(likeCnt) likeCnt.textContent=String(Math.max(0, base + (wasLiked?-1:1)));
+  try{
+    const r=await fetch('/community/like/'+pid,{method:'POST'});
+    const d=await r.json().catch(()=>({}));
+    const liked=!!d.liked;
+    const count=(typeof d.count==='number')?Math.max(0,d.count):Math.max(0, base + (wasLiked?-1:1));
+    if(likeIcon) likeIcon.textContent=liked?'⭐':'✩';
+    if(likeCnt) likeCnt.textContent=String(count);
+    const feedBtn=document.getElementById('like-btn-'+pid);
+    const profileBtn=document.getElementById('profile-like-btn-'+pid);
+    [feedBtn,profileBtn].forEach(function(btn){
+      if(!btn) return;
+      const icon=btn.querySelector('span');
+      const cnt=btn.querySelector('.n');
+      if(icon) icon.textContent=liked?'⭐':'✩';
+      if(cnt) cnt.textContent=String(count);
+      btn.style.color=liked?'#ffd84f':'';
+    });
+  }catch(e){
+    if(likeIcon) likeIcon.textContent=wasLiked?'⭐':'✩';
+    if(likeCnt) likeCnt.textContent=String(base);
+    showNotification('Ошибка','error');
+  }
+}
+function feedPreviewShare(){
+  const pid=Number(document.getElementById('feedPreviewPostId')&&document.getElementById('feedPreviewPostId').value||0);
+  if(!pid) return;
+  openSharePostModal(pid);
 }
 function feedPreviewApplyZoom(){
   const img=document.getElementById('feedPreviewImage');
