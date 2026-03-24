@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}{{ circle.name }} — {{ profile.name }}{% endblock %}
+{% block content %}
+<div style="max-width:900px;margin:24px auto;padding:0 12px 24px">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px">
+    <a href="{{ back_url }}" style="text-decoration:none;border:1px solid rgba(255,255,255,.2);padding:8px 14px;border-radius:10px;color:#e8e8e8">Закрыть</a>
+    <div style="font-weight:700;font-size:18px;color:#e8e8e8">{{ circle.name }}</div>
+    {% if is_owner_view %}
+    <button type="button" onclick="toggleUploadBlock()" style="border:1px solid rgba(61,212,224,.45);background:rgba(61,212,224,.1);color:#3dd4e0;border-radius:10px;padding:8px 12px;cursor:pointer">Загрузить</button>
+    {% else %}
+    <div style="font-size:12px;color:#888">{{ profile.name }}</div>
+    {% endif %}
+  </div>
+  {% if is_owner_view %}
+  <div id="uploadBlock" style="display:none;margin-bottom:12px;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px">
+    <input id="pickerSearch" type="text" placeholder="Найти пост по названию..." style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0c0f14;color:#e8e8e8" oninput="loadPickerPosts()">
+    <div id="pickerList" style="margin-top:10px;max-height:260px;overflow:auto"></div>
+  </div>
+  {% endif %}
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
+    {% for p in posts %}
+    <a href="/community/post/{{ p.id }}" style="display:block;border:1px solid rgba(255,255,255,.14);border-radius:14px;overflow:hidden;background:#0f1118;text-decoration:none;color:inherit">
+      {% if p.image_url %}
+      <img src="{{ p.image_url }}" alt="" style="width:100%;aspect-ratio:4/5;object-fit:cover;display:block">
+      {% else %}
+      <div style="aspect-ratio:4/5;display:flex;align-items:center;justify-content:center;color:#666">🍄</div>
+      {% endif %}
+      <div style="padding:10px">
+        <div style="font-size:13px;font-weight:700;color:#e8e8e8">{{ p.title or ('Пост #' ~ p.id) }}</div>
+      </div>
+    </a>
+    {% endfor %}
+    {% if not posts %}
+    <div style="grid-column:1/-1;text-align:center;padding:24px;color:#666">В этом кружке пока нет постов</div>
+    {% endif %}
+  </div>
+</div>
+{% if is_owner_view %}
+<script>
+function esc(s){const d=document.createElement('div');d.textContent=s==null?'':String(s);return d.innerHTML;}
+let uploadOpen=false;
+function toggleUploadBlock(){
+  uploadOpen=!uploadOpen;
+  const b=document.getElementById('uploadBlock');
+  if(!b) return;
+  b.style.display=uploadOpen?'block':'none';
+  if(uploadOpen) loadPickerPosts();
+}
+async function loadPickerPosts(){
+  const list=document.getElementById('pickerList');
+  if(!list) return;
+  const q=(document.getElementById('pickerSearch')?.value||'').trim();
+  list.innerHTML='<div style="padding:10px;color:#777">Загрузка...</div>';
+  const r=await fetch('/community/circle/{{ circle.id }}/picker-posts?q='+encodeURIComponent(q),{credentials:'same-origin'});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok||!d.ok){ list.innerHTML='<div style="padding:10px;color:#f87171">'+(d.error||'Ошибка')+'</div>'; return; }
+  const posts=Array.isArray(d.posts)?d.posts:[];
+  if(!posts.length){ list.innerHTML='<div style="padding:10px;color:#666">Посты не найдены</div>'; return; }
+  list.innerHTML=posts.map(p=>'<div style="display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)"><div style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(p.title||('Пост #'+p.id))+'</div><button type="button" onclick="attach('+p.id+')" style="border:1px solid rgba(61,212,224,.45);background:rgba(61,212,224,.1);color:#3dd4e0;border-radius:8px;padding:6px 10px;cursor:pointer">Загрузить</button></div>').join('');
+}
+async function attach(postId){
+  const fd=new FormData();
+  fd.append('post_id',String(postId));
+  const r=await fetch('/community/circle/{{ circle.id }}/attach',{method:'POST',body:fd,credentials:'same-origin'});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok||!d.ok){ alert(d.error||'Не удалось загрузить'); return; }
+  location.reload();
+}
+</script>
+{% endif %}
+{% endblock %}

@@ -266,12 +266,11 @@ async def dashboard(request: Request):
         .limit(120)
     )
 
-    # Feed: last 20 approved posts
+    # Feed: all approved posts (pagination on frontend, 20 per page)
     feed_raw = await database.fetch_all(
         community_posts.select()
         .where(community_posts.c.approved == True)
         .order_by(community_posts.c.pinned.desc(), community_posts.c.created_at.desc())
-        .limit(20)
     )
     feed_authors = {}
     for p in feed_raw:

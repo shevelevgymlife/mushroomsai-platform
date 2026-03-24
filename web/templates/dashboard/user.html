@@ -1269,7 +1269,6 @@ body.dash-ig-app .ig-lamp-topbar{
       <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
         <button data-tab="all" class="feed-tab feed-tab-active" onclick="feedTab('all',this)">Все</button>
         <button data-tab="following" class="feed-tab" onclick="feedTab('following',this)">Подписки</button>
-        <button data-tab="mine" class="feed-tab" onclick="feedTab('mine',this)">Мои посты</button>
       </div>
       <div id="feedChaosWrap">
         <label class="feed-chaos-toggle" for="feedChaosToggle">
@@ -1367,6 +1366,7 @@ body.dash-ig-app .ig-lamp-topbar{
       </div>
       {% endif %}
       </div>
+      <div id="feedPagination" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;padding:14px 0 4px"></div>
       </div><!-- /ig-feed-shell -->
       {% else %}
       <div class="ig-feed-shell">
@@ -2986,30 +2986,79 @@ async function loadDMPreview(){
   }catch(e){list.innerHTML='<div style="text-align:center;padding:40px;color:#444">Ошибка загрузки</div>';}
 }
 
-// ── Feed tabs ──
-function feedTab(tab, btn){
-  // Update button styles
-  document.querySelectorAll('.feed-tab').forEach(b=>b.classList.remove('feed-tab-active'));
-  btn.classList.add('feed-tab-active');
-  // Show/hide posts
-  document.querySelectorAll('#feedPosts .fp').forEach(el=>{
-    const mine=el.dataset.mine==='true';
-    const following=el.dataset.following==='true'||mine;
-    let show=true;
-    if(tab==='mine')show=mine;
-    else if(tab==='following')show=following;
-    el.style.display=show?'':'none';
-  });
-  // Empty state
-  const visible=[...document.querySelectorAll('#feedPosts .fp')].filter(el=>el.style.display!=='none');
-  let empty=document.getElementById('feedEmpty');
-  if(!visible.length){
-    if(!empty){empty=document.createElement('div');empty.id='feedEmpty';empty.style.cssText='text-align:center;padding:40px 0;color:#444';empty.innerHTML='<div style="font-size:36px;margin-bottom:8px">🍄</div><div>Нет постов</div>';document.getElementById('feedPosts').appendChild(empty);}
-  }else{empty?.remove();}
+// ── Feed tabs + pagination (20 posts per page) ──
+const FEED_PAGE_SIZE = 20;
+let currentFeedTab = 'all';
+let currentFeedPage = 1;
+
+function _isVisibleForTab(el, tab){
+  const mine = el.dataset.mine === 'true';
+  const following = el.dataset.following === 'true' || mine;
+  if(tab === 'following') return following;
+  return true;
 }
+
+function renderFeedPage(){
+  const allPosts = [...document.querySelectorAll('#feedPosts .fp')];
+  const filtered = allPosts.filter(el => _isVisibleForTab(el, currentFeedTab));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / FEED_PAGE_SIZE));
+  if(currentFeedPage > totalPages) currentFeedPage = totalPages;
+  if(currentFeedPage < 1) currentFeedPage = 1;
+  const start = (currentFeedPage - 1) * FEED_PAGE_SIZE;
+  const end = start + FEED_PAGE_SIZE;
+  const visibleSet = new Set(filtered.slice(start, end));
+
+  allPosts.forEach(el => {
+    el.style.display = visibleSet.has(el) ? '' : 'none';
+  });
+
+  let empty = document.getElementById('feedEmpty');
+  if(!filtered.length){
+    if(!empty){
+      empty = document.createElement('div');
+      empty.id = 'feedEmpty';
+      empty.style.cssText = 'text-align:center;padding:40px 0;color:#444';
+      empty.innerHTML = '<div style="font-size:36px;margin-bottom:8px">🍄</div><div>Нет постов</div>';
+      document.getElementById('feedPosts').appendChild(empty);
+    }
+  } else {
+    empty?.remove();
+  }
+
+  const pag = document.getElementById('feedPagination');
+  if(!pag) return;
+  pag.innerHTML = '';
+  if(filtered.length <= FEED_PAGE_SIZE) return;
+  for(let p = 1; p <= totalPages; p++){
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = String(p);
+    b.className = 'feed-tab' + (p === currentFeedPage ? ' feed-tab-active' : '');
+    b.style.minWidth = '42px';
+    b.onclick = function(){
+      currentFeedPage = p;
+      renderFeedPage();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    pag.appendChild(b);
+  }
+}
+
+function feedTab(tab, btn){
+  currentFeedTab = tab;
+  currentFeedPage = 1;
+  document.querySelectorAll('.feed-tab[data-tab]').forEach(b => b.classList.remove('feed-tab-active'));
+  if(btn) btn.classList.add('feed-tab-active');
+  renderFeedPage();
+}
+
 function refreshFeedEmptyState(){
-  const active=document.querySelector('.feed-tab.feed-tab-active');
-  if(active) feedTab(active.dataset.tab, active);
+  renderFeedPage();
+}
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded', function(){ renderFeedPage(); });
+}else{
+  renderFeedPage();
 }
 
 // ── Like feed post ──

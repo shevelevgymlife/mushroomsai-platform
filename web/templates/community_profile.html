@@ -52,6 +52,12 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 .ig-post-cell img{width:100%;height:100%;object-fit:cover;display:block}
 .ig-post-cell-ph{display:flex;align-items:center;justify-content:center;font-size:10px;color:#666;padding:8px;text-align:center;line-height:1.35;overflow:hidden}
 .ig-post-cell-ico{position:absolute;top:6px;right:6px;font-size:12px;opacity:.9;text-shadow:0 1px 4px #000}
+.cp-circles-row{display:flex;align-items:flex-start;gap:12px;overflow-x:auto;padding:8px 2px 6px;margin:6px 0 10px}
+.cp-circle-item{display:flex;flex-direction:column;align-items:center;gap:6px;text-decoration:none;color:inherit;min-width:72px}
+.cp-circle-avatar{width:72px;height:72px;border-radius:50%;border:2px solid rgba(61,212,224,.55);overflow:hidden;background:#10131a;display:flex;align-items:center;justify-content:center}
+.cp-circle-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.cp-circle-name{max-width:84px;font-size:11px;color:#cfd3dc;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cp-circle-add-btn{width:72px;height:72px;border-radius:50%;border:2px dashed rgba(61,212,224,.55);background:rgba(61,212,224,.07);color:#3dd4e0;font-size:30px;line-height:1;cursor:pointer}
 
 .ig-feed-shell{max-width:min(1100px,100%);margin:0 auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:start}
 .ig-post{position:relative;border:1px solid rgba(255,255,255,.12);border-radius:20px;overflow:visible;background:linear-gradient(165deg,rgba(255,255,255,.07),rgba(10,10,13,.92));margin-bottom:0;box-shadow:0 16px 50px rgba(0,0,0,.44),0 0 0 1px rgba(61,212,224,.06)}
@@ -263,6 +269,20 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
       {% if profile.get('profile_link_url') %}
       <a href="{{ profile.profile_link_url }}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:8px;color:#3dd4e0;font-weight:600;font-size:14px;margin-bottom:14px;text-decoration:none;border-bottom:1px solid rgba(61,212,224,.35);padding-bottom:2px">{{ profile.get('profile_link_label') or profile.profile_link_url }}</a>
       {% endif %}
+      <div id="profileCirclesRow" class="cp-circles-row">
+        {% for c in circles %}
+        <a class="cp-circle-item" href="/community/profile/{{ profile_id }}/circle/{{ c.id }}">
+          <div class="cp-circle-avatar">
+            {% if c.cover_image %}<img src="{{ c.cover_image }}" alt="">
+            {% else %}<span style="font-size:20px">🍄</span>{% endif %}
+          </div>
+          <div class="cp-circle-name">{{ c.name }}</div>
+        </a>
+        {% endfor %}
+        {% if is_own %}
+        <button type="button" id="addCircleBtn" class="cp-circle-add-btn" onclick="createCircle()">+</button>
+        {% endif %}
+      </div>
 
       <div class="cp-chaos-wrap">
         <label class="cp-chaos-toggle" for="cpChaosToggle">
@@ -415,6 +435,19 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
   </div>
 </div>
 
+<div id="circlePickerModal" style="display:none;position:fixed;inset:0;z-index:10022;align-items:center;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(4px)" onclick="if(event.target===this)closeCirclePicker()">
+  <div class="card" style="max-width:480px;width:92%;max-height:min(86vh,620px);padding:0;overflow:hidden;border-color:rgba(61,212,224,.28)" onclick="event.stopPropagation()">
+    <div style="padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:10px">
+      <b style="font-size:15px;color:#e8e8e8;flex:1">Выберите пост для кружка</b>
+      <button type="button" onclick="closeCirclePicker()" style="border:none;background:none;color:#888;font-size:22px;cursor:pointer">×</button>
+    </div>
+    <div style="padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08)">
+      <input id="circlePickerSearch" class="sinp" placeholder="Поиск по названию..." oninput="loadCirclePickerPosts()">
+    </div>
+    <div id="circlePickerList" style="overflow:auto;max-height:min(66vh,500px)"></div>
+  </div>
+</div>
+
 <!-- DM CHAT PANEL (fixed bottom-right) -->
 <div id="dmPanel" style="display:none;position:fixed;right:20px;bottom:20px;width:340px;height:460px;background:#0e0e0e;border:1px solid rgba(61,212,224,.35);border-radius:20px;box-shadow:0 8px 40px rgba(0,0,0,.7);z-index:1000;flex-direction:column;overflow:hidden">
   <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0;background:#111">
@@ -479,6 +512,85 @@ async function saveTokenLampEnabled(isOn){
 }
 function closePostMenus(){
   document.querySelectorAll('.ig-pm .ig-pm-panel').forEach(function(p){ p.style.display='none'; });
+}
+let __circlePickerId = 0;
+function closeCirclePicker(){
+  const m=document.getElementById('circlePickerModal');
+  if(m) m.style.display='none';
+}
+async function createCircle(){
+  try{
+    const fd=new FormData();
+    fd.append('name','Кружок');
+    const r=await fetch('/community/circle',{method:'POST',body:fd,credentials:'same-origin'});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.ok){ alert(d.error||'Не удалось создать кружок'); return; }
+    await openCirclePicker(d.id);
+    await reloadProfileCircles();
+  }catch(e){ alert('Ошибка сети'); }
+}
+async function reloadProfileCircles(){
+  const row=document.getElementById('profileCirclesRow');
+  if(!row) return;
+  try{
+    const r=await fetch('/community/profile/'+PROFILE_ID+'/circles',{credentials:'same-origin'});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.ok||!Array.isArray(d.circles)) return;
+    const addBtn=row.querySelector('#addCircleBtn');
+    row.innerHTML=d.circles.map(c=>(
+      '<a class="cp-circle-item" href="/community/profile/'+PROFILE_ID+'/circle/'+c.id+'">'+
+        '<div class="cp-circle-avatar">'+
+          (c.cover_image?'<img src="'+_escHtml(c.cover_image)+'" alt="">':'<span style="font-size:20px">🍄</span>')+
+        '</div><div class="cp-circle-name">'+_escHtml(c.name||'Кружок')+'</div>'+
+      '</a>'
+    )).join('');
+    if(addBtn) row.appendChild(addBtn);
+  }catch(e){}
+}
+async function openCirclePicker(circleId){
+  __circlePickerId = circleId;
+  const m=document.getElementById('circlePickerModal');
+  if(m) m.style.display='flex';
+  const inp=document.getElementById('circlePickerSearch');
+  if(inp) inp.value='';
+  await loadCirclePickerPosts();
+}
+async function loadCirclePickerPosts(){
+  if(!__circlePickerId) return;
+  const q=(document.getElementById('circlePickerSearch')?.value||'').trim();
+  const box=document.getElementById('circlePickerList');
+  if(!box) return;
+  box.innerHTML='<div style="padding:16px;color:#777">Загрузка…</div>';
+  try{
+    const r=await fetch('/community/circle/'+__circlePickerId+'/picker-posts?q='+encodeURIComponent(q),{credentials:'same-origin'});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.ok){ box.innerHTML='<div style="padding:16px;color:#f87171">'+(d.error||'Ошибка')+'</div>'; return; }
+    const posts=Array.isArray(d.posts)?d.posts:[];
+    if(!posts.length){ box.innerHTML='<div style="padding:18px;color:#666">Ничего не найдено</div>'; return; }
+    box.innerHTML=posts.map(p=>(
+      '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.06)">'+
+        '<div style="width:56px;height:56px;border-radius:10px;overflow:hidden;background:#111;flex-shrink:0">'+
+          (p.image_url?'<img src="'+_escHtml(p.image_url)+'" alt="" style="width:100%;height:100%;object-fit:cover">':'<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:#666">🍄</div>')+
+        '</div>'+
+        '<div style="flex:1;min-width:0"><div style="font-size:13px;color:#e8e8e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_escHtml(p.title||('Пост #'+p.id))+'</div></div>'+
+        '<button type="button" class="btn-g" style="padding:7px 11px;font-size:12px" onclick="attachPostToCircle('+p.id+')">Загрузить</button>'+
+      '</div>'
+    )).join('');
+  }catch(e){
+    box.innerHTML='<div style="padding:16px;color:#f87171">Ошибка сети</div>';
+  }
+}
+async function attachPostToCircle(postId){
+  if(!__circlePickerId || !postId) return;
+  const fd=new FormData();
+  fd.append('post_id', String(postId));
+  try{
+    const r=await fetch('/community/circle/'+__circlePickerId+'/attach',{method:'POST',body:fd,credentials:'same-origin'});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.ok){ alert(d.error||'Не удалось загрузить пост'); return; }
+    closeCirclePicker();
+    await reloadProfileCircles();
+  }catch(e){ alert('Ошибка сети'); }
 }
 function togglePostMenu(btn, ev){
   if(ev){ ev.preventDefault(); ev.stopPropagation(); }
