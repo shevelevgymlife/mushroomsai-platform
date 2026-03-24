@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-import time
 from typing import Any
 
 import sqlalchemy as sa
@@ -41,11 +39,13 @@ def _is_owner(uid: int) -> bool:
 async def _ensure_task_inbox_table() -> None:
     await database.execute(
         sa.text(
-            """CREATE TABLE IF NOT EXISTS task_inbox (
+            """CREATE TABLE IF NOT EXISTS bot_task_requests (
                 id SERIAL PRIMARY KEY,
                 tg_user_id BIGINT NOT NULL,
+                username TEXT,
+                full_name TEXT,
                 task_text TEXT NOT NULL,
-                need_photo BOOLEAN NOT NULL DEFAULT false,
+                needs_photo BOOLEAN NOT NULL DEFAULT false,
                 photo_file_id TEXT,
                 status VARCHAR(24) NOT NULL DEFAULT 'new',
                 created_at TIMESTAMP DEFAULT NOW(),
@@ -55,13 +55,18 @@ async def _ensure_task_inbox_table() -> None:
     )
 
 
-async def _create_task(tg_user_id: int, text: str) -> int:
+async def _create_task(tg_user_id: int, text: str, username: str = "", full_name: str = "") -> int:
     row = await database.fetch_one_write(
         sa.text(
-            "INSERT INTO task_inbox (tg_user_id, task_text, status, updated_at) "
-            "VALUES (:uid, :txt, 'new', NOW()) "
+            "INSERT INTO bot_task_requests (tg_user_id, username, full_name, task_text, status, updated_at) "
+            "VALUES (:uid, :username, :full_name, :txt, 'new', NOW()) "
             "RETURNING id"
-        ).bindparams(uid=int(tg_user_id), txt=(text or "").strip()[:6000])
+        ).bindparams(
+            uid=int(tg_user_id),
+            username=(username or "").strip()[:255],
+            full_name=(full_name or "").strip()[:255],
+            txt=(text or "").strip()[:6000],
+        )
     )
     return int((row or {}).get("id") or 0)
 
@@ -76,7 +81,7 @@ async def _update_task(task_id: int, **kwargs: Any) -> None:
         params[k] = v
     sets.append("updated_at = NOW()")
     await database.execute(
-        sa.text(f"UPDATE task_inbox SET {', '.join(sets)} WHERE id = :id").bindparams(**params)
+        sa.text(f"UPDATE bot_task_requests SET {', '.join(sets)} WHERE id = :id").bindparams(**params)
     )
 
 
@@ -86,6 +91,11 @@ async def task_give_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = int(update.effective_user.id) if update.effective_user else 0
     if not _is_owner(uid):
         await update.message.reply_text("Эта функция доступна только владельцу.")
+        return ConversationHandler.END
+    try:
+        await _ensure_task_inbox_table()
+    except Exception:
+        await update.message.reply_text("Не удалось подготовить прием задач. Повторите через минуту.")
         return ConversationHandler.END
     await update.message.reply_text("Евгений Алексеевич, что бы вы хотели добавить/изменить?")
     return ASK_TASK_TEXT
@@ -99,7 +109,17 @@ async def task_text_received(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if not txt:
         await update.message.reply_text("Пожалуйста, отправьте текст задачи.")
         return ASK_TASK_TEXT
-    task_id = await _create_task(uid, txt)
+    try:
+        user = update.effective_user
+        task_id = await _create_task(
+            uid,
+            txt,
+            username=(getattr(user, "username", "") or ""),
+            full_name=(getattr(user, "full_name", "") or ""),
+        )
+    except Exception:
+        await update.message.reply_text("Не удалось сохранить задачу. Попробуйте ещё раз.")
+        return ConversationHandler.END
     context.user_data["task_intake_id"] = task_id
     context.user_data["task_intake_text"] = txt
     kb = InlineKeyboardMarkup([
@@ -124,11 +144,11 @@ async def task_photo_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     task_id = int(context.user_data.get("task_intake_id") or 0)
     task_text = str(context.user_data.get("task_intake_text") or "")
     if decision == "yes":
-        await _update_task(task_id, need_photo=True, status="wait_photo")
+        await _update_task(task_id, needs_photo=True, status="wait_photo")
         await q.edit_message_text("Жду фото.")
         return WAIT_PHOTO
 
-    await _update_task(task_id, need_photo=False, status="in_progress")
+    await _update_task(task_id, needs_photo=False, status="in_progress")
     await q.edit_message_text("Принял. Начал выполнять задачу без фото.")
     await notify_task_accepted(task_text=f"Принял задачу: {task_text}")
     return ConversationHandler.END
