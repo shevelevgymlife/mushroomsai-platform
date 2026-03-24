@@ -25,6 +25,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 bot_app = None
+ops_bot_app = None
 
 
 class LanguageMiddleware(BaseHTTPMiddleware):
@@ -325,13 +326,13 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"AI settings init: {e}")
 
-    # Start Telegram bot
-    global bot_app
-    bot_token = (settings.TELEGRAM_TOKEN or "").strip() or (settings.DEPLOY_NOTIFY_TG_BOT_TOKEN or "").strip()
-    if bot_token:
+    # Start primary Telegram bot (website/app bot)
+    global bot_app, ops_bot_app
+    primary_token = (settings.TELEGRAM_TOKEN or "").strip()
+    if primary_token:
         try:
             from bot.main_bot import create_bot
-            bot_app = create_bot()
+            bot_app = create_bot(primary_token)
             await bot_app.initialize()
             await bot_app.start()
             await bot_app.updater.start_polling(
@@ -353,13 +354,33 @@ async def lifespan(app: FastAPI):
                     "chat_join_request",
                 ],
             )
-            logger.info("Telegram bot started")
+            logger.info("Primary Telegram bot started")
 
-            # Start scheduler
+            # Start scheduler tied to primary bot
             from services.scheduler import start_scheduler
             start_scheduler(bot_app.bot)
         except Exception as e:
-            logger.error(f"Bot startup error: {e}")
+            logger.error(f"Primary bot startup error: {e}")
+
+    # Start ops Telegram bot (tasks/approvals/notifications)
+    ops_token = (settings.DEPLOY_NOTIFY_TG_BOT_TOKEN or "").strip()
+    if ops_token and ops_token != primary_token:
+        try:
+            from bot.ops_bot import create_ops_bot
+            ops_bot_app = create_ops_bot(ops_token)
+            await ops_bot_app.initialize()
+            await ops_bot_app.start()
+            await ops_bot_app.updater.start_polling(
+                drop_pending_updates=True,
+                allowed_updates=[
+                    "message",
+                    "edited_message",
+                    "callback_query",
+                ],
+            )
+            logger.info("Ops Telegram bot started")
+        except Exception as e:
+            logger.error(f"Ops bot startup error: {e}")
 
     yield
 
@@ -371,6 +392,14 @@ async def lifespan(app: FastAPI):
             await bot_app.shutdown()
         except Exception as e:
             logger.error(f"Bot shutdown error: {e}")
+
+    if ops_bot_app:
+        try:
+            await ops_bot_app.updater.stop()
+            await ops_bot_app.stop()
+            await ops_bot_app.shutdown()
+        except Exception as e:
+            logger.error(f"Ops bot shutdown error: {e}")
 
     await database.disconnect()
     logger.info("Database disconnected")
