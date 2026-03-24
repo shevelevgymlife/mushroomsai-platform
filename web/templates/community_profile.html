@@ -273,7 +273,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
       <div class="ig-feed-shell cp-chaos-on" id="profilePostsGrid" style="margin-top:16px">
   {% for item in feed %}
   {% set p = item.post %}
-  <div class="ig-post" id="pc-{{ p.id }}" data-pid="{{ p.id }}" data-author="{{ (profile.name or 'Участник')|e }}" data-title="{{ (p.title or '')|e }}" data-content="{{ (p.content or '')|e }}" data-image="{{ (p.image_url or '')|e }}" data-created="{{ (p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '')|e }}" onclick="openProfilePostPreview(event,this)">
+  <div class="ig-post" id="pc-{{ p.id }}" data-pid="{{ p.id }}" data-author="{{ (profile.name or 'Участник')|e }}" data-title="{{ (p.title or '')|e }}" data-content="{{ (p.content or '')|e }}" data-image="{{ (p.image_url or '')|e }}" data-created="{{ (p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '')|e }}" data-likes="{{ p.likes_count or 0 }}" data-comments="{{ p.comments_count or 0 }}" data-saves="{{ p.saves_count or 0 }}" onclick="openProfilePostPreview(event,this)">
     <div class="ig-post-header">
       <div style="width:36px;height:36px;border-radius:50%;border:2px solid #3dd4e0;overflow:hidden;flex-shrink:0">
         {% if profile.avatar %}<img src="{{ profile.avatar }}" style="width:100%;height:100%;object-fit:cover" alt="">{% else %}<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px">🍄</div>{% endif %}
@@ -353,12 +353,17 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
       <div style="padding:14px 14px 18px">
         <div id="profilePreviewTitle" style="display:none;font-size:18px;font-weight:700;color:#f3f4f6;line-height:1.25;margin-bottom:8px"></div>
         <div id="profilePreviewContent" style="font-size:14px;color:#c4c8d3;line-height:1.55;white-space:pre-wrap;word-break:break-word"></div>
+        <div id="profilePreviewMetrics" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
+          <span style="font-size:12px;color:#ffd84f">⭐ <span id="profilePreviewLikes">0</span></span>
+          <span style="font-size:12px;color:#8be9ff">💬 <span id="profilePreviewComments">0</span></span>
+          <span style="font-size:12px;color:#f7b3ff">↗ <span id="profilePreviewSaves">0</span></span>
+        </div>
         <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)">
           <div style="font-size:12px;color:#8a8fa0;margin-bottom:8px">Комментарии</div>
           <div id="profilePreviewCommentsList" style="display:flex;flex-direction:column;gap:8px;max-height:38vh;overflow-y:auto;padding-right:2px"></div>
         </div>
         <input type="hidden" id="profilePreviewPostId" value="">
-        <div style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);position:sticky;bottom:0;background:linear-gradient(180deg,rgba(11,12,18,.2),rgba(11,12,18,.95) 35%,rgba(11,12,18,.98));padding-bottom:calc(8px + env(safe-area-inset-bottom,0px));overflow-x:hidden">
+        <div id="profilePreviewActionRow" style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);position:sticky;bottom:0;background:linear-gradient(180deg,rgba(11,12,18,.2),rgba(11,12,18,.95) 35%,rgba(11,12,18,.98));padding-bottom:calc(8px + env(safe-area-inset-bottom,0px));overflow-x:hidden">
           <input id="profilePreviewCommentInp" class="sinp" style="min-width:0;width:100%" placeholder="Написать комментарий...">
           <button type="button" class="btn-g" style="padding:10px 12px;white-space:nowrap" onclick="submitProfilePreviewComment()">Отправить</button>
           <button type="button" class="btn-g" style="padding:10px 12px;white-space:nowrap" onclick="closeProfilePostPreview()">Закрыть</button>
@@ -768,6 +773,9 @@ function openProfilePostPreview(event, card){
   const modal=document.getElementById('profilePostPreviewModal');
   if(!modal) return;
   const pid=Number(card.getAttribute('data-pid')||0);
+  const likes=parseInt(card.getAttribute('data-likes')||'0',10)||0;
+  const comments=parseInt(card.getAttribute('data-comments')||'0',10)||0;
+  const saves=parseInt(card.getAttribute('data-saves')||'0',10)||0;
   document.getElementById('profilePreviewAuthor').textContent=card.getAttribute('data-author')||'Участник';
   document.getElementById('profilePreviewDate').textContent=card.getAttribute('data-created')||'';
   const title=(card.getAttribute('data-title')||'').trim();
@@ -783,10 +791,29 @@ function openProfilePostPreview(event, card){
   const inp=document.getElementById('profilePreviewCommentInp');
   if(inp) inp.value='';
   const err=document.getElementById('profilePreviewCommentErr');
+  const likesEl=document.getElementById('profilePreviewLikes');
+  const commentsEl=document.getElementById('profilePreviewComments');
+  const savesEl=document.getElementById('profilePreviewSaves');
   if(err) err.style.display='none';
+  if(likesEl) likesEl.textContent=String(likes);
+  if(commentsEl) commentsEl.textContent=String(comments);
+  if(savesEl) savesEl.textContent=String(saves);
   modal.style.display='flex';
   try{ document.body.style.overflow='hidden'; }catch(e){}
   loadProfilePreviewComments(pid);
+}
+function _setProfilePreviewInputDockToTop(isTop){
+  const row=document.getElementById('profilePreviewActionRow');
+  if(!row) return;
+  if(isTop){
+    row.style.top='0';
+    row.style.bottom='auto';
+    row.style.zIndex='2';
+  }else{
+    row.style.top='auto';
+    row.style.bottom='0';
+    row.style.zIndex='1';
+  }
 }
 async function submitProfilePreviewComment(){
   const pid=Number(document.getElementById('profilePreviewPostId')&&document.getElementById('profilePreviewPostId').value||0);
@@ -807,6 +834,8 @@ async function submitProfilePreviewComment(){
       if(inp) inp.value='';
       const cc=document.getElementById('cmc-'+pid);
       if(cc){ cc.textContent=String((parseInt(cc.textContent||'0',10)||0)+1); }
+      const previewCnt=document.getElementById('profilePreviewComments');
+      if(previewCnt){ previewCnt.textContent=String((parseInt(previewCnt.textContent||'0',10)||0)+1); }
       await loadProfilePreviewComments(pid);
     }else{
       if(err){ err.style.display='block'; err.textContent=d.error||'Ошибка'; }
@@ -815,6 +844,16 @@ async function submitProfilePreviewComment(){
     if(err){ err.style.display='block'; err.textContent='Сеть'; }
   }
 }
+document.addEventListener('focusin', function(e){
+  if(e && e.target && e.target.id === 'profilePreviewCommentInp'){
+    _setProfilePreviewInputDockToTop(true);
+  }
+});
+document.addEventListener('focusout', function(e){
+  if(e && e.target && e.target.id === 'profilePreviewCommentInp'){
+    setTimeout(function(){ _setProfilePreviewInputDockToTop(false); }, 120);
+  }
+});
 function _cpChaosKey(){
   return 'mushrooms:chaos:' + String(Number(PROFILE_ID||0)||0) + ':profile';
 }

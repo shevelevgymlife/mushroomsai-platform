@@ -1172,7 +1172,7 @@ body.dash-ig-app .ig-lamp-topbar{
         <div id="profilePosts" class="profile-chaos-on">
           {% for p in grid_posts %}
           {% set is_liked_me = p.id in liked_post_ids %}
-          <div class="fp ig-post" id="mfp-{{ p.id }}" data-pid="{{ p.id }}" data-author="{{ (user.name or 'Вы')|e }}" data-title="{{ (p.title or '')|e }}" data-content="{{ (p.content or '')|e }}" data-image="{{ (p.image_url or '')|e }}" data-created="{{ (p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '')|e }}" onclick="openFeedPostPreview(event,this)">
+          <div class="fp ig-post" id="mfp-{{ p.id }}" data-pid="{{ p.id }}" data-author="{{ (user.name or 'Вы')|e }}" data-title="{{ (p.title or '')|e }}" data-content="{{ (p.content or '')|e }}" data-image="{{ (p.image_url or '')|e }}" data-created="{{ (p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '')|e }}" data-likes="{{ p.likes_count or 0 }}" data-comments="{{ p.comments_count or 0 }}" data-saves="{{ p.saves_count or 0 }}" onclick="openFeedPostPreview(event,this)">
             <div class="ig-post-header">
               <div style="width:36px;height:36px;border-radius:50%;border:2px solid #3dd4e0;overflow:hidden">{% if user.avatar %}<img src="{{ user.avatar }}" style="width:100%;height:100%;object-fit:cover" alt="">{% else %}<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px">🍄</div>{% endif %}</div>
               <div style="flex:1;min-width:0">
@@ -1280,7 +1280,7 @@ body.dash-ig-app .ig-lamp-topbar{
       {% set is_admin = (user.role | default('', true)) == 'admin' %}
       {% set is_following_author = p.user_id in following_ids %}
       {% set is_liked = p.id in liked_post_ids %}
-      <div class="fp ig-post" id="fp-{{ p.id }}" data-pid="{{ p.id }}" data-uid="{{ p.user_id }}" data-mine="{{ 'true' if is_mine else 'false' }}" data-following="{{ 'true' if is_following_author else 'false' }}" data-author="{{ (a.name if a else 'Участник')|e }}" data-title="{{ (p.title or '')|e }}" data-content="{{ (p.content or '')|e }}" data-image="{{ (p.image_url or '')|e }}" data-created="{{ (p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '')|e }}" onclick="openFeedPostPreview(event,this)">
+      <div class="fp ig-post" id="fp-{{ p.id }}" data-pid="{{ p.id }}" data-uid="{{ p.user_id }}" data-mine="{{ 'true' if is_mine else 'false' }}" data-following="{{ 'true' if is_following_author else 'false' }}" data-author="{{ (a.name if a else 'Участник')|e }}" data-title="{{ (p.title or '')|e }}" data-content="{{ (p.content or '')|e }}" data-image="{{ (p.image_url or '')|e }}" data-created="{{ (p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '')|e }}" data-likes="{{ p.likes_count or 0 }}" data-comments="{{ p.comments_count or 0 }}" data-saves="{{ p.saves_count or 0 }}" onclick="openFeedPostPreview(event,this)">
         <div class="ig-post-header">
           {% if is_mine %}
           <div onclick="goSec('{{ dash_home }}')" style="cursor:pointer;flex-shrink:0">
@@ -2110,12 +2110,17 @@ body.dash-ig-app .ig-lamp-topbar{
     <div style="padding:14px 14px 18px">
       <div id="feedPreviewTitle" style="display:none;font-size:18px;font-weight:700;color:#f3f4f6;line-height:1.25;margin-bottom:8px"></div>
       <div id="feedPreviewContent" style="font-size:14px;color:#c4c8d3;line-height:1.55;white-space:pre-wrap;word-break:break-word"></div>
+      <div id="feedPreviewMetrics" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
+        <span style="font-size:12px;color:#ffd84f">⭐ <span id="feedPreviewLikes">0</span></span>
+        <span style="font-size:12px;color:#8be9ff">💬 <span id="feedPreviewComments">0</span></span>
+        <span style="font-size:12px;color:#f7b3ff">↗ <span id="feedPreviewSaves">0</span></span>
+      </div>
       <div id="feedPreviewCommentsWrap" style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)">
         <div style="font-size:12px;color:#8a8fa0;margin-bottom:8px">Комментарии</div>
         <div id="feedPreviewCommentsList" style="display:flex;flex-direction:column;gap:8px;max-height:38vh;overflow-y:auto;padding-right:2px"></div>
       </div>
       <input type="hidden" id="feedPreviewPostId" value="">
-      <div style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);position:sticky;bottom:0;background:linear-gradient(180deg,rgba(11,12,18,.2),rgba(11,12,18,.95) 35%,rgba(11,12,18,.98));padding-bottom:calc(8px + env(safe-area-inset-bottom,0px));overflow-x:hidden">
+      <div id="feedPreviewActionRow" style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);position:sticky;bottom:0;background:linear-gradient(180deg,rgba(11,12,18,.2),rgba(11,12,18,.95) 35%,rgba(11,12,18,.98));padding-bottom:calc(8px + env(safe-area-inset-bottom,0px));overflow-x:hidden">
         <input id="feedPreviewCommentInp" class="sinp" style="min-width:0;width:100%" placeholder="Написать комментарий...">
         <button type="button" class="btn-g" style="padding:10px 12px;white-space:nowrap" onclick="submitFeedPreviewComment()">Отправить</button>
         <button type="button" class="btn-g" style="padding:10px 12px;white-space:nowrap" onclick="closeFeedPostPreview()">Закрыть</button>
@@ -4149,6 +4154,9 @@ function openFeedPostPreview(event, card){
   const content=card.getAttribute('data-content')||'';
   const image=card.getAttribute('data-image')||'';
   const created=card.getAttribute('data-created')||'';
+  const likes=parseInt(card.getAttribute('data-likes')||'0',10)||0;
+  const comments=parseInt(card.getAttribute('data-comments')||'0',10)||0;
+  const saves=parseInt(card.getAttribute('data-saves')||'0',10)||0;
   const pid=card.getAttribute('data-pid')||'';
   const aEl=document.getElementById('feedPreviewAuthor');
   const dEl=document.getElementById('feedPreviewDate');
@@ -4159,6 +4167,9 @@ function openFeedPostPreview(event, card){
   const ci=document.getElementById('feedPreviewCommentInp');
   const ce=document.getElementById('feedPreviewCommentErr');
   const cl=document.getElementById('feedPreviewCommentsList');
+  const likesEl=document.getElementById('feedPreviewLikes');
+  const commentsEl=document.getElementById('feedPreviewComments');
+  const savesEl=document.getElementById('feedPreviewSaves');
   if(aEl) aEl.textContent=author;
   if(dEl) dEl.textContent=created;
   if(tEl){
@@ -4174,9 +4185,25 @@ function openFeedPostPreview(event, card){
   if(ci) ci.value='';
   if(ce) ce.style.display='none';
   if(cl) cl.innerHTML='<div style="font-size:12px;color:#8a8fa0">Загрузка комментариев…</div>';
+  if(likesEl) likesEl.textContent=String(likes);
+  if(commentsEl) commentsEl.textContent=String(comments);
+  if(savesEl) savesEl.textContent=String(saves);
   modal.style.display='flex';
   try{ document.body.style.overflow='hidden'; }catch(e){}
   loadFeedPreviewComments(Number(pid||0));
+}
+function _setFeedPreviewInputDockToTop(isTop){
+  const row=document.getElementById('feedPreviewActionRow');
+  if(!row) return;
+  if(isTop){
+    row.style.top='0';
+    row.style.bottom='auto';
+    row.style.zIndex='2';
+  }else{
+    row.style.top='auto';
+    row.style.bottom='0';
+    row.style.zIndex='1';
+  }
 }
 function closeFeedPostPreview(){
   const modal=document.getElementById('feedPostPreviewModal');
@@ -4248,6 +4275,11 @@ async function submitFeedPreviewComment(){
         const cur=parseInt(cc.textContent||'0',10)||0;
         cc.textContent=String(cur+1);
       });
+      const previewCnt=document.getElementById('feedPreviewComments');
+      if(previewCnt){
+        const cur=parseInt(previewCnt.textContent||'0',10)||0;
+        previewCnt.textContent=String(cur+1);
+      }
       await loadFeedPreviewComments(pid);
       showNotification('Комментарий отправлен','success');
     }else{
@@ -4257,6 +4289,16 @@ async function submitFeedPreviewComment(){
     if(err){ err.style.display='block'; err.textContent='Сеть'; }
   }
 }
+document.addEventListener('focusin', function(e){
+  if(e && e.target && e.target.id === 'feedPreviewCommentInp'){
+    _setFeedPreviewInputDockToTop(true);
+  }
+});
+document.addEventListener('focusout', function(e){
+  if(e && e.target && e.target.id === 'feedPreviewCommentInp'){
+    setTimeout(function(){ _setFeedPreviewInputDockToTop(false); }, 120);
+  }
+});
 function initFeedChaosToggle(){
   const sw=document.getElementById('feedChaosToggle');
   if(!sw) return;
