@@ -31,9 +31,9 @@ def _chat_id() -> int:
 
 def _token() -> str:
     return (
-        (getattr(settings, "TASK_APPROVAL_BOT_TOKEN", "") or "").strip()
+        (settings.TELEGRAM_TOKEN or "").strip()
+        or (getattr(settings, "TASK_APPROVAL_BOT_TOKEN", "") or "").strip()
         or (settings.DEPLOY_NOTIFY_TG_BOT_TOKEN or "").strip()
-        or (settings.TELEGRAM_TOKEN or "").strip()
     )
 
 

@@ -30,11 +30,7 @@ def _task_chat_id() -> int:
 def _is_owner(uid: int) -> bool:
     if not uid:
         return False
-    if int(uid) == int(getattr(settings, "ADMIN_TG_ID", 0) or 0):
-        return True
-    extras = str(getattr(settings, "TASK_APPROVAL_ALLOWED_TG_IDS", "") or "")
-    allowed = {s.strip() for s in extras.split(",") if s.strip()}
-    return str(int(uid)) in allowed
+    return int(uid) == int(getattr(settings, "ADMIN_TG_ID", 0) or 0)
 
 
 async def _ensure_task_inbox_table() -> None:
