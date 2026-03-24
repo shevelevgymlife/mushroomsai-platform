@@ -30,12 +30,6 @@ def _task_chat_id() -> int:
 def _is_owner(uid: int) -> bool:
     if not uid:
         return False
-    # In dedicated ops-bot mode, allow any sender in this bot.
-    if (
-        (getattr(settings, "TASK_APPROVAL_BOT_TOKEN", "") or "").strip()
-        or (getattr(settings, "DEPLOY_NOTIFY_TG_BOT_TOKEN", "") or "").strip()
-    ):
-        return True
     if int(uid) == int(getattr(settings, "ADMIN_TG_ID", 0) or 0):
         return True
     extras = str(getattr(settings, "TASK_APPROVAL_ALLOWED_TG_IDS", "") or "")
@@ -264,6 +258,7 @@ async def task_run_latest(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def get_task_intake_conversation() -> ConversationHandler:
     return ConversationHandler(
         entry_points=[
+            MessageHandler(filters.Regex("^Начать задачу$"), task_give_entry),
             MessageHandler(filters.Regex("^Дать задачу$"), task_give_entry),
             CommandHandler("task", task_give_entry),
         ],
