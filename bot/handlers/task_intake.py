@@ -116,8 +116,6 @@ async def task_text_received(update: Update, context: ContextTypes.DEFAULT_TYPE)
     uid = int(update.effective_user.id) if update.effective_user else 0
     if not _is_owner(uid):
         return ConversationHandler.END
-    if str(context.user_data.get("task_intake_stage") or "") != "wait_text":
-        return ConversationHandler.END
     txt = (update.message.text or "").strip()
     if not txt:
         await update.message.reply_text("Пожалуйста, отправьте текст задачи.")
@@ -159,8 +157,10 @@ async def task_photo_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await q.answer("Нет прав", show_alert=True)
         return ConversationHandler.END
     if str(context.user_data.get("task_intake_stage") or "") != "wait_photo_choice":
-        await q.answer("Сначала отправьте задачу через /task", show_alert=True)
-        return ConversationHandler.END
+        # Soft fallback: if text already present in session, still allow choice.
+        if not str(context.user_data.get("task_intake_text") or "").strip():
+            await q.answer("Сначала отправьте задачу через /task", show_alert=True)
+            return ConversationHandler.END
     await q.answer()
     decision = str(q.data or "").split(":")[-1]
     task_id = int(context.user_data.get("task_intake_id") or 0)
