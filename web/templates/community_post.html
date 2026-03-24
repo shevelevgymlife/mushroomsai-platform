@@ -4,7 +4,8 @@
 <style>
 .cp-wrap{max-width:900px;margin:calc(4rem + 16px) auto 20px;padding:0 12px}
 .cp-card{border:1px solid rgba(255,255,255,.12);border-radius:18px;background:linear-gradient(165deg,rgba(255,255,255,.07),rgba(10,10,13,.92));overflow:hidden}
-.cp-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.08)}
+.cp-head{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.08)}
+.cp-actions{display:flex;gap:8px;flex-wrap:wrap;padding:10px 12px 0}
 .cp-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px}
 .cp-metric{min-height:52px;border-radius:14px;border:1px solid rgba(255,255,255,.16);font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px}
 .cp-input{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:0 12px 12px}
@@ -14,27 +15,19 @@
 <div class="cp-wrap">
   <div class="cp-card">
     <div class="cp-head">
-      <button class="btn-g" type="button" onclick="goBackPost()">Закрыть</button>
       <div style="min-width:0;flex:1">
         <div style="font-size:14px;font-weight:700;color:#e8e8e8">{{ author.name if author else 'Участник' }}</div>
         <div style="font-size:11px;color:#8a8fa0">{{ post.created_at.strftime('%d.%m.%Y %H:%M') if post.created_at else '' }}</div>
       </div>
+    </div>
+    <div class="cp-actions">
+      <button class="btn-g" type="button" onclick="goBackPost()">Закрыть</button>
       <button class="btn-g" type="button" onclick="toggleReadText()">Почитать текст</button>
-      <button class="btn-g" type="button" onclick="togglePhoto()" {% if not post.image_url %}style="display:none"{% endif %}>Посмотреть фото</button>
+      <button class="btn-g" type="button" onclick="openPhotoPage()" {% if not post.image_url %}style="display:none"{% endif %}>Посмотреть фото</button>
     </div>
     {% if post.title %}<div style="padding:12px 12px 0;font-size:18px;font-weight:700;color:#f3f4f6">{{ post.title }}</div>{% endif %}
     <div id="textWrap" style="display:none;margin:12px;border:1px solid rgba(255,255,255,.12);border-radius:12px;background:rgba(8,10,16,.55);padding:10px;max-height:34vh;overflow:auto">
       <div style="font-size:14px;color:#c4c8d3;line-height:1.55;white-space:pre-wrap;word-break:break-word">{{ post.content or 'Без текста' }}</div>
-    </div>
-    <div id="photoWrap" style="display:none;margin:12px;border:1px solid rgba(255,255,255,.14);border-radius:14px;overflow:hidden;background:#050607">
-      <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end;padding:8px;border-bottom:1px solid rgba(255,255,255,.1);background:rgba(8,10,16,.9)">
-        <button class="btn-g" type="button" onclick="zoomOut()">−</button>
-        <button class="btn-g" type="button" onclick="zoomIn()">+</button>
-        <button class="btn-g" type="button" onclick="togglePhoto(false)">Закрыть</button>
-      </div>
-      <div style="height:min(50vh,420px);overflow:auto;touch-action:pan-x pan-y pinch-zoom;background:#000;display:flex;align-items:center;justify-content:center">
-        <img id="postPhoto" src="{{ post.image_url or '' }}" alt="" style="display:block;max-width:100%;max-height:100%;transform-origin:center center;transform:scale(1);background:#000">
-      </div>
     </div>
     <div class="cp-metrics">
       <button type="button" class="cp-metric" id="likeBtn" onclick="toggleLike()" style="border-color:rgba(255,216,79,.45);color:#ffe57f"> <span id="likeIcon">{{ '⭐' if is_liked else '✩' }}</span> <span id="likeCnt">{{ post.likes_count or 0 }}</span> </button>
@@ -60,14 +53,14 @@
   </div>
 </div>
 <script>
-let _zoom=1;
 const POST_ID={{ post.id }};
 const BACK_URL={{ back_url|tojson }};
 function goBackPost(){ if(history.length>1){ history.back(); } else { location.href=BACK_URL||'/dashboard#feed'; } }
 function toggleReadText(){ const w=document.getElementById('textWrap'); w.style.display=(w.style.display==='block'?'none':'block'); }
-function togglePhoto(force){ const w=document.getElementById('photoWrap'); const show=(typeof force==='boolean')?force:(w.style.display!=='block'); w.style.display=show?'block':'none'; if(show){_zoom=1;document.getElementById('postPhoto').style.transform='scale(1)';} }
-function zoomIn(){ _zoom=Math.min(4,_zoom+0.25); document.getElementById('postPhoto').style.transform='scale('+_zoom+')'; }
-function zoomOut(){ _zoom=Math.max(1,_zoom-0.25); document.getElementById('postPhoto').style.transform='scale('+_zoom+')'; }
+function openPhotoPage(){
+  const back=encodeURIComponent(BACK_URL||location.href);
+  location.href='/community/post/'+POST_ID+'/photo?back='+back;
+}
 async function toggleLike(){
   const i=document.getElementById('likeIcon'); const c=document.getElementById('likeCnt'); const was=i.textContent==='⭐'; const b=parseInt(c.textContent||'0',10)||0;
   i.textContent=was?'✩':'⭐'; c.textContent=String(Math.max(0,b+(was?-1:1)));
