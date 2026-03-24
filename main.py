@@ -25,9 +25,25 @@ from web.translations import TRANSLATIONS, parse_accept_language, SUPPORTED_LANG
 from services.deploy_notify import send_deploy_notifications
 from web.templates_utils import Jinja2Templates
 
+
+class _DropTelegramBotUrlLogs(logging.Filter):
+    """Отсекает строки httpx с полным URL api.telegram.org/bot<TOKEN>/... (утечка в логах)."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        try:
+            msg = record.getMessage()
+        except Exception:
+            return True
+        if "api.telegram.org/bot" in msg:
+            return False
+        return True
+
+
 logging.basicConfig(level=logging.INFO)
-logging.getLogger("httpx").setLevel(logging.WARNING)
-logging.getLogger("httpcore").setLevel(logging.WARNING)
+for _name in ("httpx", "httpcore", "telegram.request"):
+    _lg = logging.getLogger(_name)
+    _lg.setLevel(logging.WARNING)
+    _lg.addFilter(_DropTelegramBotUrlLogs())
 logger = logging.getLogger(__name__)
 
 bot_app = None
@@ -377,8 +393,6 @@ async def lifespan(app: FastAPI):
     primary_token = (settings.TELEGRAM_TOKEN or "").strip()
     if primary_token:
         try:
-            for _log in ("httpx", "httpcore", "telegram.request"):
-                logging.getLogger(_log).setLevel(logging.WARNING)
             from bot.main_bot import create_bot
             bot_app = create_bot()
             await bot_app.initialize()

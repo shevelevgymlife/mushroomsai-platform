@@ -1,8 +1,18 @@
 import logging
 
-# До импорта telegram: иначе httpx может снова слать INFO с полным URL (токен в логах)
+# До импорта telegram: не светить URL с токеном в логах (уровень + фильтр)
+class _DropTelegramBotUrlLogs(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        try:
+            return "api.telegram.org/bot" not in record.getMessage()
+        except Exception:
+            return True
+
+
 for _log in ("httpx", "httpcore", "telegram.request"):
-    logging.getLogger(_log).setLevel(logging.WARNING)
+    _lg = logging.getLogger(_log)
+    _lg.setLevel(logging.WARNING)
+    _lg.addFilter(_DropTelegramBotUrlLogs())
 
 from telegram import MenuButtonWebApp, WebAppInfo
 from telegram.ext import (
