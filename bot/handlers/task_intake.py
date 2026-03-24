@@ -29,6 +29,9 @@ def _task_chat_id() -> int:
 def _is_owner(uid: int) -> bool:
     if not uid:
         return False
+    # In dedicated ops-bot mode, allow any sender in this bot.
+    if (getattr(settings, "TASK_APPROVAL_BOT_TOKEN", "") or "").strip():
+        return True
     if int(uid) == int(getattr(settings, "ADMIN_TG_ID", 0) or 0):
         return True
     extras = str(getattr(settings, "TASK_APPROVAL_ALLOWED_TG_IDS", "") or "")

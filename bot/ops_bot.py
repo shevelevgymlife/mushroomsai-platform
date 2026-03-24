@@ -20,6 +20,12 @@ from bot.handlers.task_intake import (
 logger = logging.getLogger(__name__)
 
 
+async def _ops_start(update, context):
+    if update.message:
+        await update.message.reply_text("Евгений Алексеевич, что бы вы хотели добавить/изменить?")
+    return
+
+
 def _ops_token() -> str:
     return (
         (getattr(settings, "TASK_APPROVAL_BOT_TOKEN", "") or "").strip()
@@ -33,7 +39,7 @@ def create_ops_bot() -> Application:
         raise RuntimeError("Ops bot token is not configured")
     app = Application.builder().token(token).build()
 
-    app.add_handler(CommandHandler("start", lambda u, c: u.message.reply_text("Для постановки задачи отправьте /task или нажмите «Дать задачу».")))
+    app.add_handler(CommandHandler("start", _ops_start))
     app.add_handler(CommandHandler("task", task_give_entry))
     app.add_handler(CommandHandler("approval_status", approval_status_command))
     app.add_handler(MessageHandler(filters.Regex("^Дать задачу$"), task_give_entry))
