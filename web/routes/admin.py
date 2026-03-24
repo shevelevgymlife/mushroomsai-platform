@@ -845,33 +845,6 @@ async def broadcast_send(
 
     all_users_list = await database.fetch_all(query)
 
-    from config import settings
-
-    if not settings.TELEGRAM_ENABLED or not settings.TELEGRAM_TOKEN:
-        return templates.TemplateResponse(
-            "dashboard/admin_broadcast.html",
-            {
-                "request": request,
-                "user": admin,
-                "nav": ADMIN_NAV,
-                "user_permissions": await get_user_permissions(admin),
-                "error": "Рассылка в Telegram отключена (TELEGRAM_ENABLED=false).",
-            },
-        )
-
-    import httpx
-
-    sent = 0
-    url = f"https://api.telegram.org/bot{settings.TELEGRAM_TOKEN}/sendMessage"
-    for u in all_users_list:
-        try:
-            async with httpx.AsyncClient(timeout=15) as client:
-                r = await client.post(url, json={"chat_id": u["tg_id"], "text": message_text})
-            if 200 <= r.status_code < 300:
-                sent += 1
-        except Exception:
-            pass
-
     return templates.TemplateResponse(
         "dashboard/admin_broadcast.html",
         {
@@ -879,7 +852,7 @@ async def broadcast_send(
             "user": admin,
             "nav": ADMIN_NAV,
             "user_permissions": await get_user_permissions(admin),
-            "success": f"Отправлено: {sent} из {len(all_users_list)}",
+            "error": "Рассылка в Telegram отключена в этой сборке.",
         },
     )
 

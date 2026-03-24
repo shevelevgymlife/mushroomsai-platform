@@ -5,6 +5,7 @@ __pycache__/
 *.pyc
 *.pyo
 .venv/
+.venv-test-import/
 venv/
 *.egg-info/
 dist/

@@ -1,4 +1,4 @@
-"""Task confirmation via Telegram inline buttons (Yes/No)."""
+"""Подтверждение задач (раньше через Telegram; интеграция отключена, остаётся БД и ожидание)."""
 from __future__ import annotations
 
 import asyncio
@@ -7,62 +7,16 @@ import secrets
 import time
 from typing import Any
 
-import httpx
 import sqlalchemy as sa
 
 from config import settings
 from db.database import database
 
-_UPDATES_OFFSET = 0
-
-
 def _chat_id() -> int:
-    raw = (
-        (getattr(settings, "TASK_APPROVAL_CHAT_ID", "") or "").strip()
-        or (settings.DEPLOY_NOTIFY_TASK_CHAT_ID or "").strip()
-        or (settings.DEPLOY_NOTIFY_TG_CHAT_ID or "").strip()
-        or str(int(getattr(settings, "ADMIN_TG_ID", 0) or 0))
-    )
     try:
-        return int(raw or 0)
+        return int(getattr(settings, "ADMIN_TG_ID", 0) or 0)
     except Exception:
         return 0
-
-
-def _token() -> str:
-    return (
-        (settings.TELEGRAM_TOKEN or "").strip()
-        or (getattr(settings, "TASK_APPROVAL_BOT_TOKEN", "") or "").strip()
-        or (settings.DEPLOY_NOTIFY_TG_BOT_TOKEN or "").strip()
-    )
-
-
-def _is_allowed_approver(user_id: int) -> bool:
-    if not user_id:
-        return False
-    allowed: set[int] = set()
-    try:
-        aid = int(getattr(settings, "ADMIN_TG_ID", 0) or 0)
-        if aid:
-            allowed.add(aid)
-    except Exception:
-        pass
-    try:
-        cid = _chat_id()
-        if cid:
-            allowed.add(cid)
-    except Exception:
-        pass
-    extra = str(getattr(settings, "TASK_APPROVAL_ALLOWED_TG_IDS", "") or "")
-    for raw in extra.split(","):
-        s = raw.strip()
-        if not s:
-            continue
-        try:
-            allowed.add(int(s))
-        except Exception:
-            continue
-    return int(user_id) in allowed
 
 
 def _new_request_id() -> str:
@@ -87,105 +41,18 @@ async def _has_json_schema() -> bool:
 
 
 async def _send_approval_prompt(request_id: str, question: str, details: str = "") -> None:
-    if not settings.TELEGRAM_ENABLED:
-        return
-    bot_token = _token()
-    chat_id = _chat_id()
-    if not bot_token or not chat_id:
-        return
-    text = (
-        f"❓ {question.strip()}\n"
-        f"{(details or '').strip() + chr(10) if (details or '').strip() else ''}"
-        "Подтверждаете?"
-    )
-    reply_markup = {
-        "inline_keyboard": [[
-            {"text": "✅ Да", "callback_data": f"confirm:yes:{request_id}"},
-            {"text": "❌ Нет", "callback_data": f"confirm:no:{request_id}"},
-        ]]
-    }
-    try:
-        async with httpx.AsyncClient(timeout=12) as client:
-            await client.post(
-                f"https://api.telegram.org/bot{bot_token}/sendMessage",
-                json={"chat_id": chat_id, "text": text[:3800], "reply_markup": reply_markup},
-            )
-    except Exception:
-        # best effort
-        return
+    return
 
 
 async def _answer_callback(callback_query_id: str, text: str = "") -> None:
-    if not settings.TELEGRAM_ENABLED:
-        return
-    bot_token = _token()
-    if not bot_token or not callback_query_id:
-        return
-    try:
-        async with httpx.AsyncClient(timeout=8) as client:
-            await client.post(
-                f"https://api.telegram.org/bot{bot_token}/answerCallbackQuery",
-                json={"callback_query_id": callback_query_id, "text": (text or "")[:180]},
-            )
-    except Exception:
-        return
+    return
 
 
 async def _fetch_callback_updates() -> list[dict[str, Any]]:
-    global _UPDATES_OFFSET
-    if not settings.TELEGRAM_ENABLED:
-        return []
-    bot_token = _token()
-    if not bot_token:
-        return []
-    payload: dict[str, Any] = {"timeout": 0, "allowed_updates": ["callback_query"]}
-    if _UPDATES_OFFSET:
-        payload["offset"] = _UPDATES_OFFSET
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            r = await client.post(f"https://api.telegram.org/bot{bot_token}/getUpdates", json=payload)
-            data = r.json() if r is not None else {}
-        items = data.get("result") if isinstance(data, dict) else []
-        if not isinstance(items, list):
-            return []
-        for upd in items:
-            try:
-                uid = int(upd.get("update_id") or 0)
-                if uid >= _UPDATES_OFFSET:
-                    _UPDATES_OFFSET = uid + 1
-            except Exception:
-                continue
-        return items
-    except Exception:
-        return []
+    return []
 
 
 async def _consume_callback_for_request(request_id: str) -> bool | None:
-    updates = await _fetch_callback_updates()
-    if not updates:
-        return None
-    for upd in updates:
-        cq = upd.get("callback_query") if isinstance(upd, dict) else None
-        if not isinstance(cq, dict):
-            continue
-        data = str(cq.get("data") or "")
-        parts = data.split(":")
-        if len(parts) != 3 or parts[0] != "confirm":
-            continue
-        yn = parts[1]
-        rid = parts[2]
-        cb_id = str(cq.get("id") or "")
-        from_id = int((cq.get("from") or {}).get("id") or 0)
-        if rid != request_id:
-            await _answer_callback(cb_id, "Это другой запрос подтверждения.")
-            continue
-        if not _is_allowed_approver(from_id):
-            await _answer_callback(cb_id, "Нет прав для подтверждения.")
-            continue
-        approve = yn == "yes"
-        _, msg = await process_confirmation_decision(request_id=request_id, approve=approve, chat_id=from_id)
-        await _answer_callback(cb_id, msg)
-        return approve
     return None
 
 
@@ -353,7 +220,6 @@ async def wait_for_confirmation(request_id: str, timeout_sec: int = 1800) -> boo
     return False
 
 
-# Backward-compatible aliases
 async def create_approval_request(
     question: str,
     description: str = "",
@@ -379,4 +245,3 @@ async def get_approval_status(token: str) -> dict[str, Any] | None:
 
 async def wait_for_approval(token: str, timeout_sec: int = 1800) -> bool:
     return await wait_for_confirmation(request_id=token, timeout_sec=timeout_sec)
-

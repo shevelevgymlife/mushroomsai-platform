@@ -67,7 +67,7 @@ def start_scheduler(bot):
         _logger.warning("start_scheduler: планировщик уже запущен, повторный вызов пропущен")
         return
     _scheduler_started = True
-    if settings.TELEGRAM_ENABLED and bot is not None:
+    if bot is not None:
         scheduler.add_job(
             send_followup_messages,
             "interval",
@@ -76,8 +76,8 @@ def start_scheduler(bot):
             id="send_followup_messages_primary",
             replace_existing=True,
         )
-    elif bot is None:
-        _logger.info("start_scheduler: без бота — follow-up в Telegram не планируется")
+    else:
+        _logger.info("start_scheduler: без бота — follow-up не планируется")
     scheduler.add_job(
         purge_expired_group_messages,
         "interval",

@@ -1,10 +1,6 @@
 """Moderation service: handle violations, bans, system DMs."""
 from datetime import datetime, timedelta
 
-from config import settings
-
-SUPER_ADMIN_TG_ID = 742166400
-
 
 async def handle_violation(user_id: int, reason: str, content: str, db) -> dict:
     await db.execute(
@@ -56,46 +52,11 @@ async def handle_violation(user_id: int, reason: str, content: str, db) -> dict:
             pass
         msg = "🚫 Аккаунт заблокирован навсегда\n\nПричина: систематические нарушения правил."
 
-    # System DM
     await db.execute(
         "INSERT INTO direct_messages (sender_id, recipient_id, text, is_system) VALUES (NULL, :uid, :text, true)",
         {"uid": user_id, "text": msg},
     )
 
-    # Telegram notify
-    tg_id = user.get("tg_id") or user.get("linked_tg_id")
-    if settings.TELEGRAM_ENABLED and tg_id:
-        try:
-            import httpx
-            async with httpx.AsyncClient(timeout=5) as client:
-                await client.post(
-                    f"https://api.telegram.org/bot{settings.TELEGRAM_TOKEN}/sendMessage",
-                    json={"chat_id": tg_id, "text": msg},
-                )
-        except Exception as e:
-            print(f"TG notify error: {e}")
-
-    # Notify admin
-    if settings.TELEGRAM_ENABLED:
-        try:
-            import httpx
-
-            admin_msg = (
-                f"⚠️ Нарушение #{count}\n"
-                f"Пользователь: {user['name']} (id={user_id})\n"
-                f"Причина: {reason}\n"
-                f"Действие: {action}\n"
-                f"Контент: {content[:100]}"
-            )
-            async with httpx.AsyncClient(timeout=5) as client:
-                await client.post(
-                    f"https://api.telegram.org/bot{settings.TELEGRAM_TOKEN}/sendMessage",
-                    json={"chat_id": SUPER_ADMIN_TG_ID, "text": admin_msg},
-                )
-        except Exception as e:
-            print(f"Admin notify error: {e}")
-
-    # Moderation log
     await db.execute(
         "INSERT INTO moderation_log (user_id, content_type, content_text, reason, action_taken) "
         "VALUES (:uid, 'post', :text, :reason, :action)",

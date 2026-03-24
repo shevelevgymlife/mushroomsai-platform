@@ -12,11 +12,6 @@ def _env_file_for_settings() -> str | None:
 
 
 class Settings(BaseSettings):
-    # Вся интеграция с Telegram (бот polling, sendMessage, Login Widget) выключена, пока false.
-    # После стабильного деплоя: true + TELEGRAM_TOKEN + переустановить python-telegram-bot и бота.
-    TELEGRAM_ENABLED: bool = False
-    TELEGRAM_TOKEN: str = ""
-    OPS_TELEGRAM_TOKEN: str = ""  # отдельный бот для задач/подтверждений (ops bot)
     OPENAI_API_KEY: str = ""
     DATABASE_URL: str = ""
     GOOGLE_CLIENT_ID: str = ""
@@ -26,16 +21,11 @@ class Settings(BaseSettings):
     ADMIN_EMAIL: str = ""  # опционально: email владельца (Google) = права оператора
     DEPLOY_NOTIFY_EMAIL_TO: str = ""  # куда слать уведомление о деплое
     DEPLOY_NOTIFY_EMAIL_FROM: str = ""  # от кого слать (если пусто, используем SMTP_USER)
-    DEPLOY_NOTIFY_TG_BOT_TOKEN: str = ""  # отдельный токен Telegram-бота для уведомлений/подтверждений
-    DEPLOY_NOTIFY_TG_CHAT_ID: str = ""  # chat_id для deploy-уведомлений (личка/группа)
-    DEPLOY_NOTIFY_TASK_CHAT_ID: str = ""  # chat_id для статусов задач (если пусто = DEPLOY_NOTIFY_TG_CHAT_ID)
     DEPLOY_NOTIFY_TASK_EMAIL_TO: str = ""  # email для статусов задач (если пусто = DEPLOY_NOTIFY_EMAIL_TO)
-    TASK_APPROVAL_BOT_TOKEN: str = ""  # токен для интерактивных подтверждений Да/Нет
-    TASK_APPROVAL_CHAT_ID: str = ""  # чат для вопросов подтверждения (если пусто, берем DEPLOY_NOTIFY_TASK_CHAT_ID)
-    TASK_APPROVAL_ALLOWED_TG_IDS: str = ""  # доп. TG ID через запятую, кто может нажимать Да/Нет
-    TASK_EXECUTOR_WEBHOOK_URL: str = ""  # endpoint внешнего исполнителя задач (optional)
-    TASK_EXECUTOR_WEBHOOK_TOKEN: str = ""  # bearer token для TASK_EXECUTOR_WEBHOOK_URL (optional)
-    OPS_NOTIFY_DAILY_SUMMARY_HOUR_UTC: int = 9  # час UTC для ежедневной сводки в ops-бот
+    TASK_AUTORUN_WEBHOOK_URL: str = ""  # внешний раннер задач (optional)
+    TASK_AUTORUN_WEBHOOK_TOKEN: str = ""  # секрет для заголовков webhook (optional)
+    TASK_AUTORUN_SECRET: str = ""  # альтернатива токену (optional)
+    OPS_NOTIFY_DAILY_SUMMARY_HOUR_UTC: int = 9  # час UTC для ежедневной сводки (email)
     OPS_NOTIFY_BILLING_DUE_AT: str = ""  # дата платежа YYYY-MM-DD (optional)
     OPS_NOTIFY_BILLING_CURRENT_USD: float = 0.0  # текущие расходы (optional)
     OPS_NOTIFY_BILLING_LIMIT_USD: float = 0.0  # лимит расходов (optional)
@@ -46,7 +36,6 @@ class Settings(BaseSettings):
     SMTP_PASS: str = ""
     SMTP_USE_TLS: bool = True
     SITE_URL: str = "https://mushroomsai.ru"
-    TELEGRAM_BOT_USERNAME: str = "mushrooms_ai_bot"
     SHEVELEV_TOKEN_ADDRESS: str = ""
     DECIMAL_RPC_URL: str = "https://node.decimalchain.com/web3/"
 
@@ -54,12 +43,6 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-# TELEGRAM_TOKEN только из окружения процесса: если ключ удалили на Render — явно "" (после рестарта).
-if os.environ.get("RENDER") or os.environ.get("RENDER_SERVICE_NAME"):
-    _tg = os.environ.get("TELEGRAM_TOKEN")
-    settings = settings.model_copy(update={"TELEGRAM_TOKEN": (_tg or "").strip()})
-elif "TELEGRAM_TOKEN" in os.environ:
-    settings = settings.model_copy(update={"TELEGRAM_TOKEN": os.environ["TELEGRAM_TOKEN"].strip()})
 
 
 def _shevelev_address_from_file() -> str:

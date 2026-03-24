@@ -915,7 +915,7 @@ body.dash-ig-app .ig-lamp-topbar{
       {% if 'tariffs' in vbk %}
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('plan')"><span class="e">{{ ico('spark') }}</span><span class="lbl">Тариф</span></button>
       {% endif %}
-      {% if 'pro_telegram' in vbk or 'pro_pin_info' in vbk %}
+      {% if 'pro_pin_info' in vbk %}
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('proextras')"><span class="e">{{ ico('spark') }}</span><span class="lbl">Про-функции</span></button>
       {% endif %}
       {% if 'seller_marketplace' in vbk %}
@@ -937,7 +937,7 @@ body.dash-ig-app .ig-lamp-topbar{
         </div>
       </details>
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();document.getElementById('sync-modal').style.display='flex'"><span class="e">{{ ico('link') }}</span><span class="lbl">Синхронизация аккаунтов</span></button>
-      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('link')"><span class="e">{{ ico('link') }}</span><span class="lbl">Привязка Telegram / Google</span></button>
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('link')"><span class="e">{{ ico('link') }}</span><span class="lbl">Привязка Google</span></button>
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('language')"><span class="e">{{ ico('globe') }}</span><span class="lbl">Язык интерфейса</span></button>
       <details class="ig-drawer-details" style="border-bottom:1px solid rgba(255,255,255,.06)">
         <summary class="ig-drawer-item ig-drawer-summary" style="list-style:none;cursor:pointer"><span class="e">📄</span><span class="lbl">Документы</span><span class="ig-drawer-chev" style="margin-left:auto;opacity:.5;font-size:10px">▼</span></summary>
@@ -1553,22 +1553,13 @@ body.dash-ig-app .ig-lamp-topbar{
     </section>
     {% endif %}
 
-    <!-- ══ ПРО: закрытый чат + приоритет в ленте ══ -->
-    {% if 'pro_telegram' in vbk or 'pro_pin_info' in vbk %}
+    <!-- ══ ПРО: приоритет в ленте ══ -->
+    {% if 'pro_pin_info' in vbk %}
     <section class="db-sec" id="sec-proextras">
-      {% if 'pro_telegram' in vbk %}
-      <div class="card hero-card" style="margin-bottom:16px">
-        <div class="sect-title" style="margin-bottom:10px;font-size:18px">Закрытый Telegram</div>
-        <p class="muted" style="margin-bottom:16px;font-size:14px">Партнёрство, кейсы, дополнительные материалы.</p>
-        <a href="https://t.me/+_hBvTo07K0k4Mjky" target="_blank" rel="noopener noreferrer" class="btn-g" style="display:inline-block;padding:12px 22px;font-size:15px">Вступить в закрытый чат →</a>
-      </div>
-      {% endif %}
-      {% if 'pro_pin_info' in vbk %}
       <div class="card" style="border-color:rgba(61,212,224,.35)">
         <div class="sect-title" style="margin-bottom:8px;font-size:17px">⭐ Приоритет в соцсети (Про)</div>
         <p class="muted" style="font-size:13px;line-height:1.65">Аккаунт со значком MushroomsAI. Закреп поста в общей ленте до 3 дней — <strong class="gold">не чаще одного раза в сутки</strong>. Если много участников с Про, закрепы ставятся по очереди (сначала новые заявки).</p>
       </div>
-      {% endif %}
     </section>
     {% endif %}
 
@@ -1754,16 +1745,6 @@ body.dash-ig-app .ig-lamp-topbar{
       </div>
       {% else %}
       <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">
-        {% if not has_tg %}
-        <a href="/account/link-telegram" class="card" style="display:flex;align-items:center;gap:14px;text-decoration:none;border-color:rgba(56,189,248,.25);background:rgba(56,189,248,.05);transition:border-color .2s" onmouseover="this.style.borderColor='rgba(56,189,248,.5)'" onmouseout="this.style.borderColor='rgba(56,189,248,.25)'">
-          <span style="font-size:28px">📱</span>
-          <div>
-            <div style="font-weight:600;color:#38bdf8;margin-bottom:2px">Привязать Telegram</div>
-            <div style="font-size:13px;color:#666">Объедините чат-бот и веб-кабинет</div>
-          </div>
-          <span style="margin-left:auto;color:#38bdf8">→</span>
-        </a>
-        {% endif %}
         {% if not has_google %}
         <a href="/account/link-google" class="card" style="display:flex;align-items:center;gap:14px;text-decoration:none;border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.05);transition:border-color .2s" onmouseover="this.style.borderColor='rgba(239,68,68,.5)'" onmouseout="this.style.borderColor='rgba(239,68,68,.25)'">
           <span style="font-size:28px">🔴</span>
@@ -1938,7 +1919,7 @@ body.dash-ig-app .ig-lamp-topbar{
     {% if 'tariffs' in vbk %}
     {{ ni('plan','✨','Тариф') }}
     {% endif %}
-    {% if 'pro_telegram' in vbk or 'pro_pin_info' in vbk %}
+    {% if 'pro_pin_info' in vbk %}
     {{ ni('proextras','💎','Про') }}
     {% endif %}
     {% if 'seller_marketplace' in vbk %}
@@ -1951,12 +1932,6 @@ body.dash-ig-app .ig-lamp-topbar{
     {{ ni('link','🔗','Привязка') }}
     {{ ni('profile','⚙️','Профиль') }}
     <div class="nav-sep"></div>
-    <button class="nav-item" onclick="window.open('https://t.me/mushrooms_ai_bot','_blank')" style="background:#229ED9;border-color:rgba(34,158,217,.4)" onmouseover="this.style.background='#1a8fc2'" onmouseout="this.style.background='#229ED9'">
-      <svg width="19" height="19" viewBox="0 0 24 24" fill="white" style="flex-shrink:0">
-        <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-2.04 9.607c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.48 14.618l-2.95-.924c-.642-.2-.655-.642.136-.953l11.532-4.448c.536-.194 1.006.131.364.955z"/>
-      </svg>
-      <span class="nav-tooltip">Telegram бот</span>
-    </button>
     {% if user.role == 'admin' %}
     <button class="nav-item" onclick="window.location='/admin'" style="color:#f87171">🛡️<span class="nav-tooltip">Администратор</span></button>
     {% endif %}
@@ -1980,19 +1955,9 @@ body.dash-ig-app .ig-lamp-topbar{
       <h3 style="font-size:18px;font-weight:700;color:#e8e8e8">🔗 Привязка аккаунтов</h3>
       <button onclick="document.getElementById('sync-modal').style.display='none'" style="background:none;border:none;color:#555;font-size:22px;cursor:pointer;line-height:1">×</button>
     </div>
-    <p style="font-size:14px;color:#888;margin-bottom:24px;line-height:1.6">Привяжите Telegram или Google чтобы объединить аккаунты в один — единая история, подписка и профиль.</p>
+    <p style="font-size:14px;color:#888;margin-bottom:24px;line-height:1.6">Привяжите Google, чтобы объединить аккаунты в один — единая история, подписка и профиль.</p>
     <div id="sync-success" style="{% if request.query_params.get('linked') %}display:block{% else %}display:none{% endif %};margin-bottom:16px;padding:12px;border-radius:10px;background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);color:#4ade80;font-size:14px;font-weight:600;text-align:center">✅ Аккаунты объединены!</div>
     <div style="display:flex;flex-direction:column;gap:10px">
-      <a href="/account/link-telegram"
-        style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:12px;border:1px solid rgba(56,189,248,.3);background:rgba(56,189,248,.05);text-decoration:none;transition:background .2s"
-        onmouseover="this.style.background='rgba(56,189,248,.12)'" onmouseout="this.style.background='rgba(56,189,248,.05)'">
-        <span style="font-size:22px">📱</span>
-        <div>
-          <div style="font-size:14px;font-weight:600;color:#38bdf8">Привязать Telegram</div>
-          <div style="font-size:12px;color:#555">Объедините бот и веб-кабинет</div>
-        </div>
-        <span style="margin-left:auto;color:#38bdf8">→</span>
-      </a>
       <a href="/account/link-google"
         style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:12px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.05);text-decoration:none;transition:background .2s"
         onmouseover="this.style.background='rgba(239,68,68,.12)'" onmouseout="this.style.background='rgba(239,68,68,.05)'">

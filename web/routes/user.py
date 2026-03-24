@@ -94,7 +94,7 @@ def build_dashboard_secs(visible_block_keys: list[str]) -> list[str]:
         out.append("ai")
     if "knowledge_base" in keys:
         out.append("knowledge")
-    if "pro_telegram" in keys or "pro_pin_info" in keys:
+    if "pro_pin_info" in keys:
         out.append("proextras")
     if "shop" in keys:
         out.extend(["shop", "orders"])
@@ -314,7 +314,7 @@ async def dashboard(request: Request):
 
     allowed_by_plan = plan_allowed_block_keys(plan, user)
     visible_block_keys = [k for k in visible_block_keys if k in allowed_by_plan]
-    for _extra in ("knowledge_base", "pro_telegram", "pro_pin_info", "seller_marketplace"):
+    for _extra in ("knowledge_base", "pro_pin_info", "seller_marketplace"):
         if _extra in allowed_by_plan and _extra not in visible_block_keys:
             visible_block_keys.append(_extra)
 
@@ -1047,7 +1047,7 @@ async def shevelev_transfer_notify(request: Request):
         except Exception:
             online = False
     if tg_id and not online:
-        from bot.handlers.notify import notify_user
+        from services.notify_user_stub import notify_user
 
         tg_line = "💰 " + msg.replace("\n", " ")
         await notify_user(int(tg_id), tg_line[:3900])
@@ -1310,7 +1310,7 @@ async def follow_user(request: Request, target_id: int):
         if target:
             tg_id = target.get("tg_id") or target.get("linked_tg_id")
             if tg_id:
-                from bot.handlers.notify import notify_user
+                from services.notify_user_stub import notify_user
                 actor_name = user.get("name") or "Участник"
                 await notify_user(tg_id, f"👤 <b>{actor_name}</b> подписался на вас в Сообществе MushroomsAI")
         return JSONResponse({"following": True})
@@ -1374,7 +1374,7 @@ async def send_dm(request: Request, recipient_id: int):
     if recipient:
         tg_id = recipient.get("tg_id") or recipient.get("linked_tg_id")
         if tg_id:
-            from bot.handlers.notify import notify_user
+            from services.notify_user_stub import notify_user
             actor_name = user.get("name") or "Участник"
             await notify_user(tg_id, f"💬 Новое сообщение от <b>{actor_name}</b>:\n{text[:200]}\n\n<a href='https://mushroomsai.ru/community'>Открыть</a>")
     return JSONResponse({"ok": True, "id": msg_id})
@@ -2681,7 +2681,7 @@ async def community_group_message_post(request: Request, group_id: int):
                 online_in_chat = False
         if should_notify and (not online_in_chat) and recip and recip.get("tg_id"):
             try:
-                from bot.handlers.notify import notify_user
+                from services.notify_user_stub import notify_user
                 gname = (g_row or {}).get("name") or f"Чат #{group_id}"
                 sname = (sender or {}).get("name") or "Участник"
                 await notify_user(

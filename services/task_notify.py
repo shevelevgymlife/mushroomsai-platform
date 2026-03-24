@@ -1,4 +1,4 @@
-"""Unified task/deploy notifications (Telegram + email)."""
+"""Уведомления о задачах и деплое (только email)."""
 from __future__ import annotations
 
 import asyncio
@@ -7,8 +7,6 @@ import os
 import smtplib
 from datetime import datetime, timezone
 from email.message import EmailMessage
-
-import httpx
 
 from config import settings
 
@@ -41,65 +39,6 @@ def _render_commit() -> str:
 
 def _render_deploy_id() -> str:
     return os.getenv("RENDER_DEPLOY_ID", "") or "unknown"
-
-
-def _task_chat_id_raw() -> str:
-    return _first_nonempty(
-        getattr(settings, "TASK_NOTIFY_TELEGRAM_CHAT_ID", ""),
-        getattr(settings, "DEPLOY_NOTIFY_TASK_CHAT_ID", ""),
-        getattr(settings, "TASK_NOTIFY_TG_CHAT_ID", ""),
-    )
-
-
-def _deploy_chat_id_raw() -> str:
-    return _first_nonempty(
-        getattr(settings, "DEPLOY_NOTIFY_TELEGRAM_CHAT_ID", ""),
-        getattr(settings, "DEPLOY_NOTIFY_TG_CHAT_ID", ""),
-    )
-
-
-def _chat_id_for_stage(stage: str) -> int:
-    if stage in ("task_accepted", "deploy_sent"):
-        raw = _first_nonempty(_task_chat_id_raw(), _deploy_chat_id_raw())
-    else:
-        raw = _first_nonempty(_deploy_chat_id_raw(), _task_chat_id_raw())
-    try:
-        return int(raw or 0)
-    except Exception:
-        return 0
-
-
-def _chat_id_candidates(stage: str) -> list[int]:
-    """Return ordered unique chat ids with fallback."""
-    raw_primary = ""
-    raw_fallback = ""
-    if stage in ("task_accepted", "task_done"):
-        raw_primary = _task_chat_id_raw()
-        raw_fallback = _deploy_chat_id_raw()
-    else:
-        # Deploy-related notices should primarily go to deploy chat.
-        raw_primary = _deploy_chat_id_raw()
-        raw_fallback = _task_chat_id_raw()
-
-    ids: list[int] = []
-    for raw in (raw_primary, raw_fallback):
-        try:
-            cid = int((raw or "").strip() or 0)
-        except Exception:
-            cid = 0
-        if cid and cid not in ids:
-            ids.append(cid)
-    return ids
-
-
-def _telegram_token() -> str:
-    return _first_nonempty(
-        getattr(settings, "OPS_TELEGRAM_TOKEN", ""),
-        getattr(settings, "TASK_APPROVAL_BOT_TOKEN", ""),
-        getattr(settings, "DEPLOY_NOTIFY_TG_BOT_TOKEN", ""),
-        getattr(settings, "NOTIFY_TELEGRAM_TOKEN", ""),
-        settings.TELEGRAM_TOKEN,
-    )
 
 
 def _email_to_for_stage(stage: str) -> str:
@@ -148,34 +87,6 @@ def _send_email_sync(subject: str, body: str, to_email: str, from_email: str) ->
         server.send_message(msg)
 
 
-async def _notify_telegram(text: str, stage: str) -> None:
-    if not settings.TELEGRAM_ENABLED:
-        return
-    if not text:
-        return
-    token = _telegram_token()
-    candidates = _chat_id_candidates(stage)
-    if not token or not candidates:
-        return
-    last_error: str = ""
-    for chat_id in candidates:
-        try:
-            async with httpx.AsyncClient(timeout=8) as client:
-                resp = await client.post(
-                    f"https://api.telegram.org/bot{token}/sendMessage",
-                    json={"chat_id": chat_id, "text": text[:3900]},
-                )
-            if 200 <= resp.status_code < 300:
-                return
-            last_error = f"status={resp.status_code} body={resp.text[:300]}"
-            logger.warning("Telegram notify non-2xx for chat_id=%s: %s", chat_id, last_error)
-        except Exception as e:
-            last_error = str(e)
-            logger.warning("Telegram notify failed for chat_id=%s: %s", chat_id, e)
-    if last_error:
-        logger.warning("Telegram notify failed for all candidate chats: %s", last_error)
-
-
 async def _notify_email(subject: str, body: str, stage: str) -> None:
     to_email = _email_to_for_stage(stage)
     from_email = _email_from_for_stage()
@@ -214,10 +125,8 @@ async def notify_status(
         f"Time: {ts}"
     )
     subject = f"[MushroomsAI] {stage_title} ({_render_service()}) {_render_commit()}"
-    tasks = [_notify_telegram(msg, stage)]
     if include_email:
-        tasks.append(_notify_email(subject, msg, stage))
-    await asyncio.gather(*tasks, return_exceptions=True)
+        await _notify_email(subject, msg, stage)
 
 
 async def notify_task_accepted(task_text: str) -> None:

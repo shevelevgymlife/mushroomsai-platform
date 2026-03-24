@@ -73,7 +73,7 @@ START_BLOCKS = frozenset(
     }
 )
 
-PRO_EXTRA = frozenset({"pro_telegram", "pro_pin_info"})
+PRO_EXTRA = frozenset({"pro_pin_info"})
 
 MAXI_EXTRA = frozenset({"seller_marketplace"})
 
@@ -93,7 +93,6 @@ def plan_allowed_block_keys(plan: str | None, user: dict[str, Any] | None) -> fr
                 "tariffs",
                 "referral",
                 "knowledge_base",
-                "pro_telegram",
                 "pro_pin_info",
                 "seller_marketplace",
             }

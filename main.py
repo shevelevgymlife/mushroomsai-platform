@@ -84,11 +84,7 @@ async def lifespan(app: FastAPI):
         raise
     logger.info("Database connected")
     _commit = (os.environ.get("RENDER_GIT_COMMIT") or "")[:12] or "n/a"
-    logger.info(
-        "Boot: render_git=%s TELEGRAM_ENABLED=%s",
-        _commit,
-        settings.TELEGRAM_ENABLED,
-    )
+    logger.info("Boot: render_git=%s", _commit)
     await send_deploy_notifications()
 
     # Ensure persistent storage directories exist (Render Disk at /data or local ./media)
@@ -384,7 +380,6 @@ async def lifespan(app: FastAPI):
             )
         # Блоки Про/Макси (если записей ещё не было при старой БД)
         for key, name, pos, al in (
-            ("pro_telegram", "Подарок Telegram (Про)", 90, "pro"),
             ("pro_pin_info", "Закреп в ленте (Про)", 91, "pro"),
             ("seller_marketplace", "Кабинет продавца (Макси)", 92, "maxi"),
         ):
@@ -411,11 +406,6 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"AI settings init: {e}")
 
-    # Telegram polling-бот убран из процесса веб-сервера (стабильный деплой). Вернуть: TELEGRAM_ENABLED + зависимость PTB.
-    if settings.TELEGRAM_ENABLED:
-        logger.warning(
-            "TELEGRAM_ENABLED=true, но polling-бот в этой версии не поднимается — выключите флаг или дождитесь восстановления бота."
-        )
     from services.scheduler import start_scheduler
 
     start_scheduler(None)

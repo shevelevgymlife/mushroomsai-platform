@@ -2,7 +2,6 @@ from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from web.templates_utils import Jinja2Templates
 from starlette.responses import JSONResponse
-from auth.telegram_auth import verify_telegram_auth, verify_telegram_miniapp
 from auth.email_auth import authenticate_user, register_user
 from auth.session import create_access_token
 from db.database import database
@@ -37,7 +36,6 @@ def _pop_login_redirect(request: Request) -> str:
 async def _login_blocked_response(request: Request):
     from config import settings as _s
 
-    _tid = _s.TELEGRAM_TOKEN.split(":")[0] if ":" in _s.TELEGRAM_TOKEN else ""
     return templates.TemplateResponse(
         "login.html",
         {
@@ -45,7 +43,6 @@ async def _login_blocked_response(request: Request):
             "user": None,
             "error": "Этот аккаунт заблокирован администратором.",
             "site_url": _s.SITE_URL,
-            "tg_bot_id": _tid,
         },
         status_code=403,
     )
@@ -66,10 +63,10 @@ async def login_page(request: Request):
         return RedirectResponse(go, status_code=302)
 
     from config import settings
-    tg_bot_id = settings.TELEGRAM_TOKEN.split(":")[0] if ":" in settings.TELEGRAM_TOKEN else ""
+
     response = templates.TemplateResponse(
         "login.html",
-        {"request": request, "user": None, "site_url": settings.SITE_URL, "tg_bot_id": tg_bot_id},
+        {"request": request, "user": None, "site_url": settings.SITE_URL},
     )
     attach_invite_ref_from_query(request, response)
     return response
@@ -92,7 +89,7 @@ async def login_email(
         except Exception:
             pass
         from config import settings as _s
-        _tid = _s.TELEGRAM_TOKEN.split(":")[0] if ":" in _s.TELEGRAM_TOKEN else ""
+
         return templates.TemplateResponse(
             "login.html",
             {
@@ -100,7 +97,6 @@ async def login_email(
                 "user": None,
                 "error": "Неверный email или пароль",
                 "site_url": _s.SITE_URL,
-                "tg_bot_id": _tid,
             },
         )
     token = create_access_token(user["id"])
@@ -121,7 +117,7 @@ async def register_email(
     user = await register_user(email, password, name)
     if not user:
         from config import settings as _s
-        _tid = _s.TELEGRAM_TOKEN.split(":")[0] if ":" in _s.TELEGRAM_TOKEN else ""
+
         return templates.TemplateResponse(
             "login.html",
             {
@@ -129,7 +125,6 @@ async def register_email(
                 "user": None,
                 "error": "Email уже зарегистрирован",
                 "site_url": _s.SITE_URL,
-                "tg_bot_id": _tid,
             },
         )
     token = create_access_token(user["id"])
@@ -138,121 +133,6 @@ async def register_email(
     resp.set_cookie("access_token", token, httponly=True, max_age=30 * 24 * 3600)
     await finalize_web_referral(request, resp, user["id"])
     return resp
-
-
-@router.get("/auth/telegram")
-async def telegram_auth(request: Request):
-    from config import settings as _cfg
-
-    if not _cfg.TELEGRAM_ENABLED:
-        return RedirectResponse("/login?error=telegram_disabled", status_code=302)
-
-    data = dict(request.query_params)
-    if not verify_telegram_auth(data.copy()):
-        try:
-            await notify_security_event(
-                event="Невалидный Telegram auth payload",
-                details=f"IP: {request.client.host if request.client else '—'}",
-            )
-        except Exception:
-            pass
-        return JSONResponse({"error": "Invalid auth"}, status_code=400)
-
-    tg_id = int(data.get("id"))
-    name = f"{data.get('first_name', '')} {data.get('last_name', '')}".strip()
-    photo = data.get("photo_url", "")
-
-    if await is_identity_blocked("tg_id", str(tg_id)):
-        return await _login_blocked_response(request)
-
-    from auth.avatar_policy import is_server_uploaded_avatar
-
-    row = await database.fetch_one(users.select().where(users.c.tg_id == tg_id))
-    if row:
-        if await login_denied_for_user_row(dict(row)):
-            return await _login_blocked_response(request)
-        user_id = row["primary_user_id"] or row["id"]
-        vals = {"name": name}
-        if not is_server_uploaded_avatar(row.get("avatar")) and photo:
-            vals["avatar"] = photo
-        await database.execute(users.update().where(users.c.tg_id == tg_id).values(**vals))
-    else:
-        ref_code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
-        user_id = await database.execute(
-            users.insert().values(tg_id=tg_id, name=name, avatar=photo, referral_code=ref_code)
-        )
-
-    token = create_access_token(user_id)
-    dest = _pop_login_redirect(request)
-    resp = RedirectResponse(dest, status_code=302)
-    resp.set_cookie("access_token", token, httponly=True, max_age=30 * 24 * 3600)
-    await finalize_web_referral(request, resp, int(user_id))
-    return resp
-
-
-@router.post("/auth/telegram/miniapp")
-async def telegram_miniapp_auth(request: Request):
-    from config import settings as _cfg
-
-    if not _cfg.TELEGRAM_ENABLED:
-        return JSONResponse({"error": "telegram_disabled"}, status_code=503)
-
-    try:
-        body = await request.json()
-        init_data = body.get("init_data", "")
-
-        user_data = verify_telegram_miniapp(init_data)
-        if not user_data:
-            try:
-                await notify_security_event(
-                    event="Невалидный Telegram MiniApp auth",
-                    details=f"IP: {request.client.host if request.client else '—'}",
-                )
-            except Exception:
-                pass
-            return JSONResponse({"error": "Invalid Telegram data"}, status_code=400)
-
-        tg_id = int(user_data.get("id"))
-        name = f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip()
-        avatar = user_data.get("photo_url", "")
-
-        if await is_identity_blocked("tg_id", str(tg_id)):
-            return JSONResponse({"error": "Аккаунт заблокирован"}, status_code=403)
-
-        from auth.avatar_policy import is_server_uploaded_avatar
-
-        row = await database.fetch_one(users.select().where(users.c.tg_id == tg_id))
-        if row:
-            if await login_denied_for_user_row(dict(row)):
-                return JSONResponse({"error": "Аккаунт заблокирован"}, status_code=403)
-            user_id = row["primary_user_id"] or row["id"]
-            vals = {"name": name}
-            if not is_server_uploaded_avatar(row.get("avatar")) and avatar:
-                vals["avatar"] = avatar
-            await database.execute(users.update().where(users.c.tg_id == tg_id).values(**vals))
-        else:
-            ref_code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
-            user_id = await database.execute(
-                users.insert().values(tg_id=tg_id, name=name, avatar=avatar, referral_code=ref_code)
-            )
-
-        token = create_access_token(user_id)
-        dest = _pop_login_redirect(request)
-        resp = JSONResponse({"redirect": dest})
-        resp.set_cookie("access_token", token, httponly=True, max_age=30 * 24 * 3600)
-        await finalize_web_referral(request, resp, int(user_id))
-        return resp
-
-    except Exception as e:
-        _logger.warning("telegram_miniapp_auth error: %s", e)
-        try:
-            await notify_security_event(
-                event="Ошибка авторизации Telegram MiniApp",
-                details=str(e)[:600],
-            )
-        except Exception:
-            pass
-        return JSONResponse({"error": str(e)}, status_code=500)
 
 
 @router.get("/auth/google")
@@ -370,7 +250,7 @@ async def google_callback(request: Request):
         except Exception:
             pass
         from config import settings as _s
-        _tid = _s.TELEGRAM_TOKEN.split(":")[0] if ":" in _s.TELEGRAM_TOKEN else ""
+
         return templates.TemplateResponse(
             "login.html",
             {
@@ -378,7 +258,6 @@ async def google_callback(request: Request):
                 "user": None,
                 "error": f"Ошибка входа: {str(e)}",
                 "site_url": _s.SITE_URL,
-                "tg_bot_id": _tid,
             },
         )
 

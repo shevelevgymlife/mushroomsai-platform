@@ -1958,25 +1958,6 @@ async def send_message(request: Request, other_id: int):
         print(f"[messages] send error: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
 
-    # Telegram notify
-    if settings.TELEGRAM_ENABLED:
-        try:
-            recipient = await database.fetch_one(users.select().where(users.c.id == other_id))
-            if recipient:
-                tg_id = recipient.get("tg_id") or recipient.get("linked_tg_id")
-                if tg_id and settings.TELEGRAM_TOKEN:
-                    import httpx
-
-                    sender_name = current_user.get("name") or "Пользователь"
-                    notify_text = f"💬 Новое сообщение от {sender_name}\n{text[:100]}"
-                    async with httpx.AsyncClient(timeout=5) as client:
-                        await client.post(
-                            f"https://api.telegram.org/bot{settings.TELEGRAM_TOKEN}/sendMessage",
-                            json={"chat_id": tg_id, "text": notify_text},
-                        )
-        except Exception:
-            pass
-
     return JSONResponse({
         "ok": True,
         "id": msg_id,
@@ -1994,18 +1975,6 @@ async def contact_feedback(request: Request):
     message = (body.get("message") or "").strip()
     if not message:
         return JSONResponse({"error": "empty"}, status_code=400)
-    if settings.TELEGRAM_ENABLED and settings.TELEGRAM_TOKEN and settings.ADMIN_TG_ID:
-        try:
-            import httpx
-
-            tg_text = f"📬 Обратная связь с сайта mushroomsai.ru:\n\n{message}"
-            async with httpx.AsyncClient(timeout=5) as client:
-                await client.post(
-                    f"https://api.telegram.org/bot{settings.TELEGRAM_TOKEN}/sendMessage",
-                    json={"chat_id": settings.ADMIN_TG_ID, "text": tg_text},
-                )
-        except Exception:
-            pass
     try:
         await notify_new_feedback(text=message, user_label="Гость")
     except Exception:
