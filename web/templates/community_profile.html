@@ -311,10 +311,10 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
     {% if p.image_url and p.content %}
     <div class="ig-post-body"><span class="ig-cap-user">{{ profile.name or '' }}</span>{{ p.content }}</div>
     {% endif %}
-    <div class="csec" id="cs-{{ p.id }}" style="display:none;margin:0;padding:12px;border-top:1px solid rgba(255,255,255,.06)">
+    <div class="csec" id="cs-{{ p.id }}" style="display:none;margin:0;padding:12px;border-top:1px solid rgba(255,255,255,.06);overflow:hidden;max-width:100%;box-sizing:border-box">
       <div id="cl-{{ p.id }}"></div>
-      <div style="display:flex;gap:8px;margin-top:10px">
-        <input type="text" id="ci-{{ p.id }}" class="sinp" style="flex:1" placeholder="Комментарий...">
+      <div style="display:flex;gap:8px;margin-top:10px;overflow:hidden;max-width:100%;box-sizing:border-box">
+        <input type="text" id="ci-{{ p.id }}" class="sinp" style="flex:1;min-width:0;max-width:100%;width:100%;box-sizing:border-box;font-size:16px" placeholder="Комментарий...">
         <button class="btn-g" style="padding:8px 14px;font-size:13px" onclick="submitCmt({{ p.id }})">→</button>
       </div>
     </div>
@@ -352,10 +352,10 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
       <div style="padding:14px 14px 18px">
         <div id="profilePreviewTitle" style="display:none;font-size:18px;font-weight:700;color:#f3f4f6;line-height:1.25;margin-bottom:8px"></div>
         <div id="profilePreviewContent" style="font-size:14px;color:#c4c8d3;line-height:1.55;white-space:pre-wrap;word-break:break-word"></div>
-        <div id="profilePreviewMetrics" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
-          <span style="font-size:12px;color:#ffd84f">⭐ <span id="profilePreviewLikes">0</span></span>
-          <span style="font-size:12px;color:#8be9ff">💬 <span id="profilePreviewComments">0</span></span>
-          <span style="font-size:12px;color:#f7b3ff">↗ <span id="profilePreviewSaves">0</span></span>
+        <div id="profilePreviewMetrics" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px">
+          <div style="display:flex;align-items:center;justify-content:center;gap:8px;min-height:54px;border-radius:14px;border:1px solid rgba(255,216,79,.45);background:linear-gradient(160deg,rgba(255,216,79,.2),rgba(12,13,20,.92));color:#ffe57f;font-size:19px;font-weight:800">⭐ <span id="profilePreviewLikes" style="font-size:22px;line-height:1">0</span></div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:8px;min-height:54px;border-radius:14px;border:1px solid rgba(139,233,255,.4);background:linear-gradient(160deg,rgba(139,233,255,.18),rgba(12,13,20,.92));color:#9df0ff;font-size:19px;font-weight:800">💬 <span id="profilePreviewComments" style="font-size:22px;line-height:1">0</span></div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:8px;min-height:54px;border-radius:14px;border:1px solid rgba(247,179,255,.4);background:linear-gradient(160deg,rgba(247,179,255,.18),rgba(12,13,20,.92));color:#ffc6ff;font-size:19px;font-weight:800">↗ <span id="profilePreviewSaves" style="font-size:22px;line-height:1">0</span></div>
         </div>
         <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)">
           <div style="font-size:12px;color:#8a8fa0;margin-bottom:8px">Комментарии</div>
@@ -363,7 +363,6 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
         </div>
         <input type="hidden" id="profilePreviewPostId" value="">
         <div id="profilePreviewActionRow" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);position:sticky;top:0;z-index:2;background:linear-gradient(180deg,rgba(11,12,18,.98),rgba(11,12,18,.93));padding-bottom:8px;overflow:hidden;max-width:100%">
-          <button type="button" class="btn-g" style="padding:10px 12px;white-space:nowrap" onclick="submitProfilePreviewComment()">Отправить</button>
           <button type="button" class="btn-g" id="profilePreviewViewPhotoBtn" style="padding:10px 12px;white-space:nowrap" onclick="openProfilePreviewImageFull()">Посмотреть фото</button>
           <button type="button" class="btn-g" style="padding:10px 12px;white-space:nowrap" onclick="closeProfilePostPreview()">Закрыть</button>
         </div>

@@ -2117,10 +2117,10 @@ body.dash-ig-app .ig-lamp-topbar{
     <div style="padding:14px 14px 18px">
       <div id="feedPreviewTitle" style="display:none;font-size:18px;font-weight:700;color:#f3f4f6;line-height:1.25;margin-bottom:8px"></div>
       <div id="feedPreviewContent" style="font-size:14px;color:#c4c8d3;line-height:1.55;white-space:pre-wrap;word-break:break-word"></div>
-      <div id="feedPreviewMetrics" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
-        <span style="font-size:12px;color:#ffd84f">⭐ <span id="feedPreviewLikes">0</span></span>
-        <span style="font-size:12px;color:#8be9ff">💬 <span id="feedPreviewComments">0</span></span>
-        <span style="font-size:12px;color:#f7b3ff">↗ <span id="feedPreviewSaves">0</span></span>
+      <div id="feedPreviewMetrics" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px">
+        <div style="display:flex;align-items:center;justify-content:center;gap:8px;min-height:54px;border-radius:14px;border:1px solid rgba(255,216,79,.45);background:linear-gradient(160deg,rgba(255,216,79,.2),rgba(12,13,20,.92));color:#ffe57f;font-size:19px;font-weight:800">⭐ <span id="feedPreviewLikes" style="font-size:22px;line-height:1">0</span></div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:8px;min-height:54px;border-radius:14px;border:1px solid rgba(139,233,255,.4);background:linear-gradient(160deg,rgba(139,233,255,.18),rgba(12,13,20,.92));color:#9df0ff;font-size:19px;font-weight:800">💬 <span id="feedPreviewComments" style="font-size:22px;line-height:1">0</span></div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:8px;min-height:54px;border-radius:14px;border:1px solid rgba(247,179,255,.4);background:linear-gradient(160deg,rgba(247,179,255,.18),rgba(12,13,20,.92));color:#ffc6ff;font-size:19px;font-weight:800">↗ <span id="feedPreviewSaves" style="font-size:22px;line-height:1">0</span></div>
       </div>
       <div id="feedPreviewCommentsWrap" style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)">
         <div style="font-size:12px;color:#8a8fa0;margin-bottom:8px">Комментарии</div>
@@ -2128,7 +2128,6 @@ body.dash-ig-app .ig-lamp-topbar{
       </div>
       <input type="hidden" id="feedPreviewPostId" value="">
       <div id="feedPreviewActionRow" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);position:sticky;top:0;z-index:2;background:linear-gradient(180deg,rgba(11,12,18,.98),rgba(11,12,18,.93));padding-bottom:8px;overflow:hidden;max-width:100%">
-        <button type="button" class="btn-g" style="padding:10px 12px;white-space:nowrap" onclick="submitFeedPreviewComment()">Отправить</button>
         <button type="button" class="btn-g" id="feedPreviewViewPhotoBtn" style="padding:10px 12px;white-space:nowrap" onclick="openFeedPreviewImageFull()">Посмотреть фото</button>
         <button type="button" class="btn-g" style="padding:10px 12px;white-space:nowrap" onclick="closeFeedPostPreview()">Закрыть</button>
       </div>
