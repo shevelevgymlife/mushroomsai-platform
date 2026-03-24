@@ -417,6 +417,8 @@
 .tg-chat-header-row #groupMobileBack{display:none}
 .tg-chat-shell .ig-g-msg-wrap{flex:1;overflow-y:auto;padding:12px 10px 14px;display:flex;flex-direction:column;gap:8px;background:#0a0a0a;border:none;border-radius:0;margin:0!important;min-height:220px}
 .tg-chat-shell .ig-g-row{display:flex;flex-direction:column;width:100%}
+.tg-chat-shell .ig-g-row{animation:msgSoftIn .22s ease-out}
+@keyframes msgSoftIn{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
 .tg-chat-shell .ig-g-row.me{align-items:flex-end}
 .tg-chat-shell .ig-g-row.them{align-items:flex-start}
 .tg-chat-shell .ig-g-bubble{max-width:min(82%,380px);padding:9px 12px 7px;border-radius:18px;font-size:14px;line-height:1.45;word-break:break-word;position:relative;animation:igMsgIn .2s ease-out}
@@ -1260,18 +1262,14 @@ body.dash-ig-app .ig-lamp-topbar{
     <section class="db-sec" id="sec-groups">
       {% if 'community' in vbk %}
       <div class="sect-title groups-page-intro" style="margin-bottom:8px">Групповые чаты</div>
-      <p class="muted groups-page-intro" style="margin-bottom:18px;font-size:14px;line-height:1.5">Список как в сообщениях: превью и время. Создавать группы могут <strong class="gold">Про</strong>, <strong class="gold">Макси</strong> и администратор.</p>
+      <p class="muted groups-page-intro" style="margin-bottom:18px;font-size:14px;line-height:1.5">Здесь только чаты. Создание и настройки перенесены в админку.</p>
       <div class="tg-chat-shell">
         <aside class="tg-chat-sidebar">
           <div class="tg-chat-sidebar-head">
             <div class="tg-h">Чаты</div>
             <div class="tg-sub">Группы сообщества</div>
           </div>
-          {% if can_create_groups %}
-          <button type="button" class="tg-btn-new" onclick="document.getElementById('grpCreateModal').style.display='flex'">+ Новая группа</button>
-          {% else %}
-          <p class="muted" style="font-size:12px;margin:0 14px 12px;line-height:1.5;color:#888!important">Создание групп — только <strong class="gold">Про</strong> / <strong class="gold">Макси</strong> или админ. Вступайте в группы и пишите в чатах.</p>
-          {% endif %}
+          <p class="muted" style="font-size:12px;margin:0 14px 12px;line-height:1.5;color:#888!important">Создавать чаты может только админ. Выберите чат и вступите.</p>
           <div id="groupListEl" class="tg-chat-list">
             {% if group_list %}
             {% for g in group_list %}
@@ -1299,6 +1297,10 @@ body.dash-ig-app .ig-lamp-topbar{
                   <span class="tg-ios-preview">{{ _prev|e }}{% if g.is_member %}{% elif g.pending_join %} · заявка{% else %} · не в группе{% endif %} · {{ g.member_count or 0 }} уч.</span>
                   <span class="tg-ios-badge {% if g.is_member and _ur > 0 %}on{% endif %}">{{ _ur if g.is_member and _ur > 0 else '' }}</span>
                 </div>
+                <div class="tg-ios-preview-row" style="margin-top:2px">
+                  <span class="tg-ios-preview" style="font-size:12px;color:#ffd84f">⭐ {{ g.member_count or 0 }}</span>
+                  <span class="tg-ios-preview" style="font-size:12px;color:#8be9ff;flex:0 0 auto">💬 {{ g.msg_count or 0 }}</span>
+                </div>
               </div>
             </div>
             {% endfor %}
@@ -1309,7 +1311,7 @@ body.dash-ig-app .ig-lamp-topbar{
         </aside>
         <div class="tg-chat-main" style="padding:0;overflow:hidden;display:flex;flex-direction:column">
           <div id="groupChatPlaceholder" style="flex:1;display:flex;align-items:center;justify-content:center;font-size:14px;padding:32px;text-align:center">
-            Выберите чат слева или создайте группу.
+            Выберите чат слева.
           </div>
           <div id="groupChatPanel" style="display:none;flex-direction:column;height:100%;min-height:420px;flex:1">
             <div id="groupOwnerBar" class="tg-owner-bar" style="display:none;padding:10px 14px;font-size:12px;color:#ccc">
@@ -1331,8 +1333,13 @@ body.dash-ig-app .ig-lamp-topbar{
             <div class="tg-chat-header-row">
               <button type="button" class="btn-o" id="groupMobileBack" style="font-size:12px;padding:6px 10px;display:none;flex-shrink:0" onclick="if(window.__groupChatHistoryPushed){history.back();}else{finishGroupChatOverlayUI();}">← Чаты</button>
               <div id="groupChatTitle"></div>
+              <select id="groupAddressedSelect" class="sinp" style="max-width:200px;font-size:12px;padding:6px 10px;display:none"></select>
+              <span id="groupAddressedUnread" style="display:none;font-size:11px;color:#8be9ff;white-space:nowrap"></span>
+              <button type="button" class="btn-o" id="groupNotifyBtn" style="font-size:12px;padding:6px 12px;display:none;flex-shrink:0" onclick="toggleGroupNotifications()">Уведомления: ВКЛ</button>
+              <button type="button" class="btn-o" id="groupLeaveBtn" style="font-size:12px;padding:6px 12px;display:none;flex-shrink:0" onclick="leaveSelectedGroup()">Уйти</button>
               <button type="button" class="btn-o" id="groupJoinBtn" style="font-size:12px;padding:6px 12px;display:none;flex-shrink:0" onclick="joinSelectedGroup()">Вступить</button>
             </div>
+            <div id="groupPinnedRow" style="display:none;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.08);font-size:12px;color:#ffd84f;cursor:pointer"></div>
             <div id="groupMsgBox" class="ig-g-msg-wrap" style="flex:1;min-height:200px"></div>
             <div id="groupReplyBar">
               <span class="group-reply-text" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
@@ -2920,6 +2927,7 @@ async function submitPlanUpgradeRequest(){
 let selectedGroupId = null;
 let groupPollTimer = null;
 let _lastGroupMsgSig = {};
+let _groupNotificationsEnabled = true;
 window.__canCreateGroups = {{ can_create_groups | tojson }};
 window.__canManageGroupSettings = {{ can_manage_group_settings | default(false) | tojson }};
 
@@ -3023,6 +3031,22 @@ function clearGroupReply(){
     bar.style.display = 'none';
     const t = bar.querySelector('.group-reply-text');
     if(t) t.textContent = '';
+  }
+}
+
+async function loadGroupParticipants(gid){
+  const sel = document.getElementById('groupAddressedSelect');
+  if(!sel) return;
+  try{
+    const r = await fetch('/community/groups/'+gid+'/participants', { credentials:'same-origin' });
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok || !d.ok || !Array.isArray(d.participants)){ sel.style.display='none'; return; }
+    sel.innerHTML = '<option value="">Кому адресовать…</option>' + d.participants.map(function(p){
+      return '<option value="'+p.id+'">'+esc(p.name||('ID '+p.id))+'</option>';
+    }).join('');
+    sel.style.display = d.participants.length ? 'inline-block' : 'none';
+  }catch(e){
+    sel.style.display='none';
   }
 }
 function setGroupReplyTo(mid){
@@ -3140,6 +3164,7 @@ async function refreshGroupListFromApi(){
       const pend = g.pending_join ? '1' : '0';
       const mem = g.is_member ? '1' : '0';
       const memberCount = g.member_count != null ? (parseInt(g.member_count, 10) || 0) : 0;
+      const msgCount = g.msg_count != null ? (parseInt(g.msg_count, 10) || 0) : 0;
       const owner = (g.created_by != null && g.created_by !== '') ? String(g.created_by) : '';
       let retAttr = '';
       if(g.message_retention_days != null && g.message_retention_days !== ''){
@@ -3172,6 +3197,7 @@ async function refreshGroupListFromApi(){
         '<div class="tg-ios-mid">'+
         '<div class="tg-ios-title-row"><span class="tg-ios-name">'+escHtml(g.name)+'</span><span class="tg-ios-time" data-fmt-time="'+escAttr(iso)+'">'+escHtml(timeStr)+'</span></div>'+
         '<div class="tg-ios-preview-row"><span class="tg-ios-preview">'+escHtml(prev)+statusSuf+' · '+memberCount+' уч.</span><span class="tg-ios-badge'+badgeOn+'">'+escHtml(badgeTxt)+'</span></div>'+
+        '<div class="tg-ios-preview-row" style="margin-top:2px"><span class="tg-ios-preview" style="font-size:12px;color:#ffd84f">⭐ '+memberCount+'</span><span class="tg-ios-preview" style="font-size:12px;color:#8be9ff;flex:0 0 auto">💬 '+msgCount+'</span></div>'+
         '</div></div>';
     }).join('');
   }catch(e){}
@@ -3294,6 +3320,8 @@ function selectGroupChat(id, el){
   const ph = document.getElementById('groupChatPlaceholder');
   const panel = document.getElementById('groupChatPanel');
   const joinBtn = document.getElementById('groupJoinBtn');
+  const leaveBtn = document.getElementById('groupLeaveBtn');
+  const notifyBtn = document.getElementById('groupNotifyBtn');
   const inp = document.getElementById('groupMsgInput');
   const snd = document.getElementById('groupMsgSend');
   const ownerBar=document.getElementById('groupOwnerBar');
@@ -3326,6 +3354,8 @@ function selectGroupChat(id, el){
     if(imgSt) imgSt.textContent='';
   }
   const isMember = el && el.dataset && el.dataset.member === '1';
+  if(leaveBtn) leaveBtn.style.display = isMember ? 'inline-block' : 'none';
+  if(notifyBtn) notifyBtn.style.display = isMember ? 'inline-block' : 'none';
   if(joinBtn){
     if(isMember){ joinBtn.style.display='none'; }
     else if(pending&&joinMode!=='open'){
@@ -3347,9 +3377,12 @@ function selectGroupChat(id, el){
     else if(joinMode!=='open') msg='Нажмите «Подать заявку», чтобы вступить. После одобрения администратором вы сможете читать и писать.';
     else msg='Нажмите «Вступить», чтобы видеть переписку и писать в группе.';
     if(box) box.innerHTML = '<div style="color:#888;text-align:center;padding:24px;font-size:14px">'+msg+'</div>';
+    const ap = document.getElementById('groupAddressedSelect'); if(ap) ap.style.display='none';
+    const ur = document.getElementById('groupAddressedUnread'); if(ur) ur.style.display='none';
     updateGroupMobileChrome();
     return;
   }
+  loadGroupParticipants(id);
   loadGroupMessages(id).then(()=>{ startGroupPoll(); });
   updateGroupMobileChrome();
 }
@@ -3378,12 +3411,48 @@ async function joinSelectedGroup(){
     const snd = document.getElementById('groupMsgSend');
     if(inp){ inp.disabled = false; inp.focus(); }
     if(snd) snd.disabled = false;
+    const leaveBtn = document.getElementById('groupLeaveBtn');
+    const notifyBtn = document.getElementById('groupNotifyBtn');
+    if(leaveBtn) leaveBtn.style.display = 'inline-block';
+    if(notifyBtn) notifyBtn.style.display = 'inline-block';
+    loadGroupParticipants(selectedGroupId);
     const sub = item && item.querySelector('div + div');
     if(sub && sub.textContent.indexOf('вы в чате')<0){
       sub.textContent = (sub.textContent.replace(/\s*·\s*(вы в чате|заявка)\s*$/,'').trim()) + ' · вы в чате';
     }
     await loadGroupMessages(selectedGroupId);
     startGroupPoll();
+  }catch(e){ showNotification('Ошибка сети','error'); }
+}
+
+async function leaveSelectedGroup(){
+  if(!selectedGroupId) return;
+  if(!confirm('Уйти из этого чата?')) return;
+  try{
+    const r = await fetch('/community/groups/'+selectedGroupId+'/leave', { method:'POST', credentials:'same-origin' });
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok || !d.ok){ showNotification(d.error||'Ошибка','error'); return; }
+    const item = document.querySelector('.ig-g-item[data-gid="'+selectedGroupId+'"]');
+    if(item){ item.dataset.member='0'; item.classList.remove('on'); }
+    selectGroupChat(selectedGroupId, item);
+    showNotification('Вы вышли из чата','success');
+  }catch(e){ showNotification('Ошибка сети','error'); }
+}
+
+async function toggleGroupNotifications(){
+  if(!selectedGroupId) return;
+  const next = !_groupNotificationsEnabled;
+  try{
+    const r = await fetch('/community/groups/'+selectedGroupId+'/notifications', {
+      method:'POST', credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ enabled: next })
+    });
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok || !d.ok){ showNotification(d.error||'Ошибка','error'); return; }
+    _groupNotificationsEnabled = !!d.enabled;
+    const btn = document.getElementById('groupNotifyBtn');
+    if(btn) btn.textContent = _groupNotificationsEnabled ? 'Уведомления: ВКЛ' : 'Уведомления: ВЫКЛ';
   }catch(e){ showNotification('Ошибка сети','error'); }
 }
 
@@ -3411,22 +3480,54 @@ async function loadGroupMessages(gid, opts){
     if(silent && _lastGroupMsgSig[String(gid)] === sig) return;
     _lastGroupMsgSig[String(gid)] = sig;
     window.__groupMsgsCache = msgs;
+    if(d.group){
+      _groupNotificationsEnabled = !!d.group.notifications_enabled;
+      const nbtn = document.getElementById('groupNotifyBtn');
+      if(nbtn) nbtn.textContent = _groupNotificationsEnabled ? 'Уведомления: ВКЛ' : 'Уведомления: ВЫКЛ';
+      const ur = document.getElementById('groupAddressedUnread');
+      if(ur){
+        const n = parseInt(d.group.addressed_unread_count||0,10)||0;
+        ur.style.display = n>0 ? 'inline-block' : 'none';
+        ur.textContent = n>0 ? ('Адресовано вам: '+n) : '';
+      }
+      const pin = document.getElementById('groupPinnedRow');
+      if(pin){
+        const txt = String(d.group.pinned_message_text||'').trim();
+        if(txt){
+          pin.style.display='block';
+          pin.textContent='📌 '+txt;
+          pin.title='Нажмите, чтобы открыть';
+          pin.onclick = function(){ alert(txt); };
+        }
+        else { pin.style.display='none'; pin.textContent=''; }
+      }
+      const imgBtn = document.getElementById('groupChatImgInp');
+      const micBtn = document.getElementById('groupMicBtn');
+      if(imgBtn) imgBtn.disabled = d.group.allow_photo === false;
+      if(micBtn) micBtn.disabled = d.group.allow_audio === false;
+    }
     box.innerHTML = msgs.map(function(m){
       var replyHtml = '';
       if(m.reply_to && m.reply_to.sender_name){
         replyHtml = '<div class="ig-g-reply">↩ '+esc(m.reply_to.sender_name)+': '+esc(m.reply_to.preview||'')+'</div>';
       }
+      var addressedHtml = m.addressed_user_id ? '<div class="ig-g-reply" style="color:#8be9ff">→ адресно</div>' : '';
       var imgHtml = m.image_url ? '<img class="ig-g-img" src="'+escUrlAttr(m.image_url)+'" alt="">' : '';
       var audHtml = m.audio_url ? '<audio class="ig-g-audio" controls playsinline preload="metadata" src="'+escUrlAttr(m.audio_url)+'">Ваш браузер не воспроизводит аудио</audio>' : '';
       var txtHtml = (m.text && String(m.text).trim()) ? '<div class="ig-g-text">'+esc(m.text)+'</div>' : '';
       var likeN = Number(m.likes_count||0);
       var liked = !!m.liked;
+      var likedUsers = Array.isArray(m.liked_users) ? m.liked_users : [];
+      var likedUsersHtml = likedUsers.length ? '<span style="display:inline-flex;gap:3px;margin-left:6px;vertical-align:middle">'+likedUsers.map(function(u){
+        if(u.avatar) return '<img src="'+escUrlAttr(u.avatar)+'" alt="" style="width:14px;height:14px;border-radius:50%;object-fit:cover">';
+        return '<span style="width:14px;height:14px;border-radius:50%;background:#223;color:#9ee;font-size:9px;display:inline-flex;align-items:center;justify-content:center">'+esc(String((u.name||'?')).slice(0,1).toUpperCase())+'</span>';
+      }).join('')+'</span>' : '';
       return '<div class="ig-g-row '+(m.is_mine?'me':'them')+'" data-mid="'+m.id+'">'+
-        '<div class="ig-g-bubble '+(m.is_mine?'me':'them')+'">'+
+        '<div class="ig-g-bubble '+(m.is_mine?'me':'them')+'" ondblclick="toggleGroupLike('+m.id+', this.closest(\'.ig-g-row\').querySelector(\'.ig-g-like\'))">'+
         '<div class="ig-g-meta"><span class="ig-g-name">'+esc(m.sender_name)+'</span>'+
         (m.can_delete ? '<button type="button" class="ig-g-del" onclick="deleteGroupMessage('+m.id+')" title="Удалить" aria-label="Удалить">×</button>' : '')+
-        '</div>'+replyHtml+imgHtml+audHtml+txtHtml+
-        '<div class="ig-g-like-row"><button type="button" class="ig-g-like" onclick="toggleGroupLike('+m.id+',this)">'+(liked?'❤':'🤍')+'</button> <span class="ig-g-lc">'+likeN+'</span></div>'+
+        '</div>'+replyHtml+addressedHtml+imgHtml+audHtml+txtHtml+
+        '<div class="ig-g-like-row"><button type="button" class="ig-g-like" onclick="toggleGroupLike('+m.id+',this)">'+(liked?'⭐':'✩')+'</button> <span class="ig-g-lc">'+likeN+'</span>'+likedUsersHtml+'</div>'+
         '<div class="ig-g-time">'+esc(m.created_at)+'</div></div></div>';
     }).join('');
     initGroupSwipe(box);
@@ -3445,7 +3546,8 @@ async function toggleGroupLike(mid, btn){
       var row = btn && btn.closest('.ig-g-like-row');
       var sp = row && row.querySelector('.ig-g-lc');
       if(sp) sp.textContent = String(d.likes_count||0);
-      btn.textContent = d.liked ? '❤' : '🤍';
+      btn.textContent = d.liked ? '⭐' : '✩';
+      await loadGroupMessages(selectedGroupId, { silent: true });
     }
   }catch(e){}
 }
@@ -3548,9 +3650,12 @@ async function sendGroupChatMessage(){
   if(!selectedGroupId) return;
   if(!t && !file && !blob) return;
   const replyId = window.__groupReplyToId || null;
+  const addressedSel = document.getElementById('groupAddressedSelect');
+  const addressedUserId = addressedSel && addressedSel.value ? parseInt(addressedSel.value, 10) : null;
   const fd = new FormData();
   if(t) fd.append('text', t);
   if(replyId) fd.append('reply_to_id', String(replyId));
+  if(addressedUserId) fd.append('addressed_user_id', String(addressedUserId));
   if(file) fd.append('image', file);
   if(blob){
     var mt = blob.type || 'audio/webm';
@@ -3571,7 +3676,7 @@ async function sendGroupChatMessage(){
       method: 'POST',
       credentials: 'same-origin',
       headers: useMultipart ? {} : { 'Content-Type': 'application/json' },
-      body: useMultipart ? fd : JSON.stringify({ text: t || '', reply_to_id: replyId || undefined })
+      body: useMultipart ? fd : JSON.stringify({ text: t || '', reply_to_id: replyId || undefined, addressed_user_id: addressedUserId || undefined })
     });
     if(r.ok){
       await loadGroupMessages(selectedGroupId);

@@ -12,13 +12,14 @@ from db.models import (
     dashboard_blocks, user_block_overrides, community_groups, community_group_members, community_group_messages,
     community_group_message_likes,
     community_group_join_requests,
+    community_group_member_permissions,
+    community_group_member_bans,
 )
 from services.referral_service import get_referral_stats
 from services.subscription_service import check_subscription, PLANS
 from ai.openai_client import chat_with_ai
 from services.subscription_service import can_ask_question, increment_question_count
 from services.plan_access import plan_allowed_block_keys, is_platform_operator
-from services.group_platform_settings import user_can_create_community_group
 from services.community_group_queries import fetch_community_group_row
 from services.legal import legal_acceptance_redirect
 from services.notify_admin import notify_admin_telegram
@@ -322,8 +323,8 @@ async def dashboard(request: Request):
         feed_authors = {}
     if "shop" not in visible_block_keys:
         shop_preview = []
-    can_create_groups = await user_can_create_community_group(plan, user)
-    can_manage_group_settings = is_platform_operator(user)
+    can_create_groups = False
+    can_manage_group_settings = False
     dashboard_secs = build_dashboard_secs(visible_block_keys)
 
     group_list = []
@@ -1532,8 +1533,72 @@ async def _user_in_community_group(group_id: int, uid: int) -> bool:
     return row is not None
 
 
+async def _group_user_ban_status(group_id: int, uid: int) -> dict | None:
+    row = await database.fetch_one(
+        community_group_member_bans.select()
+        .where(community_group_member_bans.c.group_id == group_id)
+        .where(community_group_member_bans.c.user_id == uid)
+    )
+    if not row:
+        return None
+    is_perm = bool(row.get("is_permanent"))
+    banned_until = row.get("banned_until")
+    if not is_perm and banned_until:
+        try:
+            now = datetime.utcnow()
+            bu = banned_until.replace(tzinfo=None) if getattr(banned_until, "tzinfo", None) else banned_until
+            if bu <= now:
+                await database.execute(
+                    community_group_member_bans.delete()
+                    .where(community_group_member_bans.c.group_id == group_id)
+                    .where(community_group_member_bans.c.user_id == uid)
+                )
+                return None
+        except Exception:
+            pass
+    return dict(row)
+
+
+async def _group_member_permissions(group_id: int, uid: int) -> dict:
+    row = await database.fetch_one(
+        community_group_member_permissions.select()
+        .where(community_group_member_permissions.c.group_id == group_id)
+        .where(community_group_member_permissions.c.user_id == uid)
+    )
+    if not row:
+        return {"can_send_messages": True, "can_send_photo": True, "can_send_audio": True}
+    return {
+        "can_send_messages": bool(row.get("can_send_messages", True)),
+        "can_send_photo": bool(row.get("can_send_photo", True)),
+        "can_send_audio": bool(row.get("can_send_audio", True)),
+    }
+
+
+async def _cleanup_group_messages_by_policy(group_id: int) -> None:
+    g = await fetch_community_group_row(group_id)
+    if not g:
+        return
+    if not bool(g.get("auto_delete_enabled")):
+        return
+    days = g.get("message_retention_days")
+    try:
+        d = int(days) if days is not None else 0
+    except (TypeError, ValueError):
+        d = 0
+    if d <= 0:
+        return
+    cutoff = datetime.utcnow() - timedelta(days=d)
+    await database.execute(
+        community_group_messages.delete()
+        .where(community_group_messages.c.group_id == group_id)
+        .where(community_group_messages.c.created_at < cutoff)
+    )
+
+
 async def _ensure_community_group_member(group_id: int, uid: int) -> bool:
     """Если пользователь — создатель или группа open, но строки в members нет — добавить (после сбоя INSERT)."""
+    if await _group_user_ban_status(group_id, uid):
+        return False
     if await _user_in_community_group(group_id, uid):
         return True
     g = await fetch_community_group_row(group_id)
@@ -1751,20 +1816,11 @@ async def community_group_create(request: Request):
     if not user:
         return JSONResponse({"error": "auth required", "ok": False}, status_code=401)
     uid = _effective_user_id(user)
-    pl = await check_subscription(uid)
-    if not await user_can_create_community_group(pl, user):
-        _logger.warning(
-            "community_group_create 403 uid=%s plan=%s role=%s is_operator=%s",
-            uid,
-            pl,
-            user.get("role"),
-            is_platform_operator(user),
-        )
+    if not is_platform_operator(user):
         return JSONResponse(
             {
                 "ok": False,
-                "error": "Создание групп недоступно: проверьте тариф и политику в админке «Группы»",
-                "plan": pl,
+                "error": "Создание чатов доступно только администратору в админке",
             },
             status_code=403,
         )
@@ -1852,6 +1908,13 @@ async def community_group_join(request: Request, group_id: int):
     g = await fetch_community_group_row(group_id)
     if not g:
         return JSONResponse({"error": "not found"}, status_code=404)
+    ban = await _group_user_ban_status(group_id, uid)
+    if ban:
+        if ban.get("is_permanent"):
+            return JSONResponse({"error": "Вы заблокированы в этом чате навсегда"}, status_code=403)
+        bu = ban.get("banned_until")
+        if bu:
+            return JSONResponse({"error": f"Вы временно заблокированы до {bu:%d.%m.%Y %H:%M}"}, status_code=403)
     mode = (g.get("join_mode") or "approval").lower()
     if await _user_in_community_group(group_id, uid):
         return JSONResponse({"ok": True, "member": True})
@@ -1885,6 +1948,67 @@ async def community_group_join(request: Request, group_id: int):
     except Exception:
         pass
     return JSONResponse({"ok": True, "pending": True})
+
+
+@router.post("/community/groups/{group_id}/leave")
+async def community_group_leave(request: Request, group_id: int):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = _effective_user_id(user)
+    await database.execute(
+        community_group_members.delete()
+        .where(community_group_members.c.group_id == group_id)
+        .where(community_group_members.c.user_id == uid)
+    )
+    return JSONResponse({"ok": True})
+
+
+@router.post("/community/groups/{group_id}/notifications")
+async def community_group_notifications_toggle(request: Request, group_id: int):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = _effective_user_id(user)
+    if not await _ensure_community_group_member(group_id, uid):
+        return JSONResponse({"error": "not a member"}, status_code=403)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    enabled = bool(body.get("enabled", True))
+    await database.execute(
+        community_group_members.update()
+        .where(community_group_members.c.group_id == group_id)
+        .where(community_group_members.c.user_id == uid)
+        .values(notifications_enabled=enabled)
+    )
+    return JSONResponse({"ok": True, "enabled": enabled})
+
+
+@router.get("/community/groups/{group_id}/participants")
+async def community_group_participants(request: Request, group_id: int, q: str = ""):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = _effective_user_id(user)
+    if not await _ensure_community_group_member(group_id, uid):
+        return JSONResponse({"error": "not a member"}, status_code=403)
+    sq = (q or "").strip()
+    rows = await database.fetch_all(
+        sa.text(
+            """
+            SELECT u.id, u.name, u.avatar
+            FROM community_group_members m
+            JOIN users u ON u.id = m.user_id
+            WHERE m.group_id = :gid
+              AND (:q = '' OR LOWER(COALESCE(u.name,'')) LIKE LOWER(:likeq))
+            ORDER BY LOWER(COALESCE(u.name,'')) ASC
+            LIMIT 100
+            """
+        ).bindparams(gid=group_id, q=sq, likeq=f"%{sq}%")
+    )
+    return JSONResponse({"ok": True, "participants": [dict(r) for r in rows]})
 
 
 @router.get("/community/groups/{group_id}/join-requests")
@@ -2057,7 +2181,9 @@ async def community_group_mark_read(request: Request, group_id: int):
     try:
         await database.execute(
             sa.text(
-                "UPDATE community_group_members SET last_read_at = NOW() WHERE group_id = :gid AND user_id = :uid"
+                "UPDATE community_group_members "
+                "SET last_read_at = NOW(), chat_last_seen_at = NOW(), addressed_last_read_at = NOW() "
+                "WHERE group_id = :gid AND user_id = :uid"
             ).bindparams(gid=group_id, uid=uid)
         )
     except Exception as e:
@@ -2145,12 +2271,23 @@ async def community_group_messages_get(request: Request, group_id: int):
     uid = _effective_user_id(user)
     if not await _ensure_community_group_member(group_id, uid):
         return JSONResponse({"error": "not a member"}, status_code=403)
+    await _cleanup_group_messages_by_policy(group_id)
     g_row = await fetch_community_group_row(group_id)
     mem_row = await database.fetch_one(
         community_group_members.select()
         .where(community_group_members.c.group_id == group_id)
         .where(community_group_members.c.user_id == uid)
     )
+    if mem_row:
+        try:
+            await database.execute(
+                community_group_members.update()
+                .where(community_group_members.c.group_id == group_id)
+                .where(community_group_members.c.user_id == uid)
+                .values(chat_last_seen_at=datetime.utcnow())
+            )
+        except Exception:
+            pass
     show_hist = True
     if g_row and g_row.get("show_history_to_new_members") is not None:
         show_hist = bool(g_row["show_history_to_new_members"])
@@ -2183,6 +2320,7 @@ async def community_group_messages_get(request: Request, group_id: int):
             name_by_id[u["id"]] = u["name"] or "Участник"
 
     likes_map: dict = {}
+    like_users_map: dict[int, list[dict]] = {}
     liked_set: set = set()
     if ids:
         try:
@@ -2202,6 +2340,30 @@ async def community_group_messages_get(request: Request, group_id: int):
                 .where(community_group_message_likes.c.user_id == uid)
             )
             liked_set = {x["message_id"] for x in lk}
+            lusers = await database.fetch_all(
+                sa.select(
+                    community_group_message_likes.c.message_id,
+                    users.c.id.label("user_id"),
+                    users.c.name,
+                    users.c.avatar,
+                )
+                .select_from(
+                    community_group_message_likes.join(
+                        users, users.c.id == community_group_message_likes.c.user_id
+                    )
+                )
+                .where(community_group_message_likes.c.message_id.in_(ids))
+                .order_by(community_group_message_likes.c.created_at.desc())
+            )
+            for ru in lusers:
+                mid = int(ru["message_id"])
+                like_users_map.setdefault(mid, [])
+                if len(like_users_map[mid]) < 6:
+                    like_users_map[mid].append({
+                        "id": int(ru["user_id"]),
+                        "name": ru.get("name") or "Участник",
+                        "avatar": ru.get("avatar"),
+                    })
         except Exception:
             _logger.exception("group message likes fetch")
 
@@ -2253,9 +2415,32 @@ async def community_group_messages_get(request: Request, group_id: int):
             "can_delete": (snd == uid) or can_mod,
             "likes_count": likes_map.get(r["id"], 0),
             "liked": r["id"] in liked_set,
+            "liked_users": like_users_map.get(r["id"], []),
+            "addressed_user_id": r.get("addressed_user_id"),
             "created_at": r["created_at"].strftime("%d.%m %H:%M") if r["created_at"] else "",
         })
-    return JSONResponse({"messages": out})
+    addressed_unread = await database.fetch_val(
+        sa.text(
+            """
+            SELECT COUNT(*)::bigint
+            FROM community_group_messages gm
+            JOIN community_group_members m ON m.group_id = gm.group_id AND m.user_id = :uid
+            WHERE gm.group_id = :gid
+              AND gm.addressed_user_id = :uid
+              AND gm.created_at > COALESCE(m.addressed_last_read_at, m.joined_at)
+            """
+        ).bindparams(gid=group_id, uid=uid)
+    ) or 0
+    return JSONResponse({
+        "messages": out,
+        "group": {
+            "pinned_message_text": (g_row or {}).get("pinned_message_text") if g_row else None,
+            "allow_photo": bool((g_row or {}).get("allow_photo", True)),
+            "allow_audio": bool((g_row or {}).get("allow_audio", True)),
+            "notifications_enabled": bool((mem_row or {}).get("notifications_enabled", True)),
+            "addressed_unread_count": int(addressed_unread),
+        },
+    })
 
 
 @router.post("/community/groups/{group_id}/message")
@@ -2266,10 +2451,17 @@ async def community_group_message_post(request: Request, group_id: int):
     uid = _effective_user_id(user)
     if not await _ensure_community_group_member(group_id, uid):
         return JSONResponse({"error": "not a member"}, status_code=403)
+    ban = await _group_user_ban_status(group_id, uid)
+    if ban:
+        return JSONResponse({"error": "forbidden by moderation"}, status_code=403)
+    perms = await _group_member_permissions(group_id, uid)
+    if not perms.get("can_send_messages", True):
+        return JSONResponse({"error": "sending disabled for member"}, status_code=403)
 
     ct = (request.headers.get("content-type") or "").lower()
     text = ""
     reply_to = None
+    addressed_user_id = None
     image_url = None
     audio_url = None
 
@@ -2277,6 +2469,7 @@ async def community_group_message_post(request: Request, group_id: int):
         form = await request.form()
         text = (form.get("text") or "").strip()
         rid_raw = form.get("reply_to_id")
+        addr_raw = form.get("addressed_user_id")
         if rid_raw not in (None, ""):
             try:
                 rti = int(rid_raw)
@@ -2284,9 +2477,21 @@ async def community_group_message_post(request: Request, group_id: int):
                     reply_to = rti
             except (TypeError, ValueError):
                 pass
+        if addr_raw not in (None, ""):
+            try:
+                au = int(addr_raw)
+                if au > 0:
+                    addressed_user_id = au
+            except (TypeError, ValueError):
+                pass
         img_f = form.get("image")
         aud_f = form.get("audio")
+        g_settings = await fetch_community_group_row(group_id)
         if img_f and getattr(img_f, "read", None):
+            if g_settings and g_settings.get("allow_photo") is False:
+                return JSONResponse({"error": "photo disabled in chat"}, status_code=403)
+            if not perms.get("can_send_photo", True):
+                return JSONResponse({"error": "photo disabled for member"}, status_code=403)
             ict = (getattr(img_f, "content_type", None) or "").lower()
             if ict not in _POST_IMAGE_ALLOWED:
                 return JSONResponse({"error": "Нужен JPEG, PNG, WebP или GIF"}, status_code=400)
@@ -2305,6 +2510,10 @@ async def community_group_message_post(request: Request, group_id: int):
                 f.write(jpeg)
             image_url = f"/media/community/groups/msg/{fn}"
         if aud_f and getattr(aud_f, "read", None):
+            if g_settings and g_settings.get("allow_audio") is False:
+                return JSONResponse({"error": "audio disabled in chat"}, status_code=403)
+            if not perms.get("can_send_audio", True):
+                return JSONResponse({"error": "audio disabled for member"}, status_code=403)
             fnm = getattr(aud_f, "filename", None) or ""
             act = (getattr(aud_f, "content_type", None) or "").lower()
             if not _group_chat_audio_upload_ok(act, fnm):
@@ -2331,11 +2540,19 @@ async def community_group_message_post(request: Request, group_id: int):
             body = {}
         text = (body.get("text") or "").strip()
         rid = body.get("reply_to_id")
+        aud = body.get("addressed_user_id")
         if rid is not None:
             try:
                 rti = int(rid)
                 if rti > 0:
                     reply_to = rti
+            except (TypeError, ValueError):
+                pass
+        if aud is not None:
+            try:
+                au = int(aud)
+                if au > 0:
+                    addressed_user_id = au
             except (TypeError, ValueError):
                 pass
 
@@ -2352,6 +2569,14 @@ async def community_group_message_post(request: Request, group_id: int):
         )
         if not pr:
             return JSONResponse({"error": "bad reply"}, status_code=400)
+    if addressed_user_id is not None:
+        target_member = await database.fetch_one(
+            community_group_members.select()
+            .where(community_group_members.c.group_id == group_id)
+            .where(community_group_members.c.user_id == addressed_user_id)
+        )
+        if not target_member:
+            return JSONResponse({"error": "target is not member of chat"}, status_code=400)
 
     g_row = await fetch_community_group_row(group_id)
     sm_block = await _group_slow_mode_block(group_id, uid, g_row)
@@ -2364,10 +2589,39 @@ async def community_group_message_post(request: Request, group_id: int):
             sender_id=uid,
             text=text,
             reply_to_id=reply_to,
+            addressed_user_id=addressed_user_id,
             image_url=image_url,
             audio_url=audio_url,
         )
     )
+    if addressed_user_id and addressed_user_id != uid:
+        recip = await database.fetch_one(users.select().where(users.c.id == addressed_user_id))
+        gm = await database.fetch_one(
+            community_group_members.select()
+            .where(community_group_members.c.group_id == group_id)
+            .where(community_group_members.c.user_id == addressed_user_id)
+        )
+        sender = await database.fetch_one(users.select().where(users.c.id == uid))
+        should_notify = bool(gm and gm.get("notifications_enabled"))
+        online_in_chat = False
+        if gm and gm.get("chat_last_seen_at"):
+            try:
+                ls = gm["chat_last_seen_at"]
+                ls = ls.replace(tzinfo=None) if getattr(ls, "tzinfo", None) else ls
+                online_in_chat = (datetime.utcnow() - ls) <= timedelta(seconds=90)
+            except Exception:
+                online_in_chat = False
+        if should_notify and (not online_in_chat) and recip and recip.get("tg_id"):
+            try:
+                from bot.handlers.notify import notify_user
+                gname = (g_row or {}).get("name") or f"Чат #{group_id}"
+                sname = (sender or {}).get("name") or "Участник"
+                await notify_user(
+                    int(recip["tg_id"]),
+                    f"Вам написали в чате «{gname}».\nОт: {sname}\nОткройте чат, чтобы ответить.",
+                )
+            except Exception:
+                pass
     return JSONResponse({"ok": True})
 
 

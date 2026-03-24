@@ -7,8 +7,25 @@
     {% include "components/admin_nav.html" ignore missing %}
 
     <div class="mb-8">
-      <h1 class="text-3xl font-light text-text mb-1">Групповые чаты</h1>
-      <p class="text-sm text-muted">Политика создания, настройки как в Telegram: вступление, хранение, slow mode, история для новых участников. Массово — ко всем группам.</p>
+      <h1 class="text-3xl font-light text-text mb-1">Чаты</h1>
+      <p class="text-sm text-muted">Создание и полное администрирование чатов: настройки, пин, ограничения медиа, модерация участников.</p>
+    </div>
+
+    <div class="p-6 rounded-2xl bg-surface border border-border mb-8">
+      <h2 class="text-lg font-medium text-text mb-4">Создать чат (только админ)</h2>
+      <form method="post" action="/admin/groups/create" class="grid sm:grid-cols-2 gap-3 text-sm">
+        <div>
+          <label class="block text-muted mb-1">Название</label>
+          <input type="text" name="name" required minlength="2" maxlength="120" class="w-full rounded-xl bg-background border border-border px-3 py-2 text-text" />
+        </div>
+        <div class="sm:col-span-2">
+          <label class="block text-muted mb-1">Описание</label>
+          <input type="text" name="description" maxlength="2000" class="w-full rounded-xl bg-background border border-border px-3 py-2 text-text" />
+        </div>
+        <div class="sm:col-span-2">
+          <button type="submit" class="px-4 py-2 rounded-xl bg-gold/20 text-gold text-sm font-medium hover:bg-gold/30">Создать чат</button>
+        </div>
+      </form>
     </div>
 
     <!-- Кто может создавать группы -->
@@ -114,8 +131,34 @@
                 <option value="0" {% if g.show_history_to_new_members == false %}selected{% endif %}>Со вступления</option>
               </select>
             </div>
+            <div>
+              <label class="text-xs text-muted">Фото в чат</label>
+              <select class="g-photo w-full rounded-lg bg-background border border-border px-2 py-1.5 text-text">
+                <option value="1" {% if g.allow_photo != false %}selected{% endif %}>Разрешены</option>
+                <option value="0" {% if g.allow_photo == false %}selected{% endif %}>Запрещены</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs text-muted">Аудио в чат</label>
+              <select class="g-audio w-full rounded-lg bg-background border border-border px-2 py-1.5 text-text">
+                <option value="1" {% if g.allow_audio != false %}selected{% endif %}>Разрешены</option>
+                <option value="0" {% if g.allow_audio == false %}selected{% endif %}>Запрещены</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs text-muted">Автоудаление</label>
+              <select class="g-autodel w-full rounded-lg bg-background border border-border px-2 py-1.5 text-text">
+                <option value="0" {% if g.auto_delete_enabled != true %}selected{% endif %}>Выключено</option>
+                <option value="1" {% if g.auto_delete_enabled == true %}selected{% endif %}>Каждый день по сроку</option>
+              </select>
+            </div>
+            <div class="sm:col-span-2 lg:col-span-3">
+              <label class="text-xs text-muted">Закреплённое сообщение (видят все, менять может только админ)</label>
+              <input type="text" class="g-pin w-full rounded-lg bg-background border border-border px-2 py-1.5 text-text" value="{{ (g.pinned_message_text or '')|e }}" />
+            </div>
           </div>
           <button type="button" onclick="saveOne({{ g.id }}, this)" class="mt-3 text-xs px-4 py-2 rounded-lg bg-gold/15 text-gold hover:bg-gold/25">Сохранить эту группу</button>
+          <button type="button" onclick="openMembers({{ g.id }})" class="mt-3 ml-2 text-xs px-4 py-2 rounded-lg bg-cyan-500/15 text-cyan-200 hover:bg-cyan-500/25">Участники / модерация</button>
           <p class="g-msg text-xs text-muted mt-2"></p>
         </div>
         {% else %}
@@ -230,6 +273,10 @@ async function saveOne(gid, btn){
     if(Number.isFinite(n)) slow_mode_seconds = n <= 0 ? null : Math.min(86400, n);
   }
   const hist = root.querySelector('.g-hist').value === '1';
+  const allowPhoto = root.querySelector('.g-photo').value === '1';
+  const allowAudio = root.querySelector('.g-audio').value === '1';
+  const autoDelete = root.querySelector('.g-autodel').value === '1';
+  const pinText = (root.querySelector('.g-pin').value || '').trim();
   try{
     const r = await fetch('/admin/groups/'+gid, {
       method: 'PATCH',
@@ -241,13 +288,60 @@ async function saveOne(gid, btn){
         join_mode: join_mode,
         message_retention_days: message_retention_days,
         slow_mode_seconds: slow_mode_seconds,
-        show_history_to_new_members: hist
+        show_history_to_new_members: hist,
+        allow_photo: allowPhoto,
+        allow_audio: allowAudio,
+        auto_delete_enabled: autoDelete,
+        pinned_message_text: pinText
       })
     });
     const d = await r.json().catch(()=>({}));
     if(r.ok && d.ok){ msg.textContent = 'Сохранено'; msg.style.color = '#86efac'; }
     else { msg.textContent = d.error || 'Ошибка'; msg.style.color = '#fca5a5'; }
   }catch(e){ msg.textContent = 'Сеть'; msg.style.color = '#fca5a5'; }
+}
+
+async function openMembers(gid){
+  const q = prompt('Поиск участника (имя/email), можно пусто', '') || '';
+  const r = await fetch('/admin/groups/'+gid+'/members?q='+encodeURIComponent(q), {credentials:'same-origin'});
+  const d = await r.json().catch(()=>({}));
+  if(!r.ok || !d.ok){ alert(d.error || 'Ошибка'); return; }
+  if(!d.members || !d.members.length){ alert('Участники не найдены'); return; }
+  const first = d.members[0];
+  const uid = prompt('ID участника для действия:\n'+d.members.map(m=>`${m.id}: ${m.name||'Участник'}`).join('\n'), String(first.id));
+  if(!uid) return;
+  const action = prompt('Действие: perm / ban_days / ban_forever', 'perm');
+  if(action === 'perm'){
+    const canMsg = confirm('Разрешить участнику писать сообщения?');
+    const canPhoto = confirm('Разрешить участнику отправлять фото?');
+    const canAudio = confirm('Разрешить участнику отправлять аудио?');
+    const pr = await fetch('/admin/groups/'+gid+'/members/'+uid+'/permissions',{
+      method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({can_send_messages:canMsg,can_send_photo:canPhoto,can_send_audio:canAudio})
+    });
+    const pd = await pr.json().catch(()=>({}));
+    alert(pr.ok && pd.ok ? 'Права обновлены' : (pd.error||'Ошибка'));
+    return;
+  }
+  if(action === 'ban_days'){
+    const days = parseInt(prompt('На сколько дней заблокировать?', '7')||'0',10);
+    if(!days || days < 1) return;
+    const br = await fetch('/admin/groups/'+gid+'/members/'+uid+'/ban',{
+      method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({days:days,permanent:false})
+    });
+    const bd = await br.json().catch(()=>({}));
+    alert(br.ok && bd.ok ? 'Участник временно заблокирован' : (bd.error||'Ошибка'));
+    return;
+  }
+  if(action === 'ban_forever'){
+    const br = await fetch('/admin/groups/'+gid+'/members/'+uid+'/ban',{
+      method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({permanent:true})
+    });
+    const bd = await br.json().catch(()=>({}));
+    alert(br.ok && bd.ok ? 'Участник заблокирован навсегда' : (bd.error||'Ошибка'));
+  }
 }
 
 async function deleteGroup(gid){

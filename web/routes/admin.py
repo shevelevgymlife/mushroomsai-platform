@@ -21,6 +21,10 @@ from db.models import (
     homepage_blocks, dashboard_blocks, user_block_overrides,
     ai_training_posts, ai_training_folders,
     community_groups,
+    community_group_members,
+    community_group_join_requests,
+    community_group_member_permissions,
+    community_group_member_bans,
 )
 import sqlalchemy
 from datetime import datetime, timedelta, date
@@ -39,7 +43,7 @@ ADMIN_NAV = [
     ("Рассылки", "/admin/broadcast"),
     ("База знаний", "/admin/knowledge"),
     ("Сообщество", "/admin/community"),
-    ("Группы", "/admin/groups"),
+    ("Чаты", "/admin/groups"),
 ]
 
 PERM_KEYS = [
@@ -1053,6 +1057,10 @@ async def admin_groups_page(request: Request):
                   g.message_retention_days,
                   g.slow_mode_seconds,
                   COALESCE(g.show_history_to_new_members, true) AS show_history_to_new_members,
+                  COALESCE(g.allow_photo, true) AS allow_photo,
+                  COALESCE(g.allow_audio, true) AS allow_audio,
+                  COALESCE(g.auto_delete_enabled, false) AS auto_delete_enabled,
+                  g.pinned_message_text,
                   u.name AS creator_name,
                   (SELECT COUNT(*)::bigint FROM community_group_members m WHERE m.group_id = g.id) AS member_count,
                   (SELECT COUNT(*)::bigint FROM community_group_messages gm WHERE gm.group_id = g.id) AS msg_count
@@ -1072,6 +1080,10 @@ async def admin_groups_page(request: Request):
                   g.message_retention_days,
                   NULL::integer AS slow_mode_seconds,
                   true AS show_history_to_new_members,
+                  true AS allow_photo,
+                  true AS allow_audio,
+                  false AS auto_delete_enabled,
+                  NULL::text AS pinned_message_text,
                   u.name AS creator_name,
                   (SELECT COUNT(*)::bigint FROM community_group_members m WHERE m.group_id = g.id) AS member_count,
                   (SELECT COUNT(*)::bigint FROM community_group_messages gm WHERE gm.group_id = g.id) AS msg_count
@@ -1175,9 +1187,186 @@ async def admin_group_patch(request: Request, group_id: int):
                 pass
     if "show_history_to_new_members" in body:
         vals["show_history_to_new_members"] = bool(body.get("show_history_to_new_members"))
+    if "allow_photo" in body:
+        vals["allow_photo"] = bool(body.get("allow_photo"))
+    if "allow_audio" in body:
+        vals["allow_audio"] = bool(body.get("allow_audio"))
+    if "auto_delete_enabled" in body:
+        vals["auto_delete_enabled"] = bool(body.get("auto_delete_enabled"))
+    if "pinned_message_text" in body:
+        ptxt = (body.get("pinned_message_text") or "").strip()
+        vals["pinned_message_text"] = ptxt[:4000] if ptxt else None
+        vals["pinned_message_updated_at"] = sqlalchemy.func.now() if ptxt else None
     if vals:
         await database.execute(
             community_groups.update().where(community_groups.c.id == group_id).values(**vals)
+        )
+    return JSONResponse({"ok": True})
+
+
+@router.post("/groups/create")
+async def admin_group_create(
+    request: Request,
+    name: str = Form(...),
+    description: str = Form(""),
+):
+    admin = await require_admin(request)
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    nm = (name or "").strip()
+    if len(nm) < 2 or len(nm) > 120:
+        return JSONResponse({"error": "Название от 2 до 120 символов"}, status_code=400)
+    dup = await database.fetch_one(
+        sqlalchemy.text(
+            "SELECT id FROM community_groups WHERE LOWER(TRIM(name)) = LOWER(TRIM(:n)) LIMIT 1"
+        ).bindparams(n=nm)
+    )
+    if dup:
+        return JSONResponse({"error": "Чат с таким названием уже существует"}, status_code=400)
+    row = await database.fetch_one_write(
+        sqlalchemy.text(
+            "INSERT INTO community_groups (name, description, created_by, join_mode) "
+            "VALUES (:n, :d, :uid, 'open') RETURNING id"
+        ).bindparams(n=nm, d=((description or "").strip()[:2000] or None), uid=admin["id"])
+    )
+    gid = int(row["id"]) if row and row.get("id") is not None else 0
+    if gid:
+        await database.execute(
+            sqlalchemy.text(
+                "INSERT INTO community_group_members (group_id, user_id) VALUES (:gid, :uid) "
+                "ON CONFLICT (group_id, user_id) DO NOTHING"
+            ).bindparams(gid=gid, uid=admin["id"])
+        )
+    return JSONResponse({"ok": True, "id": gid})
+
+
+@router.get("/groups/{group_id}/members")
+async def admin_group_members(request: Request, group_id: int, q: str = ""):
+    admin = await require_admin(request)
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    g = await fetch_community_group_row(group_id)
+    if not g:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    sq = (q or "").strip()
+    rows = await database.fetch_all(
+        sqlalchemy.text(
+            """
+            SELECT u.id, u.name, u.email, u.avatar,
+                   m.joined_at, m.notifications_enabled,
+                   COALESCE(p.can_send_messages, true) AS can_send_messages,
+                   COALESCE(p.can_send_photo, true) AS can_send_photo,
+                   COALESCE(p.can_send_audio, true) AS can_send_audio,
+                   b.is_permanent, b.banned_until
+            FROM community_group_members m
+            JOIN users u ON u.id = m.user_id
+            LEFT JOIN community_group_member_permissions p ON p.group_id = m.group_id AND p.user_id = m.user_id
+            LEFT JOIN community_group_member_bans b ON b.group_id = m.group_id AND b.user_id = m.user_id
+            WHERE m.group_id = :gid
+              AND (:q = '' OR LOWER(COALESCE(u.name,'')) LIKE LOWER(:likeq) OR LOWER(COALESCE(u.email,'')) LIKE LOWER(:likeq))
+            ORDER BY m.joined_at DESC
+            LIMIT 120
+            """
+        ).bindparams(gid=group_id, q=sq, likeq=f"%{sq}%")
+    )
+    out = []
+    for r in rows:
+        d = dict(r)
+        for k in ("joined_at", "banned_until"):
+            if d.get(k):
+                try:
+                    d[k] = d[k].isoformat()
+                except Exception:
+                    d[k] = str(d[k])
+        out.append(d)
+    return JSONResponse({"ok": True, "members": out})
+
+
+@router.post("/groups/{group_id}/members/{user_id}/ban")
+async def admin_group_member_ban(request: Request, group_id: int, user_id: int):
+    admin = await require_admin(request)
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    days = body.get("days")
+    permanent = bool(body.get("permanent"))
+    reason = (body.get("reason") or "").strip()[:500] or None
+    banned_until = None
+    if not permanent:
+        try:
+            n = max(1, int(days))
+            banned_until = datetime.utcnow() + timedelta(days=n)
+        except (TypeError, ValueError):
+            return JSONResponse({"error": "days required"}, status_code=400)
+    existing = await database.fetch_one(
+        community_group_member_bans.select()
+        .where(community_group_member_bans.c.group_id == group_id)
+        .where(community_group_member_bans.c.user_id == user_id)
+    )
+    vals = {
+        "banned_by": admin["id"],
+        "reason": reason,
+        "is_permanent": permanent,
+        "banned_until": None if permanent else banned_until,
+        "created_at": sqlalchemy.func.now(),
+    }
+    if existing:
+        await database.execute(
+            community_group_member_bans.update()
+            .where(community_group_member_bans.c.group_id == group_id)
+            .where(community_group_member_bans.c.user_id == user_id)
+            .values(**vals)
+        )
+    else:
+        await database.execute(
+            community_group_member_bans.insert().values(group_id=group_id, user_id=user_id, **vals)
+        )
+    await database.execute(
+        community_group_members.delete()
+        .where(community_group_members.c.group_id == group_id)
+        .where(community_group_members.c.user_id == user_id)
+    )
+    await database.execute(
+        community_group_join_requests.delete()
+        .where(community_group_join_requests.c.group_id == group_id)
+        .where(community_group_join_requests.c.user_id == user_id)
+    )
+    return JSONResponse({"ok": True})
+
+
+@router.post("/groups/{group_id}/members/{user_id}/permissions")
+async def admin_group_member_permissions(request: Request, group_id: int, user_id: int):
+    admin = await require_admin(request)
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    vals = {
+        "can_send_messages": bool(body.get("can_send_messages", True)),
+        "can_send_photo": bool(body.get("can_send_photo", True)),
+        "can_send_audio": bool(body.get("can_send_audio", True)),
+        "updated_at": sqlalchemy.func.now(),
+    }
+    existing = await database.fetch_one(
+        community_group_member_permissions.select()
+        .where(community_group_member_permissions.c.group_id == group_id)
+        .where(community_group_member_permissions.c.user_id == user_id)
+    )
+    if existing:
+        await database.execute(
+            community_group_member_permissions.update()
+            .where(community_group_member_permissions.c.group_id == group_id)
+            .where(community_group_member_permissions.c.user_id == user_id)
+            .values(**vals)
+        )
+    else:
+        await database.execute(
+            community_group_member_permissions.insert().values(group_id=group_id, user_id=user_id, **vals)
         )
     return JSONResponse({"ok": True})
 

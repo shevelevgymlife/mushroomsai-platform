@@ -430,6 +430,11 @@ community_groups = sqlalchemy.Table(
     sqlalchemy.Column("slow_mode_seconds", sqlalchemy.Integer, nullable=True),
     sqlalchemy.Column("show_history_to_new_members", sqlalchemy.Boolean, default=True, server_default="true"),
     sqlalchemy.Column("image_url", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("allow_photo", sqlalchemy.Boolean, default=True, server_default="true"),
+    sqlalchemy.Column("allow_audio", sqlalchemy.Boolean, default=True, server_default="true"),
+    sqlalchemy.Column("auto_delete_enabled", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column("pinned_message_text", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("pinned_message_updated_at", sqlalchemy.DateTime, nullable=True),
 )
 
 community_group_join_requests = sqlalchemy.Table(
@@ -451,6 +456,9 @@ community_group_members = sqlalchemy.Table(
     sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
     sqlalchemy.Column("joined_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
     sqlalchemy.Column("last_read_at", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("chat_last_seen_at", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("addressed_last_read_at", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("notifications_enabled", sqlalchemy.Boolean, default=True, server_default="true"),
     sqlalchemy.UniqueConstraint("group_id", "user_id", name="uq_community_group_member"),
 )
 
@@ -461,10 +469,38 @@ community_group_messages = sqlalchemy.Table(
     sqlalchemy.Column("group_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("community_groups.id", ondelete="CASCADE"), nullable=False),
     sqlalchemy.Column("sender_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
     sqlalchemy.Column("reply_to_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("community_group_messages.id", ondelete="SET NULL"), nullable=True),
+    sqlalchemy.Column("addressed_user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
     sqlalchemy.Column("text", sqlalchemy.Text, nullable=False),
     sqlalchemy.Column("image_url", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("audio_url", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+community_group_member_permissions = sqlalchemy.Table(
+    "community_group_member_permissions",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("group_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("community_groups.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("can_send_messages", sqlalchemy.Boolean, default=True, server_default="true"),
+    sqlalchemy.Column("can_send_photo", sqlalchemy.Boolean, default=True, server_default="true"),
+    sqlalchemy.Column("can_send_audio", sqlalchemy.Boolean, default=True, server_default="true"),
+    sqlalchemy.Column("updated_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+    sqlalchemy.UniqueConstraint("group_id", "user_id", name="uq_cg_member_perms"),
+)
+
+community_group_member_bans = sqlalchemy.Table(
+    "community_group_member_bans",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("group_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("community_groups.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("banned_by", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
+    sqlalchemy.Column("reason", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("banned_until", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("is_permanent", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+    sqlalchemy.UniqueConstraint("group_id", "user_id", name="uq_cg_member_ban"),
 )
 
 community_group_message_likes = sqlalchemy.Table(
