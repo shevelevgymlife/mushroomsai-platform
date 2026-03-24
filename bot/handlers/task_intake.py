@@ -8,7 +8,8 @@ from telegram.ext import ContextTypes, ConversationHandler, MessageHandler, Call
 
 from config import settings
 from db.database import database
-from services.task_notify import notify_task_accepted, notify_task_done, notify_deploy_sent
+from services.task_notify import notify_task_accepted
+from services.task_autorun import run_latest_task_from_telegram
 
 
 ASK_TASK_TEXT, ASK_PHOTO_CHOICE, WAIT_PHOTO = range(3)
@@ -247,6 +248,17 @@ async def task_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Отменил ввод задачи.")
     context.user_data["task_intake_stage"] = ""
     return ConversationHandler.END
+
+
+async def task_run_latest(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message:
+        return
+    uid = int(update.effective_user.id) if update.effective_user else 0
+    ok = await run_latest_task_from_telegram(uid)
+    if ok:
+        await update.message.reply_text("Запустил выполнение последней задачи.")
+    else:
+        await update.message.reply_text("Не нашел задачу для запуска.")
 
 
 def get_task_intake_conversation() -> ConversationHandler:

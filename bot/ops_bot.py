@@ -16,6 +16,7 @@ from bot.handlers.task_intake import (
     task_text_received,
     task_photo_choice,
     task_photo_received,
+    task_run_latest,
 )
 
 logger = logging.getLogger(__name__)
@@ -49,7 +50,8 @@ async def _ops_any_command(update, context):
 
 def _ops_token() -> str:
     return (
-        (getattr(settings, "TASK_APPROVAL_BOT_TOKEN", "") or "").strip()
+        (getattr(settings, "OPS_TELEGRAM_TOKEN", "") or "").strip()
+        or (getattr(settings, "TASK_APPROVAL_BOT_TOKEN", "") or "").strip()
         or (settings.DEPLOY_NOTIFY_TG_BOT_TOKEN or "").strip()
     )
 
@@ -63,6 +65,7 @@ def create_ops_bot() -> Application:
     app.add_handler(CommandHandler("start", _ops_start))
     app.add_handler(CommandHandler("task", task_give_entry))
     app.add_handler(CommandHandler("approval_status", approval_status_command))
+    app.add_handler(MessageHandler(filters.Regex("^(?i:task)$"), task_give_entry))
     app.add_handler(MessageHandler(filters.Regex("^Дать задачу$"), task_give_entry))
     app.add_handler(MessageHandler(filters.Regex("^Указать задачу$"), task_give_entry))
     app.add_handler(MessageHandler(filters.Regex("^Запустить выполнение$"), task_run_latest))
