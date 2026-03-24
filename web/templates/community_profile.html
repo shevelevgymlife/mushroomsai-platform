@@ -367,7 +367,14 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
           <button type="button" class="btn-g" style="padding:10px 12px;white-space:nowrap" onclick="closeProfilePostPreview()">Закрыть</button>
         </div>
         <div id="profilePreviewInlinePhotoWrap" style="display:none;margin-top:10px;border:1px solid rgba(255,255,255,.14);border-radius:14px;overflow:hidden;background:#050607">
-          <img id="profilePreviewImage" src="" alt="" style="display:block;width:100%;height:min(50vh,360px);object-fit:contain;background:#000">
+          <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end;padding:8px;border-bottom:1px solid rgba(255,255,255,.1);background:rgba(8,10,16,.9)">
+            <button type="button" class="btn-g" style="padding:7px 11px" onclick="profilePreviewZoomOut()">−</button>
+            <button type="button" class="btn-g" style="padding:7px 11px" onclick="profilePreviewZoomIn()">+</button>
+            <button type="button" class="btn-g" style="padding:7px 11px" onclick="closeProfilePreviewImageFull()">Закрыть</button>
+          </div>
+          <div id="profilePreviewImageViewport" style="height:min(50vh,360px);overflow:auto;touch-action:pan-x pan-y pinch-zoom;background:#000;display:flex;align-items:center;justify-content:center">
+            <img id="profilePreviewImage" src="" alt="" style="display:block;max-width:100%;max-height:100%;transform-origin:center center;transform:scale(1);background:#000">
+          </div>
         </div>
         <div id="profilePreviewCommentRow" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;margin-top:10px;max-width:100%;width:100%;overflow:hidden;box-sizing:border-box">
           <input id="profilePreviewCommentInp" class="sinp" style="min-width:0;width:100%;max-width:100%;box-sizing:border-box;font-size:16px" placeholder="Написать комментарий...">
@@ -729,6 +736,9 @@ function openProfilePreviewImageFull(){
   if(!src) return;
   const wrap=document.getElementById('profilePreviewInlinePhotoWrap');
   if(wrap){
+    window._profilePreviewZoom=1;
+    const img=document.getElementById('profilePreviewImage');
+    if(img) img.style.transform='scale(1)';
     wrap.style.display='block';
     setTimeout(function(){ try{ wrap.scrollIntoView({behavior:'smooth', block:'nearest'}); }catch(e){} }, 20);
   }
@@ -736,6 +746,21 @@ function openProfilePreviewImageFull(){
 function closeProfilePreviewImageFull(){
   const wrap=document.getElementById('profilePreviewInlinePhotoWrap');
   if(wrap) wrap.style.display='none';
+}
+function profilePreviewApplyZoom(){
+  const img=document.getElementById('profilePreviewImage');
+  if(!img) return;
+  const z=Math.max(1, Math.min(4, Number(window._profilePreviewZoom||1)));
+  window._profilePreviewZoom=z;
+  img.style.transform='scale('+z+')';
+}
+function profilePreviewZoomIn(){
+  window._profilePreviewZoom=(Number(window._profilePreviewZoom||1)+0.25);
+  profilePreviewApplyZoom();
+}
+function profilePreviewZoomOut(){
+  window._profilePreviewZoom=(Number(window._profilePreviewZoom||1)-0.25);
+  profilePreviewApplyZoom();
 }
 function _profilePreviewCommentHtml(c){
   const av=(c.author_avatar||'').trim();
