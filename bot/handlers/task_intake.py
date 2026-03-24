@@ -59,6 +59,11 @@ async def _ensure_task_inbox_table() -> None:
             )"""
         )
     )
+    await database.execute(
+        sa.text(
+            "ALTER TABLE bot_task_requests ADD COLUMN IF NOT EXISTS auto_requested BOOLEAN NOT NULL DEFAULT false"
+        )
+    )
 
 
 async def _create_task(tg_user_id: int, text: str, username: str = "", full_name: str = "") -> int:
@@ -89,6 +94,29 @@ async def _update_task(task_id: int, **kwargs: Any) -> None:
     await database.execute(
         sa.text(f"UPDATE bot_task_requests SET {', '.join(sets)} WHERE id = :id").bindparams(**params)
     )
+
+
+async def _run_task_auto(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    task_id = int(context.user_data.get("task_intake_id") or 0)
+    task_text = str(context.user_data.get("task_intake_text") or "").strip()
+    if not task_text:
+        if update.message:
+            await update.message.reply_text("Не вижу активной задачи. Сначала отправьте /task.")
+        return
+    if task_id:
+        await _update_task(task_id, auto_requested=True, status="queued")
+    try:
+        from services.task_autorun import trigger_task_autorun
+
+        ok = await trigger_task_autorun(task_text=task_text, task_id=task_id)
+    except Exception:
+        ok = False
+    if update.message:
+        if ok:
+            await update.message.reply_text("Авто-запуск отправлен. Начал выполнение задачи.")
+        else:
+            await update.message.reply_text("Не удалось отправить в авто-запуск. Продолжаю в ручном режиме.")
+    await notify_task_accepted(task_text=f"Принял задачу: {task_text}")
 
 
 async def task_give_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -206,6 +234,12 @@ async def task_photo_received(update: Update, context: ContextTypes.DEFAULT_TYPE
     await notify_task_accepted(task_text=f"Принял задачу: {task_text} (с фото)")
     context.user_data["task_intake_stage"] = ""
     return ConversationHandler.END
+
+
+async def task_run_now(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message:
+        return
+    await _run_task_auto(update, context)
 
 
 async def task_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):

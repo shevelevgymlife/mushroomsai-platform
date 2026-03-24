@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 async def _ops_start(update, context):
     if update.message:
         kb = ReplyKeyboardMarkup(
-            [[KeyboardButton("Указать задачу")]],
+            [[KeyboardButton("Указать задачу"), KeyboardButton("Запустить выполнение")]],
             resize_keyboard=True,
         )
         await update.message.reply_text(
@@ -65,6 +65,7 @@ def create_ops_bot() -> Application:
     app.add_handler(CommandHandler("approval_status", approval_status_command))
     app.add_handler(MessageHandler(filters.Regex("^Дать задачу$"), task_give_entry))
     app.add_handler(MessageHandler(filters.Regex("^Указать задачу$"), task_give_entry))
+    app.add_handler(MessageHandler(filters.Regex("^Запустить выполнение$"), task_run_latest))
     app.add_handler(CallbackQueryHandler(task_photo_choice, pattern=r"^task_photo:(yes|no)$"))
     app.add_handler(CallbackQueryHandler(task_approval_callback, pattern=r"^confirm:(yes|no):"))
     app.add_handler(MessageHandler(filters.PHOTO, task_photo_received))

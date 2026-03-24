@@ -245,6 +245,9 @@ async def lifespan(app: FastAPI):
             created_at TIMESTAMP DEFAULT NOW(),
             updated_at TIMESTAMP DEFAULT NOW()
         )""",
+        "ALTER TABLE bot_task_requests ADD COLUMN IF NOT EXISTS autorun_requested BOOLEAN NOT NULL DEFAULT false",
+        "ALTER TABLE bot_task_requests ADD COLUMN IF NOT EXISTS autorun_started_at TIMESTAMP",
+        "ALTER TABLE bot_task_requests ADD COLUMN IF NOT EXISTS autorun_result TEXT",
     ]
     try:
         await database.execute(

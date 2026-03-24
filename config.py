@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     TASK_APPROVAL_BOT_TOKEN: str = ""  # токен для интерактивных подтверждений Да/Нет
     TASK_APPROVAL_CHAT_ID: str = ""  # чат для вопросов подтверждения (если пусто, берем DEPLOY_NOTIFY_TASK_CHAT_ID)
     TASK_APPROVAL_ALLOWED_TG_IDS: str = ""  # доп. TG ID через запятую, кто может нажимать Да/Нет
+    TASK_EXECUTOR_WEBHOOK_URL: str = ""  # endpoint внешнего исполнителя задач (optional)
+    TASK_EXECUTOR_WEBHOOK_TOKEN: str = ""  # bearer token для TASK_EXECUTOR_WEBHOOK_URL (optional)
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
@@ -31,7 +33,6 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_USERNAME: str = "mushrooms_ai_bot"
     SHEVELEV_TOKEN_ADDRESS: str = ""
     DECIMAL_RPC_URL: str = "https://node.decimalchain.com/web3/"
-    TASK_APPROVAL_ALLOWED_TG_IDS: str = ""
 
     class Config:
         env_file = ".env"
