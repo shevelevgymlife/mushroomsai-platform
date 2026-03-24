@@ -5,6 +5,8 @@ import sqlalchemy as sa
 
 from db.database import database
 from db.models import followups, users
+from config import settings
+from services.ops_alerts import maybe_notify_billing, send_daily_summary
 
 scheduler = AsyncIOScheduler()
 
@@ -64,5 +66,16 @@ def start_scheduler(bot):
         purge_expired_group_messages,
         "interval",
         hours=1,
+    )
+    scheduler.add_job(
+        maybe_notify_billing,
+        "interval",
+        hours=12,
+    )
+    scheduler.add_job(
+        send_daily_summary,
+        "cron",
+        hour=int(getattr(settings, "OPS_NOTIFY_DAILY_SUMMARY_HOUR_UTC", 9) or 9),
+        minute=0,
     )
     scheduler.start()

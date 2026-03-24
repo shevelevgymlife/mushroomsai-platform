@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     TASK_APPROVAL_ALLOWED_TG_IDS: str = ""  # доп. TG ID через запятую, кто может нажимать Да/Нет
     TASK_EXECUTOR_WEBHOOK_URL: str = ""  # endpoint внешнего исполнителя задач (optional)
     TASK_EXECUTOR_WEBHOOK_TOKEN: str = ""  # bearer token для TASK_EXECUTOR_WEBHOOK_URL (optional)
+    OPS_NOTIFY_DAILY_SUMMARY_HOUR_UTC: int = 9  # час UTC для ежедневной сводки в ops-бот
+    OPS_NOTIFY_BILLING_DUE_AT: str = ""  # дата платежа YYYY-MM-DD (optional)
+    OPS_NOTIFY_BILLING_CURRENT_USD: float = 0.0  # текущие расходы (optional)
+    OPS_NOTIFY_BILLING_LIMIT_USD: float = 0.0  # лимит расходов (optional)
+    OPS_NOTIFY_BILLING_WARN_PERCENT: int = 90  # порог warning по расходам
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587
     SMTP_USER: str = ""

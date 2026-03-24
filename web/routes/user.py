@@ -22,6 +22,7 @@ from services.group_platform_settings import user_can_create_community_group
 from services.community_group_queries import fetch_community_group_row
 from services.legal import legal_acceptance_redirect
 from services.notify_admin import notify_admin_telegram
+from services.ops_alerts import notify_plan_upgrade_request
 import sqlalchemy as sa
 import secrets
 import traceback as _traceback
@@ -960,6 +961,10 @@ async def profile_plan_upgrade_request(
         f"Комментарий: {nm or '—'}"
     )
     await notify_admin_telegram(txt)
+    try:
+        await notify_plan_upgrade_request(user_id=uid, requested_plan=rp, note=nm)
+    except Exception:
+        pass
     return JSONResponse({"ok": True})
 
 
