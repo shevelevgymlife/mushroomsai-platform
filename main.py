@@ -3,6 +3,8 @@ import logging
 import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse, HTMLResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -20,6 +22,7 @@ from web.routes.language import router as language_router
 from web.routes.seller import router as seller_router
 from web.translations import TRANSLATIONS, parse_accept_language, SUPPORTED_LANGS
 from services.deploy_notify import send_deploy_notifications
+from web.templates_utils import Jinja2Templates
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -434,6 +437,7 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+templates = Jinja2Templates(directory="web/templates")
 
 # Middleware
 app.add_middleware(
@@ -471,6 +475,48 @@ app.include_router(seller_router)
 app.include_router(admin_router)
 app.include_router(account_router)
 app.include_router(language_router)
+
+
+def _wants_html(request: Request) -> bool:
+    accept = (request.headers.get("accept") or "").lower()
+    return "text/html" in accept or "*/*" in accept
+
+
+def _updating_response(request: Request, status_code: int = 503):
+    if _wants_html(request):
+        return templates.TemplateResponse(
+            "deploy_updating.html",
+            {"request": request},
+            status_code=status_code,
+        )
+    return JSONResponse(
+        {
+            "ok": False,
+            "updating": True,
+            "message": "PROJECT UPDATING. 1 min.",
+        },
+        status_code=status_code,
+    )
+
+
+@app.get("/updating")
+async def updating_page(request: Request):
+    return _updating_response(request, status_code=200)
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    if exc.status_code in (502, 503, 504):
+        return _updating_response(request, status_code=503)
+    if _wants_html(request):
+        return HTMLResponse(str(exc.detail or "Error"), status_code=exc.status_code)
+    return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.error("Unhandled error: %s", exc)
+    return _updating_response(request, status_code=503)
 
 
 @app.get("/health")
