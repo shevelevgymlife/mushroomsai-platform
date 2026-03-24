@@ -1,71 +1,258 @@
 {% extends "base.html" %}
 {% block title %}{{ circle.name }} — {{ profile.name }}{% endblock %}
 {% block content %}
-<div style="max-width:900px;margin:24px auto;padding:0 12px 24px">
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px">
-    <a href="{{ back_url }}" style="text-decoration:none;border:1px solid rgba(255,255,255,.2);padding:8px 14px;border-radius:10px;color:#e8e8e8">Закрыть</a>
-    <div style="font-weight:700;font-size:18px;color:#e8e8e8">{{ circle.name }}</div>
-    {% if is_owner_view %}
-    <button type="button" onclick="toggleUploadBlock()" style="border:1px solid rgba(61,212,224,.45);background:rgba(61,212,224,.1);color:#3dd4e0;border-radius:10px;padding:8px 12px;cursor:pointer">Загрузить</button>
+<style>
+.cc-root{max-width:min(1100px,100%);margin:0 auto;padding:calc(4rem + 12px) 12px 32px;background:#080808;min-height:100vh;box-sizing:border-box}
+.cc-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.cc-head a.cc-back{text-decoration:none;border:1px solid rgba(255,255,255,.2);padding:8px 14px;border-radius:10px;color:#e8e8e8;font-size:14px}
+.cc-title{font-weight:700;font-size:clamp(16px,4vw,18px);color:#e8e8e8;flex:1;min-width:0;text-align:center}
+.cc-tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.cc-tab{padding:8px 18px;border-radius:20px;font-size:13px;font-weight:600;border:1px solid rgba(255,255,255,.1);background:transparent;color:#888;cursor:pointer}
+.cc-tab.cc-tab-active{border-color:#3dd4e0;color:#3dd4e0;background:rgba(61,212,224,.1)}
+.cc-rename{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.cc-rename input{flex:1;min-width:160px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0c0f14;color:#e8e8e8;font-size:14px;box-sizing:border-box}
+.cc-hint{font-size:12px;color:#888;margin:0 0 10px;line-height:1.4}
+.cc-search{width:100%;box-sizing:border-box;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0c0f14;color:#e8e8e8;margin-bottom:10px}
+.cc-owner-list{max-height:min(52vh,420px);overflow:auto;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:6px 0;margin-bottom:12px}
+.cc-owner-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.06);cursor:pointer}
+.cc-owner-row:last-child{border-bottom:none}
+.cc-owner-row input{flex-shrink:0;width:18px;height:18px}
+.cc-owner-row .thumb{width:48px;height:48px;border-radius:10px;overflow:hidden;background:#111;flex-shrink:0}
+.cc-owner-row .thumb img{width:100%;height:100%;object-fit:cover}
+.cc-save-row{display:flex;justify-content:flex-end}
+.btn-g{background:#3dd4e0;color:#000;font-weight:700;border-radius:10px;padding:10px 18px;border:none;cursor:pointer;font-size:14px}
+.btn-o{border:1px solid rgba(61,212,224,.45);background:rgba(61,212,224,.1);color:#3dd4e0;border-radius:10px;padding:8px 14px;cursor:pointer;font-size:13px}
+.ig-feed-shell{max-width:min(1100px,100%);margin:0 auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:start}
+.ig-post{position:relative;border:1px solid rgba(255,255,255,.12);border-radius:20px;overflow:visible;background:linear-gradient(165deg,rgba(255,255,255,.07),rgba(10,10,13,.92));margin-bottom:0;box-shadow:0 16px 50px rgba(0,0,0,.44)}
+.ig-post:nth-child(6n+1){transform:translateY(8px) rotate(-3.4deg)}
+.ig-post:nth-child(6n+2){transform:translateY(-4px) rotate(2.8deg)}
+.ig-post:nth-child(6n+3){transform:translateY(5px) rotate(1.6deg)}
+.ig-post:nth-child(6n+4){transform:translateY(-6px) rotate(-2.6deg)}
+.ig-post:nth-child(6n+5){transform:translateY(3px) rotate(2deg)}
+.ig-post:nth-child(6n+6){transform:translateY(-5px) rotate(-1.7deg)}
+.ig-post-header{position:relative;padding:10px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.05)}
+.ig-post-img{width:100%;aspect-ratio:4/5;object-fit:cover;background:#0a0a0a;display:block;max-height:260px}
+.ig-post-textonly{min-height:72px;padding:10px;font-size:13px;line-height:1.45;color:#ccc;white-space:pre-wrap;word-break:break-word;border-bottom:1px solid rgba(255,255,255,.05)}
+.ig-post-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:8px 10px 11px}
+.ig-post-metric{border:1px solid rgba(255,255,255,.14);border-radius:12px;min-height:42px;background:linear-gradient(160deg,rgba(255,255,255,.07),rgba(12,13,20,.92));display:flex;align-items:center;justify-content:center;gap:6px;font-size:14px;font-weight:800;color:#e5e7eb;cursor:pointer}
+.ig-post-metric .n{font-size:15px}
+.ig-post-metric-star{color:#ffd84f;border-color:rgba(255,216,79,.45)}
+.ig-post-metric-chat{color:#8be9ff;border-color:rgba(139,233,255,.38)}
+.ig-post-metric-share{color:#f7b3ff;border-color:rgba(247,179,255,.38)}
+@media(max-width:768px){
+  .ig-feed-shell{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .ig-post:nth-child(6n+1){transform:translateY(0) rotate(-2.2deg)}
+  .ig-post:nth-child(6n+2){transform:translateY(0) rotate(2deg)}
+  .ig-post:nth-child(6n+3){transform:translateY(0) rotate(1.1deg)}
+  .ig-post:nth-child(6n+4){transform:translateY(0) rotate(-1.9deg)}
+  .ig-post:nth-child(6n+5){transform:translateY(0) rotate(1.6deg)}
+  .ig-post:nth-child(6n+6){transform:translateY(0) rotate(-1.2deg)}
+  .ig-post-img{max-height:180px}
+}
+</style>
+
+<div class="cc-root">
+  <div class="cc-head">
+    <a class="cc-back" href="{{ back_url }}">Закрыть</a>
+    <div class="cc-title">{{ circle.name }}</div>
+    {% if not is_owner_view %}
+    <span style="font-size:12px;color:#888">{{ profile.name }}</span>
     {% else %}
-    <div style="font-size:12px;color:#888">{{ profile.name }}</div>
+    <span style="width:72px"></span>
     {% endif %}
   </div>
+
   {% if is_owner_view %}
-  <div id="uploadBlock" style="display:none;margin-bottom:12px;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px">
-    <input id="pickerSearch" type="text" placeholder="Найти пост по названию..." style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0c0f14;color:#e8e8e8" oninput="loadPickerPosts()">
-    <div id="pickerList" style="margin-top:10px;max-height:260px;overflow:auto"></div>
+  <div class="cc-tabs" role="tablist">
+    <button type="button" class="cc-tab cc-tab-active" id="ccTabUpload" onclick="ccSetTab('upload')">Загрузить</button>
+    <button type="button" class="cc-tab" id="ccTabView" onclick="ccSetTab('view')">Просмотр</button>
   </div>
-  {% endif %}
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
-    {% for p in posts %}
-    <a href="/community/post/{{ p.id }}" style="display:block;border:1px solid rgba(255,255,255,.14);border-radius:14px;overflow:hidden;background:#0f1118;text-decoration:none;color:inherit">
-      {% if p.image_url %}
-      <img src="{{ p.image_url }}" alt="" style="width:100%;aspect-ratio:4/5;object-fit:cover;display:block">
-      {% else %}
-      <div style="aspect-ratio:4/5;display:flex;align-items:center;justify-content:center;color:#666">🍄</div>
-      {% endif %}
-      <div style="padding:10px">
-        <div style="font-size:13px;font-weight:700;color:#e8e8e8">{{ p.title or ('Пост #' ~ p.id) }}</div>
+
+  <div id="ccPanelUpload">
+    <div class="cc-rename">
+      <input type="text" id="circleRenameInp" maxlength="80" value="{{ circle.name }}" placeholder="Название кружка" aria-label="Название кружка">
+      <button type="button" class="btn-o" onclick="saveCircleRename()">Сохранить имя</button>
+    </div>
+    <p class="cc-hint">Найдите свои посты по названию, отметьте галочками и нажмите «Сохранить».</p>
+    <input type="search" class="cc-search" id="circleOwnerSearch" placeholder="Поиск по названию..." autocomplete="off" oninput="loadOwnerPicker()">
+    <div id="circleOwnerList" class="cc-owner-list"></div>
+    <div class="cc-save-row">
+      <button type="button" class="btn-g" onclick="saveCirclePosts()">Сохранить</button>
+    </div>
+  </div>
+
+  <div id="ccPanelView" style="display:none">
+    {% if feed_items %}
+    <div class="ig-feed-shell" id="circleChaosFeed">
+      {% for item in feed_items %}
+      {% set p = item.post %}
+      <div class="ig-post" id="cc-pc-{{ p.id }}" data-pid="{{ p.id }}" onclick="openCommunityPostPage(event, {{ p.id }})">
+        <div class="ig-post-header">
+          <div style="width:36px;height:36px;border-radius:50%;border:2px solid #3dd4e0;overflow:hidden;flex-shrink:0">
+            {% if profile.avatar %}<img src="{{ profile.avatar }}" style="width:100%;height:100%;object-fit:cover" alt="">{% else %}<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px">🍄</div>{% endif %}
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:700;color:#e8e8e8">{{ profile.name or 'Участник' }}</div>
+            <div style="font-size:11px;color:#888">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}</div>
+          </div>
+        </div>
+        {% if p.image_url %}
+        <img src="{{ p.image_url }}" class="ig-post-img" loading="lazy" alt="">
+        {% elif p.content %}
+        <div class="ig-post-textonly">{{ p.content | truncate(2000, True, '…') }}</div>
+        {% endif %}
+        <div class="ig-post-metrics">
+          <button type="button" class="ig-post-metric ig-post-metric-star" onclick="event.stopPropagation();ccLikePost({{ p.id }},this)">
+            <span>{% if item.liked %}⭐{% else %}✩{% endif %}</span><span class="n" id="cc-lkc-{{ p.id }}">{{ p.likes_count }}</span>
+          </button>
+          <button type="button" class="ig-post-metric ig-post-metric-chat" onclick="event.stopPropagation();openCommunityPostDirect({{ p.id }})">
+            <span>💬</span><span class="n">{{ p.comments_count }}</span>
+          </button>
+          <button type="button" class="ig-post-metric ig-post-metric-share" onclick="event.stopPropagation();location.href='/community/post/{{ p.id }}'">
+            <span>↗</span><span class="n">{{ p.saves_count or 0 }}</span>
+          </button>
+        </div>
       </div>
-    </a>
-    {% endfor %}
-    {% if not posts %}
-    <div style="grid-column:1/-1;text-align:center;padding:24px;color:#666">В этом кружке пока нет постов</div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:40px;color:#666">В кружке пока нет постов — откройте вкладку «Загрузить».</div>
     {% endif %}
   </div>
+
+  {% else %}
+  {% if feed_items %}
+  <div class="ig-feed-shell">
+    {% for item in feed_items %}
+    {% set p = item.post %}
+    <div class="ig-post" onclick="openCommunityPostPage(event, {{ p.id }})">
+      <div class="ig-post-header">
+        <div style="width:36px;height:36px;border-radius:50%;border:2px solid #3dd4e0;overflow:hidden;flex-shrink:0">
+          {% if profile.avatar %}<img src="{{ profile.avatar }}" style="width:100%;height:100%;object-fit:cover" alt="">{% else %}<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px">🍄</div>{% endif %}
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:700;color:#e8e8e8">{{ profile.name or 'Участник' }}</div>
+          <div style="font-size:11px;color:#888">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}</div>
+        </div>
+      </div>
+      {% if p.image_url %}
+      <img src="{{ p.image_url }}" class="ig-post-img" loading="lazy" alt="">
+      {% elif p.content %}
+      <div class="ig-post-textonly">{{ p.content | truncate(2000, True, '…') }}</div>
+      {% endif %}
+      <div class="ig-post-metrics">
+        <button type="button" class="ig-post-metric ig-post-metric-star" onclick="event.stopPropagation();ccLikePost({{ p.id }},this)">
+          <span>{% if item.liked %}⭐{% else %}✩{% endif %}</span><span class="n" id="cc-lkc-{{ p.id }}">{{ p.likes_count }}</span>
+        </button>
+        <button type="button" class="ig-post-metric ig-post-metric-chat" onclick="event.stopPropagation();openCommunityPostDirect({{ p.id }})">
+          <span>💬</span><span class="n">{{ p.comments_count }}</span>
+        </button>
+        <button type="button" class="ig-post-metric ig-post-metric-share" onclick="event.stopPropagation();location.href='/community/post/{{ p.id }}'">
+          <span>↗</span><span class="n">{{ p.saves_count or 0 }}</span>
+        </button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div style="text-align:center;padding:48px;color:#666">В этом кружке пока нет постов</div>
+  {% endif %}
+  {% endif %}
 </div>
-{% if is_owner_view %}
+
 <script>
+const CIRCLE_ID={{ circle.id }};
 function esc(s){const d=document.createElement('div');d.textContent=s==null?'':String(s);return d.innerHTML;}
-let uploadOpen=false;
-function toggleUploadBlock(){
-  uploadOpen=!uploadOpen;
-  const b=document.getElementById('uploadBlock');
-  if(!b) return;
-  b.style.display=uploadOpen?'block':'none';
-  if(uploadOpen) loadPickerPosts();
+function openCommunityPostPage(event, postId){
+  const t=event&&event.target;
+  if(t && t.closest('a,button,input,textarea,.ig-post-metric')) return;
+  const back=encodeURIComponent(location.href);
+  location.href='/community/post/'+postId+'?back='+back;
 }
-async function loadPickerPosts(){
-  const list=document.getElementById('pickerList');
+function openCommunityPostDirect(postId){
+  const back=encodeURIComponent(location.href);
+  location.href='/community/post/'+postId+'?back='+back;
+}
+async function ccLikePost(postId, btn){
+  try{
+    const cnt=document.getElementById('cc-lkc-'+postId);
+    const icon=btn&&btn.querySelector('span');
+    const wasLiked=icon && icon.textContent==='⭐';
+    if(icon) icon.textContent=wasLiked?'✩':'⭐';
+    const r=await fetch('/community/like/'+postId,{method:'POST',credentials:'same-origin'});
+    const d=await r.json().catch(()=>({}));
+    if(d.liked){ if(icon) icon.textContent='⭐'; } else { if(icon) icon.textContent='✩'; }
+    if(cnt && typeof d.count==='number') cnt.textContent=String(Math.max(0,d.count));
+  }catch(e){}
+}
+{% if is_owner_view %}
+function ccSetTab(which){
+  const u=document.getElementById('ccPanelUpload');
+  const v=document.getElementById('ccPanelView');
+  const bu=document.getElementById('ccTabUpload');
+  const bv=document.getElementById('ccTabView');
+  if(which==='upload'){
+    if(u) u.style.display='block';
+    if(v) v.style.display='none';
+    if(bu){ bu.classList.add('cc-tab-active'); }
+    if(bv){ bv.classList.remove('cc-tab-active'); }
+  }else{
+    if(u) u.style.display='none';
+    if(v) v.style.display='block';
+    if(bv){ bv.classList.add('cc-tab-active'); }
+    if(bu){ bu.classList.remove('cc-tab-active'); }
+  }
+}
+async function loadOwnerPicker(){
+  const list=document.getElementById('circleOwnerList');
+  const q=(document.getElementById('circleOwnerSearch')&&document.getElementById('circleOwnerSearch').value||'').trim();
   if(!list) return;
-  const q=(document.getElementById('pickerSearch')?.value||'').trim();
-  list.innerHTML='<div style="padding:10px;color:#777">Загрузка...</div>';
-  const r=await fetch('/community/circle/{{ circle.id }}/picker-posts?q='+encodeURIComponent(q),{credentials:'same-origin'});
-  const d=await r.json().catch(()=>({}));
-  if(!r.ok||!d.ok){ list.innerHTML='<div style="padding:10px;color:#f87171">'+(d.error||'Ошибка')+'</div>'; return; }
-  const posts=Array.isArray(d.posts)?d.posts:[];
-  if(!posts.length){ list.innerHTML='<div style="padding:10px;color:#666">Посты не найдены</div>'; return; }
-  list.innerHTML=posts.map(p=>'<div style="display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)"><div style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(p.title||('Пост #'+p.id))+'</div><button type="button" onclick="attach('+p.id+')" style="border:1px solid rgba(61,212,224,.45);background:rgba(61,212,224,.1);color:#3dd4e0;border-radius:8px;padding:6px 10px;cursor:pointer">Загрузить</button></div>').join('');
+  list.innerHTML='<div style="padding:14px;color:#777">Загрузка…</div>';
+  try{
+    const r=await fetch('/community/circle/'+CIRCLE_ID+'/picker-posts?q='+encodeURIComponent(q),{credentials:'same-origin'});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.ok){ list.innerHTML='<div style="padding:14px;color:#f87171">'+(d.error||'Ошибка')+'</div>'; return; }
+    const posts=Array.isArray(d.posts)?d.posts:[];
+    if(!posts.length){ list.innerHTML='<div style="padding:14px;color:#666">Посты не найдены</div>'; return; }
+    list.innerHTML=posts.map(function(p){
+      const chk=p.in_circle?' checked':'';
+      const img=p.image_url?'<img src="'+esc(p.image_url)+'" alt="">':'<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:#666">🍄</div>';
+      return '<label class="cc-owner-row"><input type="checkbox" class="circle-owner-cb" value="'+p.id+'"'+chk+' onclick="event.stopPropagation()">'+
+        '<div class="thumb">'+img+'</div>'+
+        '<div style="flex:1;min-width:0;font-size:13px;color:#e8e8e8">'+esc(p.title||('Пост #'+p.id))+'</div></label>';
+    }).join('');
+  }catch(e){
+    list.innerHTML='<div style="padding:14px;color:#f87171">Ошибка сети</div>';
+  }
 }
-async function attach(postId){
+async function saveCirclePosts(){
+  const ids=[...document.querySelectorAll('.circle-owner-cb:checked')].map(function(c){ return parseInt(c.value,10); }).filter(function(n){ return !isNaN(n); });
+  try{
+    const r=await fetch('/community/circle/'+CIRCLE_ID+'/save',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      credentials:'same-origin',
+      body:JSON.stringify({post_ids:ids})
+    });
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.ok){ alert(d.error||'Не удалось сохранить'); return; }
+    location.reload();
+  }catch(e){ alert('Ошибка сети'); }
+}
+async function saveCircleRename(){
+  const inp=document.getElementById('circleRenameInp');
   const fd=new FormData();
-  fd.append('post_id',String(postId));
-  const r=await fetch('/community/circle/{{ circle.id }}/attach',{method:'POST',body:fd,credentials:'same-origin'});
-  const d=await r.json().catch(()=>({}));
-  if(!r.ok||!d.ok){ alert(d.error||'Не удалось загрузить'); return; }
-  location.reload();
+  fd.append('name', (inp&&inp.value||'').trim()||'Кружок');
+  try{
+    const r=await fetch('/community/circle/'+CIRCLE_ID+'/rename',{method:'POST',body:fd,credentials:'same-origin'});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.ok){ alert(d.error||'Не удалось сохранить имя'); return; }
+    if(d.name && inp) inp.value=d.name;
+    const t=document.querySelector('.cc-title');
+    if(t && d.name) t.textContent=d.name;
+  }catch(e){ alert('Ошибка сети'); }
 }
-</script>
+document.addEventListener('DOMContentLoaded', function(){ loadOwnerPicker(); });
 {% endif %}
+</script>
 {% endblock %}

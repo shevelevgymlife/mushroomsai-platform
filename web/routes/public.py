@@ -72,6 +72,30 @@ def apply_token_privacy_for_viewer(profile: dict, viewer_id: int | None, owner_i
     if not profile.get("show_shev_to_public", True):
         profile["shevelev_balance_cached"] = None
 
+
+MAX_PROFILE_CIRCLES = 5
+
+
+async def _profile_family_ids(profile_id: int) -> list[int]:
+    family_rows = await database.fetch_all(
+        users.select().with_only_columns(users.c.id).where(
+            sa.or_(users.c.id == profile_id, users.c.primary_user_id == profile_id)
+        )
+    )
+    return sorted({int(r["id"]) for r in family_rows} | {int(profile_id)})
+
+
+async def ensure_default_profile_circles(profile_id: int) -> None:
+    """У каждого профиля должен быть хотя бы один кружок (папка)."""
+    cnt = await database.fetch_val(
+        sa.select(sa.func.count()).select_from(community_folders).where(community_folders.c.user_id == profile_id)
+    ) or 0
+    if int(cnt) == 0:
+        await database.execute(
+            community_folders.insert().values(user_id=profile_id, name="Кружок")
+        )
+
+
 router = APIRouter()
 templates = Jinja2Templates(directory="web/templates")
 
@@ -1186,6 +1210,7 @@ async def community_profile(request: Request, user_id: int):
         })
 
     # Profile circles (highlights based on community_folders + linked posts)
+    await ensure_default_profile_circles(profile_id)
     circles_raw = await database.fetch_all(
         community_folders.select()
         .where(community_folders.c.user_id == profile_id)
@@ -1236,6 +1261,7 @@ async def community_profile(request: Request, user_id: int):
             "is_own": is_own,
             "feed": feed,
             "circles": circles,
+            "max_profile_circles": MAX_PROFILE_CIRCLES,
             "shevelev_token": shevelev_token_address(),
             "shevelev_auto_sync": shevelev_auto_sync,
         },
@@ -1255,6 +1281,7 @@ async def get_profile_circles(request: Request, user_id: int):
         if primary:
             raw = primary
     profile_id = int(raw["id"])
+    await ensure_default_profile_circles(profile_id)
     family_rows = await database.fetch_all(
         users.select().with_only_columns(users.c.id).where(
             sa.or_(users.c.id == profile_id, users.c.primary_user_id == profile_id)
@@ -1282,7 +1309,7 @@ async def get_profile_circles(request: Request, user_id: int):
             "cover_image": (cover["image_url"] if cover else None),
             "cover_title": ((cover["title"] or cover["content"]) if cover else None),
         })
-    return JSONResponse({"ok": True, "circles": circles})
+    return JSONResponse({"ok": True, "circles": circles, "max": MAX_PROFILE_CIRCLES})
 
 
 @router.post("/community/circle")
@@ -1291,6 +1318,11 @@ async def create_community_circle(request: Request, name: str = Form("Кружо
     if not current_user:
         return JSONResponse({"ok": False, "error": "auth required"}, status_code=401)
     uid = int(current_user.get("primary_user_id") or current_user["id"])
+    existing = await database.fetch_val(
+        sa.select(sa.func.count()).select_from(community_folders).where(community_folders.c.user_id == uid)
+    ) or 0
+    if int(existing) >= MAX_PROFILE_CIRCLES:
+        return JSONResponse({"ok": False, "error": "Не больше 5 кружков"}, status_code=400)
     clean_name = (name or "").strip()[:80] or "Кружок"
     fid = await database.execute(
         community_folders.insert().values(user_id=uid, name=clean_name)
@@ -1311,12 +1343,13 @@ async def circle_picker_posts(request: Request, circle_id: int, q: str = ""):
         return JSONResponse({"ok": False, "error": "Кружок не найден"}, status_code=404)
     if int(circle["user_id"] or 0) != uid:
         return JSONResponse({"ok": False, "error": "Нет доступа"}, status_code=403)
+    family_ids = await _profile_family_ids(uid)
     query = (
         community_posts.select()
-        .where(community_posts.c.user_id == uid)
+        .where(community_posts.c.user_id.in_(family_ids))
         .where(community_posts.c.approved == True)
         .order_by(community_posts.c.created_at.desc())
-        .limit(100)
+        .limit(500)
     )
     search = (q or "").strip()
     if search:
@@ -1333,6 +1366,7 @@ async def circle_picker_posts(request: Request, circle_id: int, q: str = ""):
             "id": p["id"],
             "title": (p["title"] or (p["content"] or "")[:60] or f"Пост #{p['id']}"),
             "image_url": p.get("image_url"),
+            "in_circle": int(p["folder_id"] or 0) == int(circle_id),
         })
     return JSONResponse({"ok": True, "posts": posts})
 
@@ -1350,10 +1384,11 @@ async def attach_post_to_circle(request: Request, circle_id: int, post_id: int =
         return JSONResponse({"ok": False, "error": "Кружок не найден"}, status_code=404)
     if int(circle["user_id"] or 0) != uid:
         return JSONResponse({"ok": False, "error": "Нет доступа"}, status_code=403)
+    family_ids = await _profile_family_ids(uid)
     post = await database.fetch_one(
         community_posts.select()
         .where(community_posts.c.id == post_id)
-        .where(community_posts.c.user_id == uid)
+        .where(community_posts.c.user_id.in_(family_ids))
     )
     if not post:
         return JSONResponse({"ok": False, "error": "Пост не найден"}, status_code=404)
@@ -1365,11 +1400,85 @@ async def attach_post_to_circle(request: Request, circle_id: int, post_id: int =
     return JSONResponse({"ok": True})
 
 
+@router.post("/community/circle/{circle_id}/save")
+async def circle_save_posts(request: Request, circle_id: int):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return JSONResponse({"ok": False, "error": "auth required"}, status_code=401)
+    uid = int(current_user.get("primary_user_id") or current_user["id"])
+    circle = await database.fetch_one(
+        community_folders.select().where(community_folders.c.id == circle_id)
+    )
+    if not circle:
+        return JSONResponse({"ok": False, "error": "Кружок не найден"}, status_code=404)
+    if int(circle["user_id"] or 0) != uid:
+        return JSONResponse({"ok": False, "error": "Нет доступа"}, status_code=403)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    raw_ids = body.get("post_ids") if isinstance(body, dict) else None
+    if not isinstance(raw_ids, list):
+        raw_ids = []
+    wanted: set[int] = set()
+    for x in raw_ids:
+        try:
+            wanted.add(int(x))
+        except (TypeError, ValueError):
+            continue
+    family_ids = await _profile_family_ids(uid)
+    await database.execute(
+        community_posts.update()
+        .where(community_posts.c.folder_id == circle_id)
+        .where(community_posts.c.user_id.in_(family_ids))
+        .values(folder_id=None)
+    )
+    for pid in wanted:
+        post = await database.fetch_one(
+            community_posts.select()
+            .where(community_posts.c.id == pid)
+            .where(community_posts.c.user_id.in_(family_ids))
+            .where(community_posts.c.approved == True)
+        )
+        if post:
+            await database.execute(
+                community_posts.update()
+                .where(community_posts.c.id == pid)
+                .values(folder_id=circle_id)
+            )
+    return JSONResponse({"ok": True})
+
+
+@router.post("/community/circle/{circle_id}/rename")
+async def circle_rename(request: Request, circle_id: int, name: str = Form(...)):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return JSONResponse({"ok": False, "error": "auth required"}, status_code=401)
+    uid = int(current_user.get("primary_user_id") or current_user["id"])
+    circle = await database.fetch_one(
+        community_folders.select().where(community_folders.c.id == circle_id)
+    )
+    if not circle:
+        return JSONResponse({"ok": False, "error": "Кружок не найден"}, status_code=404)
+    if int(circle["user_id"] or 0) != uid:
+        return JSONResponse({"ok": False, "error": "Нет доступа"}, status_code=403)
+    clean = (name or "").strip()[:80] or "Кружок"
+    await database.execute(
+        community_folders.update()
+        .where(community_folders.c.id == circle_id)
+        .values(name=clean)
+    )
+    return JSONResponse({"ok": True, "name": clean})
+
+
 @router.get("/community/profile/{user_id}/circle/{circle_id}", response_class=HTMLResponse)
 async def community_profile_circle_page(request: Request, user_id: int, circle_id: int):
     current_user = await get_user_from_request(request)
     if not current_user:
         return RedirectResponse(f"/login?next=/community/profile/{user_id}/circle/{circle_id}")
+    leg = await legal_acceptance_redirect(request, current_user)
+    if leg:
+        return leg
     viewer_id = int(current_user.get("primary_user_id") or current_user["id"])
     raw = await database.fetch_one(users.select().where(users.c.id == user_id))
     if not raw:
@@ -1399,13 +1508,28 @@ async def community_profile_circle_page(request: Request, user_id: int, circle_i
         .where(community_posts.c.approved == True)
         .order_by(community_posts.c.created_at.desc())
     )
+    profile = get_public_user_data(dict(raw))
+    apply_token_privacy_for_viewer(profile, viewer_id, profile_id)
+    post_ids_list = [p["id"] for p in posts]
+    liked_set = set()
+    if post_ids_list:
+        lk_rows = await database.fetch_all(
+            community_likes.select()
+            .where(community_likes.c.post_id.in_(post_ids_list))
+            .where(community_likes.c.user_id == viewer_id)
+        )
+        liked_set = {int(r["post_id"]) for r in lk_rows}
+    feed_items = [{"post": p, "liked": p["id"] in liked_set} for p in posts]
     return templates.TemplateResponse(
         "community_circle.html",
         {
             "request": request,
-            "profile": get_public_user_data(dict(raw)),
+            "user": current_user,
+            "profile": profile,
+            "profile_id": profile_id,
             "circle": dict(circle),
             "posts": posts,
+            "feed_items": feed_items,
             "is_owner_view": viewer_id == profile_id,
             "back_url": f"/community/profile/{profile_id}",
         },
