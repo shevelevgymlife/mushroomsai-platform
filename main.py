@@ -18,6 +18,37 @@ class _DropTelegramBotUrlLogs(logging.Filter):
 _TG_LOG_FILTER = _DropTelegramBotUrlLogs()
 _shielded_handler_ids: set[int] = set()
 _shielded_logger_names: set[str] = set()
+_root_tg_filter_added: bool = False
+_httpx_info_patched: bool = False
+
+
+def _patch_httpx_client_info_drop_telegram() -> None:
+    """Оборачивает httpx._client.logger.info: даже при сбросе setLevel() не логировать запросы к api.telegram.org."""
+    global _httpx_info_patched
+    if _httpx_info_patched:
+        return
+    try:
+        import httpx._client as _hpx_client
+
+        _orig = _hpx_client.logger.info
+
+        def _safe_info(*args, **kwargs):
+            try:
+                for a in args:
+                    if "api.telegram.org" in str(a):
+                        return
+                for v in kwargs.values():
+                    if "api.telegram.org" in str(v):
+                        return
+            except Exception:
+                pass
+            return _orig(*args, **kwargs)
+
+        _hpx_client.logger.info = _safe_info  # type: ignore[method-assign]
+        _hpx_client.logger.setLevel(logging.ERROR)
+        _httpx_info_patched = True
+    except Exception:
+        pass
 
 
 def _shield_telegram_token_logs() -> None:
@@ -25,6 +56,10 @@ def _shield_telegram_token_logs() -> None:
     Uvicorn после старта вешает свои handlers на root — записи httpx идут в stdout через них,
     минуя фильтры только на логгере httpx. Дублируем фильтр на каждый handler root + уровни httpx.
     """
+    global _root_tg_filter_added
+    if not _root_tg_filter_added:
+        logging.root.addFilter(_TG_LOG_FILTER)
+        _root_tg_filter_added = True
     for h in logging.root.handlers:
         hid = id(h)
         if hid not in _shielded_handler_ids:
@@ -37,6 +72,7 @@ def _shield_telegram_token_logs() -> None:
         if _name not in _shielded_logger_names:
             _lg.addFilter(_TG_LOG_FILTER)
             _shielded_logger_names.add(_name)
+    _patch_httpx_client_info_drop_telegram()
 
 
 logging.basicConfig(level=logging.INFO)
