@@ -1,0 +1,59 @@
+name: Auto-merge claude branches → master
+
+on:
+  push:
+    branches:
+      - 'claude/**'
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Merge claude branch into master
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const branch = context.ref.replace('refs/heads/', '');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            console.log(`Auto-merging ${branch} → master`);
+
+            // Найти открытый PR для этой ветки
+            const { data: prs } = await github.rest.pulls.list({
+              owner, repo,
+              head: `${owner}:${branch}`,
+              base: 'master',
+              state: 'open'
+            });
+
+            let prNumber;
+
+            if (prs.length > 0) {
+              prNumber = prs[0].number;
+              console.log(`Found existing PR #${prNumber}`);
+            } else {
+              // Создать PR если нет
+              const { data: pr } = await github.rest.pulls.create({
+                owner, repo,
+                title: `auto: ${branch}`,
+                head: branch,
+                base: 'master',
+                body: 'Автоматический мерж из Claude Code'
+              });
+              prNumber = pr.number;
+              console.log(`Created PR #${prNumber}`);
+            }
+
+            // Смержить
+            await github.rest.pulls.merge({
+              owner, repo,
+              pull_number: prNumber,
+              merge_method: 'merge'
+            });
+
+            console.log(`PR #${prNumber} merged successfully`);
