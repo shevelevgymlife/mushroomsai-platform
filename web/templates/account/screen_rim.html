@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Подсветка экрана — NEUROFUNGI AI{% endblock %}
+{% block title %}Вид — NEUROFUNGI AI{% endblock %}
 
 {% block content %}
 <div class="pt-24 pb-20 px-4 neo-app-surface max-w-lg mx-auto">
-  <h1 class="text-xl font-semibold text-text mb-1" style="color:#3dd4e0">Подсветка по периметру</h1>
-  <p class="text-sm text-muted mb-6">Выберите цвет курсором (как в Tilda) и силу свечения. Сохраняется в аккаунте.</p>
+  <h1 class="text-xl font-semibold text-text mb-1" style="color:#3dd4e0">Вид</h1>
+  <p class="text-sm text-muted mb-6">Оформление по краю экрана: цвет (как в Tilda), ширина свечения и яркость. Сохраняется в аккаунте.</p>
 
   <div class="space-y-5 rounded-2xl border border-border bg-surface/50 p-4">
     <div>
@@ -18,13 +18,17 @@
       </div>
     </div>
     <div>
-      <label class="text-xs text-muted block mb-2">Сила подсветки (ярче / тусклее)</label>
+      <label class="text-xs text-muted block mb-2">Ширина по краю экрана <span class="text-muted/70">(тонко — широко)</span></label>
+      <input type="range" id="rimWidth" min="5" max="100" value="35" class="w-full" />
+    </div>
+    <div>
+      <label class="text-xs text-muted block mb-2">Яркость свечения (ярче / тусклее)</label>
       <input type="range" id="rimStrength" min="5" max="100" value="55" class="w-full" />
     </div>
     <div class="flex items-center gap-3">
       <label class="flex items-center gap-2 text-sm text-text cursor-pointer">
         <input type="checkbox" id="rimOn" class="rounded border-border" {% if user.screen_rim.on %}checked{% endif %} />
-        Включить подсветку
+        Показывать оформление
       </label>
     </div>
     <div class="flex gap-3 pt-2">
@@ -37,7 +41,7 @@
 
 <script>
 (function(){
-  var cfg = window.__SCREEN_RIM || { on:false, r:61, g:212, b:224, s:0.55 };
+  var cfg = window.__SCREEN_RIM || { on:false, r:61, g:212, b:224, s:0.55, w:0.35 };
 
   function rgbToHsv(r,g,b){
     r/=255; g/=255; b/=255;
@@ -65,6 +69,7 @@
   var hueEl = document.getElementById('rimHue');
   var svEl = document.getElementById('rimSv');
   var strEl = document.getElementById('rimStrength');
+  var widEl = document.getElementById('rimWidth');
   var onEl = document.getElementById('rimOn');
   var saveBtn = document.getElementById('rimSave');
   var statusEl = document.getElementById('rimStatus');
@@ -72,6 +77,7 @@
   var hsv = rgbToHsv(~~cfg.r, ~~cfg.g, ~~cfg.b);
   hueEl.value = Math.round(hsv.h);
   strEl.value = Math.round((cfg.s != null ? cfg.s : 0.55) * 100);
+  widEl.value = Math.round((cfg.w != null ? cfg.w : 0.35) * 100);
 
   function paintSv(){
     var hh = +hueEl.value;
@@ -91,6 +97,7 @@
     hsv = rgbToHsv(~~cfg.r, ~~cfg.g, ~~cfg.b);
     hueEl.value = Math.round(hsv.h);
     strEl.value = Math.round((cfg.s != null ? cfg.s : 0.55) * 100);
+    widEl.value = Math.round((cfg.w != null ? cfg.w : 0.35) * 100);
     onEl.checked = !!cfg.on;
     setKnobFromHsv();
     applyLocal();
@@ -107,7 +114,8 @@
   function applyLocal(){
     var rgb = hsvToRgb(+hueEl.value, hsv.s, hsv.v);
     var s = (+strEl.value) / 100;
-    var patch = { on: onEl.checked, r: rgb[0], g: rgb[1], b: rgb[2], s: s };
+    var w = (+widEl.value) / 100;
+    var patch = { on: onEl.checked, r: rgb[0], g: rgb[1], b: rgb[2], s: s, w: w };
     window.__SCREEN_RIM = patch;
     if (window.applyScreenRimFromPrefs) window.applyScreenRimFromPrefs(patch);
   }
@@ -117,6 +125,7 @@
     applyLocal();
   });
   strEl.addEventListener('input', applyLocal);
+  widEl.addEventListener('input', applyLocal);
   onEl.addEventListener('change', applyLocal);
 
   var dragging = false;
@@ -135,7 +144,7 @@
   saveBtn.addEventListener('click', async function(){
     statusEl.textContent = 'Сохранение…';
     var rgb = hsvToRgb(+hueEl.value, hsv.s, hsv.v);
-    var body = { on: onEl.checked, r: rgb[0], g: rgb[1], b: rgb[2], s: (+strEl.value)/100 };
+    var body = { on: onEl.checked, r: rgb[0], g: rgb[1], b: rgb[2], s: (+strEl.value)/100, w: (+widEl.value)/100 };
     try{
       var resp = await fetch('/account/screen-rim', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body: JSON.stringify(body)});
       var data = await resp.json();

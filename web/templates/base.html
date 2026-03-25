@@ -166,10 +166,10 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
   <script>window.__APP_EFF_UID={{ (user.primary_user_id or user.id)|int }};</script>
   <div id="app-screen-rim" aria-hidden="true"></div>
   <script>
-  window.__SCREEN_RIM = {{ (user.screen_rim | default({'on': false, 'r': 61, 'g': 212, 'b': 224, 's': 0.55})) | tojson }};
+  window.__SCREEN_RIM = {{ (user.screen_rim | default({'on': false, 'r': 61, 'g': 212, 'b': 224, 's': 0.55, 'w': 0.35})) | tojson }};
   </script>
-  <link rel="stylesheet" href="/static/css/screen-rim.css?v=1" />
-  <script src="/static/js/screen-rim-app.js?v=1" defer></script>
+  <link rel="stylesheet" href="/static/css/screen-rim.css?v=2" />
+  <script src="/static/js/screen-rim-app.js?v=2" defer></script>
   {% endif %}
   {% if user and request.url.path != '/' and not request.query_params.get('embed') %}
   {% include "components/app_mobile_header.html" %}

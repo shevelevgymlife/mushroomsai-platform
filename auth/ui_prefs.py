@@ -4,7 +4,14 @@ from __future__ import annotations
 import json
 from typing import Any
 
-DEFAULT_SCREEN_RIM: dict[str, Any] = {"on": False, "r": 61, "g": 212, "b": 224, "s": 0.55}
+DEFAULT_SCREEN_RIM: dict[str, Any] = {
+    "on": False,
+    "r": 61,
+    "g": 212,
+    "b": 224,
+    "s": 0.55,
+    "w": 0.35,
+}
 
 
 def attach_screen_rim_prefs(user_dict: dict) -> None:
@@ -27,6 +34,8 @@ def attach_screen_rim_prefs(user_dict: dict) -> None:
                 out["b"] = max(0, min(255, int(data["b"])))
             if "s" in data:
                 out["s"] = max(0.05, min(1.0, float(data["s"])))
+            if "w" in data:
+                out["w"] = max(0.05, min(1.0, float(data["w"])))
         user_dict["screen_rim"] = out
     except (TypeError, ValueError, json.JSONDecodeError):
         user_dict["screen_rim"] = DEFAULT_SCREEN_RIM.copy()

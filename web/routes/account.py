@@ -287,7 +287,7 @@ async def delete_my_account(request: Request):
 
 @router.get("/screen-rim", response_class=HTMLResponse)
 async def screen_rim_settings_page(request: Request):
-    """Выбор цвета и яркости подсветки по периметру экрана (как палитра в Tilda)."""
+    """Настройки вида по периметру экрана: цвет, ширина свечения, яркость."""
     user = await get_user_from_request(request)
     if not user:
         return RedirectResponse("/login?next=/account/screen-rim", status_code=302)
@@ -320,6 +320,8 @@ async def screen_rim_save(request: Request):
             cur[k] = max(0, min(255, int(body[k])))
     if "s" in body:
         cur["s"] = max(0.05, min(1.0, float(body["s"])))
+    if "w" in body:
+        cur["w"] = max(0.05, min(1.0, float(body["w"])))
     payload = json.dumps(cur, separators=(",", ":"))
     await database.execute(
         users.update().where(users.c.id == user["id"]).values(screen_rim_json=payload)
