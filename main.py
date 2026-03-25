@@ -119,6 +119,17 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error("DB connection failed: %s", e)
 
+    # Авто-миграция новых колонок
+    try:
+        await database.execute("""
+            ALTER TABLE users
+            ADD COLUMN IF NOT EXISTS link_token VARCHAR(64),
+            ADD COLUMN IF NOT EXISTS link_token_expires TIMESTAMP
+        """)
+        logger.info("DB migration: link_token columns OK")
+    except Exception as e:
+        logger.warning("DB migration skipped: %s", e)
+
     # Уведомление о деплое в Telegram
     try:
         from services.tg_notify import notify_deploy_ok

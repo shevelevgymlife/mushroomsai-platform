@@ -1,0 +1,26 @@
+name: Auto-merge claude branches → master
+
+on:
+  push:
+    branches:
+      - 'claude/**'
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Merge and push to master
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions"
+          git fetch origin ${{ github.ref_name }}
+          git merge origin/${{ github.ref_name }} --no-edit -m "auto-merge: ${{ github.ref_name }}"
+          git push origin master
