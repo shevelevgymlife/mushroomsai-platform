@@ -23,6 +23,19 @@ templates = Jinja2Templates(directory="web/templates")
 _logger = logging.getLogger(__name__)
 
 
+async def _ensure_admin(user_id: int, tg_id: int | None = None, email: str | None = None) -> None:
+    """Если пользователь является владельцем (по ADMIN_TG_ID или ADMIN_EMAIL) — ставим role=admin."""
+    from config import settings as _s
+    is_owner = (
+        (tg_id and _s.ADMIN_TG_ID and int(tg_id) == int(_s.ADMIN_TG_ID))
+        or (email and _s.ADMIN_EMAIL and email.strip().lower() == _s.ADMIN_EMAIL.strip().lower())
+    )
+    if is_owner:
+        await database.execute(
+            users.update().where(users.c.id == user_id).values(role="admin")
+        )
+
+
 def _safe_next_path(raw: str | None) -> str | None:
     if not raw or not isinstance(raw, str):
         return None
@@ -108,6 +121,7 @@ async def login_email(
                 "bot_username": _s.TELEGRAM_BOT_USERNAME,
             },
         )
+    await _ensure_admin(int(user["id"]), email=email)
     token = create_access_token(user["id"])
     dest = _pop_login_redirect(request)
     resp = RedirectResponse(dest, status_code=302)
@@ -137,6 +151,7 @@ async def register_email(
                 "bot_username": _s.TELEGRAM_BOT_USERNAME,
             },
         )
+    await _ensure_admin(int(user["id"]), email=email)
     token = create_access_token(user["id"])
     dest = _pop_login_redirect(request)
     resp = RedirectResponse(dest, status_code=302)
@@ -248,6 +263,7 @@ async def google_callback(request: Request):
             except Exception:
                 pass
 
+        await _ensure_admin(int(user_id), email=email)
         token_str = create_access_token(user_id)
         dest = _pop_login_redirect(request)
         resp = RedirectResponse(dest, status_code=302)
@@ -353,6 +369,7 @@ async def telegram_login_callback(request: Request):
             except Exception:
                 pass
 
+        await _ensure_admin(int(user_id), tg_id=tg_id)
         token_str = create_access_token(user_id)
         dest = _pop_login_redirect(request)
         resp = RedirectResponse(dest, status_code=302)
