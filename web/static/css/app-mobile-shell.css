@@ -439,3 +439,28 @@ details.ig-drawer-details > summary {
 .ig-drawer-item .stroke-ico {
   color: #888;
 }
+
+/* ===== Mobile-only: force single-column for desktop multi-column layouts ===== */
+/* Community 3-column grid → single column in mobile shell */
+body.app-mobile-layout main .cl {
+  grid-template-columns: 1fr !important;
+  max-width: 100% !important;
+}
+body.app-mobile-layout main .lbar,
+body.app-mobile-layout main .rbar {
+  display: none !important;
+}
+
+/* Community post: remove wide max-width */
+body.app-mobile-layout main .cp-wrap {
+  max-width: 100% !important;
+}
+
+/* Override Tailwind lg/xl/md responsive multi-column grids to 1 column */
+body.app-mobile-layout main .grid {
+  grid-template-columns: 1fr !important;
+}
+/* Exceptions: allow 2-column grids that are intentionally narrow (shop, forms) */
+body.app-mobile-layout main .grid.grid-cols-2 {
+  grid-template-columns: repeat(2, 1fr) !important;
+}
