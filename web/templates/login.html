@@ -21,6 +21,17 @@
     {% endif %}
 
     <div class="flex flex-col gap-3">
+      {% if bot_username %}
+      <div style="display:flex;justify-content:center;margin-bottom:4px">
+        <script async src="https://telegram.org/js/telegram-widget.js?22"
+          data-telegram-login="{{ bot_username }}"
+          data-size="large"
+          data-auth-url="{{ site_url }}/auth/telegram/callback"
+          data-request-access="write"
+          data-userpic="false">
+        </script>
+      </div>
+      {% endif %}
       <a href="/auth/google"
         style="display:flex;align-items:center;justify-content:center;gap:12px;width:100%;min-height:52px;padding:0 20px;border-radius:14px;text-decoration:none;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.12);color:#e8e8e8;font-size:15px;font-weight:500;transition:all .2s"
         onmouseover="this.style.background='rgba(255,255,255,.11)';this.style.borderColor='rgba(255,255,255,.22)'"

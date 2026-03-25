@@ -123,11 +123,12 @@ async def lifespan(app: FastAPI):
     bot_app = None
     if settings.TELEGRAM_TOKEN:
         try:
-            from bot.main_bot import create_bot
+            from bot.main_bot import create_bot, setup_bot_menu
             bot_app = create_bot()
             await bot_app.initialize()
             await bot_app.start()
             await bot_app.updater.start_polling(drop_pending_updates=True)
+            await setup_bot_menu(bot_app)
             logger.info("Telegram bot started")
         except Exception as e:
             logger.error("Primary bot startup error: %s", e)

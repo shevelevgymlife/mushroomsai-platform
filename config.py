@@ -13,6 +13,7 @@ def _env_file_for_settings() -> str | None:
 
 class Settings(BaseSettings):
     TELEGRAM_TOKEN: str = ""
+    TELEGRAM_BOT_USERNAME: str = ""  # напр. mushroomsai_bot (без @)
     OPENAI_API_KEY: str = ""
     DATABASE_URL: str = ""
     GOOGLE_CLIENT_ID: str = ""

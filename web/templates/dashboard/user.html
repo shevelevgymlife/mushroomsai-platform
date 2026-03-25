@@ -936,8 +936,7 @@ body.dash-ig-app .ig-lamp-topbar{
           <button type="button" class="ig-drawer-subbtn" onclick="closeDbDrawer();goSec('profile')">Кошелёк и синхронизация →</button>
         </div>
       </details>
-      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();document.getElementById('sync-modal').style.display='flex'"><span class="e">{{ ico('link') }}</span><span class="lbl">Синхронизация аккаунтов</span></button>
-      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('link')"><span class="e">{{ ico('link') }}</span><span class="lbl">Привязка Google</span></button>
+      <a href="/account/link" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none"><span class="e">{{ ico('link') }}</span><span class="lbl">Привязать аккаунт</span></a>
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('language')"><span class="e">{{ ico('globe') }}</span><span class="lbl">Язык интерфейса</span></button>
       <details class="ig-drawer-details" style="border-bottom:1px solid rgba(255,255,255,.06)">
         <summary class="ig-drawer-item ig-drawer-summary" style="list-style:none;cursor:pointer"><span class="e">📄</span><span class="lbl">Документы</span><span class="ig-drawer-chev" style="margin-left:auto;opacity:.5;font-size:10px">▼</span></summary>
@@ -1729,43 +1728,35 @@ body.dash-ig-app .ig-lamp-topbar{
       <div class="sect-title">🔗 Привязка аккаунтов</div>
       {% set has_tg = user.tg_id or user.linked_tg_id %}
       {% set has_google = user.google_id or user.linked_google_id %}
-      {% if has_tg and has_google %}
-      <div class="card" style="border-color:rgba(74,222,128,.25);background:rgba(74,222,128,.05);margin-bottom:16px">
-        <div style="display:flex;align-items:center;gap:10px;font-size:15px;color:#4ade80;font-weight:600">
-          <span style="font-size:20px">✅</span> Аккаунты объединены
-        </div>
-        <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
-          <div style="font-size:13px;color:#666;display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:#38bdf8;display:inline-block"></span> Telegram привязан</div>
-          <div style="font-size:13px;color:#666;display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block"></span> Google аккаунт привязан</div>
-        </div>
-        {% if user.linked_tg_id or user.linked_google_id %}
-        <button id="syncBtn" onclick="syncHist()" class="btn-o" style="margin-top:16px;width:100%">🔄 Синхронизировать историю</button>
-        <div id="syncOk" style="display:none;margin-top:8px;font-size:13px;color:#4ade80;text-align:center">✓ История синхронизирована</div>
-        {% endif %}
-      </div>
-      {% else %}
-      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">
-        {% if not has_google %}
-        <a href="/account/link-google" class="card" style="display:flex;align-items:center;gap:14px;text-decoration:none;border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.05);transition:border-color .2s" onmouseover="this.style.borderColor='rgba(239,68,68,.5)'" onmouseout="this.style.borderColor='rgba(239,68,68,.25)'">
-          <span style="font-size:28px">🔴</span>
-          <div>
-            <div style="font-weight:600;color:#ef4444;margin-bottom:2px">Привязать Google</div>
-            <div style="font-size:13px;color:#666">Войти через Google аккаунт</div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+        <!-- Telegram status -->
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {% if has_tg %}rgba(56,189,248,.3){% else %}rgba(255,255,255,.08){% endif %};background:{% if has_tg %}rgba(56,189,248,.06){% else %}rgba(255,255,255,.02){% endif %}">
+          <span style="font-size:22px">✈️</span>
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:600;color:{% if has_tg %}#38bdf8{% else %}#888{% endif %}">Telegram</div>
+            <div style="font-size:12px;color:#555">{% if has_tg %}Привязан{% else %}Не привязан{% endif %}</div>
           </div>
-          <span style="margin-left:auto;color:#ef4444">→</span>
-        </a>
-        {% endif %}
+          {% if has_tg %}<span style="color:#38bdf8">✓</span>{% endif %}
+        </div>
+        <!-- Google status -->
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {% if has_google %}rgba(239,68,68,.3){% else %}rgba(255,255,255,.08){% endif %};background:{% if has_google %}rgba(239,68,68,.06){% else %}rgba(255,255,255,.02){% endif %}">
+          <span style="font-size:22px">🔴</span>
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:600;color:{% if has_google %}#ef4444{% else %}#888{% endif %}">Google</div>
+            <div style="font-size:12px;color:#555">{% if has_google %}Привязан{% else %}Не привязан{% endif %}</div>
+          </div>
+          {% if has_google %}<span style="color:#ef4444">✓</span>{% endif %}
+        </div>
       </div>
-      {% endif %}
+
       {% if request.query_params.get('linked') %}
-      <div class="card" style="border-color:rgba(74,222,128,.3);background:rgba(74,222,128,.07);text-align:center;color:#4ade80;font-weight:600">✓ Аккаунт успешно привязан!</div>
+      <div class="card" style="border-color:rgba(74,222,128,.3);background:rgba(74,222,128,.07);text-align:center;color:#4ade80;font-weight:600;margin-bottom:16px">✓ Аккаунт успешно привязан!</div>
       {% endif %}
-      <div class="card" style="margin-top:16px">
-        <div style="font-size:13px;font-weight:600;color:#888;margin-bottom:10px">Зачем привязывать аккаунты?</div>
-        {% for t in ['Единая история диалогов с AI','Один профиль в сообществе','Синхронизация заказов и подписки','Войти с любого устройства'] %}
-        <div style="font-size:13px;color:#666;display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="color:#3dd4e0">✦</span>{{ t }}</div>
-        {% endfor %}
-      </div>
+
+      <a href="/account/link" class="btn-g" style="display:block;text-align:center;text-decoration:none;width:100%;padding:13px;border-radius:12px;font-weight:600">
+        Управление привязкой →
+      </a>
     </section>
 
     <!-- ══ LANGUAGE ══ -->
@@ -1962,29 +1953,8 @@ body.dash-ig-app .ig-lamp-topbar{
 
 </div>
 
-<!-- Sync modal -->
-<div id="sync-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;background:rgba(0,0,0,.75);backdrop-filter:blur(6px)" onclick="if(event.target===this)this.style.display='none'">
-  <div style="background:#0e0e0e;border:1px solid rgba(61,212,224,.3);border-radius:20px;padding:36px 32px;max-width:400px;width:90%;box-shadow:0 0 60px rgba(61,212,224,.1)">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-      <h3 style="font-size:18px;font-weight:700;color:#e8e8e8">🔗 Привязка аккаунтов</h3>
-      <button onclick="document.getElementById('sync-modal').style.display='none'" style="background:none;border:none;color:#555;font-size:22px;cursor:pointer;line-height:1">×</button>
-    </div>
-    <p style="font-size:14px;color:#888;margin-bottom:24px;line-height:1.6">Привяжите Google, чтобы объединить аккаунты в один — единая история, подписка и профиль.</p>
-    <div id="sync-success" style="{% if request.query_params.get('linked') %}display:block{% else %}display:none{% endif %};margin-bottom:16px;padding:12px;border-radius:10px;background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);color:#4ade80;font-size:14px;font-weight:600;text-align:center">✅ Аккаунты объединены!</div>
-    <div style="display:flex;flex-direction:column;gap:10px">
-      <a href="/account/link-google"
-        style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:12px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.05);text-decoration:none;transition:background .2s"
-        onmouseover="this.style.background='rgba(239,68,68,.12)'" onmouseout="this.style.background='rgba(239,68,68,.05)'">
-        <span style="font-size:22px">🔴</span>
-        <div>
-          <div style="font-size:14px;font-weight:600;color:#ef4444">Привязать Google</div>
-          <div style="font-size:12px;color:#555">Войти через Google аккаунт</div>
-        </div>
-        <span style="margin-left:auto;color:#ef4444">→</span>
-      </a>
-    </div>
-  </div>
-</div>
+<!-- sync-modal removed — use /account/link page instead -->
+<div id="sync-modal" style="display:none"></div>
 
 <div id="planReqModal" style="display:none;position:fixed;inset:0;z-index:10024;align-items:center;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(4px)" onclick="if(event.target===this)this.style.display='none'">
   <div class="card" style="max-width:420px;width:92%;padding:24px;border-color:rgba(61,212,224,.3)" onclick="event.stopPropagation()">
