@@ -31,6 +31,7 @@ from db.models import (
 )
 from auth.session import get_user_from_request
 from config import settings, shevelev_token_address
+from services.subscription_service import check_subscription, PLANS
 from services.legal import legal_acceptance_redirect
 from services.referral_service import attach_invite_ref_from_query
 from services.ops_alerts import (
@@ -1245,6 +1246,9 @@ async def community_profile(request: Request, user_id: int):
     _vwa = (vrow.get("wallet_address") or "").strip() if vrow else ""
     shevelev_auto_sync = _vwa.startswith("0x")
 
+    profile_plan = await check_subscription(profile_id)
+    profile_plan_info = PLANS.get(profile_plan, PLANS["free"])
+
     return templates.TemplateResponse(
         "community_profile.html",
         {
@@ -1266,6 +1270,8 @@ async def community_profile(request: Request, user_id: int):
             "max_profile_circles": MAX_PROFILE_CIRCLES,
             "shevelev_token": shevelev_token_address(),
             "shevelev_auto_sync": shevelev_auto_sync,
+            "profile_plan": profile_plan,
+            "profile_plan_name": profile_plan_info.get("name") or "",
         },
     )
 

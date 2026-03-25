@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block site_navbar %}{% include "components/navbar.html" %}{% endblock %}
 {% block title %}NEUROFUNGI AI — Персональный AI-консультант по функциональным грибам{% endblock %}
 
 {% macro block_visible(bkey) %}{% set _b = blocks[bkey] if blocks and bkey in blocks else none %}{% if not _b or not _b.access_level or _b.access_level == 'all' or (user and (user.is_admin or _b.access_level == 'auth' or (_b.access_level == 'start' and user.subscription_plan in ['start','pro','maxi']) or (_b.access_level == 'pro' and user.subscription_plan in ['pro','maxi']) or (_b.access_level == 'maxi' and user.subscription_plan == 'maxi'))) %}1{% endif %}{% endmacro %}
