@@ -1,7 +1,9 @@
 /* Единая мобильная колонка: контент не «плывёт» по ширине; фото в лайтбоксах — на весь экран отдельными слоями */
 :root {
   --app-shell-max: 430px;
-  --app-header-h: 52px;
+  --app-header-h: 56px;
+  --neo-cyan: #22d3ee;
+  --neo-cyan-soft: rgba(34, 211, 238, 0.42);
 }
 
 body.app-mobile-layout main {
@@ -36,7 +38,7 @@ body.app-has-mobile-header main {
   top: 0;
   left: 0;
   right: 0;
-  z-index: 950;
+  z-index: 1000;
   display: flex;
   justify-content: center;
   padding-top: env(safe-area-inset-top, 0px);
@@ -45,51 +47,88 @@ body.app-has-mobile-header main {
   pointer-events: none;
 }
 
+.neo-app-header.app-mobile-header-inner,
 .app-mobile-header-inner {
   pointer-events: auto;
   width: 100%;
   max-width: var(--app-shell-max);
-  height: var(--app-header-h);
+  min-height: var(--app-header-h);
+  height: auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-left: 10px;
-  padding-right: 8px;
+  gap: 10px;
+  padding: 8px 12px 8px 10px;
   box-sizing: border-box;
-  background: rgba(6, 8, 14, 0.92);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border-bottom: 1px solid rgba(61, 212, 224, 0.12);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  background: #000000;
+  border-bottom: 1px solid rgba(34, 211, 238, 0.2);
+  box-shadow:
+    0 0 28px rgba(34, 211, 238, 0.06),
+    0 8px 32px rgba(0, 0, 0, 0.65),
+    inset 0 -1px 0 rgba(34, 211, 238, 0.12);
+}
+
+.app-head-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .app-head-btn {
   position: relative;
+  flex-shrink: 0;
   width: 44px;
   height: 44px;
   border-radius: 14px;
-  border: 1px solid rgba(61, 212, 224, 0.28);
-  background: linear-gradient(155deg, rgba(61, 212, 224, 0.16), rgba(184, 95, 163, 0.1));
+  border: 1px solid var(--neo-cyan-soft);
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #d4f4ff;
+  color: var(--neo-cyan);
   cursor: pointer;
   text-decoration: none;
-  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.07);
-  transition: border-color 0.2s, box-shadow 0.2s, transform 0.12s, color 0.2s;
+  box-shadow:
+    0 0 16px rgba(34, 211, 238, 0.12),
+    inset 0 0 20px rgba(34, 211, 238, 0.04);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.12s ease,
+    color 0.2s ease,
+    background 0.2s ease;
   padding: 0;
   font: inherit;
 }
 
+.app-head-btn .stroke-ico {
+  color: inherit;
+  filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.35));
+}
+
 .app-head-btn:hover {
-  border-color: rgba(61, 212, 224, 0.55);
-  color: #3dd4e0;
-  box-shadow: 0 4px 22px rgba(61, 212, 224, 0.2);
+  border-color: rgba(34, 211, 238, 0.75);
+  color: #67e8f9;
+  box-shadow:
+    0 0 22px rgba(34, 211, 238, 0.28),
+    0 0 40px rgba(139, 92, 246, 0.08),
+    inset 0 0 24px rgba(34, 211, 238, 0.08);
+  transform: translateY(-1px);
 }
 
 .app-head-btn:active {
   transform: scale(0.96);
+}
+
+.app-head-btn:focus-visible {
+  outline: 2px solid rgba(34, 211, 238, 0.55);
+  outline-offset: 2px;
+}
+
+.app-head-btn-menu {
+  color: #5ee9f5;
 }
 
 .app-head-bell .stroke-ico {
@@ -100,16 +139,19 @@ body.app-has-mobile-header main {
 .app-head-actions {
   display: flex;
   align-items: center;
-  gap: 5px;
-  margin-left: auto;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: 0;
 }
 
 .app-head-brand {
   font-family: Syne, Inter, system-ui, sans-serif;
-  font-weight: 700;
-  font-size: 1.05rem;
-  letter-spacing: -0.02em;
-  background: linear-gradient(90deg, #f0f4ff, #3dd4e0, #b85fa3);
+  font-weight: 800;
+  font-size: clamp(0.78rem, 2.8vw, 1.05rem);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.1;
+  background: linear-gradient(90deg, #d4e157 0%, #e879f9 48%, #22d3ee 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -118,9 +160,16 @@ body.app-has-mobile-header main {
   cursor: pointer;
   padding: 0;
   font: inherit;
-  flex: 1;
   min-width: 0;
-  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  filter: drop-shadow(0 0 12px rgba(34, 211, 238, 0.15));
+  transition: filter 0.2s ease;
+}
+
+a.app-head-brand:hover {
+  filter: drop-shadow(0 0 16px rgba(232, 121, 249, 0.35));
 }
 
 .app-notif-badge {
@@ -153,7 +202,7 @@ body.app-has-mobile-header main {
   right: 0;
   top: calc(var(--app-header-h) + env(safe-area-inset-top, 0px));
   bottom: 0;
-  z-index: 940;
+  z-index: 990;
   background: rgba(4, 6, 12, 0.72);
   backdrop-filter: blur(8px);
 }
@@ -219,4 +268,13 @@ body.app-mobile-layout .ig-create-fab,
 body.app-mobile-layout .cp-create-fab {
   left: 50%;
   transform: translateX(-50%);
+}
+
+@media (min-width: 431px) {
+  .neo-app-header.app-mobile-header-inner,
+  .app-mobile-header-inner {
+    border-left: 1px solid rgba(34, 211, 238, 0.08);
+    border-right: 1px solid rgba(34, 211, 238, 0.08);
+    border-radius: 0 0 16px 16px;
+  }
 }
