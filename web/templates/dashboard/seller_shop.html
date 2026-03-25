@@ -106,6 +106,18 @@
       </div>
       <div class="grid grid-cols-2 gap-4">
         <div>
+          <label class="block text-xs text-muted mb-1.5">Бренд (на витрине)</label>
+          <input type="text" name="brand_name" placeholder="Напр. BombBar"
+            class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors" />
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1.5">Старая цена (₽)</label>
+          <input type="number" name="price_old" value="" min="0" placeholder="необязательно"
+            class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors" />
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
           <label class="block text-xs text-muted mb-1.5">Цена (₽)</label>
           <input type="number" name="price" value="0" min="0"
             class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors" />
@@ -132,10 +144,14 @@
             {% endfor %}
           </select>
         </div>
-        <div class="flex items-end pb-2">
+        <div class="flex flex-col gap-2 pb-2 justify-end">
           <label class="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" name="in_stock" value="true" checked class="accent-gold w-4 h-4" />
             <span class="text-sm text-text">В наличии</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" name="verified_personal" value="true" class="accent-gold w-4 h-4" />
+            <span class="text-sm text-text">Лично проверено (галочка на витрине)</span>
           </label>
         </div>
       </div>
@@ -159,6 +175,11 @@
         </label>
         <p id="addUploadError" class="hidden mt-1 text-xs text-red-400"></p>
         <input type="hidden" name="image_url" id="addImageUrl" />
+      </div>
+      <div>
+        <label class="block text-xs text-muted mb-1.5">Доп. фото — URL по строке</label>
+        <textarea name="extra_image_urls" rows="3" placeholder="https://..."
+          class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm resize-none focus:outline-none focus:border-gold/60 transition-colors font-mono text-xs"></textarea>
       </div>
       <div class="flex gap-3 pt-2">
         <button type="submit"
@@ -194,6 +215,18 @@
       </div>
       <div class="grid grid-cols-2 gap-4">
         <div>
+          <label class="block text-xs text-muted mb-1.5">Бренд</label>
+          <input type="text" name="brand_name" id="editBrand"
+            class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors" />
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1.5">Старая цена (₽)</label>
+          <input type="number" name="price_old" id="editPriceOld" min="0"
+            class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors" />
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
           <label class="block text-xs text-muted mb-1.5">Цена (₽)</label>
           <input type="number" name="price" id="editPrice" min="0"
             class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors" />
@@ -220,10 +253,14 @@
             {% endfor %}
           </select>
         </div>
-        <div class="flex items-end pb-2">
+        <div class="flex flex-col gap-2 pb-2 justify-end">
           <label class="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" name="in_stock" id="editInStock" value="true" class="accent-gold w-4 h-4" />
             <span class="text-sm text-text">В наличии</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" name="verified_personal" id="editVerified" value="true" class="accent-gold w-4 h-4" />
+            <span class="text-sm text-text">Лично проверено</span>
           </label>
         </div>
       </div>
@@ -253,6 +290,11 @@
         </label>
         <p id="editUploadError" class="hidden mt-1 text-xs text-red-400"></p>
         <input type="hidden" name="image_url" id="editImageUrl" />
+      </div>
+      <div>
+        <label class="block text-xs text-muted mb-1.5">Доп. фото — URL по строке</label>
+        <textarea name="extra_image_urls" id="editExtraImages" rows="3"
+          class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm resize-none focus:outline-none focus:border-gold/60 transition-colors font-mono text-xs"></textarea>
       </div>
       <div id="editSaveError" class="hidden mb-2 p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs"></div>
       <div class="flex gap-3 pt-2">
@@ -314,23 +356,27 @@ function closeAddModal() {
   document.body.style.overflow = '';
 }
 
-function openEditModal(id, name, desc, price, url, mushType, imgUrl, category, inStock) {
-  document.getElementById('editForm').action = '/seller/shop/edit/' + id;
-  document.getElementById('editName').value = name;
-  document.getElementById('editDescription').value = desc;
-  document.getElementById('editPrice').value = price;
-  document.getElementById('editUrl').value = url;
-  document.getElementById('editMushroomType').value = mushType;
-  document.getElementById('editCategory').value = category;
-  document.getElementById('editInStock').checked = inStock;
-  document.getElementById('editImageUrl').value = imgUrl;
+function openEditModal(pr) {
+  document.getElementById('editForm').action = '/seller/shop/edit/' + pr.id;
+  document.getElementById('editName').value = pr.name || '';
+  document.getElementById('editDescription').value = pr.description || '';
+  document.getElementById('editPrice').value = pr.price || 0;
+  document.getElementById('editUrl').value = pr.url || '';
+  document.getElementById('editMushroomType').value = pr.mushroom_type || '';
+  document.getElementById('editCategory').value = pr.category || '';
+  document.getElementById('editInStock').checked = !!pr.in_stock;
+  document.getElementById('editImageUrl').value = pr.image_url || '';
+  document.getElementById('editBrand').value = pr.brand_name || '';
+  document.getElementById('editPriceOld').value = pr.price_old != null ? pr.price_old : '';
+  document.getElementById('editExtraImages').value = pr.extra_image_lines || '';
+  document.getElementById('editVerified').checked = !!pr.verified_personal;
 
-  // URL link button
+  var url = pr.url || '';
   var linkBtn = document.getElementById('editUrlLink');
   if (url) { linkBtn.href = url; linkBtn.classList.remove('hidden'); }
   else { linkBtn.classList.add('hidden'); }
 
-  // Preview
+  var imgUrl = pr.image_url || '';
   var pb = document.getElementById('editPreviewBox');
   var pi = document.getElementById('editPreviewImg');
   if (imgUrl) { pi.src = imgUrl; pb.classList.remove('hidden'); }
@@ -367,10 +413,7 @@ document.addEventListener('DOMContentLoaded', function() {
           alert(pr.error || 'Ошибка загрузки товара');
           return;
         }
-        openEditModal(
-          pr.id, pr.name || '', pr.description || '', pr.price || 0, pr.url || '',
-          pr.mushroom_type || '', pr.image_url || '', pr.category || '', !!pr.in_stock
-        );
+        openEditModal(pr);
       } catch (err) {
         console.error(err);
         alert('Не удалось открыть редактирование. Обновите страницу.');
@@ -467,6 +510,7 @@ async function saveEditProduct() {
   // Ensure in_stock is sent as 'true'/'false' string
   var inStock = document.getElementById('editInStock').checked;
   fd.set('in_stock', inStock ? 'true' : 'false');
+  fd.set('verified_personal', document.getElementById('editVerified').checked ? 'true' : 'false');
 
   var errEl = document.getElementById('editSaveError');
   errEl.classList.add('hidden');

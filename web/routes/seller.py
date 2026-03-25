@@ -9,6 +9,7 @@ from db.database import database
 import sqlalchemy as sa
 
 from db.models import shop_products, users, product_questions
+from services.shop_catalog import extra_image_lines_from_json, extra_image_urls_from_text
 from services.subscription_service import check_subscription
 from web.templates_utils import Jinja2Templates
 
@@ -116,16 +117,25 @@ async def seller_shop_product_json(request: Request, product_id: int):
     p = dict(row)
     # Возвращаем только поля формы редактирования, чтобы исключить несериализуемые типы
     # (например datetime в created_at), которые ломали JSON и открытие модалки.
+    pov = p.get("price_old")
+    try:
+        pov = int(pov) if pov is not None else None
+    except (TypeError, ValueError):
+        pov = None
     payload = {
         "id": int(p.get("id") or 0),
         "name": p.get("name") or "",
         "description": p.get("description") or "",
         "price": int(p.get("price") or 0),
+        "price_old": pov,
         "url": p.get("url") or "",
         "mushroom_type": p.get("mushroom_type") or "",
         "image_url": p.get("image_url") or "",
         "category": p.get("category") or "",
         "in_stock": p.get("in_stock") is not False,
+        "brand_name": p.get("brand_name") or "",
+        "verified_personal": bool(p.get("verified_personal")),
+        "extra_image_lines": extra_image_lines_from_json(p.get("image_urls_json")),
     }
     return JSONResponse(payload)
 
@@ -164,12 +174,20 @@ async def seller_add_product(
     image_url: str = Form(""),
     category: str = Form(""),
     in_stock: str = Form(""),
+    brand_name: str = Form(""),
+    price_old: str = Form(""),
+    extra_image_urls: str = Form(""),
+    verified_personal: str = Form(""),
 ):
     seller = await require_maxi_seller(request)
     if not seller:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     uid = seller["id"]
     price_val = _parse_price(price)
+    pov = _parse_price(price_old) if (price_old or "").strip() else None
+    if pov is not None and pov <= 0:
+        pov = None
+    extra_j = extra_image_urls_from_text(extra_image_urls)
     await database.execute(
         shop_products.insert().values(
             seller_id=uid,
@@ -181,6 +199,10 @@ async def seller_add_product(
             image_url=image_url or None,
             category=category or None,
             in_stock=(in_stock == "true"),
+            brand_name=(brand_name or "").strip() or None,
+            price_old=pov,
+            image_urls_json=extra_j,
+            verified_personal=(verified_personal == "true"),
         )
     )
     return RedirectResponse("/seller/shop", status_code=302)
@@ -198,6 +220,10 @@ async def seller_edit_product(
     image_url: str = Form(""),
     category: str = Form(""),
     in_stock: str = Form(""),
+    brand_name: str = Form(""),
+    price_old: str = Form(""),
+    extra_image_urls: str = Form(""),
+    verified_personal: str = Form(""),
 ):
     seller = await require_maxi_seller(request)
     if not seller:
@@ -209,6 +235,10 @@ async def seller_edit_product(
     if not row or row.get("seller_id") != uid:
         return JSONResponse({"error": "not found"}, status_code=404)
     price_val = _parse_price(price)
+    pov = _parse_price(price_old) if (price_old or "").strip() else None
+    if pov is not None and pov <= 0:
+        pov = None
+    extra_j = extra_image_urls_from_text(extra_image_urls)
     await database.execute(
         shop_products.update().where(shop_products.c.id == product_id).values(
             name=name,
@@ -219,6 +249,10 @@ async def seller_edit_product(
             image_url=image_url or None,
             category=category or None,
             in_stock=(in_stock == "true"),
+            brand_name=(brand_name or "").strip() or None,
+            price_old=pov,
+            image_urls_json=extra_j,
+            verified_personal=(verified_personal == "true"),
         )
     )
     return JSONResponse({"ok": True})

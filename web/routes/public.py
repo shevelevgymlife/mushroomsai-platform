@@ -32,6 +32,7 @@ from db.models import (
 from auth.session import get_user_from_request
 from config import settings, shevelev_token_address
 from services.subscription_service import check_subscription, PLANS
+from services.shop_catalog import product_gallery_urls
 from services.legal import legal_acceptance_redirect
 from services.referral_service import attach_invite_ref_from_query
 from services.ops_alerts import (
@@ -191,12 +192,13 @@ async def index(request: Request):
             sa.select(sa.func.avg(product_reviews.c.rating))
             .where(product_reviews.c.product_id == p["id"])
         )
+        g = product_gallery_urls(dict(p))
         featured_products.append({
             "id": p["id"],
             "name": p["name"],
             "description": p.get("description") or "",
             "price": p.get("price"),
-            "image_url": p.get("image_url"),
+            "image_url": g[0] if g else p.get("image_url"),
             "avg_rating": round(float(avg), 1) if avg else None,
         })
 
@@ -272,14 +274,26 @@ async def shop(
 
     prods = await database.fetch_all(query)
 
-    # Fetch avg ratings for all products
-    ratings = {}
+    stats_rows = await database.fetch_all(
+        sa.select(
+            product_reviews.c.product_id,
+            sa.func.avg(product_reviews.c.rating).label("avg_r"),
+            sa.func.count().label("cnt"),
+        ).group_by(product_reviews.c.product_id)
+    )
+    review_stats = {
+        int(r["product_id"]): {
+            "avg": round(float(r["avg_r"]), 1),
+            "count": int(r["cnt"] or 0),
+        }
+        for r in stats_rows
+    }
+
+    products_enriched = []
     for p in prods:
-        avg = await database.fetch_val(
-            sa.select(sa.func.avg(product_reviews.c.rating))
-            .where(product_reviews.c.product_id == p["id"])
-        )
-        ratings[p["id"]] = round(float(avg), 1) if avg else None
+        row = dict(p)
+        row["_images"] = product_gallery_urls(row)
+        products_enriched.append(row)
 
     cart_qty = 0
     if current_user:
@@ -290,8 +304,8 @@ async def shop(
         {
             "request": request,
             "user": current_user,
-            "products": prods,
-            "ratings": ratings,
+            "products": products_enriched,
+            "review_stats": review_stats,
             "mushroom_types": MUSHROOM_TYPES,
             "categories": CATEGORIES,
             "sel_mushroom": mushroom_type,
@@ -393,12 +407,15 @@ async def product_page(request: Request, product_id: int):
             cu = await database.fetch_one(users.select().where(users.c.id == c["user_id"]))
         shop_comments.append({"c": c, "author": cu})
 
+    gallery_images = product_gallery_urls(dict(product))
+
     return templates.TemplateResponse(
         "shop_product.html",
         {
             "request": request,
             "user": current_user,
             "product": product,
+            "gallery_images": gallery_images,
             "reviews": reviews,
             "avg_rating": avg_rating,
             "similar": similar,

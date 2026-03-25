@@ -9,6 +9,7 @@ from fastapi import APIRouter, Request, Form, UploadFile, File, Query
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from web.templates_utils import Jinja2Templates
 from services.subscription_service import PLANS
+from services.shop_catalog import extra_image_lines_from_json, extra_image_urls_from_text
 from auth.session import get_user_from_request
 from auth.blocked_identities import block_identities_for_user, unblock_identities_for_user
 from services.user_permanent_delete import permanently_delete_user
@@ -284,6 +285,13 @@ async def admin_shop_product_json(request: Request, product_id: int):
     ) or 0
     p["review_avg"] = round(float(rv_avg), 2) if rv_avg is not None else None
     p["review_count"] = int(rv_n)
+    p["extra_image_lines"] = extra_image_lines_from_json(p.get("image_urls_json"))
+    if p.get("price_old") is not None:
+        try:
+            p["price_old"] = int(p["price_old"])
+        except (TypeError, ValueError):
+            p["price_old"] = None
+    p["verified_personal"] = bool(p.get("verified_personal"))
     return JSONResponse(p)
 
 
@@ -298,12 +306,20 @@ async def add_shop_product(
     image_url: str = Form(""),
     category: str = Form(""),
     in_stock: str = Form(""),
+    brand_name: str = Form(""),
+    price_old: str = Form(""),
+    extra_image_urls: str = Form(""),
+    verified_personal: str = Form(""),
 ):
     admin = await require_permission(request, "can_shop")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
 
     price_val = _parse_form_price(price)
+    pov = _parse_form_price(price_old) if (price_old or "").strip() else None
+    if pov is not None and pov <= 0:
+        pov = None
+    extra_j = extra_image_urls_from_text(extra_image_urls)
     await database.execute(
         shop_products.insert().values(
             seller_id=None,
@@ -311,6 +327,10 @@ async def add_shop_product(
             url=url or None, mushroom_type=mushroom_type or None,
             image_url=image_url or None, category=category or None,
             in_stock=(in_stock == "true"),
+            brand_name=(brand_name or "").strip() or None,
+            price_old=pov,
+            image_urls_json=extra_j,
+            verified_personal=(verified_personal == "true"),
         )
     )
     return RedirectResponse("/admin/shop", status_code=302)
@@ -328,6 +348,10 @@ async def edit_shop_product(
     image_url: str = Form(""),
     category: str = Form(""),
     in_stock: str = Form(""),
+    brand_name: str = Form(""),
+    price_old: str = Form(""),
+    extra_image_urls: str = Form(""),
+    verified_personal: str = Form(""),
 ):
     admin = await require_permission(request, "can_shop")
     if not admin:
@@ -338,6 +362,10 @@ async def edit_shop_product(
         return JSONResponse({"ok": False, "error": "Товар не найден"}, status_code=404)
 
     price_val = _parse_form_price(price)
+    pov = _parse_form_price(price_old) if (price_old or "").strip() else None
+    if pov is not None and pov <= 0:
+        pov = None
+    extra_j = extra_image_urls_from_text(extra_image_urls)
     try:
         await database.execute(
             shop_products.update().where(shop_products.c.id == product_id).values(
@@ -345,6 +373,10 @@ async def edit_shop_product(
                 url=url or None, mushroom_type=mushroom_type or None,
                 image_url=image_url or None, category=category or None,
                 in_stock=(in_stock == "true"),
+                brand_name=(brand_name or "").strip() or None,
+                price_old=pov,
+                image_urls_json=extra_j,
+                verified_personal=(verified_personal == "true"),
             )
         )
         return JSONResponse({"ok": True})

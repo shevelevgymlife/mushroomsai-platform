@@ -243,6 +243,23 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("DB migration link_merge_secondary_id: %s", e)
 
+    try:
+        await database.execute(
+            "ALTER TABLE shop_products ADD COLUMN IF NOT EXISTS image_urls_json TEXT"
+        )
+        await database.execute(
+            "ALTER TABLE shop_products ADD COLUMN IF NOT EXISTS brand_name TEXT"
+        )
+        await database.execute(
+            "ALTER TABLE shop_products ADD COLUMN IF NOT EXISTS price_old INTEGER"
+        )
+        await database.execute(
+            "ALTER TABLE shop_products ADD COLUMN IF NOT EXISTS verified_personal BOOLEAN DEFAULT false"
+        )
+        logger.info("DB migration: shop_products catalog columns OK")
+    except Exception as e:
+        logger.warning("DB migration shop_products catalog: %s", e)
+
     # Уведомление о деплое в Telegram
     try:
         from services.tg_notify import notify_deploy_ok
