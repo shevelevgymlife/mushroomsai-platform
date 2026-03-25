@@ -16,7 +16,19 @@
   (async function () {
     try {
       const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-      const initData = tg ? tg.initData : null;
+      if (tg && typeof tg.ready === 'function') {
+        try { tg.ready(); } catch (e) {}
+      }
+
+      // initData может появляться не мгновенно; ждём немного.
+      let initData = tg ? tg.initData : null;
+      if (!initData) {
+        const startedAt = Date.now();
+        while (!initData && (Date.now() - startedAt) < 2500) {
+          await new Promise(r => setTimeout(r, 150));
+          initData = tg ? tg.initData : null;
+        }
+      }
       const next = new URLSearchParams(window.location.search).get('next') || '{{ next_path|e }}';
       const botUsername = '{{ bot_username|e }}';
       const startapp = '{{ startapp|e }}';
@@ -30,6 +42,7 @@
           : "";
         document.body.innerHTML =
           `<div style='padding:24px;font-family:system-ui'>Telegram initData не найден.<br/>` +
+          `Проверка окружения: Telegram.WebApp ${tg ? 'есть' : 'нет'}, initData ${initData ? 'есть' : 'пусто/undefined'}.` +
           `Открой эту страницу внутри Telegram WebApp.${linkHtml}</div>`;
         return;
       }
