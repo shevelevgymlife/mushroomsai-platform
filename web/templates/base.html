@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru" class="scroll-smooth" data-ui-theme="editorial-grain" data-ui-asset-v="3">
+<html lang="ru" class="scroll-smooth" data-ui-theme="editorial-grain" data-ui-asset-v="3" style="background:#070708">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
+  <meta name="view-transition" content="same-origin" />
   <title>{% block title %}NEUROFUNGI AI{% endblock %}</title>
   <link rel="icon" href="/static/favicon.svg?v=1" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -40,8 +41,17 @@
   <style>
     /* Global anti-overflow guard for browser + Telegram WebApp */
     *, *::before, *::after { box-sizing: border-box; }
+    html { background: #070708; }
     html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
+    /* Prevent overscroll background flash (iOS/Android) */
+    body { overscroll-behavior: none; background: #070708; }
     main { width: 100%; max-width: 100%; overflow-x: clip; }
+    /* View transitions: instant fade for same-origin navigation */
+    @view-transition { navigation: auto; }
+    ::view-transition-old(root), ::view-transition-new(root) {
+      animation-duration: 0.18s;
+      animation-timing-function: ease;
+    }
     img, video, canvas, svg, iframe { max-width: 100%; height: auto; }
     input, textarea, select, button { max-width: 100%; min-width: 0; }
     textarea { width: 100%; }
@@ -86,6 +96,19 @@
 })();
 </script>
 <script>window._isLoggedIn = {{ 'true' if user else 'false' }};</script>
+<script>
+/* Telegram Mini App: prevent swipe-down dismiss, expand to full height */
+(function(){
+  try {
+    var twa = window.Telegram && window.Telegram.WebApp;
+    if (!twa) return;
+    if (typeof twa.ready === 'function') twa.ready();
+    if (typeof twa.expand === 'function') twa.expand();
+    if (typeof twa.disableVerticalSwipes === 'function') twa.disableVerticalSwipes();
+    if (typeof twa.enableClosingConfirmation === 'function') twa.enableClosingConfirmation();
+  } catch(e) {}
+})();
+</script>
 {% if not user %}
 <script src="/static/js/telegram-link-preserve.js?v=2"></script>
 {% endif %}
@@ -136,7 +159,7 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
   {% if user %}
   <script>window.__APP_EFF_UID={{ (user.primary_user_id or user.id)|int }};</script>
   {% endif %}
-  {% if user and request.url.path != '/' %}
+  {% if user and request.url.path != '/' and not request.query_params.get('embed') %}
   {% include "components/app_mobile_header.html" %}
   {% include "components/app_activity_panel.html" %}
   {% if not request.url.path.startswith('/dashboard') %}

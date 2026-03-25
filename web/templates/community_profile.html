@@ -362,11 +362,11 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
   </div>
 </div>
 <nav class="cp-tabbar" aria-label="Нижняя навигация">
-  <a href="/dashboard#feed" class="cp-tab"><span class="ic">{{ ico('home') }}</span><span>Лента</span></a>
+  <a href="/dashboard" class="cp-tab"><span class="ic">{{ ico('home') }}</span><span>Лента</span></a>
   <a href="/community/profile/{{ profile_id }}" class="cp-tab on"><span class="ic">{{ ico('user') }}</span><span>Профиль</span></a>
-  <a href="/dashboard#search" class="cp-tab"><span class="ic">{{ ico('search') }}</span><span>Поиск</span></a>
+  <a href="/community/members" class="cp-tab"><span class="ic">{{ ico('search') }}</span><span>Поиск</span></a>
 </nav>
-<a href="/dashboard#feed" class="cp-create-fab" aria-label="Создать пост">+</a>
+<a href="/dashboard" class="cp-create-fab" aria-label="Создать пост">+</a>
 
 <div id="profilePostPreviewModal" style="display:none;position:fixed;inset:0;z-index:10026;align-items:stretch;justify-content:center;background:rgba(0,0,0,.92);backdrop-filter:blur(6px)" onclick="if(event.target===this)closeProfilePostPreview()">
   <button
