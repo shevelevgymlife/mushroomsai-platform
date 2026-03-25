@@ -713,6 +713,7 @@ details.ig-drawer-details > summary{list-style:none}
   .ig-create-fab .stroke-ico{width:27px;height:27px}
 }
 .ig-tabbar .ig-tab .ic{font-size:24px;line-height:1;opacity:.85}
+.ig-tabbar a.ig-tab{text-decoration:none;color:inherit;box-sizing:border-box}
 .ig-tabbar .ig-tab.on,.ig-tabbar .ig-tab.on .ic{color:#e8e8e8;opacity:1}
 .ig-tabbar .ig-tab.on .ic{filter:drop-shadow(0 0 10px rgba(61,212,224,.35))}
 .stroke-ico{display:block;flex-shrink:0}
@@ -863,8 +864,6 @@ body.dash-ig-app .ig-lamp-topbar{
 {% from 'components/stroke_icons.html' import ico %}
 {% set vbk = visible_block_keys if visible_block_keys is defined else ['ai_chat','messages','community','shop','profile_photo','posts','tariffs','referral','knowledge_base'] %}
 {# Один интерфейс как Instagram у всех; блоки внутри (лента/посты) по тарифу — см. vbk #}
-{% set dash_home = 'me' %}
-{% set grid_posts = my_grid_posts if my_grid_posts is defined else [] %}
 <div class="db-wrap{% if ig_social %} db-ig-mode{% endif %}">
   {% if ig_social %}
   <header class="ig-dash-header" id="igDashHeader" aria-label="Панель приложения">
@@ -894,7 +893,7 @@ body.dash-ig-app .ig-lamp-topbar{
       <div class="em">{{ user.email or ('Telegram: ' + (user.tg_id|string) if user.tg_id else '') }}</div>
     </div>
     <div class="ig-drawer-scroll">
-      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();window.location='/community/profile/{{ effective_user_id }}'"><span class="e">{{ ico('grid') }}</span><span class="lbl">Мой профиль</span></button>
+      <a href="/community/profile/{{ effective_user_id }}" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none"><span class="e">{{ ico('grid') }}</span><span class="lbl">Мой профиль</span></a>
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('feed')"><span class="e">{{ ico('feed') }}</span><span class="lbl">Лента</span></button>
       {% if 'community' in vbk %}
       <button type="button" class="ig-drawer-item" onclick="goToGroupsChatsFromBurger()" title="Групповые чаты"><span class="e">{{ ico('message_sq') }}</span><span class="lbl">Чаты</span></button>
@@ -1099,136 +1098,8 @@ body.dash-ig-app .ig-lamp-topbar{
     </section>
     {% endif %}
 
-    <!-- ══ ME — профиль как в Instagram ══ -->
-    {% if ig_social %}
-    <section class="db-sec active" id="sec-me">
-      <div class="ig-me-shell">
-        <div class="ig-profile-head">
-          <div class="ig-profile-av-wrap{% if user.get('token_lamp_enabled') is not sameas false %} lamp-on{% endif %}" onclick="document.getElementById('avInputMe').click()" title="Сменить фото">
-            {% if user.avatar %}
-            <img id="avImgMe" src="{{ user.avatar }}" class="ig-profile-av" alt="">
-            {% else %}
-            <div class="ig-profile-av" style="background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:min(48px,12vw)">🍄</div>
-            <img id="avImgMe" src="" class="ig-profile-av" style="display:none" alt="">
-            {% endif %}
-            <input id="avInputMe" type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="uploadAv(this,'avImgMe')">
-          </div>
-          <div style="flex:1;min-width:200px">
-            <div class="ig-profile-stats">
-              <div class="ig-profile-stat"><b>{{ my_post_count }}</b><span>публикаций</span></div>
-              <button type="button" class="ig-profile-stat" onclick="openFollowListModal({{ effective_user_id }}, 'followers')" title="Кто подписан">
-                <b>{{ user.followers_count or 0 }}</b><span>подписчики</span>
-              </button>
-              <button type="button" class="ig-profile-stat" onclick="openFollowListModal({{ effective_user_id }}, 'following')" title="На кого подписан">
-                <b>{{ user.following_count or 0 }}</b><span>подписки</span>
-              </button>
-            </div>
-            <div style="margin-top:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-              <span style="font-size:clamp(18px,4.5vw,22px);font-weight:700;color:#e8e8e8">{{ user.name or 'Участник' }}</span>
-              <span class="badge-plan badge-{{ plan }} ig-plan-pill">{{ plan_info.name }}</span>
-            </div>
-            <div style="margin-top:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-              <button type="button" class="btn-o" style="font-size:13px;padding:8px 18px" onclick="(function(){var p=document.getElementById('meEditPanel');if(!p)return;p.style.display=p.style.display==='none'||!p.style.display?'block':'none';})()">Редактировать профиль</button>
-              <input id="profileLightToggle" class="profile-light-toggle" type="checkbox" {% if user.get('token_lamp_enabled') is not sameas false %}checked{% endif %} onchange="saveTokenLampEnabled(this.checked)" aria-label="Свет токенов">
-            </div>
-            <div id="myTokensDock" class="my-tokens-inline{% if user.get('token_lamp_enabled') is not sameas false %} lamp-on{% endif %}" data-lamp-off="{% if user.get('token_lamp_enabled') is sameas false %}1{% else %}0{% endif %}" aria-label="Мои токены в сети Decimal" title="Обновляются автоматически, пока вы на сайте">
-              <div class="my-tokens-inline__head">
-                <div class="my-tokens-inline__title">Мои токены · Decimal</div>
-              </div>
-              <div class="my-tokens-inline__grid">
-                <div class="my-tokens-inline__cell">
-                  <span class="lbl">DEL</span>
-                  <span id="delBalMe" class="val">{% if user.get('decimal_del_balance') %}{{ user.decimal_del_balance }}{% else %}—{% endif %}</span>
-                </div>
-                <div class="my-tokens-inline__cell">
-                  <span class="lbl">SHEVELEV</span>
-                  <span id="shevelevBalMe" class="val tok-shev">{% if user.get('shevelev_balance_cached') %}{{ user.shevelev_balance_cached }}{% else %}—{% endif %}</span>
-                </div>
-              </div>
-              <div id="shevelevBalErrMe" style="display:none;font-size:11px;color:#f87171;margin-top:10px;line-height:1.35"></div>
-              {% if shevelev_token %}
-              <button type="button" class="btn-o" style="margin-top:12px;font-size:12px;padding:8px 14px;align-self:flex-start" onclick="openSendShevModal()">Подарить / отправить SHEVELEV</button>
-              {% endif %}
-            </div>
-          </div>
-        </div>
-        {% if user.bio %}
-        <div style="font-size:14px;color:#ccc;line-height:1.55;max-width:560px;margin-bottom:10px;white-space:pre-wrap">{{ user.bio }}</div>
-        {% endif %}
-        {% if user.get('profile_link_url') %}
-        <a href="{{ user.profile_link_url }}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:8px;color:#3dd4e0;font-weight:600;font-size:14px;margin-bottom:14px;text-decoration:none;border-bottom:1px solid rgba(61,212,224,.35);padding-bottom:2px">{{ user.get('profile_link_label') or user.profile_link_url }}</a>
-        {% endif %}
-        <div id="meEditPanel" class="card" style="display:none;margin-bottom:20px;padding:18px;border-radius:16px">
-          <div style="font-size:13px;font-weight:600;color:#888;margin-bottom:12px">Редактирование</div>
-          <input id="meName" class="sinp" style="margin-bottom:10px" value="{{ user.name or '' }}" placeholder="Имя">
-          <textarea id="meBio" class="sinp" style="min-height:72px;margin-bottom:10px;resize:vertical" placeholder="О себе">{{ user.bio or '' }}</textarea>
-          <input id="meLinkLabel" class="sinp" style="margin-bottom:8px" value="{{ user.get('profile_link_label','') }}" placeholder="Подпись к ссылке (например, Мой сайт)">
-          <input id="meLinkUrl" class="sinp" style="margin-bottom:12px" value="{{ user.get('profile_link_url','') }}" placeholder="https://…">
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button type="button" class="btn-g" onclick="saveMeProfile()">Сохранить</button>
-          </div>
-          <div id="meProfOk" style="display:none;margin-top:10px;font-size:13px;color:#4ade80">✓ Сохранено</div>
-        </div>
-        <div id="profileChaosWrap">
-          <label class="feed-chaos-toggle" for="profileChaosToggle">
-            <span>Хаос</span>
-            <input id="profileChaosToggle" type="checkbox" checked onchange="setProfilePostsChaos(this.checked)">
-          </label>
-        </div>
-        <div id="profilePosts" class="profile-chaos-on">
-          {% for p in grid_posts %}
-          {% set is_liked_me = p.id in liked_post_ids %}
-          <div class="fp ig-post" id="mfp-{{ p.id }}" data-pid="{{ p.id }}" data-author="{{ (user.name or 'Вы')|e }}" data-title="{{ (p.title or '')|e }}" data-content="{{ (p.content or '')|e }}" data-image="{{ (p.image_url or '')|e }}" data-created="{{ (p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '')|e }}" data-likes="{{ p.likes_count or 0 }}" data-comments="{{ p.comments_count or 0 }}" data-saves="{{ p.saves_count or 0 }}" onclick="openCommunityPostPage(event, {{ p.id }})">
-            <div class="ig-post-header">
-              <a href="/community/profile/{{ effective_user_id }}" style="display:block;width:36px;height:36px;border-radius:50%;border:2px solid #3dd4e0;overflow:hidden;text-decoration:none">{% if user.avatar %}<img src="{{ user.avatar }}" style="width:100%;height:100%;object-fit:cover" alt="">{% else %}<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px">🍄</div>{% endif %}</a>
-              <div style="flex:1;min-width:0">
-                <div style="font-size:14px;font-weight:700;color:#e8e8e8">{{ user.name or 'Вы' }}</div>
-                <div style="font-size:11px;color:#888">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}</div>
-              </div>
-              <details class="ig-pm" onclick="event.stopPropagation()">
-                <summary title="Меню поста" onclick="togglePostMenu(event,this)">⋯</summary>
-                <div class="ig-pm-panel" onclick="event.stopPropagation()">
-                  <button type="button" onclick='openEditPostModal({{ p.id }}, {{ (p.title|default(''))|tojson }}, {{ (p.content|default(''))|tojson }})'>Изменить</button>
-                  <button type="button" onclick="deleteFeedPost({{ p.id }})" style="color:#f87171">Удалить</button>
-                </div>
-              </details>
-            </div>
-            {% if p.title %}<div style="padding:10px 14px 0;font-size:15px;font-weight:700;color:#e8e8e8">{{ p.title }}</div>{% endif %}
-            {% if p.image_url %}
-            <img src="{{ p.image_url }}" class="ig-post-img" loading="lazy" alt="">
-            {% elif p.content %}
-            <div class="ig-post-textonly">{{ p.content[:500] }}{% if p.content|length > 500 %}…{% endif %}</div>
-            {% endif %}
-            <div class="ig-post-snippet">
-              {% if p.title %}<div class="ig-post-snippet-title">{{ p.title }}</div>{% endif %}
-              <div class="ig-post-snippet-text">{% if p.content %}{{ p.content[:140] }}{% if p.content|length > 140 %}…{% endif %}{% else %}Новый пост{% endif %}</div>
-            </div>
-            <div class="ig-post-metrics">
-              <button type="button" class="ig-post-metric ig-post-metric-star" id="profile-like-btn-{{ p.id }}" onclick="likeProfilePost({{ p.id }},this)">
-                <span>{% if is_liked_me %}⭐{% else %}✩{% endif %}</span><span class="n" id="profile-like-count-{{ p.id }}">{{ p.likes_count }}</span>
-              </button>
-              <button type="button" class="ig-post-metric ig-post-metric-chat" onclick="event.stopPropagation();openCommunityPostDirect({{ p.id }})">
-                <span>💬</span><span class="n" id="profile-comment-count-{{ p.id }}" data-comment-count-for="{{ p.id }}">{{ p.comments_count or 0 }}</span>
-              </button>
-              <button type="button" class="ig-post-metric ig-post-metric-share" onclick="openSharePostModal({{ p.id }})">
-                <span>↗</span><span class="n">{{ p.saves_count or 0 }}</span>
-              </button>
-            </div>
-            <div id="inline-cmt-profile-{{ p.id }}" style="display:none;padding:10px 12px;border-top:1px solid rgba(255,255,255,.08);gap:8px;align-items:center;overflow:hidden;max-width:100%;box-sizing:border-box">
-              <input id="inline-cmt-inp-profile-{{ p.id }}" class="sinp" style="flex:1;min-width:0;max-width:100%;width:100%;box-sizing:border-box;font-size:16px" placeholder="Комментарий..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendInlineComment({{ p.id }}, 'profile');}">
-              <button type="button" class="btn-g" style="padding:9px 12px;white-space:nowrap" onclick="sendInlineComment({{ p.id }}, 'profile')">Отправить</button>
-            </div>
-          </div>
-          {% else %}
-          <div style="grid-column:1/-1;text-align:center;padding:36px 16px;color:#555;font-size:14px">Пока нет публикаций. Нажмите «Создать» внизу или «Написать пост» выше.</div>
-          {% endfor %}
-        </div>
-      </div>
-    </section>
-    {% endif %}
-
     <!-- ══ FEED ══ -->
-    <section class="db-sec{% if not ig_social %} active{% endif %}" id="sec-feed">
+    <section class="db-sec{% if ig_social %} active{% endif %}" id="sec-feed">
       {% if 'community' in vbk %}
       <div class="ig-feed-shell">
       {% if not ig_social %}
@@ -1301,7 +1172,7 @@ body.dash-ig-app .ig-lamp-topbar{
           {% if is_mine %}</a>{% else %}</a>{% endif %}
           <div style="flex:1;min-width:0">
             {% if is_mine %}
-            <div style="font-size:14px;font-weight:700;color:#e8e8e8;cursor:pointer" onclick="goSec('{{ dash_home }}')">{{ a.name if a else 'Участник' }} <span style="font-size:11px;color:#3dd4e0">● я</span></div>
+            <div style="font-size:14px;font-weight:700;color:#e8e8e8;cursor:pointer" onclick="window.location.href='/community/profile/{{ effective_user_id }}'">{{ a.name if a else 'Участник' }} <span style="font-size:11px;color:#3dd4e0">● я</span></div>
             {% else %}
             <a href="/community/profile/{{ p.user_id }}" style="font-size:14px;font-weight:700;color:#e8e8e8;text-decoration:none">{{ a.name if a else 'Участник' }}</a>
             {% endif %}
@@ -1783,7 +1654,15 @@ body.dash-ig-app .ig-lamp-topbar{
     <!-- ══ PROFILE ══ -->
     <section class="db-sec" id="sec-profile">
       <div class="sect-title">⚙️ Расширенные настройки</div>
-      <p style="font-size:12px;color:#666;margin:-8px 0 16px;max-width:520px">Фото — на экране профиля. Кошелёк и приложения Decimal / MetaMask — в меню «Моя криптовалюта» или в блоке ниже.</p>
+      {% if ig_social %}
+      <div class="card" style="margin-bottom:16px;max-width:560px">
+        <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:10px">Фото профиля</div>
+        <p style="font-size:12px;color:#666;margin:0 0 12px;line-height:1.45">Отображается на странице <a href="/community/profile/{{ effective_user_id }}" style="color:#3dd4e0">вашего профиля</a> в сообществе.</p>
+        <button type="button" class="btn-o" style="font-size:13px" onclick="document.getElementById('dashIgAvInp').click()">Загрузить или сменить фото</button>
+        <input id="dashIgAvInp" type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="uploadAv(this)">
+      </div>
+      {% endif %}
+      <p style="font-size:12px;color:#666;margin:-8px 0 16px;max-width:520px">{% if not ig_social %}Фото — в блоке «Главная» выше. {% endif %}Кошелёк и приложения Decimal / MetaMask — в меню «Моя криптовалюта» или в блоке ниже.</p>
       <div style="max-width:560px;display:flex;flex-direction:column;gap:16px">
           <div class="card">
             <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:14px">Информация</div>
@@ -1949,8 +1828,8 @@ body.dash-ig-app .ig-lamp-topbar{
   <nav class="nav-sidebar" id="dbNav" style="display:none" aria-hidden="true"></nav>
   <button type="button" class="ig-create-fab" aria-label="Создать пост" title="Создать пост" onclick="openCreatePostModal()"><span class="ic">{{ ico('plus') }}</span></button>
   <nav class="ig-tabbar" id="igTabbar" aria-label="Нижняя навигация">
-    <button type="button" class="ig-tab" data-igtab="feed" onclick="goSec('feed')"><span class="ic">{{ ico('home') }}</span>Лента</button>
-    <button type="button" class="ig-tab on" data-igtab="me" onclick="window.location='/community/profile/'+DASH_UID"><span class="ic">{{ ico('user') }}</span>Профиль</button>
+    <button type="button" class="ig-tab on" data-igtab="feed" onclick="goSec('feed')"><span class="ic">{{ ico('home') }}</span>Лента</button>
+    <a href="/community/profile/{{ effective_user_id }}" class="ig-tab" data-igtab="me"><span class="ic">{{ ico('user') }}</span>Профиль</a>
     <button type="button" class="ig-tab" data-igtab="search" onclick="goSec('search')"><span class="ic">{{ ico('search') }}</span>Поиск</button>
   </nav>
   {% endif %}
@@ -2244,8 +2123,8 @@ if (window.location.search.includes('linked=')) {
 }
 
 // ── Section routing ──
-const SECS = {{ dashboard_secs | default(['me','feed','groups','search','messages','ai','knowledge','shop','plan','orders','referral','link','language','profile']) | tojson }};
-const DEFAULT_SEC = SECS.includes('me') ? 'me' : (SECS.includes('home') ? 'home' : (SECS[0] || 'feed'));
+const SECS = {{ dashboard_secs | default(['feed','groups','search','messages','ai','knowledge','shop','plan','orders','referral','link','language','profile']) | tojson }};
+const DEFAULT_SEC = SECS.includes('home') ? 'home' : (SECS[0] || 'feed');
 function closeDbDrawer(){
   document.getElementById('dbDrawer')?.classList.remove('open');
   document.getElementById('dbDrawerBackdrop')?.classList.remove('on');
@@ -2278,11 +2157,11 @@ function syncIgTabbar(id){
   const bar=document.getElementById('igTabbar');
   if(!bar)return;
   bar.querySelectorAll('.ig-tab').forEach(t=>t.classList.remove('on'));
-  const map={me:'me',feed:'feed',create:'create',search:'search',shop:'shop',plan:'plan'};
+  const map={feed:'feed',create:'create',search:'search',shop:'shop',plan:'plan'};
   const key=map[id];
   if(key) bar.querySelector(`[data-igtab="${key}"]`)?.classList.add('on');
 }
-var IG_ROOT_SECS={me:1,feed:1,groups:1,messages:1,search:1};
+var IG_ROOT_SECS={feed:1,groups:1,messages:1,search:1};
 var SEC_TITLE={
   me:'Профиль',feed:'Лента',groups:'Чаты',messages:'Входящие',search:'Участники',ai:'AI-чат',knowledge:'База знаний',
   proextras:'Про-функции',shop:'Магазин',orders:'Заказы',plan:'Тариф',referral:'Рефералы',seller:'Товары',
@@ -2325,7 +2204,7 @@ function igDashBackClick(){
     return;
   }
   if(window.history.length>1) history.back();
-  else goSec('me');
+  else goSec('feed');
 }
 function goToGroupsChatsFromBurger(){
   closeDbDrawer();
@@ -2379,20 +2258,28 @@ function goSec(id){
     window.__groupChatHistoryPushed = false;
     finishGroupChatOverlayUI();
   }
-  if(id==='me'||id==='profile'){
+  if(id==='profile'){
     setTimeout(initShevelevOnLoad,100);
     setTimeout(startShevelevAutoSync,200);
   }
 }
 
-// Init from hash
+// Init from hash (старый #me → единый профиль в сообществе)
 (function(){
   const h=(location.hash||'').replace('#','');
+  if(h==='me'){
+    try{ location.replace('/community/profile/{{ effective_user_id }}'); }catch(e){ window.location='/community/profile/{{ effective_user_id }}'; }
+    return;
+  }
   goSec(SECS.includes(h)?h:DEFAULT_SEC);
 })();
 
 window.addEventListener('hashchange',()=>{
   const h=(location.hash||'').replace('#','');
+  if(h==='me'){
+    try{ location.replace('/community/profile/{{ effective_user_id }}'); }catch(e){ window.location='/community/profile/{{ effective_user_id }}'; }
+    return;
+  }
   if(SECS.includes(h))goSec(h);
 });
 
@@ -2454,7 +2341,7 @@ async function uploadAv(input,imgId='avImg'){
       const imgs=[document.getElementById('avImg'),document.getElementById('avImg2'),document.getElementById('avImgMe')];
       imgs.forEach(el=>{if(el){el.src=d.url+'?t='+Date.now();el.style.display='block'}});
       document.querySelectorAll('nav img[src*="/media/avatars/"]').forEach(el=>el.src=d.url+'?t='+Date.now());
-      if(imgId==='avImgMe'){location.reload();return;}
+      if(imgId==='avImgMe'||!document.getElementById('avImg')){location.reload();return;}
     }else if(err){err.textContent=d.error||'Ошибка';err.style.display='block'}
   }catch(e){if(err){err.textContent='Сетевая ошибка';err.style.display='block'}}
   input.value='';
