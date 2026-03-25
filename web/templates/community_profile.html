@@ -46,13 +46,12 @@
 button.ig-profile-stat{width:auto;min-width:0;flex:1 1 0;cursor:pointer;border:none;background:transparent;font:inherit;padding:10px 4px;margin:0;border-radius:12px;transition:background .15s}
 button.ig-profile-stat:hover{background:rgba(255,255,255,.06)}
 button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outline-offset:2px}
-.ig-rep-pill{display:inline-flex;align-items:center;padding:5px 12px;border-radius:22px;font-size:11px;font-weight:700;letter-spacing:.02em;background:rgba(61,212,224,.12);border:1px solid rgba(61,212,224,.28);color:#3dd4e0;margin-top:10px}
 .ig-post-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;width:100%;border-top:1px solid rgba(255,255,255,.08);padding-top:3px}
 .ig-post-cell{aspect-ratio:1;position:relative;overflow:hidden;background:#121212;display:block;text-decoration:none;color:inherit}
 .ig-post-cell img{width:100%;height:100%;object-fit:cover;display:block}
 .ig-post-cell-ph{display:flex;align-items:center;justify-content:center;font-size:10px;color:#666;padding:8px;text-align:center;line-height:1.35;overflow:hidden}
 .ig-post-cell-ico{position:absolute;top:6px;right:6px;font-size:12px;opacity:.9;text-shadow:0 1px 4px #000}
-.cp-circles-row{display:flex;align-items:flex-start;gap:12px;overflow-x:auto;padding:8px 2px 6px;margin:6px 0 10px}
+.cp-circles-row{display:flex;align-items:flex-start;justify-content:center;flex-wrap:wrap;gap:12px;overflow-x:auto;padding:8px 2px 6px;margin:10px 0 14px}
 .cp-circle-item{display:flex;flex-direction:column;align-items:center;gap:6px;text-decoration:none;color:inherit;min-width:72px}
 .cp-circle-avatar{width:72px;height:72px;border-radius:50%;border:2px solid rgba(61,212,224,.55);overflow:hidden;background:#10131a;display:flex;align-items:center;justify-content:center}
 .cp-circle-avatar img{width:100%;height:100%;object-fit:cover;display:block}
@@ -93,42 +92,42 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 .ig-pm-toggle:hover{background:rgba(255,255,255,.06);color:#fff}
 .cp-tabbar{display:none}
 .cp-create-fab{display:none}
-.cp-prof-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:6px 0 10px;font-size:13px;color:#888}
-.cp-tokens-strip{position:relative;margin-top:2px;margin-bottom:14px;padding:15px 17px 14px;max-width:min(100%,560px);border-radius:26px 18px 24px 16px;background:linear-gradient(160deg,rgba(24,24,20,.94),rgba(10,10,14,.96));border:1px solid rgba(61,212,224,.56);box-shadow:0 18px 54px rgba(0,0,0,.52),0 0 34px rgba(61,212,224,.22),0 0 22px rgba(255,123,224,.14),inset 0 1px 0 rgba(255,255,255,.09);transform:rotate(-1.25deg) skewX(-1deg);overflow:visible}
-.cp-tokens-strip__head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
-.cp-lamp-toggle{display:inline-flex;align-items:center;gap:8px;padding:4px 8px;border:1px solid rgba(255,255,255,.14);border-radius:999px;background:rgba(255,255,255,.04);color:#d0d5df;font-size:11px;font-weight:600}
-.cp-lamp-toggle input{appearance:none;width:30px;height:18px;border-radius:999px;background:#20242f;border:1px solid rgba(255,255,255,.22);position:relative;cursor:pointer;transition:all .2s ease}
-.cp-lamp-toggle input::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#8a90a0;transition:all .2s ease}
-.cp-lamp-toggle input:checked{background:rgba(61,212,224,.35);border-color:rgba(61,212,224,.62)}
-.cp-lamp-toggle input:checked::after{left:14px;background:#d8fbff}
-.cp-header-lamp{
-  position:fixed;
-  top:calc(4rem + 56px);
-  left:12px;
-  z-index:980;
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  padding:6px 8px;
-  border:1px solid rgba(255,255,255,.16);
-  border-radius:999px;
-  background:rgba(9,12,18,.78);
-  backdrop-filter:blur(4px);
+.cp-profile-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px;margin-top:16px;width:100%}
+.cp-tokens-strip{position:relative;margin:8px auto 16px;padding:15px 17px 14px;max-width:min(100%,560px);border-radius:26px 18px 24px 16px;background:linear-gradient(160deg,rgba(24,24,20,.94),rgba(10,10,14,.96));border:1px solid rgba(61,212,224,.56);box-shadow:0 18px 54px rgba(0,0,0,.52),0 0 34px rgba(61,212,224,.22),0 0 22px rgba(255,123,224,.14),inset 0 1px 0 rgba(255,255,255,.09);transform:rotate(-1.25deg) skewX(-1deg);overflow:visible}
+.cp-tokens-strip__head{display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+.cp-tokens-strip[data-lamp-off="0"]{
+  box-shadow:0 18px 54px rgba(0,0,0,.52),0 0 48px rgba(255,220,160,.38),0 0 36px rgba(61,212,224,.32),inset 0 1px 0 rgba(255,255,255,.1);
 }
-.cp-header-lamp::before{
+.ig-profile-av-wrap.lamp-on::after{
   content:"";
-  width:20px;
-  height:20px;
+  position:absolute;
+  inset:-44px;
+  pointer-events:none;
   border-radius:50%;
-  background:radial-gradient(circle at 50% 50%,rgba(255,236,190,.98) 0%,rgba(255,196,112,.92) 48%,rgba(188,112,36,.88) 74%,rgba(78,52,24,.92) 100%);
-  filter:drop-shadow(0 0 10px rgba(255,214,130,.45));
+  background:radial-gradient(circle at 42% 36%,
+    rgba(255,252,235,.98) 0%,
+    rgba(255,235,190,.85) 18%,
+    rgba(255,210,150,.62) 32%,
+    rgba(255,175,110,.38) 48%,
+    rgba(61,212,224,.22) 62%,
+    rgba(255,120,200,.16) 72%,
+    transparent 82%);
+  filter:blur(22px);
+  opacity:1;
+  z-index:0;
 }
-.cp-header-lamp[data-lamp-off="1"]::before{opacity:.42;filter:none}
-.ig-profile-av-wrap.lamp-on::after{content:"";position:absolute;inset:-34px;pointer-events:none;border-radius:50%;background:radial-gradient(circle at 45% 38%,rgba(255,242,198,.58) 0%,rgba(255,220,152,.32) 28%,rgba(255,201,118,.14) 48%,rgba(61,212,224,.07) 64%,transparent 84%);filter:blur(14px);opacity:.86;z-index:0}
+.ig-profile-av-wrap.lamp-on .ig-profile-av{
+  position:relative;
+  z-index:1;
+  box-shadow:
+    0 0 32px rgba(255,230,175,.72),
+    0 0 56px rgba(255,200,130,.48),
+    0 0 88px rgba(61,212,224,.22);
+}
 .ig-profile-av-wrap .ig-profile-av{position:relative;z-index:1}
-.cp-tokens-strip__title{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#ff9ce8;font-weight:800;margin-bottom:10px;text-shadow:0 0 14px rgba(255,124,223,.34)}
-.cp-tokens-strip__grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 20px;align-items:start}
-.cp-tokens-strip__cell{display:flex;flex-direction:column;gap:4px;min-width:0;text-align:left}
+.cp-tokens-strip__title{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#ff9ce8;font-weight:800;margin-bottom:0;text-shadow:0 0 14px rgba(255,124,223,.34)}
+.cp-tokens-strip__grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 20px;align-items:start;justify-items:center}
+.cp-tokens-strip__cell{display:flex;flex-direction:column;gap:4px;min-width:0;text-align:center;align-items:center;width:100%}
 .cp-ts-lbl{font-size:10px;color:#8e96a6;text-transform:uppercase;letter-spacing:.04em}
 .cp-ts-val{font-size:15px;font-weight:800;color:#ecf3ff;font-variant-numeric:tabular-nums;word-break:break-word;overflow-wrap:anywhere;line-height:1.35;min-height:1.35em;max-width:100%;text-shadow:0 0 16px rgba(61,212,224,.25)}
 .cp-ts-shev{color:#ff7be0;text-shadow:0 0 18px rgba(255,123,224,.32)}
@@ -138,19 +137,8 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 .cp-chaos-toggle input::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#8a90a0;transition:all .2s ease}
 .cp-chaos-toggle input:checked{background:rgba(61,212,224,.35);border-color:rgba(61,212,224,.62)}
 .cp-chaos-toggle input:checked::after{left:16px;background:#d8fbff}
-.cp-light-toggle{appearance:none;width:34px;height:20px;border-radius:999px;background:#20242f;border:1px solid rgba(255,255,255,.22);position:relative;cursor:pointer;transition:all .2s ease}
-.cp-light-toggle::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#8a90a0;transition:all .2s ease}
-.cp-light-toggle:checked{background:rgba(61,212,224,.35);border-color:rgba(61,212,224,.62)}
-.cp-light-toggle:checked::after{left:16px;background:#d8fbff}
-@media(max-width:400px){.cp-tokens-strip__grid{grid-template-columns:1fr;gap:10px}.cp-lamp-toggle{font-size:10px;padding:3px 7px}}
+@media(max-width:400px){.cp-tokens-strip__grid{grid-template-columns:1fr;gap:10px}}
 @media(max-width:768px){
-  .cp-header-lamp{
-    top:calc(64px + env(safe-area-inset-top,0px) + 56px);
-    left:10px;
-    gap:6px;
-    padding:5px 7px;
-  }
-  .cp-header-lamp::before{width:18px;height:18px}
   .ig-feed-shell{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .ig-post:nth-child(6n+1){transform:translateY(0) rotate(-2.2deg)}
   .ig-post:nth-child(6n+2){transform:translateY(0) rotate(2deg)}
@@ -181,16 +169,10 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
       <a href="/dashboard" class="ig-head-msg" title="Кабинет" aria-label="Кабинет">{{ ico('user') }}</a>
     </div>
   </header>
-  {% if is_own %}
-  <label id="cpHeaderLamp" class="cp-header-lamp" data-lamp-off="{% if profile.get('token_lamp_enabled') is sameas false %}1{% else %}0{% endif %}" for="cpLampToggle" title="Свет у аватара">
-    <input id="cpLampToggle" type="checkbox" {% if profile.get('token_lamp_enabled') is not sameas false %}checked{% endif %} onchange="saveTokenLampEnabled(this.checked)">
-    <span id="cpLampToggleText">{% if profile.get('token_lamp_enabled') is not sameas false %}выкл свет{% else %}вкл свет{% endif %}</span>
-  </label>
-  {% endif %}
 
   <main class="cp-ig-main">
     <div class="ig-me-shell">
-      <div class="ig-profile-head">
+      <div class="ig-profile-head" style="justify-content:center;gap:clamp(18px,4vw,40px)">
         <div class="ig-profile-av-wrap{% if profile.get('token_lamp_enabled') is not sameas false %} lamp-on{% endif %}">
           {% if profile.avatar %}
           <img src="{{ profile.avatar }}" class="ig-profile-av" alt="{{ profile.name }}">
@@ -198,8 +180,8 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
           <div class="ig-profile-av" style="background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:min(48px,12vw)">🍄</div>
           {% endif %}
         </div>
-        <div style="flex:1;min-width:200px">
-          <div class="ig-profile-stats">
+        <div style="flex:1;min-width:200px;max-width:420px;display:flex;flex-direction:column;align-items:center;text-align:center">
+          <div class="ig-profile-stats" style="width:100%;max-width:380px">
             <div class="ig-profile-stat"><b>{{ post_count }}</b><span>публикаций</span></div>
             <button type="button" class="ig-profile-stat" onclick="openFollowListModal({{ profile_id }}, 'followers')" title="Кто подписан">
               <b>{{ profile.followers_count }}</b><span>подписчики</span>
@@ -208,30 +190,20 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
               <b>{{ profile.following_count }}</b><span>подписки</span>
             </button>
           </div>
-          <div style="margin-top:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div style="margin-top:14px;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap">
             <span style="font-size:clamp(18px,4.5vw,22px);font-weight:700;color:#e8e8e8">{{ profile.name or 'Участник' }}</span>
             {% if profile.role == 'admin' %}
             <span style="background:rgba(248,113,113,.12);color:#f87171;border:1px solid rgba(248,113,113,.25);font-size:10px;padding:2px 8px;border-radius:20px;font-weight:700">Админ</span>
             {% endif %}
           </div>
-          <div class="cp-prof-meta">
-            <span class="ig-rep-pill">{{ rep_emoji }} {{ rep_level }}</span>
-            <span id="profileLikesStatInline" style="color:#888">❤️ {{ profile_likes_count }}</span>
-          </div>
-          <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <div class="cp-profile-actions">
             {% if is_own %}
-            <a href="/dashboard#profile" class="btn-o" style="font-size:13px;padding:8px 18px;text-decoration:none;display:inline-flex">Редактировать профиль</a>
-            <input id="cpLightToggle" class="cp-light-toggle" type="checkbox" {% if profile.get('token_lamp_enabled') is not sameas false %}checked{% endif %} onchange="saveTokenLampEnabled(this.checked)" aria-label="Свет токенов">
-            <a href="/dashboard#feed" class="btn-muted" style="font-size:13px;padding:8px 16px;text-decoration:none;display:inline-flex">Лента</a>
+            <a href="/dashboard#profile" class="btn-o" style="font-size:13px;padding:8px 22px;text-decoration:none;display:inline-flex">Редактировать профиль</a>
             {% else %}
-            <button type="button" class="btn-g" style="font-size:13px;padding:8px 18px" id="followBtn" onclick="doFollow()">
+            <button type="button" class="btn-g" style="font-size:13px;padding:8px 22px" id="followBtn" onclick="doFollow()">
               <span id="followBtnText">{{ 'Подписки ✓' if is_following else 'Подписаться' }}</span>
             </button>
-            <button type="button" class="btn-o {{ 'on' if viewer_liked_profile }}" style="font-size:13px;padding:8px 16px" id="profileLikeBtn" onclick="doProfileLike()">
-              <span>{{ '❤️' if viewer_liked_profile else '🤍' }}</span>
-              <span id="profileLikeBtnText">Нравится</span>
-            </button>
-            <button type="button" class="btn-muted" style="font-size:13px;padding:8px 16px" onclick="openDM()">Сообщение</button>
+            <button type="button" class="btn-muted" style="font-size:13px;padding:8px 22px" onclick="openDM()">Сообщение</button>
             {% endif %}
           </div>
           {% set show_del_cell = is_own or profile.decimal_del_balance is not none %}
@@ -240,9 +212,6 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
           <div id="cpTokensStrip" class="cp-tokens-strip" data-lamp-off="{% if profile.get('token_lamp_enabled') is sameas false %}1{% else %}0{% endif %}" aria-label="Токены в сети Decimal">
             <div class="cp-tokens-strip__head">
               <div class="cp-tokens-strip__title">Токены · Decimal</div>
-              {% if is_own %}
-              <span class="cp-lamp-toggle"><span id="cpLampHintText">{% if profile.get('token_lamp_enabled') is not sameas false %}выкл свет{% else %}вкл свет{% endif %}</span></span>
-              {% endif %}
             </div>
             <div class="cp-tokens-strip__grid" style="{% if show_del_cell and show_shev_cell %}grid-template-columns:1fr 1fr{% else %}grid-template-columns:1fr{% endif %}">
               {% if show_del_cell %}
@@ -278,10 +247,12 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
       </div>
 
       {% if profile.bio %}
-      <div style="font-size:14px;color:#ccc;line-height:1.55;max-width:560px;margin-bottom:10px;white-space:pre-wrap">{{ profile.bio }}</div>
+      <div style="font-size:14px;color:#ccc;line-height:1.55;max-width:560px;margin:0 auto 12px;text-align:center;white-space:pre-wrap">{{ profile.bio }}</div>
       {% endif %}
       {% if profile.get('profile_link_url') %}
-      <a href="{{ profile.profile_link_url }}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:8px;color:#3dd4e0;font-weight:600;font-size:14px;margin-bottom:14px;text-decoration:none;border-bottom:1px solid rgba(61,212,224,.35);padding-bottom:2px">{{ profile.get('profile_link_label') or profile.profile_link_url }}</a>
+      <div style="text-align:center;margin-bottom:16px">
+      <a href="{{ profile.profile_link_url }}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:8px;color:#3dd4e0;font-weight:600;font-size:14px;text-decoration:none;border-bottom:1px solid rgba(61,212,224,.35);padding-bottom:2px">{{ profile.get('profile_link_label') or profile.profile_link_url }}</a>
+      </div>
       {% endif %}
 
       <div class="cp-chaos-wrap">
@@ -461,42 +432,6 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 function _escHtml(t){
   const d=document.createElement('div');d.textContent=t==null?'':String(t);return d.innerHTML;
 }
-function applyTokenLampState(isOn){
-  const on=!!isOn;
-  const strip=document.getElementById('cpTokensStrip');
-  const avWrap=document.querySelector('.ig-profile-av-wrap');
-  const lamp=document.getElementById('cpHeaderLamp');
-  const sw=document.getElementById('cpLampToggle');
-  const swRight=document.getElementById('cpLightToggle');
-  const txt=document.getElementById('cpLampToggleText');
-  const hint=document.getElementById('cpLampHintText');
-  if(strip){ strip.dataset.lampOff = on ? '0' : '1'; }
-  if(avWrap){ avWrap.classList.toggle('lamp-on', on); }
-  if(lamp){ lamp.dataset.lampOff = on ? '0' : '1'; }
-  if(sw && sw.checked!==on){ sw.checked=on; }
-  if(swRight && swRight.checked!==on){ swRight.checked=on; }
-  const label=on?'выкл свет':'вкл свет';
-  if(txt){ txt.textContent=label; }
-  if(hint){ hint.textContent=label; }
-}
-async function saveTokenLampEnabled(isOn){
-  applyTokenLampState(!!isOn);
-  try{
-    const r=await fetch('/profile/token-lamp',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      credentials:'same-origin',
-      body:JSON.stringify({token_lamp_enabled:!!isOn})
-    });
-    const d=await r.json().catch(()=>({}));
-    if(!r.ok||!d.ok){
-      throw new Error(d.error||'Не удалось сохранить');
-    }
-  }catch(e){
-    applyTokenLampState(!isOn);
-    alert((e&&e.message)||'Не удалось сохранить свет');
-  }
-}
 function closePostMenus(){
   document.querySelectorAll('.ig-pm .ig-pm-panel').forEach(function(p){ p.style.display='none'; });
 }
@@ -619,27 +554,6 @@ async function doFollow(){
     txt.textContent='Подписаться';
     btn.style.background='';
   }
-}
-
-// ── Profile like ──
-async function doProfileLike(){
-  if(IS_OWN)return;
-  const btn=document.getElementById('profileLikeBtn');
-  const txt=document.getElementById('profileLikeBtnText');
-  const stat=document.getElementById('profileLikesStatInline');
-  btn.disabled=true;
-  const r=await fetch(`/community/profile/${PROFILE_ID}/like`,{method:'POST'});
-  const d=await r.json();
-  btn.disabled=false;
-  const h=btn.querySelector('span:first-child');
-  if(d.liked){
-    if(h)h.textContent='❤️';
-    btn.classList.add('on');
-  }else{
-    if(h)h.textContent='🤍';
-    btn.classList.remove('on');
-  }
-  if(stat) stat.textContent='❤️ ' + d.count;
 }
 
 // ── Post like ──
