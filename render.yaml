@@ -19,7 +19,5 @@ services:
       - key: SHEVELEV_TOKEN_ADDRESS
         sync: false
 
-databases:
-  - name: mushroomsai-db
-    databaseName: mushroomsai
-    user: mushroomsai
+# Блок databases убран: если Postgres уже создан вручную на Render, Blueprint с тем же именем
+# часто даёт failed deploy / конфликт синхронизации. DATABASE_URL всё равно задаётся в Dashboard.
