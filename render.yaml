@@ -3,11 +3,23 @@ services:
     name: mushroomsai
     branch: master
     env: python
-
+    # 3.11.0 на Render часто недоступен → failed build; см. https://render.com/docs/python-version
     buildCommand: pip install --upgrade pip setuptools wheel && pip install --no-cache-dir -r requirements.txt
-
     startCommand: python -m uvicorn main:app --host 0.0.0.0 --port $PORT
-
+    # Health Check Path задайте в Dashboard → /health после успешного деплоя (не дублировать startCommand там).
     envVars:
       - key: PYTHONUNBUFFERED
         value: "1"
+      - key: PYTHON_VERSION
+        value: "3.11.10"
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: SHEVELEV_TOKEN_ADDRESS
+        sync: false
+
+databases:
+  - name: mushroomsai-db
+    databaseName: mushroomsai
+    user: mushroomsai
