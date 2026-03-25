@@ -449,6 +449,7 @@ async def telegram_webapp_page(request: Request):
 
 @router.post("/auth/telegram/webapp/callback")
 async def telegram_webapp_callback(request: Request):
+    init_data = ""
     try:
         body = await request.json()
         init_data = body.get("initData") or body.get("init_data") or ""
@@ -498,18 +499,9 @@ async def telegram_webapp_callback(request: Request):
         return JSONResponse({"error": str(e)}, status_code=403)
     except Exception as e:
         _logger.warning("telegram_webapp_callback failed: %s", e)
-        # Temporary debug: include initData preview in error response
-        try:
-            body2 = await request.body()
-            import json as _json
-            bd = _json.loads(body2)
-            raw = bd.get("initData", "")
-            preview = raw[:120] if raw else "(empty)"
-        except Exception:
-            preview = "(could not read)"
         return JSONResponse({
             "error": f"Telegram auth failed: {str(e)}",
-            "debug_initData_preview": preview,
+            "debug_initData_preview": init_data[:150] if init_data else "(empty)",
         }, status_code=400)
 
 @router.get("/auth/telegram/webapp/debug")
