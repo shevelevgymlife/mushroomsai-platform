@@ -138,7 +138,11 @@ CATEGORIES = ["Экстракт", "Плодовое тело", "Капсулы",
 async def index(request: Request):
     current_user = await get_user_from_request(request)
     if current_user:
-        return RedirectResponse("/dashboard", status_code=302)
+        # 302 теряет #tgWebAppData — клиентский редирект сохраняет fragment для Telegram Mini App
+        return templates.TemplateResponse(
+            "telegram_redirect_preserve.html",
+            {"request": request, "redirect_dest": "/dashboard"},
+        )
     prods = await database.fetch_all(
         products.select().where(products.c.active == True).limit(6)
     )

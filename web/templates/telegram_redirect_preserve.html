@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NEUROFUNGI AI</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body style="margin:0;background:#070708;color:#8e8e96;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh">
+  <p style="font-size:14px">Загрузка…</p>
+  <script>
+  (function () {
+    var dest = {{ redirect_dest|tojson }};
+    if (typeof dest !== "string" || !dest.startsWith("/")) dest = "/dashboard";
+    location.replace(dest + (location.search || "") + (location.hash || ""));
+  })();
+  </script>
+  <noscript><a href="/dashboard" style="color:#3dd4e0">Продолжить</a></noscript>
+</body>
+</html>

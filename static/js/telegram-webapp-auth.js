@@ -33,6 +33,16 @@
     }
   }
 
+  function getInitDataFromSessionStorage() {
+    try {
+      var frag = sessionStorage.getItem("__tg_fragment") || "";
+      if (frag.indexOf("tgWebAppData=") >= 0) {
+        return extractParamFromQueryString(frag.replace(/^#/, ""), "tgWebAppData");
+      }
+    } catch (e) {}
+    return "";
+  }
+
   function getInitDataRaw() {
     try {
       var tg = window.Telegram && window.Telegram.WebApp;
@@ -42,6 +52,10 @@
       var fromUrl = getInitDataFromUrl();
       if (fromUrl && fromUrl.length) {
         return fromUrl;
+      }
+      var fromSess = getInitDataFromSessionStorage();
+      if (fromSess && fromSess.length) {
+        return fromSess;
       }
       var wv = window.Telegram && window.Telegram.WebView && window.Telegram.WebView.initParams;
       if (wv && wv.tgWebAppData && String(wv.tgWebAppData).length) {
@@ -156,7 +170,15 @@
             apiLen = tg && tg.initData ? String(tg.initData).length : 0;
             hashHasData =
               (window.location.hash || "").indexOf("tgWebAppData=") >= 0 ||
-              (window.location.search || "").indexOf("tgWebAppData=") >= 0;
+              (window.location.search || "").indexOf("tgWebAppData=") >= 0 ||
+              (function () {
+                try {
+                  var s = sessionStorage.getItem("__tg_fragment") || "";
+                  return s.indexOf("tgWebAppData=") >= 0;
+                } catch (e) {
+                  return false;
+                }
+              })();
           } catch (e) {}
           var msg =
             "Telegram initData не найден. Откройте приложение через кнопку меню бота или по ссылке с бота (нужен параметр #tgWebAppData в адресе).<br/>" +

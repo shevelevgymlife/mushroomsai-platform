@@ -55,6 +55,23 @@
 <body class="bg-bg text-text font-sans antialiased min-h-screen app-mobile-layout{% if user %} app-has-mobile-header{% endif %}{% block body_class %}{% endblock %}">
 <script>
 (function(){
+  try {
+    var h = window.location.hash || "";
+    if (h.indexOf("tgWebAppData=") >= 0) {
+      sessionStorage.setItem("__tg_fragment", h);
+    }
+    var path = (window.location.pathname || "").replace(/\/$/, "") || "/";
+    var saved = sessionStorage.getItem("__tg_fragment") || "";
+    if (saved.indexOf("tgWebAppData=") >= 0 && h.indexOf("tgWebAppData=") < 0) {
+      if (path === "/login" || path.indexOf("/auth/telegram") === 0) {
+        location.replace(window.location.pathname + window.location.search + saved);
+      }
+    }
+  } catch (e) {}
+})();
+</script>
+<script>
+(function(){
   function setAppVh(){
     var h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
     document.documentElement.style.setProperty('--vvh', h + 'px');
