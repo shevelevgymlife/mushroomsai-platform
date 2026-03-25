@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Telegram вход — NEUROFUNGI AI{% endblock %}
 
-{# Официальный SDK: без него в части клиентов нет window.Telegram / initData #}
 {% block extra_head %}
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 {% endblock %}
@@ -9,87 +8,22 @@
 {% block content %}
 <div class="min-h-screen flex items-center justify-center pt-24 px-4 neo-app-surface">
   <div class="w-full max-w-md text-center">
-    <div style="display:inline-block;margin-bottom:14px;padding:8px 14px;border-radius:999px;background:rgba(61,212,224,.14);border:1px solid rgba(61,212,224,.35);color:#eaeaec;font-weight:700;font-size:13px;">
-      TG WEBAPP: /auth/telegram/webapp
-    </div>
     <h1 class="text-xl font-semibold text-text mb-2">Входим через Telegram...</h1>
     <p class="text-sm text-muted">Подождите секунду</p>
   </div>
 </div>
 
+<script src="/static/js/telegram-webapp-auth.js?v=2"></script>
 <script>
-  (async function () {
-    try {
-      const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-      if (tg && typeof tg.ready === 'function') {
-        try { tg.ready(); } catch (e) {}
-      }
-      if (tg && typeof tg.expand === 'function') {
-        try { tg.expand(); } catch (e) {}
-      }
-
-      // initData может появляться не мгновенно; ждём немного дольше.
-      let initData = tg ? tg.initData : null;
-      if (!initData) {
-        const startedAt = Date.now();
-        while (!initData && (Date.now() - startedAt) < 8000) {
-          await new Promise(r => setTimeout(r, 200));
-          initData = tg ? tg.initData : null;
-        }
-      }
-      const next = new URLSearchParams(window.location.search).get('next') || '{{ next_path|e }}';
-      const botUsername = '{{ bot_username|e }}';
-      const startapp = '{{ startapp|e }}';
-      const deepLink = botUsername && startapp
-        ? `https://t.me/${botUsername}?startapp=${encodeURIComponent(startapp)}`
-        : null;
-
-      if (!initData) {
-        // Helpful diagnostics for Telegram WebApp injection issues.
-        let platform = null;
-        let hasUnsafe = false;
-        let initUnsafeUserId = null;
-        try {
-          platform = tg ? tg.platform : null;
-          hasUnsafe = !!(tg && tg.initDataUnsafe);
-          initUnsafeUserId = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null;
-        } catch (e) {}
-
-        const tgStatus = [
-          `Telegram.WebApp: ${tg ? 'yes' : 'no'}`,
-          `platform: ${platform || '—'}`,
-          `initDataUnsafe: ${hasUnsafe ? 'yes' : 'no'}`,
-          `initDataUnsafe.user.id: ${initUnsafeUserId || '—'}`,
-        ].join('<br/>');
-
-        const linkHtml = deepLink
-          ? `<div style="margin-top:14px"><a href="${deepLink}" style="color:#3dd4e0;text-decoration:underline">Открыть WebApp в Telegram ещё раз</a></div>`
-          : "";
-        document.body.innerHTML =
-          `<div style='padding:24px;font-family:system-ui'>Telegram initData не найден.<br/>` +
-          `Диагностика:<br/>${tgStatus}<br/>` +
-          `Открой эту страницу внутри Telegram WebApp.${linkHtml}</div>`;
-        return;
-      }
-
-      const resp = await fetch('/auth/telegram/webapp/callback', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        credentials: 'include',
-        body: JSON.stringify({ initData: initData, next: next })
-      });
-
-      const data = await resp.json().catch(() => ({}));
-      if (!resp.ok || !data || !data.ok) {
-        document.body.innerHTML = "<div style='padding:24px;font-family:system-ui;color:#b91c1c'>Telegram auth failed: " + (data && data.error ? data.error : resp.status) + "</div>";
-        return;
-      }
-      const redirectTo = data.redirect || '/dashboard';
-      window.location.href = redirectTo;
-    } catch (e) {
-      document.body.innerHTML = "<div style='padding:24px;font-family:system-ui;color:#b91c1c'>Telegram auth error.</div>";
-    }
-  })();
+(function () {
+  var next = new URLSearchParams(window.location.search).get("next") || "{{ next_path|e }}";
+  window.runTelegramWebAppAuth({
+    nextPath: next,
+    onError: function (msg) {
+      document.body.innerHTML = "<div style=\"padding:24px;font-family:system-ui;color:#f87171;line-height:1.5\">" + msg + "</div>";
+    },
+    onSuccess: function () {}
+  });
+})();
 </script>
 {% endblock %}
-

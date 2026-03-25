@@ -6,7 +6,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="min-h-screen flex items-center justify-center px-4 neo-app-surface" style="padding-top:0;margin-top:-40px">
+<div id="login-page-root" class="min-h-screen flex items-center justify-center px-4 neo-app-surface" style="padding-top:0;margin-top:-40px">
   <div class="w-full max-w-md">
 
     <div class="text-center mb-8">
@@ -25,7 +25,7 @@
 
     <div class="flex flex-col gap-3">
 
-      <!-- Telegram: в Mini App — сразу /auth/telegram/webapp; в браузере — deep-link на бота -->
+      <!-- Telegram: в Mini App вход без перехода (сохраняется #tgWebAppData в hash); в браузере — deep-link -->
       <a id="tg-login-btn" href="/auth/telegram/open"
         style="display:flex;align-items:center;justify-content:center;gap:12px;width:100%;min-height:52px;padding:0 20px;border-radius:14px;text-decoration:none;background:rgba(38,169,224,.12);border:1.5px solid rgba(38,169,224,.35);color:#29a8e0;font-size:15px;font-weight:600;transition:all .2s"
         onmouseover="this.style.background='rgba(38,169,224,.2)';this.style.borderColor='rgba(38,169,224,.6)'"
@@ -54,10 +54,10 @@
 
   </div>
 </div>
+<script src="/static/js/telegram-webapp-auth.js?v=2"></script>
 <script>
 (function () {
   var next = new URLSearchParams(location.search).get("next") || "/dashboard";
-  var webappUrl = "/auth/telegram/webapp?next=" + encodeURIComponent(next);
   var tg = window.Telegram && window.Telegram.WebApp;
   if (tg && typeof tg.ready === "function") {
     try { tg.ready(); } catch (e) {}
@@ -65,12 +65,42 @@
   var g = document.getElementById("login-google-btn");
   if (g && tg) g.style.display = "none";
   var tgBtn = document.getElementById("tg-login-btn");
-  if (tgBtn && tg) {
-    tgBtn.setAttribute("href", webappUrl);
-  }
   var p = location.pathname || "";
-  if (tg && (p === "/login" || p === "/login/")) {
-    location.replace(webappUrl);
+  var onLoginPath = p === "/login" || p === "/login/";
+
+  if (tgBtn && tg) {
+    tgBtn.setAttribute("href", "/auth/telegram/webapp?next=" + encodeURIComponent(next) + (window.location.hash || ""));
+    if (!onLoginPath) {
+      tgBtn.addEventListener("click", function (e) {
+        if (!window.Telegram || !window.Telegram.WebApp) return;
+        e.preventDefault();
+        var root = document.getElementById("login-page-root");
+        if (root) {
+          root.innerHTML = "<div class=\"w-full max-w-md text-center px-4 py-16\"><p class=\"text-xl font-semibold text-text mb-2\">Входим через Telegram...</p><p class=\"text-sm text-muted\">Подождите секунду</p></div>";
+        }
+        window.runTelegramWebAppAuth({
+          nextPath: next,
+          onError: function (msg) {
+            document.body.innerHTML = "<div style=\"padding:24px;font-family:system-ui;color:#f87171;line-height:1.5\">" + msg + "</div>";
+          },
+          onSuccess: function () {}
+        });
+      });
+    }
+  }
+
+  if (tg && onLoginPath) {
+    var root = document.getElementById("login-page-root");
+    if (root) {
+      root.innerHTML = "<div class=\"w-full max-w-md text-center px-4 py-16\"><p class=\"text-xl font-semibold text-text mb-2\">Входим через Telegram...</p><p class=\"text-sm text-muted\">Подождите секунду</p></div>";
+    }
+    window.runTelegramWebAppAuth({
+      nextPath: next,
+      onError: function (msg) {
+        document.body.innerHTML = "<div style=\"padding:24px;font-family:system-ui;color:#f87171;line-height:1.5\">" + msg + "</div>";
+      },
+      onSuccess: function () {}
+    });
   }
 })();
 </script>
