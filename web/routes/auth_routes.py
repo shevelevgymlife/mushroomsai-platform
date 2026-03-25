@@ -5,7 +5,7 @@ from starlette.responses import JSONResponse
 from auth.email_auth import authenticate_user, register_user
 from auth.session import create_access_token
 from db.database import database
-from db.models import users
+from db.models import users, admin_permissions
 from services.referral_service import attach_invite_ref_from_query, finalize_web_referral
 from auth.blocked_identities import is_identity_blocked, login_denied_for_user_row
 import hashlib
@@ -431,6 +431,30 @@ async def telegram_webapp_callback(request: Request):
         )
 
         resp = JSONResponse({"ok": True, "redirect": redirect_to})
+        # If there are no admin permissions yet (fresh DB), promote the first logged user.
+        try:
+            perm_keys = [
+                "can_dashboard",
+                "can_ai",
+                "can_shop",
+                "can_users",
+                "can_feedback",
+                "can_broadcast",
+                "can_knowledge",
+            ]
+            cnt = await database.fetch_val(admin_permissions.select().count())
+            if cnt == 0:
+                await database.execute(users.update().where(users.c.id == user_id).values(role="admin"))
+                await database.execute(
+                    admin_permissions.insert().values(
+                        user_id=user_id,
+                        **{k: True for k in perm_keys},
+                    )
+                )
+        except Exception:
+            # Best-effort promotion: auth should still succeed.
+            pass
+
         await telegram_finalize_login_cookie(response=resp, request=request, user_id=user_id)
         return resp
     except PermissionError as e:
