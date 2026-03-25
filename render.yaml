@@ -1,15 +1,18 @@
 services:
   - type: web
     name: mushroomsai
+    branch: master
     env: python
     # 3.11.0 на Render часто недоступен → failed build; см. https://render.com/docs/python-version
     # --no-cache-dir: меньше диска/RAM на билде (частые OOM на free/starter).
     buildCommand: pip install --upgrade pip setuptools wheel && pip install --no-cache-dir -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
-    # healthCheckPath не задаём в Blueprint: при расхождении с уже созданным сервисом или ZDT
-    # деплой иногда «Deploy failed» без явной ошибки в коде. В Dashboard → Settings задайте вручную:
-    # Health Check Path = /health (приложение отдаёт JSON сразу после подключения к БД).
+    startCommand: python -m uvicorn main:app --host 0.0.0.0 --port $PORT
+    # После фонового heavy-start /health отвечает сразу после ping БД (см. main.py + services/heavy_startup.py).
+    healthCheckPath: /health
     envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      # Если билд пишет «Python version not found» — смените на 3.11.10 в Dashboard или здесь.
       - key: PYTHON_VERSION
         value: "3.11.11"
       - key: DATABASE_URL
