@@ -100,10 +100,38 @@ class StartupGateMiddleware(BaseHTTPMiddleware):
                 return Response("ok", status_code=200)
             return await call_next(request)
 
-        return JSONResponse(
-            {"detail": "starting", "retry": True},
+        html = """<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="refresh" content="6">
+<title>NeuroFungi AI — обновление</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0c14;color:#e8e8e8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px}
+.logo{width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,#c8a84b,#e8c96d);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:#0a0c14;margin:0 auto 28px}
+h1{font-size:22px;font-weight:600;color:#3dd4e0;margin-bottom:12px}
+p{font-size:15px;color:#666;margin-bottom:32px;line-height:1.6}
+.dots{display:flex;gap:8px;justify-content:center}
+.dot{width:8px;height:8px;border-radius:50%;background:#3dd4e0;animation:pulse 1.4s ease-in-out infinite}
+.dot:nth-child(2){animation-delay:.2s}
+.dot:nth-child(3){animation-delay:.4s}
+@keyframes pulse{0%,80%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+</style>
+</head>
+<body>
+<div class="logo">N</div>
+<h1>Приложение обновляется</h1>
+<p>Мы устанавливаем обновления.<br>Страница обновится автоматически через несколько секунд.</p>
+<div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+</body>
+</html>"""
+        return Response(
+            html,
             status_code=503,
-            headers={"Retry-After": "5"},
+            media_type="text/html",
+            headers={"Retry-After": "6"},
         )
 
 
