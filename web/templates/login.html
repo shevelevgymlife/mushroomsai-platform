@@ -21,15 +21,16 @@
 
     <div class="flex flex-col gap-3">
 
-      <!-- Telegram Login Widget -->
-      <div style="display:flex;justify-content:center">
-        <script async src="https://telegram.org/js/telegram-widget.js?22"
-          data-telegram-login="neuro_fungi_bot"
-          data-size="large"
-          data-auth-url="{{ site_url }}/auth/telegram/callback"
-          data-request-access="write">
-        </script>
-      </div>
+      <!-- Telegram — открыть приложение напрямую -->
+      <a href="/auth/telegram/open"
+        style="display:flex;align-items:center;justify-content:center;gap:12px;width:100%;min-height:52px;padding:0 20px;border-radius:14px;text-decoration:none;background:rgba(38,169,224,.12);border:1.5px solid rgba(38,169,224,.35);color:#29a8e0;font-size:15px;font-weight:600;transition:all .2s"
+        onmouseover="this.style.background='rgba(38,169,224,.2)';this.style.borderColor='rgba(38,169,224,.6)'"
+        onmouseout="this.style.background='rgba(38,169,224,.12)';this.style.borderColor='rgba(38,169,224,.35)'">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8l-1.68 7.94c-.12.56-.46.7-.94.44l-2.58-1.9-1.24 1.2c-.14.14-.26.26-.52.26l.18-2.62 4.74-4.28c.2-.18-.04-.28-.32-.1L7.6 14.48l-2.52-.79c-.54-.17-.56-.54.12-.8l9.86-3.8c.46-.16.86.12.58.71z" fill="#29a8e0"/>
+        </svg>
+        Войти через Telegram
+      </a>
 
       <!-- Google Login -->
       <a href="/auth/google"
