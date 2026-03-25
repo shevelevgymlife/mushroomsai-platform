@@ -105,10 +105,19 @@
     return out;
   }
 
+  var RIM_LS = "screen_rim_v1";
+
+  function persistRimLs(cfg) {
+    try {
+      localStorage.setItem(RIM_LS, JSON.stringify(cfg));
+    } catch (e) {}
+  }
+
   async function saveRim(patch) {
     var cfg = mergeCfg(patch);
     window.__SCREEN_RIM = cfg;
     applyRim(cfg);
+    persistRimLs(cfg);
     try {
       var resp = await fetch("/account/screen-rim", {
         method: "POST",
@@ -122,6 +131,7 @@
       if (data && data.screen_rim) {
         window.__SCREEN_RIM = data.screen_rim;
         applyRim(data.screen_rim);
+        persistRimLs(data.screen_rim);
       }
     } catch (e) {}
   }
@@ -131,6 +141,15 @@
 
   document.addEventListener("DOMContentLoaded", function () {
     if (typeof window.__SCREEN_RIM === "undefined" || !window.__SCREEN_RIM) return;
+    try {
+      var raw = localStorage.getItem(RIM_LS);
+      if (raw) {
+        var ls = JSON.parse(raw);
+        if (ls && typeof ls === "object") {
+          window.__SCREEN_RIM = mergeCfg(ls);
+        }
+      }
+    } catch (e) {}
     applyRim(window.__SCREEN_RIM);
 
     document.querySelectorAll(".js-drawer-rim-toggle").forEach(function (inp) {

@@ -1,9 +1,20 @@
-/* Единая мобильная колонка: контент не «плывёт» по ширине; фото в лайтбоксах — на весь экран отдельными слоями */
+/* Единая мобильная колонка: на узком экране — во всю ширину вьюпорта, без «уже экрана телефона» */
 :root {
   --app-shell-max: 430px;
   --app-header-h: 56px;
   --neo-cyan: #22d3ee;
   --neo-cyan-soft: rgba(34, 211, 238, 0.42);
+}
+
+@media (max-width: 480px) {
+  :root {
+    --app-shell-max: 100%;
+  }
+}
+
+body.app-mobile-layout {
+  overflow-x: clip;
+  -webkit-overflow-scrolling: touch;
 }
 
 body.app-mobile-layout main {
@@ -13,6 +24,17 @@ body.app-mobile-layout main {
   width: 100%;
   box-sizing: border-box;
   overflow-x: clip;
+  min-height: 0;
+}
+
+@media (max-width: 480px) {
+  body.app-mobile-layout main {
+    max-width: 100%;
+  }
+
+  #appActivityPanel .app-act-sheet {
+    max-width: 100%;
+  }
 }
 
 body.app-mobile-layout:not(.app-has-mobile-header) main {
@@ -310,6 +332,13 @@ body.app-mobile-layout .cp-create-fab {
   transform: translateX(-50%);
 }
 
+@media (max-width: 480px) {
+  .neo-app-header.app-mobile-header-inner,
+  .app-mobile-header-inner {
+    max-width: 100%;
+  }
+}
+
 @media (min-width: 431px) {
   .neo-app-header.app-mobile-header-inner,
   .app-mobile-header-inner {
@@ -338,8 +367,11 @@ body.app-mobile-layout .cp-create-fab {
   top: 0;
   left: 0;
   bottom: 0;
-  width: min(300px, 88vw);
-  max-width: 100%;
+  width: min(400px, 92vw);
+  max-width: 400px;
+  min-width: 260px;
+  overflow-x: hidden;
+  box-sizing: border-box;
   background: rgba(8, 10, 20, 0.88);
   backdrop-filter: blur(25px);
   -webkit-backdrop-filter: blur(25px);
@@ -372,7 +404,10 @@ body.app-mobile-layout .cp-create-fab {
 }
 .ig-drawer-scroll {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   padding: 10px 0 20px;
 }
 .ig-drawer-item {

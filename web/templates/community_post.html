@@ -34,7 +34,7 @@
     </div>
     <div class="cp-metrics">
       <button type="button" class="cp-metric" id="likeBtn" onclick="toggleLike()" style="border-color:rgba(255,216,79,.45);color:#ffe57f"> <span id="likeIcon">{{ '⭐' if is_liked else '✩' }}</span> <span id="likeCnt">{{ post.likes_count or 0 }}</span> </button>
-      <div class="cp-metric" style="border-color:rgba(139,233,255,.4);color:#9df0ff">💬 <span id="cmtCnt">{{ post.comments_count or 0 }}</span></div>
+      <button type="button" class="cp-metric" style="border-color:rgba(139,233,255,.4);color:#9df0ff;cursor:pointer" onclick="location.href='/community/post/{{ post.id }}/comments?back='+encodeURIComponent({{ back_url|tojson }})">💬 <span id="cmtCnt">{{ post.comments_count or 0 }}</span></button>
       <button type="button" class="cp-metric" onclick="openShareModal()" style="border-color:rgba(247,179,255,.4);color:#ffc6ff">↗ <span id="saveCnt">{{ post.saves_count or 0 }}</span></button>
     </div>
     {% if is_owner %}

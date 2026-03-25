@@ -148,12 +148,12 @@
     <div class="pcard" id="pc-{{ p.id }}" onclick="openCommunityPostPage(event, {{ p.id }})" style="cursor:pointer">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
         <div style="display:flex;gap:10px;align-items:center">
-          <a href="{{ '/community/profile/' + (a.id|string) if a else '#' }}" style="text-decoration:none">
+          <a href="{{ '/community/profile/' + (a.id|string) if a else '#' }}" onclick="event.stopPropagation()" style="text-decoration:none">
             {% if a and a.avatar %}<img src="{{ a.avatar }}" class="avg" style="width:40px;height:40px" alt="">
             {% else %}<div class="avp" style="width:40px;height:40px">🍄</div>{% endif %}
           </a>
           <div>
-            <a href="{{ '/community/profile/' + (a.id|string) if a else '#' }}" style="font-weight:600;font-size:14px;color:#e8e8e8;text-decoration:none;display:block" onmouseover="this.style.color='#3dd4e0'" onmouseout="this.style.color='#e8e8e8'">{{ a.name if a else 'Участник' }}</a>
+            <a href="{{ '/community/profile/' + (a.id|string) if a else '#' }}" onclick="event.stopPropagation()" style="font-weight:600;font-size:14px;color:#e8e8e8;text-decoration:none;display:block" onmouseover="this.style.color='#3dd4e0'" onmouseout="this.style.color='#e8e8e8'">{{ a.name if a else 'Участник' }}</a>
             <div style="font-size:12px;color:#666">{{ rep(item.author_post_count) }} · {{ p.created_at.strftime('%d.%m %H:%M') if p.created_at else '' }}</div>
           </div>
         </div>
@@ -555,7 +555,7 @@ function openCommunityPostPage(event, postId){
 }
 function openCommunityPostDirect(postId){
   const back=encodeURIComponent(location.href);
-  location.href='/community/post/'+postId+'?back='+back;
+  location.href='/community/post/'+postId+'/comments?back='+back;
 }
 function esc2(t){return String(t||'').replace(/'/g,"\\'")}
 

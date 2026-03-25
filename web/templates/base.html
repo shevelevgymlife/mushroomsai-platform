@@ -36,7 +36,7 @@
   </script>
   <link rel="stylesheet" href="/static/css/custom.css?v=3" />
   <link rel="stylesheet" href="/static/css/design-system.css?v=3" />
-  <link rel="stylesheet" href="/static/css/app-mobile-shell.css?v=4" />
+  <link rel="stylesheet" href="/static/css/app-mobile-shell.css?v=5" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" />
   <style>
     /* Global anti-overflow guard for browser + Telegram WebApp */
@@ -168,8 +168,8 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
   <script>
   window.__SCREEN_RIM = {{ (user.screen_rim | default({'on': false, 'r': 61, 'g': 212, 'b': 224, 's': 0.55, 'w': 0.35})) | tojson }};
   </script>
-  <link rel="stylesheet" href="/static/css/screen-rim.css?v=2" />
-  <script src="/static/js/screen-rim-app.js?v=2" defer></script>
+  <link rel="stylesheet" href="/static/css/screen-rim.css?v=3" />
+  <script src="/static/js/screen-rim-app.js?v=3" defer></script>
   {% endif %}
   {% if user and request.url.path != '/' and not request.query_params.get('embed') %}
   {% include "components/app_mobile_header.html" %}

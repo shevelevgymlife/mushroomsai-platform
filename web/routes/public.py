@@ -1612,6 +1612,38 @@ async def community_post_page(request: Request, post_id: int, back: str = ""):
     )
 
 
+@router.get("/community/post/{post_id}/comments", response_class=HTMLResponse)
+async def community_post_comments_page(request: Request, post_id: int, back: str = ""):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return RedirectResponse(f"/login?next=/community/post/{post_id}/comments")
+    leg = await legal_acceptance_redirect(request, current_user)
+    if leg:
+        return leg
+
+    post = await database.fetch_one(
+        community_posts.select()
+        .where(community_posts.c.id == post_id)
+        .where(community_posts.c.approved == True)
+    )
+    if not post:
+        return HTMLResponse("Пост не найден", status_code=404)
+
+    author = await database.fetch_one(users.select().where(users.c.id == post["user_id"]))
+    back_url = (back or "").strip() or request.headers.get("referer") or "/dashboard#feed"
+
+    return templates.TemplateResponse(
+        "community_post_comments.html",
+        {
+            "request": request,
+            "user": current_user,
+            "post": post,
+            "author": author,
+            "back_url": back_url,
+        },
+    )
+
+
 @router.get("/community/post/{post_id}/photo", response_class=HTMLResponse)
 async def community_post_photo_page(request: Request, post_id: int, back: str = ""):
     current_user = await get_user_from_request(request)

@@ -1,7 +1,6 @@
 {# Требует: user, rim_close_fn = 'closeAppGlobalDrawer' | 'closeDbDrawer' #}
 {% set rim = user.screen_rim if user.screen_rim is defined else {'on': false, 'r': 61, 'g': 212, 'b': 224, 's': 0.55, 'w': 0.35} %}
 <div class="ig-drawer-rim-row">
-  <div class="rim-label">Вид</div>
   <label class="rim-toggle">
     <input type="checkbox" class="js-drawer-rim-toggle" {% if rim.on %}checked{% endif %} />
     <span class="rim-knob"></span>
