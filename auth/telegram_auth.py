@@ -74,7 +74,7 @@ def verify_telegram_webapp_init_data(init_data: str) -> dict[str, Any]:
 
     if not matched:
         # Allow bypassing verification via env var for debugging only
-        skip_verify = (getattr(settings, "TELEGRAM_WEBAPP_SKIP_VERIFY", "") or "").strip().lower() == "true"
+        skip_verify = bool(getattr(settings, "TELEGRAM_WEBAPP_SKIP_VERIFY", False))
         if skip_verify:
             logger.warning("SIGNATURE VERIFICATION SKIPPED (TELEGRAM_WEBAPP_SKIP_VERIFY=true) — DEBUG ONLY")
         else:

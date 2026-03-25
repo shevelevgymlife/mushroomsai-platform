@@ -14,6 +14,7 @@ def _env_file_for_settings() -> str | None:
 class Settings(BaseSettings):
     TELEGRAM_TOKEN: str = ""
     TELEGRAM_BOT_USERNAME: str = ""  # напр. mushroomsai_bot (без @)
+    TELEGRAM_WEBAPP_SKIP_VERIFY: bool = False  # DEBUG ONLY: пропустить проверку подписи initData
     NOTIFY_BOT_TOKEN: str = ""       # отдельный бот для уведомлений админу
     GITHUB_WEBHOOK_SECRET: str = ""  # секрет для GitHub Webhooks
     OPENAI_API_KEY: str = ""
