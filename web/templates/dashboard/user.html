@@ -2295,7 +2295,7 @@ async function refreshActivityCount(){
   try{
     const r=await fetch('/community/activity/unread-count',{credentials:'same-origin'});
     const d=await r.json();
-    const n=(d&&d.total)||0;
+    const n=(typeof d.activity_total==='number')?d.activity_total:((d&&d.total)||0);
     el.textContent=n>99?'99+':String(n);
     el.style.display=n>0?'flex':'none';
   }catch(e){}
