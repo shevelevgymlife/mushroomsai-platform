@@ -1,10 +1,7 @@
-FROM python:3.11-slim-bookworm
-
-WORKDIR /app
-
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
+# 👉 ВАЖНО: ставим системные зависимости
 RUN apt-get update && apt-get install -y \
     gcc \
     libpq-dev \
@@ -20,4 +17,5 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
 
 COPY . .
 
+# Render подставляет PORT при старте
 CMD ["sh", "-c", "exec uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
