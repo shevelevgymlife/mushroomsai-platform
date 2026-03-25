@@ -73,7 +73,7 @@ async def reply_fb_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
                 f"https://api.telegram.org/bot{token}/sendMessage",
                 json={
                     "chat_id": user_tg_id,
-                    "text": f"💬 <b>Ответ поддержки MushroomsAI:</b>\n\n{text}",
+                    "text": f"💬 <b>Ответ поддержки NeuroFungi AI:</b>\n\n{text}",
                     "parse_mode": "HTML",
                 },
             )

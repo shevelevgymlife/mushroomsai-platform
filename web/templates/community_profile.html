@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ profile.name or 'Профиль' }} — Сообщество MushroomsAI{% endblock %}
+{% block title %}{{ profile.name or 'Профиль' }} — Сообщество NeuroFungi AI{% endblock %}
 
 {% from 'components/stroke_icons.html' import ico %}
 
@@ -175,7 +175,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 <div class="cp-ig-root">
   <header class="ig-dash-header" aria-label="Профиль">
     <a href="/dashboard#feed" class="ig-ham" aria-label="Назад к ленте">←</a>
-    <a href="/community/profile/{{ profile.id }}" class="ig-head-brand">MushroomsAI</a>
+    <a href="/community/profile/{{ profile.id }}" class="ig-head-brand">NeuroFungi AI</a>
     <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
       <a href="/dashboard#feed" class="ig-head-msg" title="Лента" aria-label="Лента">{{ ico('feed') }}</a>
       <a href="/dashboard" class="ig-head-msg" title="Кабинет" aria-label="Кабинет">{{ ico('user') }}</a>

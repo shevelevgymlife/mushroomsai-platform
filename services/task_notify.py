@@ -125,7 +125,7 @@ async def notify_status(
         f"Проверка: {site}\n"
         f"Time: {ts}"
     )
-    subject = f"[MushroomsAI] {stage_title} ({_render_service()}) {_render_commit()}"
+    subject = f"[NeuroFungi AI] {stage_title} ({_render_service()}) {_render_commit()}"
     if include_email:
         await _notify_email(subject, msg, stage)
     # Telegram

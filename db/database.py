@@ -24,7 +24,7 @@ def get_engine() -> sqlalchemy.Engine:
     _db_url = (settings.DATABASE_URL or "").strip()
     if not _db_url:
         raise RuntimeError(
-            "MushroomsAI: DATABASE_URL не задан или пустой. "
+            "NeuroFungi AI: DATABASE_URL не задан или пустой. "
             "На Render: открой PostgreSQL → Connect → Internal Database URL, "
             "вставь в Web Service → Environment как DATABASE_URL → Save → Manual Deploy."
         )

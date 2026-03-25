@@ -192,7 +192,7 @@ async def lifespan(app: FastAPI):
 # -------------------- APP --------------------
 
 app = FastAPI(
-    title="MushroomsAI Platform",
+    title="NeuroFungi AI Platform",
     version="1.0.0",
     lifespan=lifespan,
 )

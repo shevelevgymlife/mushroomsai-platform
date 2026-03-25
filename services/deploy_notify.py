@@ -36,9 +36,9 @@ def _send_deploy_email_sync() -> None:
     site = (settings.SITE_URL or "").strip() or "unknown-site"
     service = os.getenv("RENDER_SERVICE_NAME", "mushroomsai")
     commit = os.getenv("RENDER_GIT_COMMIT", "")[:12] or "unknown"
-    subject = f"[MushroomsAI] Deploy started ({service}) {commit}"
+    subject = f"[NeuroFungi AI] Deploy started ({service}) {commit}"
     body = (
-        "Новый инстанс MushroomsAI запущен.\n\n"
+        "Новый инстанс NeuroFungi AI запущен.\n\n"
         f"Service: {service}\n"
         f"Commit: {commit}\n"
         f"Site: {site}\n"

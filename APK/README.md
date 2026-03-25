@@ -1,6 +1,6 @@
-# APK Android wrapper for MushroomsAI
+# APK Android wrapper for NeuroFungi AI
 
-This folder contains an Android app project that wraps the live MushroomsAI web app.
+This folder contains an Android app project that wraps the live NeuroFungi AI web app.
 
 ## What it gives you
 

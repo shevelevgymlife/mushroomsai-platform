@@ -49,7 +49,7 @@ public class MainActivity extends AppCompatActivity {
         settings.setBuiltInZoomControls(false);
         settings.setDisplayZoomControls(false);
         settings.setSupportZoom(false);
-        settings.setUserAgentString(settings.getUserAgentString() + " MushroomsAIAndroid/1.0");
+        settings.setUserAgentString(settings.getUserAgentString() + " NeuroFungi AIAndroid/1.0");
 
         CookieManager cookieManager = CookieManager.getInstance();
         cookieManager.setAcceptCookie(true);

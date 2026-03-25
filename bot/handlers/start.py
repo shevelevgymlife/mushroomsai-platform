@@ -14,7 +14,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             InlineKeyboardButton("❌ Отмена", callback_data=f"link_cancel:{token}"),
         ]])
         await update.message.reply_text(
-            "🔗 <b>Привязка аккаунта MushroomsAI</b>\n\n"
+            "🔗 <b>Привязка аккаунта NeuroFungi AI</b>\n\n"
             "Вы хотите привязать этот Telegram к вашему аккаунту на сайте?\n"
             "После привязки вы сможете входить через Telegram.",
             parse_mode="HTML",
@@ -32,7 +32,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     await update.message.reply_text(
         f"Привет, {name}! 👋\n\n"
-        f"Добро пожаловать в <b>MushroomsAI</b> — умный помощник грибовода.\n"
+        f"Добро пожаловать в <b>NeuroFungi AI</b> — умный помощник грибовода.\n"
         f"Нажмите кнопку ниже, чтобы открыть платформу:",
         parse_mode="HTML",
         reply_markup=keyboard,
