@@ -118,6 +118,7 @@ async def run_heavy_startup(app: FastAPI) -> None:
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_apple_id ON users(apple_id)",
             "ALTER TABLE community_likes ADD COLUMN IF NOT EXISTS seen_by_post_owner BOOLEAN NOT NULL DEFAULT true",
             "ALTER TABLE community_comments ADD COLUMN IF NOT EXISTS seen_by_post_owner BOOLEAN NOT NULL DEFAULT true",
+            "ALTER TABLE profile_likes ADD COLUMN IF NOT EXISTS seen_by_owner BOOLEAN NOT NULL DEFAULT true",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS decimal_del_balance TEXT",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS decimal_balance_cached_at TIMESTAMP",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS shevelev_balance_cached TEXT",

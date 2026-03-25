@@ -1,8 +1,12 @@
 {% extends "base.html" %}
 {% block title %}Вход — NEUROFUNGI AI{% endblock %}
 
+{% block extra_head %}
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+{% endblock %}
+
 {% block content %}
-<div class="min-h-screen flex items-center justify-center px-4 neo-app-surface" style="padding-top:0;margin-top:-40px">
+<div id="login-page-root" class="min-h-screen flex items-center justify-center px-4 neo-app-surface" style="padding-top:0;margin-top:-40px">
   <div class="w-full max-w-md">
 
     <div class="text-center mb-8">
@@ -19,21 +23,14 @@
     </div>
     {% endif %}
 
+    <p class="text-xs text-muted text-center mb-4 leading-relaxed" id="login-hint-web">
+      Выберите способ входа: Google или Telegram (откроется приложение Telegram с мини-приложением бота).
+    </p>
+
     <div class="flex flex-col gap-3">
 
-      <!-- Telegram — открыть приложение напрямую -->
-      <a href="/auth/telegram/open"
-        style="display:flex;align-items:center;justify-content:center;gap:12px;width:100%;min-height:52px;padding:0 20px;border-radius:14px;text-decoration:none;background:rgba(38,169,224,.12);border:1.5px solid rgba(38,169,224,.35);color:#29a8e0;font-size:15px;font-weight:600;transition:all .2s"
-        onmouseover="this.style.background='rgba(38,169,224,.2)';this.style.borderColor='rgba(38,169,224,.6)'"
-        onmouseout="this.style.background='rgba(38,169,224,.12)';this.style.borderColor='rgba(38,169,224,.35)'">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8l-1.68 7.94c-.12.56-.46.7-.94.44l-2.58-1.9-1.24 1.2c-.14.14-.26.26-.52.26l.18-2.62 4.74-4.28c.2-.18-.04-.28-.32-.1L7.6 14.48l-2.52-.79c-.54-.17-.56-.54.12-.8l9.86-3.8c.46-.16.86.12.58.71z" fill="#29a8e0"/>
-        </svg>
-        Войти через Telegram
-      </a>
-
-      <!-- Google Login -->
-      <a href="/auth/google"
+      <!-- Веб: основной способ — Google -->
+      <a id="login-google-btn" href="/auth/google"
         style="display:flex;align-items:center;justify-content:center;gap:12px;width:100%;min-height:52px;padding:0 20px;border-radius:14px;text-decoration:none;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.12);color:#e8e8e8;font-size:15px;font-weight:500;transition:all .2s"
         onmouseover="this.style.background='rgba(255,255,255,.11)';this.style.borderColor='rgba(255,255,255,.22)'"
         onmouseout="this.style.background='rgba(255,255,255,.06)';this.style.borderColor='rgba(255,255,255,.12)'">
@@ -46,8 +43,75 @@
         Войти через Google
       </a>
 
+      {% if telegram_enabled %}
+      <!-- В браузере: открыть бота (Mini App). Внутри Telegram Mini App: не показываем как основной веб-вход -->
+      <a id="tg-login-btn" href="/auth/telegram/open"
+        style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:100%;min-height:52px;padding:10px 20px;border-radius:14px;text-decoration:none;background:rgba(38,169,224,.12);border:1.5px solid rgba(38,169,224,.35);color:#29a8e0;font-size:15px;font-weight:600;transition:all .2s"
+        onmouseover="this.style.background='rgba(38,169,224,.2)';this.style.borderColor='rgba(38,169,224,.6)'"
+        onmouseout="this.style.background='rgba(38,169,224,.12)';this.style.borderColor='rgba(38,169,224,.35)'">
+        <span style="display:flex;align-items:center;gap:10px">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8l-1.68 7.94c-.12.56-.46.7-.94.44l-2.58-1.9-1.24 1.2c-.14.14-.26.26-.52.26l.18-2.62 4.74-4.28c.2-.18-.04-.28-.32-.1L7.6 14.48l-2.52-.79c-.54-.17-.56-.54.12-.8l9.86-3.8c.46-.16.86.12.58.71z" fill="#29a8e0"/>
+          </svg>
+          <span id="tg-login-label">Войти через Telegram</span>
+        </span>
+        <span id="tg-login-sub" style="font-size:11px;font-weight:500;color:rgba(41,168,224,.75);text-align:center;line-height:1.35">Откроется бот — вход в аккаунт в приложении Telegram</span>
+      </a>
+      {% endif %}
+
     </div>
 
   </div>
 </div>
+<script src="/static/js/telegram-webapp-auth.js?v=5"></script>
+<script>
+(function () {
+  var next = new URLSearchParams(location.search).get("next") || "/dashboard";
+  var tg = window.Telegram && window.Telegram.WebApp;
+  if (tg && typeof tg.ready === "function") {
+    try { tg.ready(); } catch (e) {}
+  }
+  var g = document.getElementById("login-google-btn");
+  var tgBtn = document.getElementById("tg-login-btn");
+  var hint = document.getElementById("login-hint-web");
+  var sub = document.getElementById("tg-login-sub");
+  var lbl = document.getElementById("tg-login-label");
+
+  function startTelegramMiniAppLogin() {
+    var root = document.getElementById("login-page-root");
+    if (root) {
+      root.innerHTML =
+        "<div class=\"w-full max-w-md text-center px-4 py-16\"><p class=\"text-xl font-semibold text-text mb-2\">Входим через Telegram…</p><p class=\"text-sm text-muted\">Подождите секунду</p></div>";
+    }
+    window.runTelegramWebAppAuth({
+      nextPath: next,
+      onError: function (msg) {
+        document.body.innerHTML =
+          "<div style=\"padding:24px;font-family:system-ui;color:#f87171;line-height:1.5\">" + msg + "</div>";
+      },
+      onSuccess: function () {}
+    });
+  }
+
+  if (tg) {
+    /* Внутри Telegram Mini App: Google скрыт; вход по Telegram только после нажатия кнопки (без автозапуска) */
+    if (g) g.style.display = "none";
+    if (hint) hint.style.display = "none";
+    if (sub) sub.style.display = "none";
+    if (lbl) lbl.textContent = "Войти через Telegram";
+    if (tgBtn) {
+      tgBtn.setAttribute("href", "#");
+      tgBtn.addEventListener("click", function (e) {
+        e.preventDefault();
+        startTelegramMiniAppLogin();
+      });
+    }
+  } else {
+    /* Веб: выбор Google или переход в приложение Telegram по клику (без автозапуска) */
+    if (tgBtn) {
+      tgBtn.setAttribute("href", "/auth/telegram/open?next=" + encodeURIComponent(next));
+    }
+  }
+})();
+</script>
 {% endblock %}

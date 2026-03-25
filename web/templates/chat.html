@@ -90,7 +90,7 @@ window.addEventListener('load', function() {
 });
 
 function openCabinet() {
-  window.location.href = '/login';
+  window.location.href = window.__tgHrefWithInitData ? window.__tgHrefWithInitData("/login") : "/login";
 }
 </script>
 {% endblock %}

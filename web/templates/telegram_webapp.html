@@ -1,88 +1,29 @@
 {% extends "base.html" %}
 {% block title %}Telegram вход — NEUROFUNGI AI{% endblock %}
 
+{% block extra_head %}
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+{% endblock %}
+
 {% block content %}
 <div class="min-h-screen flex items-center justify-center pt-24 px-4 neo-app-surface">
-  <div class="w-full max-w-md text-center" id="statusWrap">
-    <div style="width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#c8a84b,#e8c96d);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#0a0c14;margin:0 auto 18px">N</div>
+  <div class="w-full max-w-md text-center">
     <h1 class="text-xl font-semibold text-text mb-2">Входим через Telegram...</h1>
-    <p class="text-sm text-muted" id="statusMsg">Получаем данные авторизации</p>
-    <div style="margin-top:20px;display:flex;gap:8px;justify-content:center">
-      <div style="width:8px;height:8px;border-radius:50%;background:#3dd4e0;animation:pulse 1.4s ease-in-out infinite"></div>
-      <div style="width:8px;height:8px;border-radius:50%;background:#c8a84b;animation:pulse 1.4s ease-in-out .25s infinite"></div>
-      <div style="width:8px;height:8px;border-radius:50%;background:#3dd4e0;animation:pulse 1.4s ease-in-out .5s infinite"></div>
-    </div>
-    <style>@keyframes pulse{0%,80%,100%{opacity:.2;transform:scale(.7)}40%{opacity:1;transform:scale(1)}}</style>
+    <p class="text-sm text-muted">Подождите секунду</p>
   </div>
 </div>
 
+<script src="/static/js/telegram-webapp-auth.js?v=5"></script>
 <script>
-(async function () {
-  const statusMsg = document.getElementById('statusMsg');
-  const botUsername = '{{ bot_username|e }}';
-  const startapp = '{{ startapp|e }}';
-  const next = new URLSearchParams(window.location.search).get('next') || '{{ next_path|e }}';
-  const deepLink = botUsername ? `https://t.me/${botUsername}?startapp=${encodeURIComponent(startapp || 'webapp')}` : null;
-
-  function showError(msg, showReopen) {
-    document.getElementById('statusWrap').innerHTML =
-      `<div style="padding:24px;text-align:center">
-        <div style="font-size:32px;margin-bottom:12px">⚠️</div>
-        <div style="color:#f87171;font-size:15px;font-weight:600;margin-bottom:8px">Ошибка входа</div>
-        <div style="color:#9ca3af;font-size:13px;line-height:1.6;margin-bottom:16px">${msg}</div>
-        ${showReopen && deepLink ? `<a href="${deepLink}" style="display:inline-block;padding:10px 20px;border-radius:12px;background:rgba(38,169,224,.12);border:1.5px solid rgba(38,169,224,.35);color:#29a8e0;font-size:14px;font-weight:600;text-decoration:none">Открыть в Telegram снова</a>` : ''}
-        <div style="margin-top:12px"><a href="/login" style="color:#666;font-size:12px">← Другой способ входа</a></div>
-      </div>`;
-  }
-
-  try {
-    const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-    if (tg) {
-      try { tg.ready(); } catch(e) {}
-      try { tg.expand(); } catch(e) {}
-    }
-
-    // Ждём initData до 8 секунд
-    let initData = tg ? tg.initData : null;
-    if (!initData) {
-      statusMsg && (statusMsg.textContent = 'Ожидаем данные Telegram...');
-      const t0 = Date.now();
-      while (!initData && (Date.now() - t0) < 8000) {
-        await new Promise(r => setTimeout(r, 200));
-        initData = tg ? tg.initData : null;
-      }
-    }
-
-    if (!initData) {
-      // Страница открыта не внутри Telegram WebApp
-      const platform = tg ? (tg.platform || '—') : 'no Telegram.WebApp';
-      showError(
-        `Страница должна открываться внутри Telegram.<br>` +
-        `<span style="font-size:11px;color:#666">platform: ${platform}</span>`,
-        true
-      );
-      return;
-    }
-
-    statusMsg && (statusMsg.textContent = 'Проверяем авторизацию...');
-
-    const resp = await fetch('/auth/telegram/webapp/callback', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ initData, next })
-    });
-
-    const data = await resp.json().catch(() => ({}));
-
-    if (!resp.ok || !data || !data.ok) {
-      showError(data && data.error ? data.error : `Ошибка сервера (${resp.status})`, true);
-      return;
-    }
-
-    window.location.href = data.redirect || '/dashboard';
-  } catch(e) {
-    showError('Произошла ошибка. Попробуйте ещё раз.', true);
-  }
+(function () {
+  var next = new URLSearchParams(window.location.search).get("next") || "{{ next_path|e }}";
+  window.runTelegramWebAppAuth({
+    nextPath: next,
+    onError: function (msg) {
+      document.body.innerHTML = "<div style=\"padding:24px;font-family:system-ui;color:#f87171;line-height:1.5\">" + msg + "</div>";
+    },
+    onSuccess: function () {}
+  });
 })();
 </script>
 {% endblock %}

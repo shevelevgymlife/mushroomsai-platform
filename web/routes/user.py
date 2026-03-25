@@ -9,6 +9,7 @@ from db.database import database
 from db.models import (
     users, messages, orders, posts, post_likes, community_posts, community_likes, community_comments,
     community_folders, community_follows, community_saved, community_messages, profile_likes, community_profiles,
+    direct_messages,
     dashboard_blocks, user_block_overrides, community_groups, community_group_members, community_group_messages,
     community_group_message_likes,
     community_group_join_requests,
@@ -86,8 +87,8 @@ async def compute_visible_blocks(user_id: int, plan: str) -> list[str]:
 
 def build_dashboard_secs(visible_block_keys: list[str]) -> list[str]:
     keys = set(visible_block_keys)
-    # Единый каркас как Instagram у всех: профиль, лента, группы; наполнение внутри — по тарифу (vbk)
-    out = ["me", "feed", "groups", "search"]
+    # Единый каркас: лента, группы; профиль — только /community/profile/{id} (одна страница на пользователя)
+    out = ["feed", "groups", "search"]
     if "messages" in keys:
         out.append("messages")
     if "ai_chat" in keys:
@@ -1538,7 +1539,9 @@ async def like_profile(request: Request, target_id: int):
     else:
         try:
             await database.execute(
-                profile_likes.insert().values(user_id=uid, liked_user_id=target_id)
+                profile_likes.insert().values(
+                    user_id=uid, liked_user_id=target_id, seen_by_owner=False
+                )
             )
         except Exception:
             pass
@@ -2789,13 +2792,26 @@ async def delete_community_post_user(request: Request, post_id: int):
     return JSONResponse({"ok": True})
 
 
+async def _owner_family_user_ids(uid: int) -> list[int]:
+    rows = await database.fetch_all(
+        users.select().with_only_columns(users.c.id).where(
+            sa.or_(users.c.id == uid, users.c.primary_user_id == uid)
+        )
+    )
+    return sorted({int(r["id"]) for r in rows} | {int(uid)})
+
+
 @router.get("/community/activity/unread-count")
 async def community_activity_unread_count(request: Request):
     user = await require_auth(request)
     if not user:
-        return JSONResponse({"likes": 0, "comments": 0, "total": 0})
+        return JSONResponse(
+            {"likes": 0, "comments": 0, "profile_likes": 0, "messages": 0, "total": 0}
+        )
     uid = user.get("primary_user_id") or user["id"]
-    subq = sa.select(community_posts.c.id).where(community_posts.c.user_id == uid)
+    fam = await _owner_family_user_ids(uid)
+    subq = sa.select(community_posts.c.id).where(community_posts.c.user_id.in_(fam))
+    n_likes = n_com = n_pl = n_msg = 0
     try:
         n_likes = await database.fetch_val(
             sa.select(sa.func.count())
@@ -2809,9 +2825,33 @@ async def community_activity_unread_count(request: Request):
             .where(community_comments.c.post_id.in_(subq))
             .where(community_comments.c.seen_by_post_owner.is_(False))
         ) or 0
+        n_pl = await database.fetch_val(
+            sa.select(sa.func.count())
+            .select_from(profile_likes)
+            .where(profile_likes.c.liked_user_id == uid)
+            .where(profile_likes.c.seen_by_owner.is_(False))
+        ) or 0
+        n_msg = await database.fetch_val(
+            sa.select(sa.func.count())
+            .select_from(direct_messages)
+            .where(direct_messages.c.recipient_id == uid)
+            .where(direct_messages.c.is_read.is_(False))
+            .where(direct_messages.c.is_system.is_(False))
+        ) or 0
     except Exception:
-        n_likes, n_com = 0, 0
-    return JSONResponse({"likes": int(n_likes), "comments": int(n_com), "total": int(n_likes + n_com)})
+        pass
+    activity_total = int(n_likes + n_com + n_pl)
+    tot = activity_total + int(n_msg)
+    return JSONResponse(
+        {
+            "likes": int(n_likes),
+            "comments": int(n_com),
+            "profile_likes": int(n_pl),
+            "messages": int(n_msg),
+            "activity_total": activity_total,
+            "total": tot,
+        }
+    )
 
 
 @router.post("/community/activity/mark-read")
@@ -2820,7 +2860,8 @@ async def community_activity_mark_read(request: Request):
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
     uid = user.get("primary_user_id") or user["id"]
-    subq = sa.select(community_posts.c.id).where(community_posts.c.user_id == uid)
+    fam = await _owner_family_user_ids(uid)
+    subq = sa.select(community_posts.c.id).where(community_posts.c.user_id.in_(fam))
     try:
         await database.execute(
             community_likes.update()
@@ -2832,6 +2873,163 @@ async def community_activity_mark_read(request: Request):
             .where(community_comments.c.post_id.in_(subq))
             .values(seen_by_post_owner=True)
         )
+        await database.execute(
+            profile_likes.update()
+            .where(profile_likes.c.liked_user_id == uid)
+            .values(seen_by_owner=True)
+        )
     except Exception:
         pass
     return JSONResponse({"ok": True})
+
+
+@router.get("/community/activity/feed")
+async def community_activity_feed(request: Request):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = user.get("primary_user_id") or user["id"]
+    fam = await _owner_family_user_ids(uid)
+    subq_posts = sa.select(community_posts.c.id).where(community_posts.c.user_id.in_(fam))
+    items: list[dict] = []
+
+    try:
+        like_rows = await database.fetch_all(
+            sa.select(
+                community_likes.c.id,
+                community_likes.c.post_id,
+                community_likes.c.user_id,
+                community_likes.c.created_at,
+                users.c.name,
+                users.c.avatar,
+            )
+            .select_from(
+                community_likes.join(users, users.c.id == community_likes.c.user_id).join(
+                    community_posts, community_posts.c.id == community_likes.c.post_id
+                )
+            )
+            .where(community_likes.c.post_id.in_(subq_posts))
+            .where(community_likes.c.seen_by_post_owner.is_(False))
+            .where(community_likes.c.user_id != uid)
+            .order_by(community_likes.c.id.desc())
+            .limit(25)
+        )
+        for r in like_rows:
+            items.append(
+                {
+                    "type": "post_like",
+                    "id": r["id"],
+                    "post_id": r["post_id"],
+                    "created_at": r["created_at"].isoformat() if r.get("created_at") else "",
+                    "actor": {
+                        "id": r["user_id"],
+                        "name": r.get("name") or "Участник",
+                        "avatar": r.get("avatar"),
+                    },
+                }
+            )
+
+        c_rows = await database.fetch_all(
+            sa.select(
+                community_comments.c.id,
+                community_comments.c.post_id,
+                community_comments.c.user_id,
+                community_comments.c.content,
+                community_comments.c.created_at,
+                users.c.name,
+                users.c.avatar,
+            )
+            .select_from(
+                community_comments.join(users, users.c.id == community_comments.c.user_id)
+            )
+            .where(community_comments.c.post_id.in_(subq_posts))
+            .where(community_comments.c.seen_by_post_owner.is_(False))
+            .where(community_comments.c.user_id != uid)
+            .order_by(community_comments.c.id.desc())
+            .limit(25)
+        )
+        for r in c_rows:
+            txt = (r.get("content") or "").strip()
+            if len(txt) > 140:
+                txt = txt[:137] + "…"
+            items.append(
+                {
+                    "type": "comment",
+                    "id": r["id"],
+                    "post_id": r["post_id"],
+                    "snippet": txt,
+                    "created_at": r["created_at"].isoformat() if r.get("created_at") else "",
+                    "actor": {
+                        "id": r["user_id"],
+                        "name": r.get("name") or "Участник",
+                        "avatar": r.get("avatar"),
+                    },
+                }
+            )
+
+        pl_rows = await database.fetch_all(
+            sa.select(
+                profile_likes.c.id,
+                profile_likes.c.user_id,
+                profile_likes.c.created_at,
+                users.c.name,
+                users.c.avatar,
+            )
+            .select_from(profile_likes.join(users, users.c.id == profile_likes.c.user_id))
+            .where(profile_likes.c.liked_user_id == uid)
+            .where(profile_likes.c.seen_by_owner.is_(False))
+            .order_by(profile_likes.c.id.desc())
+            .limit(20)
+        )
+        for r in pl_rows:
+            items.append(
+                {
+                    "type": "profile_like",
+                    "id": r["id"],
+                    "created_at": r["created_at"].isoformat() if r.get("created_at") else "",
+                    "actor": {
+                        "id": r["user_id"],
+                        "name": r.get("name") or "Участник",
+                        "avatar": r.get("avatar"),
+                    },
+                }
+            )
+
+        dm_rows = await database.fetch_all(
+            sa.select(
+                direct_messages.c.id,
+                direct_messages.c.sender_id,
+                direct_messages.c.text,
+                direct_messages.c.created_at,
+                users.c.name,
+                users.c.avatar,
+            )
+            .select_from(direct_messages.join(users, users.c.id == direct_messages.c.sender_id))
+            .where(direct_messages.c.recipient_id == uid)
+            .where(direct_messages.c.is_read.is_(False))
+            .where(direct_messages.c.is_system.is_(False))
+            .order_by(direct_messages.c.id.desc())
+            .limit(15)
+        )
+        for r in dm_rows:
+            tx = (r.get("text") or "").strip()
+            if len(tx) > 120:
+                tx = tx[:117] + "…"
+            items.append(
+                {
+                    "type": "message",
+                    "id": r["id"],
+                    "created_at": r["created_at"].isoformat() if r.get("created_at") else "",
+                    "text_preview": tx,
+                    "actor": {
+                        "id": r["sender_id"],
+                        "name": r.get("name") or "Участник",
+                        "avatar": r.get("avatar"),
+                    },
+                }
+            )
+    except Exception:
+        pass
+
+    items.sort(key=lambda x: x.get("created_at") or "", reverse=True)
+    return JSONResponse({"ok": True, "items": items[:40]})

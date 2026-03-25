@@ -4,6 +4,7 @@ import hashlib
 import hmac
 import json
 import logging
+import time
 import urllib.parse
 from typing import Any
 
@@ -17,64 +18,91 @@ from services.referral_service import generate_referral_code, finalize_web_refer
 logger = logging.getLogger(__name__)
 
 
-def _parse_init_data(init_data: str) -> dict[str, str]:
-    # initData format: key=value&key2=value2 (values are URL-encoded)
-    pairs = urllib.parse.parse_qsl(init_data, keep_blank_values=True)
-    return {k: v for k, v in pairs}
-
-
 def _telegram_webapp_secret_key(bot_token: str) -> bytes:
     # Telegram docs: secret_key = HMAC_SHA256("WebAppData", bot_token)
     return hmac.new(b"WebAppData", bot_token.encode("utf-8"), hashlib.sha256).digest()
 
 
-def _check_signature(data_check_string: str, provided_hash: str, bot_token: str) -> bool:
-    secret_key = _telegram_webapp_secret_key(bot_token)
-    computed = hmac.new(secret_key, data_check_string.encode("utf-8"), hashlib.sha256).hexdigest()
-    return hmac.compare_digest(computed, provided_hash)
-
-
 def verify_telegram_webapp_init_data(init_data: str) -> dict[str, Any]:
     """
-    Verify Telegram WebApp initData signature.
-    Tries all configured bot tokens (main + notify) so the WebApp works
-    regardless of which bot the user opened it from.
+    Verify Telegram WebApp initData signature (same rules as aiogram.utils.web_app).
     Returns parsed initData fields if valid; raises ValueError otherwise.
     """
     if not init_data or not isinstance(init_data, str):
         raise ValueError("initData is empty")
 
-    parsed = _parse_init_data(init_data)
+    # parse_qsl + dict — как в aiogram (значения декодированы; так же строится data_check_string)
+    try:
+        parsed = dict(
+            urllib.parse.parse_qsl(init_data, keep_blank_values=True, strict_parsing=True)  # type: ignore[call-arg]
+        )
+    except (TypeError, ValueError):
+        parsed = dict(urllib.parse.parse_qsl(init_data, keep_blank_values=True))
+
     provided_hash = parsed.get("hash") or ""
     if not provided_hash:
         raise ValueError("initData.hash is missing")
 
-    check_parts = [f"{k}={parsed[k]}" for k in sorted(parsed.keys()) if k != "hash"]
+    # Поля hash и signature не участвуют в подписи (signature — новый формат для third-party)
+    skip_keys = frozenset({"hash", "signature"})
+    check_parts: list[str] = []
+    for k in sorted(parsed.keys()):
+        if k in skip_keys:
+            continue
+        check_parts.append(f"{k}={parsed[k]}")
     data_check_string = "\n".join(check_parts)
 
-    # Collect all tokens to try: TELEGRAM_BOT_TOKEN, TELEGRAM_TOKEN, NOTIFY_BOT_TOKEN
+    # Пробуем все токены: TELEGRAM_BOT_TOKEN, TELEGRAM_TOKEN, NOTIFY_BOT_TOKEN.
+    # Это нужно если у пользователя несколько ботов с WebApp (подпись делается токеном того бота,
+    # через которого открыт WebApp).
     candidates: list[str] = []
     for attr in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_TOKEN", "NOTIFY_BOT_TOKEN"):
         t = (getattr(settings, attr, "") or "").strip()
         if t and t not in candidates:
             candidates.append(t)
-
     if not candidates:
-        raise ValueError("Ни один токен бота не настроен (TELEGRAM_TOKEN/TELEGRAM_BOT_TOKEN)")
+        raise ValueError("TELEGRAM_BOT_TOKEN/TELEGRAM_TOKEN is not configured")
 
+    matched = False
     for token in candidates:
-        if _check_signature(data_check_string, provided_hash, token):
+        secret_key = _telegram_webapp_secret_key(token)
+        computed_hash = hmac.new(secret_key, data_check_string.encode("utf-8"), hashlib.sha256).hexdigest()
+        if hmac.compare_digest(computed_hash, provided_hash):
             logger.debug("initData verified with token ending …%s", token[-4:])
-            # Parse `user` JSON if present.
-            user_raw = parsed.get("user")
-            if user_raw:
-                try:
-                    parsed["user"] = json.loads(user_raw)
-                except Exception:
-                    parsed["user"] = {}
-            return parsed
+            matched = True
+            break
 
-    raise ValueError("initData signature mismatch")
+    if not matched:
+        logger.warning(
+            "Telegram WebApp initData HMAC mismatch (check TELEGRAM_BOT_TOKEN matches WebApp bot)"
+        )
+        raise ValueError("initData signature mismatch")
+
+    # Свежесть initData (как у Login Widget, до 24 ч)
+    try:
+        auth_date = int(parsed.get("auth_date") or 0)
+    except (TypeError, ValueError):
+        auth_date = 0
+    if auth_date <= 0:
+        raise ValueError("initData.auth_date is missing")
+
+    now = time.time()
+    # Допуск сдвига часов: auth_date не должна быть «из будущего» дольше чем на 5 мин
+    if auth_date - now > 300:
+        raise ValueError("initData.auth_date is in the future")
+    # Данные не старше 24 ч (как в документации Telegram)
+    if now - auth_date > 86400:
+        raise ValueError("initData expired (auth_date too old)")
+
+    # Parse `user` JSON if present.
+    user_raw = parsed.get("user")
+    if user_raw:
+        try:
+            parsed["user"] = json.loads(user_raw)
+        except Exception:
+            parsed["user"] = {}
+
+    return parsed
 
 
 async def telegram_webapp_login(
@@ -82,11 +110,12 @@ async def telegram_webapp_login(
     *,
     request,
     redirect_to: str = "/dashboard",
-) -> tuple[int, str]:
+) -> tuple[int, str, int]:
     """
     Verify initData, create/find user by tg_id, and return:
     - user_id that should be stored in JWT sub
     - redirect destination path
+    - tg_id (Telegram user id) for admin / notifications
     """
     parsed = verify_telegram_webapp_init_data(init_data)
     user = parsed.get("user") or {}
@@ -119,10 +148,11 @@ async def telegram_webapp_login(
             await database.execute(users.update().where(users.c.id == row["id"]).values(name=full_name))
     else:
         ref_code = await generate_referral_code()
+        display_name = full_name or username or "Пользователь"
         await database.execute(
             users.insert().values(
                 tg_id=tg_id_int,
-                name=full_name,
+                name=display_name,
                 referral_code=ref_code,
                 # role/subscription_plan use defaults
             )
@@ -131,10 +161,16 @@ async def telegram_webapp_login(
         if not row:
             raise RuntimeError("Failed to create Telegram user")
         user_id = row["primary_user_id"] or row["id"]
+        try:
+            from services.tg_notify import notify_new_user
+
+            await notify_new_user(int(user_id), display_name, "Telegram WebApp")
+        except Exception:
+            pass
 
     # We can finalize referral even for Telegram login (invite_ref cookie may exist).
     # Response cookie is set by caller (auth_routes); finalize uses response object.
-    return int(user_id), redirect_to
+    return int(user_id), redirect_to, tg_id_int
 
 
 async def telegram_finalize_login_cookie(
@@ -145,6 +181,17 @@ async def telegram_finalize_login_cookie(
 ) -> None:
     # Create access token and finalize referrals in one place for consistency.
     token = create_access_token(user_id)
-    response.set_cookie("access_token", token, httponly=True, max_age=30 * 24 * 3600)
+    secure = (settings.SITE_URL or "").lower().startswith("https://")
+    # В WebView Telegram часто нужен SameSite=None + Secure, иначе сессия не цепляется после редиректа.
+    same_site = "none" if secure else "lax"
+    response.set_cookie(
+        "access_token",
+        token,
+        httponly=True,
+        max_age=30 * 24 * 3600,
+        samesite=same_site,
+        secure=secure,
+        path="/",
+    )
     await finalize_web_referral(request, response, int(user_id))
 

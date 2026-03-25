@@ -31,6 +31,7 @@ from db.models import (
 )
 from auth.session import get_user_from_request
 from config import settings, shevelev_token_address
+from services.subscription_service import check_subscription, PLANS
 from services.legal import legal_acceptance_redirect
 from services.referral_service import attach_invite_ref_from_query
 from services.ops_alerts import (
@@ -137,7 +138,11 @@ CATEGORIES = ["Экстракт", "Плодовое тело", "Капсулы",
 async def index(request: Request):
     current_user = await get_user_from_request(request)
     if current_user:
-        return RedirectResponse("/dashboard", status_code=302)
+        # 302 теряет #tgWebAppData — клиентский редирект сохраняет fragment для Telegram Mini App
+        return templates.TemplateResponse(
+            "telegram_redirect_preserve.html",
+            {"request": request, "redirect_dest": "/dashboard"},
+        )
     prods = await database.fetch_all(
         products.select().where(products.c.active == True).limit(6)
     )
@@ -1245,12 +1250,16 @@ async def community_profile(request: Request, user_id: int):
     _vwa = (vrow.get("wallet_address") or "").strip() if vrow else ""
     shevelev_auto_sync = _vwa.startswith("0x")
 
+    profile_plan = await check_subscription(profile_id)
+    profile_plan_info = PLANS.get(profile_plan, PLANS["free"])
+
     return templates.TemplateResponse(
         "community_profile.html",
         {
             "request": request,
             "user": current_user,
             "current_user": current_user,
+            "viewer_effective_id": viewer_id,
             "profile": profile,
             "profile_id": profile_id,
             "post_count": post_count,
@@ -1265,6 +1274,8 @@ async def community_profile(request: Request, user_id: int):
             "max_profile_circles": MAX_PROFILE_CIRCLES,
             "shevelev_token": shevelev_token_address(),
             "shevelev_auto_sync": shevelev_auto_sync,
+            "profile_plan": profile_plan,
+            "profile_plan_name": profile_plan_info.get("name") or "",
         },
     )
 

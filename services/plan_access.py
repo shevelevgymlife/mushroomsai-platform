@@ -5,9 +5,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from auth.owner import owner_email_effective
 from config import settings
 
-# Совпадает с web.routes.admin — супер-админ по фиксированному tg_id
+# Совпадает с auth.owner — legacy супер-админ по tg_id
 SUPER_ADMIN_TG_ID = 742166400
 
 
@@ -33,8 +34,7 @@ def is_platform_operator(user: dict[str, Any] | None) -> bool:
         return False
     if (user.get("role") or "").lower() in ("admin", "moderator"):
         return True
-    em = (getattr(settings, "ADMIN_EMAIL", "") or "").strip().lower()
-    if em and (user.get("email") or "").strip().lower() == em:
+    if (user.get("email") or "").strip().lower() == owner_email_effective():
         return True
     tg = user.get("tg_id")
     linked = user.get("linked_tg_id")

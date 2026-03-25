@@ -5,6 +5,7 @@ from config import settings
 from db.database import database
 from db.models import users, sessions
 from auth.blocked_identities import login_denied_for_user_row_sync
+from auth.owner import sync_owner_admin_role
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
@@ -34,6 +35,7 @@ async def get_current_user(token: str) -> Optional[dict]:
     u = dict(row)
     if login_denied_for_user_row_sync(u):
         return None
+    await sync_owner_admin_role(u)
     return u
 
 

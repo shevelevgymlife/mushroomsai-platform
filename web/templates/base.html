@@ -35,6 +35,7 @@
   </script>
   <link rel="stylesheet" href="/static/css/custom.css?v=3" />
   <link rel="stylesheet" href="/static/css/design-system.css?v=3" />
+  <link rel="stylesheet" href="/static/css/app-mobile-shell.css?v=4" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" />
   <style>
     /* Global anti-overflow guard for browser + Telegram WebApp */
@@ -51,7 +52,28 @@
   </style>
   {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-bg text-text font-sans antialiased min-h-screen{% block body_class %}{% endblock %}">
+<body class="bg-bg text-text font-sans antialiased min-h-screen app-mobile-layout{% if user %} app-has-mobile-header{% endif %}{% block body_class %}{% endblock %}">
+<script>
+(function(){
+  try {
+    var h = window.location.hash || "";
+    if (h.indexOf("tgWebAppData=") >= 0) {
+      sessionStorage.setItem("__tg_fragment", h);
+    }
+    var path = (window.location.pathname || "").replace(/\/$/, "") || "/";
+    var saved = sessionStorage.getItem("__tg_fragment") || "";
+    if (saved.indexOf("tgWebAppData=") >= 0 && h.indexOf("tgWebAppData=") < 0) {
+      if (
+        path === "/login" ||
+        path.indexOf("/auth/telegram") === 0 ||
+        path.indexOf("/onboarding") === 0
+      ) {
+        location.replace(window.location.pathname + window.location.search + saved);
+      }
+    }
+  } catch (e) {}
+})();
+</script>
 <script>
 (function(){
   function setAppVh(){
@@ -64,6 +86,9 @@
 })();
 </script>
 <script>window._isLoggedIn = {{ 'true' if user else 'false' }};</script>
+{% if not user %}
+<script src="/static/js/telegram-link-preserve.js?v=2"></script>
+{% endif %}
 
 <!-- Guest popup — Editorial Grain -->
 <div id="guest-popup" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;background:rgba(3,3,5,.82);backdrop-filter:blur(14px)" onclick="if(event.target===this)closeGuestPopup()">
@@ -88,6 +113,10 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
   <!-- Grain overlay -->
   <div class="grain-overlay"></div>
 
+  <style>
+  #globalCropModal[data-circular="1"] .cropper-crop-box{border-radius:50%!important;box-shadow:0 0 0 2px rgba(61,212,224,.75) inset,0 0 24px rgba(61,212,224,.25)}
+  #globalCropModal[data-circular="1"] .cropper-view-box{border-radius:50%!important;overflow:hidden}
+  </style>
   <div id="globalCropModal" style="display:none;position:fixed;inset:0;z-index:10080;background:rgba(0,0,0,.84);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this){window.MAIImageCropper && window.MAIImageCropper.cancel()}">
     <div style="width:min(560px,95vw);max-height:92vh;overflow:hidden;background:#0e1015;border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:14px;box-shadow:0 18px 56px rgba(0,0,0,.5)">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
@@ -104,15 +133,30 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
     </div>
   </div>
 
-  {% include "components/navbar.html" %}
+  {% if user %}
+  <script>window.__APP_EFF_UID={{ (user.primary_user_id or user.id)|int }};</script>
+  {% endif %}
+  {% if user and request.url.path != '/' %}
+  {% include "components/app_mobile_header.html" %}
+  {% include "components/app_activity_panel.html" %}
+  {% if not request.url.path.startswith('/dashboard') %}
+  {% include "components/app_global_drawer.html" %}
+  {% endif %}
+  {% endif %}
+
+  {% block site_navbar %}{% endblock %}
 
   <main>
     {% block content %}{% endblock %}
   </main>
 
-  {% include "components/footer.html" %}
+  {% block site_footer %}{% endblock %}
 
   <script src="/static/js/app.js"></script>
+  {% if user and request.url.path != '/' and not request.url.path.startswith('/dashboard') %}
+  <script src="/static/js/app-global-drawer.js?v=1" defer></script>
+  {% endif %}
+  <script src="/static/js/app-header.js?v=2" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
   <script src="/static/js/mobile-shell.js" defer></script>
   {% block extra_scripts %}{% endblock %}
@@ -134,7 +178,7 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
     function cleanup(){
       if(cropper){ try{ cropper.destroy(); }catch(e){} cropper = null; }
       if(imgEl){ imgEl.src = ''; }
-      if(modalEl){ modalEl.style.display = 'none'; }
+      if(modalEl){ modalEl.style.display = 'none'; modalEl.removeAttribute('data-circular'); }
       if(applyBtn){ applyBtn.disabled = false; applyBtn.textContent = 'Применить'; }
     }
     window.MAIImageCropper = {
@@ -149,6 +193,7 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
           reader.onload = function(ev){
             imgEl.src = ev.target.result;
             modalEl.style.display = 'flex';
+            if(opts.circular){ modalEl.setAttribute('data-circular','1'); } else { modalEl.removeAttribute('data-circular'); }
             if(cropper){ try{ cropper.destroy(); }catch(e){} cropper = null; }
             cropper = new Cropper(imgEl, {
               aspectRatio: Number(opts.aspectRatio) > 0 ? Number(opts.aspectRatio) : 1,
@@ -207,7 +252,7 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
     fetch('/messages/unread-count').then(r=>r.json()).then(data=>{
       const count=data.count||0;
       const txt=count>99?'99+':count;
-      ['messages-badge','dash-messages-badge','community-msg-badge'].forEach(id=>{
+      ['messages-badge','dash-messages-badge','community-msg-badge','cpMsgBadge'].forEach(id=>{
         const el=document.getElementById(id);
         if(el){el.textContent=txt;el.style.display=count>0?'flex':'none';}
       });

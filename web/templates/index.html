@@ -1,5 +1,14 @@
 {% extends "base.html" %}
+{% block site_navbar %}{% if not user %}{% include "components/navbar.html" %}{% endif %}{% endblock %}
+{% block site_footer %}{% include "components/footer.html" %}{% endblock %}
+{% block body_class %}{% if not user %} index-landing-guest{% endif %}{% endblock %}
 {% block title %}NEUROFUNGI AI — Персональный AI-консультант по функциональным грибам{% endblock %}
+
+{% block extra_head %}
+{% if not user %}
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+{% endif %}
+{% endblock %}
 
 {% macro block_visible(bkey) %}{% set _b = blocks[bkey] if blocks and bkey in blocks else none %}{% if not _b or not _b.access_level or _b.access_level == 'all' or (user and (user.is_admin or _b.access_level == 'auth' or (_b.access_level == 'start' and user.subscription_plan in ['start','pro','maxi']) or (_b.access_level == 'pro' and user.subscription_plan in ['pro','maxi']) or (_b.access_level == 'maxi' and user.subscription_plan == 'maxi'))) %}1{% endif %}{% endmacro %}
 
@@ -60,5 +69,32 @@ function openBotLink(e) {
   }
 }
 </script>
+{% if not user %}
+<script>
+(function () {
+  function goLogin() {
+    var path = location.pathname.replace(/\/$/, "") || "/";
+    if (path === "/") {
+      location.replace("/login" + (location.search || "") + (location.hash || ""));
+    }
+  }
+  if ((location.hash || "").indexOf("tgWebAppData=") >= 0) {
+    goLogin();
+    return;
+  }
+  var tg = window.Telegram && window.Telegram.WebApp;
+  if (tg && typeof tg.ready === "function") {
+    try {
+      tg.ready();
+    } catch (e) {}
+    setTimeout(function () {
+      try {
+        if (tg.initData && String(tg.initData).length) goLogin();
+      } catch (e) {}
+    }, 100);
+  }
+})();
+</script>
+{% endif %}
 
 {% endblock %}

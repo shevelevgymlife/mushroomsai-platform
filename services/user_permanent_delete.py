@@ -11,8 +11,7 @@ from db.models import users
 
 logger = logging.getLogger(__name__)
 
-# Должно совпадать с web.routes.admin.SUPER_ADMIN_TG_ID
-SUPER_ADMIN_TG_ID = 742166400
+from auth.owner import is_platform_owner
 
 _CLEANUP_SQL = [
     "UPDATE users SET primary_user_id=NULL WHERE primary_user_id=:uid",
@@ -68,10 +67,8 @@ _CLEANUP_SQL = [
 
 
 def is_protected_super_admin(row: dict) -> bool:
-    return (
-        row.get("tg_id") == SUPER_ADMIN_TG_ID
-        or row.get("linked_tg_id") == SUPER_ADMIN_TG_ID
-    )
+    """Нельзя удалять владельца платформы (email/tg из config + legacy tg)."""
+    return is_platform_owner(row)
 
 
 async def permanently_delete_user(user_id: int) -> tuple[bool, str | None]:
