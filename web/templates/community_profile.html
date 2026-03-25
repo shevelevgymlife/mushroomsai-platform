@@ -181,17 +181,11 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
       <a href="/dashboard" class="ig-head-msg" title="Кабинет" aria-label="Кабинет">{{ ico('user') }}</a>
     </div>
   </header>
-  {% if is_own %}
-  <label id="cpHeaderLamp" class="cp-header-lamp" data-lamp-off="{% if profile.get('token_lamp_enabled') is sameas false %}1{% else %}0{% endif %}" for="cpLampToggle" title="Свет у аватара">
-    <input id="cpLampToggle" type="checkbox" {% if profile.get('token_lamp_enabled') is not sameas false %}checked{% endif %} onchange="saveTokenLampEnabled(this.checked)">
-    <span id="cpLampToggleText">{% if profile.get('token_lamp_enabled') is not sameas false %}выкл свет{% else %}вкл свет{% endif %}</span>
-  </label>
-  {% endif %}
 
   <main class="cp-ig-main">
     <div class="ig-me-shell">
       <div class="ig-profile-head">
-        <div class="ig-profile-av-wrap{% if profile.get('token_lamp_enabled') is not sameas false %} lamp-on{% endif %}">
+        <div class="ig-profile-av-wrap">
           {% if profile.avatar %}
           <img src="{{ profile.avatar }}" class="ig-profile-av" alt="{{ profile.name }}">
           {% else %}
@@ -215,13 +209,11 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
             {% endif %}
           </div>
           <div class="cp-prof-meta">
-            <span class="ig-rep-pill">{{ rep_emoji }} {{ rep_level }}</span>
             <span id="profileLikesStatInline" style="color:#888">❤️ {{ profile_likes_count }}</span>
           </div>
           <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
             {% if is_own %}
             <a href="/dashboard#profile" class="btn-o" style="font-size:13px;padding:8px 18px;text-decoration:none;display:inline-flex">Редактировать профиль</a>
-            <input id="cpLightToggle" class="cp-light-toggle" type="checkbox" {% if profile.get('token_lamp_enabled') is not sameas false %}checked{% endif %} onchange="saveTokenLampEnabled(this.checked)" aria-label="Свет токенов">
             <a href="/dashboard#feed" class="btn-muted" style="font-size:13px;padding:8px 16px;text-decoration:none;display:inline-flex">Лента</a>
             {% else %}
             <button type="button" class="btn-g" style="font-size:13px;padding:8px 18px" id="followBtn" onclick="doFollow()">
@@ -237,12 +229,9 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
           {% set show_del_cell = is_own or profile.decimal_del_balance is not none %}
           {% set show_shev_cell = is_own or profile.shevelev_balance_cached is not none %}
           {% if show_del_cell or show_shev_cell %}
-          <div id="cpTokensStrip" class="cp-tokens-strip" data-lamp-off="{% if profile.get('token_lamp_enabled') is sameas false %}1{% else %}0{% endif %}" aria-label="Токены в сети Decimal">
+          <div id="cpTokensStrip" class="cp-tokens-strip" aria-label="Токены в сети Decimal">
             <div class="cp-tokens-strip__head">
               <div class="cp-tokens-strip__title">Токены · Decimal</div>
-              {% if is_own %}
-              <span class="cp-lamp-toggle"><span id="cpLampHintText">{% if profile.get('token_lamp_enabled') is not sameas false %}выкл свет{% else %}вкл свет{% endif %}</span></span>
-              {% endif %}
             </div>
             <div class="cp-tokens-strip__grid" style="{% if show_del_cell and show_shev_cell %}grid-template-columns:1fr 1fr{% else %}grid-template-columns:1fr{% endif %}">
               {% if show_del_cell %}
@@ -260,20 +249,6 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
             </div>
           </div>
           {% endif %}
-          <div id="profileCirclesRow" class="cp-circles-row" data-max-circles="{{ max_profile_circles|default(5) }}">
-            {% for c in circles %}
-            <a class="cp-circle-item" href="/community/profile/{{ profile_id }}/circle/{{ c.id }}">
-              <div class="cp-circle-avatar">
-                {% if c.cover_image %}<img src="{{ c.cover_image }}" alt="">
-                {% else %}<span style="font-size:20px">🍄</span>{% endif %}
-              </div>
-              <div class="cp-circle-name">{{ c.name }}</div>
-            </a>
-            {% endfor %}
-            {% if is_own and (circles|length) < (max_profile_circles|default(5)) %}
-            <button type="button" id="addCircleBtn" class="cp-circle-add-btn" onclick="createCircle()" title="Добавить кружок">+</button>
-            {% endif %}
-          </div>
         </div>
       </div>
 
@@ -284,13 +259,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
       <a href="{{ profile.profile_link_url }}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:8px;color:#3dd4e0;font-weight:600;font-size:14px;margin-bottom:14px;text-decoration:none;border-bottom:1px solid rgba(61,212,224,.35);padding-bottom:2px">{{ profile.get('profile_link_label') or profile.profile_link_url }}</a>
       {% endif %}
 
-      <div class="cp-chaos-wrap">
-        <label class="cp-chaos-toggle" for="cpChaosToggle">
-          <span>Хаос</span>
-          <input id="cpChaosToggle" type="checkbox" checked onchange="setProfileChaos(this.checked)">
-        </label>
-      </div>
-      <div class="ig-feed-shell cp-chaos-on" id="profilePostsGrid" style="margin-top:16px">
+      <div class="ig-feed-shell" id="profilePostsGrid" style="margin-top:16px">
   {% for item in feed %}
   {% set p = item.post %}
   <div class="ig-post" id="pc-{{ p.id }}" data-pid="{{ p.id }}" data-author="{{ (profile.name or 'Участник')|e }}" data-title="{{ (p.title or '')|e }}" data-content="{{ (p.content or '')|e }}" data-image="{{ (p.image_url or '')|e }}" data-created="{{ (p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '')|e }}" data-likes="{{ p.likes_count or 0 }}" data-comments="{{ p.comments_count or 0 }}" data-saves="{{ p.saves_count or 0 }}" onclick="openCommunityPostPage(event, {{ p.id }})">
