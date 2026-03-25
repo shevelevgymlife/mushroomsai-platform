@@ -502,16 +502,62 @@ async def telegram_webapp_callback(request: Request):
 
 @router.get("/auth/telegram/webapp/debug")
 async def telegram_webapp_debug(request: Request):
-    """Временный диагностический эндпоинт — показывает какой токен используется."""
     from config import settings as _s
-    tg_token = (_s.TELEGRAM_BOT_TOKEN or "").strip() or (_s.TELEGRAM_TOKEN or "").strip()
-    def mask(t): return (t[:6] + "…" + t[-4:]) if len(t) > 10 else ("(пусто)" if not t else t)
+    import hashlib, hmac as _hmac, urllib.parse
+    def mask(t): return (t[:8] + "…" + t[-4:]) if len(t) > 12 else ("(пусто)" if not t else t)
+    tokens = {}
+    for attr in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_TOKEN", "NOTIFY_BOT_TOKEN"):
+        v = (getattr(_s, attr, "") or "").strip()
+        tokens[attr] = {"len": len(v), "preview": mask(v), "bot_id": v.split(":")[0] if ":" in v else "?"}
     return JSONResponse({
         "TELEGRAM_BOT_USERNAME": _s.TELEGRAM_BOT_USERNAME or "(не задан)",
-        "TELEGRAM_BOT_TOKEN_used": mask(tg_token),
-        "source": "TELEGRAM_BOT_TOKEN" if (_s.TELEGRAM_BOT_TOKEN or "").strip() else "TELEGRAM_TOKEN (fallback)",
-        "TELEGRAM_BOT_TOKEN_raw_len": len((_s.TELEGRAM_BOT_TOKEN or "").strip()),
-        "TELEGRAM_TOKEN_raw_len": len((_s.TELEGRAM_TOKEN or "").strip()),
+        "tokens": tokens,
+        "hint": "bot_id должен совпадать с ID бота в BotFather для того бота, через которого открывается WebApp",
+    })
+
+
+@router.post("/auth/telegram/webapp/debug-verify")
+async def telegram_webapp_debug_verify(request: Request):
+    """Принимает initData и показывает детали верификации без логина."""
+    import hashlib, hmac as _hmac, urllib.parse
+    from config import settings as _s
+    body = await request.json()
+    init_data = body.get("initData") or ""
+    if not init_data:
+        return JSONResponse({"error": "initData required"}, status_code=400)
+
+    def mask(t): return (t[:8] + "…" + t[-4:]) if len(t) > 12 else "(пусто)"
+
+    try:
+        parsed = dict(urllib.parse.parse_qsl(init_data, keep_blank_values=True))
+    except Exception as e:
+        return JSONResponse({"error": f"parse failed: {e}"})
+
+    provided_hash = parsed.get("hash", "")
+    skip = frozenset({"hash", "signature"})
+    check_parts = [f"{k}={parsed[k]}" for k in sorted(parsed.keys()) if k not in skip]
+    data_check_string = "\n".join(check_parts)
+
+    results = []
+    for attr in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_TOKEN", "NOTIFY_BOT_TOKEN"):
+        token = (getattr(_s, attr, "") or "").strip()
+        if not token:
+            results.append({"attr": attr, "status": "не задан"})
+            continue
+        sk = _hmac.new(b"WebAppData", token.encode(), hashlib.sha256).digest()
+        computed = _hmac.new(sk, data_check_string.encode(), hashlib.sha256).hexdigest()
+        ok = _hmac.compare_digest(computed, provided_hash)
+        results.append({
+            "attr": attr,
+            "token_preview": mask(token),
+            "bot_id": token.split(":")[0] if ":" in token else "?",
+            "match": ok,
+        })
+
+    return JSONResponse({
+        "provided_hash": provided_hash[:16] + "…",
+        "fields_in_check": list(parsed.keys()),
+        "token_results": results,
     })
 
 
