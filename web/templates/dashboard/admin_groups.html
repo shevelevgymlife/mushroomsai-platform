@@ -71,7 +71,7 @@
           <input type="text" id="bulk_ret" placeholder="не менять" class="w-full rounded-xl bg-background border border-border px-3 py-2 text-text" />
         </div>
         <div>
-          <label class="block text-muted mb-1">Slow mode (сек между своими сообщениями, 0 = выкл)</label>
+          <label class="block text-muted mb-1">Медленный режим (сек между своими сообщениями, 0 = выкл)</label>
           <input type="number" id="bulk_slow" min="0" max="86400" placeholder="не менять" class="w-full rounded-xl bg-background border border-border px-3 py-2 text-text" />
         </div>
         <div>
@@ -128,7 +128,7 @@
                   <input type="text" class="g-ret w-full rounded-lg bg-background border border-border px-2 py-1.5 text-text" placeholder="без лимита" value="{% if g.message_retention_days is not none %}{{ g.message_retention_days }}{% endif %}" />
                 </div>
                 <div>
-                  <label class="text-xs text-muted">Slow mode (сек)</label>
+                  <label class="text-xs text-muted">Медленный режим (сек)</label>
                   <input type="number" class="g-slow w-full rounded-lg bg-background border border-border px-2 py-1.5 text-text" min="0" max="86400" value="{% if g.slow_mode_seconds %}{{ g.slow_mode_seconds }}{% endif %}" />
                 </div>
                 <div>
