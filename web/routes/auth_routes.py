@@ -88,10 +88,9 @@ async def login_page(request: Request):
             "request": request,
             "user": None,
             "site_url": settings.SITE_URL,
-            "telegram_enabled": bool(
-                settings.TELEGRAM_BOT_USERNAME
-                and ((settings.TELEGRAM_BOT_TOKEN or "").strip() or (settings.TELEGRAM_TOKEN or "").strip())
-            ),
+            # Show Telegram button when bot username is configured.
+            # Callback verification uses TELEGRAM_BOT_TOKEN fallback to TELEGRAM_TOKEN.
+            "telegram_enabled": bool((settings.TELEGRAM_BOT_USERNAME or "").strip()),
             "bot_username": settings.TELEGRAM_BOT_USERNAME,
         },
     )
