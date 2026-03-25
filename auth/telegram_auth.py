@@ -73,16 +73,21 @@ def verify_telegram_webapp_init_data(init_data: str) -> dict[str, Any]:
             break
 
     if not matched:
-        logger.warning(
-            "Telegram WebApp initData HMAC mismatch.\n"
-            "data_check_string (first 200): %s\n"
-            "provided_hash: %s\n"
-            "initData (first 200): %s",
-            data_check_string[:200],
-            provided_hash,
-            init_data[:200],
-        )
-        raise ValueError("initData signature mismatch")
+        # Allow bypassing verification via env var for debugging only
+        skip_verify = (getattr(settings, "TELEGRAM_WEBAPP_SKIP_VERIFY", "") or "").strip().lower() == "true"
+        if skip_verify:
+            logger.warning("SIGNATURE VERIFICATION SKIPPED (TELEGRAM_WEBAPP_SKIP_VERIFY=true) — DEBUG ONLY")
+        else:
+            logger.warning(
+                "Telegram WebApp initData HMAC mismatch.\n"
+                "data_check_string (first 200): %s\n"
+                "provided_hash: %s\n"
+                "initData (first 200): %s",
+                data_check_string[:200],
+                provided_hash,
+                init_data[:200],
+            )
+            raise ValueError("initData signature mismatch")
 
     # Свежесть initData (как у Login Widget, до 24 ч)
     try:
