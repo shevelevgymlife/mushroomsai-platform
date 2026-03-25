@@ -77,7 +77,7 @@ class ProbeBlockMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
-_STARTUP_SKIP_PATHS = frozenset({"/health", "/healthz", "/favicon.ico", "/robots.txt"})
+_STARTUP_SKIP_PATHS = frozenset({"/health", "/healthz", "/favicon.ico", "/robots.txt", "/sitemap.xml"})
 
 
 class StartupGateMiddleware(BaseHTTPMiddleware):
@@ -182,6 +182,33 @@ else:
 @app.get("/")
 async def root():
     return {"status": "ok"}
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon_ico():
+    """Browsers request /favicon.ico by default; redirect to SVG in static."""
+    # В static должен лежать favicon.svg (в проекте он есть).
+    return Response(status_code=302, headers={"Location": "/static/favicon.svg?v=1"})
+
+
+@app.get("/robots.txt", include_in_schema=False)
+async def robots_txt():
+    """Минимальный robots.txt — убирает 404 в логах у поисковых ботов."""
+    return Response("User-agent: *\nDisallow:\n", media_type="text/plain")
+
+
+@app.get("/sitemap.xml", include_in_schema=False)
+async def sitemap_xml():
+    """Простой sitemap для роботов. При необходимости можно расширить страницами сайта."""
+    host = (os.getenv("SITE_URL") or "https://mushroomsai.ru").rstrip("/")
+    xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>{host}/</loc>
+  </url>
+</urlset>
+"""
+    return Response(xml, media_type="application/xml")
 
 
 @app.get("/health")
