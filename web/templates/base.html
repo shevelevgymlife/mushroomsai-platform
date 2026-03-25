@@ -35,7 +35,7 @@
   </script>
   <link rel="stylesheet" href="/static/css/custom.css?v=3" />
   <link rel="stylesheet" href="/static/css/design-system.css?v=3" />
-  <link rel="stylesheet" href="/static/css/app-mobile-shell.css?v=2" />
+  <link rel="stylesheet" href="/static/css/app-mobile-shell.css?v=3" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" />
   <style>
     /* Global anti-overflow guard for browser + Telegram WebApp */
@@ -111,6 +111,8 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
 
   {% if user %}
   <script>window.__APP_EFF_UID={{ (user.primary_user_id or user.id)|int }};</script>
+  {% endif %}
+  {% if user and request.url.path != '/' %}
   {% include "components/app_mobile_header.html" %}
   {% include "components/app_activity_panel.html" %}
   {% endif %}

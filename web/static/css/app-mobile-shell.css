@@ -38,6 +38,7 @@ body.app-has-mobile-header main {
   top: 0;
   left: 0;
   right: 0;
+  width: 100%;
   z-index: 1000;
   display: flex;
   justify-content: center;
@@ -45,6 +46,7 @@ body.app-has-mobile-header main {
   padding-left: max(0px, env(safe-area-inset-left, 0px));
   padding-right: max(0px, env(safe-area-inset-right, 0px));
   pointer-events: none;
+  box-sizing: border-box;
 }
 
 .neo-app-header.app-mobile-header-inner,
@@ -83,15 +85,17 @@ body.app-has-mobile-header main {
   height: 44px;
   border-radius: 14px;
   border: 1px solid var(--neo-cyan-soft);
-  background: transparent;
+  background: linear-gradient(165deg, rgba(22, 24, 32, 0.95), rgba(10, 11, 15, 0.88));
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--neo-cyan);
   cursor: pointer;
   text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
   box-shadow:
     0 0 16px rgba(34, 211, 238, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
     inset 0 0 20px rgba(34, 211, 238, 0.04);
   transition:
     border-color 0.2s ease,
@@ -139,9 +143,20 @@ body.app-has-mobile-header main {
 .app-head-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   flex-shrink: 0;
   margin-left: 0;
+}
+
+@media (max-width: 360px) {
+  .app-head-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+  }
+  .app-head-actions {
+    gap: 4px;
+  }
 }
 
 .app-head-brand {
