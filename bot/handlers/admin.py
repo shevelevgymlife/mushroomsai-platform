@@ -14,14 +14,10 @@ def _is_admin(user_id: int) -> bool:
 
 
 def _admin_keyboard() -> InlineKeyboardMarkup:
-    from telegram import WebAppInfo
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton("📊 Статус", callback_data="admin:status"),
             InlineKeyboardButton("👤 Пользователи", callback_data="admin:users"),
-        ],
-        [
-            InlineKeyboardButton("🍄 Открыть приложение", web_app=WebAppInfo(url="https://mushroomsai.ru")),
         ],
     ])
 
