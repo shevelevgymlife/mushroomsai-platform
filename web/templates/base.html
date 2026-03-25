@@ -216,5 +216,24 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
   setInterval(updateUnreadCount,30000);
   updateUnreadCount();
   </script>
+
+<script>
+// Shimmer brand name — wrap all "NEUROFUNGI AI" text nodes
+(function(){
+  function walkText(node){
+    if(node.nodeType===3){
+      var t=node.nodeValue;
+      if(t.indexOf('NEUROFUNGI AI')!==-1){
+        var span=document.createElement('span');
+        span.innerHTML=t.replace(/NEUROFUNGI AI/g,'<span class="nf-brand">NEUROFUNGI AI</span>');
+        node.parentNode.replaceChild(span,node);
+      }
+    } else if(node.nodeType===1 && node.tagName!=='SCRIPT' && node.tagName!=='STYLE' && node.tagName!=='TEXTAREA'){
+      Array.from(node.childNodes).forEach(walkText);
+    }
+  }
+  document.addEventListener('DOMContentLoaded',function(){walkText(document.body);});
+})();
+</script>
 </body>
 </html>

@@ -3,6 +3,30 @@
  * build: editorial-grain-v3 — если не видите изменений: жёсткое обновление (Ctrl+Shift+R)
  * и проверьте, что грузится этот файл с ?v=3 в base.html
  */
+
+/* ── NEUROFUNGI AI brand shimmer ── */
+.nf-brand {
+  background: linear-gradient(
+    90deg,
+    #3dd4e0 0%,
+    #7ef7ff 20%,
+    #c8a84b 45%,
+    #f0d070 55%,
+    #3dd4e0 75%,
+    #b85fa3 88%,
+    #3dd4e0 100%
+  );
+  background-size: 250% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: nf-shimmer 4s linear infinite;
+}
+@keyframes nf-shimmer {
+  0%   { background-position: 0%   center; }
+  100% { background-position: 250% center; }
+}
 :root {
   --neo-bg: #070708;
   --neo-bg-elevated: #0c0c0f;
