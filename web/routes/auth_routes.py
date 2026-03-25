@@ -25,11 +25,12 @@ _logger = logging.getLogger(__name__)
 
 
 async def _ensure_admin(user_id: int, tg_id: int | None = None, email: str | None = None) -> None:
-    """Если пользователь является владельцем (по ADMIN_TG_ID или ADMIN_EMAIL) — ставим role=admin."""
+    """Если пользователь является владельцем (по ADMIN_TG_ID или email владельца) — ставим role=admin."""
+    from auth.owner import owner_email_effective
     from config import settings as _s
-    is_owner = (
-        (tg_id and _s.ADMIN_TG_ID and int(tg_id) == int(_s.ADMIN_TG_ID))
-        or (email and _s.ADMIN_EMAIL and email.strip().lower() == _s.ADMIN_EMAIL.strip().lower())
+    em = (email or "").strip().lower()
+    is_owner = (tg_id and _s.ADMIN_TG_ID and int(tg_id) == int(_s.ADMIN_TG_ID)) or (
+        em and em == owner_email_effective()
     )
     if is_owner:
         await database.execute(

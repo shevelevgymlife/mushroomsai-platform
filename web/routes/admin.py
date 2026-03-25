@@ -11,10 +11,8 @@ from web.templates_utils import Jinja2Templates
 from services.subscription_service import PLANS
 from auth.session import get_user_from_request
 from auth.blocked_identities import block_identities_for_user, unblock_identities_for_user
-from services.user_permanent_delete import (
-    permanently_delete_user,
-    is_protected_super_admin,
-)
+from services.user_permanent_delete import permanently_delete_user
+from auth.owner import is_platform_owner
 from db.database import database
 from services.community_group_queries import fetch_community_group_row
 from db.models import (
@@ -35,8 +33,6 @@ from datetime import datetime, timedelta, date
 
 router = APIRouter(prefix="/admin")
 templates = Jinja2Templates(directory="web/templates")
-
-SUPER_ADMIN_TG_ID = 742166400
 
 ADMIN_NAV = [
     ("Dashboard", "/admin"),
@@ -69,13 +65,6 @@ def _parse_form_price(raw: Optional[str]) -> Optional[int]:
         return None
 
 
-def is_super_admin(user: dict) -> bool:
-    return (
-        user.get("tg_id") == SUPER_ADMIN_TG_ID
-        or user.get("linked_tg_id") == SUPER_ADMIN_TG_ID
-    )
-
-
 async def require_admin(request: Request):
     """Basic admin check — role=admin. Super-admins pass automatically."""
     user = await get_user_from_request(request)
@@ -89,7 +78,7 @@ async def require_permission(request: Request, perm: str):
     user = await get_user_from_request(request)
     if not user or user.get("role") != "admin":
         return None
-    if is_super_admin(user):
+    if is_platform_owner(user):
         return user
     try:
         row = await database.fetch_one(
@@ -104,7 +93,7 @@ async def require_permission(request: Request, perm: str):
 
 async def get_user_permissions(user: dict) -> dict:
     """Return a dict of all permission booleans for an admin user."""
-    if is_super_admin(user):
+    if is_platform_owner(user):
         return {k: True for k in PERM_KEYS}
     try:
         row = await database.fetch_one(
@@ -457,6 +446,7 @@ async def users_list(request: Request, search: str = ""):
         d["display_tg_id"] = u["tg_id"] or u["linked_tg_id"]
         ls = d.get("last_seen_at")
         d["is_online"] = bool(ls and ls > online_threshold)
+        d["is_protected_row"] = (d.get("role") == "admin") or is_platform_owner(d)
         enriched_users.append(d)
 
     return templates.TemplateResponse(
@@ -477,6 +467,7 @@ async def users_list(request: Request, search: str = ""):
                 ("pro", PLANS["pro"]["name"], PLANS["pro"]["price"]),
                 ("maxi", PLANS["maxi"]["name"], PLANS["maxi"]["price"]),
             ],
+            "viewer_is_platform_owner": is_platform_owner(admin),
         },
     )
 
@@ -487,7 +478,7 @@ async def set_user_role(request: Request, user_id: int = Form(...), role: str = 
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
 
-    if not is_super_admin(admin):
+    if not is_platform_owner(admin):
         return JSONResponse({"error": "Только главный администратор может назначать роли"}, status_code=403)
 
     if role not in ("admin", "user", "moderator"):
@@ -496,7 +487,7 @@ async def set_user_role(request: Request, user_id: int = Form(...), role: str = 
     target = await database.fetch_one(users.select().where(users.c.id == user_id))
     if not target:
         return JSONResponse({"error": "user not found"}, status_code=404)
-    if is_super_admin(target):
+    if is_platform_owner(dict(target)):
         return JSONResponse({"error": "Нельзя изменить роль главного администратора"}, status_code=403)
 
     await database.execute(users.update().where(users.c.id == user_id).values(role=role))
@@ -541,13 +532,13 @@ async def set_user_permissions(request: Request, user_id: int):
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
 
-    if not is_super_admin(admin):
+    if not is_platform_owner(admin):
         return JSONResponse({"error": "Только главный администратор может назначать права"}, status_code=403)
 
     target = await database.fetch_one(users.select().where(users.c.id == user_id))
     if not target:
         return JSONResponse({"error": "not found"}, status_code=404)
-    if is_super_admin(target):
+    if is_platform_owner(dict(target)):
         return JSONResponse({"error": "Нельзя изменить права главного администратора"}, status_code=403)
 
     body = await request.json()
@@ -589,7 +580,7 @@ async def ban_user(request: Request, user_id: int):
     target = await database.fetch_one(users.select().where(users.c.id == user_id))
     if not target:
         return JSONResponse({"error": "not found"}, status_code=404)
-    if is_super_admin(target):
+    if is_platform_owner(dict(target)):
         return JSONResponse({"error": "protected"}, status_code=403)
     await block_identities_for_user(dict(target))
     await database.execute(
@@ -1564,7 +1555,7 @@ async def delete_user_permanent(request: Request, user_id: int):
     target = await database.fetch_one(users.select().where(users.c.id == user_id))
     if not target:
         return JSONResponse({"error": "not found"}, status_code=404)
-    if is_protected_super_admin(dict(target)):
+    if is_platform_owner(dict(target)):
         return JSONResponse({"error": "protected"}, status_code=403)
     if (target.get("role") or "") == "admin":
         return JSONResponse({"error": "Нельзя удалить администратора"}, status_code=403)

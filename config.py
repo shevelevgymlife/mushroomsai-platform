@@ -22,7 +22,8 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str = ""
     JWT_SECRET: str = "change-me-in-production"
     ADMIN_TG_ID: int = 0
-    ADMIN_EMAIL: str = ""  # опционально: email владельца (Google) = права оператора
+    # Email владельца (полный доступ в админку + sync role=admin). В Render можно переопределить env.
+    ADMIN_EMAIL: str = "shevelevgymlife@gmail.com"
     DEPLOY_NOTIFY_EMAIL_TO: str = ""  # куда слать уведомление о деплое
     DEPLOY_NOTIFY_EMAIL_FROM: str = ""  # от кого слать (если пусто, используем SMTP_USER)
     DEPLOY_NOTIFY_TASK_EMAIL_TO: str = ""  # email для статусов задач (если пусто = DEPLOY_NOTIFY_EMAIL_TO)

@@ -7,6 +7,8 @@
 
     {% include "components/admin_nav.html" %}
 
+    {% set viewer_is_platform_owner = viewer_is_platform_owner | default(false) %}
+
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-3xl font-light text-text">Пользователи</h1>
       <span class="text-sm text-muted">{{ users|length }} найдено</span>
@@ -21,8 +23,6 @@
     {# Мобильные карточки #}
     <div class="md:hidden space-y-3 mb-6">
       {% for u in users %}
-      {% set is_protected = (u.role == 'admin' or u.tg_id == 742166400 or u.linked_tg_id == 742166400) %}
-      {% set is_super = (user.tg_id == 742166400 or user.linked_tg_id == 742166400) %}
       <div class="rounded-2xl bg-surface border border-border p-4 space-y-3">
         <div class="flex items-start justify-between gap-2">
           <div class="flex items-center gap-2 min-w-0">
@@ -60,7 +60,7 @@
           <button type="button" onclick="closeAllActs();openMsgModal({{ u.id }}, '{{ u.name | e }}', '{{ u.display_tg_id or '' }}', {{ 'true' if u.is_online else 'false' }})" class="w-full text-left px-3 py-2.5 text-sm text-text hover:bg-border/20">✉️ Сообщение пользователю</button>
           <button type="button" onclick="closeAllActs();openSubModal({{ u.id }}, '{{ u.name | e }}', '{{ u.subscription_plan }}')" class="w-full text-left px-3 py-2.5 text-sm text-text hover:bg-border/20">⭐ Подписка</button>
           <button type="button" onclick="closeAllActs();toggleMarketplaceSeller({{ u.id }}, {{ 'true' if u.marketplace_seller else 'false' }})" class="w-full text-left px-3 py-2.5 text-sm text-text hover:bg-border/20">🏪 Продавец маркетплейса</button>
-          {% if is_super %}
+          {% if viewer_is_platform_owner %}
           <button type="button" onclick="closeAllActs();openPermModal({{ u.id }}, '{{ u.name | e }}')" class="w-full text-left px-3 py-2.5 text-sm text-gold hover:bg-border/20">🔑 Права доступа</button>
           <button type="button" onclick="closeAllActs();openRoleModal({{ u.id }}, '{{ u.name | e }}', '{{ u.role }}')" class="w-full text-left px-3 py-2.5 text-sm text-text hover:bg-border/20">👤 Роль</button>
           {% endif %}
@@ -69,7 +69,7 @@
           {% else %}
           <button type="button" onclick="closeAllActs();banUser({{ u.id }}, '{{ u.name | e }}')" class="w-full text-left px-3 py-2.5 text-sm text-orange-400 hover:bg-border/20">🚫 Заблокировать</button>
           {% endif %}
-          {% if not is_protected %}
+          {% if not u.is_protected_row %}
           <button type="button" onclick="closeAllActs();deleteForever({{ u.id }}, '{{ u.name | e }}')" class="w-full text-left px-3 py-2.5 text-sm text-red-400 hover:bg-border/20">🗑️ Удалить навсегда</button>
           {% endif %}
         </div>
@@ -92,8 +92,6 @@
           </thead>
           <tbody>
             {% for u in users %}
-            {% set is_protected = (u.role == 'admin' or u.tg_id == 742166400 or u.linked_tg_id == 742166400) %}
-            {% set is_super = (user.tg_id == 742166400 or user.linked_tg_id == 742166400) %}
             <tr class="border-b border-border last:border-0 hover:bg-border/20 transition-colors">
               <td class="px-4 py-3 text-xs text-muted">{{ u.id }}</td>
               <td class="px-4 py-3">
@@ -124,7 +122,7 @@
               <td class="px-4 py-3">
                 <span class="px-2 py-0.5 rounded text-xs font-medium
                   {{ 'text-gold bg-gold/10 border border-gold/20' if u.role == 'admin' else 'text-muted bg-border border border-border' }}">
-                  {{ u.role or 'user' }}{% if is_protected %} ★{% endif %}
+                  {{ u.role or 'user' }}{% if u.is_protected_row %} ★{% endif %}
                 </span>
               </td>
               <td class="px-4 py-3">
@@ -169,7 +167,7 @@
                     <button onclick="closeAllActs();openMsgModal({{ u.id }}, '{{ u.name | e }}', '{{ u.display_tg_id or '' }}', {{ 'true' if u.is_online else 'false' }})" style="display:block;width:100%;text-align:left;padding:10px 16px;font-size:13px;color:#aaa;background:none;border:none;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='none'">✉️ Сообщение пользователю</button>
                     <button onclick="closeAllActs();openSubModal({{ u.id }}, '{{ u.name | e }}', '{{ u.subscription_plan }}')" style="display:block;width:100%;text-align:left;padding:10px 16px;font-size:13px;color:#aaa;background:none;border:none;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='none'">⭐ Управление подпиской</button>
                     <button onclick="closeAllActs();toggleMarketplaceSeller({{ u.id }}, {{ 'true' if u.marketplace_seller else 'false' }})" style="display:block;width:100%;text-align:left;padding:10px 16px;font-size:13px;color:#aaa;background:none;border:none;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='none'">🏪 Продавец маркетплейса (Макси)</button>
-                    {% if is_super %}
+                    {% if viewer_is_platform_owner %}
                     <button onclick="closeAllActs();openPermModal({{ u.id }}, '{{ u.name | e }}')" style="display:block;width:100%;text-align:left;padding:10px 16px;font-size:13px;color:#3dd4e0;background:none;border:none;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='none'">🔑 Права доступа</button>
                     <button onclick="closeAllActs();openRoleModal({{ u.id }}, '{{ u.name | e }}', '{{ u.role }}')" style="display:block;width:100%;text-align:left;padding:10px 16px;font-size:13px;color:#aaa;background:none;border:none;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='none'">👤 Изменить роль</button>
                     {% endif %}
@@ -179,7 +177,7 @@
                     {% else %}
                     <button onclick="closeAllActs();banUser({{ u.id }}, '{{ u.name | e }}')" style="display:block;width:100%;text-align:left;padding:10px 16px;font-size:13px;color:#fb923c;background:none;border:none;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='none'">🚫 Заблокировать</button>
                     {% endif %}
-                    {% if not is_protected %}
+                    {% if not u.is_protected_row %}
                     <button onclick="closeAllActs();deleteForever({{ u.id }}, '{{ u.name | e }}')" style="display:block;width:100%;text-align:left;padding:10px 16px;font-size:13px;color:#f87171;background:none;border:none;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(239,68,68,.1)'" onmouseout="this.style.background='none'">🗑️ Удалить навсегда</button>
                     {% endif %}
                   </div>
