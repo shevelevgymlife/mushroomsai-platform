@@ -51,6 +51,23 @@ body.profile-app-shell .grain-overlay{opacity:0.22}
 .cp-name-plan-row{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:0 0 12px}
 .cp-profile-name{font-size:clamp(18px,4.5vw,22px);font-weight:700;color:#e8e8e8}
 .cp-plan-badge{display:inline-flex;align-items:center;border:1px solid rgba(61,212,224,.55);color:#ff66d0;background:rgba(255,102,208,.08);font-size:11px;padding:3px 12px;border-radius:999px;font-weight:800;letter-spacing:.02em;box-shadow:0 0 14px rgba(255,102,208,.22)}
+.cp-role-stamp{display:inline-flex;align-items:center;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;letter-spacing:.06em}
+.cp-role-stamp--admin{background:rgba(248,113,113,.12);color:#f87171;border:1px solid rgba(248,113,113,.25)}
+.cp-role-stamp--uch{background:rgba(125,211,252,.1);color:#7dd3fc;border:1px solid rgba(34,211,238,.35)}
+.cp-chaos-crypto-bar{width:100%;margin:0 0 10px;position:relative;z-index:1}
+.cp-chaos-crypto-inner{display:flex;flex-wrap:wrap;gap:9px 11px;justify-content:center;align-items:stretch;padding:11px 12px;border-radius:20px 10px 22px 14px;background:linear-gradient(168deg,rgba(184,95,163,.14),rgba(14,12,22,.96),rgba(61,212,224,.08));border:1px solid rgba(247,113,255,.32);transform:rotate(-1.1deg) skewX(-0.8deg);box-shadow:0 14px 44px rgba(0,0,0,.5),0 0 28px rgba(255,102,208,.18),inset 0 1px 0 rgba(255,255,255,.06)}
+.cp-chaos-cc{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;padding:7px 12px;border-radius:11px;background:rgba(6,8,14,.72);border:1px solid rgba(61,212,224,.45);min-width:68px;text-align:center}
+.cp-chaos-cc:nth-child(1){transform:rotate(2.2deg) translateY(-3px)}
+.cp-chaos-cc:nth-child(2){transform:rotate(-2.8deg) translateY(4px)}
+.cp-chaos-cc:nth-child(3){transform:rotate(1.4deg) translateY(-1px)}
+.cp-chaos-l{font-size:7px;letter-spacing:.2em;color:#c4b5fd;text-transform:uppercase;font-weight:800}
+.cp-chaos-v{font-size:13px;font-weight:800;color:#f1f5f9;margin-top:3px;text-shadow:0 0 14px rgba(61,212,224,.35)}
+.cp-chaos-v--pink{color:#fda4e3;text-shadow:0 0 16px rgba(255,123,224,.35)}
+.cp-plus-slots-row{display:flex;flex-direction:row-reverse;flex-wrap:wrap;justify-content:flex-start;align-items:center;gap:10px;margin:4px 0 12px;width:100%}
+.cp-slot-plus{width:40px;height:40px;border-radius:50%;border:2px dashed rgba(61,212,224,.5);background:rgba(61,212,224,.07);color:#3dd4e0;font-size:22px;font-weight:600;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:width .28s ease,height .28s ease,font-size .28s ease,box-shadow .28s,border-color .2s;font-family:inherit;padding:0;-webkit-tap-highlight-color:transparent;flex-shrink:0}
+.cp-slot-plus:hover{border-color:rgba(255,102,208,.55);color:#fda4e8}
+.cp-slot-plus--big{width:58px;height:58px;font-size:32px;border-style:solid;border-color:rgba(61,212,224,.75);box-shadow:0 0 22px rgba(61,212,224,.4)}
+.cp-circles-row--under-edit{flex-direction:row-reverse;justify-content:flex-start;margin-top:0;margin-bottom:14px}
 .cp-lamp-edit-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:14px}
 .cp-lamp-toggle{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border:1px solid rgba(255,255,255,.14);border-radius:999px;background:rgba(255,255,255,.04);color:#d0d5df;font-size:12px;font-weight:600}
 .cp-lamp-toggle input{appearance:none;width:34px;height:20px;border-radius:999px;background:#20242f;border:1px solid rgba(255,255,255,.22);position:relative;cursor:pointer;transition:all .2s ease}
@@ -224,13 +241,31 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
         </div>
 
         <div class="cp-profile-col-right">
+          <div class="cp-chaos-crypto-bar" aria-label="Крипто, стиль хаос">
+            <div class="cp-chaos-crypto-inner">
+              <div class="cp-chaos-cc">
+                <span class="cp-chaos-l">DEL</span>
+                <span class="cp-chaos-v">{{ profile.decimal_del_balance if profile.decimal_del_balance is not none else '—' }}</span>
+              </div>
+              <div class="cp-chaos-cc">
+                <span class="cp-chaos-l">SHEVELEV</span>
+                <span class="cp-chaos-v cp-chaos-v--pink">{{ profile.shevelev_balance_cached if profile.shevelev_balance_cached is not none else '—' }}</span>
+              </div>
+              <div class="cp-chaos-cc">
+                <span class="cp-chaos-l">WEB3</span>
+                <span class="cp-chaos-v">◇</span>
+              </div>
+            </div>
+          </div>
           <div class="cp-name-plan-row">
             <span class="cp-profile-name">{{ profile.name or 'Участник' }}</span>
             {% if profile_plan_name %}
             <span class="cp-plan-badge">{{ profile_plan_name }}</span>
             {% endif %}
             {% if profile.role == 'admin' %}
-            <span style="background:rgba(248,113,113,.12);color:#f87171;border:1px solid rgba(248,113,113,.25);font-size:10px;padding:2px 8px;border-radius:20px;font-weight:700">Админ</span>
+            <span class="cp-role-stamp cp-role-stamp--admin">Админ</span>
+            {% else %}
+            <span class="cp-role-stamp cp-role-stamp--uch">УЧ</span>
             {% endif %}
           </div>
           <div class="cp-lamp-edit-row">
@@ -250,6 +285,26 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
               <button type="button" class="btn-muted" style="font-size:13px;padding:8px 22px" onclick="openDM()">Сообщение</button>
               {% endif %}
             </div>
+          </div>
+          <div class="cp-plus-slots-row" aria-hidden="true">
+            <button type="button" class="cp-slot-plus" title="Нажмите, чтобы увеличить">+</button>
+            <button type="button" class="cp-slot-plus" title="Нажмите, чтобы увеличить">+</button>
+            <button type="button" class="cp-slot-plus" title="Нажмите, чтобы увеличить">+</button>
+            <button type="button" class="cp-slot-plus" title="Нажмите, чтобы увеличить">+</button>
+          </div>
+          <div id="profileCirclesRow" class="cp-circles-row cp-circles-row--under-edit" data-max-circles="{{ max_profile_circles|default(5) }}">
+            {% for c in circles %}
+            <a class="cp-circle-item" href="/community/profile/{{ profile_id }}/circle/{{ c.id }}">
+              <div class="cp-circle-avatar">
+                {% if c.cover_image %}<img src="{{ c.cover_image }}" alt="">
+                {% else %}<span style="font-size:20px">🍄</span>{% endif %}
+              </div>
+              <div class="cp-circle-name">{{ c.name }}</div>
+            </a>
+            {% endfor %}
+            {% if is_own and (circles|length) < (max_profile_circles|default(5)) %}
+            <button type="button" id="addCircleBtn" class="cp-circle-add-btn" onclick="createCircle()" title="Добавить кружок">+</button>
+            {% endif %}
           </div>
 
           {% set show_del_cell = is_own or profile.decimal_del_balance is not none %}
@@ -280,21 +335,6 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
             {% endif %}
           </div>
           {% endif %}
-
-          <div id="profileCirclesRow" class="cp-circles-row" data-max-circles="{{ max_profile_circles|default(5) }}">
-            {% for c in circles %}
-            <a class="cp-circle-item" href="/community/profile/{{ profile_id }}/circle/{{ c.id }}">
-              <div class="cp-circle-avatar">
-                {% if c.cover_image %}<img src="{{ c.cover_image }}" alt="">
-                {% else %}<span style="font-size:20px">🍄</span>{% endif %}
-              </div>
-              <div class="cp-circle-name">{{ c.name }}</div>
-            </a>
-            {% endfor %}
-            {% if is_own and (circles|length) < (max_profile_circles|default(5)) %}
-            <button type="button" id="addCircleBtn" class="cp-circle-add-btn" onclick="createCircle()" title="Добавить кружок">+</button>
-            {% endif %}
-          </div>
         </div>
       </div>
 
@@ -579,6 +619,11 @@ async function openFollowListModal(profileId, kind){
 }
 const PROFILE_ID = {{ profile_id }};
 const IS_OWN = {{ 'true' if is_own else 'false' }};
+document.querySelectorAll('.cp-slot-plus').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    this.classList.toggle('cp-slot-plus--big');
+  });
+});
 async function saveCpTokenLamp(isOn){
   try{
     const r=await fetch('/profile/token-lamp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token_lamp_enabled:!!isOn}),credentials:'same-origin'});

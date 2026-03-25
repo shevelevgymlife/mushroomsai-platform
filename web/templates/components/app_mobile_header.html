@@ -7,7 +7,10 @@
         {{ ico('menu') }}
       </button>
     </div>
-    <a href="/community/profile/{{ eff_uid }}" class="app-head-brand app-head-brand--center" title="NEUROFUNGI AI">NEUROFUNGI AI</a>
+    <div class="app-head-center-col">
+      <a href="/community/profile/{{ eff_uid }}" class="app-head-brand app-head-brand--center" title="NEUROFUNGI AI">NEUROFUNGI AI</a>
+      <span class="app-head-role-stamp{% if user.role == 'admin' %} app-head-role-stamp--admin{% else %} app-head-role-stamp--uch{% endif %}" title="Статус в сообществе">{% if user.role == 'admin' %}Админ{% else %}УЧ{% endif %}</span>
+    </div>
     <div class="app-head-actions">
       <a href="/messages" class="app-head-btn app-head-btn-icon" title="Сообщения" aria-label="Сообщения" id="cpMsgHead">
         {{ ico('message') }}
