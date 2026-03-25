@@ -117,6 +117,51 @@ async def notify_new_feedback(text: str, user_label: str = "Гость") -> None
     )
 
 
+async def notify_new_feedback_with_reply(
+    feedback_id: int,
+    text: str,
+    user_label: str = "Гость",
+    user_tg_id: int | None = None,
+) -> None:
+    """Уведомление о новом обращении в поддержку с inline-кнопкой «Ответить»."""
+    token = _token()
+    chat_id = _admin_id()
+    if not token or not chat_id:
+        return
+
+    msg_text = (
+        f"📬 <b>Обращение в поддержку #{feedback_id}</b>\n"
+        f"От: {user_label}"
+        + (f" (<code>tg:{user_tg_id}</code>)" if user_tg_id else "") + "\n\n"
+        f"<i>{(text or '').strip()[:600]}</i>\n\n"
+        f"<a href='{settings.SITE_URL}/admin/feedback'>Открыть в админке</a>"
+    )
+
+    payload: dict = {
+        "chat_id": chat_id,
+        "text": msg_text[:_MAX_LEN],
+        "parse_mode": "HTML",
+        "disable_web_page_preview": True,
+    }
+    if user_tg_id:
+        payload["reply_markup"] = {
+            "inline_keyboard": [[
+                {"text": "💬 Ответить", "callback_data": f"reply_fb:{feedback_id}:{user_tg_id}"}
+            ]]
+        }
+
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.post(
+                f"https://api.telegram.org/bot{token}/sendMessage",
+                json=payload,
+            )
+            if r.status_code != 200:
+                logger.warning("notify_new_feedback_with_reply failed: %s %s", r.status_code, r.text[:200])
+    except Exception as e:
+        logger.warning("notify_new_feedback_with_reply exception: %s", e)
+
+
 async def notify_plan_request(user_id: int, user_name: str, plan: str, note: str = "") -> None:
     await tg_send(
         f"📋 <b>Запрос тарифа → {plan}</b>\n"
