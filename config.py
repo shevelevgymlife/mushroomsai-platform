@@ -13,7 +13,9 @@ def _env_file_for_settings() -> str | None:
 
 class Settings(BaseSettings):
     TELEGRAM_TOKEN: str = ""
-    TELEGRAM_BOT_USERNAME: str = ""  # напр. mushroomsai_bot (без @)
+    TELEGRAM_BOT_USERNAME: str = ""  # без @ (напр: neuro_fungi_bot)
+    TELEGRAM_BOT_TOKEN: str = ""     # токен бота для проверки initData; если пусто — fallback на TELEGRAM_TOKEN
+    TELEGRAM_WEBAPP_STARTAPP: str = "webapp"  # startapp payload для deep-link
     NOTIFY_BOT_TOKEN: str = ""       # отдельный бот для уведомлений админу
     GITHUB_WEBHOOK_SECRET: str = ""  # секрет для GitHub Webhooks
     OPENAI_API_KEY: str = ""
@@ -22,18 +24,18 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str = ""
     JWT_SECRET: str = "change-me-in-production"
     ADMIN_TG_ID: int = 0
-    ADMIN_EMAIL: str = ""  # опционально: email владельца (Google) = права оператора
-    DEPLOY_NOTIFY_EMAIL_TO: str = ""  # куда слать уведомление о деплое
-    DEPLOY_NOTIFY_EMAIL_FROM: str = ""  # от кого слать (если пусто, используем SMTP_USER)
-    DEPLOY_NOTIFY_TASK_EMAIL_TO: str = ""  # email для статусов задач (если пусто = DEPLOY_NOTIFY_EMAIL_TO)
-    TASK_AUTORUN_WEBHOOK_URL: str = ""  # внешний раннер задач (optional)
-    TASK_AUTORUN_WEBHOOK_TOKEN: str = ""  # секрет для заголовков webhook (optional)
-    TASK_AUTORUN_SECRET: str = ""  # альтернатива токену (optional)
-    OPS_NOTIFY_DAILY_SUMMARY_HOUR_UTC: int = 9  # час UTC для ежедневной сводки (email)
-    OPS_NOTIFY_BILLING_DUE_AT: str = ""  # дата платежа YYYY-MM-DD (optional)
-    OPS_NOTIFY_BILLING_CURRENT_USD: float = 0.0  # текущие расходы (optional)
-    OPS_NOTIFY_BILLING_LIMIT_USD: float = 0.0  # лимит расходов (optional)
-    OPS_NOTIFY_BILLING_WARN_PERCENT: int = 90  # порог warning по расходам
+    ADMIN_EMAIL: str = ""
+    DEPLOY_NOTIFY_EMAIL_TO: str = ""
+    DEPLOY_NOTIFY_EMAIL_FROM: str = ""
+    DEPLOY_NOTIFY_TASK_EMAIL_TO: str = ""
+    TASK_AUTORUN_WEBHOOK_URL: str = ""
+    TASK_AUTORUN_WEBHOOK_TOKEN: str = ""
+    TASK_AUTORUN_SECRET: str = ""
+    OPS_NOTIFY_DAILY_SUMMARY_HOUR_UTC: int = 9
+    OPS_NOTIFY_BILLING_DUE_AT: str = ""
+    OPS_NOTIFY_BILLING_CURRENT_USD: float = 0.0
+    OPS_NOTIFY_BILLING_LIMIT_USD: float = 0.0
+    OPS_NOTIFY_BILLING_WARN_PERCENT: int = 90
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
@@ -42,11 +44,6 @@ class Settings(BaseSettings):
     SITE_URL: str = "https://mushroomsai.ru"
     SHEVELEV_TOKEN_ADDRESS: str = ""
     DECIMAL_RPC_URL: str = "https://node.decimalchain.com/web3/"
-
-    # Telegram WebApp auth (initData verification)
-    TELEGRAM_BOT_USERNAME: str = ""  # без @
-    TELEGRAM_BOT_TOKEN: str = ""  # токен бота для проверки initData подписи
-    TELEGRAM_WEBAPP_STARTAPP: str = "webapp"  # startapp payload для deep-link
 
     model_config = SettingsConfigDict(env_file=_env_file_for_settings(), extra="ignore")
 
