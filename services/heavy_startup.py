@@ -326,7 +326,7 @@ async def run_heavy_startup(app: FastAPI) -> None:
         except Exception as e:
             logger.warning("AI settings init: %s", e)
 
-        start_scheduler(None)
+        start_scheduler()
         app.state.startup_complete = True
         logger.info("Heavy startup complete; full traffic enabled")
     except Exception as e:

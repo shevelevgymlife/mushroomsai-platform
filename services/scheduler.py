@@ -1,48 +1,16 @@
 import logging
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from datetime import datetime
 
 import sqlalchemy as sa
 
 from db.database import database
-from db.models import followups, users
 from config import settings
 from services.ops_alerts import maybe_notify_billing, send_daily_summary
 
 scheduler = AsyncIOScheduler()
 _logger = logging.getLogger(__name__)
 _scheduler_started: bool = False
-
-
-async def send_followup_messages(bot):
-    """Send scheduled follow-up messages to users."""
-    if bot is None:
-        return
-    now = datetime.utcnow()
-    pending = await database.fetch_all(
-        followups.select()
-        .where(followups.c.sent == False)
-        .where(followups.c.scheduled_at <= now)
-    )
-
-    for followup in pending:
-        user = await database.fetch_one(
-            users.select().where(users.c.id == followup["user_id"])
-        )
-        if user and user["tg_id"]:
-            try:
-                await bot.send_message(
-                    chat_id=user["tg_id"],
-                    text=followup["message"],
-                )
-                await database.execute(
-                    followups.update()
-                    .where(followups.c.id == followup["id"])
-                    .values(sent=True)
-                )
-            except Exception:
-                pass
 
 
 async def purge_expired_group_messages():
@@ -61,23 +29,13 @@ async def purge_expired_group_messages():
         pass
 
 
-def start_scheduler(bot):
+def start_scheduler() -> None:
+    """Планировщик без Telegram: очистка групп, billing, дневная сводка."""
     global _scheduler_started
     if _scheduler_started:
         _logger.warning("start_scheduler: планировщик уже запущен, повторный вызов пропущен")
         return
     _scheduler_started = True
-    if bot is not None:
-        scheduler.add_job(
-            send_followup_messages,
-            "interval",
-            minutes=30,
-            args=[bot],
-            id="send_followup_messages_primary",
-            replace_existing=True,
-        )
-    else:
-        _logger.info("start_scheduler: без бота — follow-up не планируется")
     scheduler.add_job(
         purge_expired_group_messages,
         "interval",
