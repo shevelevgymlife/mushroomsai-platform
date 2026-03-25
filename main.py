@@ -189,6 +189,7 @@ async def health(request: Request):
     return {
         "status": "ok",
         "service": "mushroomsai",
+        "commit": (os.getenv("RENDER_GIT_COMMIT") or "")[:12],
         "ready": getattr(request.app.state, "startup_complete", False),
     }
 
