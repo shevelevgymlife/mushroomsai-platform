@@ -45,23 +45,18 @@
         Войти через Google
       </a>
 
-      <button type="button" id="show-email-btn"
-        class="w-full py-3 rounded-xl border border-border text-sm text-muted hover:text-text transition-colors">
-        Войти по email и паролю
-      </button>
-    </div>
+      {% if telegram_enabled %}
+      <a href="/auth/telegram/open"
+        style="display:flex;align-items:center;justify-content:center;gap:12px;width:100%;min-height:52px;padding:0 20px;border-radius:14px;text-decoration:none;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.12);color:#e8e8e8;font-size:15px;font-weight:500;transition:all .2s"
+        onmouseover="this.style.background='rgba(255,255,255,.11)';this.style.borderColor='rgba(255,255,255,.22)'"
+        onmouseout="this.style.background='rgba(255,255,255,.06)';this.style.borderColor='rgba(255,255,255,.12)'">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M21.6 4.6L3 12.1c-.9.4-.9 1.7.1 2l4.7 1.6 1.8 5.3c.3 1 1.6 1.2 2.2.4l2.9-3.6 4.8 3.6c.8.6 2 .1 2.1-.9l2.6-18.1c.2-1-.9-1.8-1.9-1.4Z" stroke="#22c55e" stroke-width="1.5" stroke-linejoin="round"/>
+        </svg>
+        Войти через Telegram
+      </a>
+      {% endif %}
 
-    <div id="email-block" class="mt-6 hidden">
-      <form action="/login/email" method="post" class="space-y-4">
-        <input type="email" name="email" placeholder="Email" required
-          class="w-full px-4 py-3 rounded-xl bg-surface border border-border text-text placeholder-muted text-sm focus:outline-none focus:border-gold/60 transition-colors duration-300" />
-        <input type="password" name="password" placeholder="Пароль" required
-          class="w-full px-4 py-3 rounded-xl bg-surface border border-border text-text placeholder-muted text-sm focus:outline-none focus:border-gold/60 transition-colors duration-300" />
-        <button type="submit"
-          class="w-full py-3 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-all duration-300">
-          Войти
-        </button>
-      </form>
     </div>
 
   </div>
@@ -69,14 +64,14 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  var b = document.getElementById('show-email-btn');
-  var e = document.getElementById('email-block');
-  if (b && e) {
-    b.addEventListener('click', function() {
-      e.classList.remove('hidden');
-      b.style.display = 'none';
-    });
-  }
+  // If this login page is opened inside Telegram WebApp — force Telegram-only auth.
+  try {
+    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) {
+      const next = (new URLSearchParams(window.location.search)).get('next') || '/dashboard';
+      window.location.href = '/auth/telegram/webapp?next=' + encodeURIComponent(next);
+      return;
+    }
+  } catch (e) {}
 });
 </script>
 {% endblock %}

@@ -19,6 +19,8 @@ users = sqlalchemy.Table(
     sqlalchemy.Column("referred_by", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=True),
     sqlalchemy.Column("linked_tg_id", sqlalchemy.BigInteger, nullable=True),
     sqlalchemy.Column("linked_google_id", sqlalchemy.String(128), nullable=True),
+    sqlalchemy.Column("apple_id", sqlalchemy.String(128), unique=True, nullable=True),
+    sqlalchemy.Column("linked_apple_id", sqlalchemy.String(128), nullable=True),
     sqlalchemy.Column("primary_user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=True),
     sqlalchemy.Column("daily_questions", sqlalchemy.Integer, default=0, server_default="0"),
     sqlalchemy.Column("daily_recipes", sqlalchemy.Integer, default=0, server_default="0"),

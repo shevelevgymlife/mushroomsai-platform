@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     SHEVELEV_TOKEN_ADDRESS: str = ""
     DECIMAL_RPC_URL: str = "https://node.decimalchain.com/web3/"
 
+    # Telegram WebApp auth (initData verification)
+    TELEGRAM_BOT_USERNAME: str = ""  # без @
+    TELEGRAM_BOT_TOKEN: str = ""  # токен бота для проверки initData подписи
+    TELEGRAM_WEBAPP_STARTAPP: str = "webapp"  # startapp payload для deep-link
+
     model_config = SettingsConfigDict(env_file=_env_file_for_settings(), extra="ignore")
 
 

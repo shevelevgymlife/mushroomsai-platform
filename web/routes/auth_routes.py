@@ -10,6 +10,7 @@ from services.referral_service import attach_invite_ref_from_query, finalize_web
 from auth.blocked_identities import is_identity_blocked, login_denied_for_user_row
 import hashlib
 import hmac
+from auth.telegram_auth import telegram_webapp_login, telegram_finalize_login_cookie
 import secrets
 import string
 import time
@@ -84,8 +85,10 @@ async def login_page(request: Request):
     response = templates.TemplateResponse(
         "login.html",
         {
-            "request": request, "user": None,
+            "request": request,
+            "user": None,
             "site_url": settings.SITE_URL,
+            "telegram_enabled": bool(settings.TELEGRAM_BOT_USERNAME and settings.TELEGRAM_BOT_TOKEN),
             "bot_username": settings.TELEGRAM_BOT_USERNAME,
         },
     )
@@ -384,7 +387,54 @@ async def telegram_login_callback(request: Request):
             "login.html",
             {"request": request, "user": None, "error": f"Ошибка входа через Telegram: {e}", "site_url": _s.SITE_URL, "bot_username": _s.TELEGRAM_BOT_USERNAME},
         )
+@router.get("/auth/telegram/open")
+async def telegram_open(request: Request):
+    """
+    Button handler from web login page:
+    redirect user to Telegram app using a deep-link to open Telegram WebApp.
+    """
+    from config import settings
 
+    username = (settings.TELEGRAM_BOT_USERNAME or "").strip().lstrip("@")
+    if not username:
+        return JSONResponse({"error": "TELEGRAM_BOT_USERNAME is not configured"}, status_code=500)
+
+    startapp = (settings.TELEGRAM_WEBAPP_STARTAPP or "webapp").strip()
+    # Telegram will open the bot's WebApp URL configured in BotFather.
+    url = f"https://t.me/{username}?startapp={urllib.parse.quote(startapp)}"
+    return RedirectResponse(url, status_code=302)
+
+
+@router.get("/auth/telegram/webapp", response_class=HTMLResponse)
+async def telegram_webapp_page(request: Request):
+    """
+    Telegram WebApp page.
+    Telegram client renders this inside Telegram and injects `window.Telegram.WebApp.initData`.
+    """
+    return templates.TemplateResponse("telegram_webapp.html", {"request": request, "user": None})
+
+
+@router.post("/auth/telegram/webapp/callback")
+async def telegram_webapp_callback(request: Request):
+    try:
+        body = await request.json()
+        init_data = body.get("initData") or body.get("init_data") or ""
+        next_raw = body.get("next") or "/dashboard"
+        next_path = _safe_next_path(next_raw) or "/dashboard"
+
+        user_id, redirect_to = await telegram_webapp_login(
+            init_data,
+            request=request,
+            redirect_to=next_path,
+        )
+
+        resp = JSONResponse({"ok": True, "redirect": redirect_to})
+        await telegram_finalize_login_cookie(response=resp, request=request, user_id=user_id)
+        return resp
+    except PermissionError as e:
+        return JSONResponse({"error": str(e)}, status_code=403)
+    except Exception as e:
+        return JSONResponse({"error": f"Telegram auth failed: {str(e)}"}, status_code=400)
 
 @router.get("/logout")
 async def logout():

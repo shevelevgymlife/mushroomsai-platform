@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Telegram вход — MushroomsAI{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center pt-24 px-4 neo-app-surface">
+  <div class="w-full max-w-md text-center">
+    <h1 class="text-xl font-semibold text-text mb-2">Входим через Telegram...</h1>
+    <p class="text-sm text-muted">Подождите секунду</p>
+  </div>
+</div>
+
+<script>
+  (async function () {
+    try {
+      const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+      const initData = tg ? tg.initData : null;
+      const next = new URLSearchParams(window.location.search).get('next') || '/dashboard';
+
+      if (!initData) {
+        document.body.innerHTML = "<div style='padding:24px;font-family:system-ui'>Telegram initData not found. Open this page inside Telegram WebApp.</div>";
+        return;
+      }
+
+      const resp = await fetch('/auth/telegram/webapp/callback', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ initData: initData, next: next })
+      });
+
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok || !data || !data.ok) {
+        document.body.innerHTML = "<div style='padding:24px;font-family:system-ui;color:#b91c1c'>Telegram auth failed: " + (data && data.error ? data.error : resp.status) + "</div>";
+        return;
+      }
+      const redirectTo = data.redirect || '/dashboard';
+      window.location.href = redirectTo;
+    } catch (e) {
+      document.body.innerHTML = "<div style='padding:24px;font-family:system-ui;color:#b91c1c'>Telegram auth error.</div>";
+    }
+  })();
+</script>
+{% endblock %}
+
