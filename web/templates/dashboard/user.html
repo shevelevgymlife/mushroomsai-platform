@@ -2094,6 +2094,14 @@ function closeDbDrawer(){
   document.getElementById('dbDrawer')?.classList.remove('open');
   document.getElementById('dbDrawerBackdrop')?.classList.remove('on');
 }
+function openDbDrawer(){
+  const dr = document.getElementById('dbDrawer');
+  const bd = document.getElementById('dbDrawerBackdrop');
+  if(!dr || !bd) return;
+  dr.classList.add('open');
+  bd.classList.add('on');
+  if(typeof refreshGroupListFromApi === 'function') refreshGroupListFromApi();
+}
 function toggleDbDrawer(){
   const dr = document.getElementById('dbDrawer');
   const bd = document.getElementById('dbDrawerBackdrop');
@@ -2238,6 +2246,13 @@ function goSec(id){
     return;
   }
   goSec(SECS.includes(h)?h:DEFAULT_SEC);
+  if(document.querySelector('.db-wrap.db-ig-mode')){
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        if(typeof openDbDrawer === 'function') openDbDrawer();
+      });
+    });
+  }
 })();
 
 window.addEventListener('hashchange',()=>{

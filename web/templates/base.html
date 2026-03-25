@@ -189,7 +189,7 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
 
   <script src="/static/js/app.js"></script>
   {% if user and request.url.path != '/' and not request.url.path.startswith('/dashboard') %}
-  <script src="/static/js/app-global-drawer.js?v=1" defer></script>
+  <script src="/static/js/app-global-drawer.js?v=2" defer></script>
   {% endif %}
   <script src="/static/js/app-header.js?v=2" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
