@@ -199,11 +199,6 @@ else:
 
 # -------------------- ROUTES --------------------
 
-@app.get("/")
-async def root():
-    return {"status": "ok"}
-
-
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon_ico():
     """Browsers request /favicon.ico by default; redirect to SVG in static."""
