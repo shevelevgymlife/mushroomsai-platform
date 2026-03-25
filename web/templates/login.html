@@ -1,6 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Вход — NEUROFUNGI AI{% endblock %}
 
+{% block extra_head %}
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+{% endblock %}
+
 {% block content %}
 <div class="min-h-screen flex items-center justify-center px-4 neo-app-surface" style="padding-top:0;margin-top:-40px">
   <div class="w-full max-w-md">
@@ -21,8 +25,8 @@
 
     <div class="flex flex-col gap-3">
 
-      <!-- Telegram — открыть приложение напрямую -->
-      <a href="/auth/telegram/open"
+      <!-- Telegram: в Mini App — сразу /auth/telegram/webapp; в браузере — deep-link на бота -->
+      <a id="tg-login-btn" href="/auth/telegram/open"
         style="display:flex;align-items:center;justify-content:center;gap:12px;width:100%;min-height:52px;padding:0 20px;border-radius:14px;text-decoration:none;background:rgba(38,169,224,.12);border:1.5px solid rgba(38,169,224,.35);color:#29a8e0;font-size:15px;font-weight:600;transition:all .2s"
         onmouseover="this.style.background='rgba(38,169,224,.2)';this.style.borderColor='rgba(38,169,224,.6)'"
         onmouseout="this.style.background='rgba(38,169,224,.12)';this.style.borderColor='rgba(38,169,224,.35)'">
@@ -52,14 +56,21 @@
 </div>
 <script>
 (function () {
+  var next = new URLSearchParams(location.search).get("next") || "/dashboard";
+  var webappUrl = "/auth/telegram/webapp?next=" + encodeURIComponent(next);
   var tg = window.Telegram && window.Telegram.WebApp;
-  if (!tg) return;
+  if (tg && typeof tg.ready === "function") {
+    try { tg.ready(); } catch (e) {}
+  }
   var g = document.getElementById("login-google-btn");
-  if (g) g.style.display = "none";
+  if (g && tg) g.style.display = "none";
+  var tgBtn = document.getElementById("tg-login-btn");
+  if (tgBtn && tg) {
+    tgBtn.setAttribute("href", webappUrl);
+  }
   var p = location.pathname || "";
-  if (p === "/login" || p === "/login/") {
-    var next = new URLSearchParams(location.search).get("next") || "/dashboard";
-    location.replace("/auth/telegram/webapp?next=" + encodeURIComponent(next));
+  if (tg && (p === "/login" || p === "/login/")) {
+    location.replace(webappUrl);
   }
 })();
 </script>

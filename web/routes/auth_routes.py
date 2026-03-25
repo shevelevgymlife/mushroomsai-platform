@@ -475,10 +475,11 @@ async def telegram_webapp_callback(request: Request):
     except PermissionError as e:
         return JSONResponse({"error": str(e)}, status_code=403)
     except Exception as e:
+        _logger.warning("telegram_webapp_callback failed: %s", e)
         return JSONResponse({"error": f"Telegram auth failed: {str(e)}"}, status_code=400)
 
 @router.get("/logout")
 async def logout():
     resp = RedirectResponse("/", status_code=302)
-    resp.delete_cookie("access_token")
+    resp.delete_cookie("access_token", path="/")
     return resp

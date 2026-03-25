@@ -69,6 +69,9 @@ def verify_telegram_webapp_init_data(init_data: str) -> dict[str, Any]:
     ).hexdigest()
 
     if not hmac.compare_digest(computed_hash, provided_hash):
+        logger.warning(
+            "Telegram WebApp initData HMAC mismatch (check TELEGRAM_BOT_TOKEN matches WebApp bot)"
+        )
         raise ValueError("initData signature mismatch")
 
     # Свежесть initData (как у Login Widget, до 24 ч)
@@ -79,7 +82,12 @@ def verify_telegram_webapp_init_data(init_data: str) -> dict[str, Any]:
     if auth_date <= 0:
         raise ValueError("initData.auth_date is missing")
 
-    if abs(time.time() - auth_date) > 86400:
+    now = time.time()
+    # Допуск сдвига часов: auth_date не должна быть «из будущего» дольше чем на 5 мин
+    if auth_date - now > 300:
+        raise ValueError("initData.auth_date is in the future")
+    # Данные не старше 24 ч (как в документации Telegram)
+    if now - auth_date > 86400:
         raise ValueError("initData expired (auth_date too old)")
 
     # Parse `user` JSON if present.
@@ -170,13 +178,16 @@ async def telegram_finalize_login_cookie(
     # Create access token and finalize referrals in one place for consistency.
     token = create_access_token(user_id)
     secure = (settings.SITE_URL or "").lower().startswith("https://")
+    # В WebView Telegram часто нужен SameSite=None + Secure, иначе сессия не цепляется после редиректа.
+    same_site = "none" if secure else "lax"
     response.set_cookie(
         "access_token",
         token,
         httponly=True,
         max_age=30 * 24 * 3600,
-        samesite="lax",
+        samesite=same_site,
         secure=secure,
+        path="/",
     )
     await finalize_web_referral(request, response, int(user_id))
 
