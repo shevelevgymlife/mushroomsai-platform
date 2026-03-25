@@ -35,6 +35,7 @@
   </script>
   <link rel="stylesheet" href="/static/css/custom.css?v=3" />
   <link rel="stylesheet" href="/static/css/design-system.css?v=3" />
+  <link rel="stylesheet" href="/static/css/app-mobile-shell.css?v=1" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" />
   <style>
     /* Global anti-overflow guard for browser + Telegram WebApp */
@@ -51,7 +52,7 @@
   </style>
   {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-bg text-text font-sans antialiased min-h-screen{% block body_class %}{% endblock %}">
+<body class="bg-bg text-text font-sans antialiased min-h-screen app-mobile-layout{% if user %} app-has-mobile-header{% endif %}{% block body_class %}{% endblock %}">
 <script>
 (function(){
   function setAppVh(){
@@ -108,15 +109,22 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
     </div>
   </div>
 
+  {% if user %}
+  <script>window.__APP_EFF_UID={{ (user.primary_user_id or user.id)|int }};</script>
+  {% include "components/app_mobile_header.html" %}
+  {% include "components/app_activity_panel.html" %}
+  {% endif %}
+
   {% block site_navbar %}{% endblock %}
 
   <main>
     {% block content %}{% endblock %}
   </main>
 
-  {% block site_footer %}{% include "components/footer.html" %}{% endblock %}
+  {% block site_footer %}{% endblock %}
 
   <script src="/static/js/app.js"></script>
+  <script src="/static/js/app-header.js?v=1" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
   <script src="/static/js/mobile-shell.js" defer></script>
   {% block extra_scripts %}{% endblock %}
@@ -212,7 +220,7 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
     fetch('/messages/unread-count').then(r=>r.json()).then(data=>{
       const count=data.count||0;
       const txt=count>99?'99+':count;
-      ['messages-badge','dash-messages-badge','community-msg-badge'].forEach(id=>{
+      ['messages-badge','dash-messages-badge','community-msg-badge','cpMsgBadge'].forEach(id=>{
         const el=document.getElementById(id);
         if(el){el.textContent=txt;el.style.display=count>0?'flex':'none';}
       });

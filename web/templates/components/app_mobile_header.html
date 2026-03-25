@@ -1,0 +1,19 @@
+{% from 'components/stroke_icons.html' import ico %}
+{% set eff_uid = user.primary_user_id or user.id %}
+<div class="app-mobile-topbar">
+  <header class="app-mobile-header-inner" aria-label="NEUROFUNGI AI">
+    <button type="button" class="app-head-btn" id="appMobileMenuBtn" title="Меню и лента" aria-label="Меню">{{ ico('menu') }}</button>
+    <a href="/community/profile/{{ eff_uid }}" class="app-head-brand">NEUROFUNGI AI</a>
+    <div class="app-head-actions">
+      <button type="button" class="app-head-btn app-head-bell" id="cpActivityBell" title="Уведомления" aria-label="Уведомления">
+        {{ ico('bell') }}
+        <span id="cpActivityBadge" class="app-notif-badge">0</span>
+      </button>
+      <a href="/messages" class="app-head-btn" title="Сообщения" aria-label="Сообщения" id="cpMsgHead">
+        {{ ico('message') }}
+        <span id="cpMsgBadge" class="app-notif-badge">0</span>
+      </a>
+      <a href="/community/profile/{{ eff_uid }}" class="app-head-btn" title="Мой профиль" aria-label="Мой профиль">{{ ico('user') }}</a>
+    </div>
+  </header>
+</div>
