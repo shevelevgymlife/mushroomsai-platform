@@ -1,5 +1,7 @@
 import logging
+import secrets
 import urllib.parse
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -58,14 +60,61 @@ async def merge_accounts(primary_id: int, secondary_id: int):
     )
 
 
+@router.get("/link", response_class=HTMLResponse)
+async def link_account_page(request: Request):
+    """Страница привязки аккаунтов — показывает нужные варианты в зависимости от способа входа."""
+    user = await get_user_from_request(request)
+    if not user:
+        return RedirectResponse("/login")
+    from config import settings
+    return templates.TemplateResponse(
+        "account/link_account.html",
+        {"request": request, "user": user, "site_url": settings.SITE_URL,
+         "bot_username": settings.TELEGRAM_BOT_USERNAME},
+    )
+
+
+@router.post("/link-telegram-start")
+async def link_telegram_start(request: Request):
+    """Генерирует deeplink-токен для привязки Telegram через бот."""
+    user = await get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    from config import settings
+    if not settings.TELEGRAM_BOT_USERNAME:
+        return JSONResponse({"error": "bot_not_configured"}, status_code=503)
+
+    token = "lt_" + secrets.token_hex(16)
+    expires = datetime.utcnow() + timedelta(minutes=15)
+    await database.execute(
+        users.update().where(users.c.id == user["id"]).values(
+            link_token=token, link_token_expires=expires
+        )
+    )
+    deeplink = f"https://t.me/{settings.TELEGRAM_BOT_USERNAME}?start={token}"
+    return JSONResponse({"ok": True, "deeplink": deeplink, "expires_in": 900})
+
+
+@router.get("/check-link-status")
+async def check_link_status(request: Request):
+    """Проверяет, привязан ли Telegram к аккаунту (для polling с фронтенда)."""
+    user = await get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    row = await database.fetch_one(users.select().where(users.c.id == user["id"]))
+    if row and row["tg_id"]:
+        return JSONResponse({"linked": True})
+    return JSONResponse({"linked": False})
+
+
 @router.get("/link-telegram", response_class=HTMLResponse)
 async def link_telegram_page(request: Request):
-    return RedirectResponse("/dashboard", status_code=302)
+    return RedirectResponse("/account/link")
 
 
 @router.get("/link-telegram-callback")
 async def link_telegram_callback(request: Request):
-    return RedirectResponse("/dashboard", status_code=302)
+    return RedirectResponse("/dashboard")
 
 
 @router.get("/link-google", response_class=HTMLResponse)

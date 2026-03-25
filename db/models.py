@@ -47,6 +47,8 @@ users = sqlalchemy.Table(
     sqlalchemy.Column("token_lamp_enabled", sqlalchemy.Boolean, default=True, server_default="true"),
     sqlalchemy.Column("legal_accepted_at", sqlalchemy.DateTime, nullable=True),
     sqlalchemy.Column("legal_docs_version", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("link_token", sqlalchemy.String(64), nullable=True),
+    sqlalchemy.Column("link_token_expires", sqlalchemy.DateTime, nullable=True),
 )
 
 sessions = sqlalchemy.Table(

@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Привязать аккаунт — MushroomsAI{% endblock %}
+
+{% block content %}
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:80px 16px 40px">
+  <div style="width:100%;max-width:460px">
+
+    <a href="/dashboard" style="display:inline-flex;align-items:center;gap:6px;color:#888;font-size:13px;text-decoration:none;margin-bottom:24px">
+      ← Назад в кабинет
+    </a>
+
+    <h1 style="font-size:22px;font-weight:700;color:#e8e8e8;margin:0 0 8px">🔗 Привязать аккаунт</h1>
+    <p style="font-size:14px;color:#666;margin:0 0 28px;line-height:1.5">
+      Привяжите все способы входа — войдёте с любого устройства в один аккаунт.
+    </p>
+
+    {% set has_tg = user.tg_id or user.linked_tg_id %}
+    {% set has_google = user.google_id or user.linked_google_id %}
+
+    <!-- Status -->
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:28px">
+      <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {% if has_tg %}rgba(56,189,248,.3){% else %}rgba(255,255,255,.08){% endif %};background:{% if has_tg %}rgba(56,189,248,.06){% else %}rgba(255,255,255,.03){% endif %}">
+        <span style="font-size:24px">✈️</span>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:600;color:{% if has_tg %}#38bdf8{% else %}#888{% endif %}">Telegram</div>
+          <div style="font-size:12px;color:#555">{% if has_tg %}Привязан {% if user.tg_id %}(id: {{ user.tg_id }}){% endif %}{% else %}Не привязан{% endif %}</div>
+        </div>
+        {% if has_tg %}<span style="color:#38bdf8;font-size:18px">✓</span>{% endif %}
+      </div>
+
+      <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {% if has_google %}rgba(239,68,68,.3){% else %}rgba(255,255,255,.08){% endif %};background:{% if has_google %}rgba(239,68,68,.06){% else %}rgba(255,255,255,.03){% endif %}">
+        <span style="font-size:24px">🔴</span>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:600;color:{% if has_google %}#ef4444{% else %}#888{% endif %}">Google</div>
+          <div style="font-size:12px;color:#555">{% if has_google %}Привязан{% if user.email %} ({{ user.email }}){% endif %}{% else %}Не привязан{% endif %}</div>
+        </div>
+        {% if has_google %}<span style="color:#ef4444;font-size:18px">✓</span>{% endif %}
+      </div>
+    </div>
+
+    <!-- Actions -->
+    {% if not has_tg %}
+    {% if bot_username %}
+    <!-- Link Telegram via deeplink -->
+    <div style="margin-bottom:20px">
+      <div id="tg-link-block">
+        <button id="tgLinkBtn" onclick="startTgLink()" style="width:100%;padding:14px 20px;border-radius:14px;border:1px solid rgba(56,189,248,.35);background:rgba(56,189,248,.08);color:#38bdf8;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:10px">
+          <span style="font-size:20px">✈️</span> Привязать Telegram
+        </button>
+        <div id="tg-deeplink-block" style="display:none;margin-top:16px;padding:18px;border-radius:14px;border:1px solid rgba(56,189,248,.25);background:rgba(56,189,248,.06)">
+          <p style="font-size:13px;color:#aaa;margin:0 0 12px;line-height:1.5">Откройте эту ссылку в Telegram и подтвердите привязку:</p>
+          <a id="tgDeeplink" href="#" target="_blank" style="display:block;padding:12px 16px;border-radius:10px;border:1px solid rgba(56,189,248,.4);background:rgba(56,189,248,.1);color:#38bdf8;font-size:14px;font-weight:600;text-decoration:none;text-align:center;margin-bottom:12px">Открыть бот в Telegram →</a>
+          <div id="tgLinkStatus" style="font-size:13px;color:#555;text-align:center">Ожидаем подтверждение…</div>
+          <div id="tgLinkSuccess" style="display:none;padding:12px;border-radius:10px;background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);color:#4ade80;font-size:14px;font-weight:600;text-align:center;margin-top:10px">✅ Telegram привязан! Перенаправляем…</div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    {% if not has_google %}
+    <div style="margin-bottom:20px">
+      <a href="/account/link-google-start" style="width:100%;padding:14px 20px;border-radius:14px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.08);color:#ef4444;font-size:15px;font-weight:600;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:10px;transition:all .2s"
+        onmouseover="this.style.background='rgba(239,68,68,.15)'" onmouseout="this.style.background='rgba(239,68,68,.08)'">
+        <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        Привязать Google
+      </a>
+    </div>
+    {% endif %}
+
+    {% if has_tg and has_google %}
+    <div style="padding:16px;border-radius:14px;border:1px solid rgba(74,222,128,.25);background:rgba(74,222,128,.05);text-align:center;color:#4ade80;font-weight:600">
+      ✅ Все аккаунты привязаны — вы можете войти через Telegram или Google
+    </div>
+    {% endif %}
+
+    {% if request.query_params.get('linked') %}
+    <div style="margin-top:16px;padding:14px;border-radius:12px;border:1px solid rgba(74,222,128,.3);background:rgba(74,222,128,.07);text-align:center;color:#4ade80;font-weight:600">
+      ✓ Аккаунт успешно привязан!
+    </div>
+    {% endif %}
+
+    <div style="margin-top:28px;padding:16px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)">
+      <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:10px">Зачем привязывать?</div>
+      {% for t in ['Единая история AI-чата','Один профиль в сообществе','Войти с любого устройства','Синхронизация подписки и заказов'] %}
+      <div style="font-size:13px;color:#555;display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="color:#3dd4e0">✦</span>{{ t }}</div>
+      {% endfor %}
+    </div>
+
+  </div>
+</div>
+
+<script>
+let pollTimer = null;
+
+async function startTgLink() {
+  const btn = document.getElementById('tgLinkBtn');
+  btn.disabled = true;
+  btn.textContent = 'Генерируем ссылку…';
+  try {
+    const r = await fetch('/account/link-telegram-start', {method:'POST'});
+    const data = await r.json();
+    if (!data.ok) { btn.disabled=false; btn.textContent='Привязать Telegram'; return; }
+    document.getElementById('tgDeeplink').href = data.deeplink;
+    document.getElementById('tg-deeplink-block').style.display = 'block';
+    btn.style.display = 'none';
+    startPolling();
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = 'Привязать Telegram';
+  }
+}
+
+function startPolling() {
+  pollTimer = setInterval(async () => {
+    try {
+      const r = await fetch('/account/check-link-status');
+      const data = await r.json();
+      if (data.linked) {
+        clearInterval(pollTimer);
+        document.getElementById('tgLinkStatus').style.display = 'none';
+        document.getElementById('tgLinkSuccess').style.display = 'block';
+        setTimeout(() => { window.location.href = '/account/link?linked=telegram'; }, 1500);
+      }
+    } catch(e) {}
+  }, 2000);
+}
+</script>
+{% endblock %}

@@ -8,8 +8,11 @@ from db.database import database
 from db.models import users
 from services.referral_service import attach_invite_ref_from_query, finalize_web_referral
 from auth.blocked_identities import is_identity_blocked, login_denied_for_user_row
+import hashlib
+import hmac
 import secrets
 import string
+import time
 import httpx
 import urllib.parse
 import logging
@@ -43,6 +46,7 @@ async def _login_blocked_response(request: Request):
             "user": None,
             "error": "Этот аккаунт заблокирован администратором.",
             "site_url": _s.SITE_URL,
+            "bot_username": _s.TELEGRAM_BOT_USERNAME,
         },
         status_code=403,
     )
@@ -66,7 +70,11 @@ async def login_page(request: Request):
 
     response = templates.TemplateResponse(
         "login.html",
-        {"request": request, "user": None, "site_url": settings.SITE_URL},
+        {
+            "request": request, "user": None,
+            "site_url": settings.SITE_URL,
+            "bot_username": settings.TELEGRAM_BOT_USERNAME,
+        },
     )
     attach_invite_ref_from_query(request, response)
     return response
@@ -97,6 +105,7 @@ async def login_email(
                 "user": None,
                 "error": "Неверный email или пароль",
                 "site_url": _s.SITE_URL,
+                "bot_username": _s.TELEGRAM_BOT_USERNAME,
             },
         )
     token = create_access_token(user["id"])
@@ -125,6 +134,7 @@ async def register_email(
                 "user": None,
                 "error": "Email уже зарегистрирован",
                 "site_url": _s.SITE_URL,
+                "bot_username": _s.TELEGRAM_BOT_USERNAME,
             },
         )
     token = create_access_token(user["id"])
@@ -258,7 +268,94 @@ async def google_callback(request: Request):
                 "user": None,
                 "error": f"Ошибка входа: {str(e)}",
                 "site_url": _s.SITE_URL,
+                "bot_username": _s.TELEGRAM_BOT_USERNAME,
             },
+        )
+
+
+@router.get("/auth/telegram/callback")
+async def telegram_login_callback(request: Request):
+    """Telegram Login Widget callback — верифицирует подпись и логинит/создаёт пользователя."""
+    try:
+        from config import settings
+        data = dict(request.query_params)
+        hash_from_tg = data.pop("hash", "")
+        if not hash_from_tg:
+            raise ValueError("no hash")
+
+        data_check_string = "\n".join(f"{k}={v}" for k, v in sorted(data.items()))
+        secret_key = hashlib.sha256(settings.TELEGRAM_TOKEN.encode()).digest()
+        computed = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
+        if computed != hash_from_tg:
+            raise ValueError("invalid hash")
+
+        auth_date = int(data.get("auth_date", 0))
+        if time.time() - auth_date > 86400:
+            raise ValueError("auth data expired")
+
+        tg_id = int(data["id"])
+        name = (data.get("first_name", "") + " " + data.get("last_name", "")).strip()
+        avatar = data.get("photo_url", "")
+        username = data.get("username", "")
+
+        if await is_identity_blocked("tg_id", str(tg_id)):
+            return await _login_blocked_response(request)
+
+        # Check if linking request
+        link_user_id = request.session.pop("link_user_id", None)
+        state = request.query_params.get("state", "")
+        if link_user_id and state == "link":
+            from web.routes.account import merge_accounts
+            existing_tg_user = await database.fetch_one(
+                users.select().where(users.c.tg_id == tg_id)
+            )
+            if existing_tg_user and existing_tg_user["id"] != link_user_id:
+                await merge_accounts(primary_id=link_user_id, secondary_id=existing_tg_user["id"])
+            elif not existing_tg_user:
+                await database.execute(
+                    users.update().where(users.c.id == link_user_id).values(
+                        tg_id=tg_id, linked_tg_id=tg_id
+                    )
+                )
+            token_str = create_access_token(link_user_id)
+            resp = RedirectResponse("/dashboard?linked=telegram", status_code=302)
+            resp.set_cookie("access_token", token_str, httponly=True, max_age=30 * 24 * 3600)
+            return resp
+
+        from auth.avatar_policy import is_server_uploaded_avatar
+
+        row = await database.fetch_one(users.select().where(users.c.tg_id == tg_id))
+        if row:
+            if await login_denied_for_user_row(dict(row)):
+                return await _login_blocked_response(request)
+            user_id = row["primary_user_id"] or row["id"]
+            vals = {"name": name} if name else {}
+            if not is_server_uploaded_avatar(row.get("avatar")) and avatar:
+                vals["avatar"] = avatar
+            if vals:
+                await database.execute(users.update().where(users.c.tg_id == tg_id).values(**vals))
+        else:
+            ref_code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
+            user_id = await database.execute(
+                users.insert().values(
+                    tg_id=tg_id, name=name or username or "Пользователь",
+                    avatar=avatar, referral_code=ref_code
+                )
+            )
+
+        token_str = create_access_token(user_id)
+        dest = _pop_login_redirect(request)
+        resp = RedirectResponse(dest, status_code=302)
+        resp.set_cookie("access_token", token_str, httponly=True, max_age=30 * 24 * 3600)
+        await finalize_web_referral(request, resp, int(user_id))
+        return resp
+
+    except Exception as e:
+        _logger.warning("telegram_callback error: %s", e)
+        from config import settings as _s
+        return templates.TemplateResponse(
+            "login.html",
+            {"request": request, "user": None, "error": f"Ошибка входа через Telegram: {e}", "site_url": _s.SITE_URL, "bot_username": _s.TELEGRAM_BOT_USERNAME},
         )
 
 
