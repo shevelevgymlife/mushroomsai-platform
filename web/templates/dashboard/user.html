@@ -1882,6 +1882,20 @@ body.dash-ig-app .ig-lamp-topbar{
             {% endfor %}
             <button class="btn-o" style="width:100%;margin-top:14px" onclick="document.getElementById('sync-modal').style.display='flex'">🔗 Синхронизировать аккаунты</button>
           </div>
+          {% if user.role != 'admin' %}
+          <div class="card" style="border-color:rgba(239,68,68,.35);background:rgba(239,68,68,.04)">
+            <div style="font-size:14px;font-weight:600;color:#f87171;margin-bottom:8px">Удаление аккаунта</div>
+            <p style="font-size:12px;color:#888;margin:0 0 12px;line-height:1.5">Безвозвратно удаляются посты, сообщения, заказы, чаты и профиль. Повторно зайти можно будет как новый пользователь (тот же Google/Telegram создаст новую запись).</p>
+            {% if user.primary_user_id %}
+            <p style="font-size:11px;color:#a78bfa;margin:0 0 10px;line-height:1.45">Сейчас вы в привязанном аккаунте — удалится только он; основной аккаунт останется.</p>
+            {% else %}
+            <p style="font-size:11px;color:#888;margin:0 0 10px;line-height:1.45">Если у вас были привязанные аккаунты к этому основному — они тоже будут удалены.</p>
+            {% endif %}
+            <label style="font-size:11px;color:#666;display:block;margin-bottom:4px">Введите для подтверждения</label>
+            <input type="text" id="deleteAccountConfirm" class="sinp" placeholder="DELETE_MY_ACCOUNT" autocomplete="off" style="margin-bottom:10px">
+            <button type="button" class="btn-o" style="width:100%;border-color:#ef4444;color:#fca5a5" onclick="submitDeleteMyAccount()">Удалить мой аккаунт навсегда</button>
+          </div>
+          {% endif %}
       </div>
     </section>
 
@@ -2905,6 +2919,41 @@ async function saveProfile(){
     const r=await fetch('/profile/me',{method:'POST',body:fd});
     if(r.ok&&ok){ok.style.display='block';setTimeout(()=>ok.style.display='none',3000)}
   }catch(e){}
+}
+
+async function submitDeleteMyAccount(){
+  const inp=document.getElementById('deleteAccountConfirm');
+  const v=(inp&&inp.value||'').trim();
+  if(v!=='DELETE_MY_ACCOUNT'){
+    if(typeof showNotification==='function') showNotification('Введите точно: DELETE_MY_ACCOUNT','error');
+    else alert('Введите точно: DELETE_MY_ACCOUNT');
+    return;
+  }
+  if(!confirm('Удалить аккаунт навсегда? Это необратимо.')) return;
+  if(!confirm('Последнее подтверждение: все данные на сайте для этого аккаунта будут стёрты.')) return;
+  try{
+    const r=await fetch('/account/delete-my-account',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      credentials:'same-origin',
+      body:JSON.stringify({confirm:'DELETE_MY_ACCOUNT'})
+    });
+    const d=await r.json().catch(()=>({}));
+    if(r.ok&&d.ok){
+      window.location.href=d.redirect||'/';
+      return;
+    }
+    let msg='Ошибка удаления';
+    if(d.error==='admin') msg='Аккаунт администратора так удалить нельзя';
+    else if(d.error==='confirm_required') msg='Подтвердите фразой DELETE_MY_ACCOUNT';
+    else if(d.detail) msg=String(d.detail).substring(0,200);
+    else if(d.message) msg=d.message;
+    if(typeof showNotification==='function') showNotification(msg,'error');
+    else alert(msg);
+  }catch(e){
+    if(typeof showNotification==='function') showNotification('Ошибка сети','error');
+    else alert('Ошибка сети');
+  }
 }
 
 // ── Список диалогов: время как «сегодня / вчера / день недели» ──

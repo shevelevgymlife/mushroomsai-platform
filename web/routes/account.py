@@ -8,6 +8,12 @@ from starlette.responses import JSONResponse
 from auth.session import get_user_from_request
 from db.database import database
 from db.models import users, messages
+from services.user_permanent_delete import (
+    permanently_delete_user,
+    is_protected_super_admin,
+)
+
+DELETE_ACCOUNT_CONFIRM = "DELETE_MY_ACCOUNT"
 
 logger = logging.getLogger(__name__)
 
@@ -141,3 +147,46 @@ async def manual_merge(
         return JSONResponse({"error": "Same account"}, status_code=400)
     await merge_accounts(primary_id=primary_id, secondary_id=secondary_id)
     return JSONResponse({"ok": True, "merged": secondary_id, "into": primary_id})
+
+
+@router.post("/delete-my-account")
+async def delete_my_account(request: Request):
+    """Безвозвратное удаление текущего пользователя (не админа). Привязанные вторичные аккаунты к этому primary тоже удаляются."""
+    user = await get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    if (user.get("role") or "") == "admin":
+        return JSONResponse(
+            {"error": "admin", "message": "Аккаунт администратора можно удалить только через другого админа."},
+            status_code=403,
+        )
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if (body.get("confirm") or "").strip() != DELETE_ACCOUNT_CONFIRM:
+        return JSONResponse({"error": "confirm_required"}, status_code=400)
+
+    row = await database.fetch_one(users.select().where(users.c.id == user["id"]))
+    if not row:
+        return JSONResponse({"error": "not_found"}, status_code=404)
+    if is_protected_super_admin(dict(row)):
+        return JSONResponse({"error": "protected"}, status_code=403)
+
+    uid = int(user["id"])
+    secondaries = await database.fetch_all(users.select().where(users.c.primary_user_id == uid))
+    for s in secondaries:
+        ok_sub, err_sub = await permanently_delete_user(int(s["id"]))
+        if not ok_sub:
+            logger.error("delete_my_account secondary failed id=%s: %s", s["id"], err_sub)
+            return JSONResponse(
+                {"error": "delete_failed", "detail": err_sub or "secondary"},
+                status_code=500,
+            )
+
+    ok, err = await permanently_delete_user(uid)
+    if not ok:
+        return JSONResponse({"error": "delete_failed", "detail": err or "unknown"}, status_code=500)
+
+    request.session.clear()
+    return JSONResponse({"ok": True, "redirect": "/"})
