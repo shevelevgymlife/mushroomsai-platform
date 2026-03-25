@@ -6,6 +6,7 @@ from db.database import database
 from db.models import users, sessions
 from auth.blocked_identities import login_denied_for_user_row_sync
 from auth.owner import sync_owner_admin_role
+from auth.ui_prefs import attach_screen_rim_prefs
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
@@ -36,6 +37,7 @@ async def get_current_user(token: str) -> Optional[dict]:
     if login_denied_for_user_row_sync(u):
         return None
     await sync_owner_admin_role(u)
+    attach_screen_rim_prefs(u)
     return u
 
 

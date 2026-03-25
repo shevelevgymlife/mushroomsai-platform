@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}Подсветка экрана — NEUROFUNGI AI{% endblock %}
+
+{% block content %}
+<div class="pt-24 pb-20 px-4 neo-app-surface max-w-lg mx-auto">
+  <h1 class="text-xl font-semibold text-text mb-1" style="color:#3dd4e0">Подсветка по периметру</h1>
+  <p class="text-sm text-muted mb-6">Выберите цвет курсором (как в Tilda) и силу свечения. Сохраняется в аккаунте.</p>
+
+  <div class="space-y-5 rounded-2xl border border-border bg-surface/50 p-4">
+    <div>
+      <label class="text-xs text-muted block mb-2">Оттенок (полоса)</label>
+      <input type="range" id="rimHue" min="0" max="360" value="180" class="w-full h-3 rounded-full appearance-none cursor-pointer"
+        style="background:linear-gradient(90deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)" />
+    </div>
+    <div>
+      <label class="text-xs text-muted block mb-2">Насыщенность и яркость (нажмите или ведите курсор)</label>
+      <div id="rimSv" class="relative w-full rounded-xl overflow-hidden cursor-crosshair touch-none" style="height:200px;background:#888">
+      </div>
+    </div>
+    <div>
+      <label class="text-xs text-muted block mb-2">Сила подсветки (ярче / тусклее)</label>
+      <input type="range" id="rimStrength" min="5" max="100" value="55" class="w-full" />
+    </div>
+    <div class="flex items-center gap-3">
+      <label class="flex items-center gap-2 text-sm text-text cursor-pointer">
+        <input type="checkbox" id="rimOn" class="rounded border-border" {% if user.screen_rim.on %}checked{% endif %} />
+        Включить подсветку
+      </label>
+    </div>
+    <div class="flex gap-3 pt-2">
+      <button type="button" id="rimSave" class="flex-1 py-3 rounded-xl font-semibold text-bg" style="background:linear-gradient(135deg,#3dd4e0,#2a9daa)">Сохранить</button>
+      <a href="javascript:history.back()" class="py-3 px-4 rounded-xl border border-border text-muted text-sm flex items-center">Назад</a>
+    </div>
+    <p id="rimStatus" class="text-xs text-muted min-h-[1.25em]"></p>
+  </div>
+</div>
+
+<script>
+(function(){
+  var cfg = window.__SCREEN_RIM || { on:false, r:61, g:212, b:224, s:0.55 };
+
+  function rgbToHsv(r,g,b){
+    r/=255; g/=255; b/=255;
+    var max=Math.max(r,g,b), min=Math.min(r,g,b), d=max-min, h=0, s=max?d/max:0, v=max;
+    if(d){
+      if(max===r) h=((g-b)/d+(g<b?6:0));
+      else if(max===g) h=(b-r)/d+2;
+      else h=(r-g)/d+4;
+      h*=60;
+    }
+    return { h:h, s:s, v:v };
+  }
+  function hsvToRgb(h,s,v){
+    h=(h%360+360)%360;
+    var c=v*s, x=c*(1-Math.abs((h/60)%2-1)), m=v-c, r=0,g=0,b=0;
+    if(h<60){r=c;g=x;}
+    else if(h<120){r=x;g=c;}
+    else if(h<180){g=c;b=x;}
+    else if(h<240){g=x;b=c;}
+    else if(h<300){r=x;b=c;}
+    else{r=c;b=x;}
+    return [Math.round((r+m)*255), Math.round((g+m)*255), Math.round((b+m)*255)];
+  }
+
+  var hueEl = document.getElementById('rimHue');
+  var svEl = document.getElementById('rimSv');
+  var strEl = document.getElementById('rimStrength');
+  var onEl = document.getElementById('rimOn');
+  var saveBtn = document.getElementById('rimSave');
+  var statusEl = document.getElementById('rimStatus');
+
+  var hsv = rgbToHsv(~~cfg.r, ~~cfg.g, ~~cfg.b);
+  hueEl.value = Math.round(hsv.h);
+  strEl.value = Math.round((cfg.s != null ? cfg.s : 0.55) * 100);
+
+  function paintSv(){
+    var hh = +hueEl.value;
+    svEl.style.background =
+      'linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, hsl(' + hh + ',100%,50%))';
+  }
+  function setKnobFromHsv(){
+    paintSv();
+    var rect = svEl.getBoundingClientRect();
+    /* internal state for pointer */
+    svEl.dataset.sat = String(hsv.s);
+    svEl.dataset.val = String(hsv.v);
+  }
+  setKnobFromHsv();
+
+  function syncFromCfg(){
+    hsv = rgbToHsv(~~cfg.r, ~~cfg.g, ~~cfg.b);
+    hueEl.value = Math.round(hsv.h);
+    strEl.value = Math.round((cfg.s != null ? cfg.s : 0.55) * 100);
+    onEl.checked = !!cfg.on;
+    setKnobFromHsv();
+    applyLocal();
+  }
+
+  function readSvFromEvent(ev){
+    var rect = svEl.getBoundingClientRect();
+    var x = Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width));
+    var y = Math.max(0, Math.min(1, (ev.clientY - rect.top) / rect.height));
+    hsv.s = x;
+    hsv.v = 1 - y;
+  }
+
+  function applyLocal(){
+    var rgb = hsvToRgb(+hueEl.value, hsv.s, hsv.v);
+    var s = (+strEl.value) / 100;
+    var patch = { on: onEl.checked, r: rgb[0], g: rgb[1], b: rgb[2], s: s };
+    window.__SCREEN_RIM = patch;
+    if (window.applyScreenRimFromPrefs) window.applyScreenRimFromPrefs(patch);
+  }
+
+  hueEl.addEventListener('input', function(){
+    hsv.h = +hueEl.value;
+    applyLocal();
+  });
+  strEl.addEventListener('input', applyLocal);
+  onEl.addEventListener('change', applyLocal);
+
+  var dragging = false;
+  function onSv(ev){
+    readSvFromEvent(ev);
+    hsv.h = +hueEl.value;
+    applyLocal();
+  }
+  svEl.addEventListener('mousedown', function(e){ dragging = true; onSv(e); });
+  window.addEventListener('mousemove', function(e){ if(dragging) onSv(e); });
+  window.addEventListener('mouseup', function(){ dragging = false; });
+  svEl.addEventListener('touchstart', function(e){ if(e.touches[0]){ dragging=true; onSv({clientX:e.touches[0].clientX,clientY:e.touches[0].clientY}); }}, {passive:true});
+  window.addEventListener('touchmove', function(e){ if(dragging && e.touches[0]) onSv({clientX:e.touches[0].clientX,clientY:e.touches[0].clientY}); }, {passive:true});
+  window.addEventListener('touchend', function(){ dragging = false; });
+
+  saveBtn.addEventListener('click', async function(){
+    statusEl.textContent = 'Сохранение…';
+    var rgb = hsvToRgb(+hueEl.value, hsv.s, hsv.v);
+    var body = { on: onEl.checked, r: rgb[0], g: rgb[1], b: rgb[2], s: (+strEl.value)/100 };
+    try{
+      var resp = await fetch('/account/screen-rim', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body: JSON.stringify(body)});
+      var data = await resp.json();
+      if(data.ok){
+        window.__SCREEN_RIM = data.screen_rim;
+        statusEl.textContent = 'Сохранено';
+        if (window.applyScreenRimFromPrefs) window.applyScreenRimFromPrefs(data.screen_rim);
+      } else statusEl.textContent = data.error || 'Ошибка';
+    } catch(err){ statusEl.textContent = 'Сеть недоступна'; }
+  });
+
+  syncFromCfg();
+})();
+</script>
+{% endblock %}

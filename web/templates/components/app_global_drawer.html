@@ -7,6 +7,8 @@
     <div class="nm">{{ user.name or 'Участник' }}</div>
     <div class="em">{{ user.email or ('Telegram: ' + (user.tg_id|string) if user.tg_id else '') }}</div>
   </div>
+  {% set rim_close_fn = 'closeAppGlobalDrawer' %}
+  {% include "components/drawer_screen_rim.html" %}
   <div class="ig-drawer-scroll">
     <a href="/community/profile/{{ eff_uid }}" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('grid') }}</span><span class="lbl">Мой профиль</span></a>
     <a href="/dashboard#feed" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('feed') }}</span><span class="lbl">Лента</span></a>

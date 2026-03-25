@@ -862,6 +862,8 @@ body.dash-ig-app .ig-lamp-topbar{
       <div class="nm">{{ user.name or 'Участник' }}</div>
       <div class="em">{{ user.email or ('Telegram: ' + (user.tg_id|string) if user.tg_id else '') }}</div>
     </div>
+    {% set rim_close_fn = 'closeDbDrawer' %}
+    {% include "components/drawer_screen_rim.html" %}
     <div class="ig-drawer-scroll">
       <a href="/community/profile/{{ effective_user_id }}" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none"><span class="e">{{ ico('grid') }}</span><span class="lbl">Мой профиль</span></a>
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('feed')"><span class="e">{{ ico('feed') }}</span><span class="lbl">Лента</span></button>

@@ -229,6 +229,12 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("DB migration skipped: %s", e)
 
+    try:
+        await database.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS screen_rim_json TEXT")
+        logger.info("DB migration: screen_rim_json OK")
+    except Exception as e:
+        logger.warning("DB migration screen_rim_json: %s", e)
+
     # Уведомление о деплое в Telegram
     try:
         from services.tg_notify import notify_deploy_ok

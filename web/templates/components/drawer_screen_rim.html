@@ -1,0 +1,11 @@
+{# Требует: user, rim_close_fn = 'closeAppGlobalDrawer' | 'closeDbDrawer' #}
+{% set rim = user.screen_rim if user.screen_rim is defined else {'on': false, 'r': 61, 'g': 212, 'b': 224, 's': 0.55} %}
+<div class="ig-drawer-rim-row">
+  <div class="rim-label">Подсветка по краю экрана</div>
+  <label class="rim-toggle">
+    <input type="checkbox" class="js-drawer-rim-toggle" {% if rim.on %}checked{% endif %} />
+    <span class="rim-knob"></span>
+  </label>
+  <a href="/account/screen-rim" class="rim-palette-shimmer js-rim-palette-link" aria-label="Цвет и яркость подсветки"
+    {% if rim_close_fn == 'closeDbDrawer' %}onclick="closeDbDrawer();"{% else %}onclick="closeAppGlobalDrawer();"{% endif %}></a>
+</div>

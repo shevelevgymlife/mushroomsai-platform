@@ -1,3 +1,4 @@
+import json
 import logging
 import secrets
 import urllib.parse
@@ -8,6 +9,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from web.templates_utils import Jinja2Templates
 from starlette.responses import JSONResponse
 from auth.session import get_user_from_request
+from auth.ui_prefs import DEFAULT_SCREEN_RIM, attach_screen_rim_prefs
 from db.database import database
 from db.models import users, messages
 from services.user_permanent_delete import (
@@ -271,3 +273,48 @@ async def delete_my_account(request: Request):
 
     request.session.clear()
     return JSONResponse({"ok": True, "redirect": "/"})
+
+
+@router.get("/screen-rim", response_class=HTMLResponse)
+async def screen_rim_settings_page(request: Request):
+    """Выбор цвета и яркости подсветки по периметру экрана (как палитра в Tilda)."""
+    user = await get_user_from_request(request)
+    if not user:
+        return RedirectResponse("/login?next=/account/screen-rim", status_code=302)
+    from config import settings
+
+    return templates.TemplateResponse(
+        "account/screen_rim.html",
+        {
+            "request": request,
+            "user": user,
+            "site_url": settings.SITE_URL,
+        },
+    )
+
+
+@router.post("/screen-rim")
+async def screen_rim_save(request: Request):
+    user = await get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    cur = dict(user.get("screen_rim") or DEFAULT_SCREEN_RIM)
+    if "on" in body:
+        cur["on"] = bool(body["on"])
+    for k in ("r", "g", "b"):
+        if k in body:
+            cur[k] = max(0, min(255, int(body[k])))
+    if "s" in body:
+        cur["s"] = max(0.05, min(1.0, float(body["s"])))
+    payload = json.dumps(cur, separators=(",", ":"))
+    await database.execute(
+        users.update().where(users.c.id == user["id"]).values(screen_rim_json=payload)
+    )
+    attach_screen_rim_prefs(user)
+    user["screen_rim"] = cur
+    user["screen_rim_json"] = payload
+    return JSONResponse({"ok": True, "screen_rim": cur})

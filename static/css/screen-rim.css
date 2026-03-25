@@ -1,0 +1,104 @@
+/* Подсветка по периметру экрана (тонкая, поверх контента, без перехвата кликов) */
+#app-screen-rim {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 38;
+  border-radius: 0;
+  transition: opacity 0.35s ease, box-shadow 0.35s ease;
+  box-shadow: none;
+}
+#app-screen-rim.is-off {
+  opacity: 0;
+}
+#app-screen-rim.is-on {
+  opacity: 1;
+}
+
+/* Ряд в бургере: тумблер + кнопка-палитра */
+.ig-drawer-rim-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.ig-drawer-rim-row .rim-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: #9ca3af;
+  line-height: 1.3;
+}
+.rim-toggle {
+  position: relative;
+  width: 44px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.rim-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.rim-toggle .rim-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #e8e8e8;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+.rim-toggle input:checked + .rim-knob {
+  transform: translateX(18px);
+  background: linear-gradient(135deg, #3dd4e0, #b85fa3);
+  box-shadow: 0 0 12px rgba(61, 212, 224, 0.45);
+}
+.rim-toggle:has(input:checked) {
+  background: rgba(61, 212, 224, 0.15);
+  border-color: rgba(61, 212, 224, 0.35);
+}
+
+.rim-palette-shimmer {
+  flex-shrink: 0;
+  width: 42px;
+  height: 34px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  cursor: pointer;
+  text-decoration: none;
+  display: block;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(
+    120deg,
+    rgb(var(--rim-r, 61), var(--rim-g, 212), var(--rim-b, 224)) 0%,
+    rgba(255, 255, 255, 0.45) 22%,
+    rgb(var(--rim-r2, 184), var(--rim-g2, 95), var(--rim-b2, 163)) 48%,
+    rgba(255, 255, 255, 0.25) 72%,
+    rgb(var(--rim-r, 61), var(--rim-g, 212), var(--rim-b, 224)) 100%
+  );
+  background-size: 260% 100%;
+  animation: rimPaletteShimmer 2.6s linear infinite;
+  box-shadow: 0 0 14px rgba(61, 212, 224, 0.25);
+}
+.rim-palette-shimmer:hover {
+  filter: brightness(1.08);
+}
+@keyframes rimPaletteShimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
