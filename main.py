@@ -137,20 +137,33 @@ async def lifespan(app: FastAPI):
             await bot_app.start()
             await bot_app.updater.start_polling(drop_pending_updates=True)
             await setup_bot_menu(bot_app)
-            logger.info("Telegram bot started")
+            logger.info("Main bot started")
         except Exception as e:
             logger.error("Primary bot startup error: %s", e)
+
+    notify_bot_app = None
+    if settings.NOTIFY_BOT_TOKEN:
+        try:
+            from bot.notify_bot import create_notify_bot
+            notify_bot_app = create_notify_bot()
+            await notify_bot_app.initialize()
+            await notify_bot_app.start()
+            await notify_bot_app.updater.start_polling(drop_pending_updates=True)
+            logger.info("Notify bot started")
+        except Exception as e:
+            logger.error("Notify bot startup error: %s", e)
 
     try:
         yield
     finally:
-        if bot_app:
-            try:
-                await bot_app.updater.stop()
-                await bot_app.stop()
-                await bot_app.shutdown()
-            except Exception:
-                pass
+        for app in [bot_app, notify_bot_app]:
+            if app:
+                try:
+                    await app.updater.stop()
+                    await app.stop()
+                    await app.shutdown()
+                except Exception:
+                    pass
 
         if not task.done():
             task.cancel()

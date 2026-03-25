@@ -15,7 +15,7 @@ _MAX_LEN = 4000
 
 
 def _token() -> str:
-    return (settings.TELEGRAM_TOKEN or "").strip()
+    return (settings.NOTIFY_BOT_TOKEN or settings.TELEGRAM_TOKEN or "").strip()
 
 
 def _admin_id() -> int:
