@@ -4,14 +4,14 @@ import secrets
 import urllib.parse
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Request, Form
+from fastapi import APIRouter, Request, Form, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
 from web.templates_utils import Jinja2Templates
 from starlette.responses import JSONResponse
 from auth.session import get_user_from_request
 from auth.ui_prefs import DEFAULT_SCREEN_RIM, attach_screen_rim_prefs
 from db.database import database
-from db.models import users, messages
+from db.models import users, messages, pending_google_links
 from services.user_permanent_delete import (
     permanently_delete_user,
     is_protected_super_admin,
@@ -32,6 +32,32 @@ async def merge_accounts(primary_id: int, secondary_id: int):
     if not primary or not secondary:
         return
 
+    sec_tg = secondary.get("tg_id")
+    sec_ltg = secondary.get("linked_tg_id")
+    sec_google = secondary.get("google_id")
+    sec_lg = secondary.get("linked_google_id")
+    sec_email = secondary.get("email")
+    sec_apple = secondary.get("apple_id")
+    sec_lap = secondary.get("linked_apple_id")
+    sec_ref = secondary.get("referral_code")
+
+    # Сначала снимаем уникальные ключи с вторичного аккаунта — иначе UPDATE primary
+    # с тем же google_id/tg_id/email даёт UniqueViolation.
+    await database.execute(
+        users.update()
+        .where(users.c.id == secondary_id)
+        .values(
+            google_id=None,
+            linked_google_id=None,
+            tg_id=None,
+            linked_tg_id=None,
+            email=None,
+            apple_id=None,
+            linked_apple_id=None,
+            referral_code=None,
+        )
+    )
+
     await database.execute(
         messages.update().where(messages.c.user_id == secondary_id).values(user_id=primary_id)
     )
@@ -48,20 +74,103 @@ async def merge_accounts(primary_id: int, secondary_id: int):
         )
 
     updates = {}
-    if secondary["tg_id"] and not primary["tg_id"]:
-        updates["tg_id"] = secondary["tg_id"]
-        updates["linked_tg_id"] = secondary["tg_id"]
-    if secondary["google_id"] and not primary["google_id"]:
-        updates["google_id"] = secondary["google_id"]
-        updates["linked_google_id"] = secondary["google_id"]
-    if secondary.get("email") and not primary.get("email"):
-        updates["email"] = secondary["email"]
+    if sec_tg and not primary.get("tg_id"):
+        updates["tg_id"] = sec_tg
+        updates["linked_tg_id"] = sec_ltg or sec_tg
+    if sec_google and not primary.get("google_id"):
+        updates["google_id"] = sec_google
+        updates["linked_google_id"] = sec_lg or sec_google
+    if sec_email and not primary.get("email"):
+        updates["email"] = sec_email
+    if sec_apple and not primary.get("apple_id"):
+        updates["apple_id"] = sec_apple
+        updates["linked_apple_id"] = sec_lap or sec_apple
+    if sec_ref and not primary.get("referral_code"):
+        updates["referral_code"] = sec_ref
     if updates:
         await database.execute(users.update().where(users.c.id == primary_id).values(**updates))
 
     await database.execute(
         users.update().where(users.c.id == secondary_id).values(primary_user_id=primary_id)
     )
+
+
+async def apply_google_account_link(
+    link_user_id: int,
+    google_id: str,
+    email: str | None,
+    name: str | None,
+    avatar: str | None,
+) -> None:
+    """Привязать Google к аккаунту: слияние с дублем при необходимости и финальный UPDATE."""
+    from auth.avatar_policy import is_server_uploaded_avatar
+    from services.notify_admin import notify_admin_telegram
+
+    existing = await database.fetch_one(users.select().where(users.c.google_id == google_id))
+    if existing and int(existing["id"]) != int(link_user_id):
+        await merge_accounts(primary_id=link_user_id, secondary_id=int(existing["id"]))
+        ok, err = await permanently_delete_user(int(existing["id"]))
+        if not ok:
+            logger.error("apply_google_account_link: delete secondary failed: %s", err)
+
+    primary = await database.fetch_one(users.select().where(users.c.id == link_user_id))
+    if not primary:
+        return
+
+    vals: dict = {
+        "google_id": google_id,
+        "linked_google_id": google_id,
+    }
+    em = (email or "").strip()
+    if em:
+        vals["email"] = em
+    nm = (name or "").strip()
+    if nm and not (primary.get("name") or "").strip():
+        vals["name"] = nm
+    av = (avatar or "").strip()
+    if av and not is_server_uploaded_avatar(primary.get("avatar")):
+        vals["avatar"] = av
+
+    await database.execute(users.update().where(users.c.id == link_user_id).values(**vals))
+
+    try:
+        await notify_admin_telegram(
+            f"🔗 Аккаунт привязан: Google\n"
+            f"👤 {(primary.get('name') or '—')} (id={link_user_id})\n"
+            f"📧 {em or primary.get('email') or '—'}"
+        )
+    except Exception:
+        pass
+
+
+async def create_pending_google_link_token(
+    user_id: int,
+    google_id: str,
+    email: str | None,
+    name: str | None,
+    avatar: str | None,
+) -> str:
+    """Создать ожидание подтверждения привязки Google (переход по ссылке из Telegram)."""
+    token = secrets.token_urlsafe(24)
+    expires = datetime.utcnow() + timedelta(minutes=15)
+    try:
+        await database.execute(
+            pending_google_links.delete().where(pending_google_links.c.user_id == user_id)
+        )
+    except Exception:
+        pass
+    await database.execute(
+        pending_google_links.insert().values(
+            token=token,
+            user_id=user_id,
+            google_id=google_id,
+            email=(email or "")[:512],
+            name=(name or "")[:255],
+            avatar=(avatar or "")[:2000],
+            expires_at=expires,
+        )
+    )
+    return token
 
 
 @router.get("/link", response_class=HTMLResponse)
@@ -169,6 +278,46 @@ async def check_google_link_status(request: Request):
     if row and (row["google_id"] or row["linked_google_id"]):
         return JSONResponse({"linked": True, "email": row.get("email") or ""})
     return JSONResponse({"linked": False})
+
+
+@router.get("/google-link/confirm")
+async def google_link_confirm(request: Request, t: str = Query(default="")):
+    """Подтверждение привязки Google по ссылке из Telegram (токен одноразовый)."""
+    token = (t or "").strip()
+    if not token:
+        return RedirectResponse("/account/link?google_err=bad_token", status_code=302)
+    row = await database.fetch_one(
+        pending_google_links.select().where(pending_google_links.c.token == token)
+    )
+    if not row:
+        return RedirectResponse("/account/link?google_err=expired", status_code=302)
+    if row["expires_at"] and datetime.utcnow() > row["expires_at"]:
+        try:
+            await database.execute(
+                pending_google_links.delete().where(pending_google_links.c.token == token)
+            )
+        except Exception:
+            pass
+        return RedirectResponse("/account/link?google_err=expired", status_code=302)
+    uid = int(row["user_id"])
+    await apply_google_account_link(
+        uid,
+        str(row["google_id"]),
+        row.get("email"),
+        row.get("name"),
+        row.get("avatar"),
+    )
+    try:
+        await database.execute(
+            pending_google_links.delete().where(pending_google_links.c.token == token)
+        )
+    except Exception:
+        pass
+    from auth.session import create_access_token
+
+    resp = RedirectResponse("/account/link?linked=google", status_code=302)
+    resp.set_cookie("access_token", create_access_token(uid), httponly=True, max_age=30 * 24 * 3600)
+    return resp
 
 
 @router.get("/link-google-start")

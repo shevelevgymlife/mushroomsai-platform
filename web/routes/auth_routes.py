@@ -8,6 +8,7 @@ from db.database import database
 from db.models import users, admin_permissions
 from services.referral_service import attach_invite_ref_from_query, finalize_web_referral
 from auth.blocked_identities import is_identity_blocked, login_denied_for_user_row
+import html
 import hashlib
 import hmac
 from auth.telegram_auth import telegram_webapp_login, telegram_finalize_login_cookie
@@ -236,47 +237,30 @@ async def google_callback(request: Request):
             request.session.pop("link_user_id", None)
 
         if link_user_id is not None:
-            from web.routes.account import merge_accounts
-            from services.user_permanent_delete import permanently_delete_user
-            from services.notify_admin import notify_admin_telegram
-            existing_google_user = await database.fetch_one(
-                users.select().where(users.c.google_id == google_id)
-            )
-            if existing_google_user and existing_google_user["id"] != link_user_id:
-                # Отдельный Google-аккаунт существует — сливаем данные, затем удаляем дубль
-                secondary_id = existing_google_user["id"]
-                await merge_accounts(primary_id=link_user_id, secondary_id=secondary_id)
-                await permanently_delete_user(secondary_id)
-            elif not existing_google_user:
-                # Google-аккаунта нет — просто привязываем google_id
-                await database.execute(
-                    users.update().where(users.c.id == link_user_id).values(
-                        google_id=google_id,
-                        linked_google_id=google_id,
-                        email=email,
-                    )
+            from web.routes.account import apply_google_account_link, create_pending_google_link_token
+
+            primary_row = await database.fetch_one(users.select().where(users.c.id == link_user_id))
+            tg_dest = None
+            if primary_row:
+                tg_dest = primary_row.get("tg_id") or primary_row.get("linked_tg_id")
+            # С привязанным Telegram — сначала подтверждение по ссылке в личке (без SMS)
+            if tg_dest:
+                tok = await create_pending_google_link_token(
+                    link_user_id, google_id, email, name, avatar
                 )
-            else:
-                # Тот же пользователь — обновляем email с Google
-                await database.execute(
-                    users.update().where(users.c.id == link_user_id).values(
-                        google_id=google_id,
-                        linked_google_id=google_id,
-                        email=email or existing_google_user.get("email"),
-                    )
+                from services.tg_notify import notify_user_telegram
+
+                confirm = f"{settings.SITE_URL.rstrip('/')}/account/google-link/confirm?t={urllib.parse.quote(tok, safe='')}"
+                await notify_user_telegram(
+                    int(tg_dest),
+                    f"🔐 <b>Привязка Google к NEUROFUNGI AI</b>\n"
+                    f"Email: {html.escape(email or '—')}\n\n"
+                    f"<a href=\"{html.escape(confirm)}\">✅ Подтвердить привязку</a>\n\n"
+                    f"Если это не вы — проигнорируйте. Ссылка ~15 мин.",
                 )
-            # Уведомление админу
-            try:
-                primary_row = await database.fetch_one(users.select().where(users.c.id == link_user_id))
-                uname = (primary_row and primary_row.get("name")) or "—"
-                utg = (primary_row and primary_row.get("tg_id")) or "—"
-                await notify_admin_telegram(
-                    f"🔗 Аккаунт привязан: Google\n"
-                    f"👤 {uname} (id={link_user_id}, tg_id={utg})\n"
-                    f"📧 {email or '—'}"
-                )
-            except Exception:
-                pass
+                return RedirectResponse("/account/link?google_tg_confirm=1", status_code=302)
+
+            await apply_google_account_link(link_user_id, google_id, email, name, avatar)
             token_str = create_access_token(link_user_id)
             resp = RedirectResponse("/account/link?linked=google", status_code=302)
             resp.set_cookie("access_token", token_str, httponly=True, max_age=30 * 24 * 3600)

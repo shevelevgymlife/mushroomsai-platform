@@ -30,6 +30,34 @@ def _render_commit() -> str:
     return (os.getenv("RENDER_GIT_COMMIT", "") or "")[:10] or "—"
 
 
+async def notify_user_telegram(chat_id: int, text: str, parse_mode: str = "HTML") -> bool:
+    """Сообщение пользователю по chat_id (тот же бот, что и для админа)."""
+    token = _token()
+    if not token or not chat_id:
+        return False
+    text = (text or "").strip()[:_MAX_LEN]
+    if not text:
+        return False
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.post(
+                f"https://api.telegram.org/bot{token}/sendMessage",
+                json={
+                    "chat_id": int(chat_id),
+                    "text": text,
+                    "parse_mode": parse_mode,
+                    "disable_web_page_preview": True,
+                },
+            )
+            if r.status_code != 200:
+                logger.warning("notify_user_telegram failed: %s %s", r.status_code, r.text[:200])
+                return False
+        return True
+    except Exception as e:
+        logger.warning("notify_user_telegram exception: %s", e)
+        return False
+
+
 async def tg_send(text: str, parse_mode: str = "HTML") -> bool:
     """Отправить сообщение администратору. Возвращает True при успехе."""
     token = _token()

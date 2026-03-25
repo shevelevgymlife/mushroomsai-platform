@@ -608,6 +608,20 @@ blocked_identities = sqlalchemy.Table(
     sqlalchemy.UniqueConstraint("id_type", "id_value", name="uq_blocked_identities_type_value"),
 )
 
+pending_google_links = sqlalchemy.Table(
+    "pending_google_links",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("token", sqlalchemy.String(64), unique=True, nullable=False),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("google_id", sqlalchemy.String(128), nullable=False),
+    sqlalchemy.Column("email", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("name", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("avatar", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("expires_at", sqlalchemy.DateTime, nullable=False),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
 ai_training_folders = sqlalchemy.Table(
     "ai_training_folders",
     metadata,
