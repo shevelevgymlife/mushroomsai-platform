@@ -51,6 +51,8 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_USERNAME: str = ""  # без @
     TELEGRAM_BOT_TOKEN: str = ""  # токен бота для проверки initData подписи
     TELEGRAM_WEBAPP_STARTAPP: str = "webapp"  # startapp payload для deep-link
+    # Доп. токены ботов (через запятую), если Mini App открывают с другого бота — иначе initData hash не сойдётся
+    TELEGRAM_WEBAPP_EXTRA_BOT_TOKENS: str = ""
 
     model_config = SettingsConfigDict(env_file=_env_file_for_settings(), extra="ignore")
 

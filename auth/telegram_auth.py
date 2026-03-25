@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
 import json
@@ -23,6 +24,80 @@ def _telegram_webapp_secret_key(bot_token: str) -> bytes:
     return hmac.new(b"WebAppData", bot_token.encode("utf-8"), hashlib.sha256).digest()
 
 
+# Публичные ключи Telegram для поля initData.signature (Ed25519), см. core.telegram.org/bots/webapps
+_TELEGRAM_WEBAPP_ED25519_PUBKEYS: tuple[bytes, ...] = (
+    bytes.fromhex("e7bf03a2fa4602af4580703d88dda5bb59f32ed8b02a56c187fe7d34caed242d"),  # production
+    bytes.fromhex("40055058a4ee38156a06562e52eece92a771bcd8346a8c4615cb7376eddf72ec"),  # test
+)
+
+
+def _b64url_decode(s: str) -> bytes:
+    pad = "=" * (-len(s) % 4)
+    return base64.urlsafe_b64decode((s or "").strip() + pad)
+
+
+def _bot_ids_from_tokens(tokens: list[str]) -> list[int]:
+    out: list[int] = []
+    for tok in tokens:
+        if ":" not in tok:
+            continue
+        left = tok.split(":", 1)[0].strip()
+        if left.isdigit():
+            bid = int(left)
+            if bid not in out:
+                out.append(bid)
+    return out
+
+
+def _verify_init_data_ed25519(parsed_flat: dict[str, str], signature_b64url: str, bot_ids: list[int]) -> bool:
+    """Проверка initData.signature по спецификации «Validating data for Third-Party Use» (Telegram)."""
+    if not signature_b64url or not bot_ids:
+        return False
+    try:
+        sig = _b64url_decode(signature_b64url)
+    except Exception:
+        return False
+    if len(sig) != 64:
+        return False
+    skip = frozenset({"hash", "signature"})
+    body = "\n".join(f"{k}={parsed_flat[k]}" for k in sorted(parsed_flat.keys()) if k not in skip)
+    try:
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+    except Exception as e:
+        logger.warning("cryptography Ed25519 unavailable: %s", e)
+        return False
+    for bot_id in bot_ids:
+        payload = f"{bot_id}:WebAppData\n{body}".encode("utf-8")
+        for raw_pub in _TELEGRAM_WEBAPP_ED25519_PUBKEYS:
+            try:
+                pub = Ed25519PublicKey.from_public_bytes(raw_pub)
+                pub.verify(sig, payload)
+                logger.info("initData OK via Ed25519 (bot_id=%s)", bot_id)
+                return True
+            except Exception:
+                continue
+    return False
+
+
+def _collect_webapp_bot_tokens() -> list[str]:
+    candidates: list[str] = []
+    for attr in (
+        "TELEGRAM_BOT_TOKEN",
+        "TELEGRAM_TOKEN",
+        "NOTIFY_BOT_TOKEN",
+        "TRAINING_BOT_TOKEN",
+    ):
+        t = (getattr(settings, attr, "") or "").strip()
+        if t and t not in candidates:
+            candidates.append(t)
+    extra = (getattr(settings, "TELEGRAM_WEBAPP_EXTRA_BOT_TOKENS", "") or "").strip()
+    for part in extra.split(","):
+        t = part.strip()
+        if t and t not in candidates:
+            candidates.append(t)
+    return candidates
+
+
 def verify_telegram_webapp_init_data(init_data: str) -> dict[str, Any]:
     """
     Verify Telegram WebApp initData signature (same rules as aiogram.utils.web_app).
@@ -39,11 +114,12 @@ def verify_telegram_webapp_init_data(init_data: str) -> dict[str, Any]:
     except (TypeError, ValueError):
         parsed = dict(urllib.parse.parse_qsl(init_data, keep_blank_values=True))
 
-    provided_hash = parsed.get("hash") or ""
-    if not provided_hash:
-        raise ValueError("initData.hash is missing")
+    provided_hash = (parsed.get("hash") or "").strip()
+    sig_field = (parsed.get("signature") or "").strip()
+    if not provided_hash and not sig_field:
+        raise ValueError("initData.hash and initData.signature are missing")
 
-    # Поля hash и signature не участвуют в подписи (signature — новый формат для third-party)
+    # Поля hash и signature не участвуют в подписи (signature — Ed25519 от Telegram)
     skip_keys = frozenset({"hash", "signature"})
     check_parts: list[str] = []
     for k in sorted(parsed.keys()):
@@ -52,25 +128,27 @@ def verify_telegram_webapp_init_data(init_data: str) -> dict[str, Any]:
         check_parts.append(f"{k}={parsed[k]}")
     data_check_string = "\n".join(check_parts)
 
-    # Пробуем все токены: TELEGRAM_BOT_TOKEN, TELEGRAM_TOKEN, NOTIFY_BOT_TOKEN.
-    # Это нужно если у пользователя несколько ботов с WebApp (подпись делается токеном того бота,
-    # через которого открыт WebApp).
-    candidates: list[str] = []
-    for attr in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_TOKEN", "NOTIFY_BOT_TOKEN"):
-        t = (getattr(settings, attr, "") or "").strip()
-        if t and t not in candidates:
-            candidates.append(t)
+    # Подпись считается токеном того бота, через которого открыт Mini App — перебираем все известные токены.
+    candidates = _collect_webapp_bot_tokens()
     if not candidates:
         raise ValueError("TELEGRAM_BOT_TOKEN/TELEGRAM_TOKEN is not configured")
 
     matched = False
-    for token in candidates:
-        secret_key = _telegram_webapp_secret_key(token)
-        computed_hash = hmac.new(secret_key, data_check_string.encode("utf-8"), hashlib.sha256).hexdigest()
-        if hmac.compare_digest(computed_hash, provided_hash):
-            logger.debug("initData verified with token ending …%s", token[-4:])
+    if provided_hash:
+        for token in candidates:
+            secret_key = _telegram_webapp_secret_key(token)
+            computed_hash = hmac.new(secret_key, data_check_string.encode("utf-8"), hashlib.sha256).hexdigest()
+            if hmac.compare_digest(computed_hash, provided_hash):
+                logger.debug("initData HMAC OK (token …%s)", token[-4:])
+                matched = True
+                break
+
+    if not matched and sig_field:
+        # Новые клиенты Telegram: поле signature (Ed25519), data-check-string с префиксом bot_id:WebAppData
+        flat: dict[str, str] = {k: str(v) for k, v in parsed.items()}
+        bot_ids = _bot_ids_from_tokens(candidates)
+        if _verify_init_data_ed25519(flat, sig_field, bot_ids):
             matched = True
-            break
 
     if not matched:
         # Allow bypassing verification via env var for debugging only
@@ -79,12 +157,14 @@ def verify_telegram_webapp_init_data(init_data: str) -> dict[str, Any]:
             logger.warning("SIGNATURE VERIFICATION SKIPPED (TELEGRAM_WEBAPP_SKIP_VERIFY=true) — DEBUG ONLY")
         else:
             logger.warning(
-                "Telegram WebApp initData HMAC mismatch.\n"
+                "Telegram WebApp initData verify failed (HMAC + Ed25519).\n"
                 "data_check_string (first 200): %s\n"
                 "provided_hash: %s\n"
+                "has_signature_field: %s\n"
                 "initData (first 200): %s",
                 data_check_string[:200],
-                provided_hash,
+                provided_hash or "(empty)",
+                bool(sig_field),
                 init_data[:200],
             )
             raise ValueError("initData signature mismatch")
