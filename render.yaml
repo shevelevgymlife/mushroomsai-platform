@@ -4,14 +4,13 @@ services:
     branch: master
     env: python
     # 3.11.0 на Render часто недоступен → failed build; см. https://render.com/docs/python-version
-    buildCommand: pip install --upgrade pip setuptools wheel && pip install --no-cache-dir -r requirements.txt
+    # Надёжнее использовать python -m pip, чтобы не попасть на pip от другой версии.
+    buildCommand: python -m pip install --upgrade pip setuptools wheel && python -m pip install --no-cache-dir -r requirements.txt
     startCommand: python -m uvicorn main:app --host 0.0.0.0 --port $PORT
     # Health Check Path задайте в Dashboard → /health после успешного деплоя (не дублировать startCommand там).
     envVars:
       - key: PYTHONUNBUFFERED
         value: "1"
-      - key: PYTHON_VERSION
-        value: "3.11.10"
       - key: DATABASE_URL
         sync: false
       - key: JWT_SECRET
