@@ -267,6 +267,7 @@ async def run_heavy_startup(app: FastAPI) -> None:
             "ALTER TABLE shop_products ADD COLUMN IF NOT EXISTS brand_name TEXT",
             "ALTER TABLE shop_products ADD COLUMN IF NOT EXISTS price_old INTEGER",
             "ALTER TABLE shop_products ADD COLUMN IF NOT EXISTS verified_personal BOOLEAN DEFAULT false",
+            "ALTER TABLE admin_permissions ADD COLUMN IF NOT EXISTS can_training_bot BOOLEAN NOT NULL DEFAULT false",
         ]
         try:
             await database.execute(

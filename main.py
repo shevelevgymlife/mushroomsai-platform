@@ -294,10 +294,22 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error("Notify bot startup error: %s", e)
 
+    training_bot_app = None
+    if (settings.TRAINING_BOT_TOKEN or "").strip():
+        try:
+            from bot.training_bot import create_training_bot
+            training_bot_app = create_training_bot()
+            await training_bot_app.initialize()
+            await training_bot_app.start()
+            await training_bot_app.updater.start_polling(drop_pending_updates=True)
+            logger.info("Training posts bot started")
+        except Exception as e:
+            logger.error("Training bot startup error: %s", e)
+
     try:
         yield
     finally:
-        for app in [bot_app, notify_bot_app]:
+        for app in [bot_app, notify_bot_app, training_bot_app]:
             if app:
                 try:
                     await app.updater.stop()

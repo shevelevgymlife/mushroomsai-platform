@@ -6,7 +6,6 @@ from config import settings
 from db.database import database
 from db.models import ai_settings, messages, ai_training_posts
 from ai.system_prompt import DEFAULT_SYSTEM_PROMPT
-from ai.knowledge_base import search_knowledge
 from typing import Optional
 
 client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
@@ -42,7 +41,11 @@ async def get_system_prompt() -> str:
                 for p in group:
                     cat = f"[{p['category']}] " if p.get("category") else ""
                     blocks.append(f"{cat}{p['title']}:\n{p['content']}")
-            base_prompt += "\n\nДОПОЛНИТЕЛЬНЫЕ ЗНАНИЯ (по папкам):\n" + "\n\n".join(blocks)
+            base_prompt += (
+                "\n\nДОПОЛНИТЕЛЬНЫЕ ЗНАНИЯ (по папкам) — единственный источник фактов для предметной области; "
+                "не опирайся на внешние базы и не выдумывай то, чего нет в этих блоках:\n"
+                + "\n\n".join(blocks)
+            )
     except Exception:
         pass
 
@@ -55,12 +58,7 @@ async def chat_with_ai(
     history_limit: int = 20,
 ) -> str:
     system_prompt = await get_system_prompt()
-    
-    # Ищем релевантную информацию из базы знаний
-    knowledge_context = search_knowledge(user_message, top_k=3)
-    if knowledge_context:
-        system_prompt += f"\n\nРЕЛЕВАНТНАЯ ИНФОРМАЦИЯ ИЗ БАЗЫ ЗНАНИЙ:\n{knowledge_context}"
-    
+
     history = []
     try:
         if user_id:

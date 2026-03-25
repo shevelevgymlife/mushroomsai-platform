@@ -256,6 +256,7 @@
         ('can_feedback', 'Обратная связь'),
         ('can_broadcast', 'Рассылки'),
         ('can_knowledge', 'База знаний'),
+        ('can_training_bot', 'Бот обучающих постов (Telegram)'),
       ] %}
       <label class="flex items-center gap-3 p-2.5 rounded-xl border border-border hover:border-gold/40 cursor-pointer transition-colors">
         <input type="checkbox" name="{{ key }}" id="perm_{{ key }}" class="accent-gold w-4 h-4" />
@@ -446,7 +447,7 @@ async function deleteForever(userId, userName) {
 }
 
 // ── Permissions modal ───────────────────────────────────────────────────────
-const PERM_KEYS = ['can_dashboard','can_ai','can_shop','can_users','can_feedback','can_broadcast','can_knowledge'];
+const PERM_KEYS = ['can_dashboard','can_ai','can_shop','can_users','can_feedback','can_broadcast','can_knowledge','can_training_bot'];
 
 async function openPermModal(userId, userName) {
   currentUserId = userId;

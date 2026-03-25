@@ -1,4 +1,5 @@
 import logging
+import math
 import os
 import uuid
 from typing import Optional
@@ -49,7 +50,7 @@ ADMIN_NAV = [
 
 PERM_KEYS = [
     "can_dashboard", "can_ai", "can_shop", "can_users",
-    "can_feedback", "can_broadcast", "can_knowledge",
+    "can_feedback", "can_broadcast", "can_knowledge", "can_training_bot",
 ]
 
 
@@ -1608,6 +1609,12 @@ async def ai_posts_page(request: Request):
     admin = await require_permission(request, "can_ai")
     if not admin:
         return RedirectResponse("/login")
+    per_page = 10
+    try:
+        page = max(1, int(request.query_params.get("page") or "1"))
+    except (TypeError, ValueError):
+        page = 1
+
     try:
         posts_list = await database.fetch_all(
             ai_training_posts.select().order_by(ai_training_posts.c.created_at.desc())
@@ -1631,10 +1638,8 @@ async def ai_posts_page(request: Request):
         if fn and fn not in posts_by_folder:
             folder_order.append(fn)
             posts_by_folder[fn] = []
-    # Alphabetical folder ordering (with "Без папки" first for convenience)
     folder_order = sorted(set(folder_order), key=lambda x: (0 if x == "Без папки" else 1, x.lower()))
     folder_options = list(folder_order)
-    # Alphabetical post ordering inside each folder
     for fn in list(posts_by_folder.keys()):
         posts_by_folder[fn] = sorted(
             posts_by_folder[fn],
@@ -1657,6 +1662,19 @@ async def ai_posts_page(request: Request):
         key=lambda p: ((p.get("title") or "").strip().lower(), str(p.get("id") or "")),
     )
 
+    paginated_posts: list = []
+    total_pages = 1
+    page_nums: list[int] = []
+    if focused_folder:
+        all_in_folder = posts_by_folder.get(focused_folder, [])
+        n = len(all_in_folder)
+        total_pages = max(1, math.ceil(n / per_page))
+        if page > total_pages:
+            page = total_pages
+        start = (page - 1) * per_page
+        paginated_posts = all_in_folder[start : start + per_page]
+        page_nums = list(range(1, total_pages + 1))
+
     return templates.TemplateResponse(
         "dashboard/admin_ai_posts.html",
         {
@@ -1670,6 +1688,52 @@ async def ai_posts_page(request: Request):
             "folder_options": folder_options,
             "focused_folder": focused_folder,
             "relocatable_posts": relocatable_posts,
+            "paginated_posts": paginated_posts,
+            "page": page,
+            "total_pages": total_pages,
+            "per_page": per_page,
+            "page_nums": page_nums,
+        },
+    )
+
+
+@router.get("/ai-posts/{post_id}/edit", response_class=HTMLResponse)
+async def ai_post_edit_page(request: Request, post_id: int):
+    admin = await require_permission(request, "can_ai")
+    if not admin:
+        return RedirectResponse("/login")
+    row = await database.fetch_one(ai_training_posts.select().where(ai_training_posts.c.id == post_id))
+    if not row:
+        return RedirectResponse("/admin/ai-posts")
+    post = dict(row)
+    rf = (request.query_params.get("rf") or "").strip()
+    rp = (request.query_params.get("rp") or "1").strip()
+    try:
+        folder_rows = await database.fetch_all(ai_training_folders.select().order_by(ai_training_folders.c.name))
+        extra = [r["name"] for r in folder_rows]
+    except Exception:
+        extra = []
+    opts_set = set(extra)
+    opts_set.add("Без папки")
+    raw_f = (post.get("folder") or "").strip()
+    current_folder_label = "Без папки" if not raw_f else raw_f
+    if current_folder_label != "Без папки":
+        opts_set.add(current_folder_label)
+    folder_edit_options = sorted(opts_set, key=lambda x: (0 if x == "Без папки" else 1, x.lower()))
+    folder_is_custom = current_folder_label not in folder_edit_options
+    return templates.TemplateResponse(
+        "dashboard/admin_ai_post_edit.html",
+        {
+            "request": request,
+            "user": admin,
+            "nav": ADMIN_NAV,
+            "user_permissions": await get_user_permissions(admin),
+            "post": post,
+            "folder_edit_options": folder_edit_options,
+            "current_folder_label": current_folder_label,
+            "folder_is_custom": folder_is_custom,
+            "return_folder": rf,
+            "return_page": rp,
         },
     )
 

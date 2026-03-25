@@ -398,6 +398,7 @@ admin_permissions = sqlalchemy.Table(
     sqlalchemy.Column("can_feedback", sqlalchemy.Boolean, default=False, server_default="false"),
     sqlalchemy.Column("can_broadcast", sqlalchemy.Boolean, default=False, server_default="false"),
     sqlalchemy.Column("can_knowledge", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column("can_training_bot", sqlalchemy.Boolean, default=False, server_default="false"),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
 

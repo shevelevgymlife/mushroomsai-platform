@@ -509,6 +509,7 @@ async def telegram_webapp_callback(request: Request):
                 "can_feedback",
                 "can_broadcast",
                 "can_knowledge",
+                "can_training_bot",
             ]
             cnt = await database.fetch_val(admin_permissions.select().count())
             if cnt == 0:
