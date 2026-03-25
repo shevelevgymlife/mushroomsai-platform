@@ -1,4 +1,4 @@
-# NeuroFungi AI Platform
+# NEUROFUNGI AI Platform
 
 AI-платформа по функциональным грибам: сайт с AI консультантом, магазином и соцсетью.
 

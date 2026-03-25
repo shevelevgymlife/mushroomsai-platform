@@ -32,7 +32,7 @@ async def _notify_start(update, context):
         await update.message.reply_text("Доступ только для администратора.")
         return
     await update.message.reply_text(
-        "👋 <b>NeuroFungi AI — уведомления</b>\n\nВыберите действие:",
+        "👋 <b>NEUROFUNGI AI — уведомления</b>\n\nВыберите действие:",
         parse_mode="HTML",
         reply_markup=_admin_keyboard(),
     )

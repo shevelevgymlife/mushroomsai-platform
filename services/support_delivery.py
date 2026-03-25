@@ -42,7 +42,7 @@ async def deliver_support_message(
         return {"ok": False, "error": "user not found"}
 
     online = _is_online(target.get("last_seen_at"))
-    dm_text = f"💬 Сообщение от поддержки NeuroFungi AI\n\n{body}"
+    dm_text = f"💬 Сообщение от поддержки NEUROFUNGI AI\n\n{body}"
 
     await database.execute(
         direct_messages.insert().values(

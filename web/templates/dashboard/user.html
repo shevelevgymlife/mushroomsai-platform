@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% set ig_social = true %}
 {% block body_class %}{% if ig_social %} dash-ig-app{% endif %}{% endblock %}
-{% block title %}Личный кабинет — NeuroFungi AI{% endblock %}
+{% block title %}Личный кабинет — NEUROFUNGI AI{% endblock %}
 
 {% macro rep_badge(n) %}
   {%- if n >= 100 %}👑 Легенда
@@ -872,7 +872,7 @@ body.dash-ig-app .ig-lamp-topbar{
       <button type="button" class="ig-dash-back" id="igDashBack" onclick="igDashBackClick()" aria-label="Назад" style="display:none">{{ ico('chevron_left') }}</button>
       <button type="button" class="ig-ham" id="igDashHamburger" onclick="toggleDbDrawer()" aria-label="Меню">{{ ico('menu') }}</button>
     </div>
-    <button type="button" class="ig-head-brand" id="igDashTitleBtn" style="background:none;border:none;cursor:pointer;padding:0;font:inherit;flex:1;min-width:0;text-align:center" onclick="igDashTitleClick()" title="Мой профиль"><span id="igDashTitleText">NeuroFungi AI</span></button>
+    <button type="button" class="ig-head-brand" id="igDashTitleBtn" style="background:none;border:none;cursor:pointer;padding:0;font:inherit;flex:1;min-width:0;text-align:center" onclick="igDashTitleClick()" title="Мой профиль"><span id="igDashTitleText">NEUROFUNGI AI</span></button>
     <div class="ig-head-row" style="margin-left:auto">
     {% if 'community' in vbk %}
     <button type="button" class="ig-head-msg ig-act-badge" style="border:none;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center" title="Лайки и комментарии к вашим постам" aria-label="Активность" onclick="goSec('feed')">
@@ -1233,7 +1233,7 @@ body.dash-ig-app .ig-lamp-topbar{
       <div class="ig-feed-shell">
       {% if not ig_social %}
       <div class="ig-feed-topbar">
-        <span class="ig-brand">NeuroFungi AI</span>
+        <span class="ig-brand">NEUROFUNGI AI</span>
         <div class="ig-feed-actions-top">
           <button type="button" class="ig-ic-btn" title="Новый пост" aria-label="Новый пост" onclick="openCreatePostModal()">＋</button>
           <button type="button" class="ig-ic-btn" title="Участники" aria-label="Участники" style="font-size:16px" onclick="goSec('search')">👥</button>
@@ -1561,7 +1561,7 @@ body.dash-ig-app .ig-lamp-topbar{
     <section class="db-sec" id="sec-proextras">
       <div class="card" style="border-color:rgba(61,212,224,.35)">
         <div class="sect-title" style="margin-bottom:8px;font-size:17px">⭐ Приоритет в соцсети (Про)</div>
-        <p class="muted" style="font-size:13px;line-height:1.65">Аккаунт со значком NeuroFungi AI. Закреп поста в общей ленте до 3 дней — <strong class="gold">не чаще одного раза в сутки</strong>. Если много участников с Про, закрепы ставятся по очереди (сначала новые заявки).</p>
+        <p class="muted" style="font-size:13px;line-height:1.65">Аккаунт со значком NEUROFUNGI AI. Закреп поста в общей ленте до 3 дней — <strong class="gold">не чаще одного раза в сутки</strong>. Если много участников с Про, закрепы ставятся по очереди (сначала новые заявки).</p>
       </div>
     </section>
     {% endif %}
@@ -2305,14 +2305,14 @@ function updateIgDashHeader(secId){
     tbtn.title='';
   }else{
     back.style.display='none';
-    ttxt.textContent='NeuroFungi AI';
+    ttxt.textContent='NEUROFUNGI AI';
     tbtn.classList.remove('ig-head-title--plain');
     tbtn.title='Мой профиль';
   }
 }
 function igDashTitleClick(){
   const ttxt=document.getElementById('igDashTitleText');
-  if(ttxt&&ttxt.textContent!=='NeuroFungi AI')return;
+  if(ttxt&&ttxt.textContent!=='NEUROFUNGI AI')return;
   goSec('me');
 }
 function igDashBackClick(){

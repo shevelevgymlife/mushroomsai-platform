@@ -978,7 +978,7 @@ async def profile_plan_upgrade_request(
         pass
     cur = ((urow.get("subscription_plan") or "free") if urow else "free").lower()
     txt = (
-        "📋 Запрос смены тарифа (NeuroFungi AI)\n"
+        "📋 Запрос смены тарифа (NEUROFUNGI AI)\n"
         f"Пользователь: {uname} (id {uid})\n"
         f"Email: {uemail}\n"
         f"Telegram id: {utg or '—'}\n"
@@ -1312,7 +1312,7 @@ async def follow_user(request: Request, target_id: int):
             if tg_id:
                 from services.notify_user_stub import notify_user
                 actor_name = user.get("name") or "Участник"
-                await notify_user(tg_id, f"👤 <b>{actor_name}</b> подписался на вас в Сообществе NeuroFungi AI")
+                await notify_user(tg_id, f"👤 <b>{actor_name}</b> подписался на вас в Сообществе NEUROFUNGI AI")
         return JSONResponse({"following": True})
 
 

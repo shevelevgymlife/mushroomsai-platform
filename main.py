@@ -106,7 +106,7 @@ class StartupGateMiddleware(BaseHTTPMiddleware):
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="refresh" content="6">
-<title>NeuroFungi AI — обновление</title>
+<title>NEUROFUNGI AI — обновление</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#0a0c14;color:#e8e8e8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px}
@@ -220,7 +220,7 @@ async def lifespan(app: FastAPI):
 # -------------------- APP --------------------
 
 app = FastAPI(
-    title="NeuroFungi AI Platform",
+    title="NEUROFUNGI AI Platform",
     version="1.0.0",
     lifespan=lifespan,
 )

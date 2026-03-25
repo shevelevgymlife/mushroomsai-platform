@@ -59,7 +59,7 @@ def generate_recipe_pdf(title: str, content: str, user_name: str = "Пользо
     )
 
     story = []
-    story.append(Paragraph("NeuroFungi AI", title_style))
+    story.append(Paragraph("NEUROFUNGI AI", title_style))
     story.append(Paragraph(f"Персональный протокол для: {user_name}", small_style))
     story.append(Spacer(1, 0.5 * cm))
     story.append(Paragraph(title, heading_style))

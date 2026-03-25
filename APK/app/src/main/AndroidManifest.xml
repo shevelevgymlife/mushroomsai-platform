@@ -7,10 +7,10 @@
     <application
         android:allowBackup="true"
         android:icon="@android:drawable/sym_def_app_icon"
-        android:label="NeuroFungi AI"
+        android:label="NEUROFUNGI AI"
         android:networkSecurityConfig="@xml/network_security_config"
         android:supportsRtl="true"
-        android:theme="@style/Theme.NeuroFungi AI">
+        android:theme="@style/Theme.NEUROFUNGI AI">
 
         <activity
             android:name=".MainActivity"

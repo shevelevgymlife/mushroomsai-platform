@@ -1,6 +1,6 @@
-# APK Android wrapper for NeuroFungi AI
+# APK Android wrapper for NEUROFUNGI AI
 
-This folder contains an Android app project that wraps the live NeuroFungi AI web app.
+This folder contains an Android app project that wraps the live NEUROFUNGI AI web app.
 
 ## What it gives you
 

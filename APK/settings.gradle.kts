@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "NeuroFungi AIAndroid"
+rootProject.name = "NEUROFUNGI AIAndroid"
 include(":app")
