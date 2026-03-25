@@ -6,15 +6,14 @@ services:
     # 3.11.0 на Render часто недоступен → failed build; см. https://render.com/docs/python-version
     # --no-cache-dir: меньше диска/RAM на билде (частые OOM на free/starter).
     buildCommand: pip install --upgrade pip setuptools wheel && pip install --no-cache-dir -r requirements.txt
+    # Ровно одна команда старта (если в Dashboard был второй start — удалите там, иначе конфликт).
     startCommand: python -m uvicorn main:app --host 0.0.0.0 --port $PORT
-    # После фонового heavy-start /health отвечает сразу после ping БД (см. main.py + services/heavy_startup.py).
-    healthCheckPath: /health
+    # healthCheckPath не в blueprint: задайте вручную Settings → /health после стабильного деплоя.
     envVars:
       - key: PYTHONUNBUFFERED
         value: "1"
-      # Если билд пишет «Python version not found» — смените на 3.11.10 в Dashboard или здесь.
       - key: PYTHON_VERSION
-        value: "3.11.11"
+        value: "3.11.10"
       - key: DATABASE_URL
         sync: false
       - key: JWT_SECRET
