@@ -74,7 +74,13 @@ def verify_telegram_webapp_init_data(init_data: str) -> dict[str, Any]:
 
     if not matched:
         logger.warning(
-            "Telegram WebApp initData HMAC mismatch (check TELEGRAM_BOT_TOKEN matches WebApp bot)"
+            "Telegram WebApp initData HMAC mismatch.\n"
+            "data_check_string (first 200): %s\n"
+            "provided_hash: %s\n"
+            "initData (first 200): %s",
+            data_check_string[:200],
+            provided_hash,
+            init_data[:200],
         )
         raise ValueError("initData signature mismatch")
 
