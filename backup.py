@@ -47,7 +47,7 @@ Google Cloud Console (OAuth, сервисный аккаунт):
   https://console.cloud.google.com
 
 Telegram Bot:
-  @mushrooms_ai_bot
+  @neuro_fungi_bot
   Управление через @BotFather
 
 =============================================================
