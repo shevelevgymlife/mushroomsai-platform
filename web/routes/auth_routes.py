@@ -413,7 +413,20 @@ async def telegram_webapp_page(request: Request):
     Telegram WebApp page.
     Telegram client renders this inside Telegram and injects `window.Telegram.WebApp.initData`.
     """
-    return templates.TemplateResponse("telegram_webapp.html", {"request": request, "user": None})
+    from config import settings
+
+    next_raw = request.query_params.get("next") or "/dashboard"
+    next_path = _safe_next_path(next_raw) or "/dashboard"
+    return templates.TemplateResponse(
+        "telegram_webapp.html",
+        {
+            "request": request,
+            "user": None,
+            "bot_username": (settings.TELEGRAM_BOT_USERNAME or "").strip().lstrip("@"),
+            "startapp": (settings.TELEGRAM_WEBAPP_STARTAPP or "webapp").strip(),
+            "next_path": next_path,
+        },
+    )
 
 
 @router.post("/auth/telegram/webapp/callback")

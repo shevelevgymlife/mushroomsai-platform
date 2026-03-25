@@ -14,10 +14,20 @@
     try {
       const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
       const initData = tg ? tg.initData : null;
-      const next = new URLSearchParams(window.location.search).get('next') || '/dashboard';
+      const next = new URLSearchParams(window.location.search).get('next') || '{{ next_path|e }}';
+      const botUsername = '{{ bot_username|e }}';
+      const startapp = '{{ startapp|e }}';
+      const deepLink = botUsername && startapp
+        ? `https://t.me/${botUsername}?startapp=${encodeURIComponent(startapp)}`
+        : null;
 
       if (!initData) {
-        document.body.innerHTML = "<div style='padding:24px;font-family:system-ui'>Telegram initData not found. Open this page inside Telegram WebApp.</div>";
+        const linkHtml = deepLink
+          ? `<div style="margin-top:14px"><a href="${deepLink}" style="color:#3dd4e0;text-decoration:underline">Открыть WebApp в Telegram ещё раз</a></div>`
+          : "";
+        document.body.innerHTML =
+          `<div style='padding:24px;font-family:system-ui'>Telegram initData не найден.<br/>` +
+          `Открой эту страницу внутри Telegram WebApp.${linkHtml}</div>`;
         return;
       }
 
