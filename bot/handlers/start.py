@@ -37,7 +37,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         [
             InlineKeyboardButton(
                 "🍄 Открыть приложение",
-                web_app=WebAppInfo(url="https://mushroomsai.onrender.com"),
+                web_app=WebAppInfo(url="https://mushroomsai.ru"),
             )
         ],
     ]
