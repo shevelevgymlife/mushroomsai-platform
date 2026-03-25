@@ -43,41 +43,48 @@ async def link_confirm_callback(update: Update, context: ContextTypes.DEFAULT_TY
         await query.edit_message_text("Срок действия ссылки истёк. Сгенерируйте новую на сайте.")
         return
 
-    # Check if this tg_id already belongs to another account
+    # Проверить: есть ли в системе другой аккаунт с этим tg_id
     existing = await database.fetch_one(
         users.select().where(users.c.tg_id == tg_id)
     )
 
     if existing and existing["id"] != row["id"]:
-        # Two accounts exist — ask which to keep
-        keyboard = [
+        # Конфликт: этот Telegram уже зарегистрирован отдельно.
+        # Всегда оставляем web/Google аккаунт (row), удаляем TG-аккаунт (existing).
+        created_str = ""
+        if existing.get("created_at"):
+            try:
+                created_str = f", создан {existing['created_at'].strftime('%d.%m.%Y')}"
+            except Exception:
+                pass
+
+        keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton(
-                "Оставить этот (Telegram) → удалить Web-аккаунт",
-                callback_data=f"link_merge_keep_tg:{token}:{existing['id']}:{row['id']}"
-            )],
-            [InlineKeyboardButton(
-                "Оставить Web-аккаунт → удалить этот Telegram",
+                "✅ Да, привязать и удалить TG-аккаунт",
                 callback_data=f"link_merge_keep_web:{token}:{existing['id']}:{row['id']}"
             )],
-            [InlineKeyboardButton("Отмена", callback_data=f"link_cancel:{token}")],
-        ]
+            [InlineKeyboardButton("❌ Отмена", callback_data=f"link_cancel:{token}")],
+        ])
         await query.edit_message_text(
-            "⚠️ Этот Telegram уже зарегистрирован в системе как отдельный аккаунт.\n\n"
-            "Выберите, какой аккаунт оставить основным (второй будет удалён, "
-            "но способ входа через него сохранится):",
-            reply_markup=InlineKeyboardMarkup(keyboard),
+            f"⚠️ <b>Этот Telegram уже зарегистрирован в системе</b> как отдельный аккаунт"
+            f"{created_str}.\n\n"
+            "После привязки тот аккаунт будет <b>удалён</b>, данные и история перенесутся "
+            "в ваш основной аккаунт. Войдя через Telegram в будущем, вы попадёте в этот профиль.\n\n"
+            "Подтвердите действие:",
+            parse_mode="HTML",
+            reply_markup=keyboard,
         )
         return
 
-    # No conflict — simply link
+    # Нет конфликта — просто привязываем
     await _do_link(query, tg_id, row["id"], token)
 
 
 async def link_merge_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
-    data = query.data  # "link_merge_keep_tg:<token>:<tg_user_id>:<web_user_id>"
-                       # "link_merge_keep_web:<token>:<tg_user_id>:<web_user_id>"
+    data = query.data  # "link_merge_keep_web:<token>:<tg_user_id>:<web_user_id>"
+
     try:
         action, token, tg_user_id_str, web_user_id_str = data.split(":", 3)
         tg_user_id = int(tg_user_id_str)
@@ -88,33 +95,31 @@ async def link_merge_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     tg_id = query.from_user.id
 
-    if action == "link_merge_keep_tg":
-        # Keep tg_user_id as primary, merge web_user_id into it
+    if action == "link_merge_keep_web":
+        # Оставляем web-аккаунт (web_user_id) как основной.
+        # Переносим данные из TG-аккаунта (tg_user_id), затем УДАЛЯЕМ его.
         from web.routes.account import merge_accounts
-        await merge_accounts(primary_id=tg_user_id, secondary_id=web_user_id)
-        await database.execute(
-            users.update().where(users.c.id == tg_user_id).values(
-                link_token=None, link_token_expires=None
-            )
-        )
-        await query.edit_message_text(
-            "✅ Аккаунты объединены! Основным стал ваш Telegram-аккаунт.\n"
-            "Войти через любой привязанный способ → попадёте в один профиль."
-        )
+        from services.user_permanent_delete import permanently_delete_user
 
-    elif action == "link_merge_keep_web":
-        # Keep web_user_id as primary, merge tg_user_id into it, set tg_id on web account
-        from web.routes.account import merge_accounts
         await merge_accounts(primary_id=web_user_id, secondary_id=tg_user_id)
         await database.execute(
             users.update().where(users.c.id == web_user_id).values(
-                tg_id=tg_id, linked_tg_id=tg_id,
-                link_token=None, link_token_expires=None
+                tg_id=tg_id,
+                linked_tg_id=tg_id,
+                link_token=None,
+                link_token_expires=None,
             )
         )
+        # Удаляем вторичный TG-аккаунт полностью
+        ok, err = await permanently_delete_user(tg_user_id)
+        if not ok:
+            logger.warning("link_merge: permanently_delete_user(%s) failed: %s", tg_user_id, err)
+
         await query.edit_message_text(
-            "✅ Аккаунты объединены! Основным остался ваш Web-аккаунт.\n"
-            "Войти через любой привязанный способ → попадёте в один профиль."
+            "✅ <b>Готово!</b> Аккаунты объединены.\n\n"
+            "Прежний Telegram-аккаунт удалён. Теперь при входе через Telegram "
+            "вы будете попадать в свой основной профиль.",
+            parse_mode="HTML",
         )
 
 
@@ -128,6 +133,7 @@ async def _do_link(query, tg_id: int, user_id: int, token: str) -> None:
         )
     )
     await query.edit_message_text(
-        "✅ Telegram успешно привязан к вашему аккаунту!\n\n"
-        "Теперь вы можете входить на сайт через Telegram."
+        "✅ <b>Telegram успешно привязан!</b>\n\n"
+        "Теперь вы можете входить на сайт через Telegram.",
+        parse_mode="HTML",
     )

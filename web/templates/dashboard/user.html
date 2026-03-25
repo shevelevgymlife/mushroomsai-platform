@@ -936,7 +936,11 @@ body.dash-ig-app .ig-lamp-topbar{
           <button type="button" class="ig-drawer-subbtn" onclick="closeDbDrawer();goSec('profile')">Кошелёк и синхронизация →</button>
         </div>
       </details>
+      {% if not (user.tg_id or user.linked_tg_id) %}
+      <a href="/account/link" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none;color:#38bdf8;border:1px solid rgba(56,189,248,.2);border-radius:12px;margin:0 8px"><span class="e">✈️</span><span class="lbl">Присоединить Telegram</span></a>
+      {% else %}
       <a href="/account/link" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none"><span class="e">{{ ico('link') }}</span><span class="lbl">Привязать аккаунт</span></a>
+      {% endif %}
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('language')"><span class="e">{{ ico('globe') }}</span><span class="lbl">Язык интерфейса</span></button>
       <details class="ig-drawer-details" style="border-bottom:1px solid rgba(255,255,255,.06)">
         <summary class="ig-drawer-item ig-drawer-summary" style="list-style:none;cursor:pointer"><span class="e">📄</span><span class="lbl">Документы</span><span class="ig-drawer-chev" style="margin-left:auto;opacity:.5;font-size:10px">▼</span></summary>
