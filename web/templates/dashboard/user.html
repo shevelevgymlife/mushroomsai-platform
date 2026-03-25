@@ -894,7 +894,7 @@ body.dash-ig-app .ig-lamp-topbar{
       <div class="em">{{ user.email or ('Telegram: ' + (user.tg_id|string) if user.tg_id else '') }}</div>
     </div>
     <div class="ig-drawer-scroll">
-      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('me')"><span class="e">{{ ico('grid') }}</span><span class="lbl">Мой профиль</span></button>
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();window.location='/community/profile/{{ effective_user_id }}'"><span class="e">{{ ico('grid') }}</span><span class="lbl">Мой профиль</span></button>
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('feed')"><span class="e">{{ ico('feed') }}</span><span class="lbl">Лента</span></button>
       {% if 'community' in vbk %}
       <button type="button" class="ig-drawer-item" onclick="goToGroupsChatsFromBurger()" title="Групповые чаты"><span class="e">{{ ico('message_sq') }}</span><span class="lbl">Чаты</span></button>
@@ -1950,7 +1950,7 @@ body.dash-ig-app .ig-lamp-topbar{
   <button type="button" class="ig-create-fab" aria-label="Создать пост" title="Создать пост" onclick="openCreatePostModal()"><span class="ic">{{ ico('plus') }}</span></button>
   <nav class="ig-tabbar" id="igTabbar" aria-label="Нижняя навигация">
     <button type="button" class="ig-tab" data-igtab="feed" onclick="goSec('feed')"><span class="ic">{{ ico('home') }}</span>Лента</button>
-    <button type="button" class="ig-tab on" data-igtab="me" onclick="goSec('me')"><span class="ic">{{ ico('user') }}</span>Профиль</button>
+    <button type="button" class="ig-tab on" data-igtab="me" onclick="window.location='/community/profile/'+DASH_UID"><span class="ic">{{ ico('user') }}</span>Профиль</button>
     <button type="button" class="ig-tab" data-igtab="search" onclick="goSec('search')"><span class="ic">{{ ico('search') }}</span>Поиск</button>
   </nav>
   {% endif %}
@@ -2311,9 +2311,7 @@ function updateIgDashHeader(secId){
   }
 }
 function igDashTitleClick(){
-  const ttxt=document.getElementById('igDashTitleText');
-  if(ttxt&&ttxt.textContent!=='NEUROFUNGI AI')return;
-  goSec('me');
+  window.location='/community/profile/'+DASH_UID;
 }
 function igDashBackClick(){
   if(document.body.classList.contains('tg-group-mobile-chat')){
