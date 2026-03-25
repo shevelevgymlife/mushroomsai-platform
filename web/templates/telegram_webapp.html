@@ -67,6 +67,7 @@
       const resp = await fetch('/auth/telegram/webapp/callback', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
+        credentials: 'include',
         body: JSON.stringify({ initData: initData, next: next })
       });
 

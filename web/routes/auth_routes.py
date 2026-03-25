@@ -437,11 +437,13 @@ async def telegram_webapp_callback(request: Request):
         next_raw = body.get("next") or "/dashboard"
         next_path = _safe_next_path(next_raw) or "/dashboard"
 
-        user_id, redirect_to = await telegram_webapp_login(
+        user_id, redirect_to, tg_id = await telegram_webapp_login(
             init_data,
             request=request,
             redirect_to=next_path,
         )
+
+        await _ensure_admin(int(user_id), tg_id=tg_id)
 
         resp = JSONResponse({"ok": True, "redirect": redirect_to})
         # If there are no admin permissions yet (fresh DB), promote the first logged user.
