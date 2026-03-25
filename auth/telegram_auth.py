@@ -28,55 +28,53 @@ def _telegram_webapp_secret_key(bot_token: str) -> bytes:
     return hmac.new(b"WebAppData", bot_token.encode("utf-8"), hashlib.sha256).digest()
 
 
+def _check_signature(data_check_string: str, provided_hash: str, bot_token: str) -> bool:
+    secret_key = _telegram_webapp_secret_key(bot_token)
+    computed = hmac.new(secret_key, data_check_string.encode("utf-8"), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(computed, provided_hash)
+
+
 def verify_telegram_webapp_init_data(init_data: str) -> dict[str, Any]:
     """
     Verify Telegram WebApp initData signature.
-    Returns parsed initData fields (hash removed) if valid; raises ValueError otherwise.
+    Tries all configured bot tokens (main + notify) so the WebApp works
+    regardless of which bot the user opened it from.
+    Returns parsed initData fields if valid; raises ValueError otherwise.
     """
     if not init_data or not isinstance(init_data, str):
         raise ValueError("initData is empty")
-
-    # Backward compatible config:
-    # - TELEGRAM_BOT_TOKEN is used by this feature
-    # - TELEGRAM_TOKEN already exists in the project (used by other bot integrations)
-    bot_token = (getattr(settings, "TELEGRAM_BOT_TOKEN", "") or "").strip() or (
-        getattr(settings, "TELEGRAM_TOKEN", "") or ""
-    ).strip()
-    if not bot_token:
-        raise ValueError("TELEGRAM_BOT_TOKEN/TELEGRAM_TOKEN is not configured")
 
     parsed = _parse_init_data(init_data)
     provided_hash = parsed.get("hash") or ""
     if not provided_hash:
         raise ValueError("initData.hash is missing")
 
-    # Build data_check_string from all fields except "hash", sorted by key.
-    check_parts: list[str] = []
-    for k in sorted(parsed.keys()):
-        if k == "hash":
-            continue
-        check_parts.append(f"{k}={parsed[k]}")
+    check_parts = [f"{k}={parsed[k]}" for k in sorted(parsed.keys()) if k != "hash"]
     data_check_string = "\n".join(check_parts)
 
-    secret_key = _telegram_webapp_secret_key(bot_token)
-    computed_hash = hmac.new(
-        secret_key,
-        data_check_string.encode("utf-8"),
-        hashlib.sha256,
-    ).hexdigest()
+    # Collect all tokens to try: TELEGRAM_BOT_TOKEN, TELEGRAM_TOKEN, NOTIFY_BOT_TOKEN
+    candidates: list[str] = []
+    for attr in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_TOKEN", "NOTIFY_BOT_TOKEN"):
+        t = (getattr(settings, attr, "") or "").strip()
+        if t and t not in candidates:
+            candidates.append(t)
 
-    if not hmac.compare_digest(computed_hash, provided_hash):
-        raise ValueError("initData signature mismatch")
+    if not candidates:
+        raise ValueError("Ни один токен бота не настроен (TELEGRAM_TOKEN/TELEGRAM_BOT_TOKEN)")
 
-    # Parse `user` JSON if present.
-    user_raw = parsed.get("user")
-    if user_raw:
-        try:
-            parsed["user"] = json.loads(user_raw)
-        except Exception:
-            parsed["user"] = {}
+    for token in candidates:
+        if _check_signature(data_check_string, provided_hash, token):
+            logger.debug("initData verified with token ending …%s", token[-4:])
+            # Parse `user` JSON if present.
+            user_raw = parsed.get("user")
+            if user_raw:
+                try:
+                    parsed["user"] = json.loads(user_raw)
+                except Exception:
+                    parsed["user"] = {}
+            return parsed
 
-    return parsed
+    raise ValueError("initData signature mismatch")
 
 
 async def telegram_webapp_login(
