@@ -88,7 +88,10 @@ async def login_page(request: Request):
             "request": request,
             "user": None,
             "site_url": settings.SITE_URL,
-            "telegram_enabled": bool(settings.TELEGRAM_BOT_USERNAME and settings.TELEGRAM_BOT_TOKEN),
+            "telegram_enabled": bool(
+                settings.TELEGRAM_BOT_USERNAME
+                and ((settings.TELEGRAM_BOT_TOKEN or "").strip() or (settings.TELEGRAM_TOKEN or "").strip())
+            ),
             "bot_username": settings.TELEGRAM_BOT_USERNAME,
         },
     )

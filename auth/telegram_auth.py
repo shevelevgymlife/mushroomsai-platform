@@ -35,8 +35,15 @@ def verify_telegram_webapp_init_data(init_data: str) -> dict[str, Any]:
     """
     if not init_data or not isinstance(init_data, str):
         raise ValueError("initData is empty")
-    if not settings.TELEGRAM_BOT_TOKEN:
-        raise ValueError("TELEGRAM_BOT_TOKEN is not configured")
+
+    # Backward compatible config:
+    # - TELEGRAM_BOT_TOKEN is used by this feature
+    # - TELEGRAM_TOKEN already exists in the project (used by other bot integrations)
+    bot_token = (getattr(settings, "TELEGRAM_BOT_TOKEN", "") or "").strip() or (
+        getattr(settings, "TELEGRAM_TOKEN", "") or ""
+    ).strip()
+    if not bot_token:
+        raise ValueError("TELEGRAM_BOT_TOKEN/TELEGRAM_TOKEN is not configured")
 
     parsed = _parse_init_data(init_data)
     provided_hash = parsed.get("hash") or ""
@@ -51,7 +58,7 @@ def verify_telegram_webapp_init_data(init_data: str) -> dict[str, Any]:
         check_parts.append(f"{k}={parsed[k]}")
     data_check_string = "\n".join(check_parts)
 
-    secret_key = _telegram_webapp_secret_key(settings.TELEGRAM_BOT_TOKEN)
+    secret_key = _telegram_webapp_secret_key(bot_token)
     computed_hash = hmac.new(
         secret_key,
         data_check_string.encode("utf-8"),
