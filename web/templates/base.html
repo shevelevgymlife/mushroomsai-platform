@@ -35,7 +35,7 @@
   </script>
   <link rel="stylesheet" href="/static/css/custom.css?v=3" />
   <link rel="stylesheet" href="/static/css/design-system.css?v=3" />
-  <link rel="stylesheet" href="/static/css/app-mobile-shell.css?v=3" />
+  <link rel="stylesheet" href="/static/css/app-mobile-shell.css?v=4" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" />
   <style>
     /* Global anti-overflow guard for browser + Telegram WebApp */
@@ -115,6 +115,9 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
   {% if user and request.url.path != '/' %}
   {% include "components/app_mobile_header.html" %}
   {% include "components/app_activity_panel.html" %}
+  {% if not request.url.path.startswith('/dashboard') %}
+  {% include "components/app_global_drawer.html" %}
+  {% endif %}
   {% endif %}
 
   {% block site_navbar %}{% endblock %}
@@ -126,7 +129,10 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
   {% block site_footer %}{% endblock %}
 
   <script src="/static/js/app.js"></script>
-  <script src="/static/js/app-header.js?v=1" defer></script>
+  {% if user and request.url.path != '/' and not request.url.path.startswith('/dashboard') %}
+  <script src="/static/js/app-global-drawer.js?v=1" defer></script>
+  {% endif %}
+  <script src="/static/js/app-header.js?v=2" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
   <script src="/static/js/mobile-shell.js" defer></script>
   {% block extra_scripts %}{% endblock %}
