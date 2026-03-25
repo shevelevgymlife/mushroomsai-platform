@@ -130,8 +130,40 @@ async def link_google_page(request: Request):
     )
 
 
-@router.get("/link-google-start")
-async def link_google_start(request: Request):
+@router.get("/link-google-url")
+async def link_google_url(request: Request):
+    """Возвращает Google OAuth URL как JSON — для AJAX из Telegram Mini App."""
+    user = await get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    from config import settings
+    request.session["link_user_id"] = user["id"]
+    params = {
+        "client_id": settings.GOOGLE_CLIENT_ID,
+        "redirect_uri": f"{settings.SITE_URL}/auth/google/callback",
+        "response_type": "code",
+        "scope": "openid email profile",
+        "access_type": "offline",
+        "state": "link",
+    }
+    import urllib.parse as _up
+    url = "https://accounts.google.com/o/oauth2/v2/auth?" + _up.urlencode(params)
+    return JSONResponse({"ok": True, "url": url})
+
+
+@router.get("/check-google-link-status")
+async def check_google_link_status(request: Request):
+    """Polling: привязан ли Google к текущему аккаунту."""
+    user = await get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    row = await database.fetch_one(users.select().where(users.c.id == user["id"]))
+    if row and (row["google_id"] or row["linked_google_id"]):
+        return JSONResponse({"linked": True, "email": row.get("email") or ""})
+    return JSONResponse({"linked": False})
+
+
+
     user = await get_user_from_request(request)
     if not user:
         return RedirectResponse("/login")

@@ -228,14 +228,18 @@ async def google_callback(request: Request):
         state = request.query_params.get("state", "")
         if link_user_id and state == "link":
             from web.routes.account import merge_accounts
+            from services.user_permanent_delete import permanently_delete_user
+            from services.notify_admin import notify_admin_telegram
             existing_google_user = await database.fetch_one(
                 users.select().where(users.c.google_id == google_id)
             )
             if existing_google_user and existing_google_user["id"] != link_user_id:
-                # Separate Google account exists — merge into current user
-                await merge_accounts(primary_id=link_user_id, secondary_id=existing_google_user["id"])
+                # Отдельный Google-аккаунт существует — сливаем данные, затем удаляем дубль
+                secondary_id = existing_google_user["id"]
+                await merge_accounts(primary_id=link_user_id, secondary_id=secondary_id)
+                await permanently_delete_user(secondary_id)
             elif not existing_google_user:
-                # Link google_id directly to current user
+                # Google-аккаунта нет — просто привязываем google_id
                 await database.execute(
                     users.update().where(users.c.id == link_user_id).values(
                         google_id=google_id,
@@ -243,8 +247,20 @@ async def google_callback(request: Request):
                         email=email,
                     )
                 )
+            # Уведомление админу
+            try:
+                primary_row = await database.fetch_one(users.select().where(users.c.id == link_user_id))
+                uname = (primary_row and primary_row.get("name")) or "—"
+                utg = (primary_row and primary_row.get("tg_id")) or "—"
+                await notify_admin_telegram(
+                    f"🔗 Аккаунт привязан: Google\n"
+                    f"👤 {uname} (id={link_user_id}, tg_id={utg})\n"
+                    f"📧 {email or '—'}"
+                )
+            except Exception:
+                pass
             token_str = create_access_token(link_user_id)
-            resp = RedirectResponse("/dashboard?linked=google", status_code=302)
+            resp = RedirectResponse("/account/link?linked=google", status_code=302)
             resp.set_cookie("access_token", token_str, httponly=True, max_age=30 * 24 * 3600)
             return resp
 
