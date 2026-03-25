@@ -52,7 +52,9 @@ def _route() -> str:
 
 
 async def _notify(stage: str, summary: str, details: str = "") -> None:
+    from services.tg_notify import tg_send
     await notify_status(stage=stage, summary=summary, details=details, include_email=False)
+    # Telegram дублируется через notify_status → tg_send, но для кастомных событий вызываем явно
 
 
 # ──────────────────────────────────────────────────────────────────────────────

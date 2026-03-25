@@ -19,6 +19,7 @@ from web.routes.legal_routes import router as legal_router
 from web.routes.admin import router as admin_router
 from web.routes.account import router as account_router
 from web.routes.language import router as language_router
+from web.routes.webhooks import router as webhooks_router
 from web.routes.seller import router as seller_router
 from web.translations import TRANSLATIONS, parse_accept_language, SUPPORTED_LANGS
 from services.heavy_startup import run_heavy_startup
@@ -118,6 +119,13 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error("DB connection failed: %s", e)
 
+    # Уведомление о деплое в Telegram
+    try:
+        from services.tg_notify import notify_deploy_ok
+        await notify_deploy_ok()
+    except Exception:
+        pass
+
     task = asyncio.create_task(run_heavy_startup(app))
 
     bot_app = None
@@ -129,20 +137,33 @@ async def lifespan(app: FastAPI):
             await bot_app.start()
             await bot_app.updater.start_polling(drop_pending_updates=True)
             await setup_bot_menu(bot_app)
-            logger.info("Telegram bot started")
+            logger.info("Main bot started")
         except Exception as e:
             logger.error("Primary bot startup error: %s", e)
+
+    notify_bot_app = None
+    if settings.NOTIFY_BOT_TOKEN:
+        try:
+            from bot.notify_bot import create_notify_bot
+            notify_bot_app = create_notify_bot()
+            await notify_bot_app.initialize()
+            await notify_bot_app.start()
+            await notify_bot_app.updater.start_polling(drop_pending_updates=True)
+            logger.info("Notify bot started")
+        except Exception as e:
+            logger.error("Notify bot startup error: %s", e)
 
     try:
         yield
     finally:
-        if bot_app:
-            try:
-                await bot_app.updater.stop()
-                await bot_app.stop()
-                await bot_app.shutdown()
-            except Exception:
-                pass
+        for app in [bot_app, notify_bot_app]:
+            if app:
+                try:
+                    await app.updater.stop()
+                    await app.stop()
+                    await app.shutdown()
+                except Exception:
+                    pass
 
         if not task.done():
             task.cancel()
@@ -246,3 +267,4 @@ app.include_router(seller_router)
 app.include_router(admin_router)
 app.include_router(account_router)
 app.include_router(language_router)
+app.include_router(webhooks_router)
