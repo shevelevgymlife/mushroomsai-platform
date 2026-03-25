@@ -1,21 +1,29 @@
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+FROM python:3.11
 
-# 👉 ВАЖНО: ставим системные зависимости
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# 👉 Ставим ВСЁ что нужно для тяжёлых пакетов
 RUN apt-get update && apt-get install -y \
     gcc \
+    g++ \
     libpq-dev \
     build-essential \
     libjpeg-dev \
     zlib1g-dev \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
-    && pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip setuptools wheel
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Render подставляет PORT при старте
 CMD ["sh", "-c", "exec uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
