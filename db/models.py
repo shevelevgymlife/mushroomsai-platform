@@ -51,6 +51,7 @@ users = sqlalchemy.Table(
     sqlalchemy.Column("legal_docs_version", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("link_token", sqlalchemy.String(64), nullable=True),
     sqlalchemy.Column("link_token_expires", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("link_merge_secondary_id", sqlalchemy.Integer, nullable=True),
     sqlalchemy.Column("screen_rim_json", sqlalchemy.Text, nullable=True),
 )
 

@@ -262,6 +262,7 @@ async def run_heavy_startup(app: FastAPI) -> None:
             "ALTER TABLE bot_task_requests ADD COLUMN IF NOT EXISTS autorun_started_at TIMESTAMP",
             "ALTER TABLE bot_task_requests ADD COLUMN IF NOT EXISTS autorun_result TEXT",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS screen_rim_json TEXT",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS link_merge_secondary_id INTEGER",
         ]
         try:
             await database.execute(

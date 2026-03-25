@@ -235,6 +235,14 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("DB migration screen_rim_json: %s", e)
 
+    try:
+        await database.execute(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS link_merge_secondary_id INTEGER"
+        )
+        logger.info("DB migration: link_merge_secondary_id OK")
+    except Exception as e:
+        logger.warning("DB migration link_merge_secondary_id: %s", e)
+
     # Уведомление о деплое в Telegram
     try:
         from services.tg_notify import notify_deploy_ok

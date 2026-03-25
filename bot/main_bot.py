@@ -27,7 +27,7 @@ def create_bot() -> Application:
         CallbackQueryHandler(link_confirm_callback, pattern=r"^link_cancel:")
     )
     application.add_handler(
-        CallbackQueryHandler(link_merge_callback, pattern=r"^link_merge_")
+        CallbackQueryHandler(link_merge_callback, pattern=r"^link_merge_ok:")
     )
 
     return application

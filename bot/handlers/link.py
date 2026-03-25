@@ -1,4 +1,8 @@
-"""Обработчик подтверждения привязки Telegram-аккаунта через deeplink."""
+"""Обработчик подтверждения привязки Telegram-аккаунта через deeplink.
+
+callback_data Telegram ≤ 64 байт: кнопка слияния хранит только link_merge_ok:<link_token>,
+а id второго аккаунта — в users.link_merge_secondary_id.
+"""
 import logging
 from datetime import datetime
 
@@ -13,17 +17,38 @@ logger = logging.getLogger(__name__)
 
 async def link_confirm_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
-    await query.answer()
-    data = query.data  # "link_confirm:<token>" or "link_cancel:<token>"
+    if not query:
+        return
+    try:
+        await query.answer()
+    except Exception:
+        pass
+
+    data = query.data or ""
 
     try:
         action, token = data.split(":", 1)
     except ValueError:
-        await query.edit_message_text("Неверный формат запроса.")
+        try:
+            await query.edit_message_text("Неверный формат запроса.")
+        except Exception:
+            pass
         return
 
     if action == "link_cancel":
-        await query.edit_message_text("Привязка отменена.")
+        await database.execute(
+            users.update()
+            .where(users.c.link_token == token)
+            .values(
+                link_token=None,
+                link_token_expires=None,
+                link_merge_secondary_id=None,
+            )
+        )
+        try:
+            await query.edit_message_text("Привязка отменена.")
+        except Exception as e:
+            logger.warning("link_cancel edit_message: %s", e)
         return
 
     if action != "link_confirm":
@@ -31,89 +56,121 @@ async def link_confirm_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
     tg_id = query.from_user.id
 
-    row = await database.fetch_one(
-        users.select().where(users.c.link_token == token)
-    )
-    if not row:
-        await query.edit_message_text("Ссылка недействительна или уже использована.")
-        return
+    try:
+        row = await database.fetch_one(users.select().where(users.c.link_token == token))
+        if not row:
+            await query.edit_message_text("Ссылка недействительна или уже использована.")
+            return
 
-    expires = row["link_token_expires"]
-    if expires and datetime.utcnow() > expires:
-        await query.edit_message_text("Срок действия ссылки истёк. Сгенерируйте новую на сайте.")
-        return
+        expires = row["link_token_expires"]
+        if expires and datetime.utcnow() > expires:
+            await query.edit_message_text("Срок действия ссылки истёк. Сгенерируйте новую на сайте.")
+            return
 
-    # Проверить: есть ли в системе другой аккаунт с этим tg_id
-    existing = await database.fetch_one(
-        users.select().where(users.c.tg_id == tg_id)
-    )
+        existing = await database.fetch_one(users.select().where(users.c.tg_id == tg_id))
 
-    if existing and existing["id"] != row["id"]:
-        # Конфликт: этот Telegram уже зарегистрирован отдельно.
-        # Всегда оставляем web/Google аккаунт (row), удаляем TG-аккаунт (existing).
-        created_str = ""
-        if existing.get("created_at"):
-            try:
-                created_str = f", создан {existing['created_at'].strftime('%d.%m.%Y')}"
-            except Exception:
-                pass
+        if existing and existing["id"] != row["id"]:
+            created_str = ""
+            if existing.get("created_at"):
+                try:
+                    created_str = f", создан {existing['created_at'].strftime('%d.%m.%Y')}"
+                except Exception:
+                    pass
 
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton(
-                "✅ Да, привязать и удалить TG-аккаунт",
-                callback_data=f"link_merge_keep_web:{token}:{existing['id']}:{row['id']}"
-            )],
-            [InlineKeyboardButton("❌ Отмена", callback_data=f"link_cancel:{token}")],
-        ])
-        await query.edit_message_text(
-            f"⚠️ <b>Этот Telegram уже зарегистрирован в системе</b> как отдельный аккаунт"
-            f"{created_str}.\n\n"
-            "После привязки тот аккаунт будет <b>удалён</b>, данные и история перенесутся "
-            "в ваш основной аккаунт. Войдя через Telegram в будущем, вы попадёте в этот профиль.\n\n"
-            "Подтвердите действие:",
-            parse_mode="HTML",
-            reply_markup=keyboard,
-        )
-        return
+            await database.execute(
+                users.update()
+                .where(users.c.id == row["id"])
+                .values(link_merge_secondary_id=existing["id"])
+            )
 
-    # Нет конфликта — просто привязываем
-    await _do_link(query, tg_id, row["id"], token)
+            keyboard = InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "✅ Да, привязать и удалить TG-аккаунт",
+                            callback_data=f"link_merge_ok:{token}",
+                        )
+                    ],
+                    [InlineKeyboardButton("❌ Отмена", callback_data=f"link_cancel:{token}")],
+                ]
+            )
+            await query.edit_message_text(
+                f"⚠️ <b>Этот Telegram уже зарегистрирован в системе</b> как отдельный аккаунт"
+                f"{created_str}.\n\n"
+                "После привязки тот аккаунт будет <b>удалён</b>, данные и история перенесутся "
+                "в ваш основной аккаунт. Войдя через Telegram в будущем, вы попадёте в этот профиль.\n\n"
+                "Подтвердите действие:",
+                parse_mode="HTML",
+                reply_markup=keyboard,
+            )
+            return
+
+        await _do_link(query, tg_id, row["id"], token)
+    except Exception as e:
+        logger.exception("link_confirm: %s", e)
+        try:
+            await query.answer("Ошибка сервера. Попробуйте позже.", show_alert=True)
+        except Exception:
+            pass
 
 
 async def link_merge_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
-    await query.answer()
-    data = query.data  # "link_merge_keep_web:<token>:<tg_user_id>:<web_user_id>"
-
+    if not query:
+        return
     try:
-        action, token, tg_user_id_str, web_user_id_str = data.split(":", 3)
-        tg_user_id = int(tg_user_id_str)
-        web_user_id = int(web_user_id_str)
-    except (ValueError, TypeError):
-        await query.edit_message_text("Ошибка обработки запроса.")
+        await query.answer()
+    except Exception:
+        pass
+
+    data = query.data or ""
+    try:
+        action, token = data.split(":", 1)
+    except ValueError:
+        try:
+            await query.edit_message_text("Неверный формат запроса.")
+        except Exception:
+            pass
+        return
+
+    if action != "link_merge_ok":
         return
 
     tg_id = query.from_user.id
 
-    if action == "link_merge_keep_web":
-        # Оставляем web-аккаунт (web_user_id) как основной.
-        # Переносим данные из TG-аккаунта (tg_user_id), затем УДАЛЯЕМ его.
+    try:
+        row = await database.fetch_one(users.select().where(users.c.link_token == token))
+        if not row or not row.get("link_merge_secondary_id"):
+            await query.edit_message_text("Ссылка недействительна или устарела. Создайте новую на сайте.")
+            return
+
+        secondary_id = int(row["link_merge_secondary_id"])
+        secondary = await database.fetch_one(users.select().where(users.c.id == secondary_id))
+        if not secondary or secondary.get("tg_id") != tg_id:
+            await query.edit_message_text(
+                "Подтверждение недоступно: откройте бот с того же Telegram-аккаунта, что и раньше."
+            )
+            return
+
+        web_user_id = int(row["id"])
         from web.routes.account import merge_accounts
         from services.user_permanent_delete import permanently_delete_user
 
-        await merge_accounts(primary_id=web_user_id, secondary_id=tg_user_id)
+        await merge_accounts(primary_id=web_user_id, secondary_id=secondary_id)
         await database.execute(
-            users.update().where(users.c.id == web_user_id).values(
+            users.update()
+            .where(users.c.id == web_user_id)
+            .values(
                 tg_id=tg_id,
                 linked_tg_id=tg_id,
                 link_token=None,
                 link_token_expires=None,
+                link_merge_secondary_id=None,
             )
         )
-        # Удаляем вторичный TG-аккаунт полностью
-        ok, err = await permanently_delete_user(tg_user_id)
+        ok, err = await permanently_delete_user(secondary_id)
         if not ok:
-            logger.warning("link_merge: permanently_delete_user(%s) failed: %s", tg_user_id, err)
+            logger.warning("link_merge_ok: permanently_delete_user(%s) failed: %s", secondary_id, err)
 
         await query.edit_message_text(
             "✅ <b>Готово!</b> Аккаунты объединены.\n\n"
@@ -121,15 +178,24 @@ async def link_merge_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
             "вы будете попадать в свой основной профиль.",
             parse_mode="HTML",
         )
+    except Exception as e:
+        logger.exception("link_merge_ok: %s", e)
+        try:
+            await query.answer("Ошибка сервера. Попробуйте позже.", show_alert=True)
+        except Exception:
+            pass
 
 
 async def _do_link(query, tg_id: int, user_id: int, token: str) -> None:
     await database.execute(
-        users.update().where(users.c.id == user_id).values(
+        users.update()
+        .where(users.c.id == user_id)
+        .values(
             tg_id=tg_id,
             linked_tg_id=tg_id,
             link_token=None,
             link_token_expires=None,
+            link_merge_secondary_id=None,
         )
     )
     await query.edit_message_text(

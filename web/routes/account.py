@@ -54,6 +54,8 @@ async def merge_accounts(primary_id: int, secondary_id: int):
     if secondary["google_id"] and not primary["google_id"]:
         updates["google_id"] = secondary["google_id"]
         updates["linked_google_id"] = secondary["google_id"]
+    if secondary.get("email") and not primary.get("email"):
+        updates["email"] = secondary["email"]
     if updates:
         await database.execute(users.update().where(users.c.id == primary_id).values(**updates))
 
@@ -139,14 +141,18 @@ async def link_google_url(request: Request):
     if not user:
         return JSONResponse({"error": "unauthorized"}, status_code=401)
     from config import settings
+    from auth.google_link_state import sign_google_link_user_id
+
+    # Сессия для браузера; подписанный state — для внешнего браузера (без cookie Mini App).
     request.session["link_user_id"] = user["id"]
+    signed = sign_google_link_user_id(user["id"])
     params = {
         "client_id": settings.GOOGLE_CLIENT_ID,
         "redirect_uri": f"{settings.SITE_URL}/auth/google/callback",
         "response_type": "code",
         "scope": "openid email profile",
         "access_type": "offline",
-        "state": "link",
+        "state": signed,
     }
     import urllib.parse as _up
     url = "https://accounts.google.com/o/oauth2/v2/auth?" + _up.urlencode(params)
@@ -165,20 +171,24 @@ async def check_google_link_status(request: Request):
     return JSONResponse({"linked": False})
 
 
-
+@router.get("/link-google-start")
+async def link_google_start(request: Request):
+    """Редирект на Google OAuth для привязки (обычный браузер)."""
     user = await get_user_from_request(request)
     if not user:
         return RedirectResponse("/login")
     from config import settings
+    from auth.google_link_state import sign_google_link_user_id
 
     request.session["link_user_id"] = user["id"]
+    state = sign_google_link_user_id(user["id"])
     params = {
         "client_id": settings.GOOGLE_CLIENT_ID,
         "redirect_uri": f"{settings.SITE_URL}/auth/google/callback",
         "response_type": "code",
         "scope": "openid email profile",
         "access_type": "offline",
-        "state": "link",
+        "state": state,
     }
     url = "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(params)
     return RedirectResponse(url)

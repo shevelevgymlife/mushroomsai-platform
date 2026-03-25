@@ -223,10 +223,19 @@ async def google_callback(request: Request):
         if email and await is_identity_blocked("email", email.strip().lower()):
             return await _login_blocked_response(request)
 
-        # Check if this is an account-linking request
-        link_user_id = request.session.pop("link_user_id", None)
-        state = request.query_params.get("state", "")
-        if link_user_id and state == "link":
+        # Привязка Google: сессия (браузер) или подписанный state (Mini App → внешний браузер без cookie)
+        from auth.google_link_state import verify_google_link_state
+
+        state = request.query_params.get("state") or ""
+        link_user_id = verify_google_link_state(state)
+        if link_user_id is None:
+            link_user_id = request.session.pop("link_user_id", None)
+            if state != "link":
+                link_user_id = None
+        else:
+            request.session.pop("link_user_id", None)
+
+        if link_user_id is not None:
             from web.routes.account import merge_accounts
             from services.user_permanent_delete import permanently_delete_user
             from services.notify_admin import notify_admin_telegram
@@ -245,6 +254,15 @@ async def google_callback(request: Request):
                         google_id=google_id,
                         linked_google_id=google_id,
                         email=email,
+                    )
+                )
+            else:
+                # Тот же пользователь — обновляем email с Google
+                await database.execute(
+                    users.update().where(users.c.id == link_user_id).values(
+                        google_id=google_id,
+                        linked_google_id=google_id,
+                        email=email or existing_google_user.get("email"),
                     )
                 )
             # Уведомление админу
