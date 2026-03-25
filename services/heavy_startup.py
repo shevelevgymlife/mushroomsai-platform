@@ -39,6 +39,8 @@ async def run_heavy_startup(app: FastAPI) -> None:
         new_columns = [
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS linked_tg_id BIGINT",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS linked_google_id VARCHAR(128)",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS apple_id VARCHAR(128)",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS linked_apple_id VARCHAR(128)",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS primary_user_id INTEGER REFERENCES users(id)",
             "ALTER TABLE shop_products ADD COLUMN IF NOT EXISTS image_url TEXT",
             """CREATE TABLE IF NOT EXISTS feedback (
@@ -113,6 +115,7 @@ async def run_heavy_startup(app: FastAPI) -> None:
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_link_url TEXT",
             "ALTER TABLE ai_training_posts ADD COLUMN IF NOT EXISTS folder TEXT",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP",
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_apple_id ON users(apple_id)",
             "ALTER TABLE community_likes ADD COLUMN IF NOT EXISTS seen_by_post_owner BOOLEAN NOT NULL DEFAULT true",
             "ALTER TABLE community_comments ADD COLUMN IF NOT EXISTS seen_by_post_owner BOOLEAN NOT NULL DEFAULT true",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS decimal_del_balance TEXT",

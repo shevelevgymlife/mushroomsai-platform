@@ -5,11 +5,12 @@ from starlette.responses import JSONResponse
 from auth.email_auth import authenticate_user, register_user
 from auth.session import create_access_token
 from db.database import database
-from db.models import users
+from db.models import users, admin_permissions
 from services.referral_service import attach_invite_ref_from_query, finalize_web_referral
 from auth.blocked_identities import is_identity_blocked, login_denied_for_user_row
 import hashlib
 import hmac
+from auth.telegram_auth import telegram_webapp_login, telegram_finalize_login_cookie
 import secrets
 import string
 import time
@@ -84,8 +85,12 @@ async def login_page(request: Request):
     response = templates.TemplateResponse(
         "login.html",
         {
-            "request": request, "user": None,
+            "request": request,
+            "user": None,
             "site_url": settings.SITE_URL,
+            # Show Telegram button when bot username is configured.
+            # Callback verification uses TELEGRAM_BOT_TOKEN fallback to TELEGRAM_TOKEN.
+            "telegram_enabled": bool((settings.TELEGRAM_BOT_USERNAME or "").strip()),
             "bot_username": settings.TELEGRAM_BOT_USERNAME,
         },
     )
@@ -384,7 +389,91 @@ async def telegram_login_callback(request: Request):
             "login.html",
             {"request": request, "user": None, "error": f"Ошибка входа через Telegram: {e}", "site_url": _s.SITE_URL, "bot_username": _s.TELEGRAM_BOT_USERNAME},
         )
+@router.get("/auth/telegram/open")
+async def telegram_open(request: Request):
+    """
+    Button handler from web login page:
+    redirect user to Telegram app using a deep-link to open Telegram WebApp.
+    """
+    from config import settings
 
+    username = (settings.TELEGRAM_BOT_USERNAME or "").strip().lstrip("@")
+    if not username:
+        return JSONResponse({"error": "TELEGRAM_BOT_USERNAME is not configured"}, status_code=500)
+
+    startapp = (settings.TELEGRAM_WEBAPP_STARTAPP or "webapp").strip()
+    # Telegram will open the bot's WebApp URL configured in BotFather.
+    url = f"https://t.me/{username}?startapp={urllib.parse.quote(startapp)}"
+    return RedirectResponse(url, status_code=302)
+
+
+@router.get("/auth/telegram/webapp", response_class=HTMLResponse)
+async def telegram_webapp_page(request: Request):
+    """
+    Telegram WebApp page.
+    Telegram client renders this inside Telegram and injects `window.Telegram.WebApp.initData`.
+    """
+    from config import settings
+
+    next_raw = request.query_params.get("next") or "/dashboard"
+    next_path = _safe_next_path(next_raw) or "/dashboard"
+    return templates.TemplateResponse(
+        "telegram_webapp.html",
+        {
+            "request": request,
+            "user": None,
+            "bot_username": (settings.TELEGRAM_BOT_USERNAME or "").strip().lstrip("@"),
+            "startapp": (settings.TELEGRAM_WEBAPP_STARTAPP or "webapp").strip(),
+            "next_path": next_path,
+        },
+    )
+
+
+@router.post("/auth/telegram/webapp/callback")
+async def telegram_webapp_callback(request: Request):
+    try:
+        body = await request.json()
+        init_data = body.get("initData") or body.get("init_data") or ""
+        next_raw = body.get("next") or "/dashboard"
+        next_path = _safe_next_path(next_raw) or "/dashboard"
+
+        user_id, redirect_to = await telegram_webapp_login(
+            init_data,
+            request=request,
+            redirect_to=next_path,
+        )
+
+        resp = JSONResponse({"ok": True, "redirect": redirect_to})
+        # If there are no admin permissions yet (fresh DB), promote the first logged user.
+        try:
+            perm_keys = [
+                "can_dashboard",
+                "can_ai",
+                "can_shop",
+                "can_users",
+                "can_feedback",
+                "can_broadcast",
+                "can_knowledge",
+            ]
+            cnt = await database.fetch_val(admin_permissions.select().count())
+            if cnt == 0:
+                await database.execute(users.update().where(users.c.id == user_id).values(role="admin"))
+                await database.execute(
+                    admin_permissions.insert().values(
+                        user_id=user_id,
+                        **{k: True for k in perm_keys},
+                    )
+                )
+        except Exception:
+            # Best-effort promotion: auth should still succeed.
+            pass
+
+        await telegram_finalize_login_cookie(response=resp, request=request, user_id=user_id)
+        return resp
+    except PermissionError as e:
+        return JSONResponse({"error": str(e)}, status_code=403)
+    except Exception as e:
+        return JSONResponse({"error": f"Telegram auth failed: {str(e)}"}, status_code=400)
 
 @router.get("/logout")
 async def logout():
