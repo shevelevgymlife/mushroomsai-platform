@@ -20,12 +20,12 @@
         try { tg.ready(); } catch (e) {}
       }
 
-      // initData может появляться не мгновенно; ждём немного.
+      // initData может появляться не мгновенно; ждём немного дольше.
       let initData = tg ? tg.initData : null;
       if (!initData) {
         const startedAt = Date.now();
-        while (!initData && (Date.now() - startedAt) < 2500) {
-          await new Promise(r => setTimeout(r, 150));
+        while (!initData && (Date.now() - startedAt) < 8000) {
+          await new Promise(r => setTimeout(r, 200));
           initData = tg ? tg.initData : null;
         }
       }
@@ -37,12 +37,29 @@
         : null;
 
       if (!initData) {
+        // Helpful diagnostics for Telegram WebApp injection issues.
+        let platform = null;
+        let hasUnsafe = false;
+        let initUnsafeUserId = null;
+        try {
+          platform = tg ? tg.platform : null;
+          hasUnsafe = !!(tg && tg.initDataUnsafe);
+          initUnsafeUserId = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null;
+        } catch (e) {}
+
+        const tgStatus = [
+          `Telegram.WebApp: ${tg ? 'yes' : 'no'}`,
+          `platform: ${platform || '—'}`,
+          `initDataUnsafe: ${hasUnsafe ? 'yes' : 'no'}`,
+          `initDataUnsafe.user.id: ${initUnsafeUserId || '—'}`,
+        ].join('<br/>');
+
         const linkHtml = deepLink
           ? `<div style="margin-top:14px"><a href="${deepLink}" style="color:#3dd4e0;text-decoration:underline">Открыть WebApp в Telegram ещё раз</a></div>`
           : "";
         document.body.innerHTML =
           `<div style='padding:24px;font-family:system-ui'>Telegram initData не найден.<br/>` +
-          `Проверка окружения: Telegram.WebApp ${tg ? 'есть' : 'нет'}, initData ${initData ? 'есть' : 'пусто/undefined'}.` +
+          `Диагностика:<br/>${tgStatus}<br/>` +
           `Открой эту страницу внутри Telegram WebApp.${linkHtml}</div>`;
         return;
       }
