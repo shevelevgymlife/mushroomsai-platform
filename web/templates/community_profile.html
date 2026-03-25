@@ -1,6 +1,10 @@
 {% extends "base.html" %}
 {% block title %}{{ profile.name or 'Профиль' }} — Сообщество NEUROFUNGI AI{% endblock %}
 
+{% block site_navbar %}{% endblock %}
+{% block site_footer %}{% endblock %}
+{% block body_class %} profile-app-shell{% endblock %}
+
 {% from 'components/stroke_icons.html' import ico %}
 
 {% block content %}
@@ -23,15 +27,59 @@
 .dmmsg.them{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);align-self:flex-start}
 .card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px}
 
-/* Тот же каркас, что экран «Мой профиль» в /dashboard */
-.cp-ig-root{background:#080808;min-height:100vh}
-.cp-ig-root .ig-dash-header{position:fixed;top:4rem;left:0;right:0;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 12px 0 10px;background:rgba(8,8,8,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid rgba(255,255,255,.06);z-index:950;box-sizing:border-box}
-.cp-ig-root .ig-ham{width:44px;height:44px;border:none;border-radius:12px;background:transparent;color:#e8e8e8;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;text-decoration:none}
-.cp-ig-root .ig-ham:hover{background:rgba(255,255,255,.06)}
-.cp-ig-root .ig-head-brand{font-family:Syne,Inter,system-ui,sans-serif;font-weight:700;font-size:1.05rem;letter-spacing:-0.02em;background:linear-gradient(90deg,#e8e8e8,#3dd4e0);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-decoration:none;border:none;cursor:pointer;padding:0;font:inherit}
-.cp-ig-root .ig-head-msg{width:44px;height:44px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:18px;color:#ccc;transition:border-color .2s,background .2s}
-.cp-ig-root .ig-head-msg:hover{border-color:rgba(61,212,224,.45);color:#3dd4e0}
-.cp-ig-main{padding:calc(4rem + 52px + 8px) 12px calc(28px + env(safe-area-inset-bottom,0px));max-width:100%}
+/* Полноэкранный режим без глобального navbar/footer */
+body.profile-app-shell .grain-overlay{opacity:0.22}
+body.profile-app-shell main{padding-top:0!important}
+.cp-ig-root{background:#080808;min-height:100vh;min-height:100dvh}
+.cp-ig-root .ig-dash-header{
+  position:fixed;top:0;left:0;right:0;
+  padding-top:env(safe-area-inset-top,0px);
+  height:calc(52px + env(safe-area-inset-top,0px));
+  display:flex;align-items:center;justify-content:space-between;
+  padding-left:10px;padding-right:8px;
+  background:rgba(6,8,14,.92);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  border-bottom:1px solid rgba(61,212,224,.12);
+  z-index:950;box-sizing:border-box;
+  box-shadow:0 8px 32px rgba(0,0,0,.35);
+}
+.cp-head-btn{
+  position:relative;width:44px;height:44px;border-radius:14px;border:1px solid rgba(61,212,224,.28);
+  background:linear-gradient(155deg,rgba(61,212,224,.16),rgba(184,95,163,.1));
+  display:flex;align-items:center;justify-content:center;
+  color:#d4f4ff;cursor:pointer;text-decoration:none;
+  box-shadow:0 2px 14px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.07);
+  transition:border-color .2s,box-shadow .2s,transform .12s,color .2s;
+}
+.cp-head-btn:hover{border-color:rgba(61,212,224,.55);color:#3dd4e0;box-shadow:0 4px 22px rgba(61,212,224,.2)}
+.cp-head-btn:active{transform:scale(.96)}
+.cp-bell .stroke-ico{color:#b8f0ff;filter:drop-shadow(0 0 8px rgba(61,212,224,.45))}
+.cp-head-actions{display:flex;align-items:center;gap:5px;margin-left:auto}
+.cp-notif-badge{
+  position:absolute;top:5px;right:4px;min-width:17px;height:17px;padding:0 5px;border-radius:999px;
+  background:linear-gradient(135deg,#ff66d0,#3dd4e0);
+  color:#070708;font-size:10px;font-weight:800;display:none;align-items:center;justify-content:center;
+  line-height:1;box-shadow:0 2px 12px rgba(255,102,208,.5);
+}
+.cp-notif-badge.on{display:flex}
+.cp-ig-root .ig-head-brand{font-family:Syne,Inter,system-ui,sans-serif;font-weight:700;font-size:1.05rem;letter-spacing:-0.02em;background:linear-gradient(90deg,#f0f4ff,#3dd4e0,#b85fa3);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-decoration:none;border:none;cursor:pointer;padding:0;font:inherit}
+#cpActivityPanel{
+  display:none;position:fixed;left:0;right:0;top:calc(52px + env(safe-area-inset-top,0px));bottom:0;
+  z-index:940;background:rgba(4,6,12,.72);backdrop-filter:blur(8px);
+}
+#cpActivityPanel .cp-act-sheet{
+  position:absolute;left:0;right:0;top:0;max-height:min(72vh,520px);overflow:auto;
+  background:linear-gradient(180deg,rgba(12,14,22,.98),rgba(6,8,14,.99));
+  border-bottom:1px solid rgba(61,212,224,.2);
+  border-radius:0 0 22px 22px;
+  box-shadow:0 24px 60px rgba(0,0,0,.55);
+  padding:12px 14px 18px;
+}
+.cp-act-row{display:flex;gap:12px;padding:12px 10px;border-radius:14px;text-decoration:none;color:inherit;align-items:flex-start;border:1px solid transparent;transition:background .15s,border-color .15s}
+.cp-act-row:hover{background:rgba(61,212,224,.08);border-color:rgba(61,212,224,.15)}
+.cp-act-ico{font-size:20px;flex-shrink:0;width:36px;text-align:center}
+.cp-act-meta{font-size:12px;color:#8b93a8;line-height:1.35}
+.cp-act-title{font-size:14px;font-weight:600;color:#e8eaef;margin-bottom:4px}
+.cp-ig-main{padding:calc(52px + env(safe-area-inset-top,0px) + 12px) 12px calc(28px + env(safe-area-inset-bottom,0px));max-width:100%}
 @media(min-width:769px){.cp-ig-main{padding-left:24px;padding-right:24px}}
 
 .ig-me-shell{width:100%;max-width:min(100%,935px);margin:0 auto;padding-bottom:8px}
@@ -161,14 +209,30 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 </style>
 
 <div class="cp-ig-root">
-  <header class="ig-dash-header" aria-label="Профиль">
-    <a href="/dashboard#feed" class="ig-ham" aria-label="Назад к ленте">←</a>
+  <header class="ig-dash-header" aria-label="Профиль NEUROFUNGI AI">
+    <a href="/dashboard#feed" class="cp-head-btn" title="Меню и лента" aria-label="Меню">{{ ico('menu') }}</a>
     <a href="/community/profile/{{ profile.id }}" class="ig-head-brand">NEUROFUNGI AI</a>
-    <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
-      <a href="/dashboard#feed" class="ig-head-msg" title="Лента" aria-label="Лента">{{ ico('feed') }}</a>
-      <a href="/dashboard" class="ig-head-msg" title="Кабинет" aria-label="Кабинет">{{ ico('user') }}</a>
+    <div class="cp-head-actions">
+      <button type="button" class="cp-head-btn cp-bell" id="cpActivityBell" title="Уведомления" aria-label="Уведомления">
+        {{ ico('bell') }}
+        <span id="cpActivityBadge" class="cp-notif-badge">0</span>
+      </button>
+      <a href="/messages" class="cp-head-btn" title="Сообщения" aria-label="Сообщения" id="cpMsgHead">
+        {{ ico('message') }}
+        <span id="cpMsgBadge" class="cp-notif-badge">0</span>
+      </a>
+      <a href="/community/profile/{{ viewer_effective_id }}" class="cp-head-btn" title="Мой профиль" aria-label="Мой профиль">{{ ico('user') }}</a>
     </div>
   </header>
+  <div id="cpActivityPanel" role="dialog" aria-modal="true" aria-labelledby="cpActivityTitle" style="display:none">
+    <div class="cp-act-sheet" onclick="event.stopPropagation()">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:0 4px">
+        <span id="cpActivityTitle" style="font-weight:700;font-size:16px;color:#e8eaef">Уведомления</span>
+        <button type="button" class="btn-muted" style="padding:6px 12px;font-size:12px" onclick="closeCpActivityPanel()">Закрыть</button>
+      </div>
+      <div id="cpActivityList" style="min-height:80px;font-size:13px;color:#888">Загрузка…</div>
+    </div>
+  </div>
 
   <main class="cp-ig-main">
     <div class="ig-me-shell">
@@ -708,6 +772,81 @@ async function sendMsg(){
 
 function esc(t){return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function escAttr(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;')}
+
+async function refreshCpHeaderBadges(){
+  try{
+    const r=await fetch('/community/activity/unread-count',{credentials:'same-origin'});
+    const d=await r.json();
+    const act=(typeof d.activity_total==='number')
+      ?d.activity_total
+      :((d.likes||0)+(d.comments||0)+(d.profile_likes||0));
+    const ab=document.getElementById('cpActivityBadge');
+    if(ab){
+      const n=Math.max(0,parseInt(act,10)||0);
+      ab.textContent=n>99?'99+':String(n);
+      ab.classList.toggle('on',n>0);
+    }
+    const mb=document.getElementById('cpMsgBadge');
+    if(mb){
+      const n=Math.max(0,d.messages||0);
+      mb.textContent=n>99?'99+':String(n);
+      mb.classList.toggle('on',n>0);
+    }
+  }catch(e){}
+}
+function renderCpActivityRow(it){
+  const a=it.actor||{};
+  const av=a.avatar
+    ?'<img src="'+escAttr(a.avatar)+'" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid rgba(61,212,224,.35)">'
+    :'<div style="width:40px;height:40px;border-radius:50%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:18px">🍄</div>';
+  const name=_escHtml(String(a.name||'Участник'));
+  const t=String(it.created_at||'').replace('T',' ').slice(0,19);
+  if(it.type==='post_like'){
+    const href='/community/post/'+encodeURIComponent(String(it.post_id||''))+'?back='+encodeURIComponent(location.pathname);
+    return '<a class="cp-act-row" href="'+href+'">'+av+'<div style="flex:1;min-width:0"><div class="cp-act-title">⭐ Лайк поста</div><div class="cp-act-meta">'+name+' · '+t+'</div></div></a>';
+  }
+  if(it.type==='comment'){
+    const href='/community/post/'+encodeURIComponent(String(it.post_id||''))+'?back='+encodeURIComponent(location.pathname);
+    const sn=_escHtml(String(it.snippet||''));
+    return '<a class="cp-act-row" href="'+href+'">'+av+'<div style="flex:1;min-width:0"><div class="cp-act-title">💬 Комментарий</div><div class="cp-act-meta">'+name+': '+sn+'</div><div class="cp-act-meta" style="margin-top:4px;opacity:.85">'+t+'</div></div></a>';
+  }
+  if(it.type==='profile_like'){
+    return '<a class="cp-act-row" href="/community/profile/'+PROFILE_ID+'">'+av+'<div style="flex:1;min-width:0"><div class="cp-act-title">❤️ Лайк профиля</div><div class="cp-act-meta">'+name+' · '+t+'</div></div></a>';
+  }
+  if(it.type==='message'){
+    const href='/messages/'+encodeURIComponent(String(a.id||''));
+    const tx=_escHtml(String(it.text_preview||''));
+    return '<a class="cp-act-row" href="'+href+'">'+av+'<div style="flex:1;min-width:0"><div class="cp-act-title">✉ Сообщение</div><div class="cp-act-meta">'+name+': '+tx+'</div><div class="cp-act-meta" style="margin-top:4px;opacity:.85">'+t+'</div></div></a>';
+  }
+  return '';
+}
+function openCpActivityPanel(){
+  const p=document.getElementById('cpActivityPanel');
+  const list=document.getElementById('cpActivityList');
+  if(!p||!list)return;
+  p.style.display='block';
+  try{document.body.style.overflow='hidden';}catch(e){}
+  list.innerHTML='<div style="padding:20px;text-align:center;color:#888">Загрузка…</div>';
+  fetch('/community/activity/feed',{credentials:'same-origin'}).then(r=>r.json()).then(d=>{
+    const items=(d&&d.items)||[];
+    if(!items.length){
+      list.innerHTML='<div style="padding:28px;text-align:center;color:#666">Пока нет новых событий</div>';
+      return;
+    }
+    list.innerHTML=items.map(renderCpActivityRow).join('');
+  }).catch(()=>{list.innerHTML='<div style="padding:20px;color:#f87171;text-align:center">Ошибка загрузки</div>'});
+}
+function closeCpActivityPanel(){
+  const p=document.getElementById('cpActivityPanel');
+  if(p)p.style.display='none';
+  try{document.body.style.overflow='';}catch(e){}
+  fetch('/community/activity/mark-read',{method:'POST',credentials:'same-origin'}).then(()=>refreshCpHeaderBadges());
+}
+document.getElementById('cpActivityBell')?.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openCpActivityPanel();});
+document.getElementById('cpActivityPanel')?.addEventListener('click',function(e){if(e.target===this)closeCpActivityPanel();});
+setInterval(refreshCpHeaderBadges,45000);
+refreshCpHeaderBadges();
+
 function closeProfilePostPreview(){
   const m=document.getElementById('profilePostPreviewModal');
   if(m) m.style.display='none';

@@ -104,13 +104,13 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
     </div>
   </div>
 
-  {% include "components/navbar.html" %}
+  {% block site_navbar %}{% include "components/navbar.html" %}{% endblock %}
 
   <main>
     {% block content %}{% endblock %}
   </main>
 
-  {% include "components/footer.html" %}
+  {% block site_footer %}{% include "components/footer.html" %}{% endblock %}
 
   <script src="/static/js/app.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>

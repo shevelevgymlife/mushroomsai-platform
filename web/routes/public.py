@@ -1251,6 +1251,7 @@ async def community_profile(request: Request, user_id: int):
             "request": request,
             "user": current_user,
             "current_user": current_user,
+            "viewer_effective_id": viewer_id,
             "profile": profile,
             "profile_id": profile_id,
             "post_count": post_count,
