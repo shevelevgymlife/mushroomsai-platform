@@ -475,6 +475,21 @@ async def telegram_webapp_callback(request: Request):
     except Exception as e:
         return JSONResponse({"error": f"Telegram auth failed: {str(e)}"}, status_code=400)
 
+@router.get("/auth/telegram/webapp/debug")
+async def telegram_webapp_debug(request: Request):
+    """Временный диагностический эндпоинт — показывает какой токен используется."""
+    from config import settings as _s
+    tg_token = (_s.TELEGRAM_BOT_TOKEN or "").strip() or (_s.TELEGRAM_TOKEN or "").strip()
+    def mask(t): return (t[:6] + "…" + t[-4:]) if len(t) > 10 else ("(пусто)" if not t else t)
+    return JSONResponse({
+        "TELEGRAM_BOT_USERNAME": _s.TELEGRAM_BOT_USERNAME or "(не задан)",
+        "TELEGRAM_BOT_TOKEN_used": mask(tg_token),
+        "source": "TELEGRAM_BOT_TOKEN" if (_s.TELEGRAM_BOT_TOKEN or "").strip() else "TELEGRAM_TOKEN (fallback)",
+        "TELEGRAM_BOT_TOKEN_raw_len": len((_s.TELEGRAM_BOT_TOKEN or "").strip()),
+        "TELEGRAM_TOKEN_raw_len": len((_s.TELEGRAM_TOKEN or "").strip()),
+    })
+
+
 @router.get("/logout")
 async def logout():
     resp = RedirectResponse("/", status_code=302)
