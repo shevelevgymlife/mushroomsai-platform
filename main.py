@@ -1,14 +1,10 @@
 import logging
 import os
-
-logging.basicConfig(level=logging.INFO)
-
 import asyncio
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
-from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.responses import Response
+from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -28,8 +24,11 @@ from web.translations import TRANSLATIONS, parse_accept_language, SUPPORTED_LANG
 from services.heavy_startup import run_heavy_startup
 from web.templates_utils import Jinja2Templates
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+# -------------------- MIDDLEWARE --------------------
 
 class LanguageMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -88,16 +87,17 @@ class StartupGateMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
+
         if path in _STARTUP_SKIP_PATHS or path.startswith("/static") or path.startswith("/media"):
             return await call_next(request)
+
         if getattr(request.app.state, "startup_complete", False):
             return await call_next(request)
 
         if not self._wants_html_page(request):
             if path == "/":
-                return Response("ok", status_code=200, media_type="text/plain")
+                return Response("ok", status_code=200)
             return await call_next(request)
-from fastapi.responses import JSONResponse
 
         return JSONResponse(
             {"detail": "starting", "retry": True},
@@ -106,33 +106,37 @@ from fastapi.responses import JSONResponse
         )
 
 
+# -------------------- LIFESPAN --------------------
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.startup_complete = False
-    startup_task: asyncio.Task | None = None
 
     try:
         await database.connect()
         logger.info("DB connected")
     except Exception as e:
-        logger.error("DB connection failed, app continues: %s", e)
+        logger.error("DB connection failed: %s", e)
 
-    startup_task = asyncio.create_task(run_heavy_startup(app))
+    task = asyncio.create_task(run_heavy_startup(app))
 
     try:
         yield
     finally:
-        if startup_task is not None and not startup_task.done():
-            startup_task.cancel()
+        if not task.done():
+            task.cancel()
             try:
-                await startup_task
-            except asyncio.CancelledError:
+                await task
+            except:
                 pass
+
         try:
             await database.disconnect()
         except:
             pass
 
+
+# -------------------- APP --------------------
 
 app = FastAPI(
     title="MushroomsAI Platform",
@@ -142,6 +146,7 @@ app = FastAPI(
 
 templates = Jinja2Templates(directory="web/templates")
 
+# Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -162,6 +167,7 @@ app.add_middleware(LanguageMiddleware)
 app.add_middleware(ProbeBlockMiddleware)
 app.add_middleware(StartupGateMiddleware)
 
+# Static
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 if os.path.exists("/data"):
@@ -169,11 +175,13 @@ if os.path.exists("/data"):
 else:
     os.makedirs("./media", exist_ok=True)
     app.mount("/media", StaticFiles(directory="./media"), name="media")
-app = FastAPI()
 
+
+# -------------------- ROUTES --------------------
 
 @app.get("/")
-@@ -176,20 +10,5 @@ def root():
+async def root():
+    return {"status": "ok"}
 
 
 @app.get("/health")
@@ -194,5 +202,3 @@ app.include_router(seller_router)
 app.include_router(admin_router)
 app.include_router(account_router)
 app.include_router(language_router)
-async def health():
-    return {"status": "ok", "service": "mushroomsai"}
