@@ -16,7 +16,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text(
             "🔗 <b>Привязка аккаунта NEUROFUNGI AI</b>\n\n"
             "Вы хотите привязать этот Telegram к вашему аккаунту на сайте?\n"
-            "После привязки вы сможете входить через Telegram.",
+            "После привязки вы сможете входить через Telegram.\n\n"
+            "Если на сайте вы также подключаете <b>Google</b>, действуйте по <b>круговой процедуре</b>: "
+            "сначала подтвердите вход в Google в браузере, затем при необходимости снова подтвердите ссылку "
+            "здесь в Telegram — так аккаунты Google и Telegram сойдутся в одном профиле.",
             parse_mode="HTML",
             reply_markup=keyboard,
         )

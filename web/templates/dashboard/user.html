@@ -596,14 +596,14 @@ body.tg-chat-open #groupImageRow{
   body.tg-group-mobile-chat #sec-groups .tg-chat-sidebar{display:none!important}
   body.tg-group-mobile-chat #sec-groups .tg-chat-shell{
     grid-template-columns:1fr!important;
-    min-height:calc(var(--vvh, 100vh) - 52px - 56px - env(safe-area-inset-bottom, 0px));
+    min-height:calc(var(--vvh, 100vh) - var(--app-header-h, 56px) - 56px - env(safe-area-inset-bottom, 0px));
     max-height:none;
     border-radius:0;
     border-left:none;
     border-right:none;
   }
   body.tg-group-mobile-chat #sec-groups .tg-chat-main{
-    min-height:calc(var(--vvh, 100vh) - 52px - 56px - env(safe-area-inset-bottom, 0px));
+    min-height:calc(var(--vvh, 100vh) - var(--app-header-h, 56px) - 56px - env(safe-area-inset-bottom, 0px));
     max-height:none;
     display:flex;
     flex-direction:column;
@@ -658,7 +658,7 @@ body.tg-chat-open #groupImageRow{
 @media(min-width:769px){.db-ig-mode .db-main{padding-left:12px;padding-right:12px}}
 /* ig-dash-header удалён — общая шапка в base.html */
 .ig-dash-header-start{display:flex;align-items:center;gap:2px;flex-shrink:0}
-.ig-dash-header .ig-ham{width:44px;height:44px;border:none;border-radius:12px;background:transparent;color:#e8e8e8;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.ig-dash-header .ig-ham{width:min(132px,36vw);height:min(132px,36vw);border:none;border-radius:clamp(18px,7vw,30px);background:transparent;color:#e8e8e8;font-size:clamp(44px,18vw,66px);cursor:pointer;display:flex;align-items:center;justify-content:center}
 .ig-dash-header .ig-ham:hover{background:rgba(255,255,255,.06)}
 .ig-dash-back{width:44px;height:44px;border:none;border-radius:12px;background:transparent;color:#e8e8e8;cursor:pointer;display:none;align-items:center;justify-content:center;padding:0}
 .ig-dash-back:hover{background:rgba(255,255,255,.06)}
@@ -814,7 +814,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 .ig-lamp-topbar{
   position:fixed;
   left:10px;
-  top:calc(52px + env(safe-area-inset-top,0px) + 6px);
+  top:calc(var(--app-header-h, 56px) + env(safe-area-inset-top,0px) + 6px);
   z-index:951;
   display:inline-flex;
   align-items:center;
@@ -847,11 +847,11 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 @media(max-width:400px){
   .my-tokens-inline__grid{grid-template-columns:1fr;gap:8px}
   .my-lamp-toggle{font-size:10px;padding:3px 7px}
-  .ig-lamp-topbar{left:8px;top:calc(52px + env(safe-area-inset-top,0px) + 4px);gap:6px}
+  .ig-lamp-topbar{left:8px;top:calc(var(--app-header-h, 56px) + env(safe-area-inset-top,0px) + 4px);gap:6px}
   .ig-lamp-topbar::before{width:26px;height:26px}
 }
 body.dash-ig-app .ig-lamp-topbar{
-  top:calc(52px + env(safe-area-inset-top,0px) + 6px);
+  top:calc(var(--app-header-h, 56px) + env(safe-area-inset-top,0px) + 6px);
 }
 @keyframes igMsgIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 </style>

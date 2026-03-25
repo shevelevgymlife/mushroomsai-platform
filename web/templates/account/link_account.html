@@ -10,9 +10,13 @@
     </a>
 
     <h1 style="font-size:22px;font-weight:700;color:#e8e8e8;margin:0 0 8px">🔗 Привязать аккаунт</h1>
-    <p style="font-size:14px;color:#666;margin:0 0 28px;line-height:1.5">
+    <p style="font-size:14px;color:#666;margin:0 0 16px;line-height:1.5">
       Привяжите все способы входа — войдёте с любого устройства в один аккаунт.
     </p>
+    <div style="padding:14px 16px;border-radius:14px;border:1px solid rgba(61,212,224,.28);background:rgba(61,212,224,.07);margin-bottom:24px;font-size:13px;color:#9ca3af;line-height:1.55">
+      <strong style="color:#3dd4e0">Круговая проверка Google ↔ Telegram.</strong>
+      Чтобы надёжно объединить аккаунты, система может провести вас по цепочке: сначала подтверждение в <b>Google</b> на сайте, затем финальное подтверждение в <b>Telegram</b> (сообщение от бота со ссылкой). Так мы связываем почту Google и ваш Telegram в одном профиле.
+    </div>
 
     {% set has_tg = user.tg_id or user.linked_tg_id %}
     {% set has_google = user.google_id or user.linked_google_id %}
@@ -52,7 +56,8 @@
           <span style="font-size:20px">✈️</span> Привязать Telegram
         </button>
         <div id="tg-deeplink-block" style="display:none;margin-top:16px;padding:18px;border-radius:14px;border:1px solid rgba(56,189,248,.25);background:rgba(56,189,248,.06)">
-          <p style="font-size:13px;color:#aaa;margin:0 0 12px;line-height:1.5">Откройте эту ссылку в Telegram и подтвердите привязку:</p>
+          <p style="font-size:12px;color:#7dd3fc;margin:0 0 10px;line-height:1.5">Если позже привяжете <b>Google</b>, завершите <b>круговую процедуру</b>: войдите в Google на сайте и при необходимости снова подтвердите ссылку в Telegram — так аккаунты сойдутся в одном профиле.</p>
+          <p style="font-size:13px;color:#aaa;margin:0 0 12px;line-height:1.5">Откройте ссылку в Telegram и подтвердите привязку этого Telegram к текущему профилю:</p>
           <a id="tgDeeplink" href="#" target="_blank" style="display:block;padding:12px 16px;border-radius:10px;border:1px solid rgba(56,189,248,.4);background:rgba(56,189,248,.1);color:#38bdf8;font-size:14px;font-weight:600;text-decoration:none;text-align:center;margin-bottom:12px">Открыть бот в Telegram →</a>
           <div id="tgLinkStatus" style="font-size:13px;color:#555;text-align:center">Ожидаем подтверждение…</div>
           <div id="tgLinkSuccess" style="display:none;padding:12px;border-radius:10px;background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);color:#4ade80;font-size:14px;font-weight:600;text-align:center;margin-top:10px">✅ Telegram привязан! Перенаправляем…</div>
@@ -86,7 +91,7 @@
             <li>Способ входа через Google закрепится за этим аккаунтом</li>
             <li>Если Google уже существует в системе отдельно — тот аккаунт будет <strong style="color:#f87171">безвозвратно удалён</strong></li>
             <li>Данные (история чатов, подписка) перенесутся к вам</li>
-            {% if has_tg %}<li style="color:#38bdf8">Если Telegram уже привязан — после входа в Google придёт сообщение в Telegram с кнопкой <strong>Подтвердить привязку</strong></li>{% endif %}
+            {% if has_tg %}<li style="color:#38bdf8"><strong>Круговая проверка:</strong> после входа в Google загляните в Telegram — придёт сообщение со ссылкой, чтобы подтвердить связку <b>Google → Telegram</b> в этом профиле.</li>{% else %}<li style="color:#94a3b8">После Google имеет смысл привязать Telegram — тогда при смене способов входа сработает такая же поэтапная проверка.</li>{% endif %}
           </ul>
           <div id="googleWaitBlock" style="display:none;padding:14px;border-radius:12px;background:rgba(61,212,224,.06);border:1px solid rgba(61,212,224,.2);text-align:center;margin-bottom:16px">
             <div style="font-size:13px;color:#3dd4e0;margin-bottom:6px">⏳ Ожидаем подтверждение в браузере…</div>
@@ -120,7 +125,7 @@
 
     {% if request.query_params.get('google_tg_confirm') %}
     <div style="margin-top:16px;padding:16px;border-radius:12px;border:1px solid rgba(56,189,248,.35);background:rgba(56,189,248,.08);color:#bae6fd;font-size:14px;line-height:1.55">
-      <strong style="color:#38bdf8">Почти готово.</strong> Откройте <b>Telegram</b> (тот же аккаунт, что привязан к профилю) и нажмите в сообщении от бота ссылку <b>«Подтвердить привязку»</b>. После этого Google отобразится как привязанный.
+      <strong style="color:#38bdf8">Почти готово — шаг круговой проверки.</strong> Откройте <b>Telegram</b> (тот же аккаунт, что привязан к профилю) и нажмите в сообщении от бота ссылку <b>«Подтвердить привязку»</b>, чтобы завершить цепочку <b>Google → сайт → Telegram</b>. После этого Google отобразится как привязанный.
     </div>
     {% endif %}
 
