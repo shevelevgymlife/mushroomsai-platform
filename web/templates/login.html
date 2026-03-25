@@ -67,7 +67,10 @@
 <script>
 (function () {
   var next = new URLSearchParams(location.search).get("next") || "/dashboard";
-  var tg = window.Telegram && window.Telegram.WebApp;
+  /* Telegram Mini App только если есть реальный initData (не пустая строка).
+     Если загружен telegram-web-app.js в браузере — initData == "" → falsy → не Mini App */
+  var tg = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData
+    ? window.Telegram.WebApp : null;
   if (tg && typeof tg.ready === "function") {
     try { tg.ready(); } catch (e) {}
   }

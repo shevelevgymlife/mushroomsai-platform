@@ -98,16 +98,22 @@
 <script>window._isLoggedIn = {{ 'true' if user else 'false' }};</script>
 <script>
 /* Telegram Mini App: prevent swipe-down dismiss, expand to full height */
-(function(){
+function _tgLockApp() {
   try {
     var twa = window.Telegram && window.Telegram.WebApp;
-    if (!twa) return;
+    if (!twa || !twa.initData) return; /* не Mini App — выходим */
     if (typeof twa.ready === 'function') twa.ready();
     if (typeof twa.expand === 'function') twa.expand();
+    /* Отключаем вертикальный свайп (Bot API 7.7+) */
     if (typeof twa.disableVerticalSwipes === 'function') twa.disableVerticalSwipes();
+    /* Прямое присвоение свойства как fallback */
+    try { twa.isVerticalSwipesEnabled = false; } catch(e) {}
     if (typeof twa.enableClosingConfirmation === 'function') twa.enableClosingConfirmation();
   } catch(e) {}
-})();
+}
+_tgLockApp();
+/* Повторяем после загрузки страницы — Telegram может инициализироваться позже */
+document.addEventListener('DOMContentLoaded', _tgLockApp);
 </script>
 {% if not user %}
 <script src="/static/js/telegram-link-preserve.js?v=2"></script>
