@@ -19,6 +19,7 @@ from web.routes.legal_routes import router as legal_router
 from web.routes.admin import router as admin_router
 from web.routes.account import router as account_router
 from web.routes.language import router as language_router
+from web.routes.webhooks import router as webhooks_router
 from web.routes.seller import router as seller_router
 from web.translations import TRANSLATIONS, parse_accept_language, SUPPORTED_LANGS
 from services.heavy_startup import run_heavy_startup
@@ -117,6 +118,13 @@ async def lifespan(app: FastAPI):
         logger.info("DB connected")
     except Exception as e:
         logger.error("DB connection failed: %s", e)
+
+    # Уведомление о деплое в Telegram
+    try:
+        from services.tg_notify import notify_deploy_ok
+        await notify_deploy_ok()
+    except Exception:
+        pass
 
     task = asyncio.create_task(run_heavy_startup(app))
 
@@ -246,3 +254,4 @@ app.include_router(seller_router)
 app.include_router(admin_router)
 app.include_router(account_router)
 app.include_router(language_router)
+app.include_router(webhooks_router)

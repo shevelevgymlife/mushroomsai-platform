@@ -6,6 +6,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler
 from config import settings
 from bot.handlers.start import start
 from bot.handlers.link import link_confirm_callback, link_merge_callback
+from bot.handlers.admin import cmd_status, cmd_users
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,8 @@ def create_bot() -> Application:
     )
 
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("status", cmd_status))
+    application.add_handler(CommandHandler("users", cmd_users))
     application.add_handler(
         CallbackQueryHandler(link_confirm_callback, pattern=r"^link_confirm:")
     )

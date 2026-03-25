@@ -242,6 +242,11 @@ async def google_callback(request: Request):
                     google_id=google_id, email=email, name=name, avatar=avatar, referral_code=ref_code
                 )
             )
+            try:
+                from services.tg_notify import notify_new_user
+                await notify_new_user(int(user_id), name, "Google")
+            except Exception:
+                pass
 
         token_str = create_access_token(user_id)
         dest = _pop_login_redirect(request)
@@ -342,6 +347,11 @@ async def telegram_login_callback(request: Request):
                     avatar=avatar, referral_code=ref_code
                 )
             )
+            try:
+                from services.tg_notify import notify_new_user
+                await notify_new_user(int(user_id), name or username or "Пользователь", "Telegram")
+            except Exception:
+                pass
 
         token_str = create_access_token(user_id)
         dest = _pop_login_redirect(request)

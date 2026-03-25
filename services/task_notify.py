@@ -105,6 +105,7 @@ async def notify_status(
     site_url: str = "",
     include_email: bool = True,
 ) -> None:
+    from services.tg_notify import tg_send
     stage = (stage or "").strip().lower()
     stages = {
         "task_accepted": ("🟡", "задача принята"),
@@ -127,6 +128,8 @@ async def notify_status(
     subject = f"[MushroomsAI] {stage_title} ({_render_service()}) {_render_commit()}"
     if include_email:
         await _notify_email(subject, msg, stage)
+    # Telegram
+    await tg_send(msg)
 
 
 async def notify_task_accepted(task_text: str) -> None:
