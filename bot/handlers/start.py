@@ -25,9 +25,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
     name = user.first_name if user else "друг"
 
-    keyboard = InlineKeyboardMarkup([[
-        InlineKeyboardButton("🍄 Открыть приложение", web_app=WebAppInfo(url="https://mushroomsai.ru")),
-    ]])
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🍄 Открыть приложение", web_app=WebAppInfo(url="https://mushroomsai.ru"))],
+        [InlineKeyboardButton("✉️ Написать в поддержку", callback_data="support")],
+    ])
 
     await update.message.reply_text(
         f"Привет, {name}! 👋\n\n"
