@@ -62,6 +62,7 @@ async def _login_blocked_response(request: Request):
             "error": "Этот аккаунт заблокирован администратором.",
             "site_url": _s.SITE_URL,
             "bot_username": _s.TELEGRAM_BOT_USERNAME,
+            "telegram_enabled": bool((_s.TELEGRAM_BOT_USERNAME or "").strip()),
         },
         status_code=403,
     )
@@ -125,6 +126,7 @@ async def login_email(
                 "error": "Неверный email или пароль",
                 "site_url": _s.SITE_URL,
                 "bot_username": _s.TELEGRAM_BOT_USERNAME,
+                "telegram_enabled": bool((_s.TELEGRAM_BOT_USERNAME or "").strip()),
             },
         )
     await _ensure_admin(int(user["id"]), email=email)
@@ -155,6 +157,7 @@ async def register_email(
                 "error": "Email уже зарегистрирован",
                 "site_url": _s.SITE_URL,
                 "bot_username": _s.TELEGRAM_BOT_USERNAME,
+                "telegram_enabled": bool((_s.TELEGRAM_BOT_USERNAME or "").strip()),
             },
         )
     await _ensure_admin(int(user["id"]), email=email)
@@ -296,6 +299,7 @@ async def google_callback(request: Request):
                 "error": f"Ошибка входа: {str(e)}",
                 "site_url": _s.SITE_URL,
                 "bot_username": _s.TELEGRAM_BOT_USERNAME,
+                "telegram_enabled": bool((_s.TELEGRAM_BOT_USERNAME or "").strip()),
             },
         )
 
@@ -388,19 +392,30 @@ async def telegram_login_callback(request: Request):
         from config import settings as _s
         return templates.TemplateResponse(
             "login.html",
-            {"request": request, "user": None, "error": f"Ошибка входа через Telegram: {e}", "site_url": _s.SITE_URL, "bot_username": _s.TELEGRAM_BOT_USERNAME},
+            {
+                "request": request,
+                "user": None,
+                "error": f"Ошибка входа через Telegram: {e}",
+                "site_url": _s.SITE_URL,
+                "bot_username": _s.TELEGRAM_BOT_USERNAME,
+                "telegram_enabled": bool((_s.TELEGRAM_BOT_USERNAME or "").strip()),
+            },
         )
 @router.get("/auth/telegram/open")
 async def telegram_open(request: Request):
     """
-    Button handler from web login page:
-    redirect user to Telegram app using a deep-link to open Telegram WebApp.
+    С веб-страницы: редирект в Telegram (t.me/...?startapp=) — вход только в Mini App с верификацией initData.
+    Параметр next сохраняем в сессии для редиректа после входа в приложении.
     """
     from config import settings
 
     username = (settings.TELEGRAM_BOT_USERNAME or "").strip().lstrip("@")
     if not username:
         return JSONResponse({"error": "TELEGRAM_BOT_USERNAME is not configured"}, status_code=500)
+
+    next_raw = request.query_params.get("next")
+    next_path = _safe_next_path(next_raw) or "/dashboard"
+    request.session["telegram_login_next"] = next_path
 
     startapp = (settings.TELEGRAM_WEBAPP_STARTAPP or "webapp").strip()
     # Telegram will open the bot's WebApp URL configured in BotFather.
@@ -416,7 +431,9 @@ async def telegram_webapp_page(request: Request):
     """
     from config import settings
 
-    next_raw = request.query_params.get("next") or "/dashboard"
+    next_raw = request.query_params.get("next")
+    if not next_raw:
+        next_raw = request.session.get("telegram_login_next") or "/dashboard"
     next_path = _safe_next_path(next_raw) or "/dashboard"
     return templates.TemplateResponse(
         "telegram_webapp.html",
@@ -472,6 +489,10 @@ async def telegram_webapp_callback(request: Request):
             pass
 
         await telegram_finalize_login_cookie(response=resp, request=request, user_id=user_id)
+        try:
+            request.session.pop("telegram_login_next", None)
+        except Exception:
+            pass
         return resp
     except PermissionError as e:
         return JSONResponse({"error": str(e)}, status_code=403)
