@@ -43,8 +43,6 @@ class LanguageMiddleware(BaseHTTPMiddleware):
 
 
 class ProbeBlockMiddleware(BaseHTTPMiddleware):
-    """Ранний 404 для массовых сканов WordPress — меньше работы, чем через сессии и роутеры."""
-
     _WP_DIR_SEGMENTS = frozenset({"wp-admin", "wp-includes", "wp-content", "wordpress"})
     _WP_PROBE_FILES = frozenset(
         {
@@ -84,11 +82,6 @@ _STARTUP_SKIP_PATHS = frozenset({"/health", "/healthz", "/favicon.ico", "/robots
 
 
 class StartupGateMiddleware(BaseHTTPMiddleware):
-    """Пока идут миграции в фоне: HTML-страницы — 503; API/поллинг (без text/html в Accept) — сразу в приложение.
-
-    Иначе фронт получает 503 на /messages/unread-count и «ломается», хотя БД уже доступна.
-    """
-
     @staticmethod
     def _wants_html_page(request: Request) -> bool:
         return "text/html" in (request.headers.get("accept") or "").lower()
@@ -105,12 +98,6 @@ class StartupGateMiddleware(BaseHTTPMiddleware):
                 return Response("ok", status_code=200, media_type="text/plain")
             return await call_next(request)
 
-        if path == "/":
-            return JSONResponse(
-                {"detail": "starting", "retry": True},
-                status_code=503,
-                headers={"Retry-After": "5"},
-            )
         return JSONResponse(
             {"detail": "starting", "retry": True},
             status_code=503,
@@ -122,19 +109,15 @@ class StartupGateMiddleware(BaseHTTPMiddleware):
 async def lifespan(app: FastAPI):
     app.state.startup_complete = False
     startup_task: asyncio.Task | None = None
+
     try:
         await database.connect()
+        logger.info("DB connected")
     except Exception as e:
-        logger.critical(
-            "Старт прерван: не удалось подключиться к PostgreSQL. "
-            "Проверь DATABASE_URL (Internal URL базы на Render), статус Postgres «Available», "
-            "что URL не обрезан и без лишних кавычек. Детали: %s",
-            e,
-            exc_info=True,
-        )
-        raise
-    logger.info("DB connected; heavy migrations run in background (HTTP accepts probes)")
+        logger.error("DB connection failed, app continues: %s", e)
+
     startup_task = asyncio.create_task(run_heavy_startup(app))
+
     try:
         yield
     finally:
@@ -144,19 +127,20 @@ async def lifespan(app: FastAPI):
                 await startup_task
             except asyncio.CancelledError:
                 pass
-        await database.disconnect()
-        logger.info("Database disconnected")
+        try:
+            await database.disconnect()
+        except:
+            pass
 
 
 app = FastAPI(
     title="MushroomsAI Platform",
-    description="AI-платформа по функциональным грибам",
     version="1.0.0",
     lifespan=lifespan,
 )
+
 templates = Jinja2Templates(directory="web/templates")
 
-# Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -164,6 +148,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 app.add_middleware(
     SessionMiddleware,
     secret_key=settings.JWT_SECRET,
@@ -171,31 +156,33 @@ app.add_middleware(
     https_only=False,
     same_site="lax",
 )
+
 app.add_middleware(LanguageMiddleware)
 app.add_middleware(ProbeBlockMiddleware)
 app.add_middleware(StartupGateMiddleware)
 
-# Static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-
-@app.get("/favicon.ico", include_in_schema=False)
-async def favicon_ico():
-    """Browsers request /favicon.ico by default; redirect to SVG in static."""
-    return RedirectResponse(url="/static/favicon.svg?v=1", status_code=302)
-
-
-@app.get("/robots.txt", include_in_schema=False)
-async def robots_txt():
-    """Минимальный robots.txt — убирает 404 в логах для поисковых ботов."""
-    return Response("User-agent: *\nDisallow:\n", media_type="text/plain")
-
-# Persistent media (Render Disk at /data, fallback to ./media locally)
 if os.path.exists("/data"):
     app.mount("/media", StaticFiles(directory="/data"), name="media")
 else:
     os.makedirs("./media", exist_ok=True)
     app.mount("/media", StaticFiles(directory="./media"), name="media")
+
+
+@app.get("/")
+def root():
+    return {"status": "ok"}
+
+
+@app.get("/health")
+async def health(request: Request):
+    return {
+        "status": "ok",
+        "service": "mushroomsai",
+        "ready": getattr(request.app.state, "startup_complete", False),
+    }
+
 
 # Routers
 app.include_router(public_router)
@@ -206,54 +193,3 @@ app.include_router(seller_router)
 app.include_router(admin_router)
 app.include_router(account_router)
 app.include_router(language_router)
-
-
-def _wants_html(request: Request) -> bool:
-    accept = (request.headers.get("accept") or "").lower()
-    return "text/html" in accept or "*/*" in accept
-
-
-def _updating_response(request: Request, status_code: int = 503):
-    if _wants_html(request):
-        return templates.TemplateResponse(
-            "deploy_updating.html",
-            {"request": request},
-            status_code=status_code,
-        )
-    return JSONResponse(
-        {
-            "ok": False,
-            "updating": True,
-            "message": "PROJECT UPDATING. 1 min.",
-        },
-        status_code=status_code,
-    )
-
-
-@app.get("/updating")
-async def updating_page(request: Request):
-    return _updating_response(request, status_code=200)
-
-
-@app.exception_handler(StarletteHTTPException)
-async def http_exception_handler(request: Request, exc: StarletteHTTPException):
-    if exc.status_code in (502, 503, 504):
-        return _updating_response(request, status_code=503)
-    if _wants_html(request):
-        return HTMLResponse(str(exc.detail or "Error"), status_code=exc.status_code)
-    return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
-
-
-@app.exception_handler(Exception)
-async def unhandled_exception_handler(request: Request, exc: Exception):
-    logger.error("Unhandled error: %s", exc)
-    return _updating_response(request, status_code=503)
-
-
-@app.get("/health")
-async def health(request: Request):
-    return {
-        "status": "ok",
-        "service": "mushroomsai",
-        "ready": getattr(request.app.state, "startup_complete", False),
-    }
