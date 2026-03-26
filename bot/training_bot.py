@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import html
 import logging
+from datetime import datetime, timezone
 from typing import Any
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, Update
@@ -28,15 +29,29 @@ logger = logging.getLogger(__name__)
 BTN_NEW_FOLDER = "📁 Создать папку"
 BTN_NEW_POST = "📝 Создать пост"
 BTN_BROWSE = "📚 Папки и посты"
+BTN_QUICK_ON = "📥 Принимаю в базу"
+BTN_QUICK_OFF = "⏸ Стоп приёма"
+QUICK_INGEST_FOLDER = "Из Telegram"
 PER_PAGE = 10
 
 
 def main_reply_kb() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
-        [[BTN_NEW_FOLDER, BTN_NEW_POST], [BTN_BROWSE]],
+        [
+            [BTN_NEW_FOLDER, BTN_NEW_POST],
+            [BTN_BROWSE],
+            [BTN_QUICK_ON, BTN_QUICK_OFF],
+        ],
         resize_keyboard=True,
         input_field_placeholder="Меню внизу…",
     )
+
+
+def _title_from_quick_message(text: str) -> str:
+    first = (text.strip().split("\n", 1)[0] or "").strip() or "Сообщение из Telegram"
+    ts = datetime.now(timezone.utc).strftime("%d.%m.%Y %H:%M UTC")
+    base = f"{first[:180]} · {ts}"
+    return base[:500]
 
 
 async def folder_names_ordered() -> list[str]:
@@ -135,10 +150,11 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
     context.user_data.clear()
     await update.message.reply_text(
-        "Привет! Здесь вы наполняете <b>обучающие посты</b> — их видит AI на сайте.\n\n"
-        "• «Создать папку» — новая папка в админке\n"
-        "• «Создать пост» — выбор папки, затем заголовок и текст\n"
-        "• «Папки и посты» — просмотр (до 10 на странице)",
+        "Привет! Здесь вы наполняете <b>обучающие посты</b> — их подмешивает AI на сайте в ответы (как и материалы из админки).\n\n"
+        "• <b>«Принимаю в базу»</b> — бот пишет, что готов; дальше <b>каждое</b> ваше текстовое сообщение сохраняется отдельным постом "
+        f"в папку «{html.escape(QUICK_INGEST_FOLDER)}».\n"
+        "• «Стоп приёма» — выключить этот режим (кнопки меню в посты не пишутся).\n"
+        "• «Создать папку» / «Создать пост» / «Папки и посты» — как раньше.",
         parse_mode="HTML",
         reply_markup=main_reply_kb(),
     )
@@ -246,6 +262,51 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "Папки (по 10 на странице). Нажмите папку, чтобы открыть посты:",
             reply_markup=folder_keyboard_page(names, 0, "browse"),
         )
+        return
+
+    if text == BTN_QUICK_ON:
+        context.user_data.pop("state", None)
+        context.user_data["quick_capture"] = True
+        await update.message.reply_text(
+            "✅ <b>Готов принимать сообщения.</b> Всё, что вы пришлёте текстом сейчас, "
+            f"запишу в обучающие посты (папка «{html.escape(QUICK_INGEST_FOLDER)}»). "
+            "AI на сайте использует их так же, как остальные посты.\n\n"
+            "Кнопки меню снизу не сохраняются. «Стоп приёма» — выключить режим.",
+            parse_mode="HTML",
+            reply_markup=main_reply_kb(),
+        )
+        return
+
+    if text == BTN_QUICK_OFF:
+        context.user_data["quick_capture"] = False
+        await update.message.reply_text(
+            "Приём в базу выключен. Снова включить — «Принимаю в базу».",
+            reply_markup=main_reply_kb(),
+        )
+        return
+
+    if context.user_data.get("quick_capture"):
+        if len(text) < 1:
+            return
+        title = _title_from_quick_message(text)
+        try:
+            await database.execute(
+                ai_training_posts.insert().values(
+                    title=title,
+                    content=text[:100000],
+                    category=None,
+                    folder=QUICK_INGEST_FOLDER,
+                )
+            )
+            try:
+                await database.execute(ai_training_folders.insert().values(name=QUICK_INGEST_FOLDER))
+            except Exception:
+                pass
+        except Exception as e:
+            logger.exception("training_bot quick ingest: %s", e)
+            await update.message.reply_text("Не удалось сохранить пост.")
+            return
+        await update.message.reply_text("✅ Записано в обучающие посты.", reply_markup=main_reply_kb())
         return
 
     await update.message.reply_text("Используйте кнопки меню внизу или /start.", reply_markup=main_reply_kb())
