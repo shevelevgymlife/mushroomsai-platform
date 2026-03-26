@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Публикации — NEUROFUNGI AI{% endblock %}
+{% block content %}
+<div style="max-width:720px;margin:0 auto;padding:calc(12px + env(safe-area-inset-top,0px)) 14px calc(90px + env(safe-area-inset-bottom,0px))">
+  <a href="{{ back_href }}" style="display:inline-block;margin-bottom:16px;color:#888;font-size:13px;text-decoration:none">← Назад</a>
+  <h1 style="font-size:20px;font-weight:700;color:#e8e8e8;margin:0 0 18px">Публикации</h1>
+  {% if not posts %}
+  <p style="color:#666;font-size:14px">Пока нет постов</p>
+  {% else %}
+  <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px">
+    {% for p in posts %}
+    <a href="/community/post/{{ p.id }}" style="aspect-ratio:1;background:#121212;overflow:hidden;display:block;text-decoration:none;color:inherit;position:relative">
+      {% if p.image_url %}
+      <img src="{{ p.image_url }}" alt="" style="width:100%;height:100%;object-fit:cover">
+      {% else %}
+      <div style="padding:8px;font-size:10px;color:#666;line-height:1.35;overflow:hidden">{{ (p.content or p.title or 'Пост')|truncate(120, True) }}</div>
+      {% endif %}
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

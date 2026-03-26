@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Настройки — NEUROFUNGI AI{% endblock %}
+{% block content %}
+<div class="account-wallet-shell" style="max-width:520px;margin:0 auto;padding:16px calc(14px + env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) calc(14px + env(safe-area-inset-left,0px))">
+  <h1 style="font-size:clamp(18px,4.5vw,22px);font-weight:700;color:#e8e8e8;margin:8px 0 20px">Настройки</h1>
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <a href="/account/profile-edit" class="btn-o" style="width:100%;box-sizing:border-box;text-align:center;padding:14px 18px;text-decoration:none">Редактировать профиль</a>
+    <a href="/account/style" class="btn-o" style="width:100%;box-sizing:border-box;text-align:center;padding:14px 18px;text-decoration:none">Настройка стиля</a>
+    <a href="/account/language" class="btn-o" style="width:100%;box-sizing:border-box;text-align:center;padding:14px 18px;text-decoration:none">Язык интерфейса</a>
+  </div>
+  <p style="margin-top:24px;font-size:13px;color:#666"><a href="/community" style="color:#3dd4e0;text-decoration:none">← В ленту</a></p>
+</div>
+<style>.btn-o{border:1px solid #3dd4e0;color:#3dd4e0;background:transparent;border-radius:12px;cursor:pointer;font-weight:600;transition:all .2s}.btn-o:hover{background:rgba(61,212,224,.12)}</style>
+{% endblock %}

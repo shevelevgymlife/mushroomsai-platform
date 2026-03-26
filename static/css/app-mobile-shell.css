@@ -592,6 +592,18 @@ details.ig-drawer-details > summary {
 body.app-has-mobile-footer main {
   padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
 }
+.app-uni-tabbar--six .app-uni-tab {
+  max-width: 58px;
+  padding: 3px 2px 0;
+  font-size: 9px;
+}
+.app-uni-tabbar--six .app-uni-tab .ic .stroke-ico {
+  width: 22px;
+  height: 22px;
+}
+.app-uni-tab--btn {
+  width: 100%;
+}
 @media (min-width: 769px) {
   .app-uni-tabbar {
     display: none;

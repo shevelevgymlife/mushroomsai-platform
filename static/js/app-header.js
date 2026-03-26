@@ -190,19 +190,15 @@
         else location.href = '/community';
       });
     }
-    var bell = document.getElementById('cpActivityBell');
+    var bell =
+      document.getElementById('cpActivityBellBottom') ||
+      document.getElementById('cpActivityBell');
     if (bell) {
       bell.addEventListener('click', function (e) {
         if (goTariffIfRestricted(e)) return;
         e.preventDefault();
         e.stopPropagation();
         openAppActivityPanel();
-      });
-    }
-    var profile = document.getElementById('cpProfileHead');
-    if (profile) {
-      profile.addEventListener('click', function (e) {
-        goTariffIfRestricted(e);
       });
     }
     var panel = document.getElementById('appActivityPanel');
@@ -214,6 +210,12 @@
     if (document.getElementById('cpActivityBadge')) {
       setInterval(refreshAppHeaderBadges, 45000);
       refreshAppHeaderBadges();
+    }
+    var msgTab = document.getElementById('cpMsgHeadBottom');
+    if (msgTab) {
+      msgTab.addEventListener('click', function (e) {
+        goTariffIfRestricted(e);
+      });
     }
   });
 })();

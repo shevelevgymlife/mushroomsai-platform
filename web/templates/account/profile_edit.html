@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Редактировать профиль — NEUROFUNGI AI{% endblock %}
+{% block content %}
+<div class="account-wallet-shell" style="max-width:520px;margin:0 auto;padding:16px 14px calc(28px + env(safe-area-inset-bottom,0px))">
+  <h1 style="font-size:clamp(18px,4.5vw,22px);font-weight:700;color:#e8e8e8;margin:8px 0 16px">Редактировать профиль</h1>
+  <form method="post" action="/account/profile-edit" style="display:flex;flex-direction:column;gap:14px">
+    <div>
+      <label style="font-size:12px;color:#888;display:block;margin-bottom:6px">Имя аккаунта</label>
+      <input name="name" class="sinp" value="{{ user.name or '' }}" maxlength="255" style="width:100%;box-sizing:border-box;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#e8e8e8" />
+    </div>
+    <div>
+      <label style="font-size:12px;color:#888;display:block;margin-bottom:6px">Статус (под аватаркой)</label>
+      <textarea name="bio" rows="4" maxlength="4000" class="sinp" style="width:100%;box-sizing:border-box;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#e8e8e8">{{ user.bio or '' }}</textarea>
+    </div>
+    <div>
+      <label style="font-size:12px;color:#888;display:block;margin-bottom:6px">Подпись к ссылке</label>
+      <input name="profile_link_label" class="sinp" value="{{ user.profile_link_label or '' }}" maxlength="500" style="width:100%;box-sizing:border-box;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#e8e8e8" placeholder="Например: Мой сайт" />
+    </div>
+    <div>
+      <label style="font-size:12px;color:#888;display:block;margin-bottom:6px">Адрес ссылки (https://…)</label>
+      <input name="profile_link_url" type="url" class="sinp" value="{{ user.profile_link_url or '' }}" maxlength="2000" style="width:100%;box-sizing:border-box;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#e8e8e8" placeholder="https://" />
+    </div>
+    <button type="submit" class="btn-g" style="width:100%;padding:12px;border:none;border-radius:12px;background:#3dd4e0;color:#000;font-weight:700;cursor:pointer;margin-top:6px">Сохранить профиль</button>
+  </form>
+
+  <div style="margin-top:28px;padding-top:20px;border-top:1px solid rgba(255,255,255,.08)">
+    <h2 style="font-size:16px;font-weight:700;color:#ddd;margin:0 0 10px">Кружочки</h2>
+    <p style="font-size:12px;color:#888;margin:0 0 14px;line-height:1.45">До {{ max_profile_circles }} кружков. Посты в кружок можно добавить из списка ниже. <a href="/community/profile/{{ (user.primary_user_id or user.id)|int }}" style="color:#3dd4e0">Как выглядит профиль</a></p>
+    <button type="button" class="btn-o" style="width:100%;margin-bottom:14px;box-sizing:border-box;padding:11px;border-radius:12px;cursor:pointer" onclick="addCircleEdit()">+ Добавить кружок</button>
+    {% for c in circles %}
+    <div style="padding:12px;margin-bottom:10px;border-radius:14px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03)">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <strong style="color:#e8e8e8;font-size:14px">{{ c.name }}</strong>
+        <a href="/community/profile/{{ (user.primary_user_id or user.id)|int }}/circle/{{ c.id }}" style="font-size:12px;color:#3dd4e0">Открыть кружок →</a>
+      </div>
+      <label style="font-size:11px;color:#888;margin-top:8px;display:block">Пост в кружке (по названию)</label>
+      <select class="sinp pe-post-sel" data-circle-id="{{ c.id }}" style="width:100%;margin-top:4px;padding:8px 10px;border-radius:10px;font-size:13px;background:#0e0e0e;border:1px solid rgba(255,255,255,.12);color:#ccc">
+        <option value="">— не выбран —</option>
+        {% for p in my_posts %}
+        <option value="{{ p.id }}" {% if p.folder_id == c.id %}selected{% endif %}>{{ (p.title or p.content or 'Пост')|truncate(80, True) }}</option>
+        {% endfor %}
+      </select>
+      <button type="button" class="btn-o" style="margin-top:8px;font-size:12px;padding:8px 12px" onclick="attachSelToCircle({{ c.id }})">Привязать выбранный пост</button>
+    </div>
+    {% else %}
+    <p style="font-size:13px;color:#666">Пока нет кружков — нажмите «Добавить кружок».</p>
+    {% endfor %}
+  </div>
+
+  <p style="margin-top:24px;font-size:13px;color:#666"><a href="/account/settings" style="color:#3dd4e0;text-decoration:none">← Настройки</a></p>
+</div>
+<script>
+var MAXC={{ max_profile_circles|int }};
+async function addCircleEdit(){
+  if(document.querySelectorAll('[data-circle-id]').length>=MAXC){ alert('Не больше '+MAXC+' кружков'); return; }
+  var fd=new FormData(); fd.append('name','Кружок');
+  try{
+    var r=await fetch('/community/circle',{method:'POST',body:fd,credentials:'same-origin'});
+    var d=await r.json().catch(function(){return {};});
+    if(r.ok&&d.ok){ location.reload(); }
+    else alert(d.error||'Не удалось создать');
+  }catch(e){ alert('Сеть'); }
+}
+async function attachSelToCircle(cid){
+  var sel=document.querySelector('select.pe-post-sel[data-circle-id="'+cid+'"]');
+  var pid=sel&&sel.value;
+  if(!pid){ alert('Выберите пост'); return; }
+  try{
+    var fd=new FormData(); fd.append('post_id', pid);
+    var r=await fetch('/community/circle/'+cid+'/attach',{method:'POST',body:fd,credentials:'same-origin'});
+    var d=await r.json().catch(function(){return {};});
+    if(r.ok&&d.ok){ location.reload(); }
+    else alert(d.error||'Ошибка');
+  }catch(e){ alert('Сеть'); }
+}
+</script>
+<style>.btn-o{border:1px solid #3dd4e0;color:#3dd4e0;background:transparent;border-radius:10px;font-weight:600}.btn-o:hover{background:rgba(61,212,224,.12)}</style>
+{% endblock %}

@@ -2,6 +2,7 @@ import json
 import logging
 import secrets
 import urllib.parse
+from web.profile_ui_themes import PROFILE_UI_THEMES, PROFILE_UI_THEME_IDS, MAX_PROFILE_CIRCLES_ACCOUNT
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -386,6 +387,147 @@ async def account_language_page(request: Request):
         "account/language.html",
         {"request": request, "user": user},
     )
+
+
+@router.get("/settings", response_class=HTMLResponse)
+async def account_settings_hub(request: Request):
+    user = await get_user_from_request(request)
+    if not user:
+        return RedirectResponse("/login?next=/account/settings")
+    attach_screen_rim_prefs(user)
+    return templates.TemplateResponse(
+        "account/settings.html",
+        {"request": request, "user": user},
+    )
+
+
+@router.get("/profile-edit", response_class=HTMLResponse)
+async def account_profile_edit_page(request: Request):
+    user = await get_user_from_request(request)
+    if not user:
+        return RedirectResponse("/login?next=/account/profile-edit")
+    leg = await legal_acceptance_redirect(request, user)
+    if leg:
+        return leg
+    uid = int(user.get("primary_user_id") or user["id"])
+    row = await database.fetch_one(users.select().where(users.c.id == uid))
+    if row:
+        user = dict(row)
+        attach_screen_rim_prefs(user)
+    circles = await database.fetch_all(
+        community_folders.select()
+        .where(community_folders.c.user_id == uid)
+        .order_by(community_folders.c.created_at.asc())
+    )
+    posts = await database.fetch_all(
+        community_posts.select()
+        .where(community_posts.c.user_id == uid)
+        .where(community_posts.c.approved == True)
+        .order_by(community_posts.c.created_at.desc())
+        .limit(300)
+    )
+    return templates.TemplateResponse(
+        "account/profile_edit.html",
+        {
+            "request": request,
+            "user": user,
+            "circles": [dict(c) for c in circles],
+            "my_posts": [dict(p) for p in posts],
+            "max_profile_circles": MAX_PROFILE_CIRCLES_ACCOUNT,
+        },
+    )
+
+
+@router.post("/profile-edit")
+async def account_profile_edit_save(
+    request: Request,
+    name: str = Form(""),
+    bio: str = Form(""),
+    profile_link_label: str = Form(""),
+    profile_link_url: str = Form(""),
+):
+    user = await get_user_from_request(request)
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    uid = int(user.get("primary_user_id") or user["id"])
+    nm = (name or "").strip()[:255] or None
+    bio_clean = (bio or "").strip()[:4000] or None
+    lbl = (profile_link_label or "").strip()[:500] or None
+    url = (profile_link_url or "").strip()[:2000] or None
+    await database.execute(
+        users.update()
+        .where(users.c.id == uid)
+        .values(
+            name=nm,
+            bio=bio_clean,
+            profile_link_label=lbl,
+            profile_link_url=url,
+        )
+    )
+    return RedirectResponse("/account/profile-edit", status_code=302)
+
+
+@router.get("/style", response_class=HTMLResponse)
+async def account_style_page(request: Request):
+    user = await get_user_from_request(request)
+    if not user:
+        return RedirectResponse("/login?next=/account/style")
+    uid = int(user.get("primary_user_id") or user["id"])
+    row = await database.fetch_one(users.select().where(users.c.id == uid))
+    if row:
+        user = dict(row)
+        attach_screen_rim_prefs(user)
+    cur_theme = (user.get("profile_ui_theme") or "default").strip() or "default"
+    if cur_theme not in PROFILE_UI_THEME_IDS:
+        cur_theme = "default"
+    return templates.TemplateResponse(
+        "account/style.html",
+        {
+            "request": request,
+            "user": user,
+            "profile_ui_themes": PROFILE_UI_THEMES,
+            "current_profile_ui_theme": cur_theme,
+        },
+    )
+
+
+@router.post("/style/save")
+async def account_style_save(request: Request):
+    user = await get_user_from_request(request)
+    if not user:
+        return JSONResponse({"ok": False, "error": "Unauthorized"}, status_code=401)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        return JSONResponse({"ok": False, "error": "bad_json"}, status_code=400)
+    uid = int(user.get("primary_user_id") or user["id"])
+    theme = (body.get("profile_ui_theme") or "default").strip() or "default"
+    if theme not in PROFILE_UI_THEME_IDS:
+        theme = "default"
+    token_lamp = bool(body.get("token_lamp_enabled", True))
+    rim_on = bool(body.get("screen_rim_on", False))
+    row = await database.fetch_one(users.select().where(users.c.id == uid))
+    rim = DEFAULT_SCREEN_RIM.copy()
+    if row and row.get("screen_rim_json"):
+        try:
+            loaded = json.loads(row["screen_rim_json"])
+            if isinstance(loaded, dict):
+                rim = {**DEFAULT_SCREEN_RIM, **{k: v for k, v in loaded.items() if k in DEFAULT_SCREEN_RIM}}
+        except Exception:
+            pass
+    rim["on"] = rim_on
+    await database.execute(
+        users.update()
+        .where(users.c.id == uid)
+        .values(
+            token_lamp_enabled=token_lamp,
+            profile_ui_theme=theme,
+            screen_rim_json=json.dumps(rim),
+        )
+    )
+    return JSONResponse({"ok": True})
 
 
 @router.get("/screen-rim", response_class=HTMLResponse)

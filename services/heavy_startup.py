@@ -126,6 +126,7 @@ async def run_heavy_startup(app: FastAPI) -> None:
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS show_del_to_public BOOLEAN DEFAULT true",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS show_shev_to_public BOOLEAN DEFAULT true",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS token_lamp_enabled BOOLEAN DEFAULT true",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_ui_theme VARCHAR(64)",
             """CREATE TABLE IF NOT EXISTS task_approvals (
             id SERIAL PRIMARY KEY,
             token VARCHAR(64) UNIQUE NOT NULL,

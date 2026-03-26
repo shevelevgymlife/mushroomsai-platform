@@ -28,6 +28,10 @@
 .tab.on{background:#3dd4e0;color:#000}
 .tab:not(.on){background:#1a1a1a;color:#888}
 .tab:not(.on):hover{background:#222;color:#3dd4e0}
+#commFeedMain:not(.comm-feed-chaos-off) .pcard{transform:rotate(-1.6deg)}
+#commFeedMain:not(.comm-feed-chaos-off) .pcard:nth-child(3n+2){transform:rotate(1.4deg)}
+#commFeedMain:not(.comm-feed-chaos-off) .pcard:nth-child(3n){transform:rotate(0.8deg)}
+#commFeedMain.comm-feed-chaos-off .pcard{transform:none!important}
 .mover{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
 .mover.open{display:flex}
 .mbox{background:#111;border:1px solid #2a2a2a;border-radius:20px;padding:26px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;position:relative}
@@ -111,7 +115,13 @@
   </aside>
 
   <!-- FEED -->
-  <main>
+  <main id="commFeedMain">
+    <div style="display:flex;justify-content:flex-end;margin:0 0 12px">
+      <label style="display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid rgba(255,255,255,.14);border-radius:999px;background:rgba(255,255,255,.04);color:#d0d5df;font-size:12px;font-weight:600;cursor:pointer">
+        <span>Хаос</span>
+        <input id="commChaosToggle" type="checkbox" checked onchange="document.getElementById('commFeedMain').classList.toggle('comm-feed-chaos-off',!this.checked)" style="appearance:none;width:34px;height:20px;border-radius:999px;background:#20242f;border:1px solid rgba(255,255,255,.22);position:relative;cursor:pointer" />
+      </label>
+    </div>
     <form method="get" action="/community" style="margin-bottom:12px">
       <input name="q" value="{{ search }}" class="sinp" placeholder="🔍 Поиск...">
     </form>

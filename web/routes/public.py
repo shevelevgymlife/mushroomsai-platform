@@ -42,6 +42,7 @@ from services.ops_alerts import (
     notify_product_question,
 )
 from datetime import datetime
+from web.profile_ui_themes import PROFILE_UI_THEME_IDS
 
 
 def _is_free_restricted_user(user: dict | None) -> bool:
@@ -87,7 +88,7 @@ def apply_token_privacy_for_viewer(profile: dict, viewer_id: int | None, owner_i
         profile["shevelev_balance_cached"] = None
 
 
-MAX_PROFILE_CIRCLES = 5
+MAX_PROFILE_CIRCLES = 6
 
 
 async def _profile_family_ids(profile_id: int) -> list[int]:
@@ -1339,8 +1340,7 @@ async def community_profile(request: Request, user_id: int):
             "folder_name": folder_name,
         })
 
-    # Profile circles (highlights based on community_folders + linked posts)
-    await ensure_default_profile_circles(profile_id)
+    # Profile circles (community_folders); пустой список допустим
     circles_raw = await database.fetch_all(
         community_folders.select()
         .where(community_folders.c.user_id == profile_id)
@@ -1377,6 +1377,11 @@ async def community_profile(request: Request, user_id: int):
     profile_plan = await check_subscription(profile_id)
     profile_plan_info = PLANS.get(profile_plan, PLANS["free"])
 
+    raw_d = dict(raw)
+    profile_ui_theme = (raw_d.get("profile_ui_theme") or "default").strip() or "default"
+    if profile_ui_theme not in PROFILE_UI_THEME_IDS:
+        profile_ui_theme = "default"
+
     return templates.TemplateResponse(
         "community_profile.html",
         {
@@ -1400,6 +1405,7 @@ async def community_profile(request: Request, user_id: int):
             "shevelev_auto_sync": shevelev_auto_sync,
             "profile_plan": profile_plan,
             "profile_plan_name": profile_plan_info.get("name") or "",
+            "profile_ui_theme": profile_ui_theme,
         },
     )
 
@@ -1417,7 +1423,6 @@ async def get_profile_circles(request: Request, user_id: int):
         if primary:
             raw = primary
     profile_id = int(raw["id"])
-    await ensure_default_profile_circles(profile_id)
     family_rows = await database.fetch_all(
         users.select().with_only_columns(users.c.id).where(
             sa.or_(users.c.id == profile_id, users.c.primary_user_id == profile_id)
@@ -1855,6 +1860,123 @@ async def api_profile_following(request: Request, user_id: int):
             seen.add(u["id"])
             out.append(u)
     return JSONResponse({"ok": True, "users": out})
+
+
+@router.get("/community/profile/{user_id}/followers/view", response_class=HTMLResponse)
+async def profile_followers_view_page(request: Request, user_id: int):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return RedirectResponse(f"/login?next=/community/profile/{user_id}/followers/view")
+    leg = await legal_acceptance_redirect(request, current_user)
+    if leg:
+        return leg
+    profile_id = await _resolve_community_profile_id(user_id)
+    if profile_id is None:
+        return HTMLResponse("Не найден", status_code=404)
+    rows = await database.fetch_all(
+        community_follows.select()
+        .where(community_follows.c.following_id == profile_id)
+        .order_by(community_follows.c.created_at.desc())
+        .limit(500)
+    )
+    users_list = []
+    seen = set()
+    for row in rows:
+        u = await _user_for_social_list(row["follower_id"])
+        if u and u["id"] not in seen:
+            seen.add(u["id"])
+            users_list.append(u)
+    return templates.TemplateResponse(
+        "community_social_list.html",
+        {
+            "request": request,
+            "user": current_user,
+            "page_title": "Подписчики",
+            "people": users_list,
+            "profile_id": profile_id,
+            "back_href": f"/community/profile/{profile_id}",
+        },
+    )
+
+
+@router.get("/community/profile/{user_id}/following/view", response_class=HTMLResponse)
+async def profile_following_view_page(request: Request, user_id: int):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return RedirectResponse(f"/login?next=/community/profile/{user_id}/following/view")
+    leg = await legal_acceptance_redirect(request, current_user)
+    if leg:
+        return leg
+    profile_id = await _resolve_community_profile_id(user_id)
+    if profile_id is None:
+        return HTMLResponse("Не найден", status_code=404)
+    rows = await database.fetch_all(
+        community_follows.select()
+        .where(community_follows.c.follower_id == profile_id)
+        .order_by(community_follows.c.created_at.desc())
+        .limit(500)
+    )
+    users_list = []
+    seen = set()
+    for row in rows:
+        u = await _user_for_social_list(row["following_id"])
+        if u and u["id"] not in seen:
+            seen.add(u["id"])
+            users_list.append(u)
+    return templates.TemplateResponse(
+        "community_social_list.html",
+        {
+            "request": request,
+            "user": current_user,
+            "page_title": "Подписки",
+            "people": users_list,
+            "profile_id": profile_id,
+            "back_href": f"/community/profile/{profile_id}",
+        },
+    )
+
+
+@router.get("/community/profile/{user_id}/publications/view", response_class=HTMLResponse)
+async def profile_publications_view_page(request: Request, user_id: int):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return RedirectResponse(f"/login?next=/community/profile/{user_id}/publications/view")
+    leg = await legal_acceptance_redirect(request, current_user)
+    if leg:
+        return leg
+    raw = await database.fetch_one(users.select().where(users.c.id == user_id))
+    if not raw:
+        return HTMLResponse("Не найден", status_code=404)
+    if raw["primary_user_id"]:
+        primary = await database.fetch_one(users.select().where(users.c.id == raw["primary_user_id"]))
+        if primary:
+            raw = primary
+    profile_id = int(raw["id"])
+    family_rows = await database.fetch_all(
+        users.select().with_only_columns(users.c.id).where(
+            sa.or_(users.c.id == profile_id, users.c.primary_user_id == profile_id)
+        )
+    )
+    family_ids = [int(r["id"]) for r in family_rows] + [profile_id]
+    family_ids = sorted(set(family_ids))
+    posts_rows = await database.fetch_all(
+        community_posts.select()
+        .where(community_posts.c.user_id.in_(family_ids))
+        .where(community_posts.c.approved == True)
+        .order_by(community_posts.c.pinned.desc(), community_posts.c.created_at.desc())
+        .limit(200)
+    )
+    posts = [dict(p) for p in posts_rows]
+    return templates.TemplateResponse(
+        "community_publications_list.html",
+        {
+            "request": request,
+            "user": current_user,
+            "profile_id": profile_id,
+            "posts": posts,
+            "back_href": f"/community/profile/{profile_id}",
+        },
+    )
 
 
 # ─── Direct Messages ──────────────────────────────────────────────────────────

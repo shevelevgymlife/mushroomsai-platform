@@ -543,6 +543,44 @@ async def share_community_post_dm(request: Request, post_id: int):
     return JSONResponse({"ok": True, "link": link})
 
 
+@router.get("/community/me/following-share")
+async def community_me_following_share(request: Request):
+    """Список аккаунтов, на которые подписан текущий пользователь — для пересылки поста в ЛС."""
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = user.get("primary_user_id") or user["id"]
+    rows = await database.fetch_all(
+        community_follows.select()
+        .where(community_follows.c.follower_id == uid)
+        .order_by(community_follows.c.created_at.desc())
+        .limit(500)
+    )
+    out = []
+    seen = set()
+    for row in rows:
+        oid = int(row["following_id"])
+        if oid in seen:
+            continue
+        urow = await database.fetch_one(users.select().where(users.c.id == oid))
+        if not urow:
+            continue
+        r = dict(urow)
+        if r.get("primary_user_id"):
+            p = await database.fetch_one(users.select().where(users.c.id == r["primary_user_id"]))
+            if p:
+                r = dict(p)
+        seen.add(int(r["id"]))
+        out.append(
+            {
+                "id": int(r["id"]),
+                "name": (r.get("name") or "").strip() or "Участник",
+                "avatar": r.get("avatar"),
+            }
+        )
+    return JSONResponse({"ok": True, "users": out})
+
+
 @router.get("/community/users/search")
 async def community_users_search(request: Request, q: str = ""):
     user = await require_auth(request)

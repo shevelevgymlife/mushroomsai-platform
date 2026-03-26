@@ -1,0 +1,95 @@
+/* Темы для .cp-ig-root[data-profile-ui="..."] — фон профиля (видят все гости) */
+.cp-ig-root[data-profile-ui="default"],
+.cp-ig-root:not([data-profile-ui]) {
+  background: #080808;
+}
+.cp-ig-root[data-profile-ui="tg-night"] {
+  background: radial-gradient(120% 80% at 50% 0%, #1a2a3a 0%, #0d1620 45%, #080a0e 100%);
+}
+.cp-ig-root[data-profile-ui="tg-day"] {
+  background: linear-gradient(180deg, #e8f4fc 0%, #c8dce8 35%, #9bb5c8 100%);
+}
+.cp-ig-root[data-profile-ui="tg-monochrome"] {
+  background: linear-gradient(145deg, #2a2a2a 0%, #121212 50%, #0a0a0a 100%);
+}
+.cp-ig-root[data-profile-ui="forest-moss"] {
+  background: radial-gradient(ellipse at 30% 20%, #1e3d2f 0%, #0f1f18 50%, #050807 100%);
+}
+.cp-ig-root[data-profile-ui="amanita-red"] {
+  background: radial-gradient(circle at 70% 30%, #5c1518 0%, #2a0a0c 40%, #0f0405 100%);
+}
+.cp-ig-root[data-profile-ui="porcini-gold"] {
+  background: linear-gradient(160deg, #3d2e14 0%, #1a1408 50%, #0a0804 100%);
+}
+.cp-ig-root[data-profile-ui="chanterelle-sun"] {
+  background: radial-gradient(ellipse at 50% 0%, #4a3a12 0%, #2a2208 45%, #0f0c04 100%);
+}
+.cp-ig-root[data-profile-ui="spores-mist"] {
+  background: linear-gradient(180deg, #1a2228 0%, #0e1218 50%, #06080a 100%);
+}
+.cp-ig-root[data-profile-ui="neon-mycelium"] {
+  background: radial-gradient(ellipse at 50% 100%, #0a2a1a 0%, #050f0a 50%, #020503 100%);
+  box-shadow: inset 0 0 120px rgba(0, 255, 180, 0.06);
+}
+.cp-ig-root[data-profile-ui="deep-ocean"] {
+  background: linear-gradient(180deg, #0a1a2e 0%, #051018 50%, #020810 100%);
+}
+.cp-ig-root[data-profile-ui="aurora-borealis"] {
+  background: linear-gradient(185deg, #0a1a28 0%, #0f2030 40%, #081018 70%, #040810 100%);
+}
+.cp-ig-root[data-profile-ui="sunset-gradient"] {
+  background: linear-gradient(165deg, #3a1a2a 0%, #2a1020 35%, #120818 70%, #080408 100%);
+}
+.cp-ig-root[data-profile-ui="lavender-dream"] {
+  background: radial-gradient(ellipse at 50% 0%, #2a1a3a 0%, #140a1e 55%, #080510 100%);
+}
+.cp-ig-root[data-profile-ui="cyber-magenta"] {
+  background: linear-gradient(145deg, #2a0a28 0%, #14051a 50%, #080208 100%);
+}
+.cp-ig-root[data-profile-ui="paper-craft"] {
+  background: linear-gradient(180deg, #2a2620 0%, #181612 50%, #0e0c0a 100%);
+}
+.cp-ig-root[data-profile-ui="midnight-violet"] {
+  background: radial-gradient(circle at 80% 20%, #2a1a4a 0%, #120a22 45%, #060308 100%);
+}
+.cp-ig-root[data-profile-ui="emerald-luxury"] {
+  background: linear-gradient(160deg, #0a2820 0%, #051810 50%, #020a08 100%);
+}
+.cp-ig-root[data-profile-ui="copper-rust"] {
+  background: linear-gradient(170deg, #3a2218 0%, #1a1008 50%, #0a0604 100%);
+}
+.cp-ig-root[data-profile-ui="ice-fjord"] {
+  background: linear-gradient(180deg, #1a2838 0%, #0e1824 50%, #060a10 100%);
+}
+.cp-ig-root[data-profile-ui="sakura-bloom"] {
+  background: radial-gradient(ellipse at 50% 0%, #3a1a2a 0%, #1a0a14 50%, #0a0408 100%);
+}
+.cp-ig-root[data-profile-ui="desert-dune"] {
+  background: linear-gradient(175deg, #3a3020 0%, #1a140c 50%, #0c0a06 100%);
+}
+.cp-ig-root[data-profile-ui="volcanic-ash"] {
+  background: linear-gradient(180deg, #1a1818 0%, #0e0c0c 50%, #060404 100%);
+}
+.cp-ig-root[data-profile-ui="matrix-rain"] {
+  background: #020805;
+  box-shadow: inset 0 0 100px rgba(0, 255, 80, 0.04);
+}
+.cp-ig-root[data-profile-ui="retro-crt"] {
+  background: #0a0c0a;
+  box-shadow: inset 0 0 0 1px rgba(0, 255, 100, 0.08);
+}
+.cp-ig-root[data-profile-ui="glass-morphism"] {
+  background: linear-gradient(135deg, rgba(30, 40, 60, 0.9) 0%, rgba(10, 12, 20, 0.95) 100%);
+}
+.cp-ig-root[data-profile-ui="candy-pop"] {
+  background: linear-gradient(125deg, #3a1a3a 0%, #1a0a2a 40%, #0a0518 100%);
+}
+.cp-ig-root[data-profile-ui="ink-wash"] {
+  background: radial-gradient(ellipse at 40% 30%, #1a1a1a 0%, #0a0a0a 60%, #020202 100%);
+}
+.cp-ig-root[data-profile-ui="steampunk-brass"] {
+  background: linear-gradient(165deg, #2a2210 0%, #141008 50%, #080604 100%);
+}
+.cp-ig-root[data-profile-ui="cosmic-dust"] {
+  background: radial-gradient(ellipse at 50% 80%, #1a1028 0%, #0a0818 50%, #020208 100%);
+}
