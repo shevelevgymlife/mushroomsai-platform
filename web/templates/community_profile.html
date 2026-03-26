@@ -38,7 +38,9 @@ body.profile-app-shell .grain-overlay{opacity:0.22}
 .cp-profile-main-grid{display:grid;grid-template-columns:auto 1fr;gap:clamp(18px,4vw,36px);align-items:start;width:100%;margin-bottom:4px}
 @media(max-width:640px){
   .cp-profile-main-grid{grid-template-columns:1fr;justify-items:center;text-align:center}
-  .cp-name-plan-row,.cp-lamp-edit-row{justify-content:center!important}
+  .cp-name-plan-row{justify-content:center!important}
+  .cp-profile-toolbar{grid-template-columns:1fr;gap:10px}
+  .cp-toolbar-cell--left,.cp-toolbar-cell--right{justify-content:center;padding-left:0;padding-right:0}
 }
 .cp-profile-col-left{display:flex;flex-direction:column;align-items:center;gap:12px;min-width:0}
 .cp-profile-col-right{display:flex;flex-direction:column;align-items:stretch;gap:0;min-width:0;width:100%}
@@ -54,7 +56,7 @@ body.profile-app-shell .grain-overlay{opacity:0.22}
 .cp-role-stamp{display:inline-flex;align-items:center;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;letter-spacing:.06em}
 .cp-role-stamp--admin{background:rgba(248,113,113,.12);color:#f87171;border:1px solid rgba(248,113,113,.25)}
 .cp-role-stamp--uch{background:rgba(125,211,252,.1);color:#7dd3fc;border:1px solid rgba(34,211,238,.35)}
-.cp-tokens-mini-wrap{display:flex;flex-direction:column;align-items:flex-end;gap:5px;margin:0 0 10px;width:100%}
+.cp-tokens-mini-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;margin:0 0 12px;width:100%}
 .cp-tokens-mini-bar{display:inline-flex;align-items:center;flex-wrap:wrap;gap:4px 8px;padding:5px 11px;border-radius:999px;border:1px solid rgba(61,212,224,.22);background:rgba(8,10,16,.9);font-size:9px;letter-spacing:.05em;color:#7c8494;text-transform:uppercase;font-weight:700}
 .cp-tokens-mini-bar strong{font-size:11px;font-weight:700;color:#e2e8f0;letter-spacing:0;text-transform:none;margin-left:3px}
 .cp-tokens-mini-bar .cp-tm-pink{color:#a78bfa}
@@ -62,19 +64,17 @@ body.profile-app-shell .grain-overlay{opacity:0.22}
 .cp-tokens-mini-bar[data-lamp-off="0"]{border-color:rgba(61,212,224,.38);box-shadow:0 0 16px rgba(61,212,224,.1)}
 .cp-tokens-mini-link{font-size:10px;font-weight:600;color:#3dd4e0;text-decoration:none;opacity:.88}
 .cp-tokens-mini-link:hover{opacity:1;text-decoration:underline}
-.cp-plus-slots-row{display:flex;flex-direction:row-reverse;flex-wrap:wrap;justify-content:flex-start;align-items:center;gap:10px;margin:4px 0 12px;width:100%}
-.cp-slot-plus{width:40px;height:40px;border-radius:50%;border:2px dashed rgba(61,212,224,.5);background:rgba(61,212,224,.07);color:#3dd4e0;font-size:22px;font-weight:600;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:width .28s ease,height .28s ease,font-size .28s ease,box-shadow .28s,border-color .2s;font-family:inherit;padding:0;-webkit-tap-highlight-color:transparent;flex-shrink:0}
-.cp-slot-plus:hover{border-color:rgba(255,102,208,.55);color:#fda4e8}
-.cp-slot-plus--big{width:58px;height:58px;font-size:32px;border-style:solid;border-color:rgba(61,212,224,.75);box-shadow:0 0 22px rgba(61,212,224,.4)}
-.cp-circles-row--under-edit{flex-direction:row-reverse;justify-content:flex-start;margin-top:0;margin-bottom:14px}
-.cp-lamp-edit-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:14px;width:100%}
+.cp-profile-toolbar{display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:12px 10px;width:100%;max-width:min(100%,400px);margin:0 auto 16px}
+@media(max-width:640px){.cp-profile-toolbar{max-width:100%}}
+.cp-toolbar-cell{display:flex;align-items:center;min-height:44px}
+.cp-toolbar-cell--left{justify-content:flex-end;padding-right:clamp(6px,3vw,14px)}
+.cp-toolbar-cell--right{justify-content:flex-start;padding-left:clamp(6px,3vw,14px)}
+.cp-toolbar-cell--full{grid-column:1/-1;justify-content:center;flex-wrap:wrap;gap:10px}
 .cp-lamp-toggle{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border:1px solid rgba(255,255,255,.14);border-radius:999px;background:rgba(255,255,255,.04);color:#d0d5df;font-size:12px;font-weight:600}
 .cp-lamp-toggle input{appearance:none;width:34px;height:20px;border-radius:999px;background:#20242f;border:1px solid rgba(255,255,255,.22);position:relative;cursor:pointer;transition:all .2s ease}
 .cp-lamp-toggle input::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#8a90a0;transition:all .2s ease}
 .cp-lamp-toggle input:checked{background:rgba(61,212,224,.35);border-color:rgba(61,212,224,.62)}
 .cp-lamp-toggle input:checked::after{left:16px;background:#d8fbff}
-.cp-profile-actions-inner{display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:flex-start}
-@media(max-width:640px){.cp-profile-actions-inner{justify-content:center}}
 .ig-profile-head{display:flex;gap:22px;align-items:center;padding:8px 0 20px;flex-wrap:wrap}
 @media(min-width:640px){.ig-profile-head{gap:32px}}
 .ig-profile-av-wrap{position:relative;flex-shrink:0}
@@ -91,7 +91,11 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 .ig-post-cell img{width:100%;height:100%;object-fit:cover;display:block}
 .ig-post-cell-ph{display:flex;align-items:center;justify-content:center;font-size:10px;color:#666;padding:8px;text-align:center;line-height:1.35;overflow:hidden}
 .ig-post-cell-ico{position:absolute;top:6px;right:6px;font-size:12px;opacity:.9;text-shadow:0 1px 4px #000}
-.cp-circles-row{display:flex;align-items:flex-start;justify-content:center;flex-wrap:wrap;gap:12px;overflow-x:auto;padding:8px 2px 6px;margin:10px 0 14px}
+.cp-circles-row{display:flex;align-items:flex-start;justify-content:flex-start;flex-wrap:nowrap;gap:14px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;padding:10px 8px 14px;margin:4px -6px 14px;scrollbar-width:thin;scrollbar-color:rgba(61,212,224,.4) transparent;width:100%;box-sizing:border-box}
+.cp-circles-row::-webkit-scrollbar{height:5px}
+.cp-circles-row::-webkit-scrollbar-track{background:transparent}
+.cp-circles-row::-webkit-scrollbar-thumb{background:rgba(61,212,224,.35);border-radius:6px}
+.cp-circle-item,.cp-circle-add-btn{flex-shrink:0;scroll-snap-align:start}
 .cp-circle-item{display:flex;flex-direction:column;align-items:center;gap:6px;text-decoration:none;color:inherit;min-width:72px}
 .cp-circle-avatar{width:72px;height:72px;border-radius:50%;border:2px solid rgba(61,212,224,.55);overflow:hidden;background:#10131a;display:flex;align-items:center;justify-content:center}
 .cp-circle-avatar img{width:100%;height:100%;object-fit:cover;display:block}
@@ -132,7 +136,6 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 .ig-pm-toggle:hover{background:rgba(255,255,255,.06);color:#fff}
 .cp-tabbar{display:none}
 .cp-create-fab{display:none}
-.cp-profile-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px;margin-top:16px;width:100%}
 .ig-profile-av-wrap.lamp-on::after{
   content:"";
   position:absolute;
@@ -249,31 +252,27 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
             <a href="/community" class="cp-tokens-mini-link">Подарить SHEVELEV →</a>
             {% endif %}
           </div>
-          <div class="cp-lamp-edit-row">
+          <div class="cp-profile-toolbar" role="group" aria-label="Действия профиля">
             {% if is_own %}
-            <label class="cp-lamp-toggle" for="cpTokenLampToggle">
-              <span>Свет</span>
-              <input id="cpTokenLampToggle" type="checkbox" {% if profile.get('token_lamp_enabled') is not sameas false %}checked{% endif %} onchange="saveCpTokenLamp(this.checked)">
-            </label>
-            {% endif %}
-            <div class="cp-profile-actions-inner">
-              {% if is_own %}
-              <a href="/dashboard#profile" class="btn-o" style="font-size:13px;padding:8px 22px;text-decoration:none;display:inline-flex">Редактировать профиль</a>
-              {% else %}
+            <div class="cp-toolbar-cell cp-toolbar-cell--left">
+              <label class="cp-lamp-toggle" for="cpTokenLampToggle">
+                <span>Свет</span>
+                <input id="cpTokenLampToggle" type="checkbox" {% if profile.get('token_lamp_enabled') is not sameas false %}checked{% endif %} onchange="saveCpTokenLamp(this.checked)">
+              </label>
+            </div>
+            <div class="cp-toolbar-cell cp-toolbar-cell--right">
+              <a href="/dashboard#profile" class="btn-o" style="font-size:13px;padding:8px 20px;text-decoration:none;display:inline-flex;white-space:nowrap">Редактировать профиль</a>
+            </div>
+            {% else %}
+            <div class="cp-toolbar-cell cp-toolbar-cell--full">
               <button type="button" class="btn-g" style="font-size:13px;padding:8px 22px" id="followBtn" onclick="doFollow()">
                 <span id="followBtnText">{{ 'Подписки ✓' if is_following else 'Подписаться' }}</span>
               </button>
               <button type="button" class="btn-muted" style="font-size:13px;padding:8px 22px" onclick="openDM()">Сообщение</button>
-              {% endif %}
             </div>
+            {% endif %}
           </div>
-          <div class="cp-plus-slots-row" aria-hidden="true">
-            <button type="button" class="cp-slot-plus" title="Нажмите, чтобы увеличить">+</button>
-            <button type="button" class="cp-slot-plus" title="Нажмите, чтобы увеличить">+</button>
-            <button type="button" class="cp-slot-plus" title="Нажмите, чтобы увеличить">+</button>
-            <button type="button" class="cp-slot-plus" title="Нажмите, чтобы увеличить">+</button>
-          </div>
-          <div id="profileCirclesRow" class="cp-circles-row cp-circles-row--under-edit" data-max-circles="{{ max_profile_circles|default(5) }}">
+          <div id="profileCirclesRow" class="cp-circles-row" data-max-circles="{{ max_profile_circles|default(5) }}">
             {% for c in circles %}
             <a class="cp-circle-item" href="/community/profile/{{ profile_id }}/circle/{{ c.id }}">
               <div class="cp-circle-avatar">
@@ -572,11 +571,6 @@ async function openFollowListModal(profileId, kind){
 }
 const PROFILE_ID = {{ profile_id }};
 const IS_OWN = {{ 'true' if is_own else 'false' }};
-document.querySelectorAll('.cp-slot-plus').forEach(function(btn){
-  btn.addEventListener('click', function(){
-    this.classList.toggle('cp-slot-plus--big');
-  });
-});
 async function saveCpTokenLamp(isOn){
   try{
     const r=await fetch('/profile/token-lamp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token_lamp_enabled:!!isOn}),credentials:'same-origin'});
