@@ -123,15 +123,20 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• Персональные консультации по функциональным грибам\n"
         "• Сообщество единомышленников\n"
         "• Магазин и рецепты\n\n"
-        "Нажмите кнопку «Вход» внизу, чтобы открыть приложение."
+        "Нажмите кнопку <b>«Вход»</b> внизу экрана, чтобы открыть приложение.\n\n"
+        "⚠️ <i>Если кнопка «Вход» не отображается — обновите Telegram до последней версии "
+        "или обратитесь в службу поддержки.</i>"
     )
 
     await update.message.reply_text(
         welcome_text,
         reply_markup=main_keyboard(site_url),
+        parse_mode="HTML",
     )
     await update.message.reply_text(
-        "Также доступны:",
-        reply_markup=main_inline_keyboard(site_url),
+        "Служба поддержки:",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🆘 Написать в поддержку", callback_data="support")],
+        ]),
         parse_mode="HTML",
     )
