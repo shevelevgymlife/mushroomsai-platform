@@ -87,7 +87,7 @@ const POST_ID={{ post.id }};
 const BACK_URL={{ back_url|tojson }};
 function goBackCpc(){
   if(history.length>1){ history.back(); }
-  else { location.href=BACK_URL||'/dashboard#feed'; }
+  else { location.href=BACK_URL||'/community'; }
 }
 function chaosRot(id){
   var n=(Number(id)||0)*7919+13;

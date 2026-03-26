@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Новый пост — NEUROFUNGI AI{% endblock %}
+{% from 'components/stroke_icons.html' import ico %}
+{% block content %}
+<style>
+.cp-wrap{max-width:min(760px,100%);margin:0 auto;padding:calc(72px + env(safe-area-inset-top,0px)) 14px calc(88px + env(safe-area-inset-bottom,0px));box-sizing:border-box}
+@media(min-width:769px){.cp-wrap{padding-top:88px}}
+.cp-card{background:rgba(12,14,22,.92);border:1px solid rgba(61,212,224,.22);border-radius:20px;padding:16px;box-shadow:0 14px 40px rgba(0,0,0,.45)}
+.cp-title{font-size:20px;font-weight:700;color:#e8e8e8;margin:0 0 12px}
+.sinp{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);color:#e8e8e8;border-radius:12px;padding:11px 14px;font-size:15px;outline:none;width:100%;box-sizing:border-box}
+.sinp:focus{border-color:rgba(61,212,224,.52)}
+.cp-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.btn-g{background:#3dd4e0;color:#081014;font-weight:700;border-radius:12px;padding:11px 16px;border:none;cursor:pointer}
+.btn-o{border:1px solid rgba(61,212,224,.42);color:#3dd4e0;background:transparent;border-radius:12px;padding:10px 14px;cursor:pointer;text-decoration:none}
+.cp-tabbar{position:fixed;left:0;right:0;bottom:0;height:calc(56px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);background:rgba(6,8,16,.58);backdrop-filter:blur(25px);-webkit-backdrop-filter:blur(25px);border-top:1px solid rgba(61,212,224,.14);display:flex;align-items:flex-start;justify-content:space-around;padding-top:6px;z-index:980;box-sizing:border-box;box-shadow:0 -8px 40px rgba(0,0,0,.35)}
+.cp-tabbar .cp-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:2px;padding:4px 4px 0;border:none;background:transparent;color:#777;font-size:10px;font-weight:600;text-decoration:none;max-width:88px;min-width:0}
+.cp-tabbar .cp-tab .ic{font-size:24px;line-height:1;opacity:.85}
+.cp-tabbar .cp-tab.on,.cp-tabbar .cp-tab.on .ic{color:#e8e8e8;opacity:1}
+</style>
+
+<div class="cp-wrap">
+  <div class="cp-card">
+    <h1 class="cp-title">Новый пост</h1>
+    {% if error %}
+    <p style="margin:0 0 10px;font-size:13px;color:#f87171">{{ error }}</p>
+    {% endif %}
+    <form id="communityCreateForm" action="/community/post" method="post" enctype="multipart/form-data">
+      <input name="title" class="sinp" maxlength="200" placeholder="Название (необязательно)" style="margin-bottom:10px">
+      <textarea name="content" class="sinp" maxlength="8000" placeholder="Текст поста" style="min-height:140px;resize:vertical;margin-bottom:10px"></textarea>
+      <div class="cp-row" style="margin-bottom:10px">
+        <label class="btn-o" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer">
+          {{ ico('image') }} Фото
+          <input id="communityCreateFile" name="image" type="file" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none" onchange="previewCreateImage(this)">
+        </label>
+        <select name="folder_id" class="sinp" style="max-width:300px">
+          <option value="">Без папки</option>
+          {% for f in my_folders %}
+          <option value="{{ f.id }}">{{ f.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div id="communityCreatePreviewWrap" style="display:none;margin-bottom:10px">
+        <img id="communityCreatePreviewImg" src="" alt="" style="width:100%;max-height:280px;object-fit:cover;border-radius:12px;border:1px solid rgba(255,255,255,.12)">
+      </div>
+      <div class="cp-row">
+        <button type="submit" class="btn-g">Опубликовать</button>
+        <a href="/community" class="btn-o">Отмена</a>
+      </div>
+      <p id="communityCreateErr" style="display:none;margin-top:10px;font-size:13px;color:#f87171"></p>
+    </form>
+  </div>
+</div>
+
+<nav class="cp-tabbar" aria-label="Нижняя навигация">
+  <a href="/community" class="cp-tab"><span class="ic">{{ ico('home') }}</span><span>Лента</span></a>
+  <a href="/community/profile/{{ (user.primary_user_id or user.id)|int }}" class="cp-tab"><span class="ic">{{ ico('user') }}</span><span>Профиль</span></a>
+  <a href="/community/members" class="cp-tab"><span class="ic">{{ ico('search') }}</span><span>Поиск</span></a>
+  <a href="/community/post/new" class="cp-tab on"><span class="ic">{{ ico('plus') }}</span><span>Пост</span></a>
+</nav>
+
+<script>
+async function previewCreateImage(input){
+  const f=input.files&&input.files[0];
+  if(!f)return;
+  let finalFile=f;
+  try{
+    if(window.MAIImageCropper && /^image\//i.test(f.type||'')){
+      const blob=await window.MAIImageCropper.open(f,{aspectRatio:1});
+      if(blob) finalFile=new File([blob],'post.jpg',{type:'image/jpeg'});
+    }
+  }catch(e){
+    input.value='';
+    return;
+  }
+  try{
+    const dt=new DataTransfer();
+    dt.items.add(finalFile);
+    input.files=dt.files;
+  }catch(e){}
+  const rd=new FileReader();
+  rd.onload=function(ev){
+    const wrap=document.getElementById('communityCreatePreviewWrap');
+    const img=document.getElementById('communityCreatePreviewImg');
+    if(!wrap||!img)return;
+    img.src=ev.target.result;
+    wrap.style.display='block';
+  };
+  rd.readAsDataURL(finalFile);
+}
+
+document.getElementById('communityCreateForm')?.addEventListener('submit', async function(e){
+  e.preventDefault();
+  const form=e.currentTarget;
+  const err=document.getElementById('communityCreateErr');
+  if(err) err.style.display='none';
+  const fd=new FormData(form);
+  try{
+    const r=await fetch('/community/post',{method:'POST',body:fd,credentials:'same-origin'});
+    const d=await r.json();
+    if(!r.ok || !d.ok){
+      if(err){err.textContent=(d&&d.error)||'Не удалось создать пост';err.style.display='block';}
+      return;
+    }
+    location.href='/community/post/'+d.id+'?back='+encodeURIComponent('/community');
+  }catch(_e){
+    if(err){err.textContent='Сетевая ошибка';err.style.display='block';}
+  }
+});
+</script>
+{% endblock %}

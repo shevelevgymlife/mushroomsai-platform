@@ -221,10 +221,10 @@
 <!-- MOBILE NAV -->
 <nav class="mbnav">
   <button class="mbb on" onclick="location.href='/community'">🏠<span>Лента</span></button>
-  <button class="mbb" onclick="document.querySelector('.sinp').focus()">🔍<span>Поиск</span></button>
-  <button class="mbb" style="color:#3dd4e0" onclick="openM('postModal')"><span style="font-size:26px;line-height:1">+</span><span>Пост</span></button>
+  <button class="mbb" onclick="location.href='/community/members'">🔍<span>Поиск</span></button>
+  <button class="mbb" style="color:#3dd4e0" onclick="location.href='/community/post/new'"><span style="font-size:26px;line-height:1">+</span><span>Пост</span></button>
   <button class="mbb" onclick="loadConvos('convModal');openM('msgsModal')">✉️<span>Письма</span></button>
-  <button class="mbb" onclick="location.href='/dashboard'">👤<span>Профиль</span></button>
+  <button class="mbb" onclick="location.href='/community/profile/{{ (user.primary_user_id or user.id)|int }}'">👤<span>Профиль</span></button>
 </nav>
 
 <!-- POST MODAL -->

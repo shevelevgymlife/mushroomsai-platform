@@ -872,8 +872,8 @@ async def chat_page(request: Request):
 
 @router.get("/community")
 async def community(request: Request):
-    from fastapi.responses import RedirectResponse
-    return RedirectResponse(url="/dashboard#feed", status_code=302)
+    # Mobile flow uses dedicated pages for feed/search/profile; keep /community as feed page.
+    return await community_old(request)
 
 
 @router.get("/community/_old", response_class=HTMLResponse)
@@ -1057,6 +1057,41 @@ async def community_old(request: Request):
     )
 
 
+@router.get("/community/post/new", response_class=HTMLResponse)
+async def community_post_new_page(request: Request):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return RedirectResponse("/login?next=/community/post/new")
+    leg = await legal_acceptance_redirect(request, current_user)
+    if leg:
+        return leg
+
+    effective_user_id = current_user.get("primary_user_id") or current_user["id"]
+    display_user = current_user
+    if current_user.get("primary_user_id"):
+        primary = await database.fetch_one(users.select().where(users.c.id == effective_user_id))
+        if primary:
+            display_user = dict(primary)
+            attach_screen_rim_prefs(display_user)
+
+    my_folders = await database.fetch_all(
+        community_folders.select()
+        .where(community_folders.c.user_id == effective_user_id)
+        .order_by(community_folders.c.created_at.asc())
+    )
+    err = (request.query_params.get("error") or "").strip()
+
+    return templates.TemplateResponse(
+        "community_post_new.html",
+        {
+            "request": request,
+            "user": display_user,
+            "my_folders": my_folders,
+            "error": err,
+        },
+    )
+
+
 @router.get("/community/user-profile/{user_id}")
 async def community_user_profile(request: Request, user_id: int):
     current_user = await get_user_from_request(request)
@@ -1155,9 +1190,6 @@ async def community_profile(request: Request, user_id: int):
         if primary:
             raw = primary
     profile_id = raw["id"]
-    if int(profile_id) == int(viewer_id):
-        # For own account always open the single dashboard profile view.
-        return RedirectResponse("/dashboard#me", status_code=302)
 
     # Public-safe profile data only
     profile = get_public_user_data(dict(raw))
@@ -1601,7 +1633,7 @@ async def community_post_page(request: Request, post_id: int, back: str = ""):
         .where(community_saved.c.user_id == viewer_id)
     )
     is_owner = int(post["user_id"] or 0) == int(viewer_id)
-    back_url = (back or "").strip() or request.headers.get("referer") or "/dashboard#feed"
+    back_url = (back or "").strip() or request.headers.get("referer") or "/community"
 
     return templates.TemplateResponse(
         "community_post.html",
@@ -1636,7 +1668,7 @@ async def community_post_comments_page(request: Request, post_id: int, back: str
         return HTMLResponse("Пост не найден", status_code=404)
 
     author = await database.fetch_one(users.select().where(users.c.id == post["user_id"]))
-    back_url = (back or "").strip() or request.headers.get("referer") or "/dashboard#feed"
+    back_url = (back or "").strip() or request.headers.get("referer") or "/community"
 
     return templates.TemplateResponse(
         "community_post_comments.html",
@@ -1667,7 +1699,7 @@ async def community_post_photo_page(request: Request, post_id: int, back: str = 
         return HTMLResponse("Пост не найден", status_code=404)
     if not (post.get("image_url") or "").strip():
         return RedirectResponse(f"/community/post/{post_id}")
-    back_url = (back or "").strip() or request.headers.get("referer") or "/dashboard#feed"
+    back_url = (back or "").strip() or request.headers.get("referer") or "/community"
     return templates.TemplateResponse(
         "community_post_photo.html",
         {

@@ -126,7 +126,7 @@
 .mb-tab .ic{font-size:24px;line-height:1}
 </style>
 <nav class="mb-tabbar" aria-label="Нижняя навигация">
-  <a href="/dashboard" class="mb-tab"><span class="ic">{{ ico('home') }}</span><span>Лента</span></a>
+  <a href="/community" class="mb-tab"><span class="ic">{{ ico('home') }}</span><span>Лента</span></a>
   <a href="/community/profile/{{ (user.primary_user_id or user.id)|int }}" class="mb-tab"><span class="ic">{{ ico('user') }}</span><span>Профиль</span></a>
   <a href="/community/members" class="mb-tab on"><span class="ic">{{ ico('search') }}</span><span>Поиск</span></a>
 </nav>

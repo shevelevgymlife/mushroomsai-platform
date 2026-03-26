@@ -19,6 +19,6 @@
 </div>
 <script>
 const BACK_URL={{ back_url|tojson }};
-function goBack(){ if(history.length>1){ history.back(); } else { location.href=BACK_URL||'/dashboard#feed'; } }
+function goBack(){ if(history.length>1){ history.back(); } else { location.href=BACK_URL||'/community'; } }
 </script>
 {% endblock %}
