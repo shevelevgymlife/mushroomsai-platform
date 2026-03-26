@@ -269,6 +269,11 @@ async def run_heavy_startup(app: FastAPI) -> None:
             "ALTER TABLE shop_products ADD COLUMN IF NOT EXISTS verified_personal BOOLEAN DEFAULT false",
             "ALTER TABLE admin_permissions ADD COLUMN IF NOT EXISTS can_training_bot BOOLEAN NOT NULL DEFAULT false",
             "ALTER TABLE admin_permissions ADD COLUMN IF NOT EXISTS can_ai_unlimited BOOLEAN NOT NULL DEFAULT false",
+            "ALTER TABLE admin_permissions ADD COLUMN IF NOT EXISTS can_ai_posts BOOLEAN NOT NULL DEFAULT false",
+            "ALTER TABLE admin_permissions ADD COLUMN IF NOT EXISTS can_community BOOLEAN NOT NULL DEFAULT false",
+            "ALTER TABLE admin_permissions ADD COLUMN IF NOT EXISTS can_groups BOOLEAN NOT NULL DEFAULT false",
+            "ALTER TABLE admin_permissions ADD COLUMN IF NOT EXISTS can_homepage BOOLEAN NOT NULL DEFAULT false",
+            "ALTER TABLE admin_permissions ADD COLUMN IF NOT EXISTS can_dashboard_blocks BOOLEAN NOT NULL DEFAULT false",
             """CREATE TABLE IF NOT EXISTS pending_google_links (
             id SERIAL PRIMARY KEY,
             token VARCHAR(64) UNIQUE NOT NULL,

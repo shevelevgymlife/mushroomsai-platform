@@ -249,9 +249,14 @@
 
     <div class="space-y-2 mb-5" id="permCheckboxes">
       {% for key, label in (permission_items if permission_items is defined else []) %}
-      <label class="flex items-center gap-3 p-2.5 rounded-xl border border-border hover:border-gold/40 cursor-pointer transition-colors">
+      <label class="flex items-center gap-3 p-2.5 rounded-xl border cursor-pointer transition-colors
+        {% if key in ['can_ai_unlimited','can_training_bot'] %}
+          border-cyan-400/35 bg-cyan-500/10 hover:border-cyan-300/60
+        {% else %}
+          border-border hover:border-gold/40
+        {% endif %}">
         <input type="checkbox" name="{{ key }}" id="perm_{{ key }}" class="accent-gold w-4 h-4" />
-        <span class="text-sm text-text">{{ label }}</span>
+        <span class="text-sm {% if key in ['can_ai_unlimited','can_training_bot'] %}text-cyan-200{% else %}text-text{% endif %}">{{ label }}</span>
       </label>
       {% endfor %}
     </div>

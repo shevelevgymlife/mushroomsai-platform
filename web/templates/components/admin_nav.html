@@ -18,16 +18,16 @@
   {% set nav_items = [
     ('Панель', '/admin', 'can_dashboard', 'layout'),
     ('AI', '/admin/ai', 'can_ai', 'cpu'),
-    ('Обучающие посты', '/admin/ai-posts', 'can_ai', 'book'),
+    ('Обучающие посты', '/admin/ai-posts', 'can_ai_posts', 'book'),
     ('Магазин', '/admin/shop', 'can_shop', 'shop'),
     ('Пользователи', '/admin/users', 'can_users', 'users'),
     ('Обратная связь', '/admin/feedback', 'can_feedback', 'message_sq'),
     ('Рассылки', '/admin/broadcast', 'can_broadcast', 'send'),
     ('База знаний', '/admin/knowledge', 'can_knowledge', 'book'),
-    ('Сообщество', '/admin/community', 'can_dashboard', 'users'),
-    ('Чаты', '/admin/groups', 'can_dashboard', 'message_sq'),
-    ('Главная сайта', '/admin/homepage', 'can_dashboard', 'home'),
-    ('Блоки кабинета', '/admin/dashboard-blocks', 'can_dashboard', 'grid'),
+    ('Сообщество', '/admin/community', 'can_community', 'users'),
+    ('Чаты', '/admin/groups', 'can_groups', 'message_sq'),
+    ('Главная сайта', '/admin/homepage', 'can_homepage', 'home'),
+    ('Блоки кабинета', '/admin/dashboard-blocks', 'can_dashboard_blocks', 'grid'),
   ] %}
   {% for label, href, perm_key, iname in nav_items %}
   {% if user_permissions is not defined or user_permissions.get(perm_key, True) %}

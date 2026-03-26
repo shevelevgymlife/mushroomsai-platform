@@ -41,16 +41,16 @@ templates = Jinja2Templates(directory="web/templates")
 ADMIN_SECTIONS = [
     ("Панель", "/admin", "can_dashboard"),
     ("AI", "/admin/ai", "can_ai"),
-    ("Обучающие посты", "/admin/ai-posts", "can_ai"),
+    ("Обучающие посты", "/admin/ai-posts", "can_ai_posts"),
     ("Магазин", "/admin/shop", "can_shop"),
     ("Пользователи", "/admin/users", "can_users"),
     ("Обратная связь", "/admin/feedback", "can_feedback"),
     ("Рассылки", "/admin/broadcast", "can_broadcast"),
     ("База знаний", "/admin/knowledge", "can_knowledge"),
-    ("Сообщество", "/admin/community", "can_dashboard"),
-    ("Чаты", "/admin/groups", "can_dashboard"),
-    ("Главная сайта", "/admin/homepage", "can_dashboard"),
-    ("Блоки кабинета", "/admin/dashboard-blocks", "can_dashboard"),
+    ("Сообщество", "/admin/community", "can_community"),
+    ("Чаты", "/admin/groups", "can_groups"),
+    ("Главная сайта", "/admin/homepage", "can_homepage"),
+    ("Блоки кабинета", "/admin/dashboard-blocks", "can_dashboard_blocks"),
 ]
 ADMIN_NAV = [(label, href) for (label, href, _perm) in ADMIN_SECTIONS]
 AI_RETRIEVAL_MODES = [
@@ -70,11 +70,16 @@ PERM_KEYS = list(dict.fromkeys(
 PERM_LABELS = {
     "can_dashboard": "Dashboard",
     "can_ai": "AI управление",
+    "can_ai_posts": "Обучающие посты",
     "can_shop": "Магазин",
     "can_users": "Пользователи",
     "can_feedback": "Обратная связь",
     "can_broadcast": "Рассылки",
     "can_knowledge": "База знаний",
+    "can_community": "Сообщество",
+    "can_groups": "Чаты",
+    "can_homepage": "Главная сайта",
+    "can_dashboard_blocks": "Блоки кабинета",
     "can_training_bot": "Бот обучающих постов (Telegram)",
     "can_ai_unlimited": "Безлимит AI (для пользователя)",
 }
@@ -574,6 +579,65 @@ async def set_user_role(request: Request, user_id: int = Form(...), role: str = 
         return JSONResponse({"error": "Нельзя изменить роль главного администратора"}, status_code=403)
 
     await database.execute(users.update().where(users.c.id == user_id).values(role=role))
+
+    # Уведомление пользователю о смене роли: в ЛС соцсети + в Telegram
+    notify_uid = int(target.get("primary_user_id") or user_id)
+    notify_tg_id = None
+    try:
+        notify_user_row = await database.fetch_one(users.select().where(users.c.id == notify_uid))
+        if notify_user_row:
+            notify_tg_id = notify_user_row.get("tg_id") or notify_user_row.get("linked_tg_id")
+        if not notify_tg_id:
+            fam = await database.fetch_one(
+                users.select()
+                .where(users.c.primary_user_id == notify_uid)
+                .where(
+                    sqlalchemy.or_(
+                        users.c.tg_id.is_not(None),
+                        users.c.linked_tg_id.is_not(None),
+                    )
+                )
+                .order_by(users.c.id.asc())
+            )
+            if fam:
+                notify_tg_id = fam.get("tg_id") or fam.get("linked_tg_id")
+    except Exception:
+        logger.exception("Failed to resolve telegram recipient for role change user_id=%s", user_id)
+
+    role_label = "Администратор" if role == "admin" else ("Модератор" if role == "moderator" else "Пользователь")
+    site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
+    dm_text = (
+        "Системные оповещения\n\n"
+        f"Вам назначена роль: {role_label}.\n"
+        "Доступ в админке/модерации обновлен.\n\n"
+        f"Открыть приложение в Telegram: {site}"
+    )
+    tg_text = (
+        "Системные оповещения\n\n"
+        f"Вам назначена роль: {role_label}.\n"
+        "Доступ в админке/модерации обновлен.\n\n"
+        f"Открыть приложение: {site}"
+    )
+    sender_id = admin.get("primary_user_id") or admin.get("id")
+    try:
+        await database.execute(
+            direct_messages.insert().values(
+                sender_id=sender_id,
+                recipient_id=notify_uid,
+                text=dm_text,
+                is_read=False,
+                is_system=True,
+            )
+        )
+    except Exception:
+        logger.exception("Failed to store role change notification for user_id=%s", user_id)
+    try:
+        if notify_tg_id:
+            from services.notify_user_stub import notify_user
+            await notify_user(int(notify_tg_id), tg_text)
+    except Exception:
+        logger.exception("Failed to send role change telegram notification for user_id=%s", user_id)
+
     return JSONResponse({"ok": True, "user_id": user_id, "role": role})
 
 
@@ -1099,7 +1163,7 @@ async def sync_knowledge(request: Request):
 
 @router.get("/community", response_class=HTMLResponse)
 async def community_admin(request: Request):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_community")
     if not admin:
         return RedirectResponse("/login")
 
@@ -1160,7 +1224,7 @@ async def community_admin(request: Request):
 
 @router.post("/community/posts/{post_id}/delete")
 async def delete_community_post(request: Request, post_id: int):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_community")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     await database.execute(community_likes.delete().where(community_likes.c.post_id == post_id))
@@ -1172,7 +1236,7 @@ async def delete_community_post(request: Request, post_id: int):
 
 @router.post("/community/posts/{post_id}/pin")
 async def pin_community_post(request: Request, post_id: int):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_community")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     post = await database.fetch_one(community_posts.select().where(community_posts.c.id == post_id))
@@ -1189,7 +1253,7 @@ async def pin_community_post(request: Request, post_id: int):
 
 @router.get("/groups", response_class=HTMLResponse)
 async def admin_groups_page(request: Request):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_groups")
     if not admin:
         return RedirectResponse("/login")
     from services.group_platform_settings import get_group_creation_policy
@@ -1257,7 +1321,7 @@ async def admin_groups_page(request: Request):
 
 @router.post("/groups/policy")
 async def admin_groups_policy_save(request: Request):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_groups")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     try:
@@ -1278,7 +1342,7 @@ async def admin_groups_policy_save(request: Request):
 
 @router.patch("/groups/{group_id}")
 async def admin_group_patch(request: Request, group_id: int):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_groups")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     try:
@@ -1363,7 +1427,7 @@ async def admin_group_create(
     name: str = Form(...),
     description: str = Form(""),
 ):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_groups")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     nm = (name or "").strip()
@@ -1395,7 +1459,7 @@ async def admin_group_create(
 
 @router.get("/groups/{group_id}/members")
 async def admin_group_members(request: Request, group_id: int, q: str = ""):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_groups")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     g = await fetch_community_group_row(group_id)
@@ -1437,7 +1501,7 @@ async def admin_group_members(request: Request, group_id: int, q: str = ""):
 
 @router.post("/groups/{group_id}/members/{user_id}/ban")
 async def admin_group_member_ban(request: Request, group_id: int, user_id: int):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_groups")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     try:
@@ -1492,7 +1556,7 @@ async def admin_group_member_ban(request: Request, group_id: int, user_id: int):
 
 @router.post("/groups/{group_id}/members/{user_id}/permissions")
 async def admin_group_member_permissions(request: Request, group_id: int, user_id: int):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_groups")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     try:
@@ -1526,7 +1590,7 @@ async def admin_group_member_permissions(request: Request, group_id: int, user_i
 
 @router.post("/groups/bulk")
 async def admin_groups_bulk(request: Request):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_groups")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     try:
@@ -1577,7 +1641,7 @@ async def admin_groups_bulk(request: Request):
 
 @router.delete("/groups/{group_id}")
 async def admin_group_delete(request: Request, group_id: int):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_groups")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     g = await fetch_community_group_row(group_id)
@@ -1589,7 +1653,7 @@ async def admin_group_delete(request: Request, group_id: int):
 
 @router.post("/groups/{group_id}/upload-image")
 async def admin_group_upload_image(request: Request, group_id: int, file: UploadFile = File(...)):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_groups")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     g = await fetch_community_group_row(group_id)
@@ -1737,7 +1801,7 @@ async def delete_user_permanent(request: Request, user_id: int):
 
 @router.get("/ai-posts", response_class=HTMLResponse)
 async def ai_posts_page(request: Request):
-    admin = await require_permission(request, "can_ai")
+    admin = await require_permission(request, "can_ai_posts")
     if not admin:
         return RedirectResponse("/login")
     per_page = 10
@@ -1837,7 +1901,7 @@ async def ai_posts_page(request: Request):
 
 @router.get("/ai-posts/{post_id}/edit", response_class=HTMLResponse)
 async def ai_post_edit_page(request: Request, post_id: int):
-    admin = await require_permission(request, "can_ai")
+    admin = await require_permission(request, "can_ai_posts")
     if not admin:
         return RedirectResponse("/login")
     row = await database.fetch_one(ai_training_posts.select().where(ai_training_posts.c.id == post_id))
@@ -1884,7 +1948,7 @@ async def add_ai_post(
     category: str = Form(""),
     folder: str = Form(""),
 ):
-    admin = await require_permission(request, "can_ai")
+    admin = await require_permission(request, "can_ai_posts")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     try:
@@ -1915,7 +1979,7 @@ async def bulk_move_ai_posts_to_folder(
     folder: str = Form(""),
     post_ids: str = Form(""),
 ):
-    admin = await require_permission(request, "can_ai")
+    admin = await require_permission(request, "can_ai_posts")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     raw = (post_ids or "").replace(" ", "")
@@ -1948,7 +2012,7 @@ async def bulk_move_ai_posts_to_folder(
 
 @router.get("/ai-posts/{post_id}/one")
 async def get_ai_post_one(request: Request, post_id: int):
-    admin = await require_permission(request, "can_ai")
+    admin = await require_permission(request, "can_ai_posts")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     row = await database.fetch_one(ai_training_posts.select().where(ai_training_posts.c.id == post_id))
@@ -1969,7 +2033,7 @@ async def update_ai_post(
     category: str = Form(""),
     folder: str = Form(""),
 ):
-    admin = await require_permission(request, "can_ai")
+    admin = await require_permission(request, "can_ai_posts")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     row = await database.fetch_one(ai_training_posts.select().where(ai_training_posts.c.id == post_id))
@@ -1996,7 +2060,7 @@ async def update_ai_post(
 
 @router.post("/ai-folders")
 async def add_ai_folder_only(request: Request, name: str = Form(...)):
-    admin = await require_permission(request, "can_ai")
+    admin = await require_permission(request, "can_ai_posts")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     nm = name.strip()
@@ -2011,7 +2075,7 @@ async def add_ai_folder_only(request: Request, name: str = Form(...)):
 
 @router.delete("/ai-folders")
 async def delete_ai_folder_label(request: Request, name: str = Query(default="")):
-    admin = await require_permission(request, "can_ai")
+    admin = await require_permission(request, "can_ai_posts")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     nm = (name or "").strip()
@@ -2023,7 +2087,7 @@ async def delete_ai_folder_label(request: Request, name: str = Query(default="")
 
 @router.post("/ai-folders/clear")
 async def clear_ai_folder_posts(request: Request, name: str = Form(...)):
-    admin = await require_permission(request, "can_ai")
+    admin = await require_permission(request, "can_ai_posts")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     nm = (name or "").strip()
@@ -2043,7 +2107,7 @@ async def delete_ai_folder_safe(
     name: str = Form(...),
     move_posts_to_no_folder: str = Form("true"),
 ):
-    admin = await require_permission(request, "can_ai")
+    admin = await require_permission(request, "can_ai_posts")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     nm = (name or "").strip()
@@ -2062,7 +2126,7 @@ async def delete_ai_folder_safe(
 
 @router.delete("/ai-posts/{post_id}")
 async def delete_ai_post(request: Request, post_id: int):
-    admin = await require_permission(request, "can_ai")
+    admin = await require_permission(request, "can_ai_posts")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     try:
@@ -2074,7 +2138,7 @@ async def delete_ai_post(request: Request, post_id: int):
 
 @router.patch("/ai-posts/{post_id}/toggle")
 async def toggle_ai_post(request: Request, post_id: int):
-    admin = await require_permission(request, "can_ai")
+    admin = await require_permission(request, "can_ai_posts")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     try:
@@ -2091,7 +2155,7 @@ async def toggle_ai_post(request: Request, post_id: int):
 
 @router.get("/homepage", response_class=HTMLResponse)
 async def admin_homepage(request: Request):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_homepage")
     if not admin:
         return RedirectResponse("/login")
     blocks_raw = await database.fetch_all(homepage_blocks.select().order_by(homepage_blocks.c.position, homepage_blocks.c.id))
@@ -2115,7 +2179,7 @@ async def update_homepage_block(
     blur_for_guests: str = Form("false"),
     blur_text: str = Form(""),
 ):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_homepage")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     try:
@@ -2141,7 +2205,7 @@ async def update_homepage_block(
 
 @router.post("/homepage-blocks/reorder")
 async def reorder_homepage_blocks(request: Request):
-    admin = await require_admin(request)
+    admin = await require_permission(request, "can_homepage")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     try:
@@ -2180,7 +2244,7 @@ async def delete_post(request: Request, post_id: int):
 
 @router.get("/dashboard-blocks", response_class=HTMLResponse)
 async def admin_dashboard_blocks(request: Request):
-    admin = await require_permission(request, "can_dashboard")
+    admin = await require_permission(request, "can_dashboard_blocks")
     if not admin:
         return RedirectResponse("/login")
     blocks_raw = await database.fetch_all(
@@ -2196,7 +2260,7 @@ async def admin_dashboard_blocks(request: Request):
 
 @router.post("/dashboard-blocks/reorder")
 async def reorder_dashboard_blocks(request: Request):
-    admin = await require_permission(request, "can_dashboard")
+    admin = await require_permission(request, "can_dashboard_blocks")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     try:
@@ -2221,7 +2285,7 @@ async def update_dashboard_block(
     access_level: str = Form("all"),
     block_name: str = Form(""),
 ):
-    admin = await require_permission(request, "can_dashboard")
+    admin = await require_permission(request, "can_dashboard_blocks")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     try:
@@ -2240,7 +2304,7 @@ async def update_dashboard_block(
 
 @router.get("/dashboard-blocks/user/{user_id}")
 async def get_user_block_overrides(request: Request, user_id: int):
-    admin = await require_permission(request, "can_dashboard")
+    admin = await require_permission(request, "can_dashboard_blocks")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     target = await database.fetch_one(users.select().where(users.c.id == user_id))
@@ -2268,7 +2332,7 @@ async def get_user_block_overrides(request: Request, user_id: int):
 
 @router.post("/dashboard-blocks/user/{user_id}")
 async def set_user_block_override(request: Request, user_id: int):
-    admin = await require_permission(request, "can_dashboard")
+    admin = await require_permission(request, "can_dashboard_blocks")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     body = await request.json()
@@ -2301,7 +2365,7 @@ async def set_user_block_override(request: Request, user_id: int):
 
 @router.delete("/dashboard-blocks/user/{user_id}/{block_key}")
 async def delete_user_block_override(request: Request, user_id: int, block_key: str):
-    admin = await require_permission(request, "can_dashboard")
+    admin = await require_permission(request, "can_dashboard_blocks")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     await database.execute(
@@ -2314,7 +2378,7 @@ async def delete_user_block_override(request: Request, user_id: int, block_key: 
 
 @router.get("/users/search")
 async def search_users_api(request: Request, q: str = ""):
-    admin = await require_permission(request, "can_dashboard")
+    admin = await require_permission(request, "can_dashboard_blocks")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     if not q or len(q) < 2:
