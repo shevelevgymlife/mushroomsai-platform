@@ -1,5 +1,6 @@
 import os
 import uuid
+from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, Request, Form, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
@@ -9,7 +10,7 @@ from auth.ui_prefs import attach_screen_rim_prefs
 from db.database import database
 from db.models import (
     users, messages, orders, posts, post_likes, community_posts, community_likes, community_comments,
-    community_folders, community_follows, community_saved, community_messages, profile_likes, community_profiles,
+    community_folders, community_follows, community_saved, profile_likes, community_profiles,
     direct_messages,
     dashboard_blocks, user_block_overrides, community_groups, community_group_members, community_group_messages,
     community_group_message_likes,
@@ -1381,17 +1382,26 @@ async def send_dm(request: Request, recipient_id: int):
     uid = user.get("primary_user_id") or user["id"]
     if uid == recipient_id:
         return JSONResponse({"error": "cannot message yourself"}, status_code=400)
-    msg_id = await database.execute(
-        community_messages.insert().values(sender_id=uid, recipient_id=recipient_id, text=text)
-    )
-    # Notify recipient
+    row = None
+    try:
+        row = await database.fetch_one_write(
+            sa.text(
+                "INSERT INTO direct_messages (sender_id, recipient_id, text, is_read, is_system) "
+                "VALUES (:s, :r, :t, false, false) RETURNING id"
+            ).bindparams(s=uid, r=recipient_id, t=text)
+        )
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+    msg_id = row["id"] if row else None
     recipient = await database.fetch_one(users.select().where(users.c.id == recipient_id))
     if recipient:
         tg_id = recipient.get("tg_id") or recipient.get("linked_tg_id")
         if tg_id:
-            from services.notify_user_stub import notify_user
+            from services.notify_user_stub import notify_user_dm_with_read_button
+
             actor_name = user.get("name") or "Участник"
-            await notify_user(tg_id, f"💬 Новое сообщение от <b>{actor_name}</b>:\n{text[:200]}\n\n<a href='https://mushroomsai.ru/community'>Открыть</a>")
+            read_path = f"/messages/{uid}"
+            await notify_user_dm_with_read_button(tg_id, actor_name, text, read_path)
     return JSONResponse({"ok": True, "id": msg_id})
 
 
@@ -1402,23 +1412,23 @@ async def get_dm_thread(request: Request, other_id: int):
         return JSONResponse({"error": "auth required"}, status_code=401)
     uid = user.get("primary_user_id") or user["id"]
     rows = await database.fetch_all(
-        community_messages.select()
-        .where(
-            sa.or_(
-                sa.and_(community_messages.c.sender_id == uid, community_messages.c.recipient_id == other_id),
-                sa.and_(community_messages.c.sender_id == other_id, community_messages.c.recipient_id == uid),
-            )
-        )
-        .order_by(community_messages.c.created_at.asc())
-        .limit(100)
+        sa.text(
+            """
+            SELECT id, sender_id, text, created_at FROM direct_messages
+            WHERE (sender_id = :uid AND recipient_id = :oid)
+               OR (sender_id = :oid AND recipient_id = :uid AND is_system = false)
+            ORDER BY created_at ASC
+            LIMIT 100
+            """
+        ),
+        {"uid": uid, "oid": other_id},
     )
-    # Mark as read
     await database.execute(
-        community_messages.update()
-        .where(community_messages.c.sender_id == other_id)
-        .where(community_messages.c.recipient_id == uid)
-        .where(community_messages.c.is_read == False)
-        .values(is_read=True)
+        sa.text(
+            "UPDATE direct_messages SET is_read = true "
+            "WHERE sender_id = :oid AND recipient_id = :uid AND is_read = false AND is_system = false"
+        ),
+        {"oid": other_id, "uid": uid},
     )
     result = [
         {
@@ -1440,64 +1450,87 @@ async def unread_count(request: Request):
         return JSONResponse({"count": 0})
     uid = user.get("primary_user_id") or user["id"]
     count = await database.fetch_val(
-        sa.select(sa.func.count()).select_from(community_messages)
-        .where(community_messages.c.recipient_id == uid)
-        .where(community_messages.c.is_read == False)
+        sa.select(sa.func.count())
+        .select_from(direct_messages)
+        .where(direct_messages.c.recipient_id == uid)
+        .where(direct_messages.c.is_read.is_(False))
+        .where(direct_messages.c.is_system.is_(False))
     ) or 0
     return JSONResponse({"count": count})
 
 
 @router.get("/community/conversations")
 async def get_conversations(request: Request):
-    """Get list of DM conversations for the current user."""
+    """Get list of DM conversations for the current user (direct_messages, как /messages)."""
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
     uid = user.get("primary_user_id") or user["id"]
-    # Get all distinct conversation partners
-    sent = await database.fetch_all(
-        sa.select(community_messages.c.recipient_id.label("other_id"))
-        .where(community_messages.c.sender_id == uid)
-        .distinct()
-    )
-    received = await database.fetch_all(
-        sa.select(community_messages.c.sender_id.label("other_id"))
-        .where(community_messages.c.recipient_id == uid)
-        .distinct()
-    )
-    partner_ids = list({r["other_id"] for r in sent} | {r["other_id"] for r in received})
+    from web.routes.public import _get_conversations
+
+    raw = await _get_conversations(uid)
     convos = []
-    for pid in partner_ids:
-        partner = await database.fetch_one(users.select().where(users.c.id == pid))
-        if not partner:
+    for c in raw:
+        oid = int(c.get("other_id") or 0)
+        if oid == 0:
             continue
-        last_msg = await database.fetch_one(
-            community_messages.select()
-            .where(
-                sa.or_(
-                    sa.and_(community_messages.c.sender_id == uid, community_messages.c.recipient_id == pid),
-                    sa.and_(community_messages.c.sender_id == pid, community_messages.c.recipient_id == uid),
-                )
-            )
-            .order_by(community_messages.c.created_at.desc())
-            .limit(1)
-        )
-        unread = await database.fetch_val(
-            sa.select(sa.func.count()).select_from(community_messages)
-            .where(community_messages.c.sender_id == pid)
-            .where(community_messages.c.recipient_id == uid)
-            .where(community_messages.c.is_read == False)
-        ) or 0
+        lt = c.get("last_time") or ""
+        last_at = ""
+        if lt:
+            try:
+                last_at = datetime.fromisoformat(lt.replace("Z", "+00:00")).strftime("%H:%M")
+            except Exception:
+                last_at = lt[11:16] if len(lt) >= 16 else ""
         convos.append({
-            "user_id": pid,
-            "name": partner["name"] or "Участник",
-            "avatar": partner["avatar"],
-            "last_text": last_msg["text"][:80] if last_msg else "",
-            "unread": unread,
-            "last_at": last_msg["created_at"].strftime("%H:%M") if last_msg and last_msg["created_at"] else "",
+            "user_id": oid,
+            "name": c.get("name") or "Участник",
+            "avatar": c.get("avatar"),
+            "last_text": (c.get("last_text") or "")[:80],
+            "unread": int(c.get("unread") or 0),
+            "last_at": last_at,
         })
-    convos.sort(key=lambda x: x["last_at"], reverse=True)
     return JSONResponse({"conversations": convos})
+
+
+@router.get("/community/messages/inbox-toast")
+async def inbox_dm_toast(request: Request, after_id: int = 0):
+    """Для онлайн-получателя: один «тост» о новом непрочитанном ЛС (клиент шлёт after_id из sessionStorage)."""
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"toast": None})
+    uid = user.get("primary_user_id") or user["id"]
+    try:
+        row = await database.fetch_one(
+            sa.text(
+                """
+                SELECT dm.id, dm.sender_id, dm.text, u.name
+                FROM direct_messages dm
+                JOIN users u ON u.id = dm.sender_id
+                WHERE dm.recipient_id = :uid AND dm.is_system = false AND dm.is_read = false
+                ORDER BY dm.id DESC
+                LIMIT 1
+                """
+            ),
+            {"uid": uid},
+        )
+    except Exception:
+        return JSONResponse({"toast": None})
+    if not row:
+        return JSONResponse({"toast": None})
+    mid = int(row["id"] or 0)
+    if mid <= after_id:
+        return JSONResponse({"toast": None})
+    return JSONResponse(
+        {
+            "toast": {
+                "id": mid,
+                "sender_id": int(row["sender_id"] or 0),
+                "name": (row.get("name") or "Участник"),
+                "snippet": ((row.get("text") or "")[:160]),
+                "url": f"/messages/{int(row['sender_id'] or 0)}",
+            }
+        }
+    )
 
 
 @router.delete("/community/comment/{comment_id}")

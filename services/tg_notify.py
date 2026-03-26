@@ -44,6 +44,53 @@ def _render_commit() -> str:
     return (os.getenv("RENDER_GIT_COMMIT", "") or "")[:10] or "—"
 
 
+async def notify_dm_read_button(
+    chat_id: int,
+    sender_name: str,
+    text_preview: str,
+    read_url: str,
+) -> bool:
+    """Личное сообщение в Telegram с кнопкой «Прочитать» (ссылка на чат на сайте / Mini App)."""
+    if not chat_id:
+        return False
+    tokens = _user_tokens()
+    if not tokens:
+        return False
+    url = (read_url or "").strip()
+    if not url.startswith("http"):
+        base = (getattr(settings, "SITE_URL", None) or "").rstrip("/")
+        url = f"{base}{url}" if url.startswith("/") else f"{base}/{url}"
+    name = (sender_name or "Участник").replace("<", "")
+    prev = (text_preview or "").strip()[:180]
+    msg_text = (
+        f"💬 <b>Вам пришло сообщение в личку</b>\n"
+        f"От: {name}\n"
+        f"<i>{prev}</i>"
+    )
+    payload = {
+        "chat_id": int(chat_id),
+        "text": msg_text[:_MAX_LEN],
+        "parse_mode": "HTML",
+        "disable_web_page_preview": True,
+        "reply_markup": {
+            "inline_keyboard": [[{"text": "📩 Прочитать", "url": url}]]
+        },
+    }
+    for token in tokens:
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                r = await client.post(
+                    f"https://api.telegram.org/bot{token}/sendMessage",
+                    json=payload,
+                )
+                if r.status_code == 200:
+                    return True
+                logger.warning("notify_dm_read_button failed: %s %s", r.status_code, r.text[:200])
+        except Exception as e:
+            logger.warning("notify_dm_read_button exception: %s", e)
+    return False
+
+
 async def notify_user_telegram(chat_id: int, text: str, parse_mode: str = "HTML") -> bool:
     """Сообщение пользователю по chat_id (тот же бот, что и для админа)."""
     if not chat_id:

@@ -192,10 +192,13 @@ async function pollMessages(){
 }
 {% endif %}
 
+let _msgSendLock = false;
 async function sendMsg(){
+  if(_msgSendLock) return;
   const inp = document.getElementById('msgInput');
   const text = inp?.value.trim();
   if(!text || !OTHER_ID) return;
+  _msgSendLock = true;
   inp.value = ''; inp.style.height = 'auto';
   try{
     const fd = new FormData(); fd.append('text', text);
@@ -210,6 +213,7 @@ async function sendMsg(){
       box.scrollTop = box.scrollHeight;
     }
   }catch(e){console.error(e);}
+  finally{ _msgSendLock = false; }
 }
 
 function filterConvs(q){

@@ -17,9 +17,14 @@
     <div class="app-head-actions app-head-actions--empty" aria-hidden="true"></div>
   </header>
 </div>
+<div id="appDmToast" class="app-dm-toast" style="display:none" role="status" aria-live="polite" aria-atomic="true"></div>
 <style>
 .app-head-minimal.neo-app-header.app-mobile-header-inner{grid-template-columns:auto 1fr auto;justify-content:stretch}
 .app-head-brand-wrap{width:100%;min-width:0;display:flex;justify-content:center;align-items:center}
 .app-head-brand--shimmer{font-size:clamp(13px,3.8vw,18px);font-weight:800;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;padding:0 4px}
 .app-head-actions--empty{min-width:44px;visibility:hidden;pointer-events:none}
+.app-dm-toast{position:fixed;left:10px;right:10px;top:calc(var(--app-header-h) + env(safe-area-inset-top,0px) + 6px);z-index:1020;pointer-events:none}
+.app-dm-toast-inner{pointer-events:auto;width:100%;text-align:left;border:1px solid rgba(61,212,224,.35);background:rgba(10,12,18,.94);backdrop-filter:blur(12px);color:#e8e8e8;border-radius:14px;padding:12px 14px;font-size:13px;line-height:1.4;cursor:pointer;box-shadow:0 12px 40px rgba(0,0,0,.45);font-weight:600}
+.app-dm-toast-inner:hover{border-color:rgba(255,102,208,.45)}
+.app-dm-toast-meta{display:block;font-size:11px;color:#9ca3af;font-weight:600;margin-top:4px}
 </style>

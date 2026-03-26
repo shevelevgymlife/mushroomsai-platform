@@ -2260,12 +2260,30 @@ async def send_message(request: Request, other_id: int):
         return JSONResponse({"error": "empty"}, status_code=400)
 
     try:
-        msg_id = await database.execute(sa.text(
-            "INSERT INTO direct_messages (sender_id, recipient_id, text, is_read, is_system) VALUES (:s, :r, :t, false, false) RETURNING id"
-        ), {"s": uid, "r": other_id, "t": text})
+        row = await database.fetch_one_write(
+            sa.text(
+                "INSERT INTO direct_messages (sender_id, recipient_id, text, is_read, is_system) "
+                "VALUES (:s, :r, :t, false, false) RETURNING id"
+            ).bindparams(s=uid, r=other_id, t=text)
+        )
     except Exception as e:
         print(f"[messages] send error: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
+
+    msg_id = row["id"] if row else None
+    if other_id and other_id != 0:
+        try:
+            recipient = await database.fetch_one(users.select().where(users.c.id == other_id))
+            if recipient:
+                tg_id = recipient.get("tg_id") or recipient.get("linked_tg_id")
+                if tg_id:
+                    from services.notify_user_stub import notify_user_dm_with_read_button
+
+                    sender_row = await database.fetch_one(users.select().where(users.c.id == uid))
+                    nm = (sender_row.get("name") if sender_row else None) or "Участник"
+                    await notify_user_dm_with_read_button(tg_id, nm, text, f"/messages/{uid}")
+        except Exception:
+            pass
 
     return JSONResponse({
         "ok": True,

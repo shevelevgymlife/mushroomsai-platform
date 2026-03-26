@@ -39,27 +39,45 @@ body.profile-app-shell .grain-overlay{opacity:0.22}
 .ig-me-shell{width:100%;max-width:100%;margin:0 auto;padding-bottom:8px}
 .cp-stats-row{width:100%;margin:0 0 18px;padding:0}
 .cp-stats-inner{max-width:100%!important;width:100%!important}
-.cp-profile-main-grid{display:grid;grid-template-columns:auto 1fr;gap:clamp(18px,4vw,36px);align-items:start;width:100%;margin-bottom:4px}
+.cp-profile-main-grid{display:flex;flex-direction:column;gap:14px;align-items:stretch;width:100%;margin-bottom:4px}
+.cp-profile-top-row{display:flex;flex-direction:row;align-items:flex-start;gap:12px;width:100%;max-width:100%}
+.cp-circles-horiz{flex:1;min-width:0;align-self:stretch}
 @media(max-width:640px){
-  .cp-profile-main-grid{grid-template-columns:1fr;justify-items:center;text-align:center}
   .cp-name-plan-row{justify-content:center!important}
   .cp-profile-toolbar{grid-template-columns:1fr;gap:10px}
   .cp-toolbar-cell--left,.cp-toolbar-cell--right{justify-content:center;padding-left:0;padding-right:0}
 }
-.cp-profile-col-left{display:flex;flex-direction:column;align-items:center;gap:12px;min-width:0}
+.cp-profile-col-left{display:flex;flex-direction:column;align-items:center;gap:12px;min-width:0;flex-shrink:0}
 .cp-profile-col-right{display:flex;flex-direction:column;align-items:stretch;gap:0;min-width:0;width:100%}
+.cp-profile-like-row{display:flex;align-items:center;justify-content:center;gap:10px;margin:0 0 12px;flex-wrap:wrap}
+@media(min-width:641px){.cp-profile-like-row{justify-content:flex-start}}
+.cp-profile-like-btn{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:#e8e8e8;border-radius:999px;padding:8px 16px;font-size:14px;font-weight:700;cursor:pointer;transition:background .15s,border-color .15s}
+.cp-profile-like-btn:hover{border-color:rgba(255,102,208,.45);background:rgba(255,102,208,.08)}
+.cp-profile-like-count{font-variant-numeric:tabular-nums;color:#fda4af}
+/* DM fullscreen overlay: поле ввода над нижней панелью (tabbar ~56px + safe area) */
+.cp-dm-panel{position:fixed;top:0;left:0;right:0;bottom:0;z-index:10050;display:none;flex-direction:column;background:#070708;box-sizing:border-box}
+@media(max-width:768px){
+  .cp-dm-panel{bottom:calc(56px + env(safe-area-inset-bottom,0px))}
+}
+.cp-dm-panel .cp-dm-head{flex-shrink:0;display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.07);background:#0a0a0a;padding-top:calc(14px + env(safe-area-inset-top,0px))}
+.cp-dm-panel .cp-dm-msgs{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:14px;min-height:0}
+.cp-dm-panel .cp-dm-composer{flex-shrink:0;display:flex;gap:8px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.07);background:#0a0a0a;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+@media(max-width:768px){
+  .cp-dm-panel .cp-dm-composer{padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+}
 .cp-av-clickable{cursor:pointer}
 .cp-av-clickable:focus-visible{outline:2px solid rgba(61,212,224,.5);outline-offset:4px;border-radius:50%}
 .cp-bio-under{font-size:14px;color:#ccc;line-height:1.55;max-width:100%;text-align:center;white-space:pre-wrap;word-break:break-word}
 @media(min-width:641px){.cp-bio-under{text-align:left;align-self:flex-start;max-width:min(100%,320px)}}
 .cp-link-under{text-align:center}
 @media(min-width:641px){.cp-link-under{text-align:left;align-self:flex-start}}
+.cp-bio-under--block{text-align:center}
+@media(min-width:641px){.cp-bio-under--block{text-align:left}}
+.cp-link-under--block{text-align:center}
+@media(min-width:641px){.cp-link-under--block{text-align:left}}
 .cp-name-plan-row{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:0 0 12px}
 .cp-profile-name{font-size:clamp(18px,4.5vw,22px);font-weight:700;color:#e8e8e8}
 .cp-plan-badge{display:inline-flex;align-items:center;border:1px solid rgba(61,212,224,.55);color:#ff66d0;background:rgba(255,102,208,.08);font-size:11px;padding:3px 12px;border-radius:999px;font-weight:800;letter-spacing:.02em;box-shadow:0 0 14px rgba(255,102,208,.22)}
-.cp-role-stamp{display:inline-flex;align-items:center;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;letter-spacing:.06em}
-.cp-role-stamp--admin{background:rgba(248,113,113,.12);color:#f87171;border:1px solid rgba(248,113,113,.25)}
-.cp-role-stamp--uch{background:rgba(125,211,252,.1);color:#7dd3fc;border:1px solid rgba(34,211,238,.35)}
 .cp-profile-toolbar{display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:12px 10px;width:100%;max-width:min(100%,400px);margin:0 auto 18px}
 .cp-profile-toolbar--own{grid-template-columns:1fr;max-width:min(100%,340px);justify-items:center}
 @media(max-width:640px){.cp-profile-toolbar{max-width:100%}}
@@ -202,62 +220,66 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
       </div>
 
       <div class="cp-profile-main-grid">
-        <div class="cp-profile-col-left">
-          <div id="cpAvWrap" class="ig-profile-av-wrap{% if profile.get('token_lamp_enabled') is not sameas false %} lamp-on{% endif %}{% if is_own %} cp-av-clickable{% endif %}" {% if is_own %}role="button" tabindex="0" title="Сменить фото" aria-label="Сменить фото профиля"{% endif %}>
-            {% if is_own %}
-            <input type="file" id="cpAvInput" accept="image/jpeg,image/png,image/webp" style="display:none" aria-hidden="true">
-            {% endif %}
-            {% if profile.avatar %}
-            <img src="{{ profile.avatar }}" class="ig-profile-av" alt="{{ profile.name }}">
-            {% else %}
-            <div class="ig-profile-av" style="background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:min(48px,12vw)">🍄</div>
-            {% endif %}
-          </div>
-          {% if profile.bio %}
-          <div class="cp-bio-under">{{ profile.bio }}</div>
-          {% endif %}
-          {% if profile.get('profile_link_url') %}
-          <div class="cp-link-under">
-            <a href="{{ profile.profile_link_url }}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:8px;color:#3dd4e0;font-weight:600;font-size:14px;text-decoration:underline;text-underline-offset:3px">{{ profile.get('profile_link_label') or profile.profile_link_url }}</a>
-          </div>
-          {% endif %}
-        </div>
-
-        <div class="cp-profile-col-right">
-          <div id="profileCirclesRow" class="cp-circles-row cp-circles-chaos" data-max-circles="{{ max_profile_circles|default(6) }}">
-            {% for c in circles %}
-            <a class="cp-circle-item" href="/community/profile/{{ profile_id }}/circle/{{ c.id }}">
-              <div class="cp-circle-avatar">
-                {% if c.cover_image %}<img src="{{ c.cover_image }}" alt="">
-                {% else %}<span style="font-size:20px">🍄</span>{% endif %}
-              </div>
-              <div class="cp-circle-name">{{ c.name }}</div>
-            </a>
-            {% endfor %}
-          </div>
-          <div class="cp-name-plan-row">
-            <span class="cp-profile-name">{{ profile.name or 'Участник' }}</span>
-            {% if profile_plan_name %}
-            <span class="cp-plan-badge">{{ profile_plan_name }}</span>
-            {% endif %}
-            {% if profile.role == 'admin' %}
-            <span class="cp-role-stamp cp-role-stamp--admin">Админ</span>
-            {% else %}
-            <span class="cp-role-stamp cp-role-stamp--uch">УЧ</span>
-            {% endif %}
-          </div>
-          {% if not is_own %}
-          <div class="cp-profile-toolbar" role="group" aria-label="Действия профиля">
-            <div class="cp-toolbar-cell cp-toolbar-cell--full">
-              <button type="button" class="btn-g" style="font-size:13px;padding:8px 22px" id="followBtn" onclick="doFollow()">
-                <span id="followBtnText">{{ 'Подписки ✓' if is_following else 'Подписаться' }}</span>
-              </button>
-              <button type="button" class="btn-muted" style="font-size:13px;padding:8px 22px" onclick="openDM()">Сообщение</button>
+        <div class="cp-profile-top-row">
+          <div class="cp-profile-col-left">
+            <div id="cpAvWrap" class="ig-profile-av-wrap{% if profile.get('token_lamp_enabled') is not sameas false %} lamp-on{% endif %}{% if is_own %} cp-av-clickable{% endif %}" {% if is_own %}role="button" tabindex="0" title="Сменить фото" aria-label="Сменить фото профиля"{% endif %}>
+              {% if is_own %}
+              <input type="file" id="cpAvInput" accept="image/jpeg,image/png,image/webp" style="display:none" aria-hidden="true">
+              {% endif %}
+              {% if profile.avatar %}
+              <img src="{{ profile.avatar }}" class="ig-profile-av" alt="{{ profile.name }}">
+              {% else %}
+              <div class="ig-profile-av" style="background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:min(48px,12vw)">🍄</div>
+              {% endif %}
             </div>
           </div>
-          {% endif %}
-
+          <div class="cp-circles-horiz">
+            <div id="profileCirclesRow" class="cp-circles-row cp-circles-chaos" data-max-circles="{{ max_profile_circles|default(6) }}">
+              {% for c in circles %}
+              <a class="cp-circle-item" href="/community/profile/{{ profile_id }}/circle/{{ c.id }}">
+                <div class="cp-circle-avatar">
+                  {% if c.cover_image %}<img src="{{ c.cover_image }}" alt="">
+                  {% else %}<span style="font-size:20px">🍄</span>{% endif %}
+                </div>
+                <div class="cp-circle-name">{{ c.name }}</div>
+              </a>
+              {% endfor %}
+            </div>
+          </div>
         </div>
+        {% if profile.bio %}
+        <div class="cp-bio-under cp-bio-under--block">{{ profile.bio }}</div>
+        {% endif %}
+        {% if profile.get('profile_link_url') %}
+        <div class="cp-link-under cp-link-under--block">
+          <a href="{{ profile.profile_link_url }}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:8px;color:#3dd4e0;font-weight:600;font-size:14px;text-decoration:underline;text-underline-offset:3px">{{ profile.get('profile_link_label') or profile.profile_link_url }}</a>
+        </div>
+        {% endif %}
+        <div class="cp-name-plan-row">
+          <span class="cp-profile-name">{{ profile.name or 'Участник' }}</span>
+          {% if profile_plan_name %}
+          <span class="cp-plan-badge">{{ profile_plan_name }}</span>
+          {% endif %}
+        </div>
+        <div class="cp-profile-like-row">
+          <span class="cp-profile-like-count" id="profilePageLikeCount">❤️ {{ profile_likes_count|default(0) }}</span>
+          {% if user and not is_own %}
+          <button type="button" class="cp-profile-like-btn" id="profilePageLikeBtn" onclick="toggleProfilePageLike()" aria-label="Лайк профиля">
+            <span id="profilePageLikeIcon">{{ '❤️' if viewer_liked_profile else '🤍' }}</span>
+            <span id="profilePageLikeLabel">{{ 'В избранном' if viewer_liked_profile else 'Лайк' }}</span>
+          </button>
+          {% endif %}
+        </div>
+        {% if not is_own %}
+        <div class="cp-profile-toolbar" role="group" aria-label="Действия профиля">
+          <div class="cp-toolbar-cell cp-toolbar-cell--full">
+            <button type="button" class="btn-g" style="font-size:13px;padding:8px 22px" id="followBtn" onclick="doFollow()">
+              <span id="followBtnText">{{ 'Подписки ✓' if is_following else 'Подписаться' }}</span>
+            </button>
+            <button type="button" class="btn-muted" style="font-size:13px;padding:8px 22px" onclick="openDM()">Сообщение</button>
+          </div>
+        </div>
+        {% endif %}
       </div>
 
       <div class="cp-chaos-wrap">
@@ -417,21 +439,21 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
   </div>
 </div>
 
-<!-- DM CHAT PANEL (fixed bottom-right) -->
-<div id="dmPanel" style="display:none;position:fixed;right:20px;bottom:20px;width:340px;height:460px;background:#0e0e0e;border:1px solid rgba(61,212,224,.35);border-radius:20px;box-shadow:0 8px 40px rgba(0,0,0,.7);z-index:1000;flex-direction:column;overflow:hidden">
-  <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0;background:#111">
+<!-- DM: на весь экран, строка ввода над нижней панелью -->
+<div id="dmPanel" class="cp-dm-panel" aria-hidden="true">
+  <div class="cp-dm-head">
     {% if profile.avatar %}
     <img src="{{ profile.avatar }}" class="avg" style="width:34px;height:34px" alt="">
     {% else %}
     <div class="avph" style="width:34px;height:34px;font-size:14px">🍄</div>
     {% endif %}
     <span style="font-weight:700;flex:1;font-size:14px;color:#e8e8e8">{{ profile.name or 'Участник' }}</span>
-    <button onclick="closeDM()" style="background:none;border:none;color:#666;font-size:20px;cursor:pointer;line-height:1">✕</button>
+    <button type="button" onclick="closeDM()" style="background:none;border:none;color:#888;font-size:22px;cursor:pointer;line-height:1;padding:4px" aria-label="Закрыть">✕</button>
   </div>
-  <div id="dmMsgs" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:14px;"></div>
-  <div style="display:flex;gap:8px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.07);flex-shrink:0">
-    <input type="text" id="dmInp" class="sinp" style="flex:1;font-size:13px" placeholder="Сообщение..." onkeydown="if(event.key==='Enter')sendMsg()">
-    <button class="btn-g" style="padding:10px 14px;font-size:14px" onclick="sendMsg()">→</button>
+  <div id="dmMsgs" class="cp-dm-msgs"></div>
+  <div class="cp-dm-composer">
+    <input type="text" id="dmInp" class="sinp" style="flex:1;font-size:16px" placeholder="Сообщение..." autocomplete="off" onkeydown="dmInpKeydown(event)">
+    <button type="button" class="btn-g" style="padding:10px 14px;font-size:14px" id="dmSendBtn" onclick="sendMsg()">→</button>
   </div>
 </div>
 
@@ -756,12 +778,26 @@ async function delCmt(cmtId, btn){
 // ── DM ──
 function openDM(){
   const panel=document.getElementById('dmPanel');
-  if(panel){panel.style.display='flex';loadThread();}
+  if(!panel)return;
+  panel.style.display='flex';
+  panel.setAttribute('aria-hidden','false');
+  try{document.body.style.overflow='hidden';}catch(e){}
+  loadThread();
 }
 function closeDM(){
   const panel=document.getElementById('dmPanel');
-  if(panel)panel.style.display='none';
+  if(!panel)return;
+  panel.style.display='none';
+  panel.setAttribute('aria-hidden','true');
+  try{document.body.style.overflow='';}catch(e){}
 }
+function dmInpKeydown(ev){
+  if(ev.key==='Enter'){
+    ev.preventDefault();
+    sendMsg();
+  }
+}
+let _dmSendLock=false;
 async function loadThread(){
   const r=await fetch(`/community/messages/${PROFILE_ID}`);
   const d=await r.json();
@@ -770,11 +806,33 @@ async function loadThread(){
   box.scrollTop=box.scrollHeight;
 }
 async function sendMsg(){
+  if(_dmSendLock)return;
   const inp=document.getElementById('dmInp');
-  const t=inp.value.trim();if(!t)return;
-  inp.value='';
-  const r=await fetch(`/community/message/${PROFILE_ID}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t})});
-  if(r.ok)await loadThread();
+  const t=inp&&inp.value.trim();
+  if(!t)return;
+  _dmSendLock=true;
+  try{
+    inp.value='';
+    const r=await fetch(`/community/message/${PROFILE_ID}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t})});
+    if(r.ok)await loadThread();
+  }finally{
+    _dmSendLock=false;
+  }
+}
+async function toggleProfilePageLike(){
+  if(IS_OWN)return;
+  try{
+    const r=await fetch('/community/profile/'+PROFILE_ID+'/like',{method:'POST',credentials:'same-origin'});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok)return;
+    const cnt=document.getElementById('profilePageLikeCount');
+    const icon=document.getElementById('profilePageLikeIcon');
+    const lbl=document.getElementById('profilePageLikeLabel');
+    const n=(typeof d.count==='number')?d.count:0;
+    if(cnt)cnt.textContent='❤️ '+String(n);
+    if(icon)icon.textContent=d.liked?'❤️':'🤍';
+    if(lbl)lbl.textContent=d.liked?'В избранном':'Лайк';
+  }catch(e){}
 }
 
 function esc(t){return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}

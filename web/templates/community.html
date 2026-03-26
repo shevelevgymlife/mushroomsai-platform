@@ -275,8 +275,8 @@
     </div>
     <div id="dmMsgs" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding-right:4px"></div>
     <div style="display:flex;gap:8px;margin-top:10px;flex-shrink:0">
-      <input type="text" id="dmInp" class="sinp" style="flex:1" placeholder="Сообщение..." onkeydown="if(event.key==='Enter')sendMsg()">
-      <button class="bgold" style="padding:10px 14px" onclick="sendMsg()">→</button>
+      <input type="text" id="dmInp" class="sinp" style="flex:1" placeholder="Сообщение..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendMsg();}">
+      <button type="button" class="bgold" style="padding:10px 14px" onclick="sendMsg()">→</button>
     </div>
   </div>
 </div>
@@ -459,12 +459,17 @@ async function loadThread(){
   box.innerHTML=d.messages.map(m=>`<div class="dmmsg ${m.is_mine?'me':'them'}">${esc(m.text)}<span style="font-size:10px;color:#555;display:block;margin-top:2px">${m.created_at}</span></div>`).join('');
   box.scrollTop=box.scrollHeight;
 }
+let _dmSendLock=false;
 async function sendMsg(){
+  if(_dmSendLock)return;
   const inp=document.getElementById('dmInp');
   const t=inp.value.trim();if(!t||!dmPid)return;
-  inp.value='';
-  const r=await fetch(`/community/message/${dmPid}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t})});
-  if(r.ok)await loadThread();
+  _dmSendLock=true;
+  try{
+    inp.value='';
+    const r=await fetch(`/community/message/${dmPid}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t})});
+    if(r.ok)await loadThread();
+  }finally{_dmSendLock=false;}
 }
 
 // ---- CONVERSATIONS ----

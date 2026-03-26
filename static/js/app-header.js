@@ -217,5 +217,57 @@
         goTariffIfRestricted(e);
       });
     }
+
+    var dmToastTimer = null;
+    function showDmToastToast(t) {
+      var el = document.getElementById('appDmToast');
+      if (!el || !t || !t.url) return;
+      el.style.display = 'block';
+      el.innerHTML = '';
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'app-dm-toast-inner';
+      btn.setAttribute('aria-label', 'Открыть диалог');
+      var title = document.createElement('span');
+      title.textContent = '💬 ' + (t.name || 'Сообщение');
+      var meta = document.createElement('span');
+      meta.className = 'app-dm-toast-meta';
+      meta.textContent = (t.snippet || '').slice(0, 120);
+      btn.appendChild(title);
+      btn.appendChild(meta);
+      btn.addEventListener('click', function () {
+        if (dmToastTimer) clearTimeout(dmToastTimer);
+        el.style.display = 'none';
+        window.location.href = t.url;
+      });
+      el.appendChild(btn);
+      if (dmToastTimer) clearTimeout(dmToastTimer);
+      dmToastTimer = setTimeout(function () {
+        el.style.display = 'none';
+        el.innerHTML = '';
+      }, 3000);
+    }
+    async function pollDmInboxToast() {
+      try {
+        if (!window._isLoggedIn) return;
+        var el = document.getElementById('appDmToast');
+        if (!el) return;
+        var p = window.location.pathname || '';
+        if (p.indexOf('/messages') === 0) return;
+        var last = parseInt(sessionStorage.getItem('dmToastLastId') || '0', 10) || 0;
+        var r = await fetch('/community/messages/inbox-toast?after_id=' + last, { credentials: 'same-origin' });
+        var d = await r.json();
+        if (!d || !d.toast) return;
+        var t = d.toast;
+        if (!t.id || t.id <= last) return;
+        sessionStorage.setItem('dmToastLastId', String(t.id));
+        showDmToastToast(t);
+        if (typeof refreshAppHeaderBadges === 'function') refreshAppHeaderBadges();
+      } catch (e) {}
+    }
+    if (document.getElementById('appDmToast')) {
+      setInterval(pollDmInboxToast, 12000);
+      setTimeout(pollDmInboxToast, 2500);
+    }
   });
 })();

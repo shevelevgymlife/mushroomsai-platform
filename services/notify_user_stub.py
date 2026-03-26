@@ -8,3 +8,14 @@ async def notify_user(tg_id: int, text: str) -> bool:
         return await notify_user_telegram(int(tg_id), text)
     except Exception:
         return False
+
+
+async def notify_user_dm_with_read_button(
+    tg_id: int, sender_name: str, text_preview: str, read_path: str
+) -> bool:
+    try:
+        from services.tg_notify import notify_dm_read_button
+
+        return await notify_dm_read_button(int(tg_id), sender_name, text_preview, read_path)
+    except Exception:
+        return False
