@@ -15,7 +15,7 @@
 {% block content %}
 <style>
 /* ── Layout ── */
-.db-wrap{display:flex;min-height:100vh;min-height:100dvh;min-height:calc(var(--vvh, 100vh));padding-top:72px;background:#070708;position:relative}
+.db-wrap{display:flex;min-height:100vh;min-height:100dvh;min-height:calc(var(--vvh, 100vh));padding-top:0;background:#070708;position:relative}
 .db-main{flex:1;padding:28px 80px 60px 28px;max-width:100%;overflow-x:hidden}
 @media(max-width:768px){.db-main{padding:20px 60px 60px 16px}}
 @media(max-width:480px){.db-main{padding:14px 52px 60px 14px}}
@@ -648,19 +648,9 @@ body.tg-chat-open #groupImageRow{
 
 /* ── Instagram-style dashboard (соцсеть) ── */
 .db-ig-mode #dbNav{display:none!important}
-.db-ig-mode .db-main{padding:56px 12px calc(88px + env(safe-area-inset-bottom,0px)) 12px;max-width:100%;width:100%;box-sizing:border-box}
+.db-ig-mode .db-main{padding:8px 12px calc(88px + env(safe-area-inset-bottom,0px)) 12px;max-width:100%;width:100%;box-sizing:border-box}
 @media(max-width:768px){.db-ig-mode .db-main{padding-left:12px;padding-right:12px}}
 @media(min-width:769px){.db-ig-mode .db-main{padding-left:24px;padding-right:24px}}
-.ig-dash-header{position:fixed;top:72px;left:0;right:0;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 12px 0 10px;background:rgba(6,8,16,.72);backdrop-filter:blur(25px);-webkit-backdrop-filter:blur(25px);border-bottom:1px solid rgba(61,212,224,.1);z-index:950;box-sizing:border-box;gap:8px;box-shadow:0 8px 32px rgba(0,0,0,.25)}
-.ig-dash-header-start{display:flex;align-items:center;gap:2px;flex-shrink:0}
-.ig-dash-header .ig-ham{width:44px;height:44px;border:none;border-radius:12px;background:transparent;color:#e8e8e8;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center}
-.ig-dash-header .ig-ham:hover{background:rgba(255,255,255,.06)}
-.ig-dash-back{width:44px;height:44px;border:none;border-radius:12px;background:transparent;color:#e8e8e8;cursor:pointer;display:none;align-items:center;justify-content:center;padding:0}
-.ig-dash-back:hover{background:rgba(255,255,255,.06)}
-.ig-dash-header .ig-head-brand{font-family:Syne,Inter,system-ui,sans-serif;font-weight:700;font-size:1.05rem;letter-spacing:-0.02em;background:linear-gradient(90deg,#e8e8e8,#3dd4e0);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;pointer-events:auto}
-.ig-dash-header .ig-head-brand.ig-head-title--plain{background:none;-webkit-text-fill-color:#e8e8e8;color:#e8e8e8}
-.ig-dash-header .ig-head-msg{width:44px;height:44px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:18px;color:#ccc;transition:border-color .2s,background .2s}
-.ig-dash-header .ig-head-msg:hover{border-color:rgba(61,212,224,.45);color:#3dd4e0}
 .ig-drawer-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1040;opacity:0;pointer-events:none;transition:opacity .25s ease}
 .ig-drawer-backdrop.on{opacity:1;pointer-events:auto}
 .ig-drawer{position:fixed;top:0;left:0;bottom:0;width:min(300px,88vw);max-width:100%;background:rgba(8,10,20,.88);backdrop-filter:blur(25px);-webkit-backdrop-filter:blur(25px);border-right:1px solid rgba(61,212,224,.12);z-index:1050;transform:translateX(-102%);transition:transform .28s cubic-bezier(.22,1,.36,1);display:flex;flex-direction:column;padding:calc(72px + env(safe-area-inset-top,0px)) 0 calc(20px + env(safe-area-inset-bottom,0px));box-shadow:8px 0 48px rgba(0,0,0,.55),0 0 60px rgba(61,212,224,.06)}
@@ -719,9 +709,6 @@ details.ig-drawer-details > summary{list-style:none}
 .ig-drawer-item .stroke-ico{color:#888}
 .ig-tabbar .ig-tab .stroke-ico{width:26px;height:26px;margin:0 auto;color:#777}
 .ig-tabbar .ig-tab.on .stroke-ico{color:#e8e8e8}
-.ig-ham .stroke-ico{color:#e8e8e8}
-.ig-head-msg .stroke-ico{width:22px;height:22px}
-.ig-head-row{display:flex;align-items:center;gap:6px}
 /* Полноэкранный режим приложения на телефоне: без сайтового navbar/footer */
 @media(max-width:768px){
   body.dash-ig-app nav.fixed.top-0{
@@ -730,17 +717,12 @@ details.ig-drawer-details > summary{list-style:none}
   }
   body.dash-ig-app footer{display:none!important}
   body.dash-ig-app main{min-height:100dvh;min-height:var(--vvh,100vh)}
-  body.dash-ig-app .ig-dash-header{
-    top:calc(64px + env(safe-area-inset-top,0px));
-    padding-top:0;
-    height:52px;
-  }
   body.dash-ig-app .db-wrap{
-    padding-top:calc(64px + env(safe-area-inset-top,0px))!important;
+    padding-top:0!important;
     min-height:100dvh;
     min-height:var(--vvh,100vh);
   }
-  body.dash-ig-app .db-ig-mode .db-main{padding-top:calc(52px + 8px)}
+  body.dash-ig-app .db-ig-mode .db-main{padding-top:8px}
   body.dash-ig-app .ig-drawer{padding-top:calc(12px + env(safe-area-inset-top,0px))}
 }
 .ig-act-badge{position:relative}
@@ -851,11 +833,11 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 @media(max-width:400px){
   .my-tokens-inline__grid{grid-template-columns:1fr;gap:8px}
   .my-lamp-toggle{font-size:10px;padding:3px 7px}
-  .ig-lamp-topbar{left:8px;top:calc(4rem + 52px + 4px);gap:6px}
+  .ig-lamp-topbar{left:8px;top:calc(4rem + 4px);gap:6px}
   .ig-lamp-topbar::before{width:26px;height:26px}
 }
 body.dash-ig-app .ig-lamp-topbar{
-  top:calc(64px + env(safe-area-inset-top,0px) + 52px + 6px);
+  top:calc(64px + env(safe-area-inset-top,0px) + 6px);
 }
 @keyframes igMsgIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 </style>
@@ -867,26 +849,6 @@ body.dash-ig-app .ig-lamp-topbar{
 {% set grid_posts = my_grid_posts if my_grid_posts is defined else [] %}
 <div class="db-wrap{% if ig_social %} db-ig-mode{% endif %}">
   {% if ig_social %}
-  <header class="ig-dash-header" id="igDashHeader" aria-label="Панель приложения">
-    <div class="ig-dash-header-start">
-      <button type="button" class="ig-dash-back" id="igDashBack" onclick="igDashBackClick()" aria-label="Назад" style="display:none">{{ ico('chevron_left') }}</button>
-      <button type="button" class="ig-ham" id="igDashHamburger" onclick="openDbDrawer()" aria-label="Меню">{{ ico('menu') }}</button>
-    </div>
-    <button type="button" class="ig-head-brand" id="igDashTitleBtn" style="background:none;border:none;cursor:pointer;padding:0;font:inherit;flex:1;min-width:0;text-align:center" onclick="igDashTitleClick()" title="Мой профиль"><span id="igDashTitleText">MushroomsAI</span></button>
-    <div class="ig-head-row" style="margin-left:auto">
-    {% if 'community' in vbk %}
-    <button type="button" class="ig-head-msg ig-act-badge" style="border:none;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center" title="Лайки и комментарии к вашим постам" aria-label="Активность" onclick="goSec('feed')">
-      <span style="font-size:18px;line-height:1">🔔</span>
-      <span id="dashActivityBadge" class="ig-bell-count">0</span>
-    </button>
-    {% endif %}
-    {% if 'messages' in vbk %}
-    <button type="button" class="ig-head-msg" style="border:none;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center" title="Сообщения" aria-label="Сообщения" onclick="goSec('messages')">{{ ico('message') }}</button>
-    {% elif not ('community' in vbk) %}
-    <span style="width:44px"></span>
-    {% endif %}
-    </div>
-  </header>
   <div class="ig-drawer-backdrop" id="dbDrawerBackdrop" onclick="closeDbDrawer()"></div>
   <aside class="ig-drawer" id="dbDrawer" aria-label="Меню">
     <div class="ig-drawer-head">
@@ -2311,6 +2273,9 @@ function toggleDbDrawer(){
   if(dr && dr.classList.contains('open')) closeDbDrawer();
   else openDbDrawer();
 }
+window.__appMenuClick = function(){
+  toggleDbDrawer();
+};
 function openCreatePostModal(){
   const m=document.getElementById('createPostModal');
   if(!m)return;
@@ -2334,53 +2299,6 @@ function syncIgTabbar(id){
   const map={me:'me',feed:'feed',create:'create',search:'search',shop:'shop',plan:'plan'};
   const key=map[id];
   if(key) bar.querySelector(`[data-igtab="${key}"]`)?.classList.add('on');
-}
-var IG_ROOT_SECS={me:1,feed:1,groups:1,messages:1,search:1};
-var SEC_TITLE={
-  me:'Профиль',feed:'Лента',groups:'Чаты',messages:'Входящие',search:'Участники',ai:'AI-чат',knowledge:'База знаний',
-  proextras:'Про-функции',shop:'Магазин',orders:'Заказы',plan:'Тариф',referral:'Рефералы',seller:'Товары',
-  link:'Привязка',language:'Язык',profile:'Настройки'
-};
-function updateIgDashHeader(secId){
-  const back=document.getElementById('igDashBack');
-  const ham=document.getElementById('igDashHamburger');
-  const tbtn=document.getElementById('igDashTitleBtn');
-  const ttxt=document.getElementById('igDashTitleText');
-  if(!back||!ham||!tbtn||!ttxt)return;
-  let mobile=false;
-  try{ mobile=window.matchMedia('(max-width:768px)').matches; }catch(e){ mobile=window.innerWidth<=768; }
-  const root=!!IG_ROOT_SECS[secId];
-  ham.style.display='flex';
-  if(mobile&&!root){
-    back.style.display='flex';
-    ttxt.textContent=SEC_TITLE[secId]||secId;
-    tbtn.classList.add('ig-head-title--plain');
-    tbtn.title='';
-  }else{
-    back.style.display='none';
-    ttxt.textContent='MushroomsAI';
-    tbtn.classList.remove('ig-head-title--plain');
-    tbtn.title='Мой профиль';
-  }
-}
-function igDashTitleClick(){
-  const ttxt=document.getElementById('igDashTitleText');
-  if(ttxt&&ttxt.textContent!=='MushroomsAI')return;
-  goSec('me');
-}
-function igDashBackClick(){
-  if(document.body.classList.contains('tg-group-mobile-chat')){
-    if(window.__groupChatHistoryPushed) history.back();
-    else finishGroupChatOverlayUI();
-    return;
-  }
-  const dr=document.getElementById('dbDrawer');
-  if(dr&&dr.classList.contains('open')){
-    closeDbDrawer();
-    return;
-  }
-  if(window.history.length>1) history.back();
-  else goSec('me');
 }
 function goToGroupsChatsFromBurger(){
   closeDbDrawer();
@@ -2409,7 +2327,6 @@ function goSec(id){
   if(btn)btn.classList.add('active');
   location.hash=id;
   syncIgTabbar(id);
-  updateIgDashHeader(id);
   if(id==='ai'){setTimeout(()=>{const b=document.getElementById('chatBox');if(b)b.scrollTop=b.scrollHeight},100)}
   if(id==='messages')loadDMPreview();
   if(id==='feed'){setTimeout(()=>{markActivityRead();},500);}
@@ -2458,14 +2375,14 @@ async function markActivityRead(){
   }catch(e){}
 }
 async function refreshActivityCount(){
-  const el=document.getElementById('dashActivityBadge');
+  const el=document.getElementById('cpActivityBadge');
   if(!el)return;
   try{
     const r=await fetch('/community/activity/unread-count',{credentials:'same-origin'});
     const d=await r.json();
-    const n=(d&&d.total)||0;
+    const n=(d&&d.activity_total)!=null ? (d.activity_total||0) : ((d&&d.total)||0);
     el.textContent=n>99?'99+':String(n);
-    el.style.display=n>0?'flex':'none';
+    el.classList.toggle('on', n>0);
   }catch(e){}
 }
 (function(){
@@ -3362,8 +3279,6 @@ window.addEventListener('popstate', function(){
     window.__groupChatHistoryPushed = false;
     finishGroupChatOverlayUI();
   }
-  var hh = (location.hash||'').replace('#','');
-  if(SECS.includes(hh)) updateIgDashHeader(hh);
 });
 window.__dashShellSwipeBack = function(){
   if(document.body.classList.contains('tg-group-mobile-chat')){

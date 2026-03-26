@@ -172,8 +172,6 @@ async def dashboard(request: Request):
     user = await require_auth(request)
     if not user:
         return RedirectResponse("/login")
-    if (request.query_params.get("lite") or "").strip() == "1":
-        return RedirectResponse("/dashboard-lite", status_code=302)
 
     # If secondary account slips through session, re-issue token for primary
     if user.get("primary_user_id"):
@@ -379,33 +377,8 @@ async def dashboard(request: Request):
 
 @router.get("/dashboard-lite", response_class=HTMLResponse)
 async def dashboard_lite(request: Request):
-    user = await require_auth(request)
-    if not user:
-        return RedirectResponse("/login")
-    leg = await legal_acceptance_redirect(request, user)
-    if leg:
-        return leg
-    effective_user_id = user.get("primary_user_id") or user["id"]
-    full_profile = await database.fetch_one(users.select().where(users.c.id == effective_user_id))
-    if full_profile:
-        user = dict(full_profile)
-        attach_screen_rim_prefs(user)
-    plan = await check_subscription(effective_user_id)
-    plan_info = PLANS.get(plan, PLANS["free"])
-    ref_stats = await get_referral_stats(effective_user_id)
-    response = templates.TemplateResponse(
-        "dashboard/user_lite.html",
-        {
-            "request": request,
-            "user": user,
-            "plan": plan,
-            "plan_info": plan_info,
-            "ref_stats": ref_stats,
-        },
-    )
-    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-    response.headers["Pragma"] = "no-cache"
-    return response
+    # Legacy lightweight variant is disabled: keep single dashboard view only.
+    return RedirectResponse("/dashboard", status_code=302)
 
 
 @router.post("/api/chat")
