@@ -127,3 +127,12 @@ def can_use_priority_pin(plan: str | None, user: dict[str, Any] | None) -> bool:
     if user and user.get("role") == "admin":
         return True
     return (plan or "free").lower() in ("pro", "maxi")
+
+
+def can_use_community_group_chats(user: dict[str, Any] | None, plan: str | None) -> bool:
+    """Групповые чаты: тариф Старт и выше, либо роли admin/moderator."""
+    if not user:
+        return False
+    if (user.get("role") or "user").lower() in ("admin", "moderator"):
+        return True
+    return (plan or "free").lower() in ("start", "pro", "maxi")

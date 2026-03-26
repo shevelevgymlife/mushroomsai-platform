@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block title %}Чаты — NEUROFUNGI AI{% endblock %}
+{% block body_class %} dash-ig-app{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="/static/css/community-groups.css?v=1" />
+<style>
+.sect-title{font-size:22px;font-weight:700;color:#e8e8e8;margin-bottom:20px}
+.muted{color:#666;font-size:13px}
+.db-ig-mode .db-main{padding:8px 12px calc(88px + env(safe-area-inset-bottom,0px)) 12px;max-width:100%;width:100%;box-sizing:border-box}
+@media(min-width:769px){.db-ig-mode .db-main{padding-left:24px;padding-right:24px}}
+@keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media(max-width:768px){
+  body.dash-ig-app nav.fixed.top-0{display:block!important;z-index:1200!important}
+  body.dash-ig-app footer{display:none!important}
+  body.dash-ig-app main{min-height:100dvh;min-height:var(--vvh,100vh)}
+  body.dash-ig-app .db-wrap{padding-top:0!important;min-height:100dvh;min-height:var(--vvh,100vh)}
+  body.dash-ig-app .db-ig-mode .db-main{padding-top:8px}
+  body.dash-ig-app .ig-drawer{padding-top:calc(12px + env(safe-area-inset-top,0px))}
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="db-wrap db-ig-mode">
+  <div class="db-main">
+    <input type="hidden" id="dashWalletAddr" value="{{ user.wallet_address or '' }}">
+    <input type="hidden" id="dashUserId" value="{{ effective_user_id }}">
+
+    <div class="groups-page-intro" style="margin-bottom:12px">
+      <div class="sect-title" style="margin-bottom:6px">Групповые чаты</div>
+      <p style="font-size:13px;color:#888;margin:0"><a href="/community" class="text-gold hover:underline" style="color:#3dd4e0;text-decoration:none">← Лента сообщества</a></p>
+    </div>
+
+    {% set group_list = group_list | default([]) %}
+    <section class="db-sec" id="sec-groups">
+      <div class="tg-chat-shell">
+        <aside class="tg-chat-sidebar">
+          {% if can_create_groups %}
+          <div style="padding:10px 16px 12px;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0">
+            <button type="button" class="tg-btn-new" style="width:100%;margin:0" onclick="document.getElementById('grpCreateModal').style.display='flex'">Новая группа</button>
+          </div>
+          {% endif %}
+          <div id="groupListEl" class="tg-chat-list">
+            {% if group_list %}
+            {% for g in group_list %}
+            {% set _gn = (g.name or '?') %}
+            {% set _prev = ((g.last_message_text if g.last_message_text is defined else None) or (g.get('last_message_text') if g is mapping else None) or '')[:140] %}
+            {% if not _prev and not (g.is_member if g.is_member is defined else g.get('is_member')) %}
+              {% set _prev = 'Вступите, чтобы писать' %}
+            {% elif not _prev %}
+              {% set _prev = 'Нет сообщений' %}
+            {% endif %}
+            {% set _ur = (g.unread_count if g.unread_count is defined else (g.get('unread_count') if g is mapping else 0)) or 0 %}
+            {% set _iso = (g.last_message_at if g.last_message_at is defined else (g.get('last_message_at') if g is mapping else '')) or '' %}
+            <div class="ig-g-item tg-chat-item tg-ios-row {% if g.is_member %}on{% endif %}" data-title="{{ g.name|e }}" data-gid="{{ g.id }}" data-member="{{ '1' if g.is_member else '0' }}" data-join="{{ g.join_mode or 'approval' }}" data-owner="{{ g.created_by or '' }}" data-pending="{{ '1' if g.pending_join else '0' }}" data-retention="{% if g.message_retention_days is not none %}{{ g.message_retention_days }}{% endif %}" data-img="{{ (g.image_url or '')|e }}" data-last-at="{{ _iso|e }}" onclick="selectGroupChat({{ g.id }},this)">
+              {% if g.image_url %}
+              <div class="tg-chat-av tg-chat-av--img"><img src="{{ g.image_url }}" alt="" loading="lazy"></div>
+              {% else %}
+              <div class="tg-chat-av">{{ (_gn[0:1] if _gn else '?')|e }}</div>
+              {% endif %}
+              <div class="tg-ios-mid">
+                <div class="tg-ios-title-row">
+                  <span class="tg-ios-name">{{ g.name }}</span>
+                  <span class="tg-ios-time" data-fmt-time="{{ _iso|e }}">{% if _iso|length > 16 %}{{ _iso[11:16] }}{% endif %}</span>
+                </div>
+                <div class="tg-ios-preview-row">
+                  <span class="tg-ios-preview">{{ _prev|e }}{% if g.is_member %}{% elif g.pending_join %} · заявка{% else %} · не в группе{% endif %} · {{ g.member_count or 0 }} уч.</span>
+                  <span class="tg-ios-badge {% if g.is_member and _ur > 0 %}on{% endif %}">{{ _ur if g.is_member and _ur > 0 else '' }}</span>
+                </div>
+                <div class="tg-ios-preview-row" style="margin-top:2px">
+                  <span class="tg-ios-preview" style="font-size:12px;color:#ffd84f">⭐ {{ g.member_count or 0 }}</span>
+                  <span class="tg-ios-preview" style="font-size:12px;color:#8be9ff;flex:0 0 auto">💬 {{ g.msg_count or 0 }}</span>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="tg-empty-hint" style="color:#666;text-align:center;padding:24px 16px;font-size:13px">{% if can_create_groups %}Нет групп — «Новая группа»{% else %}Пока нет групп{% endif %}</div>
+            {% endif %}
+          </div>
+        </aside>
+        <div class="tg-chat-main" style="padding:0;overflow:hidden;display:flex;flex-direction:column">
+          <div id="groupChatPlaceholder" style="flex:1;display:flex;align-items:center;justify-content:center;font-size:14px;padding:32px;text-align:center">
+            Выберите чат слева.
+          </div>
+          <div id="groupChatPanel" style="display:none;flex-direction:column;height:100%;min-height:420px;flex:1">
+            <div id="groupOwnerBar" class="tg-owner-bar" style="display:none;padding:10px 14px;font-size:12px;color:#ccc">
+              <div style="font-weight:600;color:#ff66d0;margin-bottom:6px">Заявки на вступление</div>
+              <div id="groupPendingList" style="display:flex;flex-direction:column;gap:6px"></div>
+            </div>
+            <div id="groupRetentionRow" style="display:none;padding:8px 14px;border-bottom:1px solid rgba(255,255,255,.08);align-items:center;gap:8px;flex-wrap:wrap;background:rgba(0,0,0,.35)">
+              <span style="font-size:11px;color:#888">Хранение сообщений (дней, пусто = без ограничения):</span>
+              <input type="number" id="groupRetentionInp" min="1" max="36500" placeholder="∞" class="sinp" style="max-width:110px;padding:6px 10px;font-size:12px">
+              <button type="button" class="btn-o" style="font-size:11px;padding:6px 10px" onclick="saveGroupRetention()">Сохранить</button>
+            </div>
+            <div id="groupImageRow" style="display:none;padding:8px 14px;border-bottom:1px solid rgba(255,255,255,.08);align-items:center;gap:10px;flex-wrap:wrap;background:rgba(0,0,0,.28)">
+              <span style="font-size:11px;color:#888">Фото группы:</span>
+              <input type="file" id="groupImageInp" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none" onchange="uploadGroupImage(this)">
+              <button type="button" class="btn-o" style="font-size:11px;padding:6px 10px" onclick="document.getElementById('groupImageInp').value='';document.getElementById('groupImageInp').click()">Загрузить</button>
+              <button type="button" class="btn-o" style="font-size:11px;padding:6px 10px;opacity:.85" onclick="clearGroupImage()">Сбросить</button>
+              <span id="groupImageSt" style="font-size:11px;color:#666"></span>
+            </div>
+            <div class="tg-chat-header-row">
+              <button type="button" class="btn-o" id="groupMobileBack" style="font-size:12px;padding:6px 10px;display:none;flex-shrink:0" onclick="if(window.__groupChatHistoryPushed){history.back();}else{finishGroupChatOverlayUI();}">← Чаты</button>
+              <div id="groupChatTitle"></div>
+              <span id="groupTypingNow" style="display:none;font-size:11px;color:#9ca3af;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+              <input id="groupAddressedSearch" class="sinp" style="max-width:150px;font-size:11px;padding:6px 8px;display:none" placeholder="Поиск участника">
+              <select id="groupAddressedSelect" class="sinp" style="max-width:200px;font-size:12px;padding:6px 10px;display:none"></select>
+              <span id="groupAddressedUnread" style="display:none;font-size:11px;color:#8be9ff;white-space:nowrap"></span>
+              <button type="button" class="btn-o" id="groupNotifyBtn" style="font-size:12px;padding:6px 12px;display:none;flex-shrink:0" onclick="toggleGroupNotifications()">Уведомления: ВКЛ</button>
+              <button type="button" class="btn-o" id="groupLeaveBtn" style="font-size:12px;padding:6px 12px;display:none;flex-shrink:0" onclick="leaveSelectedGroup()">Уйти</button>
+              <button type="button" class="btn-o" id="groupJoinBtn" style="font-size:12px;padding:6px 12px;display:none;flex-shrink:0" onclick="joinSelectedGroup()">Вступить</button>
+            </div>
+            <div id="groupPinnedRow" style="display:none;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.08);font-size:12px;color:#ffd84f;cursor:pointer"></div>
+            <div id="groupMsgBox" class="ig-g-msg-wrap" style="flex:1;min-height:200px"></div>
+            <div id="groupReplyBar">
+              <span class="group-reply-text" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+              <button type="button" class="btn-o" style="font-size:11px;padding:4px 10px;flex-shrink:0" onclick="clearGroupReply()">✕</button>
+            </div>
+            <div class="tg-chat-input-row app-input-row">
+              <input type="file" id="groupChatImgInp" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none" onchange="onGroupChatPickImage()">
+              <button type="button" class="btn-o" style="padding:8px 10px;font-size:17px;flex-shrink:0;border-radius:50%;width:40px;height:40px" title="Фото" onclick="document.getElementById('groupChatImgInp').value='';document.getElementById('groupChatImgInp').click()">＋</button>
+              <button type="button" id="groupMicBtn" class="btn-o" style="padding:8px 10px;font-size:16px;flex-shrink:0;border-radius:50%;width:40px;height:40px" title="Голосовое до 30 сек: нажмите, затем отправьте кнопкой →" onclick="toggleGroupVoiceRecord()">🎤</button>
+              <span id="groupVoiceHint">● Запись…</span>
+              <input type="text" id="groupMsgInput" class="sinp" placeholder="Сообщение…" disabled onkeydown="if(event.key==='Enter'){event.preventDefault();sendGroupChatMessage();}">
+              <button type="button" class="btn-g" id="groupMsgSend" style="padding:10px 16px" disabled onclick="sendGroupChatMessage()">→</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div id="grpCreateModal" style="display:none;position:fixed;inset:0;z-index:10020;align-items:center;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(4px)" onclick="if(event.target===this)this.style.display='none'">
+  <div class="card" style="max-width:420px;width:92%;padding:26px;border-color:rgba(61,212,224,.25)" onclick="event.stopPropagation()">
+    <div style="font-weight:700;margin-bottom:6px;color:#e8e8e8;font-size:17px">Новая группа</div>
+    <p class="muted" style="font-size:13px;margin-bottom:14px">Все пользователи смогут вступить и писать в чате.</p>
+    <input id="grpNameInp" class="sinp" placeholder="Название" style="margin-bottom:10px" maxlength="120">
+    <textarea id="grpDescInp" class="sinp" placeholder="Описание (необязательно)" style="min-height:80px;resize:vertical;margin-bottom:16px" maxlength="2000"></textarea>
+    <div style="display:flex;gap:10px">
+      <button type="button" class="btn-o" style="flex:1" onclick="document.getElementById('grpCreateModal').style.display='none'">Отмена</button>
+      <button type="button" class="btn-g" style="flex:1" onclick="createGroupSubmit()">Создать</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+window.__canCreateGroups = {{ can_create_groups | tojson }};
+window.__canManageGroupSettings = {{ can_manage_group_settings | tojson }};
+function showNotification(msg, type){
+  type = type || 'info';
+  var colors={info:'rgba(61,212,224,.92)',error:'rgba(239,68,68,.92)',success:'rgba(74,222,128,.92)'};
+  var n=document.createElement('div');
+  n.style.cssText='position:fixed;top:20px;right:90px;z-index:9999;background:'+(colors[type]||colors.info)+';color:#000;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:700;box-shadow:0 4px 20px rgba(0,0,0,.5);animation:fadein .3s ease;max-width:280px';
+  n.textContent=msg;document.body.appendChild(n);
+  setTimeout(function(){ if(n.parentNode) n.remove(); },3500);
+}
+function esc(t){return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}
+function escAttr(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;')}
+function closeDbDrawer(){ if(typeof closeAppGlobalDrawer==='function')closeAppGlobalDrawer(); }
+</script>
+<script src="/static/js/community-groups-chat.js?v=2"></script>
+{% endblock %}

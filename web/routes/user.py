@@ -24,7 +24,7 @@ from services.referral_service import get_referral_stats
 from services.subscription_service import check_subscription, PLANS
 from ai.openai_client import chat_with_ai
 from services.subscription_service import can_ask_question, increment_question_count
-from services.plan_access import plan_allowed_block_keys, is_platform_operator
+from services.plan_access import plan_allowed_block_keys, is_platform_operator, can_use_community_group_chats
 from services.community_group_queries import fetch_community_group_row
 from services.legal import legal_acceptance_redirect
 from services.notify_admin import notify_admin_telegram
@@ -663,6 +663,23 @@ def _effective_user_id(user: dict) -> int:
         except (TypeError, ValueError):
             pass
     return int(user["id"])
+
+
+async def _reject_if_group_chats_forbidden(user: dict | None) -> JSONResponse | None:
+    if not user:
+        return JSONResponse({"error": "auth required", "ok": False}, status_code=401)
+    uid = _effective_user_id(user)
+    plan = await check_subscription(uid)
+    if can_use_community_group_chats(user, plan):
+        return None
+    return JSONResponse(
+        {
+            "ok": False,
+            "error": "Групповые чаты доступны с тарифа «Старт». Оформите подписку в разделе «Подписка».",
+            "redirect": "/subscriptions",
+        },
+        status_code=403,
+    )
 
 
 async def _account_family_ids(root_user_id: int) -> set[int]:
@@ -1650,7 +1667,7 @@ async def fetch_community_groups_for_user(uid: int) -> list[dict]:
 
 @router.get("/community/chats", response_class=HTMLResponse)
 async def community_chats_browser_page(request: Request):
-    """Страница со списком групповых чатов (данные из БД; для меню «Чаты» в бургере)."""
+    """Полноценные групповые чаты (как в кабинете); доступ: Старт+ или admin/moderator."""
     user = await require_auth(request)
     if not user:
         return RedirectResponse("/login?next=/community/chats")
@@ -1658,10 +1675,24 @@ async def community_chats_browser_page(request: Request):
     if leg:
         return leg
     uid = _effective_user_id(user)
-    groups = await fetch_community_groups_for_user(uid)
+    plan = await check_subscription(uid)
+    if not can_use_community_group_chats(user, plan):
+        return RedirectResponse("/subscriptions", status_code=302)
+    group_list = await fetch_community_groups_for_user(uid)
+    can_create_groups = is_platform_operator(user)
+    can_manage_group_settings = is_platform_operator(user)
+    visible_block_keys = await compute_visible_blocks(uid, plan)
     return templates.TemplateResponse(
-        "community_chats_browser.html",
-        {"request": request, "user": user, "groups": groups},
+        "community_chats_full.html",
+        {
+            "request": request,
+            "user": user,
+            "group_list": group_list,
+            "effective_user_id": uid,
+            "can_create_groups": can_create_groups,
+            "can_manage_group_settings": can_manage_group_settings,
+            "visible_block_keys": visible_block_keys,
+        },
     )
 
 
@@ -1670,6 +1701,9 @@ async def community_groups_list_api(request: Request):
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
+    rej = await _reject_if_group_chats_forbidden(user)
+    if rej:
+        return rej
     uid = _effective_user_id(user)
     out = await fetch_community_groups_for_user(uid)
     return JSONResponse({"groups": out})
@@ -1680,6 +1714,9 @@ async def community_group_create(request: Request):
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required", "ok": False}, status_code=401)
+    rej = await _reject_if_group_chats_forbidden(user)
+    if rej:
+        return rej
     uid = _effective_user_id(user)
     if not is_platform_operator(user):
         return JSONResponse(
@@ -1769,6 +1806,9 @@ async def community_group_join(request: Request, group_id: int):
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
+    rej = await _reject_if_group_chats_forbidden(user)
+    if rej:
+        return rej
     uid = _effective_user_id(user)
     g = await fetch_community_group_row(group_id)
     if not g:
@@ -1820,6 +1860,9 @@ async def community_group_leave(request: Request, group_id: int):
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
+    rej = await _reject_if_group_chats_forbidden(user)
+    if rej:
+        return rej
     uid = _effective_user_id(user)
     await database.execute(
         community_group_members.delete()
@@ -1834,6 +1877,9 @@ async def community_group_notifications_toggle(request: Request, group_id: int):
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
+    rej = await _reject_if_group_chats_forbidden(user)
+    if rej:
+        return rej
     uid = _effective_user_id(user)
     if not await _ensure_community_group_member(group_id, uid):
         return JSONResponse({"error": "not a member"}, status_code=403)
@@ -1856,6 +1902,9 @@ async def community_group_participants(request: Request, group_id: int, q: str =
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
+    rej = await _reject_if_group_chats_forbidden(user)
+    if rej:
+        return rej
     uid = _effective_user_id(user)
     if not await _ensure_community_group_member(group_id, uid):
         return JSONResponse({"error": "not a member"}, status_code=403)
@@ -1881,6 +1930,9 @@ async def community_group_join_requests_list(request: Request, group_id: int):
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
+    rej = await _reject_if_group_chats_forbidden(user)
+    if rej:
+        return rej
     uid = _effective_user_id(user)
     g = await fetch_community_group_row(group_id)
     if not g:
@@ -1910,6 +1962,9 @@ async def community_group_join_approve(request: Request, group_id: int, request_
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
+    rej = await _reject_if_group_chats_forbidden(user)
+    if rej:
+        return rej
     uid = _effective_user_id(user)
     g = await fetch_community_group_row(group_id)
     if not g:
@@ -1943,6 +1998,9 @@ async def community_group_join_reject(request: Request, group_id: int, request_i
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
+    rej = await _reject_if_group_chats_forbidden(user)
+    if rej:
+        return rej
     uid = _effective_user_id(user)
     g = await fetch_community_group_row(group_id)
     if not g:
@@ -1963,6 +2021,9 @@ async def community_group_settings(request: Request, group_id: int):
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
+    rej = await _reject_if_group_chats_forbidden(user)
+    if rej:
+        return rej
     uid = _effective_user_id(user)
     g = await fetch_community_group_row(group_id)
     if not g:
@@ -2040,6 +2101,9 @@ async def community_group_mark_read(request: Request, group_id: int):
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
+    rej = await _reject_if_group_chats_forbidden(user)
+    if rej:
+        return rej
     uid = _effective_user_id(user)
     if not await _ensure_community_group_member(group_id, uid):
         return JSONResponse({"error": "not a member"}, status_code=403)
@@ -2066,6 +2130,9 @@ async def community_group_upload_image(request: Request, group_id: int, file: Up
     user = await require_auth(request)
     if not user:
         return JSONResponse({"ok": False, "error": "auth required"}, status_code=401)
+    rej = await _reject_if_group_chats_forbidden(user)
+    if rej:
+        return rej
     uid = _effective_user_id(user)
     g = await fetch_community_group_row(group_id)
     if not g:
@@ -2133,6 +2200,9 @@ async def community_group_messages_get(request: Request, group_id: int):
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
+    rej = await _reject_if_group_chats_forbidden(user)
+    if rej:
+        return rej
     uid = _effective_user_id(user)
     if not await _ensure_community_group_member(group_id, uid):
         return JSONResponse({"error": "not a member"}, status_code=403)
@@ -2332,6 +2402,9 @@ async def community_group_typing_ping(request: Request, group_id: int):
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
+    rej = await _reject_if_group_chats_forbidden(user)
+    if rej:
+        return rej
     uid = _effective_user_id(user)
     if not await _ensure_community_group_member(group_id, uid):
         return JSONResponse({"error": "not a member"}, status_code=403)
@@ -2356,6 +2429,9 @@ async def community_group_message_post(request: Request, group_id: int):
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
+    rej = await _reject_if_group_chats_forbidden(user)
+    if rej:
+        return rej
     uid = _effective_user_id(user)
     if not await _ensure_community_group_member(group_id, uid):
         return JSONResponse({"error": "not a member"}, status_code=403)
@@ -2538,6 +2614,9 @@ async def community_group_message_like_toggle(request: Request, group_id: int, m
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
+    rej = await _reject_if_group_chats_forbidden(user)
+    if rej:
+        return rej
     uid = _effective_user_id(user)
     if not await _ensure_community_group_member(group_id, uid):
         return JSONResponse({"error": "not a member"}, status_code=403)
@@ -2578,6 +2657,9 @@ async def community_group_message_delete(request: Request, group_id: int, messag
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
+    rej = await _reject_if_group_chats_forbidden(user)
+    if rej:
+        return rej
     uid = _effective_user_id(user)
     if not await _ensure_community_group_member(group_id, uid):
         return JSONResponse({"error": "not a member"}, status_code=403)

@@ -3,6 +3,7 @@
 {% set eff_uid = user.primary_user_id or user.id %}
 {% set vbk = visible_block_keys if visible_block_keys is defined else ['ai_chat','messages','community','shop','profile_photo','posts','tariffs','referral','knowledge_base','pro_telegram','pro_pin_info','seller_marketplace'] %}
 {% set is_locked_free = ((user.subscription_plan or 'free') == 'free') and ((user.role or 'user') not in ['admin','moderator']) %}
+{% set show_community_group_chats = ((user.role or 'user')|lower in ['admin','moderator']) or ((user.subscription_plan or 'free')|lower in ['start','pro','maxi']) %}
 <div class="ig-drawer-backdrop" id="appGlobalDrawerBackdrop" onclick="closeAppGlobalDrawer()"></div>
 <aside class="ig-drawer" id="appGlobalDrawer" aria-label="Меню">
   <div class="ig-drawer-head">
@@ -25,8 +26,7 @@
     <a href="/community/profile/{{ eff_uid|int }}" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('grid') }}</span><span class="lbl">Мой профиль</span></a>
     <a href="/community" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('feed') }}</span><span class="lbl">Лента</span></a>
     {% endif %}
-    {# Чаты: видны и на бесплатном тарифе; данные групп в БД не трогались #}
-    {% if 'community' in vbk %}
+    {% if show_community_group_chats %}
     <a href="/community/chats" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('message_sq') }}</span><span class="lbl">Чаты</span></a>
     {% endif %}
     {% if not is_locked_free %}
