@@ -197,6 +197,54 @@ def verify_telegram_webapp_init_data(init_data: str) -> dict[str, Any]:
     return parsed
 
 
+def verify_telegram_auth(data: dict[str, Any]) -> bool:
+    """
+    Telegram Login Widget verification (web auth via data-auth-url).
+    Expects query params dict that contains `hash` and auth fields.
+    """
+    if not isinstance(data, dict):
+        return False
+    provided_hash = str(data.pop("hash", "") or "").strip()
+    if not provided_hash:
+        return False
+    try:
+        check = []
+        for k in sorted(data.keys()):
+            v = data[k]
+            if v is None:
+                continue
+            check.append(f"{k}={v}")
+        data_check_string = "\n".join(check)
+        secret = hashlib.sha256((settings.TELEGRAM_TOKEN or "").encode("utf-8")).digest()
+        computed = hmac.new(secret, data_check_string.encode("utf-8"), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(computed, provided_hash):
+            return False
+        # Optional auth_date freshness check (24h)
+        auth_date_raw = data.get("auth_date")
+        if auth_date_raw is not None:
+            auth_date = int(auth_date_raw)
+            if time.time() - auth_date > 86400:
+                return False
+        return True
+    except Exception:
+        return False
+
+
+def verify_telegram_miniapp(init_data: str) -> dict[str, Any] | None:
+    """
+    Backward-compatible wrapper used by existing auth routes.
+    Returns parsed `user` dict on success, otherwise None.
+    """
+    try:
+        parsed = verify_telegram_webapp_init_data(init_data)
+        user = parsed.get("user")
+        if isinstance(user, dict) and user.get("id") is not None:
+            return user
+    except Exception:
+        return None
+    return None
+
+
 async def telegram_webapp_login(
     init_data: str,
     *,
