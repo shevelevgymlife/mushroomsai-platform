@@ -38,9 +38,24 @@
     } catch (e) {}
   }
 
+  /** Главный бот: в Telegram Mini App — сразу в чат с ботом; в браузере — переход на t.me */
+  function openMainTelegramBot() {
+    closeAppGlobalDrawer();
+    var u = "https://t.me/mushrooms_ai_bot";
+    var tw = window.Telegram && window.Telegram.WebApp;
+    if (tw && typeof tw.openTelegramLink === "function") {
+      try {
+        tw.openTelegramLink(u);
+        return;
+      } catch (e) {}
+    }
+    window.location.href = u;
+  }
+
   window.closeAppGlobalDrawer = closeAppGlobalDrawer;
   window.openAppGlobalDrawer = openAppGlobalDrawer;
   window.toggleAppGlobalDrawer = toggleAppGlobalDrawer;
+  window.openMainTelegramBot = openMainTelegramBot;
   window.__appMenuClick = function () {
     toggleAppGlobalDrawer();
   };
