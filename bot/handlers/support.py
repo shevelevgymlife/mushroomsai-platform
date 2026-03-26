@@ -31,6 +31,17 @@ async def support_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     return WAITING_SUPPORT_MSG
 
 
+async def support_text_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Запуск поддержки через кнопку клавиатуры."""
+    await update.message.reply_text(
+        "📝 <b>Написать в поддержку</b>\n\n"
+        "Опишите ваш вопрос или проблему — мы ответим вам как можно скорее.\n\n"
+        "Или /cancel для отмены.",
+        parse_mode="HTML",
+    )
+    return WAITING_SUPPORT_MSG
+
+
 async def receive_support_msg(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user = update.effective_user
     text = update.message.text
@@ -78,7 +89,10 @@ async def cancel_support(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 def get_support_conversation() -> ConversationHandler:
     return ConversationHandler(
-        entry_points=[CallbackQueryHandler(support_start, pattern=r"^support$")],
+        entry_points=[
+            CallbackQueryHandler(support_start, pattern=r"^support$"),
+            MessageHandler(filters.Regex(r"^🆘 Тех\. поддержка$"), support_text_start),
+        ],
         states={
             WAITING_SUPPORT_MSG: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, receive_support_msg),

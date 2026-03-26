@@ -82,9 +82,9 @@ def main_keyboard(site_url: str):
         [KeyboardButton("Консультация"), KeyboardButton("Рецепты")],
         [KeyboardButton("Магазин"), KeyboardButton("О грибах")],
         [KeyboardButton("Сообщество"), KeyboardButton("Тарифы и подписки")],
-        [KeyboardButton("Написать нам")],
+        [KeyboardButton("🆘 Тех. поддержка")],
     ]
-    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, is_persistent=True)
 
 
 def main_inline_keyboard(site_url: str):
