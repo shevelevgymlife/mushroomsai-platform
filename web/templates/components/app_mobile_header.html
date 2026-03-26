@@ -14,7 +14,9 @@
       {% else %}
       <a href="/community" class="app-head-brand app-head-brand--center" title="NEUROFUNGI AI">NEUROFUNGI AI</a>
       {% endif %}
-      <span class="app-head-role-stamp{% if user.role == 'admin' %} app-head-role-stamp--admin{% else %} app-head-role-stamp--uch{% endif %}" title="Статус в сообществе">{% if user.role == 'admin' %}Админ{% else %}УЧ{% endif %}</span>
+      {% if user.role == 'admin' %}
+      <span class="app-head-role-stamp app-head-role-stamp--admin" title="Статус в сообществе">Админ</span>
+      {% endif %}
     </div>
     {% if not is_locked_free %}
     <div class="app-head-actions">

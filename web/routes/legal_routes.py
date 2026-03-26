@@ -85,4 +85,11 @@ async def legal_accept_submit(
         .where(users.c.id == uid)
         .values(legal_accepted_at=datetime.utcnow(), legal_docs_version=LEGAL_DOCS_VERSION)
     )
+    refreshed = await database.fetch_one(users.select().where(users.c.id == uid))
+    if refreshed:
+        role = (refreshed.get("role") or "user").lower()
+        plan = (refreshed.get("subscription_plan") or "free").lower()
+        needs_choice = bool(refreshed.get("needs_tariff_choice"))
+        if role not in ("admin", "moderator") and plan == "free" and needs_choice:
+            return RedirectResponse("/onboarding/tariff", status_code=302)
     return RedirectResponse(dest, status_code=302)
