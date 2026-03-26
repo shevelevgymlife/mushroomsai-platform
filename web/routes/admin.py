@@ -632,6 +632,29 @@ async def set_user_permissions(request: Request, user_id: int):
         users.update().where(users.c.id == user_id).values(role="admin")
     )
 
+    notify_uid = int(target.get("primary_user_id") or user_id)
+    notify_tg_id = None
+    try:
+        notify_user_row = await database.fetch_one(users.select().where(users.c.id == notify_uid))
+        if notify_user_row:
+            notify_tg_id = notify_user_row.get("tg_id") or notify_user_row.get("linked_tg_id")
+        if not notify_tg_id:
+            fam = await database.fetch_one(
+                users.select()
+                .where(users.c.primary_user_id == notify_uid)
+                .where(
+                    sqlalchemy.or_(
+                        users.c.tg_id.is_not(None),
+                        users.c.linked_tg_id.is_not(None),
+                    )
+                )
+                .order_by(users.c.id.asc())
+            )
+            if fam:
+                notify_tg_id = fam.get("tg_id") or fam.get("linked_tg_id")
+    except Exception:
+        logger.exception("Failed to resolve telegram recipient for user_id=%s", user_id)
+
     now_unlimited = bool(perms.get("can_ai_unlimited"))
     if now_unlimited and not prev_unlimited:
         sender_id = admin.get("primary_user_id") or admin.get("id")
@@ -644,7 +667,7 @@ async def set_user_permissions(request: Request, user_id: int):
             await database.execute(
                 direct_messages.insert().values(
                     sender_id=sender_id,
-                    recipient_id=user_id,
+                    recipient_id=notify_uid,
                     text=text,
                     is_read=False,
                     is_system=True,
@@ -653,15 +676,42 @@ async def set_user_permissions(request: Request, user_id: int):
         except Exception:
             logger.exception("Failed to store AI unlimited system notification for user_id=%s", user_id)
         try:
-            tg_id = target.get("tg_id") or target.get("linked_tg_id")
-            if tg_id:
+            if notify_tg_id:
                 from services.notify_user_stub import notify_user
                 await notify_user(
-                    int(tg_id),
+                    int(notify_tg_id),
                     "Системные оповещения\n\nВам открыт безлимитный доступ к AI. Теперь лимиты на вопросы сняты.",
                 )
         except Exception:
             logger.exception("Failed to send AI unlimited telegram notification for user_id=%s", user_id)
+    elif prev_unlimited and not now_unlimited:
+        sender_id = admin.get("primary_user_id") or admin.get("id")
+        text = (
+            "Системные оповещения\n\n"
+            "Безлимитный доступ к AI отключен.\n"
+            "Доступен лимит: 5 сообщений в день."
+        )
+        try:
+            await database.execute(
+                direct_messages.insert().values(
+                    sender_id=sender_id,
+                    recipient_id=notify_uid,
+                    text=text,
+                    is_read=False,
+                    is_system=True,
+                )
+            )
+        except Exception:
+            logger.exception("Failed to store AI unlimited revoke notification for user_id=%s", user_id)
+        try:
+            if notify_tg_id:
+                from services.notify_user_stub import notify_user
+                await notify_user(
+                    int(notify_tg_id),
+                    "Системные оповещения\n\nБезлимитный доступ к AI отключен. Доступен лимит: 5 сообщений в день.",
+                )
+        except Exception:
+            logger.exception("Failed to send AI unlimited revoke telegram notification for user_id=%s", user_id)
 
     return JSONResponse({"ok": True, "permissions": perms})
 

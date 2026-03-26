@@ -26,13 +26,12 @@ BTN_SUPPORT = "🆘 Тех. поддержка"
 
 async def _shop_handler(update, context):
     site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
-    app_url = site + "/dashboard#plan"
     await update.message.reply_text(
         "🛍 <b>Маркет плейс NEUROFUNGI</b>\n\n"
         "Доступно только внутри приложения после регистрации и подписки <b>Старт</b>.\n\n"
         "В маркет плейсе у каждого товара есть описание, комментарии, отзывы и рейтинг.",
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🍄 Открыть приложение (Старт)", web_app=WebAppInfo(url=app_url))],
+            [InlineKeyboardButton("🍄 Открыть приложение по подписке Старт", web_app=WebAppInfo(url=site))],
         ]),
         parse_mode="HTML",
     )

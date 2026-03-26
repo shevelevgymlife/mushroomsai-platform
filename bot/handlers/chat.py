@@ -118,14 +118,13 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 async def _send_limit_reached(update: Update):
     site = (settings.SITE_URL or "").rstrip("/")
-    app_url = site + "/dashboard#plan"
     await update.message.reply_text(
         "💬 Вы использовали все 5 бесплатных вопросов на сегодня.\n\n"
         "Получить неограниченное количество запросов можно по подписке Старт внутри приложения.",
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton(
-                "🍄 Открыть приложение — Старт",
-                web_app=WebAppInfo(url=app_url),
+                "🍄 Открыть приложение по подписке Старт",
+                web_app=WebAppInfo(url=(site or "https://mushroomsai.onrender.com")),
             )],
         ]),
     )
