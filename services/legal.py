@@ -22,8 +22,6 @@ async def legal_acceptance_redirect(request: Request, user: dict[str, Any] | Non
     """Если пользователь не принял актуальную редакцию — редирект на /legal/accept."""
     if not user:
         return None
-    if user.get("role") == "admin":
-        return None
     from db.database import database
     import sqlalchemy as sa
 

@@ -4,6 +4,9 @@
 <div class="pt-28 pb-20 px-4 min-h-screen bg-bg neo-app-surface">
   <article class="max-w-3xl mx-auto prose prose-invert prose-sm sm:prose-base prose-headings:font-display prose-a:text-gold">
     <p class="text-xs text-muted not-prose mb-6">Редакция {{ legal_version }}. Публикация на сайте: 23.03.2025.</p>
+    {% if user and user.get('legal_accepted_at') and user.get('legal_docs_version') == legal_version %}
+    <p class="not-prose inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs font-semibold mb-5">ПОДПИСАНО МНОЮ · {{ user.legal_accepted_at.strftime('%d.%m.%Y %H:%M') }}</p>
+    {% endif %}
     <h1>Пользовательское соглашение</h1>
     <p>Настоящее Пользовательское соглашение (далее — «Соглашение») устанавливает правила использования интернет-сервиса <strong>NEUROFUNGI AI</strong> (далее — «Сервис», «Платформа», «Администрация», «мы») — онлайн-площадки, объединяющей <strong>социальные функции</strong> (профили, публикации, лента, личные и групповые сообщения), <strong>интеллектуального ассистента на базе ИИ</strong>, <strong>маркетплейс</strong> (размещение и заказ товаров при наличии соответствующего функционала), а также опциональное <strong>подключение криптовалютного кошелька</strong> (например, MetaMask) для отображения балансов и инициирования транзакций в блокчейне с вашей стороны.</p>
     <p><strong>Используя Сервис, вы подтверждаете, что вам исполнилось 18 лет, ознакомились с настоящим Соглашением и с <a href="/legal/privacy">Политикой конфиденциальности</a> и принимаете их.</strong> Если вы не согласны — не используйте Сервис.</p>

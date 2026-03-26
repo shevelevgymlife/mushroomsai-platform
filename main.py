@@ -1,6 +1,7 @@
 import logging
 import os
 import asyncio
+import urllib.parse
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -24,6 +25,8 @@ from web.routes.seller import router as seller_router
 from web.translations import TRANSLATIONS, parse_accept_language, SUPPORTED_LANGS
 from services.heavy_startup import run_heavy_startup
 from web.templates_utils import Jinja2Templates
+from auth.session import get_user_from_request
+from services.legal import legal_acceptance_redirect
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -204,6 +207,58 @@ p{font-size:14px;color:#888;margin-bottom:36px;line-height:1.6}
             media_type="text/html",
             headers={"Retry-After": "6"},
         )
+
+
+class LegalAcceptanceGateMiddleware(BaseHTTPMiddleware):
+    _SKIP_EXACT = frozenset({
+        "/",
+        "/login",
+        "/logout",
+        "/health",
+        "/healthz",
+        "/favicon.ico",
+        "/robots.txt",
+        "/sitemap.xml",
+        "/legal/accept",
+        "/legal/terms",
+        "/legal/privacy",
+    })
+    _SKIP_PREFIX = (
+        "/static/",
+        "/media/",
+        "/auth/",
+        "/webhooks/",
+    )
+
+    @staticmethod
+    def _wants_json(request: Request) -> bool:
+        accept = (request.headers.get("accept") or "").lower()
+        return "application/json" in accept or request.url.path.startswith("/api/")
+
+    async def dispatch(self, request: Request, call_next):
+        path = request.url.path or "/"
+        if path in self._SKIP_EXACT or any(path.startswith(p) for p in self._SKIP_PREFIX):
+            return await call_next(request)
+
+        user = await get_user_from_request(request)
+        if not user:
+            return await call_next(request)
+
+        leg = await legal_acceptance_redirect(request, user)
+        if not leg:
+            return await call_next(request)
+
+        if self._wants_json(request):
+            next_url = urllib.parse.quote(path, safe="")
+            return JSONResponse(
+                {
+                    "error": "legal_required",
+                    "message": "Требуется принятие пользовательского соглашения и политики конфиденциальности.",
+                    "redirect": f"/legal/accept?next={next_url}",
+                },
+                status_code=403,
+            )
+        return leg
 
 
 # -------------------- LIFESPAN --------------------
@@ -398,6 +453,7 @@ app.add_middleware(
 
 app.add_middleware(LanguageMiddleware)
 app.add_middleware(ProbeBlockMiddleware)
+app.add_middleware(LegalAcceptanceGateMiddleware)
 app.add_middleware(StartupGateMiddleware)
 
 # Static

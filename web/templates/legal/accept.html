@@ -22,9 +22,15 @@
     </div>
     <form method="post" action="/legal/accept" class="space-y-5">
       <input type="hidden" name="next" value="{{ next_url }}">
-      <label class="flex items-start gap-3 cursor-pointer text-sm text-text">
-        <input type="checkbox" name="accept" value="1" class="mt-1 rounded border-border text-gold focus:ring-gold/40" required>
-        <span>Я принимаю условия Пользовательского соглашения и Политики конфиденциальности в актуальной редакции.</span>
+      <label class="flex items-start gap-3 cursor-pointer text-sm text-text p-3 rounded-xl border border-border bg-bg/40">
+        <input
+          type="checkbox"
+          name="accept"
+          value="1"
+          class="mt-0.5 h-7 w-7 rounded-md border-2 border-gold/70 text-gold focus:ring-2 focus:ring-gold/50 focus:ring-offset-0"
+          required
+        >
+        <span class="leading-relaxed">Я принимаю условия Пользовательского соглашения и Политики конфиденциальности в актуальной редакции.</span>
       </label>
       <button type="submit" class="w-full py-3.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-colors">
         Продолжить

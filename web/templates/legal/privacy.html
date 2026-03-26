@@ -4,6 +4,9 @@
 <div class="pt-28 pb-20 px-4 min-h-screen bg-bg neo-app-surface">
   <article class="max-w-3xl mx-auto prose prose-invert prose-sm sm:prose-base prose-headings:font-display prose-a:text-gold">
     <p class="text-xs text-muted not-prose mb-6">Редакция {{ legal_version }}. Публикация на сайте: 23.03.2025.</p>
+    {% if user and user.get('legal_accepted_at') and user.get('legal_docs_version') == legal_version %}
+    <p class="not-prose inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs font-semibold mb-5">ПОДПИСАНО МНОЮ · {{ user.legal_accepted_at.strftime('%d.%m.%Y %H:%M') }}</p>
+    {% endif %}
     <h1>Политика конфиденциальности</h1>
     <p>Настоящая Политика описывает, как <strong>NEUROFUNGI AI</strong> (далее — «Сервис», «мы») обрабатывает персональные данные в связи с работой <strong>социальной сети</strong> (профили, публикации, фото, тексты, комментарии, переписка), <strong>искусственного интеллекта</strong>, <strong>маркетплейса</strong> и функций <strong>привязки адреса криптокошелька</strong> для отображения сведений о токенах, в соответствии с Федеральным законом РФ № 152-ФЗ «О персональных данных».</p>
 
