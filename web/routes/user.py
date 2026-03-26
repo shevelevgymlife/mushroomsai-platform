@@ -168,6 +168,7 @@ async def onboarding_tariff_submit(request: Request, choice: str = Form(...)):
 
 
 @router.get("/dashboard", response_class=HTMLResponse)
+@router.get("/dashboard/", response_class=HTMLResponse)
 async def dashboard(request: Request):
     user = await require_auth(request)
     if not user:
@@ -185,12 +186,6 @@ async def dashboard(request: Request):
             response.set_cookie("access_token", token, httponly=True, samesite="lax", max_age=60*60*24*30)
             return response
 
-    leg = await legal_acceptance_redirect(request, user)
-    if leg:
-        return leg
-
-    if user.get("needs_tariff_choice") and user.get("role") != "admin":
-        return RedirectResponse("/onboarding/tariff")
     return RedirectResponse("/community", status_code=302)
 
 
