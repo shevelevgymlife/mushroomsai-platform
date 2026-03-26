@@ -79,9 +79,7 @@ async def ensure_user_or_blocked_reply(update: Update) -> dict | None:
 
 def main_keyboard(site_url: str):
     keyboard = [
-        [KeyboardButton("Консультация"), KeyboardButton("Рецепты")],
-        [KeyboardButton("Магазин"), KeyboardButton("О грибах")],
-        [KeyboardButton("Сообщество"), KeyboardButton("Тарифы и подписки")],
+        [KeyboardButton("🛒 Магазин"), KeyboardButton("🌐 Сообщество")],
         [KeyboardButton("🆘 Тех. поддержка")],
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, is_persistent=True)
