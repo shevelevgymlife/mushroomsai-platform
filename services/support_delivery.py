@@ -91,6 +91,21 @@ async def deliver_support_message(
         tg_msg = f"💬 <b>Ответ поддержки NEUROFUNGI AI:</b>\n\n{body}"
         tg_ok = await _send_telegram(int(tg_id), tg_msg)
 
+    # Уведомляем администратора в notify-бот что ответ отправлен
+    try:
+        from services.tg_notify import tg_send
+        user_name = (target.get("name") or "").strip() or f"ID {recipient_user_id}"
+        tg_status = "✅ доставлено в Telegram" if tg_ok else "⚠️ Telegram не доставлено (нет tg_id)"
+        fb_label = f" (обращение #{feedback_id})" if feedback_id else ""
+        await tg_send(
+            f"✅ <b>Ответ отправлен через приложение{fb_label}</b>\n"
+            f"Пользователь: {user_name}\n"
+            f"Ответ: <i>{body[:300]}</i>\n"
+            f"{tg_status}"
+        )
+    except Exception as e:
+        logger.warning("support_delivery admin notify failed: %s", e)
+
     preview = _preview(body)
     await database.execute(
         support_message_deliveries.insert().values(
