@@ -40,24 +40,31 @@ async def _fetch_relevant_training_posts(user_message: str) -> list[dict]:
             )
             return [dict(r) for r in rows]
 
+        # 1) Ключевая логика: сначала максимально бьем по title/folder/category,
+        # затем уже учитываем совпадения в content.
         rank = None
         filters = []
         for t in terms:
             p = f"%{t}%"
-            m = sa.case(
+            title_hit = sa.case(
                 (
                     sa.or_(
                         ai_training_posts.c.title.ilike(p),
-                        ai_training_posts.c.content.ilike(p),
-                        ai_training_posts.c.category.ilike(p),
                         ai_training_posts.c.folder.ilike(p),
+                        ai_training_posts.c.category.ilike(p),
                     ),
                     1,
                 ),
                 else_=0,
             )
-            filters.append(m == 1)
-            rank = m if rank is None else (rank + m)
+            content_hit = sa.case(
+                (ai_training_posts.c.content.ilike(p), 1),
+                else_=0,
+            )
+            # Вес title/folder/category выше, чем content.
+            weighted = (title_hit * 4) + content_hit
+            filters.append(weighted > 0)
+            rank = weighted if rank is None else (rank + weighted)
 
         q = (
             ai_training_posts.select()
@@ -67,8 +74,41 @@ async def _fetch_relevant_training_posts(user_message: str) -> list[dict]:
             .limit(_MAX_RELEVANT_POSTS)
         )
         rows = await database.fetch_all(q)
-        if rows:
+        if rows and len(rows) >= min(6, _MAX_RELEVANT_POSTS):
             return [dict(r) for r in rows]
+
+        # 2) FTS fallback (PostgreSQL): тоже с приоритетом title > content.
+        # Если БД не поддерживает FTS функцию, quietly fallback ниже.
+        try:
+            qtxt = " ".join(terms)[:280]
+            fts_title = sa.func.ts_rank_cd(
+                sa.func.to_tsvector("russian", sa.func.coalesce(ai_training_posts.c.title, "")),
+                sa.func.plainto_tsquery("russian", qtxt),
+            )
+            fts_body = sa.func.ts_rank_cd(
+                sa.func.to_tsvector("russian", sa.func.coalesce(ai_training_posts.c.content, "")),
+                sa.func.plainto_tsquery("russian", qtxt),
+            )
+            fts_rank = (fts_title * 3.0) + fts_body
+            q2 = (
+                ai_training_posts.select()
+                .where(ai_training_posts.c.is_active == True)
+                .where(
+                    sa.or_(
+                        sa.func.to_tsvector("russian", sa.func.coalesce(ai_training_posts.c.title, ""))
+                        .op("@@")(sa.func.plainto_tsquery("russian", qtxt)),
+                        sa.func.to_tsvector("russian", sa.func.coalesce(ai_training_posts.c.content, ""))
+                        .op("@@")(sa.func.plainto_tsquery("russian", qtxt)),
+                    )
+                )
+                .order_by(fts_rank.desc(), ai_training_posts.c.created_at.desc())
+                .limit(_MAX_RELEVANT_POSTS)
+            )
+            fts_rows = await database.fetch_all(q2)
+            if fts_rows:
+                return [dict(r) for r in fts_rows]
+        except Exception:
+            pass
 
         # Если ничего не совпало по словам — берем свежие активные материалы.
         rows = await database.fetch_all(
