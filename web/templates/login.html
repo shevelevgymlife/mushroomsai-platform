@@ -107,64 +107,98 @@
 <script>
 const SITE_URL = {{ site_url | default('') | tojson }};
 
+/* ── Достаём initData из всех возможных источников ── */
+function _getInitDataRaw() {
+  try {
+    var tg = window.Telegram && window.Telegram.WebApp;
+    if (tg && tg.initData && String(tg.initData).length > 0) return String(tg.initData);
+    // URL hash: #tgWebAppData=...
+    var h = window.location.hash || '';
+    var m = h.match(/tgWebAppData=([^&#]+)/);
+    if (m) { try { return decodeURIComponent(m[1].replace(/\+/g,' ')); } catch(e) {} }
+    // sessionStorage (сохранённый telegram-link-preserve.js)
+    var frag = '';
+    try { frag = sessionStorage.getItem('__tg_fragment') || ''; } catch(e) {}
+    var m2 = frag.replace(/^#/,'').match(/tgWebAppData=([^&#]+)/);
+    if (m2) { try { return decodeURIComponent(m2[1].replace(/\+/g,' ')); } catch(e) {} }
+  } catch(e) {}
+  return '';
+}
+
+/* ── Определяем: это Mini App или нет ── */
+function _isMiniApp() {
+  // Проверяем initData — только в Mini App оно не пустое
+  if (_getInitDataRaw().length > 0) return true;
+  // Запасная проверка: tgWebAppData в URL
+  var loc = (window.location.hash || '') + (window.location.search || '');
+  if (loc.indexOf('tgWebAppData=') >= 0) return true;
+  return false;
+}
+
 function openGoogleFromMiniApp() {
   var base = (SITE_URL || '').replace(/\/$/, '');
   if (!base) return;
   var url = base + '/auth/google';
-  if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openLink === 'function') {
-    window.Telegram.WebApp.openLink(url);
+  var twa = window.Telegram && window.Telegram.WebApp;
+  if (twa && typeof twa.openLink === 'function') {
+    twa.openLink(url);
   } else {
-    window.location.href = url;
+    window.open(url, '_blank');
   }
 }
 
 async function loginWithTelegram() {
-  const btn = document.getElementById('tg-btn');
-  const status = document.getElementById('tg-status');
+  var btn = document.getElementById('tg-btn');
+  var status = document.getElementById('tg-status');
+  var origHTML = btn.innerHTML;
   btn.disabled = true;
   btn.textContent = 'Входим...';
   try {
-    const tg = window.Telegram.WebApp;
-    const response = await fetch('/auth/telegram/miniapp', {
+    var initData = _getInitDataRaw();
+    if (!initData) {
+      status.textContent = 'Telegram данные не найдены. Откройте через кнопку бота.';
+      btn.disabled = false;
+      btn.innerHTML = origHTML;
+      return;
+    }
+    var response = await fetch('/auth/telegram/miniapp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ init_data: tg.initData })
+      body: JSON.stringify({ init_data: initData })
     });
-    const data = await response.json();
+    var data = await response.json();
     if (data.redirect) {
       window.location.href = data.redirect;
     } else {
       status.textContent = 'Ошибка: ' + (data.error || 'попробуйте ещё раз');
       btn.disabled = false;
-      btn.textContent = 'Войти через Telegram';
+      btn.innerHTML = origHTML;
     }
   } catch(e) {
     status.textContent = 'Ошибка соединения';
     btn.disabled = false;
-    btn.textContent = 'Войти через Telegram';
+    btn.innerHTML = origHTML;
   }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  const tgApp = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-  const isTelegramClient = !!tgApp;
+  var tgApp = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
 
-  if (isTelegramClient) {
-    try { tgApp.ready(); } catch(e) {}
+  if (_isMiniApp()) {
+    /* Настоящий Telegram Mini App */
+    if (tgApp) { try { tgApp.ready(); } catch(e) {} }
     document.getElementById('tg-miniapp-block').style.display = 'block';
-    // Keep visible button; auto-login only when initData is really available.
-    setTimeout(function(){
-      try{
-        if (tgApp && tgApp.initData && tgApp.initData !== '') {
-          var tried = sessionStorage.getItem('__miniapp_autologin_tried');
-          if (!tried) {
-            sessionStorage.setItem('__miniapp_autologin_tried', '1');
-            loginWithTelegram();
-          }
+    setTimeout(function() {
+      try {
+        var tried = sessionStorage.getItem('__miniapp_autologin_tried');
+        if (!tried) {
+          sessionStorage.setItem('__miniapp_autologin_tried', '1');
+          loginWithTelegram();
         }
-      }catch(e){}
-    }, 120);
+      } catch(e) {}
+    }, 200);
   } else {
+    /* Обычный браузер или TG in-app browser без initData */
     document.getElementById('web-auth-block').style.display = 'flex';
   }
 });
