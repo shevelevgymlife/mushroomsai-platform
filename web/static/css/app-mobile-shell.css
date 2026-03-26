@@ -464,3 +464,65 @@ body.app-mobile-layout main .grid {
 body.app-mobile-layout main .grid.grid-cols-2 {
   grid-template-columns: repeat(2, 1fr) !important;
 }
+
+/* ===== Screen Glow controls in burger drawer ===== */
+.glow-sw {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.glow-sw input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.glow-sw-track {
+  display: block;
+  width: 38px;
+  height: 22px;
+  border-radius: 11px;
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.18);
+  transition: background .25s, border-color .25s;
+  position: relative;
+}
+.glow-sw-track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #888;
+  transition: transform .25s, background .25s, box-shadow .25s;
+}
+.glow-sw input:checked + .glow-sw-track {
+  background: rgba(61,212,224,.25);
+  border-color: rgba(61,212,224,.5);
+}
+.glow-sw input:checked + .glow-sw-track::after {
+  transform: translateX(16px);
+  background: #3dd4e0;
+  box-shadow: 0 0 8px rgba(61,212,224,.7);
+}
+
+.glow-color-dot {
+  display: block;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3dd4e0, #b85fa3, #3dd4e0);
+  border: 2px solid rgba(255,255,255,.18);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: box-shadow .25s, border-color .25s, transform .15s;
+  text-decoration: none;
+}
+.glow-color-dot:hover {
+  transform: scale(1.12);
+  border-color: rgba(255,255,255,.35);
+}

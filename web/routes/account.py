@@ -500,6 +500,50 @@ async def link_google_start(request: Request):
     return RedirectResponse(url)
 
 
+@router.get("/link-google-url")
+async def link_google_url(request: Request):
+    """Возвращает Google OAuth URL как JSON — для AJAX из Telegram Mini App."""
+    user = await get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    from config import settings
+    request.session["link_user_id"] = user["id"]
+    params = {
+        "client_id": settings.GOOGLE_CLIENT_ID,
+        "redirect_uri": f"{settings.SITE_URL}/auth/google/callback",
+        "response_type": "code",
+        "scope": "openid email profile",
+        "access_type": "offline",
+        "state": "link",
+    }
+    url = "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(params)
+    return JSONResponse({"ok": True, "url": url})
+
+
+@router.get("/check-google-link-status")
+async def check_google_link_status(request: Request):
+    """Polling: привязан ли Google к текущему аккаунту."""
+    user = await get_user_from_request(request)
+    if not user:
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    row = await database.fetch_one(users.select().where(users.c.id == user["id"]))
+    if row and (row["google_id"] or row["linked_google_id"]):
+        return JSONResponse({"linked": True, "email": row.get("email") or ""})
+    return JSONResponse({"linked": False})
+
+
+@router.get("/glow", response_class=HTMLResponse)
+async def glow_page(request: Request):
+    """Страница настройки подсветки экрана."""
+    user = await get_user_from_request(request)
+    if not user:
+        return RedirectResponse("/login")
+    return templates.TemplateResponse(
+        "settings/glow.html",
+        {"request": request, "user": user},
+    )
+
+
 @router.post("/sync-history")
 async def sync_history(request: Request):
     """Compat endpoint: merge residual secondary accounts into current user."""

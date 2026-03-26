@@ -5,8 +5,19 @@
 <div class="ig-drawer-backdrop" id="appGlobalDrawerBackdrop" onclick="closeAppGlobalDrawer()"></div>
 <aside class="ig-drawer" id="appGlobalDrawer" aria-label="Меню">
   <div class="ig-drawer-head">
-    <div class="nm">{{ user.name or 'Участник' }}</div>
-    <div class="em">{{ user.email or ('Telegram: ' + (user.tg_id|string) if user.tg_id else '') }}</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <div style="min-width:0">
+        <div class="nm">{{ user.name or 'Участник' }}</div>
+        <div class="em">{{ user.email or ('Telegram: ' + (user.tg_id|string) if user.tg_id else '') }}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+        <label class="glow-sw" title="Подсветка экрана">
+          <input type="checkbox" class="glow-toggle-input" onchange="window.glowSetEnabled&&glowSetEnabled(this.checked)">
+          <span class="glow-sw-track"></span>
+        </label>
+        <a href="/account/glow" class="glow-color-dot" title="Цвет подсветки" onclick="closeAppGlobalDrawer()"></a>
+      </div>
+    </div>
   </div>
   {% set rim_close_fn = 'closeAppGlobalDrawer' %}
   {% include "components/drawer_screen_rim.html" %}
