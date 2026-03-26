@@ -231,7 +231,11 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             return
         context.user_data.clear()
         await update.message.reply_text(
-            f"✅ Пост сохранён в папку «{html.escape(folder_name)}».", parse_mode="HTML", reply_markup=main_reply_kb()
+            "✅ <b>Пост записан в базу обучающих материалов.</b>\n"
+            f"Папка: «{html.escape(folder_name)}».\n"
+            "AI на сайте подхватит его в ответах вместе с остальными постами.",
+            parse_mode="HTML",
+            reply_markup=main_reply_kb(),
         )
         return
 
@@ -306,7 +310,12 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             logger.exception("training_bot quick ingest: %s", e)
             await update.message.reply_text("Не удалось сохранить пост.")
             return
-        await update.message.reply_text("✅ Записано в обучающие посты.", reply_markup=main_reply_kb())
+        await update.message.reply_text(
+            "✅ <b>Сообщение записано в базу обучающих постов.</b>\n"
+            "AI на сайте будет использовать его в ответах (как и остальные материалы).",
+            parse_mode="HTML",
+            reply_markup=main_reply_kb(),
+        )
         return
 
     await update.message.reply_text("Используйте кнопки меню внизу или /start.", reply_markup=main_reply_kb())
