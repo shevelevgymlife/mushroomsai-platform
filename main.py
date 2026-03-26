@@ -302,9 +302,11 @@ async def lifespan(app: FastAPI):
             await training_bot_app.initialize()
             await training_bot_app.start()
             await training_bot_app.updater.start_polling(drop_pending_updates=True)
-            logger.info("Training posts bot started")
-        except Exception as e:
-            logger.error("Training bot startup error: %s", e)
+            logger.info("Training posts bot started (polling; token from TRAINING_BOT_TOKEN)")
+        except Exception:
+            logger.exception("Training bot startup failed — проверьте TRAINING_BOT_TOKEN и что нет второго процесса с тем же polling")
+    else:
+        logger.info("Training posts bot: выключен (в Environment задайте TRAINING_BOT_TOKEN и сделайте redeploy)")
 
     try:
         yield
