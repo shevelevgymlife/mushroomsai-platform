@@ -1,6 +1,7 @@
 from datetime import datetime
 from itertools import groupby
 import re
+import time
 
 from openai import AsyncOpenAI
 import sqlalchemy as sa
@@ -9,12 +10,15 @@ from db.database import database
 from db.models import ai_settings, messages, ai_training_posts
 from ai.system_prompt import DEFAULT_SYSTEM_PROMPT
 from typing import Optional
+from services.tg_notify import notify_error
 
 client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-_MAX_KNOWLEDGE_CHARS = 60000
+_MAX_KNOWLEDGE_CHARS = 45000
 _MAX_POST_CONTENT_CHARS = 2200
 _MAX_RELEVANT_POSTS = 24
 _MAX_RECENT_FALLBACK = 8
+_HARD_TOP_K_CAP = 24
+_NOTIFY_LAST_TS: dict[str, float] = {}
 _RETRIEVAL_PROFILES = {
     "title_first": {"title_w": 4.0, "content_w": 1.0, "use_fts": True},
     "strict_titles": {"title_w": 6.0, "content_w": 0.2, "use_fts": False},
@@ -38,6 +42,18 @@ def _query_terms(text: str) -> list[str]:
     return out
 
 
+async def _notify_ai_issue(key: str, title: str, details: str, cooldown_sec: int = 900) -> None:
+    now = time.time()
+    last = _NOTIFY_LAST_TS.get(key, 0.0)
+    if now - last < cooldown_sec:
+        return
+    _NOTIFY_LAST_TS[key] = now
+    try:
+        await notify_error(title, details)
+    except Exception:
+        pass
+
+
 async def _fetch_relevant_training_posts(
     user_message: str,
     retrieval_mode: str = "title_first",
@@ -46,7 +62,15 @@ async def _fetch_relevant_training_posts(
     terms = _query_terms(user_message)
     mode = retrieval_mode if retrieval_mode in _RETRIEVAL_PROFILES else "title_first"
     profile = _RETRIEVAL_PROFILES.get(mode, _RETRIEVAL_PROFILES["title_first"])
-    top_k = max(6, min(80, int(top_k or _MAX_RELEVANT_POSTS)))
+    requested_top_k = int(top_k or _MAX_RELEVANT_POSTS)
+    top_k = max(6, min(_HARD_TOP_K_CAP, requested_top_k))
+    if requested_top_k > _HARD_TOP_K_CAP:
+        await _notify_ai_issue(
+            "ai_topk_cap",
+            "AI top-k ограничен автоматически",
+            f"Запрошено top_k={requested_top_k}, применён безопасный лимит {_HARD_TOP_K_CAP}.",
+            cooldown_sec=6 * 60 * 60,
+        )
     if mode == "precise_shortlist":
         top_k = min(top_k, 12)
     if mode == "broad_recall":
@@ -245,6 +269,12 @@ async def chat_with_ai(
     history.append({"role": "user", "content": user_message})
 
     if not client.api_key:
+        await _notify_ai_issue(
+            "ai_no_key",
+            "AI недоступен: нет OPENAI_API_KEY",
+            "Проверьте переменную OPENAI_API_KEY в Render Environment.",
+            cooldown_sec=15 * 60,
+        )
         raise RuntimeError("OPENAI_API_KEY не задан в .env / переменных окружения")
     try:
         last_err = None
@@ -263,6 +293,21 @@ async def chat_with_ai(
         else:
             raise RuntimeError(f"{last_err}")  # pragma: no cover
     except Exception as e:
+        msg = str(e).lower()
+        if "context" in msg or "maximum context length" in msg or "tokens" in msg:
+            await _notify_ai_issue(
+                "ai_context_limit",
+                "AI достиг лимита контекста",
+                f"Ошибка контекста/tokens: {str(e)[:550]}",
+                cooldown_sec=10 * 60,
+            )
+        else:
+            await _notify_ai_issue(
+                "ai_runtime_error",
+                "AI ошибка запроса",
+                f"{str(e)[:550]}",
+                cooldown_sec=10 * 60,
+            )
         raise RuntimeError(f"OpenAI API error: {e}") from e
 
     try:
