@@ -70,7 +70,7 @@
 <script>
 const POST_ID={{ post.id }};
 const BACK_URL={{ back_url|tojson }};
-function goBackPost(){ if(history.length>1){ history.back(); } else { location.href=BACK_URL||'/dashboard#feed'; } }
+function goBackPost(){ if(history.length>1){ history.back(); } else { location.href=BACK_URL||'/community'; } }
 function toggleReadText(){ const w=document.getElementById('textWrap'); w.style.display=(w.style.display==='block'?'none':'block'); }
 function openPhotoPage(){
   const back=encodeURIComponent(BACK_URL||location.href);
