@@ -17,6 +17,20 @@ _MAX_LEN = 4000
 def _token() -> str:
     return (settings.NOTIFY_BOT_TOKEN or settings.TELEGRAM_TOKEN or "").strip()
 
+def _user_tokens() -> list[str]:
+    """
+    Для уведомлений пользователям сначала пробуем основной TELEGRAM_TOKEN
+    (где пользователь уже нажал /start), затем fallback на notify-бота.
+    """
+    tokens: list[str] = []
+    main_token = (settings.TELEGRAM_TOKEN or "").strip()
+    notify_token = (settings.NOTIFY_BOT_TOKEN or "").strip()
+    if main_token:
+        tokens.append(main_token)
+    if notify_token and notify_token != main_token:
+        tokens.append(notify_token)
+    return tokens
+
 
 def _admin_id() -> int:
     return int(settings.ADMIN_TG_ID or 0)
@@ -32,30 +46,32 @@ def _render_commit() -> str:
 
 async def notify_user_telegram(chat_id: int, text: str, parse_mode: str = "HTML") -> bool:
     """Сообщение пользователю по chat_id (тот же бот, что и для админа)."""
-    token = _token()
-    if not token or not chat_id:
+    if not chat_id:
         return False
     text = (text or "").strip()[:_MAX_LEN]
     if not text:
         return False
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            r = await client.post(
-                f"https://api.telegram.org/bot{token}/sendMessage",
-                json={
-                    "chat_id": int(chat_id),
-                    "text": text,
-                    "parse_mode": parse_mode,
-                    "disable_web_page_preview": True,
-                },
-            )
-            if r.status_code != 200:
-                logger.warning("notify_user_telegram failed: %s %s", r.status_code, r.text[:200])
-                return False
-        return True
-    except Exception as e:
-        logger.warning("notify_user_telegram exception: %s", e)
+    tokens = _user_tokens()
+    if not tokens:
         return False
+    for token in tokens:
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                r = await client.post(
+                    f"https://api.telegram.org/bot{token}/sendMessage",
+                    json={
+                        "chat_id": int(chat_id),
+                        "text": text,
+                        "parse_mode": parse_mode,
+                        "disable_web_page_preview": True,
+                    },
+                )
+                if r.status_code == 200:
+                    return True
+                logger.warning("notify_user_telegram failed: %s %s", r.status_code, r.text[:200])
+        except Exception as e:
+            logger.warning("notify_user_telegram exception: %s", e)
+    return False
 
 
 async def tg_send(text: str, parse_mode: str = "HTML") -> bool:
