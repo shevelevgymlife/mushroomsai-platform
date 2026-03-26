@@ -100,8 +100,6 @@
         <div class="flex items-center gap-2 flex-wrap">
           <span class="text-sm text-muted">{{ fposts|length }} пост. · стр. {{ page }} / {{ total_pages }}</span>
           {% if focused_folder != 'Без папки' %}
-          <button type="button" onclick="clearFolderToNoFolder('{{ focused_folder|e }}')"
-            class="text-xs px-3 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-400/20 cursor-pointer">Все посты → Без папки</button>
           <button type="button" onclick="deleteFolderSafe('{{ focused_folder|e }}')"
             class="text-xs px-3 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 cursor-pointer">Удалить папку</button>
           {% endif %}
@@ -111,10 +109,6 @@
       <div class="space-y-0">
         {% for post in paginated_posts %}
         <div class="ai-ya-card post-card" data-post-title="{{ (post.title or '')|lower }}">
-          <label class="flex items-center gap-2 mb-2 text-xs text-muted cursor-pointer">
-            <input type="checkbox" class="bulk-unfolder-cb accent-sky-500" value="{{ post.id }}">
-            выбрать для переноса в «Без папки»
-          </label>
           <a href="/admin/ai-posts/{{ post.id }}/edit?rf={{ focused_folder|urlencode }}&rp={{ page }}" class="block text-inherit no-underline">
             <h3 class="ai-ya-title">{{ post.title }}</h3>
             <div class="ai-ya-meta">
@@ -148,37 +142,8 @@
         {% endfor %}
       </nav>
       {% endif %}
-      {% if focused_folder != 'Без папки' and paginated_posts|length > 0 %}
-      <div class="mt-4 p-3 rounded-xl border border-border bg-bg/30 flex items-center gap-3 flex-wrap">
-        <button type="button" onclick="bulkMoveSelectedToNoFolder()"
-          class="px-4 py-2 rounded-xl bg-amber-500 text-black text-sm font-semibold border-0 cursor-pointer hover:bg-amber-400">
-          Отмеченные → Без папки
-        </button>
-        <span class="text-xs text-muted">Переносит выбранные посты из «{{ focused_folder }}» в список без папки.</span>
-      </div>
-      {% endif %}
 
-      {% if focused_folder and relocatable_posts|length > 0 %}
-      <div class="mt-10 p-4 rounded-2xl border border-border bg-bg/30">
-        <h3 class="text-sm font-semibold text-text mb-2">Перенести в «{{ focused_folder }}»</h3>
-        <p class="text-xs text-muted mb-3">Посты из других папок.</p>
-        <div class="max-h-56 overflow-y-auto space-y-2 mb-4 pr-1">
-          {% for post in relocatable_posts %}
-          <label class="flex items-start gap-2 text-sm text-text cursor-pointer select-none">
-            <input type="checkbox" class="bulk-move-cb mt-0.5 accent-sky-500" value="{{ post.id }}" />
-            <span><span class="font-medium">{{ post.title }}</span>
-              <span class="text-xs text-muted block mt-0.5">сейчас: {% if post.folder %}{{ post.folder }}{% else %}Без папки{% endif %}</span>
-            </span>
-          </label>
-          {% endfor %}
-        </div>
-        <input type="hidden" id="bulk-target-folder" value="{{ focused_folder }}" />
-        <button type="button" onclick="submitBulkMoveToFolder()"
-          class="px-4 py-2 rounded-xl bg-sky-500 text-white text-sm font-semibold border-0 cursor-pointer hover:bg-sky-400">
-          Перенести отмеченные
-        </button>
-      </div>
-      {% endif %}
+      
     </section>
     {% endif %}
 
@@ -245,48 +210,6 @@ function closeAddModal() {
   const m = document.getElementById('add-modal');
   m.style.display = 'none';
   m.classList.add('hidden');
-}
-
-async function submitBulkMoveToFolder() {
-  var hid = document.getElementById('bulk-target-folder');
-  if (!hid) return;
-  var ids = Array.from(document.querySelectorAll('.bulk-move-cb:checked')).map(function (c) { return c.value; });
-  if (!ids.length) { alert('Отметьте хотя бы один пост'); return; }
-  var fd = new FormData();
-  fd.append('folder', hid.value);
-  fd.append('post_ids', ids.join(','));
-  try {
-    var r = await fetch('/admin/ai-posts/bulk-move-folder', { method: 'POST', body: fd, credentials: 'same-origin' });
-    var d = await r.json().catch(function () { return {}; });
-    if (r.ok) location.reload();
-    else alert(d.error || 'Ошибка');
-  } catch (e) { alert('Ошибка сети'); }
-}
-
-async function bulkMoveSelectedToNoFolder() {
-  var ids = Array.from(document.querySelectorAll('.bulk-unfolder-cb:checked')).map(function (c) { return c.value; });
-  if (!ids.length) { alert('Отметьте хотя бы один пост'); return; }
-  var fd = new FormData();
-  fd.append('folder', 'Без папки');
-  fd.append('post_ids', ids.join(','));
-  try {
-    var r = await fetch('/admin/ai-posts/bulk-move-folder', { method: 'POST', body: fd, credentials: 'same-origin' });
-    var d = await r.json().catch(function () { return {}; });
-    if (r.ok) location.reload();
-    else alert(d.error || 'Ошибка');
-  } catch (e) { alert('Ошибка сети'); }
-}
-
-async function clearFolderToNoFolder(folderName) {
-  if (!confirm('Перенести все посты из папки «' + folderName + '» в «Без папки»?')) return;
-  var fd = new FormData();
-  fd.append('name', folderName);
-  try {
-    var r = await fetch('/admin/ai-folders/clear', { method: 'POST', body: fd, credentials: 'same-origin' });
-    var d = await r.json().catch(function () { return {}; });
-    if (r.ok) location.reload();
-    else alert(d.error || 'Ошибка');
-  } catch (e) { alert('Ошибка сети'); }
 }
 
 async function deleteFolderSafe(folderName) {
