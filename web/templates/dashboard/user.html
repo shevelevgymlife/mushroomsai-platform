@@ -870,7 +870,7 @@ body.dash-ig-app .ig-lamp-topbar{
   <header class="ig-dash-header" id="igDashHeader" aria-label="Панель приложения">
     <div class="ig-dash-header-start">
       <button type="button" class="ig-dash-back" id="igDashBack" onclick="igDashBackClick()" aria-label="Назад" style="display:none">{{ ico('chevron_left') }}</button>
-      <button type="button" class="ig-ham" id="igDashHamburger" onclick="toggleDbDrawer()" aria-label="Меню">{{ ico('menu') }}</button>
+      <button type="button" class="ig-ham" id="igDashHamburger" onclick="openDbDrawer()" aria-label="Меню">{{ ico('menu') }}</button>
     </div>
     <button type="button" class="ig-head-brand" id="igDashTitleBtn" style="background:none;border:none;cursor:pointer;padding:0;font:inherit;flex:1;min-width:0;text-align:center" onclick="igDashTitleClick()" title="Мой профиль"><span id="igDashTitleText">MushroomsAI</span></button>
     <div class="ig-head-row" style="margin-left:auto">
@@ -2297,13 +2297,19 @@ function closeDbDrawer(){
   document.getElementById('dbDrawer')?.classList.remove('open');
   document.getElementById('dbDrawerBackdrop')?.classList.remove('on');
 }
-function toggleDbDrawer(){
+function openDbDrawer(){
   const dr = document.getElementById('dbDrawer');
   const bd = document.getElementById('dbDrawerBackdrop');
-  const willOpen = dr && !dr.classList.contains('open');
-  dr?.classList.toggle('open');
-  bd?.classList.toggle('on');
-  if(willOpen){ refreshGroupListFromApi(); }
+  if(!dr || !bd) return;
+  if(dr.classList.contains('open')) return;
+  dr.classList.add('open');
+  bd.classList.add('on');
+  refreshGroupListFromApi();
+}
+function toggleDbDrawer(){
+  const dr = document.getElementById('dbDrawer');
+  if(dr && dr.classList.contains('open')) closeDbDrawer();
+  else openDbDrawer();
 }
 function openCreatePostModal(){
   const m=document.getElementById('createPostModal');
