@@ -14,6 +14,28 @@
   </div>
   {% set rim_close_fn = 'closeAppGlobalDrawer' %}
   {% include "components/drawer_screen_rim.html" %}
+  {% if not is_locked_free %}
+  {% set del_draw = user.decimal_del_balance if user.decimal_del_balance is not none else '—' %}
+  {% set shev_draw = user.shevelev_balance_cached if user.shevelev_balance_cached is not none else '—' %}
+  <details class="ig-drawer-details ig-drawer-details--del-shev" id="drawerDelShevBlock" style="border-bottom:1px solid rgba(255,255,255,.06)">
+    <summary class="ig-drawer-item ig-drawer-summary" style="list-style:none;cursor:pointer"><span class="e">◎</span><span class="lbl">DEL · SHEVELEV</span><span class="ig-drawer-chev" style="margin-left:auto;opacity:.5;font-size:10px">▼</span></summary>
+    <div style="padding:4px 12px 14px 18px;font-size:13px">
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-bottom:10px;font-size:13px;line-height:1.45">
+        <span style="color:#9ca3af">DEL <strong style="color:#e2e8f0;font-weight:700">{{ del_draw }}</strong></span>
+        <span style="opacity:.25">|</span>
+        <span style="color:#9ca3af">SHEV <strong style="color:#f472b6;font-weight:700">{{ shev_draw }}</strong></span>
+      </div>
+      <label class="drawer-token-lamp-toggle" for="drawerTokenLampToggle" style="width:100%;box-sizing:border-box;justify-content:space-between;margin-bottom:10px">
+        <span>Свет</span>
+        <input id="drawerTokenLampToggle" type="checkbox" {% if user.get('token_lamp_enabled') is not sameas false %}checked{% endif %} onchange="saveDrawerTokenLamp(this.checked)" aria-label="Свет токенов на аватаре" />
+      </label>
+      {% if shevelev_token %}
+      <a href="/community" class="ig-drawer-sub" onclick="closeAppGlobalDrawer()" style="margin-bottom:4px">Подарить SHEVELEV →</a>
+      {% endif %}
+      <a href="/community/profile/{{ eff_uid|int }}" class="ig-drawer-sub" onclick="closeAppGlobalDrawer()">Кошелёк и синхронизация →</a>
+    </div>
+  </details>
+  {% endif %}
   <div id="drawerFreeAiLimit" style="display:none;padding:10px 12px;margin:10px 10px 6px;border:1px solid rgba(61,212,224,.22);border-radius:14px;background:rgba(61,212,224,.07)">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
       <div style="font-size:12px;font-weight:700;color:#bfeff3">Бесплатный AI-лимит</div>

@@ -56,25 +56,13 @@ body.profile-app-shell .grain-overlay{opacity:0.22}
 .cp-role-stamp{display:inline-flex;align-items:center;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;letter-spacing:.06em}
 .cp-role-stamp--admin{background:rgba(248,113,113,.12);color:#f87171;border:1px solid rgba(248,113,113,.25)}
 .cp-role-stamp--uch{background:rgba(125,211,252,.1);color:#7dd3fc;border:1px solid rgba(34,211,238,.35)}
-.cp-tokens-mini-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;margin:0 0 12px;width:100%}
-.cp-tokens-mini-bar{display:inline-flex;align-items:center;flex-wrap:wrap;gap:4px 8px;padding:5px 11px;border-radius:999px;border:1px solid rgba(61,212,224,.22);background:rgba(8,10,16,.9);font-size:9px;letter-spacing:.05em;color:#7c8494;text-transform:uppercase;font-weight:700}
-.cp-tokens-mini-bar strong{font-size:11px;font-weight:700;color:#e2e8f0;letter-spacing:0;text-transform:none;margin-left:3px}
-.cp-tokens-mini-bar .cp-tm-pink{color:#a78bfa}
-.cp-tokens-mini-bar .cp-tm-pink strong{color:#f472b6}
-.cp-tokens-mini-bar[data-lamp-off="0"]{border-color:rgba(61,212,224,.38);box-shadow:0 0 16px rgba(61,212,224,.1)}
-.cp-tokens-mini-link{font-size:10px;font-weight:600;color:#3dd4e0;text-decoration:none;opacity:.88}
-.cp-tokens-mini-link:hover{opacity:1;text-decoration:underline}
-.cp-profile-toolbar{display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:12px 10px;width:100%;max-width:min(100%,400px);margin:0 auto 16px}
+.cp-profile-toolbar{display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:12px 10px;width:100%;max-width:min(100%,400px);margin:0 auto 18px}
+.cp-profile-toolbar--own{grid-template-columns:1fr;max-width:min(100%,340px);justify-items:center}
 @media(max-width:640px){.cp-profile-toolbar{max-width:100%}}
 .cp-toolbar-cell{display:flex;align-items:center;min-height:44px}
 .cp-toolbar-cell--left{justify-content:flex-end;padding-right:clamp(6px,3vw,14px)}
 .cp-toolbar-cell--right{justify-content:flex-start;padding-left:clamp(6px,3vw,14px)}
 .cp-toolbar-cell--full{grid-column:1/-1;justify-content:center;flex-wrap:wrap;gap:10px}
-.cp-lamp-toggle{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border:1px solid rgba(255,255,255,.14);border-radius:999px;background:rgba(255,255,255,.04);color:#d0d5df;font-size:12px;font-weight:600}
-.cp-lamp-toggle input{appearance:none;width:34px;height:20px;border-radius:999px;background:#20242f;border:1px solid rgba(255,255,255,.22);position:relative;cursor:pointer;transition:all .2s ease}
-.cp-lamp-toggle input::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#8a90a0;transition:all .2s ease}
-.cp-lamp-toggle input:checked{background:rgba(61,212,224,.35);border-color:rgba(61,212,224,.62)}
-.cp-lamp-toggle input:checked::after{left:16px;background:#d8fbff}
 .ig-profile-head{display:flex;gap:22px;align-items:center;padding:8px 0 20px;flex-wrap:wrap}
 @media(min-width:640px){.ig-profile-head{gap:32px}}
 .ig-profile-av-wrap{position:relative;flex-shrink:0}
@@ -182,7 +170,6 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
   .ig-post-metric .n{font-size:15px}
   .cp-ig-main{padding-bottom:calc(28px + env(safe-area-inset-bottom,0px))}
 }
-.shevelev-bal-box{margin-bottom:16px;padding:14px 16px;border-radius:14px;background:rgba(61,212,224,.1);border:1px solid rgba(61,212,224,.28);max-width:420px}
 </style>
 
 <div class="cp-ig-root">
@@ -234,28 +221,10 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
             <span class="cp-role-stamp cp-role-stamp--uch">УЧ</span>
             {% endif %}
           </div>
-          {% set del_mini = profile.decimal_del_balance if profile.decimal_del_balance is not none else '—' %}
-          {% set shev_mini = profile.shevelev_balance_cached if profile.shevelev_balance_cached is not none else '—' %}
-          <div class="cp-tokens-mini-wrap">
-            <div id="cpTokensStrip" class="cp-tokens-mini-bar" data-lamp-off="{% if profile.get('token_lamp_enabled') is sameas false %}1{% else %}0{% endif %}" aria-label="Токены Decimal">
-              <span>DEL <strong>{{ del_mini }}</strong></span>
-              <span style="opacity:.25;font-weight:300">|</span>
-              <span class="cp-tm-pink">SHEV <strong>{{ shev_mini }}</strong></span>
-            </div>
-            {% if shevelev_token and is_own %}
-            <a href="/community" class="cp-tokens-mini-link">Подарить SHEVELEV →</a>
-            {% endif %}
-          </div>
-          <div class="cp-profile-toolbar" role="group" aria-label="Действия профиля">
+          <div class="cp-profile-toolbar{% if is_own %} cp-profile-toolbar--own{% endif %}" role="group" aria-label="Действия профиля">
             {% if is_own %}
-            <div class="cp-toolbar-cell cp-toolbar-cell--left">
-              <label class="cp-lamp-toggle" for="cpTokenLampToggle">
-                <span>Свет</span>
-                <input id="cpTokenLampToggle" type="checkbox" {% if profile.get('token_lamp_enabled') is not sameas false %}checked{% endif %} onchange="saveCpTokenLamp(this.checked)">
-              </label>
-            </div>
-            <div class="cp-toolbar-cell cp-toolbar-cell--right">
-              <a href="/account/link" class="btn-o" style="font-size:13px;padding:8px 20px;text-decoration:none;display:inline-flex;white-space:nowrap">Привязать аккаунт</a>
+            <div class="cp-toolbar-cell cp-toolbar-cell--full">
+              <a href="/account/link" class="btn-o" style="font-size:13px;padding:9px 22px;text-decoration:none;display:inline-flex;white-space:nowrap">Привязать аккаунт</a>
             </div>
             {% else %}
             <div class="cp-toolbar-cell cp-toolbar-cell--full">
@@ -559,17 +528,6 @@ async function openFollowListModal(profileId, kind){
 }
 const PROFILE_ID = {{ profile_id }};
 const IS_OWN = {{ 'true' if is_own else 'false' }};
-async function saveCpTokenLamp(isOn){
-  try{
-    const r=await fetch('/profile/token-lamp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token_lamp_enabled:!!isOn}),credentials:'same-origin'});
-    const d=await r.json().catch(()=>({}));
-    if(!r.ok||!d.ok)return;
-    const av=document.getElementById('cpAvWrap');
-    const strip=document.getElementById('cpTokensStrip');
-    if(av){av.classList.toggle('lamp-on',!!isOn);}
-    if(strip){strip.dataset.lampOff=isOn?'0':'1';}
-  }catch(e){}
-}
 (function(){
   const w=document.getElementById('cpAvWrap');
   const inp=document.getElementById('cpAvInput');
@@ -1035,7 +993,4 @@ setProfileChaos(_cpLoadChaos(true));
 {% endif %}
 </script>
 
-{% if shevelev_token %}
-<script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
-{% endif %}
 {% endblock %}

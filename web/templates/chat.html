@@ -16,8 +16,8 @@
   /* main уже даёт отступ под шапку; ограничиваем высоту колонки чата, чтобы поле ввода не уезжало за экран */
   body.app-has-mobile-header .chat-shell {
     max-height: calc(
-      100dvh - var(--app-header-h) - var(--app-header-rim-strip-h, 0px) -
-        env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 100px
+      100dvh - var(--app-header-h) - env(safe-area-inset-top, 0px) -
+        env(safe-area-inset-bottom, 0px) - 100px
     );
   }
   {% else %}

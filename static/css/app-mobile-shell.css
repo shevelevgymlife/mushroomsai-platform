@@ -2,14 +2,8 @@
 :root {
   --app-shell-max: 100%;
   --app-header-h: 56px;
-  /* Ряд «Свет» под шапкой (app-has-rim-strip) */
-  --app-header-rim-strip-h: 0px;
   --neo-cyan: #22d3ee;
   --neo-cyan-soft: rgba(34, 211, 238, 0.42);
-}
-
-body.app-has-rim-strip {
-  --app-header-rim-strip-h: 48px;
 }
 
 body.app-mobile-layout {
@@ -40,9 +34,7 @@ body.app-mobile-layout.index-landing-guest:not(.app-has-mobile-header) main {
 body.app-has-mobile-header main {
   padding-left: max(10px, env(safe-area-inset-left, 0px));
   padding-right: max(10px, env(safe-area-inset-right, 0px));
-  padding-top: calc(
-    var(--app-header-h) + var(--app-header-rim-strip-h) + env(safe-area-inset-top, 0px) + 8px
-  );
+  padding-top: calc(var(--app-header-h) + env(safe-area-inset-top, 0px) + 8px);
   padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
 }
 
@@ -60,24 +52,6 @@ body.app-has-mobile-header main {
   padding-left: max(0px, env(safe-area-inset-left, 0px));
   padding-right: max(0px, env(safe-area-inset-right, 0px));
   pointer-events: none;
-  box-sizing: border-box;
-}
-
-.app-mobile-topbar-stack {
-  width: 100%;
-  max-width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  pointer-events: auto;
-}
-
-.app-mobile-topbar-stack .ig-drawer-rim-row {
-  border-bottom: none;
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
-  padding: 8px 12px;
-  min-height: 44px;
-  background: #000000;
   box-sizing: border-box;
 }
 
@@ -503,6 +477,53 @@ details.ig-drawer-details > summary {
 }
 .ig-drawer-item .stroke-ico {
   color: #888;
+}
+
+/* Тумблер «Свет» токенов (DEL / SHEVELEV) в бургере */
+.drawer-token-lamp-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #d0d5df;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+.drawer-token-lamp-toggle input {
+  appearance: none;
+  width: 34px;
+  height: 20px;
+  border-radius: 999px;
+  background: #20242f;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+.drawer-token-lamp-toggle input::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #8a90a0;
+  transition: all 0.2s ease;
+}
+.drawer-token-lamp-toggle input:checked {
+  background: rgba(61, 212, 224, 0.35);
+  border-color: rgba(61, 212, 224, 0.62);
+}
+.drawer-token-lamp-toggle input:checked::after {
+  left: 16px;
+  background: #d8fbff;
 }
 
 /* Единая нижняя панель (Лента · Поиск · Магазин) */

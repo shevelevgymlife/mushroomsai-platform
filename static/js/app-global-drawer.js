@@ -134,6 +134,27 @@
     toggleAppGlobalDrawer();
   };
 
+  /** Свет токенов (профиль / лента): синхронизация с API и обновление аватара на странице профиля */
+  async function saveDrawerTokenLamp(isOn) {
+    try {
+      var r = await fetch("/profile/token-lamp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token_lamp_enabled: !!isOn }),
+        credentials: "same-origin",
+      });
+      var d = await r.json().catch(function () {
+        return {};
+      });
+      if (!r.ok || !d.ok) return;
+      var av = document.getElementById("cpAvWrap");
+      if (av) av.classList.toggle("lamp-on", !!isOn);
+      var strip = document.getElementById("cpTokensStrip");
+      if (strip) strip.dataset.lampOff = isOn ? "0" : "1";
+    } catch (e) {}
+  }
+  window.saveDrawerTokenLamp = saveDrawerTokenLamp;
+
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape") closeAppGlobalDrawer();
   });

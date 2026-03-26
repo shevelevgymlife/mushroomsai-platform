@@ -5,6 +5,7 @@ User's language preference (user["language"]) takes priority over the
 cookie/Accept-Language detected by the middleware.
 """
 from fastapi.templating import Jinja2Templates as _Jinja2Templates
+from config import shevelev_token_address
 from web.translations import TRANSLATIONS, SUPPORTED_LANGS
 
 
@@ -31,5 +32,6 @@ class Jinja2Templates(_Jinja2Templates):
 
             context.setdefault("t", TRANSLATIONS.get(lang, TRANSLATIONS["ru"]))
             context.setdefault("lang", lang)
+            context.setdefault("shevelev_token", shevelev_token_address())
 
         return super().TemplateResponse(*args, **kwargs)
