@@ -284,6 +284,8 @@ async def run_heavy_startup(app: FastAPI) -> None:
             "CREATE UNIQUE INDEX IF NOT EXISTS uq_ai_training_posts_tg_channel_msg ON ai_training_posts(ingest_tg_chat_id, ingest_tg_message_id) WHERE ingest_tg_chat_id IS NOT NULL AND ingest_tg_message_id IS NOT NULL",
             "ALTER TABLE ai_training_posts ADD COLUMN IF NOT EXISTS image_url TEXT",
             "ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS from_telegram BOOLEAN NOT NULL DEFAULT false",
+            "ALTER TABLE ai_settings ADD COLUMN IF NOT EXISTS retrieval_mode VARCHAR(64) NOT NULL DEFAULT 'title_first'",
+            "ALTER TABLE ai_settings ADD COLUMN IF NOT EXISTS retrieval_top_k INTEGER NOT NULL DEFAULT 24",
         ]
         try:
             await database.execute(

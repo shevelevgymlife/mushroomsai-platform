@@ -47,6 +47,16 @@ ADMIN_NAV = [
     ("Сообщество", "/admin/community"),
     ("Чаты", "/admin/groups"),
 ]
+AI_RETRIEVAL_MODES = [
+    ("title_first", "Название сначала (рекомендуется)", "Сначала ищет по названию/папке, затем по тексту."),
+    ("strict_titles", "Только точные названия", "Почти только заголовки и папки; очень строгий режим."),
+    ("balanced", "Сбалансированный", "Равномерно учитывает заголовок и содержание."),
+    ("content_deep", "Глубоко по содержанию", "Сильнее ищет по тексту постов, не только по заголовкам."),
+    ("hybrid_fts", "Гибрид + FTS", "Like-поиск + полнотекстовый ранжир PostgreSQL."),
+    ("broad_recall", "Широкий охват", "Берет больше кандидатов, полезно для расплывчатых вопросов."),
+    ("precise_shortlist", "Короткий точный список", "Меньше, но максимально релевантные посты."),
+    ("recent_only", "Только свежие", "Игнорирует релевантность, берет последние посты."),
+]
 
 PERM_KEYS = [
     "can_dashboard", "can_ai", "can_shop", "can_users",
@@ -195,6 +205,7 @@ async def ai_settings_page(request: Request):
     row = await database.fetch_one(
         ai_settings.select().order_by(ai_settings.c.updated_at.desc()).limit(1)
     )
+    row_d = dict(row) if row else {}
     current_prompt = row["system_prompt"] if row else DEFAULT_SYSTEM_PROMPT
     history = await database.fetch_all(
         ai_settings.select().order_by(ai_settings.c.updated_at.desc()).limit(5)
@@ -209,18 +220,34 @@ async def ai_settings_page(request: Request):
             "user_permissions": await get_user_permissions(admin),
             "current_prompt": current_prompt,
             "history": history,
+            "ai_retrieval_modes": AI_RETRIEVAL_MODES,
+            "current_retrieval_mode": (row_d.get("retrieval_mode") or "title_first"),
+            "current_retrieval_top_k": int(row_d.get("retrieval_top_k") or 24),
         },
     )
 
 
 @router.post("/ai")
-async def update_ai_settings(request: Request, system_prompt: str = Form(...)):
+async def update_ai_settings(
+    request: Request,
+    system_prompt: str = Form(...),
+    retrieval_mode: str = Form("title_first"),
+    retrieval_top_k: int = Form(24),
+):
     admin = await require_permission(request, "can_ai")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
 
+    valid_modes = {m[0] for m in AI_RETRIEVAL_MODES}
+    mode = retrieval_mode if retrieval_mode in valid_modes else "title_first"
+    top_k = max(6, min(80, int(retrieval_top_k or 24)))
     await database.execute(
-        ai_settings.insert().values(system_prompt=system_prompt, updated_by=admin["id"])
+        ai_settings.insert().values(
+            system_prompt=system_prompt,
+            retrieval_mode=mode,
+            retrieval_top_k=top_k,
+            updated_by=admin["id"],
+        )
     )
     return RedirectResponse("/admin/ai", status_code=302)
 
@@ -1616,6 +1643,10 @@ async def ai_posts_page(request: Request):
         page = 1
 
     try:
+        try:
+            await database.execute(ai_training_folders.insert().values(name="Без папки"))
+        except Exception:
+            pass
         posts_list = await database.fetch_all(
             ai_training_posts.select().order_by(ai_training_posts.c.created_at.desc())
         )
@@ -1639,6 +1670,9 @@ async def ai_posts_page(request: Request):
             folder_order.append(fn)
             posts_by_folder[fn] = []
     folder_order = sorted(set(folder_order), key=lambda x: (0 if x == "Без папки" else 1, x.lower()))
+    if "Без папки" not in folder_order:
+        folder_order.insert(0, "Без папки")
+        posts_by_folder["Без папки"] = []
     folder_options = list(folder_order)
     for fn in list(posts_by_folder.keys()):
         posts_by_folder[fn] = sorted(
@@ -1881,6 +1915,45 @@ async def delete_ai_folder_label(request: Request, name: str = Query(default="")
         return JSONResponse({"error": "name required"}, status_code=400)
     await database.execute(ai_training_folders.delete().where(ai_training_folders.c.name == nm))
     return JSONResponse({"ok": True})
+
+
+@router.post("/ai-folders/clear")
+async def clear_ai_folder_posts(request: Request, name: str = Form(...)):
+    admin = await require_permission(request, "can_ai")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    nm = (name or "").strip()
+    if not nm or nm == "Без папки":
+        return JSONResponse({"error": "folder required"}, status_code=400)
+    await database.execute(
+        ai_training_posts.update()
+        .where(ai_training_posts.c.folder == nm)
+        .values(folder=None)
+    )
+    return JSONResponse({"ok": True})
+
+
+@router.post("/ai-folders/delete-safe")
+async def delete_ai_folder_safe(
+    request: Request,
+    name: str = Form(...),
+    move_posts_to_no_folder: str = Form("true"),
+):
+    admin = await require_permission(request, "can_ai")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    nm = (name or "").strip()
+    if not nm or nm == "Без папки":
+        return JSONResponse({"error": "folder required"}, status_code=400)
+    do_move = str(move_posts_to_no_folder).lower() in {"1", "true", "yes", "on"}
+    if do_move:
+        await database.execute(
+            ai_training_posts.update()
+            .where(ai_training_posts.c.folder == nm)
+            .values(folder=None)
+        )
+    await database.execute(ai_training_folders.delete().where(ai_training_folders.c.name == nm))
+    return JSONResponse({"ok": True, "moved": do_move})
 
 
 @router.delete("/ai-posts/{post_id}")

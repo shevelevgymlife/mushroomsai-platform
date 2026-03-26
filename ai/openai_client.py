@@ -15,6 +15,16 @@ _MAX_KNOWLEDGE_CHARS = 60000
 _MAX_POST_CONTENT_CHARS = 2200
 _MAX_RELEVANT_POSTS = 24
 _MAX_RECENT_FALLBACK = 8
+_RETRIEVAL_PROFILES = {
+    "title_first": {"title_w": 4.0, "content_w": 1.0, "use_fts": True},
+    "strict_titles": {"title_w": 6.0, "content_w": 0.2, "use_fts": False},
+    "balanced": {"title_w": 3.0, "content_w": 2.0, "use_fts": True},
+    "content_deep": {"title_w": 2.0, "content_w": 4.0, "use_fts": True},
+    "hybrid_fts": {"title_w": 3.5, "content_w": 1.5, "use_fts": True},
+    "broad_recall": {"title_w": 3.0, "content_w": 2.5, "use_fts": True},
+    "precise_shortlist": {"title_w": 5.0, "content_w": 1.0, "use_fts": True},
+    "recent_only": {"title_w": 0.0, "content_w": 0.0, "use_fts": False},
+}
 
 
 def _query_terms(text: str) -> list[str]:
@@ -28,15 +38,26 @@ def _query_terms(text: str) -> list[str]:
     return out
 
 
-async def _fetch_relevant_training_posts(user_message: str) -> list[dict]:
+async def _fetch_relevant_training_posts(
+    user_message: str,
+    retrieval_mode: str = "title_first",
+    top_k: int = _MAX_RELEVANT_POSTS,
+) -> list[dict]:
     terms = _query_terms(user_message)
+    mode = retrieval_mode if retrieval_mode in _RETRIEVAL_PROFILES else "title_first"
+    profile = _RETRIEVAL_PROFILES.get(mode, _RETRIEVAL_PROFILES["title_first"])
+    top_k = max(6, min(80, int(top_k or _MAX_RELEVANT_POSTS)))
+    if mode == "precise_shortlist":
+        top_k = min(top_k, 12)
+    if mode == "broad_recall":
+        top_k = min(80, max(top_k, 40))
     try:
-        if not terms:
+        if mode == "recent_only" or not terms:
             rows = await database.fetch_all(
                 ai_training_posts.select()
                 .where(ai_training_posts.c.is_active == True)
                 .order_by(ai_training_posts.c.created_at.desc())
-                .limit(_MAX_RECENT_FALLBACK)
+                .limit(max(_MAX_RECENT_FALLBACK, min(top_k, 24)))
             )
             return [dict(r) for r in rows]
 
@@ -61,8 +82,8 @@ async def _fetch_relevant_training_posts(user_message: str) -> list[dict]:
                 (ai_training_posts.c.content.ilike(p), 1),
                 else_=0,
             )
-            # Вес title/folder/category выше, чем content.
-            weighted = (title_hit * 4) + content_hit
+            # Весовые коэффициенты берутся из режима поиска.
+            weighted = (title_hit * float(profile["title_w"])) + (content_hit * float(profile["content_w"]))
             filters.append(weighted > 0)
             rank = weighted if rank is None else (rank + weighted)
 
@@ -71,10 +92,10 @@ async def _fetch_relevant_training_posts(user_message: str) -> list[dict]:
             .where(ai_training_posts.c.is_active == True)
             .where(sa.or_(*filters))
             .order_by(rank.desc(), ai_training_posts.c.created_at.desc())
-            .limit(_MAX_RELEVANT_POSTS)
+            .limit(top_k)
         )
         rows = await database.fetch_all(q)
-        if rows and len(rows) >= min(6, _MAX_RELEVANT_POSTS):
+        if rows and len(rows) >= min(6, top_k):
             return [dict(r) for r in rows]
 
         # 2) FTS fallback (PostgreSQL): тоже с приоритетом title > content.
@@ -89,7 +110,7 @@ async def _fetch_relevant_training_posts(user_message: str) -> list[dict]:
                 sa.func.to_tsvector("russian", sa.func.coalesce(ai_training_posts.c.content, "")),
                 sa.func.plainto_tsquery("russian", qtxt),
             )
-            fts_rank = (fts_title * 3.0) + fts_body
+            fts_rank = (fts_title * float(profile["title_w"])) + (fts_body * float(profile["content_w"]))
             q2 = (
                 ai_training_posts.select()
                 .where(ai_training_posts.c.is_active == True)
@@ -102,11 +123,12 @@ async def _fetch_relevant_training_posts(user_message: str) -> list[dict]:
                     )
                 )
                 .order_by(fts_rank.desc(), ai_training_posts.c.created_at.desc())
-                .limit(_MAX_RELEVANT_POSTS)
+                .limit(top_k)
             )
-            fts_rows = await database.fetch_all(q2)
-            if fts_rows:
-                return [dict(r) for r in fts_rows]
+            if bool(profile.get("use_fts")):
+                fts_rows = await database.fetch_all(q2)
+                if fts_rows:
+                    return [dict(r) for r in fts_rows]
         except Exception:
             pass
 
@@ -115,23 +137,39 @@ async def _fetch_relevant_training_posts(user_message: str) -> list[dict]:
             ai_training_posts.select()
             .where(ai_training_posts.c.is_active == True)
             .order_by(ai_training_posts.c.created_at.desc())
-            .limit(_MAX_RECENT_FALLBACK)
+            .limit(max(_MAX_RECENT_FALLBACK, min(top_k, 24)))
         )
         return [dict(r) for r in rows]
     except Exception:
         return []
 
 async def get_system_prompt(user_message: str = "") -> str:
+    retrieval_mode = "title_first"
+    retrieval_top_k = _MAX_RELEVANT_POSTS
     try:
         row = await database.fetch_one(
             ai_settings.select().order_by(ai_settings.c.updated_at.desc()).limit(1)
         )
         base_prompt = row["system_prompt"] if row else DEFAULT_SYSTEM_PROMPT
+        if row:
+            row_d = dict(row)
+            try:
+                retrieval_mode = (row_d.get("retrieval_mode") or "title_first").strip() or "title_first"
+            except Exception:
+                retrieval_mode = "title_first"
+            try:
+                retrieval_top_k = int(row_d.get("retrieval_top_k") or _MAX_RELEVANT_POSTS)
+            except Exception:
+                retrieval_top_k = _MAX_RELEVANT_POSTS
     except Exception:
         base_prompt = DEFAULT_SYSTEM_PROMPT
 
     try:
-        posts = await _fetch_relevant_training_posts(user_message)
+        posts = await _fetch_relevant_training_posts(
+            user_message=user_message,
+            retrieval_mode=retrieval_mode,
+            top_k=retrieval_top_k,
+        )
         posts.sort(
             key=lambda r: (
                 ((r.get("folder") or "").strip().lower()),
