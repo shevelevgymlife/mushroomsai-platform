@@ -267,7 +267,11 @@ async def notify_github_pr(repo: str, title: str, author: str, action: str, url:
 
 
 async def notify_render_webhook(service: str, status: str, deploy_id: str = "", commit: str = "") -> None:
-    icons = {"live": "🟢", "failed": "🔴", "building": "🔵", "canceled": "⚫"}
+    # Отправляем только финальные статусы (не промежуточные building/deploying)
+    final_statuses = {"live", "failed", "canceled", "deactivated"}
+    if status not in final_statuses:
+        return
+    icons = {"live": "🟢", "failed": "🔴", "canceled": "⚫", "deactivated": "⚫"}
     icon = icons.get(status, "ℹ️")
     await tg_send(
         f"{icon} <b>Render: {status}</b>\n"

@@ -71,7 +71,6 @@ async def send_deploy_email() -> None:
 
 
 async def send_deploy_notifications() -> None:
-    """Best-effort: email старт деплоя + Telegram/email о завершении запуска."""
-    await notify_deploy_sent("Render начал выкладку новой версии.")
+    """Best-effort: email + Telegram об успешном запуске на Render."""
     await send_deploy_email()
     await notify_deploy_finished("Приложение успешно запущено на Render.")
