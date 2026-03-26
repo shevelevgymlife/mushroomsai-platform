@@ -13,9 +13,14 @@
     <p style="font-size:14px;color:#666;margin:0 0 16px;line-height:1.5">
       Привяжите все способы входа — войдёте с любого устройства в один аккаунт.
     </p>
-    <div style="padding:14px 16px;border-radius:14px;border:1px solid rgba(61,212,224,.28);background:rgba(61,212,224,.07);margin-bottom:24px;font-size:13px;color:#9ca3af;line-height:1.55">
-      <strong style="color:#3dd4e0">Круговая проверка Google ↔ Telegram.</strong>
-      Чтобы надёжно объединить аккаунты, система может провести вас по цепочке: сначала подтверждение в <b>Google</b> на сайте, затем финальное подтверждение в <b>Telegram</b> (сообщение от бота со ссылкой). Так мы связываем почту Google и ваш Telegram в одном профиле.
+    <div style="padding:14px 16px;border-radius:14px;border:1px solid rgba(61,212,224,.28);background:rgba(61,212,224,.07);margin-bottom:24px;font-size:13px;color:#9ca3af;line-height:1.6">
+      <strong style="color:#3dd4e0">Как привязать аккаунты (коротко):</strong>
+      <ol style="margin:8px 0 0 18px;padding:0">
+        <li>Нажмите <b>«Привязать Telegram»</b> или <b>«Привязать Google»</b>.</li>
+        <li>Подтвердите вход в выбранном сервисе.</li>
+        <li>Если сервис уже был зарегистрирован отдельно, тот старый аккаунт объединится с текущим.</li>
+        <li>После привязки вход через Telegram и Google ведёт в <b>один и тот же профиль</b>.</li>
+      </ol>
     </div>
 
     {% set has_tg = user.tg_id or user.linked_tg_id %}
