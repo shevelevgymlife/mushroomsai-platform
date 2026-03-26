@@ -33,12 +33,11 @@
                   {% endfor %}
                 </select>
               </div>
-              <div>
-                <label class="block text-xs text-muted mb-1">Сколько постов давать AI (top-k)</label>
-                <input type="number" min="6" max="80" step="1" name="retrieval_top_k" value="{{ current_retrieval_top_k }}"
-                  class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-text text-sm" />
+              <div class="text-xs text-muted self-end">
+                Лимит количества постов для AI теперь управляется автоматически в безопасных границах.
               </div>
             </div>
+            <input type="hidden" name="retrieval_top_k" value="{{ current_retrieval_top_k }}">
             <div class="mb-4 p-3 rounded-xl bg-bg border border-border">
               <p class="text-xs text-muted mb-2">Кратко по режимам:</p>
               <div class="space-y-1">
