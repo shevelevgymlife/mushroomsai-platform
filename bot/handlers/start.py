@@ -1,5 +1,6 @@
 import secrets
 import string
+from datetime import datetime
 import sqlalchemy as sa
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, WebAppInfo
 from telegram.ext import ContextTypes
@@ -105,6 +106,27 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if context.args:
         ref_code = context.args[0]
+        if ref_code.startswith("link_"):
+            token = ref_code[len("link_"):].strip()
+            row = await database.fetch_one(users.select().where(users.c.link_token == token))
+            if not row:
+                await update.message.reply_text("Ссылка недействительна или уже использована.")
+                return
+            expires = row.get("link_token_expires")
+            if expires and datetime.utcnow() > expires:
+                await update.message.reply_text("Срок действия ссылки истёк. Сгенерируйте новую на сайте.")
+                return
+            kb = InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("✅ Подтвердить привязку", callback_data=f"link_confirm:{token}")],
+                    [InlineKeyboardButton("❌ Отмена", callback_data=f"link_cancel:{token}")],
+                ]
+            )
+            await update.message.reply_text(
+                "Подтвердите привязку Telegram к вашему аккаунту на сайте.",
+                reply_markup=kb,
+            )
+            return
         if ref_code and ref_code != user.get("referral_code"):
             from services.referral_service import process_referral
             await process_referral(user["id"], ref_code)

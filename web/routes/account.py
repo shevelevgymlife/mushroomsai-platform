@@ -1,6 +1,8 @@
 import json
 import logging
+import secrets
 import urllib.parse
+from datetime import datetime, timedelta
 from typing import Optional
 
 import sqlalchemy as sa
@@ -429,6 +431,44 @@ async def link_telegram_page(request: Request):
         {"request": request, "user": user, "site_url": settings.SITE_URL,
          "bot_username": settings.TELEGRAM_BOT_USERNAME},
     )
+
+
+@router.post("/link-telegram-start")
+async def link_telegram_start(request: Request):
+    user = await get_user_from_request(request)
+    if not user:
+        return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
+
+    primary = await _resolve_primary_row(int(user["id"]))
+    if not primary:
+        return JSONResponse({"ok": False, "error": "user_not_found"}, status_code=404)
+
+    token = secrets.token_urlsafe(24).replace("-", "").replace("_", "")[:48]
+    expires = datetime.utcnow() + timedelta(minutes=30)
+    uid = int(primary["id"])
+    await database.execute(
+        users.update()
+        .where(users.c.id == uid)
+        .values(link_token=token, link_token_expires=expires, link_merge_secondary_id=None)
+    )
+
+    from config import settings
+
+    bot_username = (settings.TELEGRAM_BOT_USERNAME or "").strip() or "mushrooms_ai_bot"
+    deeplink = f"https://t.me/{bot_username}?start=link_{token}"
+    return JSONResponse({"ok": True, "deeplink": deeplink, "expires_at": expires.isoformat()})
+
+
+@router.get("/check-link-status")
+async def check_link_status(request: Request):
+    user = await get_user_from_request(request)
+    if not user:
+        return JSONResponse({"linked": False}, status_code=401)
+    primary = await _resolve_primary_row(int(user["id"]))
+    if not primary:
+        return JSONResponse({"linked": False}, status_code=404)
+    linked = bool(primary.get("tg_id") or primary.get("linked_tg_id"))
+    return JSONResponse({"linked": linked})
 
 
 @router.get("/link-telegram-callback")
