@@ -21,6 +21,27 @@
       </div>
     </div>
   </div>
+  {% set rim_close_fn = 'closeAppGlobalDrawer' %}
+  {% include "components/drawer_screen_rim.html" %}
+  <div id="drawerFreeAiLimit" style="display:none;padding:10px 12px;margin:10px 10px 6px;border:1px solid rgba(61,212,224,.22);border-radius:14px;background:rgba(61,212,224,.07)">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <div style="font-size:12px;font-weight:700;color:#bfeff3">Бесплатный AI-лимит</div>
+      <div id="drawerAiCounter" style="font-size:12px;font-weight:800;color:#3dd4e0">5</div>
+    </div>
+    <div id="drawerAiCounterText" style="font-size:11px;color:#8fb5bb;line-height:1.4;margin-top:6px">
+      Написано: 0 / 5
+    </div>
+    <div style="height:6px;margin-top:6px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden">
+      <div id="drawerAiProgress" style="height:100%;width:0;background:linear-gradient(90deg,#3dd4e0,#ff66d0)"></div>
+    </div>
+    <div id="drawerAiLimitWarn" style="display:none;font-size:11px;line-height:1.45;color:#fecaca;background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.35);border-radius:10px;padding:7px 8px;margin-top:7px">
+      Лимит сообщений закончился. Откройте меню и купите подписку для безлимитного общения.
+    </div>
+    <details id="drawerAiHistoryWrap" style="margin-top:8px">
+      <summary style="cursor:pointer;font-size:11px;color:#9ad8de;list-style:none">Последние 5 сообщений</summary>
+      <div id="drawerAiHistory" style="margin-top:7px;display:flex;flex-direction:column;gap:5px"></div>
+    </details>
+  </div>
   <div class="ig-drawer-scroll">
     {% if not is_locked_free %}
     <a href="/community/profile/{{ eff_uid|int }}" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('grid') }}</span><span class="lbl">Мой профиль</span></a>

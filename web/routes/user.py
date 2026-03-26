@@ -224,6 +224,75 @@ async def dashboard_lite(request: Request):
     return RedirectResponse("/community", status_code=302)
 
 
+@router.get("/community/ai/free-status")
+async def community_ai_free_status(request: Request):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"ok": False, "error": "auth required"}, status_code=401)
+
+    uid = user.get("primary_user_id") or user["id"]
+    row = await database.fetch_one(users.select().where(users.c.id == uid))
+    if not row:
+        return JSONResponse({"ok": False, "error": "user not found"}, status_code=404)
+    u = dict(row)
+
+    plan = await check_subscription(uid)
+    free_limit = int((PLANS.get("free") or {}).get("questions_per_day") or 5)
+    today = date.today()
+    used = int(u.get("daily_questions") or 0)
+
+    if plan == "free" and u.get("last_reset") != today:
+        used = 0
+        try:
+            await database.execute(
+                users.update()
+                .where(users.c.id == uid)
+                .values(daily_questions=0, daily_recipes=0, last_reset=today)
+            )
+        except Exception:
+            pass
+
+    remaining = max(0, free_limit - used) if plan == "free" else -1
+
+    last_rows = await database.fetch_all(
+        messages.select()
+        .where(messages.c.user_id == uid)
+        .where(messages.c.role == "user")
+        .order_by(messages.c.created_at.desc())
+        .limit(5)
+    )
+    last_rows = list(reversed(last_rows))
+
+    last_user_messages = []
+    for m in last_rows:
+        txt = (m.get("content") or "").strip().replace("\n", " ")
+        if len(txt) > 140:
+            txt = txt[:137] + "..."
+        c_at = m.get("created_at")
+        last_user_messages.append(
+            {
+                "text": txt or "—",
+                "created_at": c_at.strftime("%d.%m %H:%M") if c_at else "",
+            }
+        )
+
+    return JSONResponse(
+        {
+            "ok": True,
+            "plan": plan,
+            "limit": free_limit,
+            "used": used if plan == "free" else None,
+            "remaining": remaining,
+            "last_messages": last_user_messages,
+            "menu_hint": (
+                "Лимит сообщений закончился. Откройте меню и купите подписку для безлимитного общения."
+                if plan == "free" and remaining <= 0
+                else ""
+            ),
+        }
+    )
+
+
 @router.post("/api/chat")
 async def api_chat(request: Request):
     try:
@@ -248,7 +317,13 @@ async def api_chat(request: Request):
             if not is_unlimited:
                 allowed = await can_ask_question(effective_user_id)
                 if not allowed:
-                    return JSONResponse({"error": "limit", "message": "Дневной лимит исчерпан. Подключите подписку для безлимитного доступа."}, status_code=429)
+                    return JSONResponse(
+                        {
+                            "error": "limit",
+                            "message": "Лимит сообщений на бесплатном тарифе исчерпан (0). Откройте меню и купите подписку для безлимитного общения.",
+                        },
+                        status_code=429,
+                    )
             answer = await chat_with_ai(user_message=user_message, user_id=effective_user_id)
             await increment_question_count(effective_user_id)
         else:
