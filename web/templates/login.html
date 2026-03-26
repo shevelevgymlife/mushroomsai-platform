@@ -110,11 +110,21 @@ function _getInitDataRaw() {
 
 /* ── Определяем: это Mini App или нет ── */
 function _isMiniApp() {
-  // Проверяем initData — только в Mini App оно не пустое
+  // 1. initData не пустой — самый надёжный признак Mini App
   if (_getInitDataRaw().length > 0) return true;
-  // Запасная проверка: tgWebAppData в URL
+  // 2. tgWebAppData в URL hash или query
   var loc = (window.location.hash || '') + (window.location.search || '');
   if (loc.indexOf('tgWebAppData=') >= 0) return true;
+  // 3. Telegram.WebApp объект существует (скрипт подключён и запущен из Telegram)
+  try {
+    var tg = window.Telegram && window.Telegram.WebApp;
+    if (tg) {
+      // initDataUnsafe содержит user — Mini App
+      if (tg.initDataUnsafe && tg.initDataUnsafe.user) return true;
+      // platform задан и не 'unknown'
+      if (tg.platform && tg.platform !== 'unknown' && tg.platform !== '') return true;
+    }
+  } catch(e) {}
   return false;
 }
 

@@ -15,10 +15,13 @@ from bot.handlers.chat import handle_chat_message
 logger = logging.getLogger(__name__)
 
 SHOP_URL = "https://t.me/neurotrops_rus_bot?start=rHQemtw"
+SECURITY_URL = "https://t.me/VPN_POLETELI_bot?start=742166400"
 
 # Тексты кнопок клавиатуры
 BTN_SHOP = "🛒 Магазин"
 BTN_COMMUNITY = "🌐 Сообщество"
+BTN_WEB = "🌍 Веб версия"
+BTN_SECURITY = "🔒 Безопасность"
 BTN_SUPPORT = "🆘 Тех. поддержка"
 
 
@@ -46,6 +49,27 @@ async def _community_handler(update, context):
     )
 
 
+async def _web_handler(update, context):
+    site = (settings.SITE_URL or "https://mushroomsai.ru").rstrip("/")
+    await update.message.reply_text(
+        "🌍 <b>Веб версия NEUROFUNGI AI</b>\n\nОткрыть сайт в браузере:",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🌍 Открыть сайт", url=site)],
+        ]),
+        parse_mode="HTML",
+    )
+
+
+async def _security_handler(update, context):
+    await update.message.reply_text(
+        "🔒 <b>Безопасность</b>\n\nЗащитите свои данные и соединение:",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🔒 Открыть", url=SECURITY_URL)],
+        ]),
+        parse_mode="HTML",
+    )
+
+
 def create_bot() -> Application:
     application = (
         Application.builder()
@@ -59,6 +83,8 @@ def create_bot() -> Application:
     # Кнопки клавиатуры
     application.add_handler(MessageHandler(filters.Regex(f"^{BTN_SHOP}$"), _shop_handler))
     application.add_handler(MessageHandler(filters.Regex(f"^{BTN_COMMUNITY}$"), _community_handler))
+    application.add_handler(MessageHandler(filters.Regex(f"^{BTN_WEB}$"), _web_handler))
+    application.add_handler(MessageHandler(filters.Regex(f"^{BTN_SECURITY}$"), _security_handler))
 
     # Callback кнопки
     application.add_handler(CallbackQueryHandler(link_confirm_callback, pattern=r"^link_confirm:"))
