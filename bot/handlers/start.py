@@ -149,3 +149,7 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     except Exception:
         pass  # Нет прав закрепить — не критично
+
+
+# Алиас для совместимости с импортом в main_bot.py
+start = start_handler
