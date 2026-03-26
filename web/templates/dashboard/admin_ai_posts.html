@@ -109,7 +109,11 @@
               {% if post.category %}<span>{{ post.category }}</span>{% endif %}
               <span>{{ post.created_at.strftime('%d.%m.%Y') if post.created_at else '—' }}</span>
               <span>{% if post.is_active %}<span style="color:#4ade80">● активен</span>{% else %}<span style="color:#6b7280">○ выкл.</span>{% endif %}</span>
+              {% if post.image_url %}<span style="color:#38bdf8">▣ фото</span>{% endif %}
             </div>
+            {% if post.image_url %}
+            <div class="mb-2"><img src="{{ post.image_url }}" alt="" style="max-height:100px;max-width:100%;border-radius:10px;border:1px solid rgba(56,189,248,.25)" loading="lazy"></div>
+            {% endif %}
             <p class="ai-ya-desc">{{ (post.content or '')[:220] }}{% if post.content and post.content|length > 220 %}…{% endif %}</p>
           </a>
           <div class="mt-3 flex flex-wrap gap-2">

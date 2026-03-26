@@ -19,7 +19,7 @@
   <div class="cp-card">
     <div class="cp-head">
       <div style="min-width:0;flex:1">
-        <div style="font-size:14px;font-weight:700;color:#e8e8e8">{{ author.name if author else 'Участник' }}</div>
+        <div style="font-size:14px;font-weight:700;color:#e8e8e8;display:flex;align-items:center;gap:8px;flex-wrap:wrap">{{ author.name if author else 'Участник' }}{% if post.from_telegram %}<span style="display:inline-flex;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800;background:rgba(56,189,248,.18);color:#38bdf8;border:1px solid rgba(56,189,248,.5)" title="Импорт из Telegram-канала">✓ TG</span>{% endif %}</div>
         <div style="font-size:11px;color:#8a8fa0">{{ post.created_at.strftime('%d.%m.%Y %H:%M') if post.created_at else '' }}</div>
       </div>
     </div>

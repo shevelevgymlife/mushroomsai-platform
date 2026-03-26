@@ -20,7 +20,10 @@ class Settings(BaseSettings):
     # Список chat_id каналов (-100…) через запятую. Пусто — бот канала не стартует (безопасность).
     CHANNEL_INGEST_ALLOWED_IDS: str = ""
     # Папка для постов из канала (как в админке / боте обучения).
-    CHANNEL_INGEST_FOLDER: str = "Из канала"
+    # Папка обучающих постов + зеркало в ленте; можно переопределить в Environment.
+    CHANNEL_INGEST_FOLDER: str = "Из канала с 26.03.26"
+    # ID пользователя сайта (users.id), от имени которого публиковать пост в ленте сообщества. 0 — не публиковать.
+    CHANNEL_INGEST_COMMUNITY_USER_ID: int = 0
     TELEGRAM_BOT_USERNAME: str = ""  # напр. mushroomsai_bot (без @)
     TELEGRAM_WEBAPP_SKIP_VERIFY: bool = False  # DEBUG ONLY: пропустить проверку подписи initData
     NOTIFY_BOT_TOKEN: str = ""       # отдельный бот для уведомлений админу

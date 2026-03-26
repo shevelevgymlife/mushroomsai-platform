@@ -115,6 +115,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 .ig-feed-shell.cp-chaos-off .ig-post{transform:none!important}
 .ig-feed-shell.cp-chaos-off .ig-post:hover{transform:none!important}
 .ig-post-header{position:relative;padding:10px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.05)}
+.cp-tg-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.02em;background:rgba(56,189,248,.18);color:#38bdf8;border:1px solid rgba(56,189,248,.5);box-shadow:0 0 12px rgba(56,189,248,.12)}
 .ig-post-img{width:100%;aspect-ratio:4/5;object-fit:cover;background:#0a0a0a;display:block;max-height:260px}
 .ig-post-textonly{min-height:72px;padding:10px 10px;font-size:13px;line-height:1.45;color:#ccc;white-space:pre-wrap;word-break:break-word;border-bottom:1px solid rgba(255,255,255,.05);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .ig-post-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:8px 10px 11px}
@@ -307,7 +308,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
       </div>
       </a>
       <div style="flex:1;min-width:0">
-        <a href="/community/profile/{{ profile_id }}" onclick="event.stopPropagation()" style="font-size:14px;font-weight:700;color:#e8e8e8;text-decoration:none;display:block">{{ profile.name or 'Участник' }}</a>
+        <a href="/community/profile/{{ profile_id }}" onclick="event.stopPropagation()" style="font-size:14px;font-weight:700;color:#e8e8e8;text-decoration:none;display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap">{{ profile.name or 'Участник' }}{% if p.from_telegram %}<span class="cp-tg-badge" title="Импорт из Telegram-канала">✓ TG</span>{% endif %}</a>
         <div style="font-size:11px;color:#888">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}{% if p.pinned %} · 📌{% endif %}{% if item.folder_name %} · 📁 {{ item.folder_name }}{% endif %}</div>
       </div>
       {% if is_own %}

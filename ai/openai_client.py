@@ -40,7 +40,11 @@ async def get_system_prompt() -> str:
                 blocks.append(f"═══ Папка / раздел: {folder} ═══")
                 for p in group:
                     cat = f"[{p['category']}] " if p.get("category") else ""
-                    blocks.append(f"{cat}{p['title']}:\n{p['content']}")
+                    block = f"{cat}{p['title']}:\n{p['content']}"
+                    img = (p.get("image_url") or "").strip()
+                    if img:
+                        block += f"\n[Изображение к материалу: {img}]"
+                    blocks.append(block)
             base_prompt += (
                 "\n\nДОПОЛНИТЕЛЬНЫЕ ЗНАНИЯ (по папкам) — единственный источник фактов для предметной области; "
                 "не опирайся на внешние базы и не выдумывай то, чего нет в этих блоках:\n"

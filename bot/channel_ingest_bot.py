@@ -1,17 +1,13 @@
 """
-Бот забирает новые посты из Telegram-канала и пишет их в ai_training_posts
-(тот же поток, что бот обучения и AI на сайте через get_system_prompt).
+Бот: новые посты Telegram-канала → ai_training_posts (папка по умолчанию «Из канала с 26.03.26»)
++ опционально зеркало в ленту сообщества от выбранного users.id с меткой TG.
 
-Настройка:
-  1. @BotFather → новый бот → CHANNEL_INGEST_BOT_TOKEN в Environment.
-  2. Добавить бота в канал администратором (достаточно читать сообщения / без особых прав).
-  3. CHANNEL_INGEST_ALLOWED_IDS — chat_id канала(ов), через запятую (обычно -100…).
-     Узнать id: @userinfobot, пересланное сообщение из канала, или логи бота при первом посте.
-  4. Опционально CHANNEL_INGEST_FOLDER (по умолчанию «Из канала»).
+Переменные:
+  CHANNEL_INGEST_BOT_TOKEN, CHANNEL_INGEST_ALLOWED_IDS,
+  CHANNEL_INGEST_FOLDER (по умолчанию из config),
+  CHANNEL_INGEST_COMMUNITY_USER_ID — id пользователя на сайте для публикации в ленте (0 = выкл).
 
-Ограничение Telegram Bot API: историю канала «задним числом» бот не получает —
-только посты, опубликованные после того, как бот стал админом канала.
-Для старых постов — ручной перенос или дубли через бот обучения.
+История канала задним числом API не отдаёт — только новые посты после добавления бота админом.
 """
 from __future__ import annotations
 
@@ -23,7 +19,10 @@ from telegram.ext import Application, ContextTypes, MessageHandler, filters
 
 from config import settings
 from db.database import database
-from db.models import ai_training_folders, ai_training_posts
+from db.models import ai_training_folders, ai_training_posts, community_posts, users
+from services.channel_ingest_save_image import save_channel_ingest_image
+from services.telegram_file_download import download_telegram_file_bytes
+from services.training_post_title_ai import suggest_training_post_title
 
 logger = logging.getLogger(__name__)
 
@@ -42,15 +41,12 @@ def parse_allowed_channel_ids() -> FrozenSet[int]:
     return frozenset(out)
 
 
-def _message_to_training_fields(msg: Message) -> tuple[str, str] | None:
-    """(title, content) для вставки или None — пропустить."""
+def _body_from_message(msg: Message) -> str:
+    parts: list[str] = []
     if msg.text:
-        raw = msg.text.strip()
-        if not raw:
-            return None
-        first = (raw.split("\n", 1)[0] or "").strip() or "Пост из канала"
-        return first[:500], raw[:100000]
-
+        t = msg.text.strip()
+        if t:
+            return t
     cap = (msg.caption or "").strip()
     media: list[str] = []
     if msg.photo:
@@ -64,26 +60,28 @@ def _message_to_training_fields(msg: Message) -> tuple[str, str] | None:
     if msg.voice:
         media.append("голосовое")
     if msg.video_note:
-        media.append("видеосообщение")
+        media.append("видеокружок")
     if msg.poll:
         media.append("опрос")
-
     if cap:
-        body = cap
-        if media:
-            body += "\n\n[В канале: " + ", ".join(media) + "]"
-        first = (body.split("\n", 1)[0] or "").strip() or "Пост из канала"
-        return first[:500], body[:100000]
-
+        parts.append(cap)
     if media:
-        body = (
-            "[Пост только с медиа без подписи: "
-            + ", ".join(media)
-            + " — добавьте подпись к посту в канале, чтобы текст попал в базу для AI.]"
-        )
-        return body[:500], body[:100000]
+        parts.append("[В канале: " + ", ".join(media) + "]")
+    if parts:
+        return "\n\n".join(parts)
+    if media:
+        return "[Пост из канала: " + ", ".join(media) + " — без текста]"
+    return ""
 
-    return None
+
+def _largest_photo_file_id(msg: Message) -> str | None:
+    if not msg.photo:
+        return None
+    try:
+        best = max(msg.photo, key=lambda p: (p.width or 0) * (p.height or 0))
+        return best.file_id
+    except Exception:
+        return None
 
 
 async def _on_channel_post(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -95,18 +93,12 @@ async def _on_channel_post(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     chat_id = post.chat_id
     if chat_id not in allowed:
         logger.warning(
-            "channel_ingest: игнор chat_id=%s (нет в CHANNEL_INGEST_ALLOWED_IDS). Добавьте этот id в Environment.",
+            "channel_ingest: игнор chat_id=%s (нет в CHANNEL_INGEST_ALLOWED_IDS).",
             chat_id,
         )
         return
 
-    fields = _message_to_training_fields(post)
-    if not fields:
-        return
-
-    title, content = fields
     mid = post.message_id
-
     dup = await database.fetch_one(
         ai_training_posts.select()
         .where(ai_training_posts.c.ingest_tg_chat_id == chat_id)
@@ -115,15 +107,33 @@ async def _on_channel_post(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     if dup:
         return
 
-    folder = (settings.CHANNEL_INGEST_FOLDER or "Из канала").strip() or "Из канала"
+    token = (settings.CHANNEL_INGEST_BOT_TOKEN or "").strip()
+    body = _body_from_message(post)
+    image_url: str | None = None
+    fid = _largest_photo_file_id(post)
+    if fid:
+        raw_img = await download_telegram_file_bytes(token, fid)
+        if raw_img:
+            image_url = save_channel_ingest_image(raw_img)
+
+    if not body.strip() and not image_url:
+        logger.info("channel_ingest: пропуск msg=%s — нет текста и не удалось сохранить фото", mid)
+        return
+
+    title_base = body if body.strip() else (image_url and "Пост с изображением из Telegram") or "Пост из Telegram"
+    title = await suggest_training_post_title(title_base)
+
+    folder = (settings.CHANNEL_INGEST_FOLDER or "Из канала с 26.03.26").strip() or "Из канала с 26.03.26"
+    content = body.strip() if body.strip() else "[Изображение из Telegram-канала]"
 
     try:
         await database.execute(
             ai_training_posts.insert().values(
-                title=title,
-                content=content,
+                title=title[:500],
+                content=content[:100000],
                 category="telegram_channel",
                 folder=folder,
+                image_url=image_url,
                 ingest_tg_chat_id=chat_id,
                 ingest_tg_message_id=mid,
             )
@@ -133,10 +143,37 @@ async def _on_channel_post(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         except Exception:
             pass
     except Exception:
-        logger.exception("channel_ingest: не удалось сохранить пост chat=%s msg=%s", chat_id, mid)
+        logger.exception("channel_ingest: ai_training_posts chat=%s msg=%s", chat_id, mid)
         return
 
-    logger.info("channel_ingest: сохранён пост в AI-обучение chat=%s msg=%s folder=%r", chat_id, mid, folder)
+    uid = int(settings.CHANNEL_INGEST_COMMUNITY_USER_ID or 0)
+    if uid > 0:
+        urow = await database.fetch_one(users.select().where(users.c.id == uid))
+        if urow:
+            try:
+                tit = title[:200] if len(title) > 200 else title
+                await database.execute(
+                    community_posts.insert().values(
+                        user_id=uid,
+                        title=tit,
+                        content=content[:100000],
+                        image_url=image_url,
+                        from_telegram=True,
+                        folder_id=None,
+                        approved=True,
+                    )
+                )
+            except Exception:
+                logger.exception("channel_ingest: community_posts chat=%s msg=%s", chat_id, mid)
+        else:
+            logger.warning("channel_ingest: CHANNEL_INGEST_COMMUNITY_USER_ID=%s не найден в users", uid)
+
+    logger.info(
+        "channel_ingest: OK training + optional feed chat=%s msg=%s folder=%r",
+        chat_id,
+        mid,
+        folder,
+    )
 
 
 def create_channel_ingest_bot() -> Application:

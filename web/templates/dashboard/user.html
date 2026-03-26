@@ -360,6 +360,7 @@
 .ig-story-ring-inner img{width:100%;height:100%;object-fit:cover;display:block}
 .ig-post{border:1px solid rgba(61,212,224,.12);border-radius:28px;overflow:hidden;background:linear-gradient(180deg,rgba(255,255,255,.06) 0%,rgba(12,14,24,.72) 100%);margin-bottom:20px;box-shadow:0 12px 48px rgba(0,0,0,.45),0 0 0 1px rgba(61,212,224,.08) inset,0 0 40px rgba(61,212,224,.04)}
 .ig-post-header{padding:10px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.05)}
+.ig-tg-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.02em;background:rgba(56,189,248,.18);color:#38bdf8;border:1px solid rgba(56,189,248,.5);box-shadow:0 0 12px rgba(56,189,248,.15);vertical-align:middle}
 .ig-post-img{width:100%;aspect-ratio:1;object-fit:cover;background:#0a0a0a;display:block;max-height:min(470px,92vw)}
 .ig-post-textonly{min-height:100px;padding:16px 14px;font-size:14px;line-height:1.55;color:#ccc;white-space:pre-wrap;word-break:break-word;border-bottom:1px solid rgba(255,255,255,.05)}
 .ig-post-actions{display:flex;gap:8px;padding:10px 12px 6px;align-items:center;justify-content:space-between}
@@ -1259,9 +1260,9 @@ body.dash-ig-app .ig-lamp-topbar{
           {% if is_mine %}</a>{% else %}</a>{% endif %}
           <div style="flex:1;min-width:0">
             {% if is_mine %}
-            <div style="font-size:14px;font-weight:700;color:#e8e8e8;cursor:pointer" onclick="goSec('{{ dash_home }}')">{{ a.name if a else 'Участник' }} <span style="font-size:11px;color:#3dd4e0">● я</span></div>
+            <div style="font-size:14px;font-weight:700;color:#e8e8e8;cursor:pointer;display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap" onclick="goSec('{{ dash_home }}')">{{ a.name if a else 'Участник' }} <span style="font-size:11px;color:#3dd4e0">● я</span>{% if p.from_telegram %}<span class="ig-tg-badge" title="Импорт из Telegram-канала">✓ TG</span>{% endif %}</div>
             {% else %}
-            <a href="/community/profile/{{ p.user_id }}" style="font-size:14px;font-weight:700;color:#e8e8e8;text-decoration:none">{{ a.name if a else 'Участник' }}</a>
+            <a href="/community/profile/{{ p.user_id }}" onclick="event.stopPropagation()" style="font-size:14px;font-weight:700;color:#e8e8e8;text-decoration:none;display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap">{{ a.name if a else 'Участник' }}{% if p.from_telegram %}<span class="ig-tg-badge" title="Импорт из Telegram-канала">✓ TG</span>{% endif %}</a>
             {% endif %}
             <div style="font-size:11px;color:#888">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}{% if p.pinned %} · 📌{% endif %}</div>
           </div>
