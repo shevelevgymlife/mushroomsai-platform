@@ -1,0 +1,15 @@
+{# Единая нижняя панель: Лента · Поиск · Магазин (без второго tabbar на отдельных страницах) #}
+{% from 'components/stroke_icons.html' import ico %}
+{% set path = request.url.path %}
+<nav class="app-uni-tabbar" id="appUniTabbar" aria-label="Нижняя навигация">
+  <a href="/dashboard#feed" class="app-uni-tab {% if path == '/dashboard' %}app-uni-tab--on{% endif %}" data-app-tab="feed" data-hash="feed">
+    <span class="ic">{{ ico('home') }}</span><span class="lbl">Лента</span>
+  </a>
+  <a href="/community/members" class="app-uni-tab {% if path.startswith('/community/members') %}app-uni-tab--on{% endif %}" data-app-tab="search">
+    <span class="ic">{{ ico('search') }}</span><span class="lbl">Поиск</span>
+  </a>
+  <a href="/shop" class="app-uni-tab {% if path.startswith('/shop') %}app-uni-tab--on{% endif %}" data-app-tab="shop">
+    <span class="ic">{{ ico('shop') }}</span><span class="lbl">Магазин</span>
+  </a>
+</nav>
+<script src="/static/js/app-bottom-nav.js?v=1" defer></script>

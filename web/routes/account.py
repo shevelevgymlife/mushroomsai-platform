@@ -1,3 +1,4 @@
+import json
 import logging
 import urllib.parse
 from typing import Optional
@@ -9,6 +10,7 @@ from web.templates_utils import Jinja2Templates
 from starlette.responses import JSONResponse
 from auth.session import get_user_from_request
 from auth.telegram_auth import verify_telegram_auth
+from auth.ui_prefs import DEFAULT_SCREEN_RIM, attach_screen_rim_prefs
 from db.database import database
 from db.models import (
     users,
@@ -350,6 +352,70 @@ async def attach_google_login(primary_user_id: int, google_id: str, email: str =
         vals["avatar"] = avatar
     await database.execute(users.update().where(users.c.id == primary_id).values(**vals))
     return True, "Google привязан."
+
+
+@router.get("/link", response_class=HTMLResponse)
+async def link_account_hub(request: Request):
+    user = await get_user_from_request(request)
+    if not user:
+        return RedirectResponse("/login")
+    attach_screen_rim_prefs(user)
+    from config import settings
+
+    return templates.TemplateResponse(
+        "account/link_account.html",
+        {
+            "request": request,
+            "user": user,
+            "site_url": settings.SITE_URL,
+            "bot_username": settings.TELEGRAM_BOT_USERNAME,
+        },
+    )
+
+
+@router.get("/screen-rim", response_class=HTMLResponse)
+async def screen_rim_page(request: Request):
+    user = await get_user_from_request(request)
+    if not user:
+        return RedirectResponse("/login")
+    attach_screen_rim_prefs(user)
+    return templates.TemplateResponse(
+        "account/screen_rim.html",
+        {"request": request, "user": user},
+    )
+
+
+@router.post("/screen-rim")
+async def screen_rim_save(request: Request):
+    user = await get_user_from_request(request)
+    if not user:
+        return JSONResponse({"ok": False, "error": "Unauthorized"}, status_code=401)
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"ok": False, "error": "bad_json"}, status_code=400)
+    if not isinstance(body, dict):
+        return JSONResponse({"ok": False, "error": "bad_json"}, status_code=400)
+
+    uid = int(user.get("primary_user_id") or user["id"])
+    out = DEFAULT_SCREEN_RIM.copy()
+    if "on" in body:
+        out["on"] = bool(body["on"])
+    if "r" in body:
+        out["r"] = max(0, min(255, int(body["r"])))
+    if "g" in body:
+        out["g"] = max(0, min(255, int(body["g"])))
+    if "b" in body:
+        out["b"] = max(0, min(255, int(body["b"])))
+    if "s" in body:
+        out["s"] = max(0.05, min(1.0, float(body["s"])))
+    if "w" in body:
+        out["w"] = max(0.05, min(1.0, float(body["w"])))
+
+    await database.execute(
+        users.update().where(users.c.id == uid).values(screen_rim_json=json.dumps(out))
+    )
+    return JSONResponse({"ok": True, "screen_rim": out})
 
 
 @router.get("/link-telegram", response_class=HTMLResponse)

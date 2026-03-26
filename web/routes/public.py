@@ -878,6 +878,9 @@ async def community(request: Request):
 
 @router.get("/community/_old", response_class=HTMLResponse)
 async def community_old(request: Request):
+    # Legacy page removed; keep only single dashboard/community flow.
+    return RedirectResponse(url="/dashboard#feed", status_code=302)
+
     current_user = await get_user_from_request(request)
 
     if not current_user:

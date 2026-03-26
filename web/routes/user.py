@@ -336,6 +336,17 @@ async def dashboard(request: Request):
             _logger.exception("dashboard: fetch_community_groups_for_user")
             group_list = []
 
+    my_community_folders: list = []
+    if "community" in visible_block_keys:
+        try:
+            my_community_folders = await database.fetch_all(
+                community_folders.select()
+                .where(community_folders.c.user_id == effective_user_id)
+                .order_by(community_folders.c.id.asc())
+            )
+        except Exception:
+            my_community_folders = []
+
     response = templates.TemplateResponse(
         "dashboard/user.html",
         {
@@ -367,6 +378,7 @@ async def dashboard(request: Request):
             "visible_block_keys": visible_block_keys,
             "dashboard_secs": dashboard_secs,
             "group_list": group_list,
+            "my_community_folders": my_community_folders,
         },
     )
     # Не кэшировать HTML кабинета — иначе после деплоя виден старый интерфейс

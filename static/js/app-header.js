@@ -64,7 +64,7 @@
       );
     }
     if (it.type === 'profile_like') {
-      var profHref = '/community/profile/' + encodeURIComponent(String(uid || ''));
+      var profHref = '/dashboard#me';
       return (
         '<a class="app-act-row" href="' +
         profHref +

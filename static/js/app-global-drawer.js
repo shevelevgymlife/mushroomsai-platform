@@ -48,12 +48,4 @@
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape") closeAppGlobalDrawer();
   });
-
-  /* Меню открыто сразу при заходе на страницу (после первой отрисовки) */
-  document.addEventListener("DOMContentLoaded", function () {
-    if (!document.getElementById("appGlobalDrawer")) return;
-    requestAnimationFrame(function () {
-      requestAnimationFrame(openAppGlobalDrawer);
-    });
-  });
 })();

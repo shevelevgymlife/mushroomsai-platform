@@ -151,6 +151,8 @@ document.addEventListener('DOMContentLoaded', function() {
   if (isTelegram) {
     window.Telegram.WebApp.ready();
     document.getElementById('tg-miniapp-block').style.display = 'block';
+    // Auto-login in Mini App as soon as initData is available.
+    loginWithTelegram();
   } else {
     document.getElementById('web-auth-block').style.display = 'flex';
   }

@@ -293,7 +293,9 @@ async def telegram_miniapp_auth(request: Request):
             )
 
         token = create_access_token(user_id)
-        dest = _pop_login_redirect(request)
+        # Mini App: always open single in-app dashboard view.
+        request.session.pop("login_next", None)
+        dest = "/dashboard#feed"
         resp = JSONResponse({"redirect": dest})
         resp.set_cookie("access_token", token, httponly=True, max_age=30 * 24 * 3600)
         await finalize_web_referral(request, resp, int(user_id))
