@@ -35,6 +35,16 @@ QUICK_INGEST_FOLDER = "Из Telegram"
 PER_PAGE = 10
 
 
+def _is_main_menu_button(text: str) -> bool:
+    return text in (
+        BTN_NEW_FOLDER,
+        BTN_NEW_POST,
+        BTN_BROWSE,
+        BTN_QUICK_ON,
+        BTN_QUICK_OFF,
+    )
+
+
 def main_reply_kb() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         [
@@ -190,8 +200,58 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             context.user_data.pop("state", None)
             return
         context.user_data.pop("state", None)
-        await update.message.reply_text(f"Папка «{html.escape(text)}» создана.", parse_mode="HTML", reply_markup=main_reply_kb())
+        context.user_data["post_folder"] = text
+        context.user_data["state"] = "post_after_folder"
+        await update.message.reply_text(
+            f"Папка «{html.escape(text)}» создана.\n\n"
+            "Пришлите <b>текст поста одним сообщением</b> — он сразу попадёт в обучающие посты для AI "
+            "(заголовок = первая строка; если одна строка, весь текст и в заголовке, и в теле).\n"
+            "Или нажмите кнопку меню — отменим этот шаг.",
+            parse_mode="HTML",
+            reply_markup=main_reply_kb(),
+        )
         return
+
+    if state == "post_after_folder":
+        if _is_main_menu_button(text):
+            context.user_data.pop("state", None)
+            context.user_data.pop("post_folder", None)
+        else:
+            if len(text) < 1:
+                await update.message.reply_text("Пришлите текст поста или выберите действие в меню.")
+                return
+            folder_name = context.user_data.get("post_folder") or "Без папки"
+            fn = None if folder_name == "Без папки" else folder_name
+            first_line = (text.split("\n", 1)[0] or "").strip() or "Пост"
+            title = first_line[:500]
+            try:
+                await database.execute(
+                    ai_training_posts.insert().values(
+                        title=title,
+                        content=text[:100000],
+                        category=None,
+                        folder=fn,
+                    )
+                )
+                if fn:
+                    try:
+                        await database.execute(ai_training_folders.insert().values(name=fn))
+                    except Exception:
+                        pass
+            except Exception:
+                logger.exception("training_bot post_after_folder insert")
+                await update.message.reply_text("Ошибка сохранения поста.")
+                context.user_data.clear()
+                return
+            context.user_data.clear()
+            await update.message.reply_text(
+                "✅ <b>Пост записан в базу обучающих материалов.</b>\n"
+                f"Папка: «{html.escape(folder_name)}».\n"
+                "AI на сайте подхватит его в ответах вместе с остальными постами.",
+                parse_mode="HTML",
+                reply_markup=main_reply_kb(),
+            )
+            return
 
     if state == "post_title":
         if len(text) < 1 or len(text) > 500:
