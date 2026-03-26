@@ -1,9 +1,7 @@
 /* Единая мобильная колонка: на узком экране — во всю ширину вьюпорта, без «уже экрана телефона» */
 :root {
   --app-shell-max: 430px;
-  /* Гамбургер ≈ в 3 раза крупнее базовой кнопки 44px; шапка подстраивается по высоте */
-  --app-menu-btn-size: min(132px, 36vw);
-  --app-header-h: max(56px, calc(var(--app-menu-btn-size) + 12px));
+  --app-header-h: 56px;
   --neo-cyan: #22d3ee;
   --neo-cyan-soft: rgba(34, 211, 238, 0.42);
 }
@@ -213,14 +211,6 @@ body.app-has-mobile-header main {
 
 .app-head-btn-menu {
   color: #5ee9f5;
-  width: var(--app-menu-btn-size);
-  height: var(--app-menu-btn-size);
-  border-radius: clamp(18px, calc(var(--app-menu-btn-size) * 0.22), 30px);
-}
-.app-head-btn-menu .stroke-ico,
-.app-head-btn-menu svg.stroke-ico {
-  width: calc(var(--app-menu-btn-size) * 0.48) !important;
-  height: calc(var(--app-menu-btn-size) * 0.48) !important;
 }
 
 .app-head-bell .stroke-ico,
@@ -238,7 +228,7 @@ body.app-has-mobile-header main {
 }
 
 @media (max-width: 360px) {
-  .app-head-btn:not(.app-head-btn-menu) {
+  .app-head-btn {
     width: 40px;
     height: 40px;
     border-radius: 12px;
