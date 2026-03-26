@@ -3,8 +3,13 @@
 {% set eff_uid = user.primary_user_id or user.id %}
 {% set vbk = visible_block_keys if visible_block_keys is defined else ['ai_chat','messages','community','shop','profile_photo','posts','tariffs','referral','knowledge_base','pro_telegram','pro_pin_info','seller_marketplace'] %}
 {% set is_free_plan = ((user.subscription_plan or 'free') == 'free') %}
+{% set is_locked_free = is_free_plan and ((user.role or 'user') not in ['admin','moderator']) %}
+{% set lock_href = '/onboarding/tariff' %}
 <div class="ig-drawer-backdrop" id="appGlobalDrawerBackdrop" onclick="closeAppGlobalDrawer()"></div>
 <aside class="ig-drawer" id="appGlobalDrawer" aria-label="Меню">
+  <style>
+    .ig-drawer-item.is-locked-free,.ig-drawer-sub.is-locked-free{color:#a7f3d0!important;position:relative;background:linear-gradient(90deg,rgba(16,185,129,.14),rgba(34,211,238,.14));border:1px solid rgba(34,211,238,.35)}
+  </style>
   <div class="ig-drawer-head">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
       <div style="min-width:0">
@@ -21,75 +26,71 @@
     </div>
   </div>
   <div class="ig-drawer-scroll">
-    {% if not is_free_plan %}
-    <a href="/community/profile/{{ eff_uid|int }}" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('grid') }}</span><span class="lbl">Мой профиль</span></a>
-    <a href="/community" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('feed') }}</span><span class="lbl">Лента</span></a>
-    {% if 'community' in vbk %}
-    <a href="/community/groups" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('message_sq') }}</span><span class="lbl">Чаты</span></a>
+    <a href="{{ lock_href if is_locked_free else '/community/profile/' ~ (eff_uid|int) }}" class="ig-drawer-item{% if is_locked_free %} is-locked-free{% endif %}" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('grid') }}</span><span class="lbl">Мой профиль</span></a>
+    <a href="{{ lock_href if is_locked_free else '/community' }}" class="ig-drawer-item{% if is_locked_free %} is-locked-free{% endif %}" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('feed') }}</span><span class="lbl">Лента</span></a>
+    {% if 'community' in vbk or is_locked_free %}
+    <a href="{{ lock_href if is_locked_free else '/community/groups' }}" class="ig-drawer-item{% if is_locked_free %} is-locked-free{% endif %}" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('message_sq') }}</span><span class="lbl">Чаты</span></a>
     {% endif %}
-    {% if 'messages' in vbk %}
-    <a href="/messages" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('message') }}</span><span class="lbl">Сообщения</span></a>
+    {% if 'messages' in vbk or is_locked_free %}
+    <a href="{{ lock_href if is_locked_free else '/messages' }}" class="ig-drawer-item{% if is_locked_free %} is-locked-free{% endif %}" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('message') }}</span><span class="lbl">Сообщения</span></a>
     {% endif %}
-    {% if 'ai_chat' in vbk %}
-    <a href="/chat" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('cpu') }}</span><span class="lbl">AI-чат</span></a>
+    {% if 'ai_chat' in vbk or is_locked_free %}
+    <a href="{{ lock_href if is_locked_free else '/chat' }}" class="ig-drawer-item{% if is_locked_free %} is-locked-free{% endif %}" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('cpu') }}</span><span class="lbl">AI-чат</span></a>
     {% endif %}
-    {% if 'knowledge_base' in vbk %}
-    <a href="https://t.me/ShevelevVlog" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('book') }}</span><span class="lbl">База знаний</span></a>
+    {% if 'knowledge_base' in vbk or is_locked_free %}
+    <a href="{{ lock_href if is_locked_free else 'https://t.me/ShevelevVlog' }}" {% if not is_locked_free %}target="_blank" rel="noopener noreferrer"{% endif %} class="ig-drawer-item{% if is_locked_free %} is-locked-free{% endif %}" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('book') }}</span><span class="lbl">База знаний</span></a>
     {% endif %}
-    {% if 'shop' in vbk %}
-    <a href="/shop" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('shop') }}</span><span class="lbl">Магазин</span></a>
+    {% if 'shop' in vbk or is_locked_free %}
+    <a href="{{ lock_href if is_locked_free else '/shop' }}" class="ig-drawer-item{% if is_locked_free %} is-locked-free{% endif %}" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('shop') }}</span><span class="lbl">Магазин</span></a>
     {% endif %}
-    {% if 'tariffs' in vbk %}
+    {% if 'tariffs' in vbk or is_locked_free %}
     <a href="/onboarding/tariff" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('spark') }}</span><span class="lbl">Тариф</span></a>
     {% endif %}
-    {% if 'pro_telegram' in vbk or 'pro_pin_info' in vbk %}
-    <a href="/community/profile/{{ eff_uid|int }}" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('spark') }}</span><span class="lbl">Про-функции</span></a>
+    {% if 'pro_telegram' in vbk or 'pro_pin_info' in vbk or is_locked_free %}
+    <a href="{{ lock_href if is_locked_free else '/community/profile/' ~ (eff_uid|int) }}" class="ig-drawer-item{% if is_locked_free %} is-locked-free{% endif %}" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('spark') }}</span><span class="lbl">Про-функции</span></a>
     {% endif %}
-    {% if 'seller_marketplace' in vbk %}
-    <a href="/seller/shop" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('shop') }}</span><span class="lbl">Товары продавца</span></a>
-    {% endif %}
+    {% if 'seller_marketplace' in vbk or is_locked_free %}
+    <a href="{{ lock_href if is_locked_free else '/seller/shop' }}" class="ig-drawer-item{% if is_locked_free %} is-locked-free{% endif %}" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('shop') }}</span><span class="lbl">Товары продавца</span></a>
     {% endif %}
 
-    {% if 'referral' in vbk %}
-    <a href="/community/profile/{{ eff_uid|int }}" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('gift') }}</span><span class="lbl">Реферальная программа</span></a>
+    {% if 'referral' in vbk or is_locked_free %}
+    <a href="{{ lock_href if is_locked_free else '/community/profile/' ~ (eff_uid|int) }}" class="ig-drawer-item{% if is_locked_free %} is-locked-free{% endif %}" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('gift') }}</span><span class="lbl">Реферальная программа</span></a>
     {% endif %}
-    {% if not is_free_plan %}
     <div class="ig-drawer-sep"></div>
-    <details class="ig-drawer-details" id="drawerWalletsDetails" style="border-bottom:1px solid rgba(255,255,255,.06)">
+    <details class="ig-drawer-details{% if is_locked_free %} is-locked-free{% endif %}" id="drawerWalletsDetails" style="border-bottom:1px solid rgba(255,255,255,.06)">
       <summary class="ig-drawer-item ig-drawer-summary" style="list-style:none;cursor:pointer"><span class="e">₿</span><span class="lbl">Мои кошельки</span><span class="ig-drawer-chev" style="margin-left:auto;opacity:.5;font-size:10px">▼</span></summary>
       <div style="padding:4px 12px 14px 18px;font-size:13px">
         <div style="font-size:11px;font-weight:700;color:#888;margin:8px 0 6px">MetaMask</div>
-        <a href="https://metamask.app.link/dapp/https://{{ request.url.hostname }}/community/profile/{{ eff_uid|int }}" target="_blank" rel="noopener noreferrer" class="ig-drawer-sub" onclick="closeAppGlobalDrawer()">Открыть MetaMask (приложение)</a>
-        <a href="/community/profile/{{ eff_uid|int }}" class="ig-drawer-sub" onclick="closeAppGlobalDrawer()">Подключить в браузере и баланс →</a>
+        <a href="{{ lock_href if is_locked_free else 'https://metamask.app.link/dapp/https://' ~ request.url.hostname ~ '/community/profile/' ~ (eff_uid|int) }}" {% if not is_locked_free %}target="_blank" rel="noopener noreferrer"{% endif %} class="ig-drawer-sub{% if is_locked_free %} is-locked-free{% endif %}" onclick="closeAppGlobalDrawer()">Открыть MetaMask (приложение)</a>
+        <a href="{{ lock_href if is_locked_free else '/community/profile/' ~ (eff_uid|int) }}" class="ig-drawer-sub{% if is_locked_free %} is-locked-free{% endif %}" onclick="closeAppGlobalDrawer()">Подключить в браузере и баланс →</a>
         <div style="font-size:11px;font-weight:700;color:#888;margin:12px 0 6px">Decimal Chain</div>
-        <a href="https://wallet.decimalchain.com/" target="_blank" rel="noopener noreferrer" class="ig-drawer-sub" onclick="closeAppGlobalDrawer()">Decimal Wallet — веб</a>
-        <a href="https://play.google.com/store/apps/details?id=com.chain.decimal" target="_blank" rel="noopener noreferrer" class="ig-drawer-sub" onclick="closeAppGlobalDrawer()">Decimal Wallet — Android</a>
-        <a href="https://apps.apple.com/app/decimal-blockchain-wallet/id1510802073" target="_blank" rel="noopener noreferrer" class="ig-drawer-sub" onclick="closeAppGlobalDrawer()">Decimal Wallet — iPhone</a>
+        <a href="{{ lock_href if is_locked_free else 'https://wallet.decimalchain.com/' }}" {% if not is_locked_free %}target="_blank" rel="noopener noreferrer"{% endif %} class="ig-drawer-sub{% if is_locked_free %} is-locked-free{% endif %}" onclick="closeAppGlobalDrawer()">Decimal Wallet — веб</a>
+        <a href="{{ lock_href if is_locked_free else 'https://play.google.com/store/apps/details?id=com.chain.decimal' }}" {% if not is_locked_free %}target="_blank" rel="noopener noreferrer"{% endif %} class="ig-drawer-sub{% if is_locked_free %} is-locked-free{% endif %}" onclick="closeAppGlobalDrawer()">Decimal Wallet — Android</a>
+        <a href="{{ lock_href if is_locked_free else 'https://apps.apple.com/app/decimal-blockchain-wallet/id1510802073' }}" {% if not is_locked_free %}target="_blank" rel="noopener noreferrer"{% endif %} class="ig-drawer-sub{% if is_locked_free %} is-locked-free{% endif %}" onclick="closeAppGlobalDrawer()">Decimal Wallet — iPhone</a>
         <div style="font-size:11px;font-weight:700;color:#888;margin:12px 0 6px">Видимость токенов и кошелёк</div>
-        <a href="/community/profile/{{ eff_uid|int }}" class="ig-drawer-sub" onclick="closeAppGlobalDrawer()">Настройки профиля, токены и синхронизация</a>
+        <a href="{{ lock_href if is_locked_free else '/community/profile/' ~ (eff_uid|int) }}" class="ig-drawer-sub{% if is_locked_free %} is-locked-free{% endif %}" onclick="closeAppGlobalDrawer()">Настройки профиля, токены и синхронизация</a>
         <div style="font-size:11px;font-weight:700;color:#888;margin:12px 0 6px">Отправить токен</div>
-        <a href="/community/profile/{{ eff_uid|int }}" class="ig-drawer-sub" onclick="closeAppGlobalDrawer()">Через MetaMask или Decimal — в профиле</a>
+        <a href="{{ lock_href if is_locked_free else '/community/profile/' ~ (eff_uid|int) }}" class="ig-drawer-sub{% if is_locked_free %} is-locked-free{% endif %}" onclick="closeAppGlobalDrawer()">Через MetaMask или Decimal — в профиле</a>
       </div>
     </details>
-    {% endif %}
 
     {% if not (user.tg_id or user.linked_tg_id) %}
-    <a href="/account/link" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none;color:#38bdf8;border:1px solid rgba(56,189,248,.2);border-radius:12px;margin:0 8px"><span class="e">✈️</span><span class="lbl">Присоединить Telegram</span></a>
+    <a href="{{ lock_href if is_locked_free else '/account/link' }}" class="ig-drawer-item{% if is_locked_free %} is-locked-free{% endif %}" onclick="closeAppGlobalDrawer()" style="text-decoration:none;color:#38bdf8;border:1px solid rgba(56,189,248,.2);border-radius:12px;margin:0 8px"><span class="e">✈️</span><span class="lbl">Присоединить Telegram</span></a>
     {% else %}
-    <a href="/account/link" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('link') }}</span><span class="lbl">Привязать аккаунт</span></a>
+    <a href="{{ lock_href if is_locked_free else '/account/link' }}" class="ig-drawer-item{% if is_locked_free %} is-locked-free{% endif %}" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('link') }}</span><span class="lbl">Привязать аккаунт</span></a>
     {% endif %}
-    <a href="/community/profile/{{ eff_uid|int }}" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('globe') }}</span><span class="lbl">Язык интерфейса</span></a>
+    <a href="{{ lock_href if is_locked_free else '/community/profile/' ~ (eff_uid|int) }}" class="ig-drawer-item{% if is_locked_free %} is-locked-free{% endif %}" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('globe') }}</span><span class="lbl">Язык интерфейса</span></a>
     <details class="ig-drawer-details" style="border-bottom:1px solid rgba(255,255,255,.06)">
       <summary class="ig-drawer-item ig-drawer-summary" style="list-style:none;cursor:pointer"><span class="e">📄</span><span class="lbl">Документы</span><span class="ig-drawer-chev" style="margin-left:auto;opacity:.5;font-size:10px">▼</span></summary>
       <div style="padding:4px 12px 14px 18px;font-size:13px">
-        <a href="/legal/terms" target="_blank" rel="noopener noreferrer" class="ig-drawer-sub" onclick="closeAppGlobalDrawer()">Пользовательское соглашение{% if user.get('legal_accepted_at') %} · ПОДПИСАНО МНОЮ{% endif %}</a>
-        <a href="/legal/privacy" target="_blank" rel="noopener noreferrer" class="ig-drawer-sub" onclick="closeAppGlobalDrawer()">Политика конфиденциальности{% if user.get('legal_accepted_at') %} · ПОДПИСАНО МНОЮ{% endif %}</a>
+        <a href="{{ lock_href if is_locked_free else '/legal/terms' }}" {% if not is_locked_free %}target="_blank" rel="noopener noreferrer"{% endif %} class="ig-drawer-sub{% if is_locked_free %} is-locked-free{% endif %}" onclick="closeAppGlobalDrawer()">Пользовательское соглашение{% if user.get('legal_accepted_at') %} · ПОДПИСАНО МНОЮ{% endif %}</a>
+        <a href="{{ lock_href if is_locked_free else '/legal/privacy' }}" {% if not is_locked_free %}target="_blank" rel="noopener noreferrer"{% endif %} class="ig-drawer-sub{% if is_locked_free %} is-locked-free{% endif %}" onclick="closeAppGlobalDrawer()">Политика конфиденциальности{% if user.get('legal_accepted_at') %} · ПОДПИСАНО МНОЮ{% endif %}</a>
         <p style="font-size:11px;color:#666;margin-top:10px;line-height:1.45">Актуальная редакция при входе. Дата: {% if user.get('legal_accepted_at') %}{{ user.legal_accepted_at.strftime('%d.%m.%Y %H:%M') if user.legal_accepted_at else '—' }}{% else %}—{% endif %} · версия {{ user.get('legal_docs_version') or '—' }}</p>
       </div>
     </details>
     <a href="/onboarding/tariff" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('spark') }}</span><span class="lbl">Тарифы</span></a>
     <div class="ig-drawer-sep"></div>
-    <a href="https://t.me/mushrooms_ai_bot" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('send') }}</span><span class="lbl">Бот в Telegram</span></a>
+    <a href="{{ lock_href if is_locked_free else 'https://t.me/mushrooms_ai_bot' }}" {% if not is_locked_free %}target="_blank" rel="noopener noreferrer"{% endif %} class="ig-drawer-item{% if is_locked_free %} is-locked-free{% endif %}" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('send') }}</span><span class="lbl">Бот в Telegram</span></a>
     <a href="/logout" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none;color:#f87171;background:rgba(248,113,113,.08)"><span class="e">⎋</span><span class="lbl">Выйти из кабинета</span></a>
     {% if user.role in ['admin', 'moderator'] %}
     <button type="button" class="ig-drawer-item" onclick="closeAppGlobalDrawer();window.location='/admin'" style="color:#f87171"><span class="e">{{ ico('shield') }}</span><span class="lbl">{{ 'Администратор' if user.role == 'admin' else 'Модератор' }}</span></button>

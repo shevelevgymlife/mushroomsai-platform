@@ -1,5 +1,6 @@
 {% from 'components/stroke_icons.html' import ico %}
 {% set eff_uid = user.primary_user_id or user.id %}
+{% set is_locked_free = ((user.subscription_plan or 'free') == 'free') and ((user.role or 'user') not in ['admin','moderator']) %}
 <div class="app-mobile-topbar">
   <header class="app-mobile-header-inner neo-app-header app-head-row-grid" aria-label="NEUROFUNGI AI">
     <div class="app-head-left app-head-left--burger-only">
@@ -8,9 +9,14 @@
       </button>
     </div>
     <div class="app-head-center-col">
+      {% if is_locked_free %}
+      <span class="app-head-brand app-head-brand--center">NEUROFUNGI AI</span>
+      {% else %}
       <a href="/community" class="app-head-brand app-head-brand--center" title="NEUROFUNGI AI">NEUROFUNGI AI</a>
+      {% endif %}
       <span class="app-head-role-stamp{% if user.role == 'admin' %} app-head-role-stamp--admin{% else %} app-head-role-stamp--uch{% endif %}" title="Статус в сообществе">{% if user.role == 'admin' %}Админ{% else %}УЧ{% endif %}</span>
     </div>
+    {% if not is_locked_free %}
     <div class="app-head-actions">
       <a href="/messages" class="app-head-btn app-head-btn-icon" title="Сообщения" aria-label="Сообщения" id="cpMsgHead">
         {{ ico('message') }}
@@ -24,5 +30,6 @@
         {{ ico('user') }}
       </a>
     </div>
+    {% endif %}
   </header>
 </div>

@@ -175,11 +175,14 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
   <link rel="stylesheet" href="/static/css/screen-rim.css?v=4" />
   <script src="/static/js/screen-rim-app.js?v=4" defer></script>
   {% endif %}
+  {% set __is_locked_free = user and (user.subscription_plan or 'free') == 'free' and (user.role or 'user') not in ['admin','moderator'] %}
   {% if user and request.url.path != '/' and not request.query_params.get('embed') %}
   {% include "components/app_mobile_header.html" %}
   {% include "components/app_activity_panel.html" %}
   {% include "components/app_global_drawer.html" %}
+  {% if not __is_locked_free %}
   {% include "components/app_bottom_nav.html" %}
+  {% endif %}
   {% endif %}
 
   {% block site_navbar %}{% endblock %}
