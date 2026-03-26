@@ -133,10 +133,19 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=main_keyboard(site_url),
         parse_mode="HTML",
     )
-    await update.message.reply_text(
-        "Служба поддержки:",
+    support_msg = await update.message.reply_text(
+        "🆘 <b>Служба поддержки</b>\nЕсли у вас возникли вопросы — напишите нам:",
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("🆘 Написать в поддержку", callback_data="support")],
         ]),
         parse_mode="HTML",
     )
+    # Закрепляем сообщение — оно всегда видно вверху чата
+    try:
+        await context.bot.pin_chat_message(
+            chat_id=update.effective_chat.id,
+            message_id=support_msg.message_id,
+            disable_notification=True,
+        )
+    except Exception:
+        pass  # Нет прав закрепить — не критично
