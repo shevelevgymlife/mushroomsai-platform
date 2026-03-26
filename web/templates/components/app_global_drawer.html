@@ -48,12 +48,6 @@
     {% if 'shop' in vbk %}
     <a href="/shop" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('shop') }}</span><span class="lbl">Магазин</span></a>
     {% endif %}
-    {% if 'pro_telegram' in vbk or 'pro_pin_info' in vbk %}
-    <a href="/community/profile/{{ eff_uid|int }}" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('spark') }}</span><span class="lbl">Про-функции</span></a>
-    {% endif %}
-    {% if 'seller_marketplace' in vbk %}
-    <a href="/seller/shop" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('shop') }}</span><span class="lbl">Товары продавца</span></a>
-    {% endif %}
     {% endif %}
 
     {% if 'ai_chat' in vbk %}
@@ -75,7 +69,7 @@
     {% else %}
     <a href="/account/link" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('link') }}</span><span class="lbl">Привязать аккаунт</span></a>
     {% endif %}
-    <a href="/community/profile/{{ eff_uid|int }}" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('globe') }}</span><span class="lbl">Язык интерфейса</span></a>
+    <a href="/account/language" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('globe') }}</span><span class="lbl">Язык интерфейса</span></a>
     <details class="ig-drawer-details" style="border-bottom:1px solid rgba(255,255,255,.06)">
       <summary class="ig-drawer-item ig-drawer-summary" style="list-style:none;cursor:pointer"><span class="e">📄</span><span class="lbl">Документы</span><span class="ig-drawer-chev" style="margin-left:auto;opacity:.5;font-size:10px">▼</span></summary>
       <div style="padding:4px 12px 14px 18px;font-size:13px">
@@ -86,7 +80,7 @@
     </details>
     <a href="/subscriptions" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('spark') }}</span><span class="lbl">Подписка</span></a>
     <div class="ig-drawer-sep"></div>
-    <a href="https://t.me/mushrooms_ai_bot" class="ig-drawer-item" onclick="event.preventDefault();openMainTelegramBot();" style="text-decoration:none" role="button"><span class="e">{{ ico('send') }}</span><span class="lbl">Бот в Telegram</span></a>
+    <a href="https://t.me/neuro_fungi_bot" class="ig-drawer-item" onclick="event.preventDefault();openMainTelegramBot();" style="text-decoration:none" role="button"><span class="e">{{ ico('send') }}</span><span class="lbl">Бот в Telegram</span></a>
     <a href="/logout" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none;color:#f87171;background:rgba(248,113,113,.08)"><span class="e">⎋</span><span class="lbl">Выйти из кабинета</span></a>
     {% if user.role in ['admin', 'moderator'] %}
     <button type="button" class="ig-drawer-item" onclick="closeAppGlobalDrawer();window.location='/admin'" style="color:#f87171"><span class="e">{{ ico('shield') }}</span><span class="lbl">{{ 'Администратор' if user.role == 'admin' else 'Модератор' }}</span></button>

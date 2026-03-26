@@ -111,10 +111,10 @@
     } catch (e) {}
   }
 
-  /** Главный бот: в Telegram Mini App — сразу в чат с ботом; в браузере — переход на t.me */
+  /** Главный бот (@neuro_fungi_bot): в Telegram Mini App — openTelegramLink; в браузере — t.me */
   function openMainTelegramBot() {
     closeAppGlobalDrawer();
-    var u = "https://t.me/mushrooms_ai_bot";
+    var u = "https://t.me/neuro_fungi_bot";
     var tw = window.Telegram && window.Telegram.WebApp;
     if (tw && typeof tw.openTelegramLink === "function") {
       try {

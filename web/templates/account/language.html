@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ t.account_language_title }} — NEUROFUNGI AI{% endblock %}
+
+{% block content %}
+<div class="min-h-[100vh] flex items-start justify-center px-4 pt-24 pb-16">
+  <div class="w-full max-w-md">
+    <a href="/community" class="inline-flex items-center gap-2 text-muted text-sm no-underline hover:text-gold transition-colors mb-8">
+      {{ t.account_language_back }}
+    </a>
+    <h1 class="font-display text-2xl font-semibold text-text mb-3">{{ t.account_language_title }}</h1>
+    <p class="text-sm text-muted leading-relaxed mb-8">{{ t.account_language_intro }}</p>
+    <div class="flex flex-col gap-2">
+      {% for code, name in t.langs.items() %}
+      <form action="/set-language" method="post" class="m-0 p-0">
+        <input type="hidden" name="lang" value="{{ code }}" />
+        <input type="hidden" name="next" value="/community" />
+        <button type="submit"
+          class="w-full text-left px-4 py-3 rounded-xl border transition-all duration-200 text-sm
+            {% if code == lang %}border-gold bg-gold/[0.08] text-gold font-medium{% else %}border-white/[0.08] text-text hover:border-gold/40 hover:bg-white/[0.03]{% endif %}">
+          {{ name }}
+        </button>
+      </form>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -376,6 +376,18 @@ async def link_account_hub(request: Request):
     )
 
 
+@router.get("/language", response_class=HTMLResponse)
+async def account_language_page(request: Request):
+    user = await get_user_from_request(request)
+    if not user:
+        return RedirectResponse("/login?next=/account/language")
+    attach_screen_rim_prefs(user)
+    return templates.TemplateResponse(
+        "account/language.html",
+        {"request": request, "user": user},
+    )
+
+
 @router.get("/screen-rim", response_class=HTMLResponse)
 async def screen_rim_page(request: Request):
     user = await get_user_from_request(request)

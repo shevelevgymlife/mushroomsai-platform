@@ -140,6 +140,9 @@ TRANSLATIONS = {
         "payment_not_connected": "Оплата не подключена",
         # Language switcher
         "lang_label": "Язык",
+        "account_language_title": "Язык интерфейса",
+        "account_language_intro": "Выберите язык — соцсеть, сообщество и кабинет будут на этом языке.",
+        "account_language_back": "← Назад в ленту",
         "langs": _LANG_NAMES,
     },
 
@@ -227,6 +230,9 @@ TRANSLATIONS = {
         "marketplace_subtitle": "Best shops and products for functional mushrooms — reviews, ratings, partnerships",
         "payment_not_connected": "Payment not connected",
         "lang_label": "Language",
+        "account_language_title": "Interface language",
+        "account_language_intro": "Choose a language — the feed, community and app will use it.",
+        "account_language_back": "← Back to feed",
         "langs": _LANG_NAMES,
     },
 
@@ -314,6 +320,9 @@ TRANSLATIONS = {
         "marketplace_subtitle": "Beste Shops und Produkte für funktionelle Pilze — Bewertungen, Ratings, Partnerschaften",
         "payment_not_connected": "Zahlung nicht verbunden",
         "lang_label": "Sprache",
+        "account_language_title": "Oberflächensprache",
+        "account_language_intro": "Wählen Sie eine Sprache — Feed, Community und App nutzen sie.",
+        "account_language_back": "← Zurück zum Feed",
         "langs": _LANG_NAMES,
     },
 
@@ -401,6 +410,9 @@ TRANSLATIONS = {
         "marketplace_subtitle": "Meilleurs magasins et produits pour les champignons fonctionnels — avis, notes, partenariats",
         "payment_not_connected": "Paiement non connecté",
         "lang_label": "Langue",
+        "account_language_title": "Langue de l’interface",
+        "account_language_intro": "Choisissez une langue — fil, communauté et application l’utiliseront.",
+        "account_language_back": "← Retour au fil",
         "langs": _LANG_NAMES,
     },
 
@@ -488,6 +500,9 @@ TRANSLATIONS = {
         "marketplace_subtitle": "Mejores tiendas y productos para hongos funcionales — reseñas, calificaciones, asociaciones",
         "payment_not_connected": "Pago no conectado",
         "lang_label": "Idioma",
+        "account_language_title": "Idioma de la interfaz",
+        "account_language_intro": "Elija un idioma: el feed, la comunidad y la app lo usarán.",
+        "account_language_back": "← Volver al feed",
         "langs": _LANG_NAMES,
     },
 
@@ -575,6 +590,9 @@ TRANSLATIONS = {
         "marketplace_subtitle": "功能性蘑菇最佳商店和产品 — 评论、评级、合作",
         "payment_not_connected": "支付未连接",
         "lang_label": "语言",
+        "account_language_title": "界面语言",
+        "account_language_intro": "选择语言 — 动态、社区和应用将使用该语言。",
+        "account_language_back": "← 返回动态",
         "langs": _LANG_NAMES,
     },
 
@@ -662,6 +680,9 @@ TRANSLATIONS = {
         "marketplace_subtitle": "أفضل المتاجر والمنتجات للفطر الوظيفي — تقييمات، تصنيفات، شراكات",
         "payment_not_connected": "الدفع غير متصل",
         "lang_label": "اللغة",
+        "account_language_title": "لغة الواجهة",
+        "account_language_intro": "اختر لغة — ستُستخدم في الخلاصة والمجتمع والتطبيق.",
+        "account_language_back": "← العودة إلى الخلاصة",
         "langs": _LANG_NAMES,
     },
 
@@ -749,6 +770,9 @@ TRANSLATIONS = {
         "marketplace_subtitle": "Melhores lojas e produtos para cogumelos funcionais — avaliações, classificações, parcerias",
         "payment_not_connected": "Pagamento não conectado",
         "lang_label": "Idioma",
+        "account_language_title": "Idioma da interface",
+        "account_language_intro": "Escolha um idioma — feed, comunidade e app usarão esse idioma.",
+        "account_language_back": "← Voltar ao feed",
         "langs": _LANG_NAMES,
     },
 
@@ -836,6 +860,9 @@ TRANSLATIONS = {
         "marketplace_subtitle": "Migliori negozi e prodotti per funghi funzionali — recensioni, valutazioni, partnership",
         "payment_not_connected": "Pagamento non connesso",
         "lang_label": "Lingua",
+        "account_language_title": "Lingua dell’interfaccia",
+        "account_language_intro": "Scegli una lingua — feed, community e app la useranno.",
+        "account_language_back": "← Torna al feed",
         "langs": _LANG_NAMES,
     },
 
@@ -923,6 +950,9 @@ TRANSLATIONS = {
         "marketplace_subtitle": "機能性キノコの最高のショップと製品 — レビュー、評価、パートナーシップ",
         "payment_not_connected": "支払い未接続",
         "lang_label": "言語",
+        "account_language_title": "表示言語",
+        "account_language_intro": "言語を選ぶと、フィード・コミュニティ・アプリに反映されます。",
+        "account_language_back": "← フィードに戻る",
         "langs": _LANG_NAMES,
     },
 }
