@@ -1,3 +1,6 @@
+{# pricing_logged_in: optional; when true, CTAs for logged-in app (subscriptions page) #}
+{% set _pl = pricing_logged_in if pricing_logged_in is defined else false %}
+{% set _plan = (user.subscription_plan or 'free') if _pl and user else 'none' %}
 <!-- Tariffs -->
 <section class="py-20 sm:py-28 relative scroll-mt-20" id="tariffs">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -15,7 +18,7 @@
 
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 lg:gap-6 max-w-7xl mx-auto">
       <!-- Free -->
-      <div class="panel-rise p-7 flex flex-col relative">
+      <div class="panel-rise p-7 flex flex-col relative{% if _pl and _plan == 'free' %} ring-2 ring-gold/45 ring-offset-2 ring-offset-bg{% endif %}">
         <h3 class="font-display text-lg font-semibold text-text mb-1">{{ t.plan_free }}</h3>
         <p class="text-3xl font-light text-text mb-6">0 <span class="text-base text-muted">{{ t.plan_per_month }}</span></p>
         <ul class="space-y-3 mb-8 flex-1">
@@ -25,14 +28,28 @@
           </li>
           {% endfor %}
         </ul>
-        <a href="/login?next=/onboarding/tariff" class="block text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">
+        {% if _pl %}
+          {% if user and user.needs_tariff_choice %}
+          <form method="post" action="/onboarding/tariff" class="mt-auto">
+            <button type="submit" name="choice" value="free" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">
+              {{ t.btn_start_free }}
+            </button>
+          </form>
+          {% elif user and _plan == 'free' %}
+          <div class="block text-center px-4 py-3 rounded-xl text-sm border border-gold/35 text-gold/90 bg-gold/[0.06]">Текущий план</div>
+          {% else %}
+          <p class="text-[11px] text-muted/90 text-center leading-snug">Смена на бесплатный — через администратора</p>
+          {% endif %}
+        {% else %}
+        <a href="/login?next=/subscriptions" class="block text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">
           {{ t.btn_start_free }}
         </a>
+        {% endif %}
         <p class="text-[11px] text-muted/90 text-center mt-3 leading-snug">Вход и регистрация с бесплатным планом</p>
       </div>
 
       <!-- Start -->
-      <div class="panel-rise p-7 flex flex-col relative border-gold/30 shadow-[0_0_0_1px_rgba(61,212,224,0.12)_inset]">
+      <div class="panel-rise p-7 flex flex-col relative border-gold/30 shadow-[0_0_0_1px_rgba(61,212,224,0.12)_inset] {% if _pl and _plan == 'start' %}ring-2 ring-gold/45 ring-offset-2 ring-offset-bg{% endif %}">
         <div class="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gold text-bg text-xs font-semibold shadow-lg shadow-gold/20">{{ t.plan_popular }}</div>
         <h3 class="font-display text-lg font-semibold text-text mb-1">{{ t.plan_start }}</h3>
         <p class="text-3xl font-light text-text mb-6">990 <span class="text-base text-muted">{{ t.plan_per_month }}</span></p>
@@ -43,14 +60,20 @@
           </li>
           {% endfor %}
         </ul>
+        {% if _pl %}
+        <button type="button" class="js-paid-plan block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">
+          {{ t.payment_not_connected }}
+        </button>
+        {% else %}
         <button type="button" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">
           {{ t.payment_not_connected }}
         </button>
+        {% endif %}
         <p class="text-[11px] text-muted/90 text-center mt-3 leading-snug">После входа с бесплатным планом можно запросить смену тарифа у администратора</p>
       </div>
 
       <!-- Pro -->
-      <div class="panel-rise p-7 flex flex-col">
+      <div class="panel-rise p-7 flex flex-col{% if _pl and _plan == 'pro' %} ring-2 ring-gold/45 ring-offset-2 ring-offset-bg{% endif %}">
         <h3 class="font-display text-lg font-semibold text-text mb-1">{{ t.plan_pro }}</h3>
         <p class="text-3xl font-light text-text mb-6">1990 <span class="text-base text-muted">{{ t.plan_per_month }}</span></p>
         <ul class="space-y-3 mb-8 flex-1">
@@ -60,14 +83,20 @@
           </li>
           {% endfor %}
         </ul>
+        {% if _pl %}
+        <button type="button" class="js-paid-plan block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">
+          {{ t.payment_not_connected }}
+        </button>
+        {% else %}
         <button type="button" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">
           {{ t.payment_not_connected }}
         </button>
+        {% endif %}
         <p class="text-[11px] text-muted/90 text-center mt-3 leading-snug">Запрос тарифа — из кабинета после регистрации</p>
       </div>
 
       <!-- Maxi -->
-      <div class="panel-rise p-7 flex flex-col bg-gradient-to-br from-gold/[0.07] via-transparent to-transparent">
+      <div class="panel-rise p-7 flex flex-col bg-gradient-to-br from-gold/[0.07] via-transparent to-transparent{% if _pl and _plan == 'maxi' %} ring-2 ring-gold/45 ring-offset-2 ring-offset-bg{% endif %}">
         <h3 class="font-display text-lg font-semibold text-text mb-1">{{ t.plan_maxi }}</h3>
         <p class="text-3xl font-light text-text mb-6">4999 <span class="text-base text-muted">{{ t.plan_per_month }}</span></p>
         <ul class="space-y-3 mb-8 flex-1">
@@ -77,9 +106,15 @@
           </li>
           {% endfor %}
         </ul>
+        {% if _pl %}
+        <button type="button" class="js-paid-plan block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">
+          {{ t.payment_not_connected }}
+        </button>
+        {% else %}
         <button type="button" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">
           {{ t.payment_not_connected }}
         </button>
+        {% endif %}
         <p class="text-[11px] text-muted/90 text-center mt-3 leading-snug">Запрос тарифа — из кабинета</p>
       </div>
     </div>

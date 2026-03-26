@@ -13,7 +13,7 @@
     if (!isFreeRestrictedUser()) return false;
     if (e && e.preventDefault) e.preventDefault();
     if (e && e.stopPropagation) e.stopPropagation();
-    window.location.href = "/onboarding/tariff";
+    window.location.href = "/subscriptions";
     return true;
   }
   function escAttr(s) {

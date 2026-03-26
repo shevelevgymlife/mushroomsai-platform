@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Подписки — NEUROFUNGI AI{% endblock %}
+{% block content %}
+<div class="neo-app-surface min-h-screen bg-bg pt-28 pb-16">
+  <div class="max-w-7xl mx-auto px-4">
+    {% if error %}
+    <div class="max-w-3xl mx-auto mb-8 p-4 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-200 text-sm text-center leading-relaxed">
+      {{ error }}
+    </div>
+    {% endif %}
+    {% set pricing_logged_in = true %}
+    {% include "components/index_section_pricing.html" %}
+  </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.js-paid-plan').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      alert('Оплата подключается ...');
+    });
+  });
+});
+</script>
+{% endblock %}

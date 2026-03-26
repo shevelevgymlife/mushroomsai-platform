@@ -1939,7 +1939,7 @@ async def messages_thread_api(request: Request, other_id: int):
         return JSONResponse({"error": "auth required"}, status_code=401)
     uid = current_user.get("primary_user_id") or current_user["id"]
     if _is_free_restricted_user(current_user) and other_id != 0:
-        return JSONResponse({"error": "plan_required", "redirect": "/onboarding/tariff"}, status_code=403)
+        return JSONResponse({"error": "plan_required", "redirect": "/subscriptions"}, status_code=403)
 
     if other_id == 0:
         await database.execute(sa.text(
@@ -2081,7 +2081,7 @@ async def send_message(request: Request, other_id: int):
         return JSONResponse({"error": "auth required"}, status_code=401)
     uid = current_user.get("primary_user_id") or current_user["id"]
     if _is_free_restricted_user(current_user):
-        return JSONResponse({"error": "plan_required", "redirect": "/onboarding/tariff"}, status_code=403)
+        return JSONResponse({"error": "plan_required", "redirect": "/subscriptions"}, status_code=403)
 
     ct = request.headers.get("content-type", "")
     if "application/json" in ct:

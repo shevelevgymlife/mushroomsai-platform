@@ -18,6 +18,7 @@ from db.models import (
     community_group_member_bans,
     community_group_typing_status,
     admin_permissions,
+    homepage_blocks,
 )
 from services.referral_service import get_referral_stats
 from services.subscription_service import check_subscription, PLANS
@@ -118,22 +119,48 @@ async def require_auth(request: Request):
     return user
 
 
+async def _fetch_homepage_blocks_for_pricing() -> dict:
+    try:
+        blocks_raw = await database.fetch_all(
+            homepage_blocks.select()
+            .where(homepage_blocks.c.is_visible == True)
+            .order_by(homepage_blocks.c.position, homepage_blocks.c.id)
+        )
+        blocks = {r["block_name"]: dict(r) for r in blocks_raw}
+        for b in blocks.values():
+            if b.get("custom_title"):
+                b["title"] = b["custom_title"]
+        return blocks
+    except Exception:
+        return {}
+
+
+@router.get("/subscriptions", response_class=HTMLResponse)
+async def subscriptions_page(request: Request):
+    user = await require_auth(request)
+    if not user:
+        return RedirectResponse("/login?next=/subscriptions")
+    leg = await legal_acceptance_redirect(request, user)
+    if leg:
+        return leg
+    blocks = await _fetch_homepage_blocks_for_pricing()
+    return templates.TemplateResponse(
+        "subscriptions.html",
+        {"request": request, "user": user, "blocks": blocks, "error": None},
+    )
+
+
 @router.get("/onboarding/tariff", response_class=HTMLResponse)
 async def onboarding_tariff_page(request: Request):
     user = await require_auth(request)
     if not user:
-        return RedirectResponse("/login?next=/onboarding/tariff")
+        return RedirectResponse("/login?next=/subscriptions")
     leg = await legal_acceptance_redirect(request, user)
     if leg:
         return leg
     if user.get("role") == "admin":
         return RedirectResponse("/community")
-    if not user.get("needs_tariff_choice"):
-        return RedirectResponse("/community")
-    return templates.TemplateResponse(
-        "onboarding_tariff.html",
-        {"request": request, "user": user, "plans": PLANS, "error": None},
-    )
+    return RedirectResponse("/subscriptions")
 
 
 @router.post("/onboarding/tariff")
@@ -147,15 +174,17 @@ async def onboarding_tariff_submit(request: Request, choice: str = Form(...)):
     uid = user.get("primary_user_id") or user["id"]
     choice = (choice or "").strip().lower()
     if choice not in ("free", "start", "pro", "maxi"):
-        return RedirectResponse("/onboarding/tariff")
+        return RedirectResponse("/subscriptions")
     # Платный приём на сайте не подключён — доступен только бесплатный план при регистрации.
     if choice != "free":
+        blocks = await _fetch_homepage_blocks_for_pricing()
         return templates.TemplateResponse(
-            "onboarding_tariff.html",
+            "subscriptions.html",
             {
                 "request": request,
                 "user": user,
                 "plans": PLANS,
+                "blocks": blocks,
                 "error": "Оплата тарифов на сайте пока не подключена. Выберите бесплатный план — он доступен сразу. Платные тарифы можно запросить у администратора через кабинет после входа.",
             },
             status_code=400,

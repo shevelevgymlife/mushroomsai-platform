@@ -19,7 +19,7 @@
         if (!a) return;
         e.preventDefault();
         e.stopPropagation();
-        window.location.href = "/onboarding/tariff";
+        window.location.href = "/subscriptions";
       });
     } catch (e) {}
   }

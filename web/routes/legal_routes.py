@@ -91,5 +91,5 @@ async def legal_accept_submit(
         plan = (refreshed.get("subscription_plan") or "free").lower()
         needs_choice = bool(refreshed.get("needs_tariff_choice"))
         if role not in ("admin", "moderator") and plan == "free" and needs_choice:
-            return RedirectResponse("/onboarding/tariff", status_code=302)
+            return RedirectResponse("/subscriptions", status_code=302)
     return RedirectResponse(dest, status_code=302)
