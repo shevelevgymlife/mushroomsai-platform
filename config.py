@@ -15,6 +15,12 @@ class Settings(BaseSettings):
     TELEGRAM_TOKEN: str = ""
     # Отдельный бот для добавления обучающих постов (тот же DATABASE_URL). Пусто — бот не стартует.
     TRAINING_BOT_TOKEN: str = ""
+    # Бот: новые посты из канала → ai_training_posts (нужен отдельный токен + id каналов в CHANNEL_INGEST_ALLOWED_IDS).
+    CHANNEL_INGEST_BOT_TOKEN: str = ""
+    # Список chat_id каналов (-100…) через запятую. Пусто — бот канала не стартует (безопасность).
+    CHANNEL_INGEST_ALLOWED_IDS: str = ""
+    # Папка для постов из канала (как в админке / боте обучения).
+    CHANNEL_INGEST_FOLDER: str = "Из канала"
     TELEGRAM_BOT_USERNAME: str = ""  # напр. mushroomsai_bot (без @)
     TELEGRAM_WEBAPP_SKIP_VERIFY: bool = False  # DEBUG ONLY: пропустить проверку подписи initData
     NOTIFY_BOT_TOKEN: str = ""       # отдельный бот для уведомлений админу

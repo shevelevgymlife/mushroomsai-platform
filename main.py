@@ -308,10 +308,34 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("Training posts bot: выключен (в Environment задайте TRAINING_BOT_TOKEN и сделайте redeploy)")
 
+    channel_ingest_app = None
+    if (settings.CHANNEL_INGEST_BOT_TOKEN or "").strip():
+        from bot.channel_ingest_bot import create_channel_ingest_bot, parse_allowed_channel_ids
+        if not parse_allowed_channel_ids():
+            logger.info(
+                "Channel ingest bot: выключен — укажите CHANNEL_INGEST_ALLOWED_IDS (chat_id канала -100…, через запятую)"
+            )
+        else:
+            try:
+                from telegram import Update as TgUpdate
+
+                channel_ingest_app = create_channel_ingest_bot()
+                await channel_ingest_app.initialize()
+                await channel_ingest_app.start()
+                await channel_ingest_app.updater.start_polling(
+                    drop_pending_updates=True,
+                    allowed_updates=list(TgUpdate.ALL_TYPES),
+                )
+                logger.info("Channel ingest bot started (посты канала → ai_training_posts)")
+            except Exception:
+                logger.exception("Channel ingest bot startup failed — токен, allowed ids или второй polling")
+    else:
+        logger.info("Channel ingest bot: выключен (CHANNEL_INGEST_BOT_TOKEN не задан)")
+
     try:
         yield
     finally:
-        for app in [bot_app, notify_bot_app, training_bot_app]:
+        for app in [bot_app, notify_bot_app, training_bot_app, channel_ingest_app]:
             if app:
                 try:
                     await app.updater.stop()

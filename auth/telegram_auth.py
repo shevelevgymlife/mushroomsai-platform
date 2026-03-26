@@ -86,6 +86,7 @@ def _collect_webapp_bot_tokens() -> list[str]:
         "TELEGRAM_TOKEN",
         "NOTIFY_BOT_TOKEN",
         "TRAINING_BOT_TOKEN",
+        "CHANNEL_INGEST_BOT_TOKEN",
     ):
         t = (getattr(settings, attr, "") or "").strip()
         if t and t not in candidates:

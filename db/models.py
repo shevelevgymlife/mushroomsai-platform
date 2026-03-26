@@ -639,6 +639,8 @@ ai_training_posts = sqlalchemy.Table(
     sqlalchemy.Column("folder", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("is_active", sqlalchemy.Boolean, default=True, server_default="true"),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+    sqlalchemy.Column("ingest_tg_chat_id", sqlalchemy.BigInteger, nullable=True),
+    sqlalchemy.Column("ingest_tg_message_id", sqlalchemy.BigInteger, nullable=True),
 )
 
 homepage_blocks = sqlalchemy.Table(
