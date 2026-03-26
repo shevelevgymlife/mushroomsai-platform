@@ -11,6 +11,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from web.templates_utils import Jinja2Templates
 from starlette.responses import JSONResponse
 from auth.session import get_user_from_request
+from services.legal import legal_acceptance_redirect
 from auth.telegram_auth import verify_telegram_auth
 from auth.ui_prefs import DEFAULT_SCREEN_RIM, attach_screen_rim_prefs
 from db.database import database
@@ -384,6 +385,35 @@ async def screen_rim_page(request: Request):
     return templates.TemplateResponse(
         "account/screen_rim.html",
         {"request": request, "user": user},
+    )
+
+
+@router.get("/wallet", response_class=HTMLResponse)
+async def account_wallet_page(request: Request):
+    """Экран привязки кошелька Decimal / MetaMask (раньше был в кабинете /dashboard)."""
+    user = await get_user_from_request(request)
+    if not user:
+        return RedirectResponse("/login?next=/account/wallet")
+    leg = await legal_acceptance_redirect(request, user)
+    if leg:
+        return leg
+    uid = int(user.get("primary_user_id") or user["id"])
+    row = await database.fetch_one(users.select().where(users.c.id == uid))
+    if row:
+        user = dict(row)
+        attach_screen_rim_prefs(user)
+    from config import shevelev_token_address
+
+    _wa = (user.get("wallet_address") or "").strip()
+    shevelev_auto_sync = _wa.startswith("0x")
+    return templates.TemplateResponse(
+        "account/wallet.html",
+        {
+            "request": request,
+            "user": user,
+            "shevelev_token": shevelev_token_address(),
+            "shevelev_auto_sync": shevelev_auto_sync,
+        },
     )
 
 

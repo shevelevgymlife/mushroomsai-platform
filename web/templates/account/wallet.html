@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Кошелёк Decimal / MetaMask — NEUROFUNGI AI{% endblock %}
+{% block body_class %} account-wallet-page{% endblock %}
+{% block content %}
+<style>
+.account-wallet-shell{max-width:560px;margin:0 auto;padding:12px 14px calc(24px + env(safe-area-inset-bottom,0px));}
+.account-wallet-shell h1{font-size:clamp(18px,4.5vw,22px);font-weight:700;color:#e8e8e8;margin:8px 0 16px;line-height:1.25}
+.card{background:rgba(14,16,28,.45);border:1px solid rgba(61,212,224,.1);border-radius:28px;padding:22px;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 8px 40px rgba(0,0,0,.35);margin-bottom:16px}
+.btn-g{background:#3dd4e0;color:#000;font-weight:700;border-radius:10px;padding:10px 20px;border:none;cursor:pointer;transition:background .2s;text-decoration:none;display:inline-block;font-size:14px;text-align:center}
+.btn-g:hover{background:#ff66d0}
+.btn-o{border:1px solid #3dd4e0;color:#3dd4e0;background:transparent;border-radius:10px;padding:9px 18px;cursor:pointer;font-weight:600;transition:all .2s;text-decoration:none;display:inline-block;font-size:14px;text-align:center}
+.btn-o:hover{background:rgba(61,212,224,.12)}
+.sinp{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#e8e8e8;border-radius:12px;padding:11px 16px;font-size:14px;outline:none;width:100%;box-sizing:border-box;transition:border-color .2s}
+.sinp:focus{border-color:rgba(61,212,224,.5)}
+.my-lamp-toggle{display:inline-flex;align-items:center;gap:8px;padding:4px 8px;border:1px solid rgba(255,255,255,.14);border-radius:999px;background:rgba(255,255,255,.04);color:#d0d5df;font-size:11px;font-weight:600}
+.my-lamp-toggle input{appearance:none;width:30px;height:18px;border-radius:999px;background:#20242f;border:1px solid rgba(255,255,255,.22);position:relative;cursor:pointer;transition:all .2s ease}
+.my-lamp-toggle input::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#8a90a0;transition:all .2s ease}
+.my-lamp-toggle input:checked{background:rgba(61,212,224,.35);border-color:rgba(61,212,224,.62)}
+.my-lamp-toggle input:checked::after{left:14px;background:#d8fbff}
+@keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+</style>
+
+<div class="account-wallet-shell">
+  <h1>Кошелёк Decimal / MetaMask</h1>
+  <input type="hidden" id="dashWalletAddr" value="{{ user.wallet_address or '' }}">
+
+  <div class="card" id="wallet-bind-card">
+    <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:14px">Подключение и баланс</div>
+    <div id="wltSt" style="font-size:12px;color:#666;margin-bottom:10px">
+      {% if user.wallet_address %}<span style="color:#4ade80">✓ Адрес сохранён</span>
+      {% else %}Укажите адрес 0x…{% endif %}
+    </div>
+    <button type="button" class="btn-o" style="width:100%;margin-bottom:12px;font-size:13px" onclick="connectMetaMask()">Подключить MetaMask (сеть Decimal)</button>
+    <div>
+      <label style="font-size:12px;color:#666;display:block;margin-bottom:5px">Адрес кошелька</label>
+      <div style="display:flex;gap:8px">
+        <input id="wltInp" class="sinp" style="flex:1" placeholder="0x..." value="{{ user.wallet_address or '' }}">
+        <button class="btn-g" style="flex-shrink:0" onclick="saveWallet()">✓</button>
+      </div>
+    </div>
+    <div style="margin-top:14px;padding:14px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
+      <div style="font-size:11px;color:#888;margin-bottom:8px">В браузере (MetaMask, сеть Decimal)</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;font-size:13px;min-height:1.35em">
+        <span style="color:#888;flex-shrink:0">Токен DEL</span>
+        <span id="delBal" style="font-weight:700;color:#e8e8e8;text-align:right;min-width:0;max-width:min(100%,220px);overflow-wrap:anywhere;word-break:break-word;line-height:1.35;font-variant-numeric:tabular-nums">—</span>
+      </div>
+      {% if shevelev_token %}
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;font-size:13px;min-height:1.35em">
+        <span style="color:#888;flex-shrink:0">Токен SHEVELEV</span>
+        <span id="shevelevBal" style="font-weight:700;color:#3dd4e0;text-align:right;min-width:0;max-width:min(100%,220px);overflow-wrap:anywhere;word-break:break-word;line-height:1.35;font-variant-numeric:tabular-nums">{% if user.get('shevelev_balance_cached') %}{{ user.shevelev_balance_cached }}{% else %}—{% endif %}</span>
+      </div>
+      <div id="shevelevBalErr" style="display:none;font-size:12px;color:#f87171;margin-top:8px"></div>
+      {% else %}
+      <p style="font-size:12px;color:#666;margin:0;line-height:1.45">SHEVELEV: укажите адрес контракта в переменной окружения <strong style="color:#888">SHEVELEV_TOKEN_ADDRESS</strong> на Render или в файле <strong style="color:#888">deployment/shevelev_token_address.txt</strong>.</p>
+      {% endif %}
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px">
+      <button type="button" class="btn-g" style="font-size:12px;padding:8px 14px;flex:1;min-width:160px" onclick="syncBlockchainBalances()">Синхронизировать с блокчейном</button>
+      {% if shevelev_token %}
+      <button type="button" class="btn-o" style="font-size:12px;padding:8px 14px" onclick="openSendShevModal()">Отправить SHEVELEV</button>
+      {% endif %}
+    </div>
+    <div style="margin-top:12px">
+      <label class="my-lamp-toggle" for="tokenLampToggleSettings">
+        <span>Свет лампы у токенов</span>
+        <input id="tokenLampToggleSettings" type="checkbox" {% if user.get('token_lamp_enabled') is not sameas false %}checked{% endif %} onchange="saveTokenLampEnabled(this.checked)">
+      </label>
+    </div>
+    <p style="font-size:11px;color:#555;margin-top:10px;line-height:1.4">Синхронизация считывает DEL и SHEVELEV с RPC Decimal и сохраняет в профиль.</p>
+  </div>
+
+  <div class="card">
+    <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:8px">Видимость токенов для других</div>
+    <p style="font-size:12px;color:#666;margin:0 0 12px;line-height:1.45">Галочки — для страницы профиля в сообществе.</p>
+    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:10px;font-size:13px;color:#ccc">
+      <input type="checkbox" id="pubShowDel" {% if user.get('show_del_to_public') is not sameas false %}checked{% endif %}> Показывать DEL в профиле другим
+    </label>
+    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:14px;font-size:13px;color:#ccc">
+      <input type="checkbox" id="pubShowShev" {% if user.get('show_shev_to_public') is not sameas false %}checked{% endif %}> Показывать SHEVELEV в профиле другим
+    </label>
+    <button type="button" class="btn-o" style="font-size:12px" onclick="saveTokenVisibility()">Сохранить видимость</button>
+    <span id="tokVisOk" style="display:none;margin-left:10px;color:#4ade80;font-size:13px">✓ Сохранено</span>
+  </div>
+
+  <p style="font-size:12px;color:#666;line-height:1.45;margin-top:8px">
+    <a href="/community" style="color:#3dd4e0">← В ленту сообщества</a>
+  </p>
+</div>
+
+<div id="sendShevModal" style="display:none;position:fixed;inset:0;z-index:10025;align-items:center;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(4px)" onclick="if(event.target===this)this.style.display='none'">
+  <div class="card" style="max-width:420px;width:92%;padding:24px;border-color:rgba(61,212,224,.3)" onclick="event.stopPropagation()">
+    <div style="font-weight:700;margin-bottom:4px;color:#3dd4e0;font-size:17px">Отправить SHEVELEV</div>
+    <p style="font-size:12px;color:#666;margin-bottom:14px">Сеть Decimal Smart Chain в MetaMask. Комиссия в DEL.</p>
+    <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Адрес получателя</label>
+    <input id="sendShevTo" class="sinp" style="margin-bottom:12px;width:100%;box-sizing:border-box" placeholder="0x…">
+    <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Количество</label>
+    <input id="sendShevAmt" type="number" step="any" class="sinp" style="margin-bottom:14px;width:100%;box-sizing:border-box" placeholder="0">
+    <button type="button" class="btn-g" style="width:100%" onclick="submitSendShev()">Отправить через MetaMask</button>
+    <p id="sendShevSt" style="margin-top:12px;font-size:12px;text-align:center;color:#888;line-height:1.4"></p>
+  </div>
+</div>
+
+<script>
+window.__WALLET_PAGE__ = { shevelevToken: "{{ shevelev_token|default('', true)|e }}" };
+</script>
+<script src="/static/js/wallet-account-page.js?v=1" defer></script>
+{% if shevelev_auto_sync %}
+<script>
+(function(){
+  const SYNC_MS=120000;
+  let tid=null;
+  async function tick(){
+    if(document.hidden)return;
+    try{await fetch('/profile/wallet/sync-balances',{method:'POST',credentials:'same-origin'});}catch(e){}
+  }
+  function arm(){if(tid)clearInterval(tid);tid=setInterval(tick,SYNC_MS);}
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick();});
+  setTimeout(tick,6000);
+  arm();
+})();
+</script>
+{% endif %}
+{% endblock %}

@@ -1713,7 +1713,7 @@ body.dash-ig-app .ig-lamp-topbar{
             <button class="btn-g" style="width:100%" onclick="saveProfile()">Сохранить</button>
             <div id="profOk" style="display:none;text-align:center;margin-top:8px;font-size:13px;color:#4ade80">✓ Сохранено</div>
           </div>
-          <div class="card">
+          <div class="card" id="wallet-bind-card">
             <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:14px">Кошелёк Decimal / MetaMask</div>
             <div id="wltSt" style="font-size:12px;color:#666;margin-bottom:10px">
               {% if user.wallet_address %}<span style="color:#4ade80">✓ Адрес сохранён</span>
@@ -2472,7 +2472,7 @@ async function erc20Decimals(token){
 async function connectMetaMask(){
   if(!window.ethereum){
     const mob=/iPhone|Android|iPad/i.test(navigator.userAgent);
-    if(mob){window.location.href='https://metamask.app.link/dapp/'+encodeURIComponent(location.host+'/dashboard#profile');}
+    if(mob){window.location.href='https://metamask.app.link/dapp/'+encodeURIComponent(location.origin+'/account/wallet');}
     else showNotification('Установите MetaMask в браузер','error');
     return;
   }
