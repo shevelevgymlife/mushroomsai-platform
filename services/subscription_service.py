@@ -56,8 +56,16 @@ async def can_ask_question(user_id: int) -> bool:
     if not row:
         return False
 
+    role = (row.get("role") or "user").lower()
+    if role in ("admin", "moderator"):
+        return True
+
     plan = await check_subscription(user_id)
     if plan in ("start", "pro", "maxi"):
+        return True
+
+    daily_cap = int(PLANS.get("free", {}).get("questions_per_day") or 5)
+    if daily_cap < 0:
         return True
 
     today = date.today()
@@ -69,10 +77,16 @@ async def can_ask_question(user_id: int) -> bool:
         )
         return True
 
-    return (row["daily_questions"] or 0) < 5
+    return (row["daily_questions"] or 0) < daily_cap
 
 
 async def increment_question_count(user_id: int):
+    row = await database.fetch_one(users.select().where(users.c.id == user_id))
+    if row and (row.get("role") or "user").lower() in ("admin", "moderator"):
+        return
+    plan = await check_subscription(user_id)
+    if plan in ("start", "pro", "maxi"):
+        return
     await database.execute(
         users.update()
         .where(users.c.id == user_id)

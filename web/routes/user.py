@@ -242,7 +242,7 @@ async def api_chat(request: Request):
                 admin_permissions.select().where(admin_permissions.c.user_id == effective_user_id)
             )
             is_unlimited = (
-                user.get("role") == "admin"
+                (user.get("role") or "").lower() in ("admin", "moderator")
                 or (bool(perm_row.get("can_ai_unlimited")) if perm_row else False)
             )
             if not is_unlimited:

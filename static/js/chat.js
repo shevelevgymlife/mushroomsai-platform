@@ -19,7 +19,7 @@ function appendMessage(role, text) {
       <div class="w-8 h-8 rounded-full bg-gradient-to-br from-yellow-600 to-yellow-400 flex-shrink-0 flex items-center justify-center">
         <span class="text-black font-bold text-xs">AI</span>
       </div>
-      <div class="bg-[#111] border border-[#222] rounded-2xl rounded-tl-sm px-4 py-3 max-w-lg">
+      <div class="bg-[#111] border border-[#222] rounded-2xl rounded-tl-sm px-4 py-3" style="max-width:min(100%,28rem)">
         <p class="text-sm text-[#e8e8e8] leading-relaxed whitespace-pre-wrap">${escapeHtml(text)}</p>
       </div>`;
   } else {
@@ -41,7 +41,7 @@ function appendLoader() {
     <div class="w-8 h-8 rounded-full bg-gradient-to-br from-yellow-600 to-yellow-400 flex-shrink-0 flex items-center justify-center">
       <span class="text-black font-bold text-xs">AI</span>
     </div>
-    <div class="bg-[#111] border border-[#222] rounded-2xl rounded-tl-sm px-4 py-3">
+    <div class="bg-[#111] border border-[#222] rounded-2xl rounded-tl-sm px-4 py-3" style="max-width:min(100%,28rem)">
       <div class="flex gap-1.5 items-center h-5">
         <span class="w-1.5 h-1.5 rounded-full bg-[#888] animate-bounce" style="animation-delay:0ms"></span>
         <span class="w-1.5 h-1.5 rounded-full bg-[#888] animate-bounce" style="animation-delay:150ms"></span>
@@ -88,6 +88,7 @@ async function sendMessage() {
     const res = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
       body: JSON.stringify({ message: text }),
     });
 

@@ -2,29 +2,82 @@
 {% block title %}AI Консультант — NEUROFUNGI AI{% endblock %}
 {% block extra_head %}
 <style>
+  .chat-shell {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  {% if user %}
+  /* main уже даёт отступ под шапку; ограничиваем высоту колонки чата, чтобы поле ввода не уезжало за экран */
+  body.app-has-mobile-header .chat-shell {
+    max-height: calc(100dvh - var(--app-header-h) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 100px);
+  }
+  {% else %}
+  .chat-shell {
+    max-height: calc(100dvh - 5rem);
+  }
+  {% endif %}
+  #chatContainer {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  #messages, #messages * {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  .chat-input-wrap {
+    flex-shrink: 0;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+  .chat-input-wrap .chat-input-row-inner {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 8px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+  #messageInput {
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: 100%;
+  }
   .chat-message { animation: fadeInUp 0.3s ease; }
   @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 {% endblock %}
 {% block content %}
-<div class="pt-16 h-screen flex flex-col neo-app-surface">
-  <div class="border-b border-border bg-bg/80 backdrop-blur-xl px-4 py-4">
-    <div class="max-w-3xl mx-auto flex items-center gap-3">
-      <div class="w-9 h-9 rounded-full bg-gradient-to-br from-gold to-gold-light flex items-center justify-center">
+<div class="chat-shell">
+  <div class="border-b border-border bg-bg/80 backdrop-blur-xl px-3 sm:px-4 py-3">
+    <div class="max-w-3xl mx-auto flex items-center gap-2 sm:gap-3 min-w-0">
+      <div class="w-9 h-9 rounded-full bg-gradient-to-br from-gold to-gold-light flex items-center justify-center flex-shrink-0">
         <span class="text-bg font-bold text-sm">AI</span>
       </div>
-      <div>
-        <h1 class="font-semibold text-text text-sm">AI NEUROFUNGI AI — консультант</h1>
-        <p class="text-xs text-muted">Эксперт по фунготерапии</p>
+      <div class="min-w-0 flex-1">
+        <h1 class="font-semibold text-text text-sm truncate">AI NEUROFUNGI AI — консультант</h1>
+        <p class="text-xs text-muted truncate">Эксперт по фунготерапии</p>
       </div>
-      <div class="ml-auto flex items-center gap-2">
+      <div class="ml-auto flex items-center gap-2 flex-shrink-0">
         <button id="cabinet-btn" onclick="openCabinet()"
-          class="hidden text-xs px-3 py-1.5 rounded-lg bg-gold text-bg font-medium hover:bg-gold-light transition-all duration-300">
-          👤 Личный кабинет
+          class="hidden text-xs px-2 sm:px-3 py-1.5 rounded-lg bg-gold text-bg font-medium hover:bg-gold-light transition-all duration-300 whitespace-nowrap">
+          👤 Кабинет
         </button>
         {% if not user %}
         <a href="/login" id="login-btn"
-          class="text-xs px-3 py-1.5 rounded-lg bg-gold/10 text-gold border border-gold/20 hover:bg-gold hover:text-bg transition-all duration-300">
+          class="text-xs px-2 sm:px-3 py-1.5 rounded-lg bg-gold/10 text-gold border border-gold/20 hover:bg-gold hover:text-bg transition-all duration-300 whitespace-nowrap">
           Войти
         </a>
         {% endif %}
@@ -32,14 +85,14 @@
     </div>
   </div>
 
-  <div class="flex-1 overflow-y-auto" id="chatContainer">
-    <div class="max-w-3xl mx-auto px-4 py-6 space-y-4" id="messages">
+  <div class="flex-1 overflow-y-auto min-h-0" id="chatContainer">
+    <div class="max-w-3xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 w-full min-w-0" id="messages">
       <div class="chat-message flex gap-3">
         <div class="w-8 h-8 rounded-full bg-gradient-to-br from-gold to-gold-light flex-shrink-0 flex items-center justify-center">
           <span class="text-bg font-bold text-xs">AI</span>
         </div>
-        <div class="bg-surface border border-border rounded-2xl rounded-tl-sm px-4 py-3 max-w-lg">
-          <p class="text-sm text-text leading-relaxed">
+        <div class="bg-surface border border-border rounded-2xl rounded-tl-sm px-3 sm:px-4 py-3 max-w-[min(100%,28rem)] min-w-0">
+          <p class="text-sm text-text leading-relaxed break-words">
             Здравствуйте. Я AI-консультант по функциональным грибам. Расскажите о вашей задаче — иммунитет, энергия, сон, восстановление — и я подберу оптимальный протокол.
           </p>
         </div>
@@ -47,29 +100,36 @@
     </div>
   </div>
 
-  <div class="border-t border-border bg-bg/80 backdrop-blur-xl px-4 py-4">
-    <div class="max-w-3xl mx-auto" style="display:flex;flex-direction:row;align-items:flex-end;gap:8px">
-      <textarea id="messageInput" rows="1"
-        placeholder="Напишите ваш вопрос..."
-        class="px-4 py-3 rounded-xl bg-surface border border-border text-text placeholder-muted text-sm focus:outline-none focus:border-gold/60 transition-colors duration-300 resize-none"
-        style="flex:1;min-width:0;min-height:48px;max-height:120px;"
-        onkeydown="handleKey(event)"></textarea>
-      <button onclick="sendMessage()"
-        id="sendBtn"
-        class="rounded-xl bg-gold text-bg flex items-center justify-center hover:bg-gold-light transition-all duration-300"
-        style="flex-shrink:0;width:48px;height:48px;white-space:nowrap">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-        </svg>
-      </button>
+  <div class="border-t border-border bg-bg/80 backdrop-blur-xl px-3 sm:px-4 py-3 chat-input-wrap">
+    <div class="max-w-3xl mx-auto w-full min-w-0">
+      <div class="chat-input-row-inner">
+        <textarea id="messageInput" rows="1"
+          placeholder="Напишите ваш вопрос..."
+          class="px-3 sm:px-4 py-3 rounded-xl bg-surface border border-border text-text placeholder-muted text-sm focus:outline-none focus:border-gold/60 transition-colors duration-300 resize-none"
+          style="flex:1;min-width:0;min-height:48px;max-height:120px;font-size:16px;"
+          onkeydown="handleKey(event)"></textarea>
+        <button onclick="sendMessage()"
+          id="sendBtn"
+          class="rounded-xl bg-gold text-bg flex items-center justify-center hover:bg-gold-light transition-all duration-300 flex-shrink-0"
+          style="width:48px;height:48px;white-space:nowrap">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+          </svg>
+        </button>
+      </div>
+      <p class="text-[11px] sm:text-xs text-muted text-center mt-2 px-1 leading-snug" id="chat-limit-line">
+        {% if user %}
+          {% if (subscription_plan or user.subscription_plan or 'free') == 'free' %}
+            Бесплатный тариф: до <strong class="text-gold">5</strong> сообщений к AI в сутки. Тарифы Старт и выше — безлимит.
+          {% else %}
+            Безлимитный диалог с AI по вашей подписке.
+          {% endif %}
+          <span class="block mt-1 opacity-80">Информация носит образовательный характер.</span>
+        {% else %}
+        <span id="limit-text">До 3 пар сообщений без регистрации. <a href="/login" class="text-gold hover:underline">Войдите</a> для персонального лимита.</span>
+        {% endif %}
+      </p>
     </div>
-    <p class="text-xs text-muted text-center mt-2">
-      {% if user %}
-        Информация носит образовательный характер.
-      {% else %}
-        <span id="limit-text">Доступно 3 сообщения без регистрации. <a href="/login" class="text-gold hover:underline">Войдите</a> для полного доступа.</span>
-      {% endif %}
-    </p>
   </div>
 </div>
 
@@ -79,12 +139,12 @@ window.addEventListener('load', function() {
   if (tg && tg.platform && tg.platform !== 'unknown' && tg.platform !== '') {
     tg.ready();
     tg.expand();
-    document.getElementById('cabinet-btn').classList.remove('hidden');
+    document.getElementById('cabinet-btn')?.classList.remove('hidden');
     const loginBtn = document.getElementById('login-btn');
     if (loginBtn) loginBtn.classList.add('hidden');
     const limitText = document.getElementById('limit-text');
     if (limitText) {
-      limitText.innerHTML = 'Хотите сохранить историю? <button onclick="openCabinet()" class="text-gold hover:underline">Войти в кабинет</button>';
+      limitText.innerHTML = 'Хотите сохранить историю? <button type="button" onclick="openCabinet()" class="text-gold hover:underline">Войти в кабинет</button>';
     }
   }
 });
@@ -95,5 +155,5 @@ function openCabinet() {
 </script>
 {% endblock %}
 {% block extra_scripts %}
-<script src="/static/js/chat.js"></script>
+<script src="/static/js/chat.js?v=2"></script>
 {% endblock %}

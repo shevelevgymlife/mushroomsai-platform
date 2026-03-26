@@ -51,7 +51,7 @@
     <a href="https://t.me/ShevelevVlog" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('book') }}</span><span class="lbl">База знаний</span></a>
     {% endif %}
     {% if 'referral' in vbk %}
-    <a href="/community/profile/{{ eff_uid|int }}" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('gift') }}</span><span class="lbl">Реферальная программа</span></a>
+    <a href="/referral" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('gift') }}</span><span class="lbl">Реферальная программа</span></a>
     {% endif %}
     {% if not is_locked_free %}
     <div class="ig-drawer-sep"></div>

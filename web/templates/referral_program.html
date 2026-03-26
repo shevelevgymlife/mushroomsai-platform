@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Реферальная программа — NEUROFUNGI AI{% endblock %}
+{% block extra_head %}
+<style>
+.referral-page .sect-title{font-size:22px;font-weight:700;color:#e8e8e8;margin-bottom:16px}
+.referral-page .muted{color:#666;font-size:13px}
+.referral-page .card-sm{display:block;padding:14px;border-radius:16px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03)}
+</style>
+{% endblock %}
+{% block content %}
+<div class="neo-app-surface min-h-screen bg-bg referral-page pt-6 pb-28 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-lg mx-auto">
+    <div class="sect-title">🎁 Реферальная программа</div>
+    <p class="text-sm text-muted mb-6 leading-relaxed">Приглашайте друзей по персональной ссылке — бонусы начисляются на ваш баланс в приложении.</p>
+
+    <div class="card rounded-2xl border border-white/10 bg-white/[0.03] p-5 mb-4">
+      <div style="font-size:15px;font-weight:600;color:#ddd;margin-bottom:10px">Ссылки для приглашений</div>
+      <p class="muted" style="font-size:12px;margin-bottom:8px">Telegram</p>
+      <div style="display:flex;gap:8px;margin-bottom:12px;min-width:0">
+        <input type="text" value="{{ ref_link }}" readonly id="refInp" class="sinp" style="flex:1;min-width:0;font-size:13px;color:#888">
+        <button type="button" class="btn-g" onclick="copyRef()" id="refCopyBtn" style="flex-shrink:0">Копировать</button>
+      </div>
+      <p class="muted" style="font-size:12px;margin-bottom:8px">Сайт (вход и регистрация по ссылке)</p>
+      <div style="display:flex;gap:8px;margin-bottom:12px;min-width:0">
+        <input type="text" value="{{ ref_link_site }}" readonly id="refInpSite" class="sinp" style="flex:1;min-width:0;font-size:13px;color:#888">
+        <button type="button" class="btn-o" id="refCopySiteBtn" onclick="copyRefSite()" style="flex-shrink:0;font-size:12px;padding:8px 12px">Копировать</button>
+      </div>
+      <div style="font-size:13px;color:#666">За каждого зарегистрировавшегося по ссылке на ваш баланс начисляется <strong class="text-gold">10%</strong> от цены тарифа Старт ({{ (990 * 0.1)|int }} ₽). Баллы можно использовать на продление подписки (по мере подключения оплаты).</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px">
+      <div class="card-sm text-center">
+        <div style="font-size:28px;font-weight:700;color:#3dd4e0">{{ ref_stats.total }}</div>
+        <div class="muted">приглашено</div>
+      </div>
+      <div class="card-sm text-center">
+        <div style="font-size:28px;font-weight:700;color:#3dd4e0">{{ ref_stats.balance_rub }}</div>
+        <div class="muted">баланс, ₽</div>
+      </div>
+    </div>
+
+    <div class="card rounded-2xl border border-white/10 bg-white/[0.03] p-5 mb-8">
+      <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:12px">Как это работает</div>
+      {% for step in ['Отправьте другу ссылку (Telegram или сайт)','Друг регистрируется по ней впервые','На ваш счёт начисляется бонус','Бонус один раз на каждого приглашённого'] %}
+      <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px">
+        <div style="width:24px;height:24px;border-radius:50%;background:rgba(61,212,224,.2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#3dd4e0;flex-shrink:0">{{ loop.index }}</div>
+        <div style="font-size:13px;color:#aaa;padding-top:3px">{{ step }}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <p class="text-center text-sm text-muted">
+      <a href="/community" class="text-gold hover:underline">← В ленту сообщества</a>
+    </p>
+  </div>
+</div>
+<script>
+function copyRef(){
+  var v=document.getElementById('refInp')?.value;
+  if(!v)return;
+  navigator.clipboard.writeText(v).then(function(){
+    var b=document.getElementById('refCopyBtn');
+    if(b){b.textContent='Скопировано ✓';setTimeout(function(){b.textContent='Копировать'},2200)}
+  });
+}
+function copyRefSite(){
+  var v=document.getElementById('refInpSite')?.value;
+  if(!v)return;
+  navigator.clipboard.writeText(v).then(function(){
+    var b=document.getElementById('refCopySiteBtn');
+    if(b){b.textContent='Скопировано ✓';setTimeout(function(){b.textContent='Копировать'},2200)}
+  });
+}
+</script>
+{% endblock %}

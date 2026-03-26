@@ -100,6 +100,19 @@ async def apply_referral_bonus(referral_id: int):
     pass
 
 
+async def ensure_user_referral_code(user_id: int) -> str:
+    """Гарантирует referral_code у пользователя (для ссылок-приглашений)."""
+    row = await database.fetch_one(users.select().where(users.c.id == user_id))
+    if not row:
+        return ""
+    code = (row.get("referral_code") or "").strip()
+    if code:
+        return code.upper()
+    code = await generate_referral_code()
+    await database.execute(users.update().where(users.c.id == user_id).values(referral_code=code))
+    return code.upper()
+
+
 async def get_referral_stats(user_id: int) -> dict:
     refs = await database.fetch_all(
         referrals.select().where(referrals.c.referrer_id == user_id)

@@ -35,7 +35,7 @@ from config import settings, shevelev_token_address
 from services.subscription_service import check_subscription, PLANS
 from services.shop_catalog import product_gallery_urls
 from services.legal import legal_acceptance_redirect
-from services.referral_service import attach_invite_ref_from_query
+from services.referral_service import attach_invite_ref_from_query, get_referral_stats, ensure_user_referral_code
 from services.ops_alerts import (
     notify_new_feedback,
     notify_new_order,
@@ -890,9 +890,52 @@ async def api_decimal_balance(address: str = ""):
 @router.get("/chat", response_class=HTMLResponse)
 async def chat_page(request: Request):
     current_user = await get_user_from_request(request)
+    plan = None
+    if current_user:
+        uid = current_user.get("primary_user_id") or current_user["id"]
+        plan = await check_subscription(uid)
     return templates.TemplateResponse(
         "chat.html",
-        {"request": request, "user": current_user},
+        {"request": request, "user": current_user, "subscription_plan": plan},
+    )
+
+
+@router.get("/referral", response_class=HTMLResponse)
+async def referral_program_page(request: Request):
+    """Отдельная страница реферальной программы (ссылки, баланс, статистика)."""
+    user = await get_user_from_request(request)
+    if not user:
+        return RedirectResponse("/login?next=/referral")
+    leg = await legal_acceptance_redirect(request, user)
+    if leg:
+        return leg
+    uid = user.get("primary_user_id") or user["id"]
+    plan = await check_subscription(uid)
+    code = await ensure_user_referral_code(uid)
+    bot = (settings.TELEGRAM_BOT_USERNAME or "").strip().lstrip("@") or "mushrooms_ai_bot"
+    base = (settings.SITE_URL or "").strip().rstrip("/")
+    ref_link = f"https://t.me/{bot}?start={code}" if code else ""
+    ref_link_site = f"{base}/login?ref={code}" if code and base else ""
+    ref_stats = await get_referral_stats(uid)
+    display_user = user
+    if user.get("primary_user_id"):
+        primary = await database.fetch_one(users.select().where(users.c.id == uid))
+        if primary:
+            display_user = dict(primary)
+            attach_screen_rim_prefs(display_user)
+    from web.routes.user import compute_visible_blocks
+
+    visible_block_keys = await compute_visible_blocks(uid, plan)
+    return templates.TemplateResponse(
+        "referral_program.html",
+        {
+            "request": request,
+            "user": display_user,
+            "ref_link": ref_link,
+            "ref_link_site": ref_link_site,
+            "ref_stats": ref_stats,
+            "visible_block_keys": visible_block_keys,
+        },
     )
 
 
