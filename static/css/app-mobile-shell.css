@@ -1,15 +1,9 @@
-/* Единая мобильная колонка: на узком экране — во всю ширину вьюпорта, без «уже экрана телефона» */
+/* Приложение: контент и панели на всю ширину экрана (мобильный браузер + Telegram WebApp / Mini App) */
 :root {
-  --app-shell-max: 430px;
+  --app-shell-max: 100%;
   --app-header-h: 56px;
   --neo-cyan: #22d3ee;
   --neo-cyan-soft: rgba(34, 211, 238, 0.42);
-}
-
-@media (max-width: 480px) {
-  :root {
-    --app-shell-max: 100%;
-  }
 }
 
 body.app-mobile-layout {
@@ -27,19 +21,9 @@ body.app-mobile-layout main {
   min-height: 0;
 }
 
-@media (max-width: 480px) {
-  body.app-mobile-layout main {
-    max-width: 100%;
-  }
-
-  #appActivityPanel .app-act-sheet {
-    max-width: 100%;
-  }
-}
-
 body.app-mobile-layout:not(.app-has-mobile-header) main {
-  padding-left: 12px;
-  padding-right: 12px;
+  padding-left: max(10px, env(safe-area-inset-left, 0px));
+  padding-right: max(10px, env(safe-area-inset-right, 0px));
 }
 
 /* Главная (гость): отступ под маркетинговый navbar */
@@ -48,8 +32,8 @@ body.app-mobile-layout.index-landing-guest:not(.app-has-mobile-header) main {
 }
 
 body.app-has-mobile-header main {
-  padding-left: 12px;
-  padding-right: 12px;
+  padding-left: max(10px, env(safe-area-inset-left, 0px));
+  padding-right: max(10px, env(safe-area-inset-right, 0px));
   padding-top: calc(var(--app-header-h) + env(safe-area-inset-top, 0px) + 8px);
   padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
 }
@@ -75,7 +59,7 @@ body.app-has-mobile-header main {
 .app-mobile-header-inner {
   pointer-events: auto;
   width: 100%;
-  max-width: var(--app-shell-max);
+  max-width: 100%;
   min-height: var(--app-header-h);
   height: auto;
   display: flex;
@@ -309,7 +293,7 @@ a.app-head-brand:hover {
   max-height: min(72vh, 520px);
   overflow: auto;
   margin: 0 auto;
-  max-width: var(--app-shell-max);
+  max-width: 100%;
   background: linear-gradient(180deg, rgba(12, 14, 22, 0.98), rgba(6, 8, 14, 0.99));
   border-bottom: 1px solid rgba(61, 212, 224, 0.2);
   border-radius: 0 0 22px 22px;
@@ -347,14 +331,16 @@ a.app-head-brand:hover {
   line-height: 1.35;
 }
 
-/* Нижний таббар / FAB в той же колонке, что и контент */
+/* Нижний таббар / FAB — на всю ширину экрана */
 body.app-mobile-layout .ig-tabbar,
 body.app-mobile-layout .cp-tabbar {
-  left: 50%;
-  right: auto;
-  transform: translateX(-50%);
-  width: min(100%, var(--app-shell-max));
-  max-width: var(--app-shell-max);
+  left: 0;
+  right: 0;
+  transform: none;
+  width: 100%;
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
   box-sizing: border-box;
 }
 
@@ -362,22 +348,6 @@ body.app-mobile-layout .ig-create-fab,
 body.app-mobile-layout .cp-create-fab {
   left: 50%;
   transform: translateX(-50%);
-}
-
-@media (max-width: 480px) {
-  .neo-app-header.app-mobile-header-inner,
-  .app-mobile-header-inner {
-    max-width: 100%;
-  }
-}
-
-@media (min-width: 431px) {
-  .neo-app-header.app-mobile-header-inner,
-  .app-mobile-header-inner {
-    border-left: 1px solid rgba(34, 211, 238, 0.08);
-    border-right: 1px solid rgba(34, 211, 238, 0.08);
-    border-radius: 0 0 16px 16px;
-  }
 }
 
 /* Глобальное боковое меню (как в dashboard) */
@@ -515,6 +485,8 @@ details.ig-drawer-details > summary {
   left: 0;
   right: 0;
   bottom: 0;
+  width: 100%;
+  max-width: 100%;
   height: calc(56px + env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
   background: rgba(6, 8, 16, 0.58);
@@ -528,9 +500,8 @@ details.ig-drawer-details > summary {
   z-index: 970;
   box-sizing: border-box;
   box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.35);
-  max-width: var(--app-shell-max);
-  margin-left: auto;
-  margin-right: auto;
+  margin-left: 0;
+  margin-right: 0;
 }
 .app-uni-tab {
   flex: 1;
@@ -661,4 +632,32 @@ body.app-mobile-layout main .grid.grid-cols-2 {
 .glow-color-dot:hover {
   transform: scale(1.12);
   border-color: rgba(255,255,255,.35);
+}
+
+/* Полная ширина: Tailwind max-w-* и сетка сообщества (.cl) */
+@media (max-width: 1024px) {
+  body.app-mobile-layout main .max-w-sm,
+  body.app-mobile-layout main .max-w-md,
+  body.app-mobile-layout main .max-w-lg,
+  body.app-mobile-layout main .max-w-xl,
+  body.app-mobile-layout main .max-w-2xl,
+  body.app-mobile-layout main .max-w-3xl,
+  body.app-mobile-layout main .max-w-4xl,
+  body.app-mobile-layout main .max-w-5xl,
+  body.app-mobile-layout main .max-w-6xl,
+  body.app-mobile-layout main .max-w-7xl {
+    max-width: 100% !important;
+  }
+}
+
+@media (max-width: 768px) {
+  body.app-mobile-layout main .cl {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    box-sizing: border-box;
+  }
 }

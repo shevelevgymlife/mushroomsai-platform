@@ -32,7 +32,7 @@ body.profile-app-shell .grain-overlay{opacity:0.22}
 .cp-ig-root{background:#080808;min-height:min(100vh,100dvh)}
 .cp-ig-main{padding:4px 0 calc(28px + env(safe-area-inset-bottom,0px));max-width:100%}
 
-.ig-me-shell{width:100%;max-width:min(100%,430px);margin:0 auto;padding-bottom:8px}
+.ig-me-shell{width:100%;max-width:100%;margin:0 auto;padding-bottom:8px}
 .cp-stats-row{width:100%;margin:0 0 18px;padding:0}
 .cp-stats-inner{max-width:100%!important;width:100%!important}
 .cp-profile-main-grid{display:grid;grid-template-columns:auto 1fr;gap:clamp(18px,4vw,36px);align-items:start;width:100%;margin-bottom:4px}
@@ -46,8 +46,8 @@ body.profile-app-shell .grain-overlay{opacity:0.22}
 .cp-profile-col-right{display:flex;flex-direction:column;align-items:stretch;gap:0;min-width:0;width:100%}
 .cp-av-clickable{cursor:pointer}
 .cp-av-clickable:focus-visible{outline:2px solid rgba(61,212,224,.5);outline-offset:4px;border-radius:50%}
-.cp-bio-under{font-size:14px;color:#ccc;line-height:1.55;max-width:min(280px,88vw);text-align:center;white-space:pre-wrap;word-break:break-word}
-@media(min-width:641px){.cp-bio-under{text-align:left;align-self:flex-start;max-width:220px}}
+.cp-bio-under{font-size:14px;color:#ccc;line-height:1.55;max-width:100%;text-align:center;white-space:pre-wrap;word-break:break-word}
+@media(min-width:641px){.cp-bio-under{text-align:left;align-self:flex-start;max-width:min(100%,320px)}}
 .cp-link-under{text-align:center}
 @media(min-width:641px){.cp-link-under{text-align:left;align-self:flex-start}}
 .cp-name-plan-row{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:0 0 12px}
