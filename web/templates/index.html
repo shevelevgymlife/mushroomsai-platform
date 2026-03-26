@@ -72,26 +72,10 @@ function openBotLink(e) {
 {% if not user %}
 <script>
 (function () {
-  function goLogin() {
-    var path = location.pathname.replace(/\/$/, "") || "/";
-    if (path === "/") {
-      location.replace("/login" + (location.search || "") + (location.hash || ""));
-    }
-  }
-  if ((location.hash || "").indexOf("tgWebAppData=") >= 0) {
-    goLogin();
-    return;
-  }
+  // Инициализируем Telegram WebApp если открыто как Mini App
   var tg = window.Telegram && window.Telegram.WebApp;
   if (tg && typeof tg.ready === "function") {
-    try {
-      tg.ready();
-    } catch (e) {}
-    setTimeout(function () {
-      try {
-        if (tg.initData && String(tg.initData).length) goLogin();
-      } catch (e) {}
-    }, 100);
+    try { tg.ready(); } catch (e) {}
   }
 })();
 </script>
