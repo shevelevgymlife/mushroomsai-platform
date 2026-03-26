@@ -138,12 +138,12 @@ CATEGORIES = ["Экстракт", "Плодовое тело", "Капсулы",
 
 @router.get("/app", response_class=HTMLResponse)
 async def app_entry(request: Request):
-    """Точка входа для Telegram Mini App. Если залогинен — в кабинет, иначе — страница комьюнити."""
+    """Точка входа для Telegram Mini App. Если залогинен — сразу в соцсеть."""
     current_user = await get_user_from_request(request)
     if current_user:
         return templates.TemplateResponse(
             "telegram_redirect_preserve.html",
-            {"request": request, "redirect_dest": "/dashboard"},
+            {"request": request, "redirect_dest": "/community"},
         )
     return templates.TemplateResponse(
         "app_entry.html",
@@ -158,7 +158,7 @@ async def index(request: Request):
         # 302 теряет #tgWebAppData — клиентский редирект сохраняет fragment для Telegram Mini App
         return templates.TemplateResponse(
             "telegram_redirect_preserve.html",
-            {"request": request, "redirect_dest": "/dashboard"},
+            {"request": request, "redirect_dest": "/community"},
         )
     prods = await database.fetch_all(
         products.select().where(products.c.active == True).limit(6)
@@ -893,9 +893,6 @@ async def community(request: Request):
 
 @router.get("/community/_old", response_class=HTMLResponse)
 async def community_old(request: Request):
-    # Legacy page removed; keep only single dashboard/community flow.
-    return RedirectResponse(url="/dashboard#feed", status_code=302)
-
     current_user = await get_user_from_request(request)
 
     if not current_user:

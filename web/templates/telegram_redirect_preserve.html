@@ -11,10 +11,10 @@
   <script>
   (function () {
     var dest = {{ redirect_dest|tojson }};
-    if (typeof dest !== "string" || !dest.startsWith("/")) dest = "/dashboard";
+    if (typeof dest !== "string" || !dest.startsWith("/")) dest = "/community";
     location.replace(dest + (location.search || "") + (location.hash || ""));
   })();
   </script>
-  <noscript><a href="/dashboard" style="color:#3dd4e0">Продолжить</a></noscript>
+  <noscript><a href="/community" style="color:#3dd4e0">Продолжить</a></noscript>
 </body>
 </html>

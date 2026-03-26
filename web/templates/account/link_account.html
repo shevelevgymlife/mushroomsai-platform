@@ -5,8 +5,8 @@
 <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:80px 16px 40px">
   <div style="width:100%;max-width:460px">
 
-    <a href="/dashboard" style="display:inline-flex;align-items:center;gap:6px;color:#888;font-size:13px;text-decoration:none;margin-bottom:24px">
-      ← Назад в кабинет
+    <a href="/community/profile/{{ (user.primary_user_id or user.id)|int }}" style="display:inline-flex;align-items:center;gap:6px;color:#888;font-size:13px;text-decoration:none;margin-bottom:24px">
+      ← Назад в профиль
     </a>
 
     <h1 style="font-size:22px;font-weight:700;color:#e8e8e8;margin:0 0 8px">🔗 Привязать аккаунт</h1>

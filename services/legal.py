@@ -12,7 +12,7 @@ LEGAL_DOCS_VERSION = "2025-03-23-v2"
 
 
 def legal_next_param(request: Request) -> str:
-    p = request.url.path or "/dashboard"
+    p = request.url.path or "/community"
     if request.url.query:
         p += "?" + str(request.url.query)
     return urllib.parse.quote(p, safe="")

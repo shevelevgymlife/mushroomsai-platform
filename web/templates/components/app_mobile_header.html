@@ -8,7 +8,7 @@
       </button>
     </div>
     <div class="app-head-center-col">
-      <a href="/dashboard#me" class="app-head-brand app-head-brand--center" title="NEUROFUNGI AI">NEUROFUNGI AI</a>
+      <a href="/community" class="app-head-brand app-head-brand--center" title="NEUROFUNGI AI">NEUROFUNGI AI</a>
       <span class="app-head-role-stamp{% if user.role == 'admin' %} app-head-role-stamp--admin{% else %} app-head-role-stamp--uch{% endif %}" title="Статус в сообществе">{% if user.role == 'admin' %}Админ{% else %}УЧ{% endif %}</span>
     </div>
     <div class="app-head-actions">
@@ -20,7 +20,7 @@
         {{ ico('heart') }}
         <span id="cpActivityBadge" class="app-notif-badge">0</span>
       </button>
-      <a href="/dashboard#me" class="app-head-btn app-head-btn-icon" title="Профиль" aria-label="Профиль" id="cpProfileHead">
+      <a href="/community/profile/{{ eff_uid|int }}" class="app-head-btn app-head-btn-icon" title="Профиль" aria-label="Профиль" id="cpProfileHead">
         {{ ico('user') }}
       </a>
     </div>

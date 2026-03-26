@@ -442,12 +442,12 @@ async def link_telegram_callback(request: Request):
         data = dict(request.query_params)
         if not verify_telegram_auth(data.copy()):
             logger.warning("Telegram auth verification failed for user_id=%s data=%s", user["id"], data)
-            return RedirectResponse("/dashboard?error=tg_auth_failed")
+            return RedirectResponse("/community?error=tg_auth_failed")
 
         raw_id = data.get("id")
         if not raw_id:
             logger.error("Missing 'id' in Telegram callback params: %s", data)
-            return RedirectResponse("/dashboard?error=tg_auth_failed")
+            return RedirectResponse("/community?error=tg_auth_failed")
 
         tg_id = int(raw_id)
         name = f"{data.get('first_name', '')} {data.get('last_name', '')}".strip()
@@ -461,12 +461,12 @@ async def link_telegram_callback(request: Request):
         )
         if not ok:
             logger.warning("link_telegram_callback failed for user_id=%s: %s", user["id"], msg)
-            return RedirectResponse("/dashboard?error=tg_link_conflict")
-        return RedirectResponse("/dashboard?linked=telegram")
+            return RedirectResponse("/community?error=tg_link_conflict")
+        return RedirectResponse("/community?linked=telegram")
 
     except Exception as exc:
         logger.exception("Unexpected error in link_telegram_callback for user_id=%s: %s", user["id"], exc)
-        return RedirectResponse("/dashboard?error=tg_link_failed")
+        return RedirectResponse("/community?error=tg_link_failed")
 
 
 @router.get("/link-google", response_class=HTMLResponse)

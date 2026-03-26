@@ -1,15 +1,19 @@
-{# Единая нижняя панель: Лента · Поиск · Магазин (без второго tabbar на отдельных страницах) #}
+{# Единая нижняя панель: Лента · Поиск · Профиль · Пост #}
 {% from 'components/stroke_icons.html' import ico %}
 {% set path = request.url.path %}
+{% set eff_uid = user.primary_user_id or user.id %}
 <nav class="app-uni-tabbar" id="appUniTabbar" aria-label="Нижняя навигация">
-  <a href="/dashboard#feed" class="app-uni-tab {% if path == '/dashboard' %}app-uni-tab--on{% endif %}" data-app-tab="feed" data-hash="feed">
+  <a href="/community" class="app-uni-tab {% if path == '/community' %}app-uni-tab--on{% endif %}" data-app-tab="feed" data-hash="feed">
     <span class="ic">{{ ico('home') }}</span><span class="lbl">Лента</span>
   </a>
   <a href="/community/members" class="app-uni-tab {% if path.startswith('/community/members') %}app-uni-tab--on{% endif %}" data-app-tab="search">
     <span class="ic">{{ ico('search') }}</span><span class="lbl">Поиск</span>
   </a>
-  <a href="/shop" class="app-uni-tab {% if path.startswith('/shop') %}app-uni-tab--on{% endif %}" data-app-tab="shop">
-    <span class="ic">{{ ico('shop') }}</span><span class="lbl">Магазин</span>
+  <a href="/community/profile/{{ eff_uid|int }}" class="app-uni-tab {% if path.startswith('/community/profile') %}app-uni-tab--on{% endif %}" data-app-tab="profile">
+    <span class="ic">{{ ico('user') }}</span><span class="lbl">Профиль</span>
+  </a>
+  <a href="/community/post/new" class="app-uni-tab {% if path == '/community/post/new' %}app-uni-tab--on{% endif %}" data-app-tab="post">
+    <span class="ic">{{ ico('plus') }}</span><span class="lbl">Пост</span>
   </a>
 </nav>
 <script src="/static/js/app-bottom-nav.js?v=1" defer></script>

@@ -24,7 +24,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 public class MainActivity extends AppCompatActivity {
-    private static final String START_URL = "https://mushroomsai.ru/dashboard";
+    private static final String START_URL = "https://mushroomsai.ru/community";
     private static final int FILE_CHOOSER_REQUEST = 2001;
 
     private WebView webView;

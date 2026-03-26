@@ -1,4 +1,4 @@
-﻿{# Единое боковое меню (и в кабинете, и вне его) #}
+{# Единое боковое меню (и в кабинете, и вне его) #}
 {% from 'components/stroke_icons.html' import ico %}
 {% set eff_uid = user.primary_user_id or user.id %}
 {% set vbk = visible_block_keys if visible_block_keys is defined else ['ai_chat','messages','community','shop','profile_photo','posts','tariffs','referral','knowledge_base','pro_telegram','pro_pin_info','seller_marketplace'] %}
@@ -22,51 +22,50 @@
   {% set rim_close_fn = 'closeAppGlobalDrawer' %}
   {% include "components/drawer_screen_rim.html" %}
   <div class="ig-drawer-scroll">
-    <a href="/dashboard#me" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('grid') }}</span><span class="lbl">Мой профиль</span></a>
-    <a href="/dashboard#feed" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('feed') }}</span><span class="lbl">Лента</span></a>
+    <a href="/community/profile/{{ eff_uid|int }}" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('grid') }}</span><span class="lbl">Мой профиль</span></a>
+    <a href="/community" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('feed') }}</span><span class="lbl">Лента</span></a>
     {% if 'community' in vbk %}
-    <a href="/dashboard#groups" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('message_sq') }}</span><span class="lbl">Чаты</span></a>
+    <a href="/community/groups" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('message_sq') }}</span><span class="lbl">Чаты</span></a>
     {% endif %}
     {% if 'messages' in vbk %}
     <a href="/messages" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('message') }}</span><span class="lbl">Сообщения</span></a>
     {% endif %}
     {% if 'ai_chat' in vbk %}
-    <a href="/dashboard#ai" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('cpu') }}</span><span class="lbl">AI-чат</span></a>
+    <a href="/chat" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('cpu') }}</span><span class="lbl">AI-чат</span></a>
     {% endif %}
     {% if 'knowledge_base' in vbk %}
     <a href="https://t.me/ShevelevVlog" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('book') }}</span><span class="lbl">База знаний</span></a>
     {% endif %}
     {% if 'shop' in vbk %}
-    <a href="/dashboard#shop" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('shop') }}</span><span class="lbl">Магазин</span></a>
-    <a href="/dashboard#orders" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('package') }}</span><span class="lbl">Мои заказы</span></a>
+    <a href="/shop" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('shop') }}</span><span class="lbl">Магазин</span></a>
     {% endif %}
     {% if 'tariffs' in vbk %}
-    <a href="/dashboard#plan" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('spark') }}</span><span class="lbl">Тариф</span></a>
+    <a href="/onboarding/tariff" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('spark') }}</span><span class="lbl">Тариф</span></a>
     {% endif %}
     {% if 'pro_telegram' in vbk or 'pro_pin_info' in vbk %}
-    <a href="/dashboard#proextras" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('spark') }}</span><span class="lbl">Про-функции</span></a>
+    <a href="/community/profile/{{ eff_uid|int }}" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('spark') }}</span><span class="lbl">Про-функции</span></a>
     {% endif %}
     {% if 'seller_marketplace' in vbk %}
-    <a href="/dashboard#seller" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('shop') }}</span><span class="lbl">Товары продавца</span></a>
+    <a href="/seller/shop" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('shop') }}</span><span class="lbl">Товары продавца</span></a>
     {% endif %}
     {% if 'referral' in vbk %}
-    <a href="/dashboard#referral" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('gift') }}</span><span class="lbl">Реферальная программа</span></a>
+    <a href="/community/profile/{{ eff_uid|int }}" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('gift') }}</span><span class="lbl">Реферальная программа</span></a>
     {% endif %}
     <div class="ig-drawer-sep"></div>
     <details class="ig-drawer-details" id="drawerWalletsDetails" style="border-bottom:1px solid rgba(255,255,255,.06)">
       <summary class="ig-drawer-item ig-drawer-summary" style="list-style:none;cursor:pointer"><span class="e">₿</span><span class="lbl">Мои кошельки</span><span class="ig-drawer-chev" style="margin-left:auto;opacity:.5;font-size:10px">▼</span></summary>
       <div style="padding:4px 12px 14px 18px;font-size:13px">
         <div style="font-size:11px;font-weight:700;color:#888;margin:8px 0 6px">MetaMask</div>
-        <a href="https://metamask.app.link/dapp/https://{{ request.url.hostname }}/dashboard" target="_blank" rel="noopener noreferrer" class="ig-drawer-sub" onclick="closeAppGlobalDrawer()">Открыть MetaMask (приложение)</a>
-        <a href="/dashboard#profile" class="ig-drawer-sub" onclick="closeAppGlobalDrawer()">Подключить в браузере и баланс →</a>
+        <a href="https://metamask.app.link/dapp/https://{{ request.url.hostname }}/community/profile/{{ eff_uid|int }}" target="_blank" rel="noopener noreferrer" class="ig-drawer-sub" onclick="closeAppGlobalDrawer()">Открыть MetaMask (приложение)</a>
+        <a href="/community/profile/{{ eff_uid|int }}" class="ig-drawer-sub" onclick="closeAppGlobalDrawer()">Подключить в браузере и баланс →</a>
         <div style="font-size:11px;font-weight:700;color:#888;margin:12px 0 6px">Decimal Chain</div>
         <a href="https://wallet.decimalchain.com/" target="_blank" rel="noopener noreferrer" class="ig-drawer-sub" onclick="closeAppGlobalDrawer()">Decimal Wallet — веб</a>
         <a href="https://play.google.com/store/apps/details?id=com.chain.decimal" target="_blank" rel="noopener noreferrer" class="ig-drawer-sub" onclick="closeAppGlobalDrawer()">Decimal Wallet — Android</a>
         <a href="https://apps.apple.com/app/decimal-blockchain-wallet/id1510802073" target="_blank" rel="noopener noreferrer" class="ig-drawer-sub" onclick="closeAppGlobalDrawer()">Decimal Wallet — iPhone</a>
         <div style="font-size:11px;font-weight:700;color:#888;margin:12px 0 6px">Видимость токенов и кошелёк</div>
-        <a href="/dashboard#profile" class="ig-drawer-sub" onclick="closeAppGlobalDrawer()">Настройки профиля, токены и синхронизация</a>
+        <a href="/community/profile/{{ eff_uid|int }}" class="ig-drawer-sub" onclick="closeAppGlobalDrawer()">Настройки профиля, токены и синхронизация</a>
         <div style="font-size:11px;font-weight:700;color:#888;margin:12px 0 6px">Отправить токен</div>
-        <a href="/dashboard#profile" class="ig-drawer-sub" onclick="closeAppGlobalDrawer()">Через MetaMask или Decimal — в кабинете</a>
+        <a href="/community/profile/{{ eff_uid|int }}" class="ig-drawer-sub" onclick="closeAppGlobalDrawer()">Через MetaMask или Decimal — в профиле</a>
       </div>
     </details>
     {% if not (user.tg_id or user.linked_tg_id) %}
@@ -74,7 +73,7 @@
     {% else %}
     <a href="/account/link" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('link') }}</span><span class="lbl">Привязать аккаунт</span></a>
     {% endif %}
-    <a href="/dashboard#language" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('globe') }}</span><span class="lbl">Язык интерфейса</span></a>
+    <a href="/community/profile/{{ eff_uid|int }}" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('globe') }}</span><span class="lbl">Язык интерфейса</span></a>
     <details class="ig-drawer-details" style="border-bottom:1px solid rgba(255,255,255,.06)">
       <summary class="ig-drawer-item ig-drawer-summary" style="list-style:none;cursor:pointer"><span class="e">📄</span><span class="lbl">Документы</span><span class="ig-drawer-chev" style="margin-left:auto;opacity:.5;font-size:10px">▼</span></summary>
       <div style="padding:4px 12px 14px 18px;font-size:13px">
@@ -83,7 +82,7 @@
         <p style="font-size:11px;color:#666;margin-top:10px;line-height:1.45">Актуальная редакция при входе. Дата: {% if user.get('legal_accepted_at') %}{{ user.legal_accepted_at.strftime('%d.%m.%Y %H:%M') if user.legal_accepted_at else '—' }}{% else %}—{% endif %} · версия {{ user.get('legal_docs_version') or '—' }}</p>
       </div>
     </details>
-    <a href="/dashboard#plan" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('spark') }}</span><span class="lbl">Запросить платный тариф</span></a>
+    <a href="/onboarding/tariff" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('spark') }}</span><span class="lbl">Запросить платный тариф</span></a>
     <div class="ig-drawer-sep"></div>
     <a href="https://t.me/mushrooms_ai_bot" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('send') }}</span><span class="lbl">Бот в Telegram</span></a>
     <a href="/logout" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none;color:#f87171;background:rgba(248,113,113,.08)"><span class="e">⎋</span><span class="lbl">Выйти из кабинета</span></a>

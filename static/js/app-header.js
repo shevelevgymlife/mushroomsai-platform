@@ -64,7 +64,7 @@
       );
     }
     if (it.type === 'profile_like') {
-      var profHref = '/dashboard#me';
+      var profHref = '/community/profile/' + encodeURIComponent(String(effUid() || ''));
       return (
         '<a class="app-act-row" href="' +
         profHref +
@@ -164,7 +164,7 @@
     if (menu) {
       menu.addEventListener('click', function () {
         if (typeof window.__appMenuClick === 'function') window.__appMenuClick();
-        else location.href = '/dashboard#feed';
+        else location.href = '/community';
       });
     }
     var bell = document.getElementById('cpActivityBell');

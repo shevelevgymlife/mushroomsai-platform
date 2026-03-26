@@ -77,7 +77,7 @@ def _safe_next_path(raw: str | None) -> str | None:
 
 
 def _pop_login_redirect(request: Request) -> str:
-    return _safe_next_path(request.session.pop("login_next", None)) or "/dashboard"
+    return _safe_next_path(request.session.pop("login_next", None)) or "/community"
 
 
 async def _login_blocked_response(request: Request):
@@ -108,7 +108,7 @@ async def login_page(request: Request):
         del request.session["login_next"]
 
     if user:
-        go = nxt_param or _safe_next_path(request.session.pop("login_next", None)) or "/dashboard"
+        go = nxt_param or _safe_next_path(request.session.pop("login_next", None)) or "/community"
         return RedirectResponse(go, status_code=302)
 
     from config import settings
@@ -293,9 +293,9 @@ async def telegram_miniapp_auth(request: Request):
             )
 
         token = create_access_token(user_id)
-        # Mini App: always open single in-app dashboard view.
+        # Mini App: always open single in-app community view.
         request.session.pop("login_next", None)
-        dest = "/dashboard#feed"
+        dest = "/community"
         resp = JSONResponse({"redirect": dest})
         resp.set_cookie("access_token", token, httponly=True, max_age=30 * 24 * 3600)
         await finalize_web_referral(request, resp, int(user_id))
@@ -380,9 +380,9 @@ async def google_callback(request: Request):
                 avatar=avatar,
             )
             if not ok:
-                return RedirectResponse("/dashboard?error=google_link_conflict", status_code=302)
+                return RedirectResponse("/community?error=google_link_conflict", status_code=302)
             token_str = create_access_token(link_user_id)
-            resp = RedirectResponse("/dashboard?linked=google", status_code=302)
+            resp = RedirectResponse("/community?linked=google", status_code=302)
             resp.set_cookie("access_token", token_str, httponly=True, max_age=30 * 24 * 3600)
             return resp
 

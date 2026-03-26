@@ -73,7 +73,7 @@ async def seller_root():
 async def seller_shop_page(request: Request):
     seller = await require_maxi_seller(request)
     if not seller:
-        return RedirectResponse("/dashboard", status_code=302)
+        return RedirectResponse("/community", status_code=302)
     uid = seller["id"]
     rows = await database.fetch_all(
         shop_products.select()
@@ -144,7 +144,7 @@ async def seller_shop_product_json(request: Request, product_id: int):
 async def seller_questions_page(request: Request):
     seller = await require_maxi_seller(request)
     if not seller:
-        return RedirectResponse("/dashboard", status_code=302)
+        return RedirectResponse("/community", status_code=302)
     uid = seller["id"]
     rows = await database.fetch_all(
         sa.select(product_questions, shop_products.c.name.label("product_name"))

@@ -46,7 +46,7 @@
       </div>
 
       <div class="mt-6">
-        <a href="/dashboard" class="text-sm text-muted hover:text-text transition-colors">← Назад в личный кабинет</a>
+        <a href="/community/profile/{{ (user.primary_user_id or user.id)|int }}" class="text-sm text-muted hover:text-text transition-colors">← Назад в профиль</a>
       </div>
     </div>
   </div>

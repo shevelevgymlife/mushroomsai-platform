@@ -123,7 +123,7 @@
       return Promise.resolve();
     }
     window.__tgWebAppAuthStarted = true;
-    var next = opts.nextPath || "/dashboard";
+    var next = opts.nextPath || "/community";
     var onError = opts.onError || function () {};
     var onSuccess = opts.onSuccess || function () {};
 
@@ -214,7 +214,7 @@
           onError((data && data.error) || "Ошибка " + resp.status);
           return;
         }
-        var redirectTo = data.redirect || "/dashboard";
+        var redirectTo = data.redirect || "/community";
         onSuccess(redirectTo);
         window.location.href = redirectTo;
       } catch (e) {

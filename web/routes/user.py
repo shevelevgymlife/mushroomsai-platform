@@ -126,9 +126,9 @@ async def onboarding_tariff_page(request: Request):
     if leg:
         return leg
     if user.get("role") == "admin":
-        return RedirectResponse("/dashboard")
+        return RedirectResponse("/community")
     if not user.get("needs_tariff_choice"):
-        return RedirectResponse("/dashboard")
+        return RedirectResponse("/community")
     return templates.TemplateResponse(
         "onboarding_tariff.html",
         {"request": request, "user": user, "plans": PLANS, "error": None},
@@ -164,7 +164,7 @@ async def onboarding_tariff_submit(request: Request, choice: str = Form(...)):
         .where(users.c.id == uid)
         .values(subscription_plan="free", needs_tariff_choice=False)
     )
-    return RedirectResponse("/dashboard")
+    return RedirectResponse("/community")
 
 
 @router.get("/dashboard", response_class=HTMLResponse)
@@ -181,7 +181,7 @@ async def dashboard(request: Request):
         if primary:
             from auth.session import create_access_token
             token = create_access_token(primary["id"])
-            response = RedirectResponse("/dashboard", status_code=302)
+            response = RedirectResponse("/community", status_code=302)
             response.set_cookie("access_token", token, httponly=True, samesite="lax", max_age=60*60*24*30)
             return response
 
@@ -189,208 +189,14 @@ async def dashboard(request: Request):
     if leg:
         return leg
 
-    effective_user_id = user.get("primary_user_id") or user["id"]
-
-    try:
-        await database.execute(
-            users.update().where(users.c.id == effective_user_id).values(last_seen_at=datetime.utcnow())
-        )
-    except Exception:
-        pass
-
-    # Full profile first (bio, followers_count, following_count, etc.)
-    full_profile = await database.fetch_one(users.select().where(users.c.id == effective_user_id))
-    if full_profile:
-        user = dict(full_profile)
-        attach_screen_rim_prefs(user)
-
     if user.get("needs_tariff_choice") and user.get("role") != "admin":
         return RedirectResponse("/onboarding/tariff")
-
-    plan = await check_subscription(effective_user_id)
-    plan_info = PLANS.get(plan, PLANS["free"])
-    ref_stats = await get_referral_stats(effective_user_id)
-    from config import settings
-    ref_link = f"https://t.me/neuro_fungi_bot?start={user.get('referral_code', '')}"
-    ref_link_site = f"{settings.SITE_URL.rstrip('/')}/login?ref={user.get('referral_code', '')}"
-
-    recent_messages = await database.fetch_all(
-        messages.select()
-        .where(messages.c.user_id == effective_user_id)
-        .order_by(messages.c.created_at.desc())
-        .limit(20)
-    )
-    my_orders = await database.fetch_all(
-        orders.select().where(orders.c.user_id == user["id"]).order_by(orders.c.created_at.desc())
-    )
-
-    my_account_ids = await _account_family_ids(effective_user_id)
-    my_ids_list = sorted(my_account_ids)
-
-    my_post_count = await database.fetch_val(
-        sa.select(sa.func.count()).select_from(community_posts)
-        .where(community_posts.c.user_id.in_(my_ids_list))
-    ) or 0
-    ai_questions_today = user.get("daily_questions") or 0
-
-    # Auto-upsert community profile with fresh stats
-    try:
-        await database.execute(
-            sa.text(
-                "INSERT INTO community_profiles (user_id, display_name, posts_count, followers_count, following_count) "
-                "VALUES (:uid, :name, :pc, :fc, :fgc) ON CONFLICT (user_id) DO UPDATE SET "
-                "display_name = EXCLUDED.display_name, posts_count = EXCLUDED.posts_count, "
-                "followers_count = EXCLUDED.followers_count, following_count = EXCLUDED.following_count"
-            ).bindparams(
-                uid=effective_user_id,
-                name=user.get("name"),
-                pc=my_post_count,
-                fc=user.get("followers_count") or 0,
-                fgc=user.get("following_count") or 0,
-            )
-        )
-    except Exception:
-        pass
-
-    # Last 5 posts by user (for classic home screen)
-    recent_posts = await database.fetch_all(
-        community_posts.select()
-        .where(community_posts.c.user_id.in_(my_ids_list))
-        .order_by(community_posts.c.created_at.desc())
-        .limit(5)
-    )
-    # Сетка профиля (Instagram): до 120 постов пользователя
-    my_grid_posts = await database.fetch_all(
-        community_posts.select()
-        .where(community_posts.c.user_id.in_(my_ids_list))
-        .order_by(community_posts.c.created_at.desc())
-        .limit(120)
-    )
-
-    # Feed: all approved posts (pagination on frontend, 20 per page)
-    feed_raw = await database.fetch_all(
-        community_posts.select()
-        .where(community_posts.c.approved == True)
-        .order_by(community_posts.c.pinned.desc(), community_posts.c.created_at.desc())
-    )
-    feed_authors = {}
-    for p in feed_raw:
-        if p["user_id"] and p["user_id"] not in feed_authors:
-            a = await database.fetch_one(users.select().where(users.c.id == p["user_id"]))
-            if a:
-                feed_authors[p["user_id"]] = dict(a)
-
-    # Posts liked by user
-    liked_rows = await database.fetch_all(
-        community_likes.select().where(community_likes.c.user_id == effective_user_id)
-    )
-    liked_post_ids = {r["post_id"] for r in liked_rows}
-
-    # IDs the user follows (for "подписки" tab)
-    following_rows = await database.fetch_all(
-        community_follows.select().where(community_follows.c.follower_id == effective_user_id)
-    )
-    following_ids = {r["following_id"] for r in following_rows}
-
-    # Shop products preview
-    from db.models import shop_products as shop_products_table
-    shop_preview = await database.fetch_all(
-        shop_products_table.select().order_by(shop_products_table.c.created_at.desc()).limit(12)
-    )
-
-    # Community profile record
-    comm_profile = await database.fetch_one(
-        community_profiles.select().where(community_profiles.c.user_id == effective_user_id)
-    )
-
-    from config import settings as _settings, shevelev_token_address
-    try:
-        shevelev_tok = shevelev_token_address()
-    except Exception:
-        shevelev_tok = ""
-    try:
-        visible_block_keys = await compute_visible_blocks(effective_user_id, plan)
-    except Exception:
-        visible_block_keys = ["ai_chat", "messages", "community", "shop", "profile_photo", "posts", "tariffs", "referral", "knowledge_base"]
-
-    allowed_by_plan = plan_allowed_block_keys(plan, user)
-    visible_block_keys = [k for k in visible_block_keys if k in allowed_by_plan]
-    for _extra in ("knowledge_base", "pro_pin_info", "seller_marketplace"):
-        if _extra in allowed_by_plan and _extra not in visible_block_keys:
-            visible_block_keys.append(_extra)
-
-    if "community" not in visible_block_keys:
-        feed_raw = []
-        feed_authors = {}
-    if "shop" not in visible_block_keys:
-        shop_preview = []
-    can_create_groups = False
-    can_manage_group_settings = False
-    dashboard_secs = build_dashboard_secs(visible_block_keys)
-
-    group_list = []
-    if "community" in visible_block_keys:
-        try:
-            group_list = await fetch_community_groups_for_user(effective_user_id)
-        except Exception:
-            _logger.exception("dashboard: fetch_community_groups_for_user")
-            group_list = []
-
-    my_community_folders: list = []
-    if "community" in visible_block_keys:
-        try:
-            my_community_folders = await database.fetch_all(
-                community_folders.select()
-                .where(community_folders.c.user_id == effective_user_id)
-                .order_by(community_folders.c.id.asc())
-            )
-        except Exception:
-            my_community_folders = []
-
-    response = templates.TemplateResponse(
-        "dashboard/user.html",
-        {
-            "request": request,
-            "user": user,
-            "plan": plan,
-            "plan_info": plan_info,
-            "can_create_groups": can_create_groups,
-            "can_manage_group_settings": can_manage_group_settings,
-            "ref_stats": ref_stats,
-            "ref_link": ref_link,
-            "ref_link_site": ref_link_site,
-            "messages": list(reversed(recent_messages)),
-            "orders": my_orders,
-            "my_post_count": my_post_count,
-            "ai_questions_today": ai_questions_today,
-            "feed_raw": feed_raw,
-            "feed_authors": feed_authors,
-            "liked_post_ids": liked_post_ids,
-            "following_ids": following_ids,
-            "recent_posts": recent_posts,
-            "my_grid_posts": my_grid_posts,
-            "plans_catalog": PLANS,
-            "shop_preview": shop_preview,
-            "comm_profile": dict(comm_profile) if comm_profile else None,
-            "shevelev_token": shevelev_tok,
-            "effective_user_id": effective_user_id,
-            "my_account_ids": my_ids_list,
-            "visible_block_keys": visible_block_keys,
-            "dashboard_secs": dashboard_secs,
-            "group_list": group_list,
-            "my_community_folders": my_community_folders,
-        },
-    )
-    # Не кэшировать HTML кабинета — иначе после деплоя виден старый интерфейс
-    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-    response.headers["Pragma"] = "no-cache"
-    return response
+    return RedirectResponse("/community", status_code=302)
 
 
 @router.get("/dashboard-lite", response_class=HTMLResponse)
 async def dashboard_lite(request: Request):
-    # Legacy lightweight variant is disabled: keep single dashboard view only.
-    return RedirectResponse("/dashboard", status_code=302)
+    return RedirectResponse("/community", status_code=302)
 
 
 @router.post("/api/chat")
@@ -1173,7 +979,7 @@ async def update_language(request: Request, language: str = Form(...)):
     await database.execute(
         users.update().where(users.c.id == uid).values(language=language)
     )
-    return RedirectResponse("/dashboard", status_code=302)
+    return RedirectResponse("/community", status_code=302)
 
 
 _AVATAR_ALLOWED = {"image/jpeg", "image/png", "image/webp"}
