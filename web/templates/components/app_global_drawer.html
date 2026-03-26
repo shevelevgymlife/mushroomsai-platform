@@ -24,9 +24,12 @@
     {% if not is_locked_free %}
     <a href="/community/profile/{{ eff_uid|int }}" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('grid') }}</span><span class="lbl">Мой профиль</span></a>
     <a href="/community" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('feed') }}</span><span class="lbl">Лента</span></a>
-    {% if 'community' in vbk %}
-    <a href="/community/groups" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('message_sq') }}</span><span class="lbl">Чаты</span></a>
     {% endif %}
+    {# Чаты: видны и на бесплатном тарифе; данные групп в БД не трогались #}
+    {% if 'community' in vbk %}
+    <a href="/community/chats" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('message_sq') }}</span><span class="lbl">Чаты</span></a>
+    {% endif %}
+    {% if not is_locked_free %}
     {% if 'messages' in vbk %}
     <a href="/messages" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('message') }}</span><span class="lbl">Сообщения</span></a>
     {% endif %}

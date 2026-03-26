@@ -1648,6 +1648,23 @@ async def fetch_community_groups_for_user(uid: int) -> list[dict]:
     return []
 
 
+@router.get("/community/chats", response_class=HTMLResponse)
+async def community_chats_browser_page(request: Request):
+    """Страница со списком групповых чатов (данные из БД; для меню «Чаты» в бургере)."""
+    user = await require_auth(request)
+    if not user:
+        return RedirectResponse("/login?next=/community/chats")
+    leg = await legal_acceptance_redirect(request, user)
+    if leg:
+        return leg
+    uid = _effective_user_id(user)
+    groups = await fetch_community_groups_for_user(uid)
+    return templates.TemplateResponse(
+        "community_chats_browser.html",
+        {"request": request, "user": user, "groups": groups},
+    )
+
+
 @router.get("/community/groups")
 async def community_groups_list_api(request: Request):
     user = await require_auth(request)
