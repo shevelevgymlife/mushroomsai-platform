@@ -5,8 +5,8 @@
       <div class="flex justify-center mb-6">
         <span class="h-1 w-16 rounded-full bg-gradient-to-r from-transparent via-gold to-transparent opacity-90"></span>
       </div>
-      <h2 class="font-display text-3xl sm:text-4xl lg:text-5xl font-semibold text-text mb-5 tracking-tight">
-        {{ blocks.pricing.title if blocks and 'pricing' in blocks else t.tariffs_title }}
+      <h2 class="font-display text-3xl sm:text-4xl lg:text-5xl font-semibold mb-5 tracking-tight">
+        <span class="nf-gold-text">{{ blocks.pricing.title if blocks and 'pricing' in blocks else t.tariffs_title }}</span>
       </h2>
       <p class="text-muted text-base sm:text-lg leading-relaxed">
         {{ blocks.pricing.subtitle if blocks and 'pricing' in blocks else t.tariffs_subtitle }}
@@ -25,7 +25,7 @@
           </li>
           {% endfor %}
         </ul>
-        <a href="/login?next=/onboarding/tariff" class="block text-center px-4 py-3 rounded-xl border border-white/[0.08] text-muted hover:border-gold/50 hover:text-gold transition-all duration-300 text-sm font-medium">
+        <a href="/login?next=/onboarding/tariff" class="block text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">
           {{ t.btn_start_free }}
         </a>
         <p class="text-[11px] text-muted/90 text-center mt-3 leading-snug">Вход и регистрация с бесплатным планом</p>
@@ -43,8 +43,8 @@
           </li>
           {% endfor %}
         </ul>
-        <button type="button" disabled class="block w-full text-center px-4 py-3 rounded-xl border border-white/10 text-muted text-sm cursor-not-allowed opacity-80">
-          Оплата не подключена
+        <button type="button" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">
+          {{ t.payment_not_connected }}
         </button>
         <p class="text-[11px] text-muted/90 text-center mt-3 leading-snug">После входа с бесплатным планом можно запросить смену тарифа у администратора</p>
       </div>
@@ -60,8 +60,8 @@
           </li>
           {% endfor %}
         </ul>
-        <button type="button" disabled class="block w-full text-center px-4 py-3 rounded-xl border border-white/10 text-muted text-sm cursor-not-allowed opacity-80">
-          Оплата не подключена
+        <button type="button" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">
+          {{ t.payment_not_connected }}
         </button>
         <p class="text-[11px] text-muted/90 text-center mt-3 leading-snug">Запрос тарифа — из кабинета после регистрации</p>
       </div>
@@ -77,8 +77,8 @@
           </li>
           {% endfor %}
         </ul>
-        <button type="button" disabled class="block w-full text-center px-4 py-3 rounded-xl border border-white/10 text-muted text-sm cursor-not-allowed opacity-80">
-          Оплата не подключена
+        <button type="button" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">
+          {{ t.payment_not_connected }}
         </button>
         <p class="text-[11px] text-muted/90 text-center mt-3 leading-snug">Запрос тарифа — из кабинета</p>
       </div>

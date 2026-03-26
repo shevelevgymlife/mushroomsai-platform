@@ -42,6 +42,37 @@
     body { background: #070708; }
     img, video, canvas, svg, iframe { max-width: 100%; height: auto; }
     input, textarea, select, button { max-width: 100%; min-width: 0; }
+
+    @keyframes nf-shimmer {
+      0%   { background-position: 0% center; }
+      100% { background-position: 200% center; }
+    }
+    .nf-shimmer {
+      background: linear-gradient(90deg, #3dd4e0 0%, #b85fa3 30%, #f5c542 55%, #3dd4e0 80%, #b85fa3 100%);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: nf-shimmer 3s linear infinite;
+      display: inline-block;
+    }
+    .nf-shimmer-btn {
+      background: linear-gradient(90deg, #3dd4e0, #b85fa3, #f5c542, #3dd4e0, #b85fa3) !important;
+      background-size: 200% auto !important;
+      animation: nf-shimmer 3s linear infinite !important;
+      color: #070708 !important;
+      border: none !important;
+      opacity: 1 !important;
+      cursor: pointer !important;
+      font-weight: 600 !important;
+    }
+    .nf-gold-text {
+      background: linear-gradient(90deg, #3dd4e0, #b85fa3);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      display: inline-block;
+    }
   </style>
   {% block extra_head %}{% endblock %}
 </head>

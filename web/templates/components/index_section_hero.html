@@ -25,11 +25,11 @@
         <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center lg:justify-start">
           <a href="/login"
              class="inline-flex items-center justify-center px-8 py-4 rounded-2xl bg-gold text-bg font-semibold hover:bg-gold-light transition-all duration-300 shadow-[0_0_0_1px_rgba(61,212,224,0.3)] shadow-gold/25 hover:shadow-gold/40">
-            Войти
+            {{ t.nav_login }}
           </a>
-          <a href="/chat" onclick="return guestGuard(event)"
-             class="inline-flex items-center justify-center px-8 py-4 rounded-2xl border border-gold/25 text-text hover:border-gold/55 hover:bg-gold/[0.06] transition-all duration-300 font-medium">
-            {{ t.btn_start_consultation }}
+          <a href="/login"
+             class="inline-flex items-center justify-center px-8 py-4 rounded-2xl font-semibold transition-all duration-300 nf-shimmer-btn rounded-2xl">
+            {{ t.btn_start_free }}
           </a>
         </div>
       </div>
@@ -39,8 +39,8 @@
           <div class="absolute inset-[8%] rounded-[1.75rem] border border-gold/20 bg-gradient-to-br from-gold/[0.12] to-transparent rotate-[-3deg]"></div>
           <div class="absolute inset-0 panel-rise p-6 sm:p-8 flex flex-col justify-between rotate-[2deg] hover:rotate-0 transition-transform duration-500">
             <div>
-              <p class="section-eyebrow mb-2">NEUROFUNGI AI</p>
-              <p class="font-display text-xl sm:text-2xl text-text font-semibold leading-snug">Протоколы · консультации · сообщество</p>
+              <p class="section-eyebrow mb-2 nf-shimmer">NEUROFUNGI AI</p>
+              <p class="font-display text-xl sm:text-2xl font-semibold leading-snug nf-gold-text">{{ t.community_tagline }}</p>
             </div>
             <div class="space-y-3 pt-6 border-t border-white/[0.06]">
               <div class="flex justify-between items-baseline gap-4">
