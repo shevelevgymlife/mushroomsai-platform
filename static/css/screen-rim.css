@@ -15,17 +15,29 @@
   opacity: 1;
 }
 
-/* Ряд в бургере: только тумблер + кнопка-палитра (без подписи), фиксированная высота */
+/* Ряд в бургере: подпись + тумблер + палитра; настройка хранится в аккаунте (screen_rim_json) */
 .ig-drawer-rim-row {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 14px;
+  justify-content: space-between;
+  gap: 12px;
   flex-shrink: 0;
   min-height: 52px;
   padding: 10px 18px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   box-sizing: border-box;
+}
+.ig-drawer-rim-lbl {
+  font-size: 13px;
+  font-weight: 600;
+  color: #c4cad6;
+  flex-shrink: 0;
+}
+.ig-drawer-rim-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
 }
 .rim-toggle {
   position: relative;

@@ -105,11 +105,18 @@
     return out;
   }
 
-  var RIM_LS = "screen_rim_v1";
+  /** Ключ LS на пользователя — иначе при смене аккаунта на том же устройстве подтягивались чужие настройки. */
+  function rimStorageKey() {
+    try {
+      var uid = window.__APP_EFF_UID;
+      if (uid != null && uid !== "") return "screen_rim_v1_u" + String(uid);
+    } catch (e) {}
+    return "screen_rim_v1";
+  }
 
   function persistRimLs(cfg) {
     try {
-      localStorage.setItem(RIM_LS, JSON.stringify(cfg));
+      localStorage.setItem(rimStorageKey(), JSON.stringify(cfg));
     } catch (e) {}
   }
 
@@ -141,16 +148,12 @@
 
   document.addEventListener("DOMContentLoaded", function () {
     if (typeof window.__SCREEN_RIM === "undefined" || !window.__SCREEN_RIM) return;
-    try {
-      var raw = localStorage.getItem(RIM_LS);
-      if (raw) {
-        var ls = JSON.parse(raw);
-        if (ls && typeof ls === "object") {
-          window.__SCREEN_RIM = mergeCfg(ls);
-        }
-      }
-    } catch (e) {}
-    applyRim(window.__SCREEN_RIM);
+    // Источник истины — БД (подставлено в шаблоне для текущего аккаунта). Старый общий LS
+    // screen_rim_v1 ломал смену пользователя на одном устройстве.
+    var serverCfg = mergeCfg(window.__SCREEN_RIM);
+    window.__SCREEN_RIM = serverCfg;
+    applyRim(serverCfg);
+    persistRimLs(serverCfg);
 
     document.querySelectorAll(".js-drawer-rim-toggle").forEach(function (inp) {
       inp.addEventListener("change", function () {
