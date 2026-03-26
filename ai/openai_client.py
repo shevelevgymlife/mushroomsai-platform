@@ -1,7 +1,9 @@
 from datetime import datetime
 from itertools import groupby
+import re
 
 from openai import AsyncOpenAI
+import sqlalchemy as sa
 from config import settings
 from db.database import database
 from db.models import ai_settings, messages, ai_training_posts
@@ -9,8 +11,77 @@ from ai.system_prompt import DEFAULT_SYSTEM_PROMPT
 from typing import Optional
 
 client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+_MAX_KNOWLEDGE_CHARS = 60000
+_MAX_POST_CONTENT_CHARS = 2200
+_MAX_RELEVANT_POSTS = 24
+_MAX_RECENT_FALLBACK = 8
 
-async def get_system_prompt() -> str:
+
+def _query_terms(text: str) -> list[str]:
+    terms = re.findall(r"[A-Za-zА-Яа-я0-9_]{3,}", (text or "").lower())
+    out: list[str] = []
+    for t in terms:
+        if t not in out:
+            out.append(t)
+        if len(out) >= 10:
+            break
+    return out
+
+
+async def _fetch_relevant_training_posts(user_message: str) -> list[dict]:
+    terms = _query_terms(user_message)
+    try:
+        if not terms:
+            rows = await database.fetch_all(
+                ai_training_posts.select()
+                .where(ai_training_posts.c.is_active == True)
+                .order_by(ai_training_posts.c.created_at.desc())
+                .limit(_MAX_RECENT_FALLBACK)
+            )
+            return [dict(r) for r in rows]
+
+        rank = None
+        filters = []
+        for t in terms:
+            p = f"%{t}%"
+            m = sa.case(
+                (
+                    sa.or_(
+                        ai_training_posts.c.title.ilike(p),
+                        ai_training_posts.c.content.ilike(p),
+                        ai_training_posts.c.category.ilike(p),
+                        ai_training_posts.c.folder.ilike(p),
+                    ),
+                    1,
+                ),
+                else_=0,
+            )
+            filters.append(m == 1)
+            rank = m if rank is None else (rank + m)
+
+        q = (
+            ai_training_posts.select()
+            .where(ai_training_posts.c.is_active == True)
+            .where(sa.or_(*filters))
+            .order_by(rank.desc(), ai_training_posts.c.created_at.desc())
+            .limit(_MAX_RELEVANT_POSTS)
+        )
+        rows = await database.fetch_all(q)
+        if rows:
+            return [dict(r) for r in rows]
+
+        # Если ничего не совпало по словам — берем свежие активные материалы.
+        rows = await database.fetch_all(
+            ai_training_posts.select()
+            .where(ai_training_posts.c.is_active == True)
+            .order_by(ai_training_posts.c.created_at.desc())
+            .limit(_MAX_RECENT_FALLBACK)
+        )
+        return [dict(r) for r in rows]
+    except Exception:
+        return []
+
+async def get_system_prompt(user_message: str = "") -> str:
     try:
         row = await database.fetch_one(
             ai_settings.select().order_by(ai_settings.c.updated_at.desc()).limit(1)
@@ -20,11 +91,7 @@ async def get_system_prompt() -> str:
         base_prompt = DEFAULT_SYSTEM_PROMPT
 
     try:
-        posts = list(
-            await database.fetch_all(
-                ai_training_posts.select().where(ai_training_posts.c.is_active == True)
-            )
-        )
+        posts = await _fetch_relevant_training_posts(user_message)
         posts.sort(
             key=lambda r: (
                 ((r.get("folder") or "").strip().lower()),
@@ -33,18 +100,29 @@ async def get_system_prompt() -> str:
         )
         if posts:
             blocks = []
+            used = 0
             for folder, group_iter in groupby(
                 posts, key=lambda r: (r.get("folder") or "").strip() or "Общее"
             ):
                 group = list(group_iter)
-                blocks.append(f"═══ Папка / раздел: {folder} ═══")
+                folder_hdr = f"═══ Папка / раздел: {folder} ═══"
+                if used + len(folder_hdr) > _MAX_KNOWLEDGE_CHARS:
+                    break
+                blocks.append(folder_hdr)
+                used += len(folder_hdr)
                 for p in group:
                     cat = f"[{p['category']}] " if p.get("category") else ""
-                    block = f"{cat}{p['title']}:\n{p['content']}"
+                    content = (p.get("content") or "")[:_MAX_POST_CONTENT_CHARS]
+                    block = f"{cat}{p['title']}:\n{content}"
                     img = (p.get("image_url") or "").strip()
                     if img:
                         block += f"\n[Изображение к материалу: {img}]"
+                    if used + len(block) > _MAX_KNOWLEDGE_CHARS:
+                        break
                     blocks.append(block)
+                    used += len(block)
+                if used >= _MAX_KNOWLEDGE_CHARS:
+                    break
             base_prompt += (
                 "\n\nДОПОЛНИТЕЛЬНЫЕ ЗНАНИЯ (по папкам) — единственный источник фактов для предметной области; "
                 "не опирайся на внешние базы и не выдумывай то, чего нет в этих блоках:\n"
@@ -61,7 +139,7 @@ async def chat_with_ai(
     session_key: Optional[str] = None,
     history_limit: int = 20,
 ) -> str:
-    system_prompt = await get_system_prompt()
+    system_prompt = await get_system_prompt(user_message=user_message)
 
     history = []
     try:
@@ -91,13 +169,21 @@ async def chat_with_ai(
     if not client.api_key:
         raise RuntimeError("OPENAI_API_KEY не задан в .env / переменных окружения")
     try:
-        response = await client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "system", "content": system_prompt}] + history,
-            max_tokens=2000,
-            temperature=0.7,
-        )
-        answer = response.choices[0].message.content
+        last_err = None
+        for mdl in ("gpt-4o", "gpt-4o-mini"):
+            try:
+                response = await client.chat.completions.create(
+                    model=mdl,
+                    messages=[{"role": "system", "content": system_prompt}] + history,
+                    max_tokens=2000,
+                    temperature=0.7,
+                )
+                answer = response.choices[0].message.content
+                break
+            except Exception as e:
+                last_err = e
+        else:
+            raise RuntimeError(f"{last_err}")  # pragma: no cover
     except Exception as e:
         raise RuntimeError(f"OpenAI API error: {e}") from e
 
