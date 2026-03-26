@@ -40,7 +40,7 @@ async def setup_bot_menu(application: Application) -> None:
         await application.bot.set_chat_menu_button(
             menu_button=MenuButtonWebApp(
                 text="Вход",
-                web_app=WebAppInfo(url=site),
+                web_app=WebAppInfo(url=site + "/app"),
             )
         )
         logger.info("Bot menu button set to WebApp: %s", site)

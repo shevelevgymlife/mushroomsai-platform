@@ -1,0 +1,56 @@
+{% extends "base_login.html" %}
+{% block title %}NEUROFUNGI AI — Комьюнити{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex flex-col items-center justify-between px-4 py-10 neo-app-surface">
+
+  <!-- Верх: лого + заголовок -->
+  <div class="flex-1 flex flex-col items-center justify-center text-center w-full max-w-sm">
+    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-gold to-gold-light flex items-center justify-center mb-6">
+      <span class="text-bg font-bold text-2xl">M</span>
+    </div>
+
+    <h1 class="text-2xl font-bold mb-2" style="color:#3dd4e0">NEUROFUNGI AI</h1>
+    <p class="text-base text-muted mb-1">Комьюнити и AI-консультант</p>
+    <p class="text-sm text-muted leading-relaxed mt-3 max-w-xs mx-auto">
+      Персональные консультации по функциональным грибам, сообщество и магазин
+    </p>
+
+    <!-- Статистика -->
+    <div class="flex gap-6 mt-8 mb-10">
+      <div class="text-center">
+        <div class="text-xl font-bold" style="color:#3dd4e0">🍄</div>
+        <div class="text-xs text-muted mt-1">Комьюнити</div>
+      </div>
+      <div class="text-center">
+        <div class="text-xl font-bold" style="color:#b85fa3">🤖</div>
+        <div class="text-xs text-muted mt-1">AI-консультант</div>
+      </div>
+      <div class="text-center">
+        <div class="text-xl font-bold" style="color:#f5c542">🛒</div>
+        <div class="text-xs text-muted mt-1">Магазин</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Низ: кнопки -->
+  <div class="w-full max-w-sm flex flex-col gap-3">
+    <a href="/login"
+      style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:52px;padding:0 20px;border-radius:14px;text-decoration:none;background:#229ED9;color:#fff;font-size:15px;font-weight:600;transition:opacity .2s"
+      onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+        <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-2.04 9.607c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.48 14.618l-2.95-.924c-.642-.2-.655-.642.136-.953l11.532-4.448c.536-.194 1.006.131.364.955z"/>
+      </svg>
+      Войти в кабинет
+    </a>
+
+    <a href="/login"
+      style="display:flex;align-items:center;justify-content:center;width:100%;min-height:52px;padding:0 20px;border-radius:14px;text-decoration:none;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.12);color:#e8e8e8;font-size:15px;font-weight:500;transition:all .2s"
+      onmouseover="this.style.background='rgba(255,255,255,.11)';this.style.borderColor='rgba(255,255,255,.22)'"
+      onmouseout="this.style.background='rgba(255,255,255,.06)';this.style.borderColor='rgba(255,255,255,.12)'">
+      Подписаться
+    </a>
+  </div>
+
+</div>
+{% endblock %}
