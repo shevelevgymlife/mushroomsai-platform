@@ -5,6 +5,7 @@ from fastapi import APIRouter, Request, Form, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from web.templates_utils import Jinja2Templates
 from auth.session import get_user_from_request
+from auth.ui_prefs import attach_screen_rim_prefs
 from db.database import database
 from db.models import (
     users, messages, orders, posts, post_likes, community_posts, community_likes, community_comments,
@@ -203,6 +204,7 @@ async def dashboard(request: Request):
     full_profile = await database.fetch_one(users.select().where(users.c.id == effective_user_id))
     if full_profile:
         user = dict(full_profile)
+        attach_screen_rim_prefs(user)
 
     if user.get("needs_tariff_choice") and user.get("role") != "admin":
         return RedirectResponse("/onboarding/tariff")
@@ -387,6 +389,7 @@ async def dashboard_lite(request: Request):
     full_profile = await database.fetch_one(users.select().where(users.c.id == effective_user_id))
     if full_profile:
         user = dict(full_profile)
+        attach_screen_rim_prefs(user)
     plan = await check_subscription(effective_user_id)
     plan_info = PLANS.get(plan, PLANS["free"])
     ref_stats = await get_referral_stats(effective_user_id)

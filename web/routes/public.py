@@ -30,6 +30,7 @@ from db.models import (
     homepage_blocks,
 )
 from auth.session import get_user_from_request
+from auth.ui_prefs import attach_screen_rim_prefs
 from config import settings, shevelev_token_address
 from services.subscription_service import check_subscription, PLANS
 from services.shop_catalog import product_gallery_urls
@@ -918,6 +919,7 @@ async def community_old(request: Request):
         primary = await database.fetch_one(users.select().where(users.c.id == effective_user_id))
         if primary:
             display_user = dict(primary)
+            attach_screen_rim_prefs(display_user)
 
     tab = request.query_params.get("tab", "all")  # all | following | popular | saved
     folder_id = request.query_params.get("folder")
@@ -1032,6 +1034,7 @@ async def community_old(request: Request):
     full_profile = await database.fetch_one(users.select().where(users.c.id == effective_user_id))
     if full_profile:
         display_user = dict(full_profile)
+        attach_screen_rim_prefs(display_user)
 
     _wa = (display_user.get("wallet_address") or "").strip()
     shevelev_auto_sync = _wa.startswith("0x")
