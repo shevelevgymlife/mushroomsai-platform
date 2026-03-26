@@ -145,9 +145,10 @@ async def app_entry(request: Request):
             "telegram_redirect_preserve.html",
             {"request": request, "redirect_dest": "/community"},
         )
+    # Незалогиненный — главная страница сайта (там есть кнопка Войти → /login)
     return templates.TemplateResponse(
-        "app_entry.html",
-        {"request": request},
+        "telegram_redirect_preserve.html",
+        {"request": request, "redirect_dest": "/"},
     )
 
 
