@@ -248,17 +248,7 @@
     <p class="text-sm text-muted mb-4">Пользователь: <span id="permUserName" class="text-text font-medium"></span></p>
 
     <div class="space-y-2 mb-5" id="permCheckboxes">
-      {% for key, label in [
-        ('can_dashboard', 'Dashboard'),
-        ('can_ai', 'AI управление'),
-        ('can_ai_unlimited', 'Безлимит AI (для пользователя)'),
-        ('can_shop', 'Магазин'),
-        ('can_users', 'Пользователи'),
-        ('can_feedback', 'Обратная связь'),
-        ('can_broadcast', 'Рассылки'),
-        ('can_knowledge', 'База знаний'),
-        ('can_training_bot', 'Бот обучающих постов (Telegram)'),
-      ] %}
+      {% for key, label in (permission_items if permission_items is defined else []) %}
       <label class="flex items-center gap-3 p-2.5 rounded-xl border border-border hover:border-gold/40 cursor-pointer transition-colors">
         <input type="checkbox" name="{{ key }}" id="perm_{{ key }}" class="accent-gold w-4 h-4" />
         <span class="text-sm text-text">{{ label }}</span>
@@ -448,7 +438,7 @@ async function deleteForever(userId, userName) {
 }
 
 // ── Permissions modal ───────────────────────────────────────────────────────
-const PERM_KEYS = ['can_dashboard','can_ai','can_ai_unlimited','can_shop','can_users','can_feedback','can_broadcast','can_knowledge','can_training_bot'];
+const PERM_KEYS = {{ permission_keys | tojson if permission_keys is defined else '[]' }};
 
 async function openPermModal(userId, userName) {
   currentUserId = userId;

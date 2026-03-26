@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 from fastapi import APIRouter, Request, Form, UploadFile, File, Query
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from web.templates_utils import Jinja2Templates
+from config import settings
 from services.subscription_service import PLANS
 from services.shop_catalog import extra_image_lines_from_json, extra_image_urls_from_text
 from auth.session import get_user_from_request
@@ -37,17 +38,21 @@ from datetime import datetime, timedelta, date
 router = APIRouter(prefix="/admin")
 templates = Jinja2Templates(directory="web/templates")
 
-ADMIN_NAV = [
-    ("Dashboard", "/admin"),
-    ("AI", "/admin/ai"),
-    ("Магазин", "/admin/shop"),
-    ("Пользователи", "/admin/users"),
-    ("Обратная связь", "/admin/feedback"),
-    ("Рассылки", "/admin/broadcast"),
-    ("База знаний", "/admin/knowledge"),
-    ("Сообщество", "/admin/community"),
-    ("Чаты", "/admin/groups"),
+ADMIN_SECTIONS = [
+    ("Панель", "/admin", "can_dashboard"),
+    ("AI", "/admin/ai", "can_ai"),
+    ("Обучающие посты", "/admin/ai-posts", "can_ai"),
+    ("Магазин", "/admin/shop", "can_shop"),
+    ("Пользователи", "/admin/users", "can_users"),
+    ("Обратная связь", "/admin/feedback", "can_feedback"),
+    ("Рассылки", "/admin/broadcast", "can_broadcast"),
+    ("База знаний", "/admin/knowledge", "can_knowledge"),
+    ("Сообщество", "/admin/community", "can_dashboard"),
+    ("Чаты", "/admin/groups", "can_dashboard"),
+    ("Главная сайта", "/admin/homepage", "can_dashboard"),
+    ("Блоки кабинета", "/admin/dashboard-blocks", "can_dashboard"),
 ]
+ADMIN_NAV = [(label, href) for (label, href, _perm) in ADMIN_SECTIONS]
 AI_RETRIEVAL_MODES = [
     ("title_first", "Название сначала (рекомендуется)", "Сначала ищет по названию/папке, затем по тексту."),
     ("strict_titles", "Только точные названия", "Почти только заголовки и папки; очень строгий режим."),
@@ -59,10 +64,21 @@ AI_RETRIEVAL_MODES = [
     ("recent_only", "Только свежие", "Игнорирует релевантность, берет последние посты."),
 ]
 
-PERM_KEYS = [
-    "can_dashboard", "can_ai", "can_shop", "can_users",
-    "can_feedback", "can_broadcast", "can_knowledge", "can_training_bot", "can_ai_unlimited",
-]
+PERM_KEYS = list(dict.fromkeys(
+    [perm for (_label, _href, perm) in ADMIN_SECTIONS] + ["can_training_bot", "can_ai_unlimited"]
+))
+PERM_LABELS = {
+    "can_dashboard": "Dashboard",
+    "can_ai": "AI управление",
+    "can_shop": "Магазин",
+    "can_users": "Пользователи",
+    "can_feedback": "Обратная связь",
+    "can_broadcast": "Рассылки",
+    "can_knowledge": "База знаний",
+    "can_training_bot": "Бот обучающих постов (Telegram)",
+    "can_ai_unlimited": "Безлимит AI (для пользователя)",
+}
+PERMISSION_ITEMS = [(k, PERM_LABELS.get(k, k)) for k in PERM_KEYS]
 
 
 def _parse_form_price(raw: Optional[str]) -> Optional[int]:
@@ -79,19 +95,21 @@ def _parse_form_price(raw: Optional[str]) -> Optional[int]:
 
 
 async def require_admin(request: Request):
-    """Basic admin check — role=admin. Super-admins pass automatically."""
+    """Basic admin check — role=admin|moderator."""
     user = await get_user_from_request(request)
-    if not user or user.get("role") != "admin":
+    if not user or user.get("role") not in ("admin", "moderator"):
         return None
     return user
 
 
 async def require_permission(request: Request, perm: str):
-    """Return user only if they have admin role AND the given permission (or are super-admin)."""
+    """Return user only if role grants permission (or platform owner)."""
     user = await get_user_from_request(request)
-    if not user or user.get("role") != "admin":
+    if not user or user.get("role") not in ("admin", "moderator"):
         return None
     if is_platform_owner(user):
+        return user
+    if user.get("role") == "admin":
         return user
     try:
         row = await database.fetch_one(
@@ -107,6 +125,8 @@ async def require_permission(request: Request, perm: str):
 async def get_user_permissions(user: dict) -> dict:
     """Return a dict of all permission booleans for an admin user."""
     if is_platform_owner(user):
+        return {k: True for k in PERM_KEYS}
+    if (user.get("role") or "") == "admin":
         return {k: True for k in PERM_KEYS}
     try:
         row = await database.fetch_one(
@@ -529,6 +549,8 @@ async def users_list(request: Request, search: str = ""):
                 ("maxi", PLANS["maxi"]["name"], PLANS["maxi"]["price"]),
             ],
             "viewer_is_platform_owner": is_platform_owner(admin),
+            "permission_items": PERMISSION_ITEMS,
+            "permission_keys": [k for (k, _lbl) in PERMISSION_ITEMS],
         },
     )
 
@@ -603,34 +625,38 @@ async def set_user_permissions(request: Request, user_id: int):
         return JSONResponse({"error": "Нельзя изменить права главного администратора"}, status_code=403)
 
     body = await request.json()
-
+    existing = await database.fetch_one(
+        admin_permissions.select().where(admin_permissions.c.user_id == user_id)
+    )
+    prev_perms = {k: bool(existing.get(k)) if existing else False for k in PERM_KEYS}
     if body.get("revoke_all"):
+        perms = {k: False for k in PERM_KEYS}
         await database.execute(
             admin_permissions.delete().where(admin_permissions.c.user_id == user_id)
         )
         await database.execute(
             users.update().where(users.c.id == user_id).values(role="user")
         )
-        return JSONResponse({"ok": True, "action": "revoked"})
-
-    existing = await database.fetch_one(
-        admin_permissions.select().where(admin_permissions.c.user_id == user_id)
-    )
-    perms = {k: bool(body.get(k, False)) for k in PERM_KEYS}
-    prev_unlimited = bool(existing.get("can_ai_unlimited")) if existing else False
-    if existing:
-        await database.execute(
-            admin_permissions.update()
-            .where(admin_permissions.c.user_id == user_id)
-            .values(**perms)
-        )
     else:
+        perms = {k: bool(body.get(k, False)) for k in PERM_KEYS}
+        if existing:
+            await database.execute(
+                admin_permissions.update()
+                .where(admin_permissions.c.user_id == user_id)
+                .values(**perms)
+            )
+        else:
+            await database.execute(
+                admin_permissions.insert().values(user_id=user_id, **perms)
+            )
         await database.execute(
-            admin_permissions.insert().values(user_id=user_id, **perms)
+            users.update().where(users.c.id == user_id).values(
+                role=sqlalchemy.case(
+                    (users.c.role == "user", "moderator"),
+                    else_=users.c.role,
+                )
+            )
         )
-    await database.execute(
-        users.update().where(users.c.id == user_id).values(role="admin")
-    )
 
     notify_uid = int(target.get("primary_user_id") or user_id)
     notify_tg_id = None
@@ -655,63 +681,57 @@ async def set_user_permissions(request: Request, user_id: int):
     except Exception:
         logger.exception("Failed to resolve telegram recipient for user_id=%s", user_id)
 
-    now_unlimited = bool(perms.get("can_ai_unlimited"))
-    if now_unlimited and not prev_unlimited:
-        sender_id = admin.get("primary_user_id") or admin.get("id")
-        text = (
+    added = [k for k in PERM_KEYS if perms.get(k) and not prev_perms.get(k)]
+    removed = [k for k in PERM_KEYS if prev_perms.get(k) and not perms.get(k)]
+    if added or removed or body.get("revoke_all"):
+        role_row = await database.fetch_one(users.select().where(users.c.id == notify_uid))
+        role_now = (role_row.get("role") if role_row else target.get("role") or "user")
+        role_label = "Администратор" if role_now == "admin" else ("Модератор" if role_now == "moderator" else "Пользователь")
+        site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
+
+        def _label(key: str) -> str:
+            for k, lbl in PERMISSION_ITEMS:
+                if k == key:
+                    return lbl
+            return key
+
+        added_text = ", ".join(_label(k) for k in added) if added else "—"
+        removed_text = ", ".join(_label(k) for k in removed) if removed else "—"
+        dm_text = (
             "Системные оповещения\n\n"
-            "Вам открыт безлимитный доступ к AI.\n"
-            "Теперь лимиты на вопросы сняты."
+            "Ваши права доступа обновлены.\n"
+            f"Добавлено: {added_text}\n"
+            f"Удалено: {removed_text}\n"
+            f"Роль в приложении: {role_label}.\n\n"
+            f"Открыть приложение в Telegram: {site}"
         )
+        tg_text = (
+            "Системные оповещения\n\n"
+            "Ваши права доступа обновлены.\n"
+            f"Добавлено: {added_text}\n"
+            f"Удалено: {removed_text}\n"
+            f"Роль в приложении: {role_label}.\n\n"
+            f"Открыть приложение: {site}"
+        )
+        sender_id = admin.get("primary_user_id") or admin.get("id")
         try:
             await database.execute(
                 direct_messages.insert().values(
                     sender_id=sender_id,
                     recipient_id=notify_uid,
-                    text=text,
+                    text=dm_text,
                     is_read=False,
                     is_system=True,
                 )
             )
         except Exception:
-            logger.exception("Failed to store AI unlimited system notification for user_id=%s", user_id)
+            logger.exception("Failed to store permissions change notification for user_id=%s", user_id)
         try:
             if notify_tg_id:
                 from services.notify_user_stub import notify_user
-                await notify_user(
-                    int(notify_tg_id),
-                    "Системные оповещения\n\nВам открыт безлимитный доступ к AI. Теперь лимиты на вопросы сняты.",
-                )
+                await notify_user(int(notify_tg_id), tg_text)
         except Exception:
-            logger.exception("Failed to send AI unlimited telegram notification for user_id=%s", user_id)
-    elif prev_unlimited and not now_unlimited:
-        sender_id = admin.get("primary_user_id") or admin.get("id")
-        text = (
-            "Системные оповещения\n\n"
-            "Безлимитный доступ к AI отключен.\n"
-            "Доступен лимит: 5 сообщений в день."
-        )
-        try:
-            await database.execute(
-                direct_messages.insert().values(
-                    sender_id=sender_id,
-                    recipient_id=notify_uid,
-                    text=text,
-                    is_read=False,
-                    is_system=True,
-                )
-            )
-        except Exception:
-            logger.exception("Failed to store AI unlimited revoke notification for user_id=%s", user_id)
-        try:
-            if notify_tg_id:
-                from services.notify_user_stub import notify_user
-                await notify_user(
-                    int(notify_tg_id),
-                    "Системные оповещения\n\nБезлимитный доступ к AI отключен. Доступен лимит: 5 сообщений в день.",
-                )
-        except Exception:
-            logger.exception("Failed to send AI unlimited revoke telegram notification for user_id=%s", user_id)
+            logger.exception("Failed to send permissions change telegram notification for user_id=%s", user_id)
 
     return JSONResponse({"ok": True, "permissions": perms})
 

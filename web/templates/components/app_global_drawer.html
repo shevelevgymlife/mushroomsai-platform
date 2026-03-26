@@ -86,8 +86,8 @@
     <div class="ig-drawer-sep"></div>
     <a href="https://t.me/mushrooms_ai_bot" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('send') }}</span><span class="lbl">Бот в Telegram</span></a>
     <a href="/logout" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none;color:#f87171;background:rgba(248,113,113,.08)"><span class="e">⎋</span><span class="lbl">Выйти из кабинета</span></a>
-    {% if user.role == 'admin' %}
-    <button type="button" class="ig-drawer-item" onclick="closeAppGlobalDrawer();window.location='/admin'" style="color:#f87171"><span class="e">{{ ico('shield') }}</span><span class="lbl">Администратор</span></button>
+    {% if user.role in ['admin', 'moderator'] %}
+    <button type="button" class="ig-drawer-item" onclick="closeAppGlobalDrawer();window.location='/admin'" style="color:#f87171"><span class="e">{{ ico('shield') }}</span><span class="lbl">{{ 'Администратор' if user.role == 'admin' else 'Модератор' }}</span></button>
     {% endif %}
   </div>
 </aside>
