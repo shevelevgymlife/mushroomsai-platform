@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Кошелёк Decimal / MetaMask — NEUROFUNGI AI{% endblock %}
 {% block body_class %} account-wallet-page{% endblock %}
+{% set del_w = user.decimal_del_balance if user.decimal_del_balance is not none else '—' %}
+{% set shev_w = user.shevelev_balance_cached if user.shevelev_balance_cached is not none else '—' %}
 {% block content %}
 <style>
 .account-wallet-shell{max-width:560px;margin:0 auto;padding:12px 14px calc(24px + env(safe-area-inset-bottom,0px));}
@@ -18,14 +20,46 @@
 .my-lamp-toggle input:checked{background:rgba(61,212,224,.35);border-color:rgba(61,212,224,.62)}
 .my-lamp-toggle input:checked::after{left:14px;background:#d8fbff}
 @keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.wallet-app-card .wallet-app-h{font-size:11px;font-weight:700;color:#888;margin:14px 0 8px}
+.wallet-app-card .wallet-app-h:first-child{margin-top:0}
+.wallet-app-card a.wallet-app-link{display:block;padding:10px 8px;color:#bbb;text-decoration:none;border-radius:10px;font-size:14px;transition:background .15s,color .15s}
+.wallet-app-card a.wallet-app-link:hover{background:rgba(255,255,255,.06);color:#3dd4e0}
 </style>
 
 <div class="account-wallet-shell">
-  <h1>Кошелёк Decimal / MetaMask</h1>
+  <h1>Мои кошельки</h1>
   <input type="hidden" id="dashWalletAddr" value="{{ user.wallet_address or '' }}">
 
+  <div class="card">
+    <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:12px">DEL · SHEVELEV</div>
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-bottom:14px;font-size:13px;line-height:1.45">
+      <span style="color:#9ca3af">DEL <strong style="color:#e2e8f0;font-weight:700">{{ del_w }}</strong></span>
+      <span style="opacity:.25">|</span>
+      <span style="color:#9ca3af">SHEV <strong style="color:#f472b6;font-weight:700">{{ shev_w }}</strong></span>
+    </div>
+    <label class="drawer-token-lamp-toggle" for="drawerTokenLampToggle" style="width:100%;box-sizing:border-box;justify-content:space-between;margin-bottom:12px">
+      <span>Свет</span>
+      <input id="drawerTokenLampToggle" type="checkbox" {% if user.get('token_lamp_enabled') is not sameas false %}checked{% endif %} onchange="saveDrawerTokenLamp(this.checked)" aria-label="Свет токенов на аватаре" />
+    </label>
+    {% if shevelev_token %}
+    <a href="/community" class="btn-o" style="width:100%;box-sizing:border-box;text-align:center;margin-bottom:4px;font-size:13px">Подарить SHEVELEV →</a>
+    {% endif %}
+    <p style="font-size:11px;color:#666;margin:8px 0 0;line-height:1.45">Балансы из профиля; подключение и синхронизация — ниже.</p>
+  </div>
+
+  <div class="card wallet-app-card">
+    <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:4px">Приложения кошельков</div>
+    <p style="font-size:12px;color:#888;margin:0 0 8px;line-height:1.45">Установите приложение или откройте веб-кошелёк Decimal.</p>
+    <div class="wallet-app-h">MetaMask</div>
+    <a href="https://metamask.app.link/dapp/https://{{ request.url.hostname }}/account/wallet" target="_blank" rel="noopener noreferrer" class="wallet-app-link">Открыть MetaMask (приложение) → эта страница</a>
+    <div class="wallet-app-h">Decimal Chain</div>
+    <a href="https://wallet.decimalchain.com/" target="_blank" rel="noopener noreferrer" class="wallet-app-link">Decimal Wallet — веб</a>
+    <a href="https://play.google.com/store/apps/details?id=com.chain.decimal" target="_blank" rel="noopener noreferrer" class="wallet-app-link">Decimal Wallet — Android</a>
+    <a href="https://apps.apple.com/app/decimal-blockchain-wallet/id1510802073" target="_blank" rel="noopener noreferrer" class="wallet-app-link">Decimal Wallet — iPhone</a>
+  </div>
+
   <div class="card" id="wallet-bind-card">
-    <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:14px">Подключение и баланс</div>
+    <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:14px">Подключение и баланс в браузере</div>
     <div id="wltSt" style="font-size:12px;color:#666;margin-bottom:10px">
       {% if user.wallet_address %}<span style="color:#4ade80">✓ Адрес сохранён</span>
       {% else %}Укажите адрес 0x…{% endif %}
@@ -60,13 +94,7 @@
       <button type="button" class="btn-o" style="font-size:12px;padding:8px 14px" onclick="openSendShevModal()">Отправить SHEVELEV</button>
       {% endif %}
     </div>
-    <div style="margin-top:12px">
-      <label class="my-lamp-toggle" for="tokenLampToggleSettings">
-        <span>Свет лампы у токенов</span>
-        <input id="tokenLampToggleSettings" type="checkbox" {% if user.get('token_lamp_enabled') is not sameas false %}checked{% endif %} onchange="saveTokenLampEnabled(this.checked)">
-      </label>
-    </div>
-    <p style="font-size:11px;color:#555;margin-top:10px;line-height:1.4">Синхронизация считывает DEL и SHEVELEV с RPC Decimal и сохраняет в профиль.</p>
+    <p style="font-size:11px;color:#555;margin-top:12px;line-height:1.4">Синхронизация считывает DEL и SHEVELEV с RPC Decimal и сохраняет в профиль. Свет у аватара — в блоке DEL · SHEVELEV выше.</p>
   </div>
 
   <div class="card">
@@ -103,7 +131,7 @@
 <script>
 window.__WALLET_PAGE__ = { shevelevToken: "{{ shevelev_token|default('', true)|e }}" };
 </script>
-<script src="/static/js/wallet-account-page.js?v=1" defer></script>
+<script src="/static/js/wallet-account-page.js?v=2" defer></script>
 {% if shevelev_auto_sync %}
 <script>
 (function(){
