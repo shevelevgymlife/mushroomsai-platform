@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ru" class="scroll-smooth" data-ui-theme="editorial-grain" style="background:#070708">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>{% block title %}NEUROFUNGI AI{% endblock %}</title>
+  <link rel="icon" href="/static/favicon.svg?v=1" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Syne:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg: '#070708',
+            surface: '#0c0c0f',
+            border: 'rgba(255,255,255,0.07)',
+            gold: '#3dd4e0',
+            'gold-light': '#b85fa3',
+            muted: '#8e8e96',
+            text: '#eaeaec',
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            display: ['Syne', 'Inter', 'system-ui', 'sans-serif'],
+          },
+          borderRadius: {
+            neo: '28px',
+          },
+        },
+      },
+    }
+  </script>
+  <link rel="stylesheet" href="/static/css/custom.css?v=3" />
+  <link rel="stylesheet" href="/static/css/design-system.css?v=3" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html { background: #070708; }
+    html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
+    body { background: #070708; }
+    img, video, canvas, svg, iframe { max-width: 100%; height: auto; }
+    input, textarea, select, button { max-width: 100%; min-width: 0; }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-bg text-text font-sans antialiased min-h-screen{% block body_class %}{% endblock %}">
+
+  <!-- Grain overlay -->
+  <div class="grain-overlay"></div>
+
+  {% block site_navbar %}{% endblock %}
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  {% block site_footer %}{% endblock %}
+
+  {% block extra_scripts %}{% endblock %}
+
+</body>
+</html>
