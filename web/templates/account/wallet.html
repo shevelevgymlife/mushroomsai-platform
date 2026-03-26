@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Кошелёк Decimal / MetaMask — NEUROFUNGI AI{% endblock %}
+{% block title %}Кошелёк Decimal — NEUROFUNGI AI{% endblock %}
 {% block body_class %} account-wallet-page{% endblock %}
 {% set del_w = user.decimal_del_balance if user.decimal_del_balance is not none else '—' %}
 {% set shev_w = user.shevelev_balance_cached if user.shevelev_balance_cached is not none else '—' %}
@@ -32,34 +32,26 @@
       <span style="opacity:.25">|</span>
       <span style="color:#9ca3af">SHEV <strong style="color:#f472b6;font-weight:700">{{ shev_w }}</strong></span>
     </div>
-    <label class="drawer-token-lamp-toggle" for="drawerTokenLampToggle" style="width:100%;box-sizing:border-box;justify-content:space-between;margin-bottom:12px">
-      <span>Свет</span>
-      <input id="drawerTokenLampToggle" type="checkbox" {% if user.get('token_lamp_enabled') is not sameas false %}checked{% endif %} onchange="saveDrawerTokenLamp(this.checked)" aria-label="Свет токенов на аватаре" />
-    </label>
     {% if shevelev_token %}
     <a href="/community" class="btn-o" style="width:100%;box-sizing:border-box;text-align:center;margin-bottom:4px;font-size:13px">Подарить SHEVELEV →</a>
     {% endif %}
-    <p style="font-size:11px;color:#666;margin:8px 0 0;line-height:1.45">Балансы из профиля; подключение и синхронизация — ниже.</p>
+    <p style="font-size:11px;color:#666;margin:8px 0 0;line-height:1.45">Балансы из профиля; адрес и синхронизация — ниже.</p>
   </div>
 
   <div class="card wallet-app-card">
     <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:4px">Приложения кошельков</div>
-    <p style="font-size:12px;color:#888;margin:0 0 8px;line-height:1.45">Установите приложение или откройте веб-кошелёк Decimal.</p>
-    <div class="wallet-app-h">MetaMask</div>
-    <a href="https://metamask.app.link/dapp/https://{{ request.url.hostname }}/account/wallet" target="_blank" rel="noopener noreferrer" class="wallet-app-link">Открыть MetaMask (приложение) → эта страница</a>
+    <p style="font-size:12px;color:#888;margin:0 0 8px;line-height:1.45">Установите приложение Decimal Wallet на телефон.</p>
     <div class="wallet-app-h">Decimal Chain</div>
-    <a href="https://wallet.decimalchain.com/" target="_blank" rel="noopener noreferrer" class="wallet-app-link">Decimal Wallet — веб</a>
     <a href="https://play.google.com/store/apps/details?id=com.chain.decimal" target="_blank" rel="noopener noreferrer" class="wallet-app-link">Decimal Wallet — Android</a>
     <a href="https://apps.apple.com/app/decimal-blockchain-wallet/id1510802073" target="_blank" rel="noopener noreferrer" class="wallet-app-link">Decimal Wallet — iPhone</a>
   </div>
 
   <div class="card" id="wallet-bind-card">
-    <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:14px">Подключение и баланс в браузере</div>
+    <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:14px">Адрес кошелька и баланс</div>
     <div id="wltSt" style="font-size:12px;color:#666;margin-bottom:10px">
       {% if user.wallet_address %}<span style="color:#4ade80">✓ Адрес сохранён</span>
       {% else %}Укажите адрес 0x…{% endif %}
     </div>
-    <button type="button" class="btn-o" style="width:100%;margin-bottom:12px;font-size:13px" onclick="connectMetaMask()">Подключить MetaMask (сеть Decimal)</button>
     <div>
       <label style="font-size:12px;color:#666;display:block;margin-bottom:5px">Адрес кошелька</label>
       <div style="display:flex;gap:8px">
@@ -68,7 +60,7 @@
       </div>
     </div>
     <div style="margin-top:14px;padding:14px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
-      <div style="font-size:11px;color:#888;margin-bottom:8px">В браузере (MetaMask, сеть Decimal)</div>
+      <div style="font-size:11px;color:#888;margin-bottom:8px">Баланс в сети Decimal (синхронизация с блокчейном)</div>
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;font-size:13px;min-height:1.35em">
         <span style="color:#888;flex-shrink:0">Токен DEL</span>
         <span id="delBal" style="font-weight:700;color:#e8e8e8;text-align:right;min-width:0;max-width:min(100%,220px);overflow-wrap:anywhere;word-break:break-word;line-height:1.35;font-variant-numeric:tabular-nums">—</span>
@@ -89,7 +81,7 @@
       <button type="button" class="btn-o" style="font-size:12px;padding:8px 14px" onclick="openSendShevModal()">Отправить SHEVELEV</button>
       {% endif %}
     </div>
-    <p style="font-size:11px;color:#555;margin-top:12px;line-height:1.4">Синхронизация считывает DEL и SHEVELEV с RPC Decimal и сохраняет в профиль. Свет у аватара — в блоке DEL · SHEVELEV выше.</p>
+    <p style="font-size:11px;color:#555;margin-top:12px;line-height:1.4">Синхронизация считывает DEL и SHEVELEV с RPC Decimal и сохраняет в профиль.</p>
   </div>
 
   <div class="card">
@@ -113,20 +105,31 @@
 <div id="sendShevModal" style="display:none;position:fixed;inset:0;z-index:10025;align-items:center;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(4px)" onclick="if(event.target===this)this.style.display='none'">
   <div class="card" style="max-width:420px;width:92%;padding:24px;border-color:rgba(61,212,224,.3)" onclick="event.stopPropagation()">
     <div style="font-weight:700;margin-bottom:4px;color:#3dd4e0;font-size:17px">Отправить SHEVELEV</div>
-    <p style="font-size:12px;color:#666;margin-bottom:14px">Сеть Decimal Smart Chain в MetaMask. Комиссия в DEL.</p>
-    <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Адрес получателя</label>
-    <input id="sendShevTo" class="sinp" style="margin-bottom:12px;width:100%;box-sizing:border-box" placeholder="0x…">
-    <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Количество</label>
-    <input id="sendShevAmt" type="number" step="any" class="sinp" style="margin-bottom:14px;width:100%;box-sizing:border-box" placeholder="0">
-    <button type="button" class="btn-g" style="width:100%" onclick="submitSendShev()">Отправить через MetaMask</button>
-    <p id="sendShevSt" style="margin-top:12px;font-size:12px;text-align:center;color:#888;line-height:1.4"></p>
+    <p style="font-size:12px;color:#666;margin-bottom:14px">Выберите аккаунт с привязанным адресом, укажите сумму, скопируйте данные и откройте Decimal Wallet на телефоне.</p>
+    <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Получатель</label>
+    <select id="sendShevRecipient" class="sinp" style="margin-bottom:10px;width:100%;box-sizing:border-box" onchange="onSendShevRecipientChange()">
+      <option value="">Загрузка…</option>
+    </select>
+    <p id="sendShevAddrDisplay" style="font-size:12px;color:#9ca3af;word-break:break-all;margin:0 0 12px;line-height:1.45;min-height:1.35em">—</p>
+    <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Количество SHEVELEV</label>
+    <input id="sendShevAmt" type="number" step="any" class="sinp" style="margin-bottom:12px;width:100%;box-sizing:border-box" placeholder="0" oninput="onSendShevAmountInput()">
+    <button type="button" class="btn-o" style="width:100%;margin-bottom:12px;font-size:13px;box-sizing:border-box" onclick="copySendShevPayload()">Скопировать адрес и сумму</button>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+      <button type="button" class="btn-g" style="flex:1;min-width:140px;font-size:13px;padding:10px 14px;box-sizing:border-box" onclick="openDecimalWalletStore('android')">Decimal Wallet — Android</button>
+      <button type="button" class="btn-g" style="flex:1;min-width:140px;font-size:13px;padding:10px 14px;box-sizing:border-box" onclick="openDecimalWalletStore('ios')">Decimal Wallet — iPhone</button>
+    </div>
+    <p id="sendShevSt" style="margin-top:8px;font-size:12px;text-align:center;color:#888;line-height:1.4"></p>
   </div>
 </div>
 
 <script>
-window.__WALLET_PAGE__ = { shevelevToken: "{{ shevelev_token|default('', true)|e }}" };
+window.__WALLET_PAGE__ = {
+  shevelevToken: "{{ shevelev_token|default('', true)|e }}",
+  decimalWalletAndroid: "https://play.google.com/store/apps/details?id=com.chain.decimal",
+  decimalWalletIos: "https://apps.apple.com/app/decimal-blockchain-wallet/id1510802073"
+};
 </script>
-<script src="/static/js/wallet-account-page.js?v=2" defer></script>
+<script src="/static/js/wallet-account-page.js?v=3" defer></script>
 {% if shevelev_auto_sync %}
 <script>
 (function(){

@@ -221,20 +221,16 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
             <span class="cp-role-stamp cp-role-stamp--uch">УЧ</span>
             {% endif %}
           </div>
-          <div class="cp-profile-toolbar{% if is_own %} cp-profile-toolbar--own{% endif %}" role="group" aria-label="Действия профиля">
-            {% if is_own %}
-            <div class="cp-toolbar-cell cp-toolbar-cell--full">
-              <a href="/account/link" class="btn-o" style="font-size:13px;padding:9px 22px;text-decoration:none;display:inline-flex;white-space:nowrap">Привязать аккаунт</a>
-            </div>
-            {% else %}
+          {% if not is_own %}
+          <div class="cp-profile-toolbar" role="group" aria-label="Действия профиля">
             <div class="cp-toolbar-cell cp-toolbar-cell--full">
               <button type="button" class="btn-g" style="font-size:13px;padding:8px 22px" id="followBtn" onclick="doFollow()">
                 <span id="followBtnText">{{ 'Подписки ✓' if is_following else 'Подписаться' }}</span>
               </button>
               <button type="button" class="btn-muted" style="font-size:13px;padding:8px 22px" onclick="openDM()">Сообщение</button>
             </div>
-            {% endif %}
           </div>
+          {% endif %}
           <div id="profileCirclesRow" class="cp-circles-row" data-max-circles="{{ max_profile_circles|default(5) }}">
             {% for c in circles %}
             <a class="cp-circle-item" href="/community/profile/{{ profile_id }}/circle/{{ c.id }}">

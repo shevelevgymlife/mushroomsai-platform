@@ -803,6 +803,70 @@ def _normalize_profile_url(raw: str) -> str | None:
     return s[:2000]
 
 
+def _looks_like_wallet_address(w: str | None) -> bool:
+    s = (w or "").strip()
+    if len(s) != 42 or not s.startswith("0x"):
+        return False
+    try:
+        int(s[2:], 16)
+    except ValueError:
+        return False
+    return True
+
+
+@router.get("/profile/wallet-recipients")
+async def profile_wallet_recipients(request: Request):
+    """Семья и подписки с привязанным адресом кошелька — для подготовки перевода SHEVELEV в приложении Decimal."""
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = _effective_user_id(user)
+    out: list[dict] = []
+    seen: set[int] = set()
+
+    family_ids = await _account_family_ids(uid)
+    fam_rows = await database.fetch_all(
+        users.select().where(users.c.id.in_(family_ids)).where(users.c.wallet_address.isnot(None))
+    )
+    for r in fam_rows:
+        wid = int(r["id"])
+        if wid == uid or wid in seen:
+            continue
+        waddr = (r.get("wallet_address") or "").strip()
+        if not _looks_like_wallet_address(waddr):
+            continue
+        seen.add(wid)
+        nm = (r.get("name") or "").strip() or f"Участник #{wid}"
+        out.append({"id": wid, "name": nm, "wallet_address": waddr})
+
+    follow_rows = await database.fetch_all(
+        sa.select(users.c.id, users.c.name, users.c.wallet_address)
+        .select_from(
+            users.join(
+                community_follows,
+                sa.and_(
+                    community_follows.c.following_id == users.c.id,
+                    community_follows.c.follower_id == uid,
+                ),
+            )
+        )
+        .where(users.c.wallet_address.isnot(None))
+    )
+    for r in follow_rows:
+        wid = int(r["id"])
+        if wid == uid or wid in seen:
+            continue
+        waddr = (r.get("wallet_address") or "").strip()
+        if not _looks_like_wallet_address(waddr):
+            continue
+        seen.add(wid)
+        nm = (r.get("name") or "").strip() or f"Участник #{wid}"
+        out.append({"id": wid, "name": nm, "wallet_address": waddr})
+
+    out.sort(key=lambda x: (x["name"].lower(), x["id"]))
+    return JSONResponse({"ok": True, "recipients": out})
+
+
 @router.post("/profile/wallet")
 async def update_wallet(request: Request):
     user = await require_auth(request)

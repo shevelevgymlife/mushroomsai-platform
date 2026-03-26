@@ -13,6 +13,7 @@
 
   var WP = window.__WALLET_PAGE__ || {};
   var DSC_CHAIN_ID = "0x4B";
+  var _sendShevLastAddr = "";
   var DSC_PARAMS = {
     chainId: DSC_CHAIN_ID,
     chainName: "Decimal Smart Chain",
@@ -121,39 +122,6 @@
     }
   }
 
-  async function connectMetaMask() {
-    if (!window.ethereum) {
-      var mob = /iPhone|Android|iPad/i.test(navigator.userAgent);
-      if (mob) {
-        window.location.href =
-          "https://metamask.app.link/dapp/" + encodeURIComponent(window.location.origin + "/account/wallet");
-      } else showNotification("Установите MetaMask в браузер", "error");
-      return;
-    }
-    try {
-      var accs = await window.ethereum.request({ method: "eth_requestAccounts" });
-      var addr = accs[0];
-      try {
-        await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: DSC_CHAIN_ID }] });
-      } catch (se) {
-        if (se.code === 4902) {
-          try {
-            await window.ethereum.request({ method: "wallet_addEthereumChain", params: [DSC_PARAMS] });
-          } catch (ae) {
-            showNotification("Не удалось добавить сеть Decimal", "error");
-            return;
-          }
-        }
-      }
-      var wi = document.getElementById("wltInp");
-      if (wi) wi.value = addr;
-      await saveWallet(addr);
-      showNotification("Кошелёк подключён ✓", "success");
-    } catch (e) {
-      if (e.code !== 4001) showNotification("Ошибка: " + (e.message || e), "error");
-    }
-  }
-
   async function loadSHEVELEVBalance(addr) {
     if (!SHEVELEV_TOKEN || !addr || !window.ethereum) return;
     function errEl() {
@@ -187,7 +155,7 @@
       console.error("SHEVELEV:", e);
       if (el) el.textContent = "—";
       setErr(
-        "Не удалось прочитать баланс. В MetaMask выберите сеть Decimal Smart Chain (chain id 75 / 0x4B), где находится контракт SHEVELEV.",
+        "Не удалось прочитать баланс. В расширении кошелька выберите сеть Decimal Smart Chain (chain id 75 / 0x4B), где находится контракт SHEVELEV.",
         false
       );
     }
@@ -370,7 +338,40 @@
     }
   }
 
-  function openSendShevModal() {
+  function _copyTextToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text);
+    }
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand("copy");
+        resolve();
+      } catch (e) {
+        reject(e);
+      } finally {
+        document.body.removeChild(ta);
+      }
+    });
+  }
+
+  function _sendShevPayloadText() {
+    var sel = document.getElementById("sendShevRecipient");
+    var opt = sel && sel.selectedOptions && sel.selectedOptions[0];
+    var addr = (opt && opt.getAttribute("data-address")) || _sendShevLastAddr || "";
+    addr = String(addr).trim();
+    var rawAmt = (document.getElementById("sendShevAmt") && document.getElementById("sendShevAmt").value || "").trim();
+    if (!addr) return "";
+    if (rawAmt) return addr + "\n" + rawAmt + " SHEVELEV";
+    return addr;
+  }
+
+  async function openSendShevModal() {
     var m = document.getElementById("sendShevModal");
     if (m) m.style.display = "flex";
     var st = document.getElementById("sendShevSt");
@@ -378,128 +379,144 @@
       st.textContent = "";
       st.style.color = "#888";
     }
+    var disp = document.getElementById("sendShevAddrDisplay");
+    if (disp) disp.textContent = "—";
+    _sendShevLastAddr = "";
+    var sel = document.getElementById("sendShevRecipient");
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Загрузка…</option>';
+    sel.disabled = true;
+    try {
+      var r = await fetch("/profile/wallet-recipients", { credentials: "same-origin" });
+      var d = await r.json().catch(function () {
+        return {};
+      });
+      if (!r.ok || !d.ok) throw new Error((d && d.error) || "Ошибка загрузки");
+      var list = d.recipients || [];
+      sel.innerHTML = '<option value="">Выберите получателя</option>';
+      list.forEach(function (rec) {
+        var o = document.createElement("option");
+        o.value = String(rec.id);
+        o.setAttribute("data-address", rec.wallet_address);
+        var shortA = rec.wallet_address.slice(0, 10) + "…" + rec.wallet_address.slice(-4);
+        o.textContent = (rec.name || "Участник") + " — " + shortA;
+        sel.appendChild(o);
+      });
+      if (!list.length) {
+        sel.innerHTML = '<option value="">Нет аккаунтов с адресом кошелька</option>';
+      }
+    } catch (e) {
+      sel.innerHTML = '<option value="">Не удалось загрузить список</option>';
+      if (st) {
+        st.style.color = "#f87171";
+        st.textContent = (e && e.message) || "Ошибка сети";
+      }
+    }
+    sel.disabled = false;
   }
 
-  function _shevParseAmountToWei(s, decimals) {
-    var t = String(s).replace(",", ".").trim();
-    if (!/^\d+(\.\d+)?$/.test(t)) return null;
-    var parts = t.split(".");
-    var ip = parts[0];
-    var fp = parts[1] || "";
-    var frac = (fp + "0".repeat(decimals)).slice(0, decimals).padEnd(decimals, "0");
+  async function onSendShevRecipientChange() {
+    var st = document.getElementById("sendShevSt");
+    var disp = document.getElementById("sendShevAddrDisplay");
+    var sel = document.getElementById("sendShevRecipient");
+    var opt = sel && sel.selectedOptions && sel.selectedOptions[0];
+    var addr = opt && opt.getAttribute("data-address");
+    addr = addr ? String(addr).trim() : "";
+    if (!addr) {
+      _sendShevLastAddr = "";
+      if (disp) disp.textContent = "—";
+      return;
+    }
+    _sendShevLastAddr = addr;
+    if (disp) disp.textContent = addr;
     try {
-      return BigInt(ip || "0") * BigInt(10) ** BigInt(decimals) + BigInt(frac);
-    } catch (_) {
-      return null;
+      await _copyTextToClipboard(addr);
+      if (st) {
+        st.style.color = "#4ade80";
+        st.textContent = "Адрес скопирован в буфер обмена";
+      }
+      showNotification("Адрес скопирован", "success");
+    } catch (e) {
+      if (st) {
+        st.style.color = "#f87171";
+        st.textContent = "Не удалось скопировать адрес";
+      }
     }
   }
 
-  function _shevEncodeTransfer(toAddr, wei) {
-    var addr = toAddr.replace(/^0x/i, "").toLowerCase().padStart(64, "0");
-    var v = BigInt(wei);
-    if (v < 0n) return null;
-    var hex = v.toString(16).padStart(64, "0");
-    return "0xa9059cbb" + addr + hex;
-  }
-
-  async function submitSendShev() {
+  function onSendShevAmountInput() {
     var st = document.getElementById("sendShevSt");
-    if (st) {
+    if (st && st.textContent && st.textContent.indexOf("скопирован") !== -1) {
       st.textContent = "";
       st.style.color = "#888";
     }
-    if (!window.ethereum) {
+  }
+
+  async function copySendShevPayload() {
+    var st = document.getElementById("sendShevSt");
+    var t = _sendShevPayloadText();
+    if (!t) {
       if (st) {
         st.style.color = "#f87171";
-        st.textContent = "Нужен MetaMask";
+        st.textContent = "Выберите получателя";
       }
-      return;
-    }
-    if (!SHEVELEV_TOKEN) {
-      if (st) {
-        st.style.color = "#f87171";
-        st.textContent = "Контракт SHEVELEV не настроен на сервере";
-      }
-      return;
-    }
-    var to = (document.getElementById("sendShevTo") && document.getElementById("sendShevTo").value || "").trim();
-    var rawAmt = (document.getElementById("sendShevAmt") && document.getElementById("sendShevAmt").value || "").trim();
-    if (!/^0x[a-fA-F0-9]{40}$/i.test(to)) {
-      if (st) {
-        st.style.color = "#f87171";
-        st.textContent = "Укажите адрес получателя (0x + 40 hex)";
-      }
-      return;
-    }
-    var dec = await erc20Decimals(SHEVELEV_TOKEN);
-    var wei = _shevParseAmountToWei(rawAmt, dec);
-    if (wei == null || wei <= 0n) {
-      if (st) {
-        st.style.color = "#f87171";
-        st.textContent = "Укажите положительную сумму";
-      }
-      return;
-    }
-    var data = _shevEncodeTransfer(to, wei);
-    if (!data) {
-      if (st) {
-        st.style.color = "#f87171";
-        st.textContent = "Слишком большая сумма";
-      }
+      showNotification("Выберите получателя", "error");
       return;
     }
     try {
-      var accs = await window.ethereum.request({ method: "eth_requestAccounts" });
-      var from = accs[0];
-      try {
-        await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: DSC_CHAIN_ID }] });
-      } catch (se) {
-        if (se && se.code === 4902) {
-          await window.ethereum.request({ method: "wallet_addEthereumChain", params: [DSC_PARAMS] });
-        } else if (se && se.code !== 4001) throw se;
-      }
-      if (st) st.textContent = "Подтвердите транзакцию в MetaMask…";
-      var txh = await window.ethereum.request({
-        method: "eth_sendTransaction",
-        params: [{ from: from, to: SHEVELEV_TOKEN, data: data }],
-      });
+      await _copyTextToClipboard(t);
       if (st) {
         st.style.color = "#4ade80";
-        st.textContent = "Отправлено: " + String(txh).slice(0, 18) + "…";
+        st.textContent = "Адрес и сумма скопированы в буфер обмена";
       }
-      try {
-        await fetch("/profile/shevelev-transfer-notify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "same-origin",
-          body: JSON.stringify({ to: to, tx_hash: String(txh), amount: rawAmt }),
-        });
-      } catch (_) {}
-      syncBalancesServerSilent({ silent: true });
-      setTimeout(function () {
-        syncBalancesServerSilent({ silent: true });
-      }, 4000);
+      showNotification("Скопировано в буфер обмена", "success");
     } catch (e) {
-      if (e && e.code === 4001) {
-        if (st) {
-          st.style.color = "#888";
-          st.textContent = "Отменено";
-        }
-        return;
-      }
       if (st) {
         st.style.color = "#f87171";
-        st.textContent = e.message || String(e);
+        st.textContent = "Не удалось скопировать";
       }
+      showNotification("Не удалось скопировать", "error");
     }
   }
 
-  window.connectMetaMask = connectMetaMask;
+  async function openDecimalWalletStore(which) {
+    var st = document.getElementById("sendShevSt");
+    var t = _sendShevPayloadText();
+    if (!t) {
+      if (st) {
+        st.style.color = "#f87171";
+        st.textContent = "Выберите получателя";
+      }
+      showNotification("Выберите получателя", "error");
+      return;
+    }
+    try {
+      await _copyTextToClipboard(t);
+      if (st) {
+        st.style.color = "#4ade80";
+        st.textContent = "Данные скопированы. Откройте приложение и вставьте в перевод.";
+      }
+    } catch (e) {
+      if (st) {
+        st.style.color = "#f87171";
+        st.textContent = "Не удалось скопировать";
+      }
+    }
+    var url =
+      which === "android"
+        ? String(WP.decimalWalletAndroid || "").trim()
+        : String(WP.decimalWalletIos || "").trim();
+    if (url) window.open(url, "_blank", "noopener,noreferrer");
+  }
+
   window.saveWallet = saveWallet;
   window.saveTokenVisibility = saveTokenVisibility;
   window.syncBlockchainBalances = syncBlockchainBalances;
   window.openSendShevModal = openSendShevModal;
-  window.submitSendShev = submitSendShev;
+  window.onSendShevRecipientChange = onSendShevRecipientChange;
+  window.onSendShevAmountInput = onSendShevAmountInput;
+  window.copySendShevPayload = copySendShevPayload;
+  window.openDecimalWalletStore = openDecimalWalletStore;
   window.saveTokenLampEnabled = saveTokenLampEnabled;
 
   function boot() {
