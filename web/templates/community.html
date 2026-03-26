@@ -35,10 +35,6 @@
 .abt:hover{color:#3dd4e0;background:#3dd4e011}
 .abt.on{color:#3dd4e0}
 .csec{display:none;margin-top:14px;border-top:1px solid #1a1a1a;padding-top:14px}
-.mbnav{display:none;position:fixed;bottom:0;left:0;right:0;background:#111;border-top:1px solid #222;z-index:200;padding:6px 0 12px}
-@media(max-width:760px){.mbnav{display:flex;justify-content:space-around}}
-.mbb{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;color:#666;background:none;border:none;cursor:pointer;padding:4px 12px}
-.mbb.on{color:#3dd4e0}
 .sinp{background:#1a1a1a;border:1px solid #2a2a2a;color:#fff;border-radius:12px;padding:10px 16px;width:100%;outline:none;font-size:14px;box-sizing:border-box}
 .sinp:focus{border-color:#3dd4e055}
 .ubadge{background:#3dd4e0;color:#000;font-size:10px;font-weight:700;border-radius:50%;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center}
@@ -217,15 +213,6 @@
     {% endif %}
   </aside>
 </div>
-
-<!-- MOBILE NAV -->
-<nav class="mbnav">
-  <button class="mbb on" onclick="location.href='/community'">🏠<span>Лента</span></button>
-  <button class="mbb" onclick="location.href='/community/members'">🔍<span>Поиск</span></button>
-  <button class="mbb" style="color:#3dd4e0" onclick="location.href='/community/post/new'"><span style="font-size:26px;line-height:1">+</span><span>Пост</span></button>
-  <button class="mbb" onclick="loadConvos('convModal');openM('msgsModal')">✉️<span>Письма</span></button>
-  <button class="mbb" onclick="location.href='/community/profile/{{ (user.primary_user_id or user.id)|int }}'">👤<span>Профиль</span></button>
-</nav>
 
 <!-- POST MODAL -->
 <div class="mover" id="postModal">
