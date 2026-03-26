@@ -146,13 +146,24 @@ async function loginWithTelegram() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  const isTelegram = !!(window.Telegram?.WebApp?.initData && window.Telegram.WebApp.initData !== '');
+  const tgApp = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+  const isTelegramClient = !!tgApp;
 
-  if (isTelegram) {
-    window.Telegram.WebApp.ready();
+  if (isTelegramClient) {
+    try { tgApp.ready(); } catch(e) {}
     document.getElementById('tg-miniapp-block').style.display = 'block';
-    // Auto-login in Mini App as soon as initData is available.
-    loginWithTelegram();
+    // Keep visible button; auto-login only when initData is really available.
+    setTimeout(function(){
+      try{
+        if (tgApp && tgApp.initData && tgApp.initData !== '') {
+          var tried = sessionStorage.getItem('__miniapp_autologin_tried');
+          if (!tried) {
+            sessionStorage.setItem('__miniapp_autologin_tried', '1');
+            loginWithTelegram();
+          }
+        }
+      }catch(e){}
+    }, 120);
   } else {
     document.getElementById('web-auth-block').style.display = 'flex';
   }
