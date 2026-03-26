@@ -17,6 +17,7 @@ from db.models import (
     community_group_member_permissions,
     community_group_member_bans,
     community_group_typing_status,
+    admin_permissions,
 )
 from services.referral_service import get_referral_stats
 from services.subscription_service import check_subscription, PLANS
@@ -208,11 +209,12 @@ async def api_chat(request: Request):
             # Use primary account's ID for history/limits (covers Mini App + linked accounts)
             effective_user_id = user.get("primary_user_id") or user["id"]
 
-            UNLIMITED_TG_IDS = {742166400}
+            perm_row = await database.fetch_one(
+                admin_permissions.select().where(admin_permissions.c.user_id == effective_user_id)
+            )
             is_unlimited = (
                 user.get("role") == "admin"
-                or user.get("tg_id") in UNLIMITED_TG_IDS
-                or user.get("linked_tg_id") in UNLIMITED_TG_IDS
+                or (bool(perm_row.get("can_ai_unlimited")) if perm_row else False)
             )
             if not is_unlimited:
                 allowed = await can_ask_question(effective_user_id)

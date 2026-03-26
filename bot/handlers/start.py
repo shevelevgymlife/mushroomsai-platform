@@ -80,7 +80,7 @@ async def ensure_user_or_blocked_reply(update: Update) -> dict | None:
 
 def main_keyboard(site_url: str):
     keyboard = [
-        [KeyboardButton("🛒 Магазин"), KeyboardButton("🌐 Сообщество")],
+        [KeyboardButton("🛍 Маркет плейс"), KeyboardButton("🌐 Сообщество")],
         [KeyboardButton("🌍 Веб версия"), KeyboardButton("🔒 Безопасность")],
         [KeyboardButton("🆘 Тех. поддержка")],
     ]
@@ -138,7 +138,7 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Здесь вы найдёте:\n"
         "• Персональные консультации по функциональным грибам\n"
         "• Сообщество единомышленников\n"
-        "• Магазин и рецепты\n\n"
+        "• Маркет плейс и рецепты\n\n"
         "Нажмите кнопку <b>«Вход»</b> внизу экрана, чтобы открыть приложение.\n\n"
         "⚠️ <i>Если кнопка «Вход» не отображается — обновите Telegram до последней версии "
         "или обратитесь в службу поддержки.</i>"

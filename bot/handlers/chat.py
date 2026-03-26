@@ -1,4 +1,4 @@
-"""AI чат в боте: 5 вопросов в сутки для обычных пользователей, безлимит для админов с can_training_bot."""
+"""AI чат в боте: 5 вопросов в сутки для обычных пользователей, безлимит для пользователей с can_ai_unlimited."""
 import logging
 from datetime import datetime, timezone
 
@@ -24,13 +24,13 @@ async def _get_user_by_tg_id(tg_id: int):
 
 
 async def _has_unlimited_ai(user_id: int) -> bool:
-    """Проверяем can_training_bot в admin_permissions."""
+    """Проверяем can_ai_unlimited в admin_permissions."""
     row = await database.fetch_one(
         admin_permissions.select().where(admin_permissions.c.user_id == user_id)
     )
     if not row:
         return False
-    return bool(row.get("can_training_bot"))
+    return bool(row.get("can_ai_unlimited"))
 
 
 async def _count_today_messages(user_id: int) -> int:
@@ -118,13 +118,13 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 async def _send_limit_reached(update: Update):
     site = (settings.SITE_URL or "").rstrip("/")
-    app_url = site + "/app"
+    app_url = site + "/dashboard#plan"
     await update.message.reply_text(
         "💬 Вы использовали все 5 бесплатных вопросов на сегодня.\n\n"
-        "Дальнейшие ответы доступны в нашем сообществе — зарегистрируйтесь и получите доступ к AI без ограничений.",
+        "Получить неограниченное количество запросов можно по подписке Старт внутри приложения.",
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton(
-                "🍄 Войти в сообщество",
+                "🍄 Открыть приложение — Старт",
                 web_app=WebAppInfo(url=app_url),
             )],
         ]),

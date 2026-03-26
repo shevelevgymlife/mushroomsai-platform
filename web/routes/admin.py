@@ -21,6 +21,7 @@ from db.models import (
     users, messages, leads, products, orders, posts,
     page_views, ai_settings, subscriptions, knowledge_base,
     shop_products, feedback, admin_permissions, product_reviews,
+    direct_messages,
     community_posts, community_comments, community_likes, community_saved, community_folders,
     homepage_blocks, dashboard_blocks, user_block_overrides,
     ai_training_posts, ai_training_folders,
@@ -60,7 +61,7 @@ AI_RETRIEVAL_MODES = [
 
 PERM_KEYS = [
     "can_dashboard", "can_ai", "can_shop", "can_users",
-    "can_feedback", "can_broadcast", "can_knowledge", "can_training_bot",
+    "can_feedback", "can_broadcast", "can_knowledge", "can_training_bot", "can_ai_unlimited",
 ]
 
 
@@ -612,10 +613,11 @@ async def set_user_permissions(request: Request, user_id: int):
         )
         return JSONResponse({"ok": True, "action": "revoked"})
 
-    perms = {k: bool(body.get(k, False)) for k in PERM_KEYS}
     existing = await database.fetch_one(
         admin_permissions.select().where(admin_permissions.c.user_id == user_id)
     )
+    perms = {k: bool(body.get(k, False)) for k in PERM_KEYS}
+    prev_unlimited = bool(existing.get("can_ai_unlimited")) if existing else False
     if existing:
         await database.execute(
             admin_permissions.update()
@@ -629,6 +631,38 @@ async def set_user_permissions(request: Request, user_id: int):
     await database.execute(
         users.update().where(users.c.id == user_id).values(role="admin")
     )
+
+    now_unlimited = bool(perms.get("can_ai_unlimited"))
+    if now_unlimited and not prev_unlimited:
+        sender_id = admin.get("primary_user_id") or admin.get("id")
+        text = (
+            "Системные оповещения\n\n"
+            "Вам открыт безлимитный доступ к AI.\n"
+            "Теперь лимиты на вопросы сняты."
+        )
+        try:
+            await database.execute(
+                direct_messages.insert().values(
+                    sender_id=sender_id,
+                    recipient_id=user_id,
+                    text=text,
+                    is_read=False,
+                    is_system=True,
+                )
+            )
+        except Exception:
+            logger.exception("Failed to store AI unlimited system notification for user_id=%s", user_id)
+        try:
+            tg_id = target.get("tg_id") or target.get("linked_tg_id")
+            if tg_id:
+                from services.notify_user_stub import notify_user
+                await notify_user(
+                    int(tg_id),
+                    "Системные оповещения\n\nВам открыт безлимитный доступ к AI. Теперь лимиты на вопросы сняты.",
+                )
+        except Exception:
+            logger.exception("Failed to send AI unlimited telegram notification for user_id=%s", user_id)
+
     return JSONResponse({"ok": True, "permissions": perms})
 
 

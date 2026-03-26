@@ -14,11 +14,10 @@ from bot.handlers.chat import handle_chat_message
 
 logger = logging.getLogger(__name__)
 
-SHOP_URL = "https://t.me/neurotrops_rus_bot?start=rHQemtw"
 SECURITY_URL = "https://t.me/VPN_POLETELI_bot?start=742166400"
 
 # Тексты кнопок клавиатуры
-BTN_SHOP = "🛒 Магазин"
+BTN_SHOP = "🛍 Маркет плейс"
 BTN_COMMUNITY = "🌐 Сообщество"
 BTN_WEB = "🌍 Веб версия"
 BTN_SECURITY = "🔒 Безопасность"
@@ -26,10 +25,14 @@ BTN_SUPPORT = "🆘 Тех. поддержка"
 
 
 async def _shop_handler(update, context):
+    site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
+    app_url = site + "/dashboard#plan"
     await update.message.reply_text(
-        "🛒 <b>Магазин NEUROFUNGI</b>\n\nПерейдите в наш магазин:",
+        "🛍 <b>Маркет плейс NEUROFUNGI</b>\n\n"
+        "Доступно только внутри приложения после регистрации и подписки <b>Старт</b>.\n\n"
+        "В маркет плейсе у каждого товара есть описание, комментарии, отзывы и рейтинг.",
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("Открыть магазин", url=SHOP_URL)],
+            [InlineKeyboardButton("🍄 Открыть приложение (Старт)", web_app=WebAppInfo(url=app_url))],
         ]),
         parse_mode="HTML",
     )

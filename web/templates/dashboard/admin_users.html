@@ -251,6 +251,7 @@
       {% for key, label in [
         ('can_dashboard', 'Dashboard'),
         ('can_ai', 'AI управление'),
+        ('can_ai_unlimited', 'Безлимит AI (для пользователя)'),
         ('can_shop', 'Магазин'),
         ('can_users', 'Пользователи'),
         ('can_feedback', 'Обратная связь'),
@@ -447,7 +448,7 @@ async function deleteForever(userId, userName) {
 }
 
 // ── Permissions modal ───────────────────────────────────────────────────────
-const PERM_KEYS = ['can_dashboard','can_ai','can_shop','can_users','can_feedback','can_broadcast','can_knowledge','can_training_bot'];
+const PERM_KEYS = ['can_dashboard','can_ai','can_ai_unlimited','can_shop','can_users','can_feedback','can_broadcast','can_knowledge','can_training_bot'];
 
 async function openPermModal(userId, userName) {
   currentUserId = userId;
