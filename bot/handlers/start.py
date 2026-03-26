@@ -91,14 +91,9 @@ def main_inline_keyboard(site_url: str):
     app_url = site_url.strip().rstrip("/")
     if not app_url.startswith("http"):
         app_url = "https://" + app_url
-    app_url = app_url + "/"
     return InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("MushroomsAI — приложение", web_app=WebAppInfo(url=app_url)),
-        ],
-        [
-            InlineKeyboardButton("Личный кабинет", url=f"{site_url}/dashboard"),
-            InlineKeyboardButton("Открыть сайт", url=site_url),
+            InlineKeyboardButton("🍄 Открыть приложение", web_app=WebAppInfo(url=app_url + "/app")),
         ],
     ])
 
@@ -131,6 +126,11 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         welcome_text,
         reply_markup=main_keyboard(site_url),
+        parse_mode="HTML",
+    )
+    await update.message.reply_text(
+        "👇 Нажмите, чтобы открыть приложение:",
+        reply_markup=main_inline_keyboard(site_url),
         parse_mode="HTML",
     )
     support_msg = await update.message.reply_text(
