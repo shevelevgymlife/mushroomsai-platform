@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% set ig_social = true %}
 {% block body_class %}{% if ig_social %} dash-ig-app{% endif %}{% endblock %}
-{% block title %}Личный кабинет — NEUROFUNGI AI{% endblock %}
+{% block title %}Личный кабинет — MushroomsAI{% endblock %}
 
 {% macro rep_badge(n) %}
   {%- if n >= 100 %}👑 Легенда
@@ -15,7 +15,7 @@
 {% block content %}
 <style>
 /* ── Layout ── */
-.db-wrap{display:flex;min-height:100vh;min-height:100dvh;min-height:calc(var(--vvh, 100vh));padding-top:0;background:#070708;position:relative}
+.db-wrap{display:flex;min-height:100vh;min-height:100dvh;min-height:calc(var(--vvh, 100vh));padding-top:72px;background:#070708;position:relative}
 .db-main{flex:1;padding:28px 80px 60px 28px;max-width:100%;overflow-x:hidden}
 @media(max-width:768px){.db-main{padding:20px 60px 60px 16px}}
 @media(max-width:480px){.db-main{padding:14px 52px 60px 14px}}
@@ -293,12 +293,7 @@
 #profilePosts.profile-chaos-off .ig-post:hover{transform:none!important}
 #profileChaosWrap{display:flex;justify-content:flex-end;margin:2px 0 10px}
 @media(max-width:768px){
-  #feedPosts{
-    grid-template-columns:repeat(2,minmax(0,1fr));
-    gap:10px;
-    -webkit-overflow-scrolling:touch;
-    touch-action:manipulation;
-  }
+  #feedPosts{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   #feedPosts.feed-chaos-on .ig-post:nth-child(4n+1){transform:translateY(0) rotate(-2.4deg)}
   #feedPosts.feed-chaos-on .ig-post:nth-child(4n+2){transform:translateY(0) rotate(2.5deg)}
   #feedPosts.feed-chaos-on .ig-post:nth-child(4n+3){transform:translateY(0) rotate(1.4deg)}
@@ -596,14 +591,14 @@ body.tg-chat-open #groupImageRow{
   body.tg-group-mobile-chat #sec-groups .tg-chat-sidebar{display:none!important}
   body.tg-group-mobile-chat #sec-groups .tg-chat-shell{
     grid-template-columns:1fr!important;
-    min-height:calc(var(--vvh, 100vh) - var(--app-header-h, 56px) - 56px - env(safe-area-inset-bottom, 0px));
+    min-height:calc(var(--vvh, 100vh) - 52px - 56px - env(safe-area-inset-bottom, 0px));
     max-height:none;
     border-radius:0;
     border-left:none;
     border-right:none;
   }
   body.tg-group-mobile-chat #sec-groups .tg-chat-main{
-    min-height:calc(var(--vvh, 100vh) - var(--app-header-h, 56px) - 56px - env(safe-area-inset-bottom, 0px));
+    min-height:calc(var(--vvh, 100vh) - 52px - 56px - env(safe-area-inset-bottom, 0px));
     max-height:none;
     display:flex;
     flex-direction:column;
@@ -653,10 +648,10 @@ body.tg-chat-open #groupImageRow{
 
 /* ── Instagram-style dashboard (соцсеть) ── */
 .db-ig-mode #dbNav{display:none!important}
-.db-ig-mode .db-main{padding:12px 12px calc(88px + env(safe-area-inset-bottom,0px)) 12px;max-width:100%;width:100%;box-sizing:border-box}
+.db-ig-mode .db-main{padding:56px 12px calc(88px + env(safe-area-inset-bottom,0px)) 12px;max-width:100%;width:100%;box-sizing:border-box}
 @media(max-width:768px){.db-ig-mode .db-main{padding-left:12px;padding-right:12px}}
-@media(min-width:769px){.db-ig-mode .db-main{padding-left:12px;padding-right:12px}}
-/* ig-dash-header удалён — общая шапка в base.html */
+@media(min-width:769px){.db-ig-mode .db-main{padding-left:24px;padding-right:24px}}
+.ig-dash-header{position:fixed;top:72px;left:0;right:0;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 12px 0 10px;background:rgba(6,8,16,.72);backdrop-filter:blur(25px);-webkit-backdrop-filter:blur(25px);border-bottom:1px solid rgba(61,212,224,.1);z-index:950;box-sizing:border-box;gap:8px;box-shadow:0 8px 32px rgba(0,0,0,.25)}
 .ig-dash-header-start{display:flex;align-items:center;gap:2px;flex-shrink:0}
 .ig-dash-header .ig-ham{width:44px;height:44px;border:none;border-radius:12px;background:transparent;color:#e8e8e8;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .ig-dash-header .ig-ham:hover{background:rgba(255,255,255,.06)}
@@ -668,17 +663,17 @@ body.tg-chat-open #groupImageRow{
 .ig-dash-header .ig-head-msg:hover{border-color:rgba(61,212,224,.45);color:#3dd4e0}
 .ig-drawer-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1040;opacity:0;pointer-events:none;transition:opacity .25s ease}
 .ig-drawer-backdrop.on{opacity:1;pointer-events:auto}
-.ig-drawer{position:fixed;top:0;left:0;bottom:0;width:min(200px,46vw);max-width:200px;min-width:130px;resize:none;overflow-x:hidden;box-sizing:border-box;background:rgba(8,10,20,.88);backdrop-filter:blur(25px);-webkit-backdrop-filter:blur(25px);border-right:1px solid rgba(61,212,224,.12);z-index:1050;transform:translateX(-102%);transition:transform .28s cubic-bezier(.22,1,.36,1);display:flex;flex-direction:column;padding:calc(12px + env(safe-area-inset-top,0px)) 0 calc(20px + env(safe-area-inset-bottom,0px));box-shadow:8px 0 48px rgba(0,0,0,.55),0 0 60px rgba(61,212,224,.06)}
+.ig-drawer{position:fixed;top:0;left:0;bottom:0;width:min(300px,88vw);max-width:100%;background:rgba(8,10,20,.88);backdrop-filter:blur(25px);-webkit-backdrop-filter:blur(25px);border-right:1px solid rgba(61,212,224,.12);z-index:1050;transform:translateX(-102%);transition:transform .28s cubic-bezier(.22,1,.36,1);display:flex;flex-direction:column;padding:calc(72px + env(safe-area-inset-top,0px)) 0 calc(20px + env(safe-area-inset-bottom,0px));box-shadow:8px 0 48px rgba(0,0,0,.55),0 0 60px rgba(61,212,224,.06)}
 .ig-drawer.open{transform:translateX(0)}
-.ig-drawer-head{padding:10px 12px 12px;border-bottom:1px solid rgba(255,255,255,.06)}
-.ig-drawer-head .nm{font-weight:700;color:#e8e8e8;font-size:14px}
-.ig-drawer-head .em{font-size:11px;color:#666;margin-top:4px;word-break:break-all}
-.ig-drawer-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:10px 0 20px}
-.ig-drawer-item{width:100%;display:flex;align-items:center;gap:8px;padding:10px 12px;border:none;background:transparent;color:#ddd;font-size:13px;text-align:left;cursor:pointer;font-family:inherit;transition:background .15s}
+.ig-drawer-head{padding:12px 18px 16px;border-bottom:1px solid rgba(255,255,255,.06)}
+.ig-drawer-head .nm{font-weight:700;color:#e8e8e8;font-size:16px}
+.ig-drawer-head .em{font-size:12px;color:#666;margin-top:4px;word-break:break-all}
+.ig-drawer-scroll{flex:1;overflow-y:auto;padding:10px 0 20px}
+.ig-drawer-item{width:100%;display:flex;align-items:center;gap:14px;padding:14px 20px;border:none;background:transparent;color:#ddd;font-size:15px;text-align:left;cursor:pointer;font-family:inherit;transition:background .15s}
 .ig-drawer-item:hover,.ig-drawer-item:focus-visible{background:rgba(255,255,255,.06);outline:none}
-.ig-drawer-item .e{font-size:17px;width:22px;text-align:center;flex-shrink:0}
-.ig-drawer-item .lbl{flex:1;min-width:0;overflow-wrap:anywhere}
-.ig-drawer-sep{height:1px;background:rgba(255,255,255,.07);margin:8px 10px}
+.ig-drawer-item .e{font-size:20px;width:28px;text-align:center;flex-shrink:0}
+.ig-drawer-item .lbl{flex:1}
+.ig-drawer-sep{height:1px;background:rgba(255,255,255,.07);margin:10px 20px}
 .ig-drawer-details .ig-drawer-summary{display:flex;align-items:center;width:100%;box-sizing:border-box}
 .ig-drawer-details[open] .ig-drawer-chev{transform:rotate(-180deg)}
 .ig-drawer-sub{display:block;padding:10px 8px;color:#bbb;text-decoration:none;border-radius:10px;font-size:14px}
@@ -718,7 +713,6 @@ details.ig-drawer-details > summary{list-style:none}
   .ig-create-fab .stroke-ico{width:27px;height:27px}
 }
 .ig-tabbar .ig-tab .ic{font-size:24px;line-height:1;opacity:.85}
-.ig-tabbar a.ig-tab{text-decoration:none;color:inherit;box-sizing:border-box}
 .ig-tabbar .ig-tab.on,.ig-tabbar .ig-tab.on .ic{color:#e8e8e8;opacity:1}
 .ig-tabbar .ig-tab.on .ic{filter:drop-shadow(0 0 10px rgba(61,212,224,.35))}
 .stroke-ico{display:block;flex-shrink:0}
@@ -730,18 +724,28 @@ details.ig-drawer-details > summary{list-style:none}
 .ig-head-row{display:flex;align-items:center;gap:6px}
 /* Полноэкранный режим приложения на телефоне: без сайтового navbar/footer */
 @media(max-width:768px){
+  body.dash-ig-app nav.fixed.top-0{
+    display:block!important;
+    z-index:1200!important;
+  }
   body.dash-ig-app footer{display:none!important}
   body.dash-ig-app main{min-height:100dvh;min-height:var(--vvh,100vh)}
+  body.dash-ig-app .ig-dash-header{
+    top:calc(64px + env(safe-area-inset-top,0px));
+    padding-top:0;
+    height:52px;
+  }
   body.dash-ig-app .db-wrap{
-    padding-top:0!important;
+    padding-top:calc(64px + env(safe-area-inset-top,0px))!important;
     min-height:100dvh;
     min-height:var(--vvh,100vh);
   }
-  body.dash-ig-app .db-ig-mode .db-main{padding-top:8px}
+  body.dash-ig-app .db-ig-mode .db-main{padding-top:calc(52px + 8px)}
+  body.dash-ig-app .ig-drawer{padding-top:calc(12px + env(safe-area-inset-top,0px))}
 }
 .ig-act-badge{position:relative}
 .ig-act-badge .ig-bell-count{position:absolute;top:-4px;right:-6px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:linear-gradient(135deg,#ef4444,#b91c1c);color:#fff;font-size:10px;font-weight:800;display:none;align-items:center;justify-content:center;line-height:1;box-shadow:0 0 12px rgba(239,68,68,.45)}
-.ig-me-shell{width:100%;max-width:min(100%,430px);margin:0 auto;padding-bottom:8px}
+.ig-me-shell{width:100%;max-width:min(100%,935px);margin:0 auto;padding-bottom:8px}
 .ig-profile-head{display:flex;gap:22px;align-items:center;padding:8px 0 24px;flex-wrap:wrap}
 @media(min-width:640px){.ig-profile-head{gap:32px}}
 .ig-profile-av-wrap{position:relative;cursor:pointer;flex-shrink:0}
@@ -814,7 +818,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 .ig-lamp-topbar{
   position:fixed;
   left:10px;
-  top:calc(var(--app-header-h, 56px) + env(safe-area-inset-top,0px) + 6px);
+  top:calc(4rem + 52px + 6px);
   z-index:951;
   display:inline-flex;
   align-items:center;
@@ -847,11 +851,11 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 @media(max-width:400px){
   .my-tokens-inline__grid{grid-template-columns:1fr;gap:8px}
   .my-lamp-toggle{font-size:10px;padding:3px 7px}
-  .ig-lamp-topbar{left:8px;top:calc(var(--app-header-h, 56px) + env(safe-area-inset-top,0px) + 4px);gap:6px}
+  .ig-lamp-topbar{left:8px;top:calc(4rem + 52px + 4px);gap:6px}
   .ig-lamp-topbar::before{width:26px;height:26px}
 }
 body.dash-ig-app .ig-lamp-topbar{
-  top:calc(var(--app-header-h, 56px) + env(safe-area-inset-top,0px) + 6px);
+  top:calc(64px + env(safe-area-inset-top,0px) + 52px + 6px);
 }
 @keyframes igMsgIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 </style>
@@ -859,18 +863,38 @@ body.dash-ig-app .ig-lamp-topbar{
 {% from 'components/stroke_icons.html' import ico %}
 {% set vbk = visible_block_keys if visible_block_keys is defined else ['ai_chat','messages','community','shop','profile_photo','posts','tariffs','referral','knowledge_base'] %}
 {# Один интерфейс как Instagram у всех; блоки внутри (лента/посты) по тарифу — см. vbk #}
+{% set dash_home = 'me' %}
+{% set grid_posts = my_grid_posts if my_grid_posts is defined else [] %}
 <div class="db-wrap{% if ig_social %} db-ig-mode{% endif %}">
   {% if ig_social %}
+  <header class="ig-dash-header" id="igDashHeader" aria-label="Панель приложения">
+    <div class="ig-dash-header-start">
+      <button type="button" class="ig-dash-back" id="igDashBack" onclick="igDashBackClick()" aria-label="Назад" style="display:none">{{ ico('chevron_left') }}</button>
+      <button type="button" class="ig-ham" id="igDashHamburger" onclick="openDbDrawer()" aria-label="Меню">{{ ico('menu') }}</button>
+    </div>
+    <button type="button" class="ig-head-brand" id="igDashTitleBtn" style="background:none;border:none;cursor:pointer;padding:0;font:inherit;flex:1;min-width:0;text-align:center" onclick="igDashTitleClick()" title="Мой профиль"><span id="igDashTitleText">MushroomsAI</span></button>
+    <div class="ig-head-row" style="margin-left:auto">
+    {% if 'community' in vbk %}
+    <button type="button" class="ig-head-msg ig-act-badge" style="border:none;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center" title="Лайки и комментарии к вашим постам" aria-label="Активность" onclick="goSec('feed')">
+      <span style="font-size:18px;line-height:1">🔔</span>
+      <span id="dashActivityBadge" class="ig-bell-count">0</span>
+    </button>
+    {% endif %}
+    {% if 'messages' in vbk %}
+    <button type="button" class="ig-head-msg" style="border:none;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center" title="Сообщения" aria-label="Сообщения" onclick="goSec('messages')">{{ ico('message') }}</button>
+    {% elif not ('community' in vbk) %}
+    <span style="width:44px"></span>
+    {% endif %}
+    </div>
+  </header>
   <div class="ig-drawer-backdrop" id="dbDrawerBackdrop" onclick="closeDbDrawer()"></div>
   <aside class="ig-drawer" id="dbDrawer" aria-label="Меню">
     <div class="ig-drawer-head">
       <div class="nm">{{ user.name or 'Участник' }}</div>
       <div class="em">{{ user.email or ('Telegram: ' + (user.tg_id|string) if user.tg_id else '') }}</div>
     </div>
-    {% set rim_close_fn = 'closeDbDrawer' %}
-    {% include "components/drawer_screen_rim.html" %}
     <div class="ig-drawer-scroll">
-      <a href="/community/profile/{{ effective_user_id }}" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none"><span class="e">{{ ico('grid') }}</span><span class="lbl">Мой профиль</span></a>
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('me')"><span class="e">{{ ico('grid') }}</span><span class="lbl">Мой профиль</span></button>
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('feed')"><span class="e">{{ ico('feed') }}</span><span class="lbl">Лента</span></button>
       {% if 'community' in vbk %}
       <button type="button" class="ig-drawer-item" onclick="goToGroupsChatsFromBurger()" title="Групповые чаты"><span class="e">{{ ico('message_sq') }}</span><span class="lbl">Чаты</span></button>
@@ -891,7 +915,7 @@ body.dash-ig-app .ig-lamp-topbar{
       {% if 'tariffs' in vbk %}
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('plan')"><span class="e">{{ ico('spark') }}</span><span class="lbl">Тариф</span></button>
       {% endif %}
-      {% if 'pro_pin_info' in vbk %}
+      {% if 'pro_telegram' in vbk or 'pro_pin_info' in vbk %}
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('proextras')"><span class="e">{{ ico('spark') }}</span><span class="lbl">Про-функции</span></button>
       {% endif %}
       {% if 'seller_marketplace' in vbk %}
@@ -901,23 +925,31 @@ body.dash-ig-app .ig-lamp-topbar{
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('referral')"><span class="e">{{ ico('gift') }}</span><span class="lbl">Реферальная программа</span></button>
       {% endif %}
       <div class="ig-drawer-sep"></div>
-      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('profile')"><span class="e">₿</span><span class="lbl">Моя криптовалюта</span></button>
-      <a href="https://wallet.decimalchain.com/" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none;padding-left:32px"><span class="lbl" style="color:#888;font-size:13px">Decimal Wallet — веб</span></a>
-      <a href="https://play.google.com/store/apps/details?id=com.chain.decimal" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none;padding-left:32px"><span class="lbl" style="color:#888;font-size:13px">Decimal Wallet — Android</span></a>
-      <a href="https://apps.apple.com/app/decimal-blockchain-wallet/id1510802073" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none;padding-left:32px"><span class="lbl" style="color:#888;font-size:13px">Decimal Wallet — iPhone</span></a>
-      <a href="https://metamask.app.link/dapp/https://{{ request.url.hostname }}/dashboard" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none;padding-left:32px"><span class="lbl" style="color:#888;font-size:13px">MetaMask</span></a>
-      {% if not (user.tg_id or user.linked_tg_id) %}
-      <a href="/account/link" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none;color:#38bdf8;border:1px solid rgba(56,189,248,.2);border-radius:12px;margin:0 8px"><span class="e">✈️</span><span class="lbl">Присоединить Telegram</span></a>
-      {% else %}
-      <a href="/account/link" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none"><span class="e">{{ ico('link') }}</span><span class="lbl">Привязать аккаунт</span></a>
-      {% endif %}
+      <details class="ig-drawer-details" id="drawerCryptoDetails" style="border-bottom:1px solid rgba(255,255,255,.06)">
+        <summary class="ig-drawer-item ig-drawer-summary" style="list-style:none;cursor:pointer"><span class="e">₿</span><span class="lbl">Моя криптовалюта</span><span class="ig-drawer-chev" style="margin-left:auto;opacity:.5;font-size:10px">▼</span></summary>
+        <div style="padding:4px 12px 14px 18px;font-size:13px">
+          <a href="https://wallet.decimalchain.com/" target="_blank" rel="noopener noreferrer" class="ig-drawer-sub" onclick="closeDbDrawer()">Decimal Wallet — веб</a>
+          <a href="https://play.google.com/store/apps/details?id=com.chain.decimal" target="_blank" rel="noopener noreferrer" class="ig-drawer-sub" onclick="closeDbDrawer()">Decimal Wallet — Android (Play Market)</a>
+          <a href="https://apps.apple.com/app/decimal-blockchain-wallet/id1510802073" target="_blank" rel="noopener noreferrer" class="ig-drawer-sub" onclick="closeDbDrawer()">Decimal Wallet — iPhone (App Store)</a>
+          <a href="https://metamask.app.link/dapp/https://{{ request.url.hostname }}/dashboard" target="_blank" rel="noopener noreferrer" class="ig-drawer-sub" onclick="closeDbDrawer()">MetaMask — открыть в приложении (iOS / Android)</a>
+          <button type="button" class="ig-drawer-subbtn" onclick="closeDbDrawer();connectMetaMask()">MetaMask в браузере (подключить)</button>
+          <button type="button" class="ig-drawer-subbtn" onclick="closeDbDrawer();goSec('profile')">Кошелёк и синхронизация →</button>
+        </div>
+      </details>
+      <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('link')"><span class="e">{{ ico('link') }}</span><span class="lbl">Синхронизация аккаунтов</span></button>
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('language')"><span class="e">{{ ico('globe') }}</span><span class="lbl">Язык интерфейса</span></button>
-      <a href="/legal/terms" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none"><span class="e">📄</span><span class="lbl">Пользовательское соглашение</span></a>
-      <a href="/legal/privacy" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none"><span class="e">📄</span><span class="lbl">Политика конфиденциальности</span></a>
+      <details class="ig-drawer-details" style="border-bottom:1px solid rgba(255,255,255,.06)">
+        <summary class="ig-drawer-item ig-drawer-summary" style="list-style:none;cursor:pointer"><span class="e">📄</span><span class="lbl">Документы</span><span class="ig-drawer-chev" style="margin-left:auto;opacity:.5;font-size:10px">▼</span></summary>
+        <div style="padding:4px 12px 14px 18px;font-size:13px">
+          <a href="/legal/terms" target="_blank" rel="noopener noreferrer" class="ig-drawer-sub" onclick="closeDbDrawer()">Пользовательское соглашение</a>
+          <a href="/legal/privacy" target="_blank" rel="noopener noreferrer" class="ig-drawer-sub" onclick="closeDbDrawer()">Политика конфиденциальности</a>
+          <p style="font-size:11px;color:#666;margin-top:10px;line-height:1.45">Актуальная редакция принимается при входе. Дата принятия: {% if user.get('legal_accepted_at') %}{{ user.legal_accepted_at.strftime('%d.%m.%Y %H:%M') if user.legal_accepted_at else '—' }}{% else %}—{% endif %} · версия {{ user.get('legal_docs_version') or '—' }}</p>
+        </div>
+      </details>
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();document.getElementById('planReqModal').style.display='flex'"><span class="e">{{ ico('spark') }}</span><span class="lbl">Запросить платный тариф</span></button>
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();goSec('profile')"><span class="e">{{ ico('settings') }}</span><span class="lbl">Расширенные настройки</span></button>
       <div class="ig-drawer-sep"></div>
-      <a href="https://t.me/neuro_fungi_bot" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none"><span class="e">{{ ico('send') }}</span><span class="lbl">Бот в Telegram</span></a>
+      <a href="https://t.me/mushrooms_ai_bot" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none"><span class="e">{{ ico('send') }}</span><span class="lbl">Бот в Telegram</span></a>
       <a href="/logout" class="ig-drawer-item" onclick="closeDbDrawer()" style="text-decoration:none;color:#f87171;border-color:rgba(248,113,113,.35);background:rgba(248,113,113,.08)"><span class="e">⎋</span><span class="lbl">Выйти из кабинета</span></a>
       {% if user.role == 'admin' %}
       <button type="button" class="ig-drawer-item" onclick="closeDbDrawer();window.location='/admin'" style="color:#f87171"><span class="e">{{ ico('shield') }}</span><span class="lbl">Администратор</span></button>
@@ -1063,13 +1095,141 @@ body.dash-ig-app .ig-lamp-topbar{
     </section>
     {% endif %}
 
+    <!-- ══ ME — профиль как в Instagram ══ -->
+    {% if ig_social %}
+    <section class="db-sec active" id="sec-me">
+      <div class="ig-me-shell">
+        <div class="ig-profile-head">
+          <div class="ig-profile-av-wrap{% if user.get('token_lamp_enabled') is not sameas false %} lamp-on{% endif %}" onclick="document.getElementById('avInputMe').click()" title="Сменить фото">
+            {% if user.avatar %}
+            <img id="avImgMe" src="{{ user.avatar }}" class="ig-profile-av" alt="">
+            {% else %}
+            <div class="ig-profile-av" style="background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:min(48px,12vw)">🍄</div>
+            <img id="avImgMe" src="" class="ig-profile-av" style="display:none" alt="">
+            {% endif %}
+            <input id="avInputMe" type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="uploadAv(this,'avImgMe')">
+          </div>
+          <div style="flex:1;min-width:200px">
+            <div class="ig-profile-stats">
+              <div class="ig-profile-stat"><b>{{ my_post_count }}</b><span>публикаций</span></div>
+              <button type="button" class="ig-profile-stat" onclick="openFollowListModal({{ effective_user_id }}, 'followers')" title="Кто подписан">
+                <b>{{ user.followers_count or 0 }}</b><span>подписчики</span>
+              </button>
+              <button type="button" class="ig-profile-stat" onclick="openFollowListModal({{ effective_user_id }}, 'following')" title="На кого подписан">
+                <b>{{ user.following_count or 0 }}</b><span>подписки</span>
+              </button>
+            </div>
+            <div style="margin-top:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <span style="font-size:clamp(18px,4.5vw,22px);font-weight:700;color:#e8e8e8">{{ user.name or 'Участник' }}</span>
+              <span class="badge-plan badge-{{ plan }} ig-plan-pill">{{ plan_info.name }}</span>
+            </div>
+            <div style="margin-top:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <button type="button" class="btn-o" style="font-size:13px;padding:8px 18px" onclick="(function(){var p=document.getElementById('meEditPanel');if(!p)return;p.style.display=p.style.display==='none'||!p.style.display?'block':'none';})()">Редактировать профиль</button>
+              <input id="profileLightToggle" class="profile-light-toggle" type="checkbox" {% if user.get('token_lamp_enabled') is not sameas false %}checked{% endif %} onchange="saveTokenLampEnabled(this.checked)" aria-label="Свет токенов">
+            </div>
+            <div id="myTokensDock" class="my-tokens-inline{% if user.get('token_lamp_enabled') is not sameas false %} lamp-on{% endif %}" data-lamp-off="{% if user.get('token_lamp_enabled') is sameas false %}1{% else %}0{% endif %}" aria-label="Мои токены в сети Decimal" title="Обновляются автоматически, пока вы на сайте">
+              <div class="my-tokens-inline__head">
+                <div class="my-tokens-inline__title">Мои токены · Decimal</div>
+              </div>
+              <div class="my-tokens-inline__grid">
+                <div class="my-tokens-inline__cell">
+                  <span class="lbl">DEL</span>
+                  <span id="delBalMe" class="val">{% if user.get('decimal_del_balance') %}{{ user.decimal_del_balance }}{% else %}—{% endif %}</span>
+                </div>
+                <div class="my-tokens-inline__cell">
+                  <span class="lbl">SHEVELEV</span>
+                  <span id="shevelevBalMe" class="val tok-shev">{% if user.get('shevelev_balance_cached') %}{{ user.shevelev_balance_cached }}{% else %}—{% endif %}</span>
+                </div>
+              </div>
+              <div id="shevelevBalErrMe" style="display:none;font-size:11px;color:#f87171;margin-top:10px;line-height:1.35"></div>
+              {% if shevelev_token %}
+              <button type="button" class="btn-o" style="margin-top:12px;font-size:12px;padding:8px 14px;align-self:flex-start" onclick="openSendShevModal()">Подарить / отправить SHEVELEV</button>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% if user.bio %}
+        <div style="font-size:14px;color:#ccc;line-height:1.55;max-width:560px;margin-bottom:10px;white-space:pre-wrap">{{ user.bio }}</div>
+        {% endif %}
+        {% if user.get('profile_link_url') %}
+        <a href="{{ user.profile_link_url }}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:8px;color:#3dd4e0;font-weight:600;font-size:14px;margin-bottom:14px;text-decoration:none;border-bottom:1px solid rgba(61,212,224,.35);padding-bottom:2px">{{ user.get('profile_link_label') or user.profile_link_url }}</a>
+        {% endif %}
+        <div id="meEditPanel" class="card" style="display:none;margin-bottom:20px;padding:18px;border-radius:16px">
+          <div style="font-size:13px;font-weight:600;color:#888;margin-bottom:12px">Редактирование</div>
+          <input id="meName" class="sinp" style="margin-bottom:10px" value="{{ user.name or '' }}" placeholder="Имя">
+          <textarea id="meBio" class="sinp" style="min-height:72px;margin-bottom:10px;resize:vertical" placeholder="О себе">{{ user.bio or '' }}</textarea>
+          <input id="meLinkLabel" class="sinp" style="margin-bottom:8px" value="{{ user.get('profile_link_label','') }}" placeholder="Подпись к ссылке (например, Мой сайт)">
+          <input id="meLinkUrl" class="sinp" style="margin-bottom:12px" value="{{ user.get('profile_link_url','') }}" placeholder="https://…">
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button type="button" class="btn-g" onclick="saveMeProfile()">Сохранить</button>
+          </div>
+          <div id="meProfOk" style="display:none;margin-top:10px;font-size:13px;color:#4ade80">✓ Сохранено</div>
+        </div>
+        <div id="profileChaosWrap">
+          <label class="feed-chaos-toggle" for="profileChaosToggle">
+            <span>Хаос</span>
+            <input id="profileChaosToggle" type="checkbox" checked onchange="setProfilePostsChaos(this.checked)">
+          </label>
+        </div>
+        <div id="profilePosts" class="profile-chaos-on">
+          {% for p in grid_posts %}
+          {% set is_liked_me = p.id in liked_post_ids %}
+          <div class="fp ig-post" id="mfp-{{ p.id }}" data-pid="{{ p.id }}" data-author="{{ (user.name or 'Вы')|e }}" data-title="{{ (p.title or '')|e }}" data-content="{{ (p.content or '')|e }}" data-image="{{ (p.image_url or '')|e }}" data-created="{{ (p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '')|e }}" data-likes="{{ p.likes_count or 0 }}" data-comments="{{ p.comments_count or 0 }}" data-saves="{{ p.saves_count or 0 }}" onclick="openCommunityPostPage(event, {{ p.id }})">
+            <div class="ig-post-header">
+              <a href="/community/profile/{{ effective_user_id }}" style="display:block;width:36px;height:36px;border-radius:50%;border:2px solid #3dd4e0;overflow:hidden;text-decoration:none">{% if user.avatar %}<img src="{{ user.avatar }}" style="width:100%;height:100%;object-fit:cover" alt="">{% else %}<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px">🍄</div>{% endif %}</a>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:14px;font-weight:700;color:#e8e8e8">{{ user.name or 'Вы' }}</div>
+                <div style="font-size:11px;color:#888">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}</div>
+              </div>
+              <details class="ig-pm" onclick="event.stopPropagation()">
+                <summary title="Меню поста" onclick="togglePostMenu(event,this)">⋯</summary>
+                <div class="ig-pm-panel" onclick="event.stopPropagation()">
+                  <button type="button" onclick='openEditPostModal({{ p.id }}, {{ (p.title|default(''))|tojson }}, {{ (p.content|default(''))|tojson }})'>Изменить</button>
+                  <button type="button" onclick="deleteFeedPost({{ p.id }})" style="color:#f87171">Удалить</button>
+                </div>
+              </details>
+            </div>
+            {% if p.title %}<div style="padding:10px 14px 0;font-size:15px;font-weight:700;color:#e8e8e8">{{ p.title }}</div>{% endif %}
+            {% if p.image_url %}
+            <img src="{{ p.image_url }}" class="ig-post-img" loading="lazy" alt="">
+            {% elif p.content %}
+            <div class="ig-post-textonly">{{ p.content[:500] }}{% if p.content|length > 500 %}…{% endif %}</div>
+            {% endif %}
+            <div class="ig-post-snippet">
+              {% if p.title %}<div class="ig-post-snippet-title">{{ p.title }}</div>{% endif %}
+              <div class="ig-post-snippet-text">{% if p.content %}{{ p.content[:140] }}{% if p.content|length > 140 %}…{% endif %}{% else %}Новый пост{% endif %}</div>
+            </div>
+            <div class="ig-post-metrics">
+              <button type="button" class="ig-post-metric ig-post-metric-star" id="profile-like-btn-{{ p.id }}" onclick="likeProfilePost({{ p.id }},this)">
+                <span>{% if is_liked_me %}⭐{% else %}✩{% endif %}</span><span class="n" id="profile-like-count-{{ p.id }}">{{ p.likes_count }}</span>
+              </button>
+              <button type="button" class="ig-post-metric ig-post-metric-chat" onclick="event.stopPropagation();openCommunityPostDirect({{ p.id }})">
+                <span>💬</span><span class="n" id="profile-comment-count-{{ p.id }}" data-comment-count-for="{{ p.id }}">{{ p.comments_count or 0 }}</span>
+              </button>
+              <button type="button" class="ig-post-metric ig-post-metric-share" onclick="openSharePostModal({{ p.id }})">
+                <span>↗</span><span class="n">{{ p.saves_count or 0 }}</span>
+              </button>
+            </div>
+            <div id="inline-cmt-profile-{{ p.id }}" style="display:none;padding:10px 12px;border-top:1px solid rgba(255,255,255,.08);gap:8px;align-items:center;overflow:hidden;max-width:100%;box-sizing:border-box">
+              <input id="inline-cmt-inp-profile-{{ p.id }}" class="sinp" style="flex:1;min-width:0;max-width:100%;width:100%;box-sizing:border-box;font-size:16px" placeholder="Комментарий..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendInlineComment({{ p.id }}, 'profile');}">
+              <button type="button" class="btn-g" style="padding:9px 12px;white-space:nowrap" onclick="sendInlineComment({{ p.id }}, 'profile')">Отправить</button>
+            </div>
+          </div>
+          {% else %}
+          <div style="grid-column:1/-1;text-align:center;padding:36px 16px;color:#555;font-size:14px">Пока нет публикаций. Нажмите «Создать» внизу или «Написать пост» выше.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+    {% endif %}
+
     <!-- ══ FEED ══ -->
-    <section class="db-sec{% if ig_social %} active{% endif %}" id="sec-feed">
+    <section class="db-sec{% if not ig_social %} active{% endif %}" id="sec-feed">
       {% if 'community' in vbk %}
       <div class="ig-feed-shell">
       {% if not ig_social %}
       <div class="ig-feed-topbar">
-        <span class="ig-brand">NEUROFUNGI AI</span>
+        <span class="ig-brand">MushroomsAI</span>
         <div class="ig-feed-actions-top">
           <button type="button" class="ig-ic-btn" title="Новый пост" aria-label="Новый пост" onclick="openCreatePostModal()">＋</button>
           <button type="button" class="ig-ic-btn" title="Участники" aria-label="Участники" style="font-size:16px" onclick="goSec('search')">👥</button>
@@ -1128,18 +1288,18 @@ body.dash-ig-app .ig-lamp-topbar{
       <div class="fp ig-post" id="fp-{{ p.id }}" data-pid="{{ p.id }}" data-uid="{{ p.user_id }}" data-mine="{{ 'true' if is_mine else 'false' }}" data-following="{{ 'true' if is_following_author else 'false' }}" data-author="{{ (a.name if a else 'Участник')|e }}" data-title="{{ (p.title or '')|e }}" data-content="{{ (p.content or '')|e }}" data-image="{{ (p.image_url or '')|e }}" data-created="{{ (p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '')|e }}" data-likes="{{ p.likes_count or 0 }}" data-comments="{{ p.comments_count or 0 }}" data-saves="{{ p.saves_count or 0 }}" onclick="openCommunityPostPage(event, {{ p.id }})">
         <div class="ig-post-header">
           {% if is_mine %}
-          <a href="/community/profile/{{ p.user_id }}" onclick="event.stopPropagation()" style="cursor:pointer;flex-shrink:0;text-decoration:none">
+          <a href="/community/profile/{{ p.user_id }}" style="cursor:pointer;flex-shrink:0;text-decoration:none">
           {% else %}
-          <a href="/community/profile/{{ p.user_id }}" onclick="event.stopPropagation()" style="flex-shrink:0;text-decoration:none">
+          <a href="/community/profile/{{ p.user_id }}" style="flex-shrink:0;text-decoration:none">
           {% endif %}
             {% if a and a.avatar %}<img src="{{ a.avatar }}" style="width:36px;height:36px;border-radius:50%;border:2px solid #3dd4e0;object-fit:cover" alt="">
             {% else %}<div style="width:36px;height:36px;border-radius:50%;border:2px solid #3dd4e0;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px">🍄</div>{% endif %}
           {% if is_mine %}</a>{% else %}</a>{% endif %}
           <div style="flex:1;min-width:0">
             {% if is_mine %}
-            <a href="/community/profile/{{ effective_user_id }}" onclick="event.stopPropagation()" style="font-size:14px;font-weight:700;color:#e8e8e8;text-decoration:none;display:block">{{ a.name if a else 'Участник' }} <span style="font-size:11px;color:#3dd4e0">● я</span></a>
+            <div style="font-size:14px;font-weight:700;color:#e8e8e8;cursor:pointer" onclick="goSec('{{ dash_home }}')">{{ a.name if a else 'Участник' }} <span style="font-size:11px;color:#3dd4e0">● я</span></div>
             {% else %}
-            <a href="/community/profile/{{ p.user_id }}" onclick="event.stopPropagation()" style="font-size:14px;font-weight:700;color:#e8e8e8;text-decoration:none">{{ a.name if a else 'Участник' }}</a>
+            <a href="/community/profile/{{ p.user_id }}" style="font-size:14px;font-weight:700;color:#e8e8e8;text-decoration:none">{{ a.name if a else 'Участник' }}</a>
             {% endif %}
             <div style="font-size:11px;color:#888">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}{% if p.pinned %} · 📌{% endif %}</div>
           </div>
@@ -1392,13 +1552,22 @@ body.dash-ig-app .ig-lamp-topbar{
     </section>
     {% endif %}
 
-    <!-- ══ ПРО: приоритет в ленте ══ -->
-    {% if 'pro_pin_info' in vbk %}
+    <!-- ══ ПРО: закрытый чат + приоритет в ленте ══ -->
+    {% if 'pro_telegram' in vbk or 'pro_pin_info' in vbk %}
     <section class="db-sec" id="sec-proextras">
+      {% if 'pro_telegram' in vbk %}
+      <div class="card hero-card" style="margin-bottom:16px">
+        <div class="sect-title" style="margin-bottom:10px;font-size:18px">Закрытый Telegram</div>
+        <p class="muted" style="margin-bottom:16px;font-size:14px">Партнёрство, кейсы, дополнительные материалы.</p>
+        <a href="https://t.me/+_hBvTo07K0k4Mjky" target="_blank" rel="noopener noreferrer" class="btn-g" style="display:inline-block;padding:12px 22px;font-size:15px">Вступить в закрытый чат →</a>
+      </div>
+      {% endif %}
+      {% if 'pro_pin_info' in vbk %}
       <div class="card" style="border-color:rgba(61,212,224,.35)">
         <div class="sect-title" style="margin-bottom:8px;font-size:17px">⭐ Приоритет в соцсети (Про)</div>
-        <p class="muted" style="font-size:13px;line-height:1.65">Аккаунт со значком NEUROFUNGI AI. Закреп поста в общей ленте до 3 дней — <strong class="gold">не чаще одного раза в сутки</strong>. Если много участников с Про, закрепы ставятся по очереди (сначала новые заявки).</p>
+        <p class="muted" style="font-size:13px;line-height:1.65">Аккаунт со значком MushroomsAI. Закреп поста в общей ленте до 3 дней — <strong class="gold">не чаще одного раза в сутки</strong>. Если много участников с Про, закрепы ставятся по очереди (сначала новые заявки).</p>
       </div>
+      {% endif %}
     </section>
     {% endif %}
 
@@ -1568,35 +1737,54 @@ body.dash-ig-app .ig-lamp-topbar{
       <div class="sect-title">🔗 Привязка аккаунтов</div>
       {% set has_tg = user.tg_id or user.linked_tg_id %}
       {% set has_google = user.google_id or user.linked_google_id %}
-
-      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
-        <!-- Telegram status -->
-        <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {% if has_tg %}rgba(56,189,248,.3){% else %}rgba(255,255,255,.08){% endif %};background:{% if has_tg %}rgba(56,189,248,.06){% else %}rgba(255,255,255,.02){% endif %}">
-          <span style="font-size:22px">✈️</span>
-          <div style="flex:1">
-            <div style="font-size:14px;font-weight:600;color:{% if has_tg %}#38bdf8{% else %}#888{% endif %}">Telegram</div>
-            <div style="font-size:12px;color:#555">{% if has_tg %}Привязан{% else %}Не привязан{% endif %}</div>
-          </div>
-          {% if has_tg %}<span style="color:#38bdf8">✓</span>{% endif %}
+      {% set is_tg_only = has_tg and not has_google %}
+      {% set is_google_only = has_google and not has_tg %}
+      {% if has_tg and has_google %}
+      <div class="card" style="border-color:rgba(74,222,128,.25);background:rgba(74,222,128,.05);margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:10px;font-size:15px;color:#4ade80;font-weight:600">
+          <span style="font-size:20px">✅</span> Аккаунты объединены
         </div>
-        <!-- Google status -->
-        <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid {% if has_google %}rgba(239,68,68,.3){% else %}rgba(255,255,255,.08){% endif %};background:{% if has_google %}rgba(239,68,68,.06){% else %}rgba(255,255,255,.02){% endif %}">
-          <span style="font-size:22px">🔴</span>
-          <div style="flex:1">
-            <div style="font-size:14px;font-weight:600;color:{% if has_google %}#ef4444{% else %}#888{% endif %}">Google</div>
-            <div style="font-size:12px;color:#555">{% if has_google %}Привязан{% else %}Не привязан{% endif %}</div>
-          </div>
-          {% if has_google %}<span style="color:#ef4444">✓</span>{% endif %}
+        <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+          <div style="font-size:13px;color:#666;display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:#38bdf8;display:inline-block"></span> Telegram привязан</div>
+          <div style="font-size:13px;color:#666;display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block"></span> Google аккаунт привязан</div>
+        </div>
+        <div style="margin-top:14px;font-size:12px;color:#666;line-height:1.45">
+          У вас один профиль и два метода входа: Google + Telegram (Web и Mini App).
         </div>
       </div>
-
-      {% if request.query_params.get('linked') %}
-      <div class="card" style="border-color:rgba(74,222,128,.3);background:rgba(74,222,128,.07);text-align:center;color:#4ade80;font-weight:600;margin-bottom:16px">✓ Аккаунт успешно привязан!</div>
+      {% else %}
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">
+        {% if is_google_only or (not has_tg and not has_google) %}
+        <a href="/account/link-telegram" class="card" style="display:flex;align-items:center;gap:14px;text-decoration:none;border-color:rgba(56,189,248,.25);background:rgba(56,189,248,.05);transition:border-color .2s" onmouseover="this.style.borderColor='rgba(56,189,248,.5)'" onmouseout="this.style.borderColor='rgba(56,189,248,.25)'">
+          <span style="font-size:28px">📱</span>
+          <div>
+            <div style="font-weight:600;color:#38bdf8;margin-bottom:2px">Подключить вход через Telegram</div>
+            <div style="font-size:13px;color:#666">Подтвердите Telegram, чтобы входить в этот же аккаунт из App и Web</div>
+          </div>
+          <span style="margin-left:auto;color:#38bdf8">→</span>
+        </a>
+        {% endif %}
+        {% if is_tg_only or (not has_tg and not has_google) %}
+        <a href="/account/link-google" class="card" style="display:flex;align-items:center;gap:14px;text-decoration:none;border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.05);transition:border-color .2s" onmouseover="this.style.borderColor='rgba(239,68,68,.5)'" onmouseout="this.style.borderColor='rgba(239,68,68,.25)'">
+          <span style="font-size:28px">🔴</span>
+          <div>
+            <div style="font-weight:600;color:#ef4444;margin-bottom:2px">Подключить вход через Google</div>
+            <div style="font-size:13px;color:#666">Откроется браузерная привязка Google к вашему текущему аккаунту</div>
+          </div>
+          <span style="margin-left:auto;color:#ef4444">→</span>
+        </a>
+        {% endif %}
+      </div>
       {% endif %}
-
-      <a href="/account/link" class="btn-g" style="display:block;text-align:center;text-decoration:none;width:100%;padding:13px;border-radius:12px;font-weight:600">
-        Управление привязкой →
-      </a>
+      {% if request.query_params.get('linked') %}
+      <div class="card" style="border-color:rgba(74,222,128,.3);background:rgba(74,222,128,.07);text-align:center;color:#4ade80;font-weight:600">✓ Аккаунт успешно привязан!</div>
+      {% endif %}
+      <div class="card" style="margin-top:16px">
+        <div style="font-size:13px;font-weight:600;color:#888;margin-bottom:10px">Зачем привязывать аккаунты?</div>
+        {% for t in ['Всегда один и тот же профиль','Вход через Telegram App / Telegram Web / Google','Без создания второго аккаунта','Единая история, подписка и настройки'] %}
+        <div style="font-size:13px;color:#666;display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="color:#3dd4e0">✦</span>{{ t }}</div>
+        {% endfor %}
+      </div>
     </section>
 
     <!-- ══ LANGUAGE ══ -->
@@ -1619,15 +1807,7 @@ body.dash-ig-app .ig-lamp-topbar{
     <!-- ══ PROFILE ══ -->
     <section class="db-sec" id="sec-profile">
       <div class="sect-title">⚙️ Расширенные настройки</div>
-      {% if ig_social %}
-      <div class="card" style="margin-bottom:16px;max-width:560px">
-        <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:10px">Фото профиля</div>
-        <p style="font-size:12px;color:#666;margin:0 0 12px;line-height:1.45">Отображается на странице <a href="/community/profile/{{ effective_user_id }}" style="color:#3dd4e0">вашего профиля</a> в сообществе.</p>
-        <button type="button" class="btn-o" style="font-size:13px" onclick="document.getElementById('dashIgAvInp').click()">Загрузить или сменить фото</button>
-        <input id="dashIgAvInp" type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="uploadAv(this)">
-      </div>
-      {% endif %}
-      <p style="font-size:12px;color:#666;margin:-8px 0 16px;max-width:520px">{% if not ig_social %}Фото — в блоке «Главная» выше. {% endif %}Кошелёк и приложения Decimal / MetaMask — в меню «Моя криптовалюта» или в блоке ниже.</p>
+      <p style="font-size:12px;color:#666;margin:-8px 0 16px;max-width:520px">Фото — на экране профиля. Кошелёк и приложения Decimal / MetaMask — в меню «Моя криптовалюта» или в блоке ниже.</p>
       <div style="max-width:560px;display:flex;flex-direction:column;gap:16px">
           <div class="card">
             <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:14px">Информация</div>
@@ -1719,22 +1899,8 @@ body.dash-ig-app .ig-lamp-topbar{
               <span style="color:#aaa">{{ val }}</span>
             </div>
             {% endfor %}
-            <button class="btn-o" style="width:100%;margin-top:14px" onclick="document.getElementById('sync-modal').style.display='flex'">🔗 Синхронизировать аккаунты</button>
+            <button class="btn-o" style="width:100%;margin-top:14px" onclick="goSec('link')">🔗 Синхронизация аккаунтов</button>
           </div>
-          {% if user.role != 'admin' %}
-          <div class="card" style="border-color:rgba(239,68,68,.35);background:rgba(239,68,68,.04)">
-            <div style="font-size:14px;font-weight:600;color:#f87171;margin-bottom:8px">Удаление аккаунта</div>
-            <p style="font-size:12px;color:#888;margin:0 0 12px;line-height:1.5">Безвозвратно удаляются посты, сообщения, заказы, чаты и профиль. Повторно зайти можно будет как новый пользователь (тот же Google/Telegram создаст новую запись).</p>
-            {% if user.primary_user_id %}
-            <p style="font-size:11px;color:#a78bfa;margin:0 0 10px;line-height:1.45">Сейчас вы в привязанном аккаунте — удалится только он; основной аккаунт останется.</p>
-            {% else %}
-            <p style="font-size:11px;color:#888;margin:0 0 10px;line-height:1.45">Если у вас были привязанные аккаунты к этому основному — они тоже будут удалены.</p>
-            {% endif %}
-            <label style="font-size:11px;color:#666;display:block;margin-bottom:4px">Введите для подтверждения</label>
-            <input type="text" id="deleteAccountConfirm" class="sinp" placeholder="DELETE_MY_ACCOUNT" autocomplete="off" style="margin-bottom:10px">
-            <button type="button" class="btn-o" style="width:100%;border-color:#ef4444;color:#fca5a5" onclick="submitDeleteMyAccount()">Удалить мой аккаунт навсегда</button>
-          </div>
-          {% endif %}
       </div>
     </section>
 
@@ -1772,7 +1938,7 @@ body.dash-ig-app .ig-lamp-topbar{
     {% if 'tariffs' in vbk %}
     {{ ni('plan','✨','Тариф') }}
     {% endif %}
-    {% if 'pro_pin_info' in vbk %}
+    {% if 'pro_telegram' in vbk or 'pro_pin_info' in vbk %}
     {{ ni('proextras','💎','Про') }}
     {% endif %}
     {% if 'seller_marketplace' in vbk %}
@@ -1785,6 +1951,12 @@ body.dash-ig-app .ig-lamp-topbar{
     {{ ni('link','🔗','Привязка') }}
     {{ ni('profile','⚙️','Профиль') }}
     <div class="nav-sep"></div>
+    <button class="nav-item" onclick="window.open('https://t.me/mushrooms_ai_bot','_blank')" style="background:#229ED9;border-color:rgba(34,158,217,.4)" onmouseover="this.style.background='#1a8fc2'" onmouseout="this.style.background='#229ED9'">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="white" style="flex-shrink:0">
+        <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-2.04 9.607c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.48 14.618l-2.95-.924c-.642-.2-.655-.642.136-.953l11.532-4.448c.536-.194 1.006.131.364.955z"/>
+      </svg>
+      <span class="nav-tooltip">Telegram бот</span>
+    </button>
     {% if user.role == 'admin' %}
     <button class="nav-item" onclick="window.location='/admin'" style="color:#f87171">🛡️<span class="nav-tooltip">Администратор</span></button>
     {% endif %}
@@ -1793,16 +1965,47 @@ body.dash-ig-app .ig-lamp-topbar{
   <nav class="nav-sidebar" id="dbNav" style="display:none" aria-hidden="true"></nav>
   <button type="button" class="ig-create-fab" aria-label="Создать пост" title="Создать пост" onclick="openCreatePostModal()"><span class="ic">{{ ico('plus') }}</span></button>
   <nav class="ig-tabbar" id="igTabbar" aria-label="Нижняя навигация">
-    <button type="button" class="ig-tab on" data-igtab="feed" onclick="goSec('feed')"><span class="ic">{{ ico('home') }}</span>Лента</button>
-    <a href="/community/profile/{{ effective_user_id }}" class="ig-tab" data-igtab="me"><span class="ic">{{ ico('user') }}</span>Профиль</a>
+    <button type="button" class="ig-tab" data-igtab="feed" onclick="goSec('feed')"><span class="ic">{{ ico('home') }}</span>Лента</button>
+    <button type="button" class="ig-tab on" data-igtab="me" onclick="goSec('me')"><span class="ic">{{ ico('user') }}</span>Профиль</button>
     <button type="button" class="ig-tab" data-igtab="search" onclick="goSec('search')"><span class="ic">{{ ico('search') }}</span>Поиск</button>
   </nav>
   {% endif %}
 
 </div>
 
-<!-- sync-modal removed — use /account/link page instead -->
-<div id="sync-modal" style="display:none"></div>
+<!-- Sync modal -->
+<div id="sync-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;background:rgba(0,0,0,.75);backdrop-filter:blur(6px)" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:#0e0e0e;border:1px solid rgba(61,212,224,.3);border-radius:20px;padding:36px 32px;max-width:400px;width:90%;box-shadow:0 0 60px rgba(61,212,224,.1)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <h3 style="font-size:18px;font-weight:700;color:#e8e8e8">🔗 Привязка аккаунтов</h3>
+      <button onclick="document.getElementById('sync-modal').style.display='none'" style="background:none;border:none;color:#555;font-size:22px;cursor:pointer;line-height:1">×</button>
+    </div>
+    <p style="font-size:14px;color:#888;margin-bottom:24px;line-height:1.6">Привяжите Telegram или Google чтобы объединить аккаунты в один — единая история, подписка и профиль.</p>
+    <div id="sync-success" style="{% if request.query_params.get('linked') %}display:block{% else %}display:none{% endif %};margin-bottom:16px;padding:12px;border-radius:10px;background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);color:#4ade80;font-size:14px;font-weight:600;text-align:center">✅ Аккаунты объединены!</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <a href="/account/link-telegram"
+        style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:12px;border:1px solid rgba(56,189,248,.3);background:rgba(56,189,248,.05);text-decoration:none;transition:background .2s"
+        onmouseover="this.style.background='rgba(56,189,248,.12)'" onmouseout="this.style.background='rgba(56,189,248,.05)'">
+        <span style="font-size:22px">📱</span>
+        <div>
+          <div style="font-size:14px;font-weight:600;color:#38bdf8">Привязать Telegram</div>
+          <div style="font-size:12px;color:#555">Объедините бот и веб-кабинет</div>
+        </div>
+        <span style="margin-left:auto;color:#38bdf8">→</span>
+      </a>
+      <a href="/account/link-google"
+        style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:12px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.05);text-decoration:none;transition:background .2s"
+        onmouseover="this.style.background='rgba(239,68,68,.12)'" onmouseout="this.style.background='rgba(239,68,68,.05)'">
+        <span style="font-size:22px">🔴</span>
+        <div>
+          <div style="font-size:14px;font-weight:600;color:#ef4444">Привязать Google</div>
+          <div style="font-size:12px;color:#555">Войти через Google аккаунт</div>
+        </div>
+        <span style="margin-left:auto;color:#ef4444">→</span>
+      </a>
+    </div>
+  </div>
+</div>
 
 <div id="planReqModal" style="display:none;position:fixed;inset:0;z-index:10024;align-items:center;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(4px)" onclick="if(event.target===this)this.style.display='none'">
   <div class="card" style="max-width:420px;width:92%;padding:24px;border-color:rgba(61,212,224,.3)" onclick="event.stopPropagation()">
@@ -2082,14 +2285,14 @@ async function openFollowListModal(profileId, kind){
 window.__groupsInitial = {{ group_list | default([]) | tojson }};
 window.__groupsLast = window.__groupsInitial || [];
 window.__groupChatHistoryPushed = false;
-// Auto-open sync modal if ?linked= in URL
+// Auto-open account linking section if ?linked= in URL
 if (window.location.search.includes('linked=')) {
-  document.getElementById('sync-modal').style.display = 'flex';
+  goSec('link');
 }
 
 // ── Section routing ──
-const SECS = {{ dashboard_secs | default(['feed','groups','search','messages','ai','knowledge','shop','plan','orders','referral','link','language','profile']) | tojson }};
-const DEFAULT_SEC = SECS.includes('home') ? 'home' : (SECS[0] || 'feed');
+const SECS = {{ dashboard_secs | default(['me','feed','groups','search','messages','ai','knowledge','shop','plan','orders','referral','link','language','profile']) | tojson }};
+const DEFAULT_SEC = SECS.includes('me') ? 'me' : (SECS.includes('home') ? 'home' : (SECS[0] || 'feed'));
 function closeDbDrawer(){
   document.getElementById('dbDrawer')?.classList.remove('open');
   document.getElementById('dbDrawerBackdrop')?.classList.remove('on');
@@ -2098,19 +2301,16 @@ function openDbDrawer(){
   const dr = document.getElementById('dbDrawer');
   const bd = document.getElementById('dbDrawerBackdrop');
   if(!dr || !bd) return;
+  if(dr.classList.contains('open')) return;
   dr.classList.add('open');
   bd.classList.add('on');
-  if(typeof refreshGroupListFromApi === 'function') refreshGroupListFromApi();
+  refreshGroupListFromApi();
 }
 function toggleDbDrawer(){
   const dr = document.getElementById('dbDrawer');
-  const bd = document.getElementById('dbDrawerBackdrop');
-  const willOpen = dr && !dr.classList.contains('open');
-  dr?.classList.toggle('open');
-  bd?.classList.toggle('on');
-  if(willOpen){ refreshGroupListFromApi(); }
+  if(dr && dr.classList.contains('open')) closeDbDrawer();
+  else openDbDrawer();
 }
-window.__appMenuClick=function(){toggleDbDrawer();};
 function openCreatePostModal(){
   const m=document.getElementById('createPostModal');
   if(!m)return;
@@ -2131,11 +2331,11 @@ function syncIgTabbar(id){
   const bar=document.getElementById('igTabbar');
   if(!bar)return;
   bar.querySelectorAll('.ig-tab').forEach(t=>t.classList.remove('on'));
-  const map={feed:'feed',create:'create',search:'search',shop:'shop',plan:'plan'};
+  const map={me:'me',feed:'feed',create:'create',search:'search',shop:'shop',plan:'plan'};
   const key=map[id];
   if(key) bar.querySelector(`[data-igtab="${key}"]`)?.classList.add('on');
 }
-var IG_ROOT_SECS={feed:1,groups:1,messages:1,search:1};
+var IG_ROOT_SECS={me:1,feed:1,groups:1,messages:1,search:1};
 var SEC_TITLE={
   me:'Профиль',feed:'Лента',groups:'Чаты',messages:'Входящие',search:'Участники',ai:'AI-чат',knowledge:'База знаний',
   proextras:'Про-функции',shop:'Магазин',orders:'Заказы',plan:'Тариф',referral:'Рефералы',seller:'Товары',
@@ -2158,13 +2358,15 @@ function updateIgDashHeader(secId){
     tbtn.title='';
   }else{
     back.style.display='none';
-    ttxt.textContent='NEUROFUNGI AI';
+    ttxt.textContent='MushroomsAI';
     tbtn.classList.remove('ig-head-title--plain');
     tbtn.title='Мой профиль';
   }
 }
 function igDashTitleClick(){
-  window.location='/community/profile/'+DASH_UID;
+  const ttxt=document.getElementById('igDashTitleText');
+  if(ttxt&&ttxt.textContent!=='MushroomsAI')return;
+  goSec('me');
 }
 function igDashBackClick(){
   if(document.body.classList.contains('tg-group-mobile-chat')){
@@ -2178,7 +2380,7 @@ function igDashBackClick(){
     return;
   }
   if(window.history.length>1) history.back();
-  else goSec('feed');
+  else goSec('me');
 }
 function goToGroupsChatsFromBurger(){
   closeDbDrawer();
@@ -2232,35 +2434,20 @@ function goSec(id){
     window.__groupChatHistoryPushed = false;
     finishGroupChatOverlayUI();
   }
-  if(id==='profile'){
+  if(id==='me'||id==='profile'){
     setTimeout(initShevelevOnLoad,100);
     setTimeout(startShevelevAutoSync,200);
   }
 }
 
-// Init from hash (старый #me → единый профиль в сообществе)
+// Init from hash
 (function(){
   const h=(location.hash||'').replace('#','');
-  if(h==='me'){
-    try{ location.replace('/community/profile/{{ effective_user_id }}'); }catch(e){ window.location='/community/profile/{{ effective_user_id }}'; }
-    return;
-  }
   goSec(SECS.includes(h)?h:DEFAULT_SEC);
-  if(document.querySelector('.db-wrap.db-ig-mode')){
-    requestAnimationFrame(function(){
-      requestAnimationFrame(function(){
-        if(typeof openDbDrawer === 'function') openDbDrawer();
-      });
-    });
-  }
 })();
 
 window.addEventListener('hashchange',()=>{
   const h=(location.hash||'').replace('#','');
-  if(h==='me'){
-    try{ location.replace('/community/profile/{{ effective_user_id }}'); }catch(e){ window.location='/community/profile/{{ effective_user_id }}'; }
-    return;
-  }
   if(SECS.includes(h))goSec(h);
 });
 
@@ -2276,7 +2463,7 @@ async function refreshActivityCount(){
   try{
     const r=await fetch('/community/activity/unread-count',{credentials:'same-origin'});
     const d=await r.json();
-    const n=(typeof d.activity_total==='number')?d.activity_total:((d&&d.total)||0);
+    const n=(d&&d.total)||0;
     el.textContent=n>99?'99+':String(n);
     el.style.display=n>0?'flex':'none';
   }catch(e){}
@@ -2322,7 +2509,7 @@ async function uploadAv(input,imgId='avImg'){
       const imgs=[document.getElementById('avImg'),document.getElementById('avImg2'),document.getElementById('avImgMe')];
       imgs.forEach(el=>{if(el){el.src=d.url+'?t='+Date.now();el.style.display='block'}});
       document.querySelectorAll('nav img[src*="/media/avatars/"]').forEach(el=>el.src=d.url+'?t='+Date.now());
-      if(imgId==='avImgMe'||!document.getElementById('avImg')){location.reload();return;}
+      if(imgId==='avImgMe'){location.reload();return;}
     }else if(err){err.textContent=d.error||'Ошибка';err.style.display='block'}
   }catch(e){if(err){err.textContent='Сетевая ошибка';err.style.display='block'}}
   input.value='';
@@ -2394,7 +2581,7 @@ function syncHist(){
 
 // ── Tariff contact ──
 function showTariffContact(){
-  alert('Оплата пока не подключена.\nДля подключения тарифа пишите: @neuro_fungi_bot');
+  alert('Оплата пока не подключена.\nДля подключения тарифа пишите: @mushrooms_ai_bot');
 }
 
 // ── Shop search ──
@@ -2759,41 +2946,6 @@ async function saveProfile(){
     const r=await fetch('/profile/me',{method:'POST',body:fd});
     if(r.ok&&ok){ok.style.display='block';setTimeout(()=>ok.style.display='none',3000)}
   }catch(e){}
-}
-
-async function submitDeleteMyAccount(){
-  const inp=document.getElementById('deleteAccountConfirm');
-  const v=(inp&&inp.value||'').trim();
-  if(v!=='DELETE_MY_ACCOUNT'){
-    if(typeof showNotification==='function') showNotification('Введите точно: DELETE_MY_ACCOUNT','error');
-    else alert('Введите точно: DELETE_MY_ACCOUNT');
-    return;
-  }
-  if(!confirm('Удалить аккаунт навсегда? Это необратимо.')) return;
-  if(!confirm('Последнее подтверждение: все данные на сайте для этого аккаунта будут стёрты.')) return;
-  try{
-    const r=await fetch('/account/delete-my-account',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      credentials:'same-origin',
-      body:JSON.stringify({confirm:'DELETE_MY_ACCOUNT'})
-    });
-    const d=await r.json().catch(()=>({}));
-    if(r.ok&&d.ok){
-      window.location.href=d.redirect||'/';
-      return;
-    }
-    let msg='Ошибка удаления';
-    if(d.error==='admin') msg='Аккаунт администратора так удалить нельзя';
-    else if(d.error==='confirm_required') msg='Подтвердите фразой DELETE_MY_ACCOUNT';
-    else if(d.detail) msg=String(d.detail).substring(0,200);
-    else if(d.message) msg=d.message;
-    if(typeof showNotification==='function') showNotification(msg,'error');
-    else alert(msg);
-  }catch(e){
-    if(typeof showNotification==='function') showNotification('Ошибка сети','error');
-    else alert('Ошибка сети');
-  }
 }
 
 // ── Список диалогов: время как «сегодня / вчера / день недели» ──
@@ -4149,7 +4301,7 @@ function openCommunityPostPage(event, postId){
 }
 function openCommunityPostDirect(postId){
   const back=encodeURIComponent(location.href);
-  location.href='/community/post/'+postId+'/comments?back='+back;
+  location.href='/community/post/'+postId+'?back='+back;
 }
 function closeFeedPostPreview(){
   const modal=document.getElementById('feedPostPreviewModal');

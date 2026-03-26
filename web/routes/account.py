@@ -1,23 +1,54 @@
-import json
 import logging
-import secrets
 import urllib.parse
-from datetime import datetime, timedelta
+from typing import Optional
 
-from fastapi import APIRouter, Request, Form, Query
+import sqlalchemy as sa
+from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from web.templates_utils import Jinja2Templates
 from starlette.responses import JSONResponse
 from auth.session import get_user_from_request
-from auth.ui_prefs import DEFAULT_SCREEN_RIM, attach_screen_rim_prefs
+from auth.telegram_auth import verify_telegram_auth
 from db.database import database
-from db.models import users, messages, pending_google_links
-from services.user_permanent_delete import (
-    permanently_delete_user,
-    is_protected_super_admin,
+from db.models import (
+    users,
+    messages,
+    posts,
+    leads,
+    orders,
+    subscriptions,
+    referrals,
+    followups,
+    page_views,
+    feedback,
+    community_posts,
+    community_comments,
+    community_likes,
+    community_saved,
+    community_follows,
+    community_messages,
+    profile_likes,
+    direct_messages,
+    product_reviews,
+    shop_product_comments,
+    product_questions,
+    shop_market_orders,
+    community_groups,
+    community_folders,
+    support_message_deliveries,
+    community_profiles,
+    admin_permissions,
+    user_block_overrides,
+    shop_product_likes,
+    shop_cart_items,
+    community_group_join_requests,
+    community_group_members,
+    community_group_member_permissions,
+    community_group_member_bans,
+    community_group_typing_status,
+    community_group_message_likes,
+    community_group_messages,
 )
-
-DELETE_ACCOUNT_CONFIRM = "DELETE_MY_ACCOUNT"
 
 logger = logging.getLogger(__name__)
 
@@ -25,209 +56,351 @@ router = APIRouter(prefix="/account")
 templates = Jinja2Templates(directory="web/templates")
 
 
+async def _resolve_primary_row(user_id: int) -> Optional[dict]:
+    row = await database.fetch_one(users.select().where(users.c.id == int(user_id)))
+    if not row:
+        return None
+    resolved = dict(row)
+    seen: set[int] = set()
+    while resolved.get("primary_user_id"):
+        pid = int(resolved["primary_user_id"])
+        if pid in seen:
+            break
+        seen.add(pid)
+        p = await database.fetch_one(users.select().where(users.c.id == pid))
+        if not p:
+            break
+        resolved = dict(p)
+    return resolved
+
+
+async def find_user_by_telegram_id(tg_id: int) -> Optional[dict]:
+    rows = await database.fetch_all(
+        users.select().where(
+            sa.or_(users.c.tg_id == tg_id, users.c.linked_tg_id == tg_id)
+        )
+    )
+    if not rows:
+        return None
+    # Prefer already-primary rows if multiple matches exist.
+    chosen = None
+    for row in rows:
+        r = dict(row)
+        if not r.get("primary_user_id"):
+            chosen = r
+            break
+    if chosen is None:
+        chosen = dict(rows[0])
+    return await _resolve_primary_row(int(chosen["id"]))
+
+
+async def find_user_by_google_id(google_id: str) -> Optional[dict]:
+    rows = await database.fetch_all(
+        users.select().where(
+            sa.or_(users.c.google_id == google_id, users.c.linked_google_id == google_id)
+        )
+    )
+    if not rows:
+        return None
+    chosen = None
+    for row in rows:
+        r = dict(row)
+        if not r.get("primary_user_id"):
+            chosen = r
+            break
+    if chosen is None:
+        chosen = dict(rows[0])
+    return await _resolve_primary_row(int(chosen["id"]))
+
+
+async def _repoint_user_fk(table, column, primary_id: int, secondary_id: int) -> None:
+    await database.execute(
+        table.update().where(column == secondary_id).values(**{column.key: primary_id})
+    )
+
+
+async def _dedupe_user_scope(table_name: str, scope_col: str, primary_id: int, secondary_id: int) -> None:
+    # Remove duplicates before repointing rows in tables with UNIQUE(scope, user_id).
+    await database.execute(
+        sa.text(
+            f"""
+            DELETE FROM {table_name} s
+            USING {table_name} p
+            WHERE s.user_id = :sid
+              AND p.user_id = :pid
+              AND s.{scope_col} = p.{scope_col}
+            """
+        ),
+        {"sid": secondary_id, "pid": primary_id},
+    )
+
+
+async def _merge_shop_cart(primary_id: int, secondary_id: int) -> None:
+    sec_rows = await database.fetch_all(
+        shop_cart_items.select().where(shop_cart_items.c.user_id == secondary_id)
+    )
+    for row in sec_rows:
+        product_id = int(row["product_id"])
+        qty = int(row.get("quantity") or 1)
+        existing = await database.fetch_one(
+            shop_cart_items.select()
+            .where(shop_cart_items.c.user_id == primary_id)
+            .where(shop_cart_items.c.product_id == product_id)
+        )
+        if existing:
+            await database.execute(
+                shop_cart_items.update()
+                .where(shop_cart_items.c.id == existing["id"])
+                .values(quantity=int(existing.get("quantity") or 0) + qty)
+            )
+            await database.execute(
+                shop_cart_items.delete()
+                .where(shop_cart_items.c.user_id == secondary_id)
+                .where(shop_cart_items.c.product_id == product_id)
+            )
+        else:
+            await database.execute(
+                shop_cart_items.update()
+                .where(shop_cart_items.c.user_id == secondary_id)
+                .where(shop_cart_items.c.product_id == product_id)
+                .values(user_id=primary_id)
+            )
+
+
 async def merge_accounts(primary_id: int, secondary_id: int):
-    """Transfer all data from secondary account to primary, mark secondary as merged."""
-    primary = await database.fetch_one(users.select().where(users.c.id == primary_id))
-    secondary = await database.fetch_one(users.select().where(users.c.id == secondary_id))
-    if not primary or not secondary:
+    """Move secondary account data into primary and disable secondary login."""
+    primary = await _resolve_primary_row(primary_id)
+    secondary_row = await database.fetch_one(users.select().where(users.c.id == int(secondary_id)))
+    if not primary or not secondary_row:
+        return
+    primary_id = int(primary["id"])
+    secondary = dict(secondary_row)
+    secondary_id = int(secondary["id"])
+    if primary_id == secondary_id:
         return
 
-    sec_tg = secondary.get("tg_id")
-    sec_ltg = secondary.get("linked_tg_id")
-    sec_google = secondary.get("google_id")
-    sec_lg = secondary.get("linked_google_id")
-    sec_email = secondary.get("email")
-    sec_apple = secondary.get("apple_id")
-    sec_lap = secondary.get("linked_apple_id")
-    sec_ref = secondary.get("referral_code")
-
-    # Сначала снимаем уникальные ключи с вторичного аккаунта — иначе UPDATE primary
-    # с тем же google_id/tg_id/email даёт UniqueViolation.
-    await database.execute(
-        users.update()
-        .where(users.c.id == secondary_id)
-        .values(
-            google_id=None,
-            linked_google_id=None,
-            tg_id=None,
-            linked_tg_id=None,
-            email=None,
-            apple_id=None,
-            linked_apple_id=None,
-            referral_code=None,
-        )
-    )
-
-    await database.execute(
-        messages.update().where(messages.c.user_id == secondary_id).values(user_id=primary_id)
-    )
-
-    if (
-        secondary["subscription_plan"] != "free"
-        and primary["subscription_plan"] == "free"
+    # Repoint common user references.
+    for table, col in (
+        (messages, messages.c.user_id),
+        (posts, posts.c.user_id),
+        (leads, leads.c.user_id),
+        (orders, orders.c.user_id),
+        (subscriptions, subscriptions.c.user_id),
+        (referrals, referrals.c.referrer_id),
+        (referrals, referrals.c.referred_id),
+        (followups, followups.c.user_id),
+        (page_views, page_views.c.user_id),
+        (feedback, feedback.c.user_id),
+        (community_posts, community_posts.c.user_id),
+        (community_comments, community_comments.c.user_id),
+        (community_likes, community_likes.c.user_id),
+        (community_saved, community_saved.c.user_id),
+        (community_folders, community_folders.c.user_id),
+        (community_messages, community_messages.c.sender_id),
+        (community_messages, community_messages.c.recipient_id),
+        (profile_likes, profile_likes.c.user_id),
+        (profile_likes, profile_likes.c.liked_user_id),
+        (direct_messages, direct_messages.c.sender_id),
+        (direct_messages, direct_messages.c.recipient_id),
+        (product_reviews, product_reviews.c.user_id),
+        (shop_product_comments, shop_product_comments.c.user_id),
+        (product_questions, product_questions.c.user_id),
+        (product_questions, product_questions.c.answered_by),
+        (shop_market_orders, shop_market_orders.c.user_id),
+        (community_groups, community_groups.c.created_by),
+        (support_message_deliveries, support_message_deliveries.c.admin_id),
+        (support_message_deliveries, support_message_deliveries.c.recipient_id),
+        (community_follows, community_follows.c.follower_id),
+        (community_follows, community_follows.c.following_id),
+        (user_block_overrides, user_block_overrides.c.user_id),
+        (users, users.c.referred_by),
+        (users, users.c.primary_user_id),
     ):
+        await _repoint_user_fk(table, col, primary_id, secondary_id)
+
+    # Unique(scope, user) tables: dedupe first.
+    await _dedupe_user_scope("shop_product_likes", "product_id", primary_id, secondary_id)
+    await _dedupe_user_scope("community_group_join_requests", "group_id", primary_id, secondary_id)
+    await _dedupe_user_scope("community_group_members", "group_id", primary_id, secondary_id)
+    await _dedupe_user_scope("community_group_member_permissions", "group_id", primary_id, secondary_id)
+    await _dedupe_user_scope("community_group_member_bans", "group_id", primary_id, secondary_id)
+    await _dedupe_user_scope("community_group_typing_status", "group_id", primary_id, secondary_id)
+    await _dedupe_user_scope("community_group_message_likes", "message_id", primary_id, secondary_id)
+
+    await _repoint_user_fk(shop_product_likes, shop_product_likes.c.user_id, primary_id, secondary_id)
+    await _merge_shop_cart(primary_id, secondary_id)
+    await _repoint_user_fk(community_group_join_requests, community_group_join_requests.c.user_id, primary_id, secondary_id)
+    await _repoint_user_fk(community_group_members, community_group_members.c.user_id, primary_id, secondary_id)
+    await _repoint_user_fk(community_group_member_permissions, community_group_member_permissions.c.user_id, primary_id, secondary_id)
+    await _repoint_user_fk(community_group_member_bans, community_group_member_bans.c.user_id, primary_id, secondary_id)
+    await _repoint_user_fk(community_group_member_bans, community_group_member_bans.c.banned_by, primary_id, secondary_id)
+    await _repoint_user_fk(community_group_typing_status, community_group_typing_status.c.user_id, primary_id, secondary_id)
+    await _repoint_user_fk(community_group_message_likes, community_group_message_likes.c.user_id, primary_id, secondary_id)
+    await _repoint_user_fk(community_group_messages, community_group_messages.c.sender_id, primary_id, secondary_id)
+    await _repoint_user_fk(community_group_messages, community_group_messages.c.addressed_user_id, primary_id, secondary_id)
+
+    # Resolve unique single-row tables.
+    pri_profile = await database.fetch_one(community_profiles.select().where(community_profiles.c.user_id == primary_id))
+    sec_profile = await database.fetch_one(community_profiles.select().where(community_profiles.c.user_id == secondary_id))
+    if sec_profile and not pri_profile:
         await database.execute(
-            users.update().where(users.c.id == primary_id).values(
-                subscription_plan=secondary["subscription_plan"],
-                subscription_end=secondary["subscription_end"],
-            )
+            community_profiles.update().where(community_profiles.c.user_id == secondary_id).values(user_id=primary_id)
+        )
+    elif sec_profile and pri_profile:
+        await database.execute(
+            community_profiles.delete().where(community_profiles.c.user_id == secondary_id)
         )
 
+    pri_perm = await database.fetch_one(admin_permissions.select().where(admin_permissions.c.user_id == primary_id))
+    sec_perm = await database.fetch_one(admin_permissions.select().where(admin_permissions.c.user_id == secondary_id))
+    if sec_perm and not pri_perm:
+        await database.execute(
+            admin_permissions.update().where(admin_permissions.c.user_id == secondary_id).values(user_id=primary_id)
+        )
+    elif sec_perm and pri_perm:
+        await database.execute(
+            admin_permissions.delete().where(admin_permissions.c.user_id == secondary_id)
+        )
+
+    # Carry over stronger fields.
     updates = {}
-    if sec_tg and not primary.get("tg_id"):
-        updates["tg_id"] = sec_tg
-        updates["linked_tg_id"] = sec_ltg or sec_tg
-    if sec_google and not primary.get("google_id"):
-        updates["google_id"] = sec_google
-        updates["linked_google_id"] = sec_lg or sec_google
-    if sec_email and not primary.get("email"):
-        updates["email"] = sec_email
-    if sec_apple and not primary.get("apple_id"):
-        updates["apple_id"] = sec_apple
-        updates["linked_apple_id"] = sec_lap or sec_apple
-    if sec_ref and not primary.get("referral_code"):
-        updates["referral_code"] = sec_ref
+    if not primary.get("linked_tg_id") and (secondary.get("linked_tg_id") or secondary.get("tg_id")):
+        updates["linked_tg_id"] = secondary.get("linked_tg_id") or secondary.get("tg_id")
+    if not primary.get("linked_google_id") and (secondary.get("linked_google_id") or secondary.get("google_id")):
+        updates["linked_google_id"] = secondary.get("linked_google_id") or secondary.get("google_id")
+    if not primary.get("email") and secondary.get("email"):
+        updates["email"] = secondary["email"]
+    if not primary.get("password_hash") and secondary.get("password_hash"):
+        updates["password_hash"] = secondary["password_hash"]
+    if not primary.get("name") and secondary.get("name"):
+        updates["name"] = secondary["name"]
+    if not primary.get("avatar") and secondary.get("avatar"):
+        updates["avatar"] = secondary["avatar"]
+    if (
+        (secondary.get("subscription_plan") or "free") != "free"
+        and (primary.get("subscription_plan") or "free") == "free"
+    ):
+        updates["subscription_plan"] = secondary.get("subscription_plan")
+        updates["subscription_end"] = secondary.get("subscription_end")
+    if not primary.get("legal_accepted_at") and secondary.get("legal_accepted_at"):
+        updates["legal_accepted_at"] = secondary.get("legal_accepted_at")
+        if secondary.get("legal_docs_version"):
+            updates["legal_docs_version"] = secondary.get("legal_docs_version")
+
+    # Mark secondary as merged and remove direct login identifiers.
+    await database.execute(
+        users.update().where(users.c.id == secondary_id).values(
+            primary_user_id=primary_id,
+            tg_id=None,
+            google_id=None,
+            linked_tg_id=None,
+            linked_google_id=None,
+            email=None,
+            password_hash=None,
+        )
+    )
+
     if updates:
         await database.execute(users.update().where(users.c.id == primary_id).values(**updates))
 
-    await database.execute(
-        users.update().where(users.c.id == secondary_id).values(primary_user_id=primary_id)
-    )
 
-
-async def apply_google_account_link(
-    link_user_id: int,
-    google_id: str,
-    email: str | None,
-    name: str | None,
-    avatar: str | None,
-) -> None:
-    """Привязать Google к аккаунту: слияние с дублем при необходимости и финальный UPDATE."""
-    from auth.avatar_policy import is_server_uploaded_avatar
-    from services.notify_admin import notify_admin_telegram
-
-    existing = await database.fetch_one(users.select().where(users.c.google_id == google_id))
-    if existing and int(existing["id"]) != int(link_user_id):
-        await merge_accounts(primary_id=link_user_id, secondary_id=int(existing["id"]))
-        ok, err = await permanently_delete_user(int(existing["id"]))
-        if not ok:
-            logger.error("apply_google_account_link: delete secondary failed: %s", err)
-
-    primary = await database.fetch_one(users.select().where(users.c.id == link_user_id))
+async def attach_telegram_login(primary_user_id: int, tg_id: int, name: str = "", avatar: str = "") -> tuple[bool, str]:
+    primary = await _resolve_primary_row(primary_user_id)
     if not primary:
-        return
+        return False, "Аккаунт не найден."
+    primary_id = int(primary["id"])
 
-    vals: dict = {
-        "google_id": google_id,
-        "linked_google_id": google_id,
-    }
-    em = (email or "").strip()
-    if em:
-        vals["email"] = em
-    nm = (name or "").strip()
-    if nm and not (primary.get("name") or "").strip():
-        vals["name"] = nm
-    av = (avatar or "").strip()
-    if av and not is_server_uploaded_avatar(primary.get("avatar")):
-        vals["avatar"] = av
+    existing_tg = primary.get("tg_id")
+    if existing_tg and int(existing_tg) != int(tg_id):
+        return False, "К аккаунту уже привязан другой Telegram."
 
-    await database.execute(users.update().where(users.c.id == link_user_id).values(**vals))
+    holder = await find_user_by_telegram_id(tg_id)
+    if holder and int(holder["id"]) != primary_id:
+        await merge_accounts(primary_id=primary_id, secondary_id=int(holder["id"]))
 
-    try:
-        await notify_admin_telegram(
-            f"🔗 Аккаунт привязан: Google\n"
-            f"👤 {(primary.get('name') or '—')} (id={link_user_id})\n"
-            f"📧 {em or primary.get('email') or '—'}"
-        )
-    except Exception:
-        pass
+    vals = {"tg_id": int(tg_id), "linked_tg_id": int(tg_id)}
+    if name and not primary.get("name"):
+        vals["name"] = name
+    if avatar and not primary.get("avatar"):
+        vals["avatar"] = avatar
+    await database.execute(users.update().where(users.c.id == primary_id).values(**vals))
+    return True, "Telegram привязан."
 
 
-async def create_pending_google_link_token(
-    user_id: int,
-    google_id: str,
-    email: str | None,
-    name: str | None,
-    avatar: str | None,
-) -> str:
-    """Создать ожидание подтверждения привязки Google (переход по ссылке из Telegram)."""
-    token = secrets.token_urlsafe(24)
-    expires = datetime.utcnow() + timedelta(minutes=15)
-    try:
-        await database.execute(
-            pending_google_links.delete().where(pending_google_links.c.user_id == user_id)
-        )
-    except Exception:
-        pass
-    await database.execute(
-        pending_google_links.insert().values(
-            token=token,
-            user_id=user_id,
-            google_id=google_id,
-            email=(email or "")[:512],
-            name=(name or "")[:255],
-            avatar=(avatar or "")[:2000],
-            expires_at=expires,
-        )
-    )
-    return token
+async def attach_google_login(primary_user_id: int, google_id: str, email: str = "", name: str = "", avatar: str = "") -> tuple[bool, str]:
+    primary = await _resolve_primary_row(primary_user_id)
+    if not primary:
+        return False, "Аккаунт не найден."
+    primary_id = int(primary["id"])
+
+    existing_google = (primary.get("google_id") or "").strip()
+    if existing_google and existing_google != google_id:
+        return False, "К аккаунту уже привязан другой Google."
+
+    holder = await find_user_by_google_id(google_id)
+    if holder and int(holder["id"]) != primary_id:
+        await merge_accounts(primary_id=primary_id, secondary_id=int(holder["id"]))
+
+    vals = {"google_id": google_id, "linked_google_id": google_id}
+    if email and not primary.get("email"):
+        vals["email"] = email
+    if name and not primary.get("name"):
+        vals["name"] = name
+    if avatar and not primary.get("avatar"):
+        vals["avatar"] = avatar
+    await database.execute(users.update().where(users.c.id == primary_id).values(**vals))
+    return True, "Google привязан."
 
 
-@router.get("/link", response_class=HTMLResponse)
-async def link_account_page(request: Request):
-    """Страница привязки аккаунтов — показывает нужные варианты в зависимости от способа входа."""
+@router.get("/link-telegram", response_class=HTMLResponse)
+async def link_telegram_page(request: Request):
     user = await get_user_from_request(request)
     if not user:
         return RedirectResponse("/login")
     from config import settings
     return templates.TemplateResponse(
-        "account/link_account.html",
+        "account/link_telegram.html",
         {"request": request, "user": user, "site_url": settings.SITE_URL,
          "bot_username": settings.TELEGRAM_BOT_USERNAME},
     )
 
 
-@router.post("/link-telegram-start")
-async def link_telegram_start(request: Request):
-    """Генерирует deeplink-токен для привязки Telegram через бот."""
-    user = await get_user_from_request(request)
-    if not user:
-        return JSONResponse({"error": "unauthorized"}, status_code=401)
-    from config import settings
-    if not settings.TELEGRAM_BOT_USERNAME:
-        return JSONResponse({"error": "bot_not_configured"}, status_code=503)
-
-    token = "lt_" + secrets.token_hex(16)
-    expires = datetime.utcnow() + timedelta(minutes=15)
-    await database.execute(
-        users.update().where(users.c.id == user["id"]).values(
-            link_token=token, link_token_expires=expires
-        )
-    )
-    deeplink = f"https://t.me/{settings.TELEGRAM_BOT_USERNAME}?start={token}"
-    return JSONResponse({"ok": True, "deeplink": deeplink, "expires_in": 900})
-
-
-@router.get("/check-link-status")
-async def check_link_status(request: Request):
-    """Проверяет, привязан ли Telegram к аккаунту (для polling с фронтенда)."""
-    user = await get_user_from_request(request)
-    if not user:
-        return JSONResponse({"error": "unauthorized"}, status_code=401)
-    row = await database.fetch_one(users.select().where(users.c.id == user["id"]))
-    if row and row["tg_id"]:
-        return JSONResponse({"linked": True})
-    return JSONResponse({"linked": False})
-
-
-@router.get("/link-telegram", response_class=HTMLResponse)
-async def link_telegram_page(request: Request):
-    return RedirectResponse("/account/link")
-
-
 @router.get("/link-telegram-callback")
 async def link_telegram_callback(request: Request):
-    return RedirectResponse("/dashboard")
+    user = await get_user_from_request(request)
+    if not user:
+        logger.warning("link-telegram-callback: no session user, redirecting to login")
+        return RedirectResponse("/login")
+
+    try:
+        data = dict(request.query_params)
+        if not verify_telegram_auth(data.copy()):
+            logger.warning("Telegram auth verification failed for user_id=%s data=%s", user["id"], data)
+            return RedirectResponse("/dashboard?error=tg_auth_failed")
+
+        raw_id = data.get("id")
+        if not raw_id:
+            logger.error("Missing 'id' in Telegram callback params: %s", data)
+            return RedirectResponse("/dashboard?error=tg_auth_failed")
+
+        tg_id = int(raw_id)
+        name = f"{data.get('first_name', '')} {data.get('last_name', '')}".strip()
+        photo = data.get("photo_url", "")
+
+        ok, msg = await attach_telegram_login(
+            primary_user_id=int(user["id"]),
+            tg_id=tg_id,
+            name=name,
+            avatar=photo,
+        )
+        if not ok:
+            logger.warning("link_telegram_callback failed for user_id=%s: %s", user["id"], msg)
+            return RedirectResponse("/dashboard?error=tg_link_conflict")
+        return RedirectResponse("/dashboard?linked=telegram")
+
+    except Exception as exc:
+        logger.exception("Unexpected error in link_telegram_callback for user_id=%s: %s", user["id"], exc)
+        return RedirectResponse("/dashboard?error=tg_link_failed")
 
 
 @router.get("/link-google", response_class=HTMLResponse)
@@ -236,108 +409,26 @@ async def link_google_page(request: Request):
     if not user:
         return RedirectResponse("/login")
     from config import settings
-
     return templates.TemplateResponse(
         "account/link_google.html",
         {"request": request, "user": user, "site_url": settings.SITE_URL},
     )
 
 
-@router.get("/link-google-url")
-async def link_google_url(request: Request):
-    """Возвращает Google OAuth URL как JSON — для AJAX из Telegram Mini App."""
-    user = await get_user_from_request(request)
-    if not user:
-        return JSONResponse({"error": "unauthorized"}, status_code=401)
-    from config import settings
-    from auth.google_link_state import sign_google_link_user_id
-
-    # Сессия для браузера; подписанный state — для внешнего браузера (без cookie Mini App).
-    request.session["link_user_id"] = user["id"]
-    signed = sign_google_link_user_id(user["id"])
-    params = {
-        "client_id": settings.GOOGLE_CLIENT_ID,
-        "redirect_uri": f"{settings.SITE_URL}/auth/google/callback",
-        "response_type": "code",
-        "scope": "openid email profile",
-        "access_type": "offline",
-        "state": signed,
-    }
-    import urllib.parse as _up
-    url = "https://accounts.google.com/o/oauth2/v2/auth?" + _up.urlencode(params)
-    return JSONResponse({"ok": True, "url": url})
-
-
-@router.get("/check-google-link-status")
-async def check_google_link_status(request: Request):
-    """Polling: привязан ли Google к текущему аккаунту."""
-    user = await get_user_from_request(request)
-    if not user:
-        return JSONResponse({"error": "unauthorized"}, status_code=401)
-    row = await database.fetch_one(users.select().where(users.c.id == user["id"]))
-    if row and (row["google_id"] or row["linked_google_id"]):
-        return JSONResponse({"linked": True, "email": row.get("email") or ""})
-    return JSONResponse({"linked": False})
-
-
-@router.get("/google-link/confirm")
-async def google_link_confirm(request: Request, t: str = Query(default="")):
-    """Подтверждение привязки Google по ссылке из Telegram (токен одноразовый)."""
-    token = (t or "").strip()
-    if not token:
-        return RedirectResponse("/account/link?google_err=bad_token", status_code=302)
-    row = await database.fetch_one(
-        pending_google_links.select().where(pending_google_links.c.token == token)
-    )
-    if not row:
-        return RedirectResponse("/account/link?google_err=expired", status_code=302)
-    if row["expires_at"] and datetime.utcnow() > row["expires_at"]:
-        try:
-            await database.execute(
-                pending_google_links.delete().where(pending_google_links.c.token == token)
-            )
-        except Exception:
-            pass
-        return RedirectResponse("/account/link?google_err=expired", status_code=302)
-    uid = int(row["user_id"])
-    await apply_google_account_link(
-        uid,
-        str(row["google_id"]),
-        row.get("email"),
-        row.get("name"),
-        row.get("avatar"),
-    )
-    try:
-        await database.execute(
-            pending_google_links.delete().where(pending_google_links.c.token == token)
-        )
-    except Exception:
-        pass
-    from auth.session import create_access_token
-
-    resp = RedirectResponse("/account/link?linked=google", status_code=302)
-    resp.set_cookie("access_token", create_access_token(uid), httponly=True, max_age=30 * 24 * 3600)
-    return resp
-
-
 @router.get("/link-google-start")
 async def link_google_start(request: Request):
-    """Редирект на Google OAuth для привязки (обычный браузер)."""
     user = await get_user_from_request(request)
     if not user:
         return RedirectResponse("/login")
     from config import settings
-    from auth.google_link_state import sign_google_link_user_id
-
     request.session["link_user_id"] = user["id"]
-    state = sign_google_link_user_id(user["id"])
     params = {
         "client_id": settings.GOOGLE_CLIENT_ID,
         "redirect_uri": f"{settings.SITE_URL}/auth/google/callback",
         "response_type": "code",
         "scope": "openid email profile",
         "access_type": "offline",
-        "state": state,
+        "state": "link",
     }
     url = "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(params)
     return RedirectResponse(url)
@@ -345,33 +436,30 @@ async def link_google_start(request: Request):
 
 @router.post("/sync-history")
 async def sync_history(request: Request):
-    """Transfer messages from all secondary (linked) accounts to the current primary account."""
+    """Compat endpoint: merge residual secondary accounts into current user."""
     user = await get_user_from_request(request)
     if not user:
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
 
-    primary_id = user["id"]
-
+    primary_id = int(user["id"])
     secondary_accounts = await database.fetch_all(
         users.select().where(users.c.primary_user_id == primary_id)
     )
 
     if not secondary_accounts:
-        return JSONResponse({"ok": True, "transferred": 0, "secondaries": 0})
+        return JSONResponse({"ok": True, "merged": 0, "secondaries": 0})
 
-    total_transferred = 0
+    merged = 0
     for secondary in secondary_accounts:
-        secondary_id = secondary["id"]
-        rowcount = await database.execute(
-            messages.update()
-            .where(messages.c.user_id == secondary_id)
-            .values(user_id=primary_id)
-        )
-        total_transferred += rowcount or 0
+        sid = int(secondary["id"])
+        if sid == primary_id:
+            continue
+        await merge_accounts(primary_id=primary_id, secondary_id=sid)
+        merged += 1
 
     return JSONResponse({
         "ok": True,
-        "transferred": total_transferred,
+        "merged": merged,
         "secondaries": len(secondary_accounts),
     })
 
@@ -389,93 +477,3 @@ async def manual_merge(
         return JSONResponse({"error": "Same account"}, status_code=400)
     await merge_accounts(primary_id=primary_id, secondary_id=secondary_id)
     return JSONResponse({"ok": True, "merged": secondary_id, "into": primary_id})
-
-
-@router.post("/delete-my-account")
-async def delete_my_account(request: Request):
-    """Безвозвратное удаление текущего пользователя (не админа). Привязанные вторичные аккаунты к этому primary тоже удаляются."""
-    user = await get_user_from_request(request)
-    if not user:
-        return JSONResponse({"error": "unauthorized"}, status_code=401)
-    if (user.get("role") or "") == "admin":
-        return JSONResponse(
-            {"error": "admin", "message": "Аккаунт администратора можно удалить только через другого админа."},
-            status_code=403,
-        )
-    try:
-        body = await request.json()
-    except Exception:
-        body = {}
-    if (body.get("confirm") or "").strip() != DELETE_ACCOUNT_CONFIRM:
-        return JSONResponse({"error": "confirm_required"}, status_code=400)
-
-    row = await database.fetch_one(users.select().where(users.c.id == user["id"]))
-    if not row:
-        return JSONResponse({"error": "not_found"}, status_code=404)
-    if is_protected_super_admin(dict(row)):
-        return JSONResponse({"error": "protected"}, status_code=403)
-
-    uid = int(user["id"])
-    secondaries = await database.fetch_all(users.select().where(users.c.primary_user_id == uid))
-    for s in secondaries:
-        ok_sub, err_sub = await permanently_delete_user(int(s["id"]))
-        if not ok_sub:
-            logger.error("delete_my_account secondary failed id=%s: %s", s["id"], err_sub)
-            return JSONResponse(
-                {"error": "delete_failed", "detail": err_sub or "secondary"},
-                status_code=500,
-            )
-
-    ok, err = await permanently_delete_user(uid)
-    if not ok:
-        return JSONResponse({"error": "delete_failed", "detail": err or "unknown"}, status_code=500)
-
-    request.session.clear()
-    return JSONResponse({"ok": True, "redirect": "/"})
-
-
-@router.get("/screen-rim", response_class=HTMLResponse)
-async def screen_rim_settings_page(request: Request):
-    """Настройки вида по периметру экрана: цвет, ширина свечения, яркость."""
-    user = await get_user_from_request(request)
-    if not user:
-        return RedirectResponse("/login?next=/account/screen-rim", status_code=302)
-    from config import settings
-
-    return templates.TemplateResponse(
-        "account/screen_rim.html",
-        {
-            "request": request,
-            "user": user,
-            "site_url": settings.SITE_URL,
-        },
-    )
-
-
-@router.post("/screen-rim")
-async def screen_rim_save(request: Request):
-    user = await get_user_from_request(request)
-    if not user:
-        return JSONResponse({"error": "unauthorized"}, status_code=401)
-    try:
-        body = await request.json()
-    except Exception:
-        body = {}
-    cur = dict(user.get("screen_rim") or DEFAULT_SCREEN_RIM)
-    if "on" in body:
-        cur["on"] = bool(body["on"])
-    for k in ("r", "g", "b"):
-        if k in body:
-            cur[k] = max(0, min(255, int(body[k])))
-    if "s" in body:
-        cur["s"] = max(0.05, min(1.0, float(body["s"])))
-    if "w" in body:
-        cur["w"] = max(0.05, min(1.0, float(body["w"])))
-    payload = json.dumps(cur, separators=(",", ":"))
-    await database.execute(
-        users.update().where(users.c.id == user["id"]).values(screen_rim_json=payload)
-    )
-    attach_screen_rim_prefs(user)
-    user["screen_rim"] = cur
-    user["screen_rim_json"] = payload
-    return JSONResponse({"ok": True, "screen_rim": cur})
