@@ -2,8 +2,14 @@
 :root {
   --app-shell-max: 100%;
   --app-header-h: 56px;
+  /* Ряд «Свет» под шапкой (app-has-rim-strip) */
+  --app-header-rim-strip-h: 0px;
   --neo-cyan: #22d3ee;
   --neo-cyan-soft: rgba(34, 211, 238, 0.42);
+}
+
+body.app-has-rim-strip {
+  --app-header-rim-strip-h: 48px;
 }
 
 body.app-mobile-layout {
@@ -34,7 +40,9 @@ body.app-mobile-layout.index-landing-guest:not(.app-has-mobile-header) main {
 body.app-has-mobile-header main {
   padding-left: max(10px, env(safe-area-inset-left, 0px));
   padding-right: max(10px, env(safe-area-inset-right, 0px));
-  padding-top: calc(var(--app-header-h) + env(safe-area-inset-top, 0px) + 8px);
+  padding-top: calc(
+    var(--app-header-h) + var(--app-header-rim-strip-h) + env(safe-area-inset-top, 0px) + 8px
+  );
   padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
 }
 
@@ -52,6 +60,24 @@ body.app-has-mobile-header main {
   padding-left: max(0px, env(safe-area-inset-left, 0px));
   padding-right: max(0px, env(safe-area-inset-right, 0px));
   pointer-events: none;
+  box-sizing: border-box;
+}
+
+.app-mobile-topbar-stack {
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  pointer-events: auto;
+}
+
+.app-mobile-topbar-stack .ig-drawer-rim-row {
+  border-bottom: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 8px 12px;
+  min-height: 44px;
+  background: #000000;
   box-sizing: border-box;
 }
 

@@ -8,6 +8,6 @@
     <span class="rim-knob"></span>
   </label>
   <a href="/account/screen-rim" class="rim-palette-shimmer js-rim-palette-link" aria-label="Настройки вида: цвет и ширина"
-    {% if rim_close_fn == 'closeDbDrawer' %}onclick="closeDbDrawer();"{% else %}onclick="closeAppGlobalDrawer();"{% endif %}></a>
+    {% if rim_close_fn == 'closeDbDrawer' %}onclick="closeDbDrawer();"{% elif rim_close_fn == 'closeAppGlobalDrawer' %}onclick="closeAppGlobalDrawer();"{% endif %}></a>
   </div>
 </div>

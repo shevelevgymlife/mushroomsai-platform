@@ -36,7 +36,7 @@
   </script>
   <link rel="stylesheet" href="/static/css/custom.css?v=3" />
   <link rel="stylesheet" href="/static/css/design-system.css?v=3" />
-  <link rel="stylesheet" href="/static/css/app-mobile-shell.css?v=10" />
+  <link rel="stylesheet" href="/static/css/app-mobile-shell.css?v=11" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" />
   <style>
     /* Global anti-overflow guard for browser + Telegram WebApp */
@@ -62,7 +62,7 @@
   </style>
   {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-bg text-text font-sans antialiased min-h-screen app-mobile-layout{% if user %} app-has-mobile-header{% endif %}{% if user and request.url.path != '/' and not request.query_params.get('embed') %} app-has-mobile-footer{% endif %}{% block body_class %}{% endblock %}">
+<body class="bg-bg text-text font-sans antialiased min-h-screen app-mobile-layout{% if user %} app-has-mobile-header{% endif %}{% if user and request.url.path != '/' and not request.query_params.get('embed') %} app-has-rim-strip app-has-mobile-footer{% endif %}{% block body_class %}{% endblock %}">
 <script>
 (function(){
   try {

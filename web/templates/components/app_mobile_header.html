@@ -2,6 +2,7 @@
 {% set eff_uid = user.primary_user_id or user.id %}
 {% set is_locked_free = ((user.subscription_plan or 'free') == 'free') and ((user.role or 'user') not in ['admin','moderator']) %}
 <div class="app-mobile-topbar">
+  <div class="app-mobile-topbar-stack">
   <header class="app-mobile-header-inner neo-app-header app-head-row-grid" aria-label="NEUROFUNGI AI">
     <div class="app-head-left app-head-left--burger-only">
       <button type="button" class="app-head-btn app-head-btn-menu" id="appMobileMenuBtn" title="Меню" aria-label="Открыть меню">
@@ -34,4 +35,6 @@
     </div>
     {% endif %}
   </header>
+  {% include "components/drawer_screen_rim.html" %}
+  </div>
 </div>
