@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     TELEGRAM_TOKEN: str = ""
     # Отдельный бот для добавления обучающих постов (тот же DATABASE_URL). Пусто — бот не стартует.
     TRAINING_BOT_TOKEN: str = ""
-    # Бот: новые посты из канала → ai_training_posts (нужен отдельный токен + id каналов в CHANNEL_INGEST_ALLOWED_IDS).
+    # Импорт канала → ai_training_posts. Пусто = тот же токен, что TRAINING_BOT_TOKEN (один бот, один polling).
     CHANNEL_INGEST_BOT_TOKEN: str = ""
     # Список chat_id каналов (-100…) через запятую. Пусто — бот канала не стартует (безопасность).
     CHANNEL_INGEST_ALLOWED_IDS: str = ""

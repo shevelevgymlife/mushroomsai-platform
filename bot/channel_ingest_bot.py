@@ -3,7 +3,9 @@
 + опционально зеркало в ленту сообщества от выбранного users.id с меткой TG.
 
 Переменные:
-  CHANNEL_INGEST_BOT_TOKEN, CHANNEL_INGEST_ALLOWED_IDS,
+  TRAINING_BOT_TOKEN — тот же бот, что папки/посты; им при желании можно обойтись без отдельного CHANNEL_INGEST_BOT_TOKEN.
+  CHANNEL_INGEST_BOT_TOKEN — опционально; если пусто или совпадает с TRAINING_BOT_TOKEN, приём канала вешается на бот обучения (один polling).
+  CHANNEL_INGEST_ALLOWED_IDS — chat_id канала(ов).
   CHANNEL_INGEST_FOLDER (по умолчанию из config),
   CHANNEL_INGEST_COMMUNITY_USER_ID — id пользователя на сайте для публикации в ленте (0 = выкл).
 
@@ -25,6 +27,14 @@ from services.telegram_file_download import download_telegram_file_bytes
 from services.training_post_title_ai import suggest_training_post_title
 
 logger = logging.getLogger(__name__)
+
+
+def effective_channel_ingest_bot_token() -> str:
+    """Токен для getFile: отдельный CHANNEL_INGEST или тот же, что у бота обучения."""
+    ch = (settings.CHANNEL_INGEST_BOT_TOKEN or "").strip()
+    if ch:
+        return ch
+    return (settings.TRAINING_BOT_TOKEN or "").strip()
 
 
 def parse_allowed_channel_ids() -> FrozenSet[int]:
@@ -107,7 +117,7 @@ async def _on_channel_post(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     if dup:
         return
 
-    token = (settings.CHANNEL_INGEST_BOT_TOKEN or "").strip()
+    token = effective_channel_ingest_bot_token()
     body = _body_from_message(post)
     image_url: str | None = None
     fid = _largest_photo_file_id(post)
@@ -176,10 +186,18 @@ async def _on_channel_post(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     )
 
 
+def register_channel_ingest_on_app(app: Application, allowed: FrozenSet[int]) -> None:
+    """Один polling с ботом обучающих постов: тот же TRAINING_BOT_TOKEN."""
+    if not allowed:
+        return
+    app.bot_data["channel_ingest_allowed"] = allowed
+    app.add_handler(MessageHandler(filters.UpdateType.CHANNEL_POST, _on_channel_post))
+
+
 def create_channel_ingest_bot() -> Application:
-    token = (settings.CHANNEL_INGEST_BOT_TOKEN or "").strip()
+    token = effective_channel_ingest_bot_token()
     if not token:
-        raise RuntimeError("CHANNEL_INGEST_BOT_TOKEN пуст")
+        raise RuntimeError("Нет токена: задайте CHANNEL_INGEST_BOT_TOKEN или TRAINING_BOT_TOKEN")
 
     allowed = parse_allowed_channel_ids()
     if not allowed:

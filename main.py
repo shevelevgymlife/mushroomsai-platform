@@ -294,11 +294,27 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error("Notify bot startup error: %s", e)
 
+    from bot.channel_ingest_bot import create_channel_ingest_bot, parse_allowed_channel_ids, register_channel_ingest_on_app
+
+    allowed_channel_ids = parse_allowed_channel_ids()
+    train_tok = (settings.TRAINING_BOT_TOKEN or "").strip()
+    ch_tok = (settings.CHANNEL_INGEST_BOT_TOKEN or "").strip()
+    # Один токен: приём канала на том же polling, что бот обучения (без второго CHANNEL_INGEST_BOT_TOKEN).
+    unified_channel = bool(allowed_channel_ids) and bool(train_tok) and (not ch_tok or ch_tok == train_tok)
+    separate_channel = bool(allowed_channel_ids) and bool(ch_tok) and bool(train_tok) and ch_tok != train_tok
+    channel_only = bool(allowed_channel_ids) and bool(ch_tok) and not train_tok
+
     training_bot_app = None
-    if (settings.TRAINING_BOT_TOKEN or "").strip():
+    if train_tok:
         try:
             from bot.training_bot import create_training_bot
+
             training_bot_app = create_training_bot()
+            if unified_channel:
+                register_channel_ingest_on_app(training_bot_app, allowed_channel_ids)
+                logger.info(
+                    "Channel ingest: обработчик канала на боте обучающих постов (TRAINING_BOT_TOKEN; без отдельного polling)"
+                )
             await training_bot_app.initialize()
             await training_bot_app.start()
             await training_bot_app.updater.start_polling(drop_pending_updates=True)
@@ -309,28 +325,24 @@ async def lifespan(app: FastAPI):
         logger.info("Training posts bot: выключен (в Environment задайте TRAINING_BOT_TOKEN и сделайте redeploy)")
 
     channel_ingest_app = None
-    if (settings.CHANNEL_INGEST_BOT_TOKEN or "").strip():
-        from bot.channel_ingest_bot import create_channel_ingest_bot, parse_allowed_channel_ids
-        if not parse_allowed_channel_ids():
-            logger.info(
-                "Channel ingest bot: выключен — укажите CHANNEL_INGEST_ALLOWED_IDS (chat_id канала -100…, через запятую)"
-            )
-        else:
-            try:
-                from telegram import Update as TgUpdate
+    if separate_channel or channel_only:
+        try:
+            from telegram import Update as TgUpdate
 
-                channel_ingest_app = create_channel_ingest_bot()
-                await channel_ingest_app.initialize()
-                await channel_ingest_app.start()
-                await channel_ingest_app.updater.start_polling(
-                    drop_pending_updates=True,
-                    allowed_updates=list(TgUpdate.ALL_TYPES),
-                )
-                logger.info("Channel ingest bot started (посты канала → ai_training_posts)")
-            except Exception:
-                logger.exception("Channel ingest bot startup failed — токен, allowed ids или второй polling")
-    else:
-        logger.info("Channel ingest bot: выключен (CHANNEL_INGEST_BOT_TOKEN не задан)")
+            channel_ingest_app = create_channel_ingest_bot()
+            await channel_ingest_app.initialize()
+            await channel_ingest_app.start()
+            await channel_ingest_app.updater.start_polling(
+                drop_pending_updates=True,
+                allowed_updates=list(TgUpdate.ALL_TYPES),
+            )
+            logger.info("Channel ingest: отдельный polling (другой токен, чем TRAINING_BOT_TOKEN)")
+        except Exception:
+            logger.exception("Channel ingest bot startup failed — токен, allowed ids или второй polling")
+    elif allowed_channel_ids and not train_tok and not ch_tok:
+        logger.warning(
+            "CHANNEL_INGEST_ALLOWED_IDS заданы, но нет TRAINING_BOT_TOKEN и CHANNEL_INGEST_BOT_TOKEN — приём канала не запущен"
+        )
 
     try:
         yield
