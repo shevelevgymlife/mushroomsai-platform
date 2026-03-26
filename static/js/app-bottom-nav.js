@@ -1,4 +1,28 @@
 (function () {
+  function isFreeRestrictedUser() {
+    try {
+      var plan = String(window.__APP_PLAN || "free").toLowerCase();
+      var role = String(window.__APP_ROLE || "user").toLowerCase();
+      if (role === "admin" || role === "moderator") return false;
+      return plan === "free";
+    } catch (e) {
+      return false;
+    }
+  }
+  function attachFreeTariffGuard() {
+    try {
+      var bar = document.getElementById("appUniTabbar");
+      if (!bar) return;
+      bar.addEventListener("click", function (e) {
+        if (!isFreeRestrictedUser()) return;
+        var a = e.target && e.target.closest ? e.target.closest("a.app-uni-tab") : null;
+        if (!a) return;
+        e.preventDefault();
+        e.stopPropagation();
+        window.location.href = "/onboarding/tariff";
+      });
+    } catch (e) {}
+  }
   function syncFromHash() {
     try {
       var path = (window.location.pathname || "").replace(/\/$/, "") || "/";
@@ -38,8 +62,12 @@
   }
   window.addEventListener("hashchange", syncFromHash);
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", syncFromHash);
+    document.addEventListener("DOMContentLoaded", function () {
+      syncFromHash();
+      attachFreeTariffGuard();
+    });
   } else {
     syncFromHash();
+    attachFreeTariffGuard();
   }
 })();

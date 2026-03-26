@@ -4,7 +4,7 @@
 <div class="pt-28 pb-20 px-4 min-h-screen bg-bg neo-app-surface">
   <div class="max-w-4xl mx-auto">
     <h1 class="text-2xl sm:text-3xl font-light text-text text-center mb-2">Выберите тариф</h1>
-    <p class="text-muted text-center text-sm mb-6 max-w-xl mx-auto">Сейчас на сайте доступна регистрация только с <strong class="text-gold">бесплатным планом</strong>. Платные тарифы можно запросить у администратора после входа в кабинет (кнопка в меню), когда будет подключена оплата.</p>
+    <p class="text-muted text-center text-sm mb-8 max-w-xl mx-auto">Выберите тариф подписки. Платные планы уже оформлены в интерфейсе и будут активированы сразу после подключения оплаты.</p>
 
     {% if error %}
     <div class="max-w-xl mx-auto mb-8 p-4 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-200 text-sm text-center leading-relaxed">
@@ -13,33 +13,45 @@
     {% endif %}
 
     <form method="post" action="/onboarding/tariff" class="grid grid-cols-1 md:grid-cols-2 gap-5">
-      <button type="submit" name="choice" value="free" class="p-6 rounded-2xl bg-surface border border-gold/40 text-left hover:border-gold transition-all">
+      <button type="submit" name="choice" value="free" class="p-6 rounded-2xl bg-surface border border-gold/50 text-left hover:border-gold transition-all shadow-[0_8px_24px_rgba(200,168,75,0.12)]">
         <div class="text-lg font-semibold text-text mb-1">Бесплатный</div>
         <div class="text-gold text-2xl font-light mb-3">0 ₽</div>
-        <p class="text-sm text-muted leading-relaxed">Доступен сразу после выбора. Объём функций — по тарифу «Бесплатный» на сайте.</p>
+        <p class="text-sm text-muted leading-relaxed">Базовый доступ к платформе и знакомство с сервисом.</p>
+        <span class="mt-4 inline-flex items-center justify-center w-full py-2.5 rounded-xl bg-gold text-bg text-sm font-semibold">Оформить</span>
       </button>
-      <div class="p-6 rounded-2xl bg-surface border border-border text-left opacity-75 relative">
-        <span class="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-white/10 text-muted text-xs">Оплата не подключена</span>
+      <div class="p-6 rounded-2xl bg-surface border border-cyan-300/30 text-left relative shadow-[0_8px_24px_rgba(61,212,224,0.12)]">
+        <span class="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-200 text-xs">Популярный</span>
         <div class="text-lg font-semibold text-text mb-1 mt-2">Старт</div>
         <div class="text-gold text-2xl font-light mb-3">990 ₽/мес</div>
-        <p class="text-sm text-muted leading-relaxed">Выбор через эту форму недоступен. Запросите тариф в кабинете после входа.</p>
-        <button type="button" disabled class="mt-4 w-full py-2.5 rounded-xl border border-white/10 text-muted text-sm cursor-not-allowed">Недоступно</button>
+        <p class="text-sm text-muted leading-relaxed">Безлимитный AI, расширенный доступ и приоритетные возможности.</p>
+        <button type="button" data-paid-plan="start" class="js-paid-plan mt-4 w-full py-2.5 rounded-xl border border-cyan-300/40 text-cyan-100 text-sm font-semibold hover:bg-cyan-400/10 transition-colors">Оформить</button>
       </div>
-      <div class="p-6 rounded-2xl bg-surface border border-border text-left opacity-75">
+      <div class="p-6 rounded-2xl bg-surface border border-violet-300/25 text-left shadow-[0_8px_24px_rgba(167,139,250,0.12)]">
         <div class="text-lg font-semibold text-text mb-1">Про</div>
         <div class="text-gold text-2xl font-light mb-3">1 990 ₽/мес</div>
-        <p class="text-sm text-muted leading-relaxed">Выбор через эту форму недоступен. Запросите тариф в кабинете после входа.</p>
-        <button type="button" disabled class="mt-4 w-full py-2.5 rounded-xl border border-white/10 text-muted text-sm cursor-not-allowed">Недоступно</button>
+        <p class="text-sm text-muted leading-relaxed">Профессиональные инструменты и расширенное управление контентом.</p>
+        <button type="button" data-paid-plan="pro" class="js-paid-plan mt-4 w-full py-2.5 rounded-xl border border-violet-300/35 text-violet-100 text-sm font-semibold hover:bg-violet-400/10 transition-colors">Оформить</button>
       </div>
-      <div class="p-6 rounded-2xl bg-surface border border-border text-left opacity-75" style="background:linear-gradient(135deg,rgba(61,212,224,.06) 0%,rgba(255,255,255,.02) 100%)">
+      <div class="p-6 rounded-2xl bg-surface border border-amber-300/30 text-left shadow-[0_8px_24px_rgba(251,191,36,0.14)]" style="background:linear-gradient(135deg,rgba(251,191,36,.08) 0%,rgba(255,255,255,.02) 100%)">
         <div class="text-lg font-semibold text-text mb-1">Макси</div>
         <div class="text-gold text-2xl font-light mb-3">4 999 ₽/мес</div>
-        <p class="text-sm text-muted leading-relaxed">Выбор через эту форму недоступен. Запросите тариф в кабинете после входа.</p>
-        <button type="button" disabled class="mt-4 w-full py-2.5 rounded-xl border border-white/10 text-muted text-sm cursor-not-allowed">Недоступно</button>
+        <p class="text-sm text-muted leading-relaxed">Максимальный набор функций платформы и приоритетная поддержка.</p>
+        <button type="button" data-paid-plan="maxi" class="js-paid-plan mt-4 w-full py-2.5 rounded-xl border border-amber-300/40 text-amber-100 text-sm font-semibold hover:bg-amber-400/10 transition-colors">Оформить</button>
       </div>
     </form>
 
     <p class="text-center text-xs text-muted mt-10 max-w-lg mx-auto">Документы: <a href="/legal/terms" class="text-gold hover:underline">Пользовательское соглашение</a> · <a href="/legal/privacy" class="text-gold hover:underline">Политика конфиденциальности</a></p>
   </div>
 </div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.js-paid-plan').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      alert('Оплата подключается ...');
+    });
+  });
+});
+</script>
 {% endblock %}

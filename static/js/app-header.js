@@ -1,4 +1,21 @@
 (function () {
+  function isFreeRestrictedUser() {
+    try {
+      var plan = String(window.__APP_PLAN || "free").toLowerCase();
+      var role = String(window.__APP_ROLE || "user").toLowerCase();
+      if (role === "admin" || role === "moderator") return false;
+      return plan === "free";
+    } catch (e) {
+      return false;
+    }
+  }
+  function goTariffIfRestricted(e) {
+    if (!isFreeRestrictedUser()) return false;
+    if (e && e.preventDefault) e.preventDefault();
+    if (e && e.stopPropagation) e.stopPropagation();
+    window.location.href = "/onboarding/tariff";
+    return true;
+  }
   function escAttr(s) {
     return String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
   }
@@ -160,6 +177,12 @@
   window.refreshAppHeaderBadges = refreshAppHeaderBadges;
 
   document.addEventListener('DOMContentLoaded', function () {
+    var brand = document.querySelector('.app-head-brand');
+    if (brand) {
+      brand.addEventListener('click', function (e) {
+        goTariffIfRestricted(e);
+      });
+    }
     var menu = document.getElementById('appMobileMenuBtn');
     if (menu) {
       menu.addEventListener('click', function () {
@@ -170,9 +193,16 @@
     var bell = document.getElementById('cpActivityBell');
     if (bell) {
       bell.addEventListener('click', function (e) {
+        if (goTariffIfRestricted(e)) return;
         e.preventDefault();
         e.stopPropagation();
         openAppActivityPanel();
+      });
+    }
+    var profile = document.getElementById('cpProfileHead');
+    if (profile) {
+      profile.addEventListener('click', function (e) {
+        goTariffIfRestricted(e);
       });
     }
     var panel = document.getElementById('appActivityPanel');

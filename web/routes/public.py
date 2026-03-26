@@ -44,6 +44,16 @@ from services.ops_alerts import (
 from datetime import datetime
 
 
+def _is_free_restricted_user(user: dict | None) -> bool:
+    if not user:
+        return False
+    role = (user.get("role") or "user").lower()
+    if role in ("admin", "moderator"):
+        return False
+    plan = (user.get("subscription_plan") or "free").lower()
+    return plan == "free"
+
+
 def get_public_user_data(row: dict) -> dict:
     """Публичные поля профиля (без адреса кошелька; баланс SHEVELEV — только после синхронизации)."""
     return {
@@ -1871,9 +1881,14 @@ async def messages_unread_count(request: Request):
         return JSONResponse({"count": 0})
     uid = current_user.get("primary_user_id") or current_user["id"]
     try:
-        count = await database.fetch_val(sa.text(
-            "SELECT COUNT(*) FROM direct_messages WHERE recipient_id=:uid AND is_read=false"
-        ), {"uid": uid}) or 0
+        if _is_free_restricted_user(current_user):
+            count = await database.fetch_val(sa.text(
+                "SELECT COUNT(*) FROM direct_messages WHERE recipient_id=:uid AND is_system=true AND is_read=false"
+            ), {"uid": uid}) or 0
+        else:
+            count = await database.fetch_val(sa.text(
+                "SELECT COUNT(*) FROM direct_messages WHERE recipient_id=:uid AND is_read=false"
+            ), {"uid": uid}) or 0
         return JSONResponse({"count": count})
     except Exception as e:
         logging.getLogger(__name__).warning("messages unread-count: %s", e)
@@ -1887,6 +1902,8 @@ async def messages_conversations_api(request: Request):
         return JSONResponse({"error": "auth required"}, status_code=401)
     uid = current_user.get("primary_user_id") or current_user["id"]
     convs = await _get_conversations(uid)
+    if _is_free_restricted_user(current_user):
+        convs = [c for c in convs if int(c.get("other_id") or 0) == 0]
     return JSONResponse({"conversations": convs})
 
 
@@ -1898,6 +1915,8 @@ async def messages_dialogs_api(request: Request):
         return JSONResponse({"error": "auth required"}, status_code=401)
     uid = current_user.get("primary_user_id") or current_user["id"]
     convs = await _get_conversations(uid)
+    if _is_free_restricted_user(current_user):
+        convs = [c for c in convs if int(c.get("other_id") or 0) == 0]
     dialogs = []
     for c in convs:
         dialogs.append({
@@ -1919,6 +1938,8 @@ async def messages_thread_api(request: Request, other_id: int):
     if not current_user:
         return JSONResponse({"error": "auth required"}, status_code=401)
     uid = current_user.get("primary_user_id") or current_user["id"]
+    if _is_free_restricted_user(current_user) and other_id != 0:
+        return JSONResponse({"error": "plan_required", "redirect": "/onboarding/tariff"}, status_code=403)
 
     if other_id == 0:
         await database.execute(sa.text(
@@ -1960,6 +1981,8 @@ async def messages_list(request: Request):
         return leg
     uid = current_user.get("primary_user_id") or current_user["id"]
     convs = await _get_conversations(uid)
+    if _is_free_restricted_user(current_user):
+        convs = [c for c in convs if int(c.get("other_id") or 0) == 0]
     return templates.TemplateResponse(
         "messages.html",
         {
@@ -1982,6 +2005,8 @@ async def messages_thread(request: Request, other_id: int):
     if leg:
         return leg
     uid = current_user.get("primary_user_id") or current_user["id"]
+    if _is_free_restricted_user(current_user) and other_id != 0:
+        return RedirectResponse("/messages/0")
     try:
         if other_id == 0:
             await database.execute(sa.text(
@@ -2031,6 +2056,8 @@ async def poll_messages(request: Request, other_id: int, after: int = 0):
     if not current_user:
         return JSONResponse({"error": "auth"}, status_code=401)
     uid = current_user.get("primary_user_id") or current_user["id"]
+    if _is_free_restricted_user(current_user) and other_id != 0:
+        return JSONResponse({"messages": []})
     rows = await database.fetch_all(sa.text("""
         SELECT id, sender_id, text, is_read, created_at FROM direct_messages
         WHERE id > :after
@@ -2053,6 +2080,8 @@ async def send_message(request: Request, other_id: int):
     if not current_user:
         return JSONResponse({"error": "auth required"}, status_code=401)
     uid = current_user.get("primary_user_id") or current_user["id"]
+    if _is_free_restricted_user(current_user):
+        return JSONResponse({"error": "plan_required", "redirect": "/onboarding/tariff"}, status_code=403)
 
     ct = request.headers.get("content-type", "")
     if "application/json" in ct:
