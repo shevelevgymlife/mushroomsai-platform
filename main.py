@@ -298,6 +298,24 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("DB migration link_merge_secondary_id: %s", e)
 
+    # Keep users schema backward-compatible on old DBs after hot deploys.
+    try:
+        await database.execute(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_ui_theme VARCHAR(64)"
+        )
+        await database.execute(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS start_trial_claimed_at TIMESTAMP"
+        )
+        await database.execute(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS start_trial_until TIMESTAMP"
+        )
+        await database.execute(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS start_trial_end_notified BOOLEAN DEFAULT false"
+        )
+        logger.info("DB migration: users trial/theme columns OK")
+    except Exception as e:
+        logger.warning("DB migration users trial/theme columns: %s", e)
+
     try:
         await database.execute(
             "ALTER TABLE shop_products ADD COLUMN IF NOT EXISTS image_urls_json TEXT"
