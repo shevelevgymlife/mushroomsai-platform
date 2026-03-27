@@ -57,8 +57,8 @@ def _is_free_restricted_user(user: dict | None) -> bool:
     role = (user.get("role") or "user").lower()
     if role in ("admin", "moderator"):
         return False
-    plan = (user.get("subscription_plan") or "free").lower()
-    return plan == "free"
+    eff = (user.get("effective_subscription_plan") or user.get("subscription_plan") or "free").lower()
+    return eff == "free"
 
 
 def get_public_user_data(row: dict) -> dict:

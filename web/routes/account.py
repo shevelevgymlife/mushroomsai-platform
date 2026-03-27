@@ -11,7 +11,7 @@ from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from web.templates_utils import Jinja2Templates
 from starlette.responses import JSONResponse
-from auth.session import get_user_from_request
+from auth.session import get_user_from_request, attach_subscription_effective
 from services.legal import legal_acceptance_redirect
 from services.subscription_service import claim_start_trial, web_default_home_path
 from auth.telegram_auth import verify_telegram_auth
@@ -417,6 +417,7 @@ async def account_profile_edit_page(request: Request):
     if row:
         user = dict(row)
         attach_screen_rim_prefs(user)
+        await attach_subscription_effective(user)
     circles = await database.fetch_all(
         community_folders.select()
         .where(community_folders.c.user_id == uid)
@@ -498,6 +499,7 @@ async def account_style_page(request: Request):
     if row:
         user = dict(row)
         attach_screen_rim_prefs(user)
+        await attach_subscription_effective(user)
     cur_theme = (user.get("profile_ui_theme") or "default").strip() or "default"
     if cur_theme not in PROFILE_UI_THEME_IDS:
         cur_theme = "default"
@@ -577,6 +579,7 @@ async def account_wallet_page(request: Request):
     if row:
         user = dict(row)
         attach_screen_rim_prefs(user)
+        await attach_subscription_effective(user)
     from config import shevelev_token_address
 
     _wa = (user.get("wallet_address") or "").strip()
