@@ -13,6 +13,10 @@ BLOCKED_BOT_MSG = (
     "Если это ошибка, напишите в поддержку проекта."
 )
 
+# Кнопки режима AI (главный бот): нейросеть только после явного нажатия
+BTN_AI = "🤖 Задать вопрос AI"
+BTN_AI_EXIT = "❌ Выйти из режима AI"
+
 
 async def ensure_user(tg_user) -> dict | None:
     from auth.blocked_identities import is_identity_blocked, login_denied_for_user_row
@@ -78,8 +82,13 @@ async def ensure_user_or_blocked_reply(update: Update) -> dict | None:
     return None
 
 
-def main_keyboard(site_url: str):
-    keyboard = [
+def main_keyboard(site_url: str, ai_active: bool = False):
+    """Клавиатура главного бота. Режим AI — отдельная строка: вход или выход."""
+    if ai_active:
+        top = [[KeyboardButton(BTN_AI_EXIT)]]
+    else:
+        top = [[KeyboardButton(BTN_AI)]]
+    keyboard = top + [
         [KeyboardButton("🛍 Маркет плейс"), KeyboardButton("🌐 Сообщество")],
         [KeyboardButton("🌍 Веб версия"), KeyboardButton("🔒 Безопасность")],
         [KeyboardButton("🆘 Тех. поддержка")],
@@ -103,6 +112,8 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = await ensure_user_or_blocked_reply(update)
     if not user:
         return
+
+    context.user_data["tg_ai_mode"] = False
 
     if context.args:
         ref_code = context.args[0]
@@ -136,7 +147,7 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = (
         f"👋 Добро пожаловать в комьюнити NEUROFUNGI AI, {tg_user.first_name}!\n\n"
         "Здесь вы найдёте:\n"
-        "• Персональные консультации по функциональным грибам\n"
+        "• Персональные консультации по функциональным грибам (кнопка <b>«🤖 Задать вопрос AI»</b> — только после неё сообщения уходят в нейросеть)\n"
         "• Сообщество единомышленников\n"
         "• Маркет плейс и рецепты\n\n"
         "Нажмите кнопку <b>«Вход»</b> внизу экрана, чтобы открыть приложение.\n\n"

@@ -22,6 +22,7 @@ WAITING_SUPPORT_MSG = 1
 async def support_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
+    context.user_data["tg_ai_mode"] = False
     await query.message.reply_text(
         "📝 <b>Написать в поддержку</b>\n\n"
         "Опишите ваш вопрос или проблему — мы ответим вам как можно скорее.\n\n"
@@ -33,6 +34,7 @@ async def support_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
 async def support_text_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Запуск поддержки через кнопку клавиатуры."""
+    context.user_data["tg_ai_mode"] = False
     await update.message.reply_text(
         "📝 <b>Написать в поддержку</b>\n\n"
         "Опишите ваш вопрос или проблему — мы ответим вам как можно скорее.\n\n"

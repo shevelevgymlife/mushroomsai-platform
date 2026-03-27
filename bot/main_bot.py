@@ -7,10 +7,14 @@ from telegram.ext import (
 )
 
 from config import settings
-from bot.handlers.start import start
+from bot.handlers.start import BTN_AI, BTN_AI_EXIT, main_keyboard, start
 from bot.handlers.link import link_confirm_callback, link_merge_callback
 from bot.handlers.support import get_support_conversation
-from bot.handlers.chat import handle_chat_message
+from bot.handlers.chat import (
+    handle_chat_message,
+    tg_ai_continue_callback,
+    tg_ai_exit_callback,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -25,50 +29,81 @@ BTN_SUPPORT = "🆘 Тех. поддержка"
 
 
 async def _shop_handler(update, context):
+    context.user_data["tg_ai_mode"] = False
     site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
     await update.message.reply_text(
         "🛍 <b>Маркет плейс NEUROFUNGI</b>\n\n"
         "Доступно только внутри приложения после регистрации и подписки <b>Старт</b>.\n\n"
         "В маркет плейсе у каждого товара есть описание, комментарии, отзывы и рейтинг.",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🍄 Открыть приложение по подписке Старт", web_app=WebAppInfo(url=site))],
-        ]),
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("🍄 Открыть приложение по подписке Старт", web_app=WebAppInfo(url=site))]]
+        ),
         parse_mode="HTML",
     )
+    await update.message.reply_text("⌨️", reply_markup=main_keyboard(site, ai_active=False))
 
 
 async def _community_handler(update, context):
+    context.user_data["tg_ai_mode"] = False
     site = (settings.SITE_URL or "").rstrip("/")
     await update.message.reply_text(
         "🌐 <b>Сообщество NEUROFUNGI AI</b>\n\nОткрыть приложение:",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton(
-                "🍄 Открыть сообщество",
-                web_app=WebAppInfo(url=site + "/app"),
-            )],
-        ]),
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "🍄 Открыть сообщество",
+                        web_app=WebAppInfo(url=site + "/app"),
+                    )
+                ],
+            ]
+        ),
         parse_mode="HTML",
     )
+    await update.message.reply_text("⌨️", reply_markup=main_keyboard(site, ai_active=False))
 
 
 async def _web_handler(update, context):
+    context.user_data["tg_ai_mode"] = False
     site = (settings.SITE_URL or "https://mushroomsai.ru").rstrip("/")
     await update.message.reply_text(
         "🌍 <b>Веб версия NEUROFUNGI AI</b>\n\nОткрыть сайт в браузере:",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🌍 Открыть сайт", url=site)],
-        ]),
+        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🌍 Открыть сайт", url=site)]]),
         parse_mode="HTML",
     )
+    await update.message.reply_text("⌨️", reply_markup=main_keyboard(site, ai_active=False))
 
 
 async def _security_handler(update, context):
+    context.user_data["tg_ai_mode"] = False
+    site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
     await update.message.reply_text(
         "🔒 <b>Безопасность</b>\n\nЗащитите свои данные и соединение:",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🔒 Открыть", url=SECURITY_URL)],
-        ]),
+        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔒 Открыть", url=SECURITY_URL)]]),
         parse_mode="HTML",
+    )
+    await update.message.reply_text("⌨️", reply_markup=main_keyboard(site, ai_active=False))
+
+
+async def _ai_enter_handler(update, context):
+    context.user_data["tg_ai_mode"] = True
+    site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
+    await update.message.reply_text(
+        "🤖 <b>Режим AI включён</b>\n\n"
+        "Напишите вопрос ниже — ответит консультант.\n\n"
+        "После ответа вы сможете выбрать: продолжить с AI или выйти.\n"
+        "Либо нажмите «❌ Выйти из режима AI» или любую кнопку меню (Магазин, Сообщество…), чтобы выйти.",
+        parse_mode="HTML",
+        reply_markup=main_keyboard(site, ai_active=True),
+    )
+
+
+async def _ai_exit_handler(update, context):
+    context.user_data["tg_ai_mode"] = False
+    site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
+    await update.message.reply_text(
+        "Вы вышли из режима AI. Кнопки бота снова в обычном режиме.",
+        reply_markup=main_keyboard(site, ai_active=False),
     )
 
 
@@ -82,7 +117,11 @@ def create_bot() -> Application:
     application.add_handler(CommandHandler("start", start))
     application.add_handler(get_support_conversation())
 
-    # Кнопки клавиатуры
+    # Режим AI: вход / выход (до общего текстового хендлера)
+    application.add_handler(MessageHandler(filters.Regex(f"^{BTN_AI_EXIT}$"), _ai_exit_handler))
+    application.add_handler(MessageHandler(filters.Regex(f"^{BTN_AI}$"), _ai_enter_handler))
+
+    # Кнопки клавиатуры (сбрасывают режим AI)
     application.add_handler(MessageHandler(filters.Regex(f"^{BTN_SHOP}$"), _shop_handler))
     application.add_handler(MessageHandler(filters.Regex(f"^{BTN_COMMUNITY}$"), _community_handler))
     application.add_handler(MessageHandler(filters.Regex(f"^{BTN_WEB}$"), _web_handler))
@@ -92,12 +131,11 @@ def create_bot() -> Application:
     application.add_handler(CallbackQueryHandler(link_confirm_callback, pattern=r"^link_confirm:"))
     application.add_handler(CallbackQueryHandler(link_confirm_callback, pattern=r"^link_cancel:"))
     application.add_handler(CallbackQueryHandler(link_merge_callback, pattern=r"^link_merge_ok:"))
+    application.add_handler(CallbackQueryHandler(tg_ai_continue_callback, pattern=r"^tg_ai_continue$"))
+    application.add_handler(CallbackQueryHandler(tg_ai_exit_callback, pattern=r"^tg_ai_exit$"))
 
-    # AI чат — все остальные текстовые сообщения
-    application.add_handler(MessageHandler(
-        filters.TEXT & ~filters.COMMAND,
-        handle_chat_message,
-    ))
+    # Текст: в AI только если включён режим (см. handle_chat_message)
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_chat_message))
 
     return application
 
