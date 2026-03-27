@@ -50,6 +50,7 @@ from services.ops_alerts import (
 )
 from datetime import datetime
 from web.profile_ui_themes import PROFILE_UI_THEME_IDS
+from services.profile_public_cards import merge_profile_public_cards
 
 
 def _is_free_restricted_user(user: dict | None) -> bool:
@@ -82,6 +83,7 @@ def get_public_user_data(row: dict) -> dict:
         "profile_thoughts": row.get("profile_thoughts"),
         "profile_thoughts_font": row.get("profile_thoughts_font"),
         "profile_thoughts_color": row.get("profile_thoughts_color"),
+        "profile_public_cards_json": row.get("profile_public_cards_json"),
         "show_del_to_public": True if row.get("show_del_to_public") is None else bool(row.get("show_del_to_public")),
         "show_shev_to_public": True if row.get("show_shev_to_public") is None else bool(row.get("show_shev_to_public")),
         "token_lamp_enabled": True if row.get("token_lamp_enabled") is None else bool(row.get("token_lamp_enabled")),
@@ -1484,6 +1486,11 @@ async def community_profile(request: Request, user_id: int):
     if profile_ui_theme not in PROFILE_UI_THEME_IDS:
         profile_ui_theme = "default"
 
+    profile_cards = merge_profile_public_cards(raw_d.get("profile_public_cards_json"))
+    any_social_link = any((profile_cards.get("social") or {}).values())
+    hero_slide_crypto = bool(profile_cards.get("show_crypto_slide"))
+    hero_slide_social = bool(profile_cards.get("show_social_slide")) and (any_social_link or is_own)
+
     return templates.TemplateResponse(
         "community_profile.html",
         {
@@ -1508,6 +1515,10 @@ async def community_profile(request: Request, user_id: int):
             "profile_plan": profile_plan,
             "profile_plan_name": profile_plan_info.get("name") or "",
             "profile_ui_theme": profile_ui_theme,
+            "profile_cards": profile_cards,
+            "hero_slide_crypto": hero_slide_crypto,
+            "hero_slide_social": hero_slide_social,
+            "profile_has_social_links": any_social_link,
         },
     )
 

@@ -3,6 +3,7 @@ import logging
 import secrets
 import urllib.parse
 from web.profile_ui_themes import PROFILE_UI_THEMES, PROFILE_UI_THEME_IDS, MAX_PROFILE_CIRCLES_ACCOUNT
+from services.profile_public_cards import merge_profile_public_cards, profile_public_cards_from_form, SOCIAL_KEYS
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -430,6 +431,7 @@ async def account_profile_edit_page(request: Request):
         .order_by(community_posts.c.created_at.desc())
         .limit(300)
     )
+    profile_cards = merge_profile_public_cards(user.get("profile_public_cards_json"))
     return templates.TemplateResponse(
         "account/profile_edit.html",
         {
@@ -438,6 +440,7 @@ async def account_profile_edit_page(request: Request):
             "circles": [dict(c) for c in circles],
             "my_posts": [dict(p) for p in posts],
             "max_profile_circles": MAX_PROFILE_CIRCLES_ACCOUNT,
+            "profile_cards": profile_cards,
         },
     )
 
@@ -457,6 +460,20 @@ async def account_profile_edit_save(
     if not user:
         return RedirectResponse("/login", status_code=302)
     uid = int(user.get("primary_user_id") or user["id"])
+    form = await request.form()
+    show_crypto = str(form.get("show_crypto_slide") or "0").strip() == "1"
+    show_social = str(form.get("show_social_slide") or "0").strip() == "1"
+    social_raw = {k: str(form.get(f"social_{k}") or "") for k in SOCIAL_KEYS}
+    v0_img = str(form.get("validator0_image") or "")
+    v0_label = str(form.get("validator0_label") or "")
+    v0_url = str(form.get("validator0_url") or "")
+    v1_img = str(form.get("validator1_image") or "")
+    v1_label = str(form.get("validator1_label") or "")
+    v1_url = str(form.get("validator1_url") or "")
+    cards_json = profile_public_cards_from_form(
+        show_crypto, show_social, social_raw,
+        v0_img, v0_label, v0_url, v1_img, v1_label, v1_url,
+    )
     nm = (name or "").strip()[:255] or None
     bio_clean = (bio or "").strip()[:4000] or None
     lbl = (profile_link_label or "").strip()[:500] or None
@@ -484,6 +501,7 @@ async def account_profile_edit_save(
             profile_thoughts=thoughts,
             profile_thoughts_font=thought_font,
             profile_thoughts_color=thought_color,
+            profile_public_cards_json=cards_json,
         )
     )
     return RedirectResponse("/account/profile-edit", status_code=302)

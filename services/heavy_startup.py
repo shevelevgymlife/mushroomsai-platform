@@ -416,6 +416,15 @@ async def run_heavy_startup(app: FastAPI) -> None:
         except Exception as e:
             logger.warning("migrate_v15 legacy dm link: %s", e)
 
+        try:
+            import migrate_v16_profile_public_cards as migrate_v16
+
+            for s in migrate_v16.STEPS:
+                await database.execute(sa.text(s))
+            logger.info("Profile public cards column (migrate_v16) OK")
+        except Exception as e:
+            logger.warning("migrate_v16 profile_public_cards_json: %s", e)
+
         start_scheduler()
         app.state.startup_complete = True
         logger.info("Heavy startup complete; full traffic enabled")
