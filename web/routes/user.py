@@ -22,9 +22,14 @@ from db.models import (
     homepage_blocks,
 )
 from services.referral_service import get_referral_stats
-from services.subscription_service import check_subscription, PLANS
+from services.subscription_service import (
+    check_subscription,
+    PLANS,
+    web_default_home_path,
+    can_ask_question,
+    increment_question_count,
+)
 from ai.openai_client import chat_with_ai
-from services.subscription_service import can_ask_question, increment_question_count
 from services.plan_access import plan_allowed_block_keys, is_platform_operator, can_use_community_group_chats
 from services.community_group_queries import fetch_community_group_row
 from services.legal import legal_acceptance_redirect
@@ -159,8 +164,9 @@ async def onboarding_tariff_page(request: Request):
     leg = await legal_acceptance_redirect(request, user)
     if leg:
         return leg
+    uid = int(user.get("primary_user_id") or user["id"])
     if user.get("role") == "admin":
-        return RedirectResponse("/community")
+        return RedirectResponse(f"/community/profile/{uid}", status_code=302)
     return RedirectResponse("/subscriptions")
 
 
@@ -205,6 +211,9 @@ async def dashboard(request: Request):
     if not user:
         return RedirectResponse("/login")
 
+    uid = int(user.get("primary_user_id") or user["id"])
+    dest = await web_default_home_path(uid)
+
     # If secondary account slips through session, re-issue token for primary
     if user.get("primary_user_id"):
         primary = await database.fetch_one(
@@ -213,16 +222,22 @@ async def dashboard(request: Request):
         if primary:
             from auth.session import create_access_token
             token = create_access_token(primary["id"])
-            response = RedirectResponse("/community", status_code=302)
+            dest = await web_default_home_path(int(primary["id"]))
+            response = RedirectResponse(dest, status_code=302)
             response.set_cookie("access_token", token, httponly=True, samesite="lax", max_age=60*60*24*30)
             return response
 
-    return RedirectResponse("/community", status_code=302)
+    return RedirectResponse(dest, status_code=302)
 
 
 @router.get("/dashboard-lite", response_class=HTMLResponse)
 async def dashboard_lite(request: Request):
-    return RedirectResponse("/community", status_code=302)
+    user = await require_auth(request)
+    if not user:
+        return RedirectResponse("/login")
+    uid = int(user.get("primary_user_id") or user["id"])
+    dest = await web_default_home_path(uid)
+    return RedirectResponse(dest, status_code=302)
 
 
 @router.get("/community/ai/free-status")
@@ -427,7 +442,8 @@ async def create_post(
         return RedirectResponse("/login")
 
     if len(content.strip()) < 2:
-        return RedirectResponse("/community")
+        uid = int(user.get("primary_user_id") or user["id"])
+        return RedirectResponse(await web_default_home_path(uid))
 
     image_url = None
     if image and image.filename:
@@ -1200,7 +1216,8 @@ async def update_language(request: Request, language: str = Form(...)):
     await database.execute(
         users.update().where(users.c.id == uid).values(language=language)
     )
-    return RedirectResponse("/community", status_code=302)
+    dest = await web_default_home_path(uid)
+    return RedirectResponse(dest, status_code=302)
 
 
 _AVATAR_ALLOWED = {"image/jpeg", "image/png", "image/webp"}

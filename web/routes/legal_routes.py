@@ -40,12 +40,12 @@ async def legal_privacy(request: Request):
 async def legal_accept_page(request: Request):
     user = await get_user_from_request(request)
     if not user:
-        nxt = request.query_params.get("next") or "/community"
+        nxt = request.query_params.get("next") or "/subscriptions"
         safe = urllib.parse.quote(nxt, safe="")
         return RedirectResponse(f"/login?next=/legal/accept?next={safe}", status_code=302)
-    nxt = request.query_params.get("next") or "/community"
+    nxt = request.query_params.get("next") or "/subscriptions"
     if not nxt.startswith("/") or nxt.startswith("//"):
-        nxt = "/community"
+        nxt = "/subscriptions"
     return templates.TemplateResponse(
         "legal/accept.html",
         {
@@ -61,12 +61,12 @@ async def legal_accept_page(request: Request):
 async def legal_accept_submit(
     request: Request,
     accept: str = Form(""),
-    next_url: str = Form("/community", alias="next"),
+    next_url: str = Form("/subscriptions", alias="next"),
 ):
     user = await get_user_from_request(request)
     if not user:
         return RedirectResponse("/login", status_code=302)
-    dest = next_url if next_url.startswith("/") and not next_url.startswith("//") else "/community"
+    dest = next_url if next_url.startswith("/") and not next_url.startswith("//") else "/subscriptions"
     if accept != "1":
         return templates.TemplateResponse(
             "legal/accept.html",

@@ -14,6 +14,8 @@ import string
 import httpx
 import urllib.parse
 import logging
+from typing import Optional
+
 from services.ops_alerts import notify_security_event
 
 router = APIRouter()
@@ -76,8 +78,21 @@ def _safe_next_path(raw: str | None) -> str | None:
     return s.split("?")[0][:512]
 
 
-def _pop_login_redirect(request: Request) -> str:
-    return _safe_next_path(request.session.pop("login_next", None)) or "/community"
+async def post_login_redirect_path(
+    request: Request, user_id: int, *, explicit_next: Optional[str] = None
+) -> str:
+    """Явный next из URL, затем session login_next, иначе профиль или /subscriptions."""
+    if explicit_next:
+        safe = _safe_next_path(explicit_next)
+        request.session.pop("login_next", None)
+        if safe:
+            return safe
+    nxt = _safe_next_path(request.session.pop("login_next", None))
+    if nxt:
+        return nxt
+    from services.subscription_service import web_default_home_path
+
+    return await web_default_home_path(int(user_id))
 
 
 async def _login_blocked_response(request: Request):
@@ -108,7 +123,8 @@ async def login_page(request: Request):
         del request.session["login_next"]
 
     if user:
-        go = nxt_param or _safe_next_path(request.session.pop("login_next", None)) or "/community"
+        uid = int(user.get("primary_user_id") or user["id"])
+        go = await post_login_redirect_path(request, uid, explicit_next=nxt_param)
         return RedirectResponse(go, status_code=302)
 
     from config import settings
@@ -150,7 +166,7 @@ async def login_email(
             },
         )
     token = create_access_token(user["id"])
-    dest = _pop_login_redirect(request)
+    dest = await post_login_redirect_path(request, user["id"])
     resp = RedirectResponse(dest, status_code=302)
     resp.set_cookie("access_token", token, httponly=True, max_age=30 * 24 * 3600)
     await finalize_web_referral(request, resp, user["id"])
@@ -194,7 +210,7 @@ async def register_email(
             },
         )
     token = create_access_token(user["id"])
-    dest = _pop_login_redirect(request)
+    dest = await post_login_redirect_path(request, user["id"])
     resp = RedirectResponse(dest, status_code=302)
     resp.set_cookie("access_token", token, httponly=True, max_age=30 * 24 * 3600)
     await finalize_web_referral(request, resp, user["id"])
@@ -249,7 +265,7 @@ async def telegram_auth(request: Request):
         )
 
     token = create_access_token(user_id)
-    dest = _pop_login_redirect(request)
+    dest = await post_login_redirect_path(request, int(user_id))
     resp = RedirectResponse(dest, status_code=302)
     resp.set_cookie("access_token", token, httponly=True, max_age=30 * 24 * 3600)
     await finalize_web_referral(request, resp, int(user_id))
@@ -308,9 +324,10 @@ async def telegram_miniapp_auth(request: Request):
             )
 
         token = create_access_token(user_id)
-        # Mini App: always open single in-app community view.
         request.session.pop("login_next", None)
-        dest = "/community"
+        from services.subscription_service import web_default_home_path
+
+        dest = await web_default_home_path(int(user_id))
         resp = JSONResponse({"redirect": dest})
         resp.set_cookie("access_token", token, httponly=True, max_age=30 * 24 * 3600)
         await finalize_web_referral(request, resp, int(user_id))
@@ -387,6 +404,8 @@ async def google_callback(request: Request):
         state = request.query_params.get("state", "")
         if link_user_id and state == "link":
             from web.routes.account import attach_google_login
+            from services.subscription_service import web_default_home_path
+
             ok, _msg = await attach_google_login(
                 primary_user_id=int(link_user_id),
                 google_id=google_id,
@@ -394,10 +413,11 @@ async def google_callback(request: Request):
                 name=name,
                 avatar=avatar,
             )
+            base = await web_default_home_path(int(link_user_id))
             if not ok:
-                return RedirectResponse("/community?error=google_link_conflict", status_code=302)
+                return RedirectResponse(f"{base}?error=google_link_conflict", status_code=302)
             token_str = create_access_token(link_user_id)
-            resp = RedirectResponse("/community?linked=google", status_code=302)
+            resp = RedirectResponse(f"{base}?linked=google", status_code=302)
             resp.set_cookie("access_token", token_str, httponly=True, max_age=30 * 24 * 3600)
             return resp
 
@@ -432,7 +452,7 @@ async def google_callback(request: Request):
             )
 
         token_str = create_access_token(user_id)
-        dest = _pop_login_redirect(request)
+        dest = await post_login_redirect_path(request, int(user_id))
         resp = RedirectResponse(dest, status_code=302)
         resp.set_cookie("access_token", token_str, httponly=True, max_age=30 * 24 * 3600)
         await finalize_web_referral(request, resp, int(user_id))

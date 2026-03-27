@@ -153,6 +153,19 @@ async def check_subscription(user_id: int) -> str:
     return "free"
 
 
+async def web_default_home_path(user_id: int) -> str:
+    """
+    Куда вести с главной / после входа, если нет явного next:
+    без доступа к ленте (free без пробного) → страница подписок;
+    с доступом (оплата или активный пробный «Старт») → профиль в сообществе.
+    """
+    uid = int(user_id)
+    plan = await check_subscription(uid)
+    if plan == "free":
+        return "/subscriptions"
+    return f"/community/profile/{uid}"
+
+
 async def can_ask_question(user_id: int) -> bool:
     row = await database.fetch_one(users.select().where(users.c.id == user_id))
     if not row:

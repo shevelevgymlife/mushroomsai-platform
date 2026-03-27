@@ -32,7 +32,7 @@ from db.models import (
 from auth.session import get_user_from_request
 from auth.ui_prefs import attach_screen_rim_prefs
 from config import settings, shevelev_token_address
-from services.subscription_service import check_subscription, PLANS
+from services.subscription_service import check_subscription, PLANS, web_default_home_path
 from services.shop_catalog import product_gallery_urls
 from services.legal import legal_acceptance_redirect
 from services.referral_service import (
@@ -158,12 +158,14 @@ CATEGORIES = ["Экстракт", "Плодовое тело", "Капсулы",
 
 @router.get("/app", response_class=HTMLResponse)
 async def app_entry(request: Request):
-    """Точка входа для Telegram Mini App. Если залогинен — сразу в соцсеть."""
+    """Точка входа для Telegram Mini App. Если залогинен — профиль или подписки (без ленты для free)."""
     current_user = await get_user_from_request(request)
     if current_user:
+        uid = int(current_user.get("primary_user_id") or current_user["id"])
+        dest = await web_default_home_path(uid)
         return templates.TemplateResponse(
             "telegram_redirect_preserve.html",
-            {"request": request, "redirect_dest": "/community"},
+            {"request": request, "redirect_dest": dest},
         )
     # Незалогиненный — главная страница сайта (там есть кнопка Войти → /login)
     return templates.TemplateResponse(
@@ -176,10 +178,12 @@ async def app_entry(request: Request):
 async def index(request: Request):
     current_user = await get_user_from_request(request)
     if current_user:
+        uid = int(current_user.get("primary_user_id") or current_user["id"])
+        dest = await web_default_home_path(uid)
         # 302 теряет #tgWebAppData — клиентский редирект сохраняет fragment для Telegram Mini App
         return templates.TemplateResponse(
             "telegram_redirect_preserve.html",
-            {"request": request, "redirect_dest": "/community"},
+            {"request": request, "redirect_dest": dest},
         )
     prods = await database.fetch_all(
         products.select().where(products.c.active == True).limit(6)

@@ -83,15 +83,23 @@ class ProbeBlockMiddleware(BaseHTTPMiddleware):
 
 
 class CommunitySubscriptionGateMiddleware(BaseHTTPMiddleware):
-    """Тариф Free без активного пробного: нет доступа к ленте (/community) и магазину (/shop) для авторизованных."""
+    """Тариф Free без активного пробного: нет доступа к ленте и соц. разделам (кроме профилей), и к магазину."""
 
     @staticmethod
-    def _gated(path: str) -> bool:
-        return path.startswith("/community") or path.startswith("/shop")
+    def _requires_paid_or_trial(path: str) -> bool:
+        p = (path or "").split("?")[0]
+        if p.startswith("/shop"):
+            return True
+        # Лента и всё сообщество, кроме страниц профиля /community/profile/{id}
+        if p.startswith("/community/profile"):
+            return False
+        if p.startswith("/community"):
+            return True
+        return False
 
     async def dispatch(self, request: Request, call_next):
         path = request.url.path or ""
-        if not self._gated(path):
+        if not self._requires_paid_or_trial(path):
             return await call_next(request)
         user = await get_user_from_request(request)
         if not user:

@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 from db.models import shop_products, users, product_questions
 from services.shop_catalog import extra_image_lines_from_json, extra_image_urls_from_text
-from services.subscription_service import check_subscription
+from services.subscription_service import check_subscription, web_default_home_path
 from web.templates_utils import Jinja2Templates
 
 router = APIRouter(prefix="/seller", tags=["seller"])
@@ -73,7 +73,11 @@ async def seller_root():
 async def seller_shop_page(request: Request):
     seller = await require_maxi_seller(request)
     if not seller:
-        return RedirectResponse("/community", status_code=302)
+        u = await get_user_from_request(request)
+        if u:
+            uid = int(u.get("primary_user_id") or u["id"])
+            return RedirectResponse(await web_default_home_path(uid), status_code=302)
+        return RedirectResponse("/login", status_code=302)
     uid = seller["id"]
     rows = await database.fetch_all(
         shop_products.select()
@@ -144,7 +148,11 @@ async def seller_shop_product_json(request: Request, product_id: int):
 async def seller_questions_page(request: Request):
     seller = await require_maxi_seller(request)
     if not seller:
-        return RedirectResponse("/community", status_code=302)
+        u = await get_user_from_request(request)
+        if u:
+            uid = int(u.get("primary_user_id") or u["id"])
+            return RedirectResponse(await web_default_home_path(uid), status_code=302)
+        return RedirectResponse("/login", status_code=302)
     uid = seller["id"]
     rows = await database.fetch_all(
         sa.select(product_questions, shop_products.c.name.label("product_name"))

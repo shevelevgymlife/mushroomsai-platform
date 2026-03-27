@@ -13,7 +13,7 @@ from web.templates_utils import Jinja2Templates
 from starlette.responses import JSONResponse
 from auth.session import get_user_from_request
 from services.legal import legal_acceptance_redirect
-from services.subscription_service import claim_start_trial
+from services.subscription_service import claim_start_trial, web_default_home_path
 from auth.telegram_auth import verify_telegram_auth
 from auth.ui_prefs import DEFAULT_SCREEN_RIM, attach_screen_rim_prefs
 from db.database import database
@@ -687,12 +687,18 @@ async def link_telegram_callback(request: Request):
         data = dict(request.query_params)
         if not verify_telegram_auth(data.copy()):
             logger.warning("Telegram auth verification failed for user_id=%s data=%s", user["id"], data)
-            return RedirectResponse("/community?error=tg_auth_failed")
+            primary = await _resolve_primary_row(int(user["id"]))
+            uid = int(primary["id"]) if primary else int(user["id"])
+            base = await web_default_home_path(uid)
+            return RedirectResponse(f"{base}?error=tg_auth_failed")
 
         raw_id = data.get("id")
         if not raw_id:
             logger.error("Missing 'id' in Telegram callback params: %s", data)
-            return RedirectResponse("/community?error=tg_auth_failed")
+            primary = await _resolve_primary_row(int(user["id"]))
+            uid = int(primary["id"]) if primary else int(user["id"])
+            base = await web_default_home_path(uid)
+            return RedirectResponse(f"{base}?error=tg_auth_failed")
 
         tg_id = int(raw_id)
         name = f"{data.get('first_name', '')} {data.get('last_name', '')}".strip()
@@ -706,12 +712,20 @@ async def link_telegram_callback(request: Request):
         )
         if not ok:
             logger.warning("link_telegram_callback failed for user_id=%s: %s", user["id"], msg)
-            return RedirectResponse("/community?error=tg_link_conflict")
-        return RedirectResponse("/community?linked=telegram")
+            primary = await _resolve_primary_row(int(user["id"]))
+            uid = int(primary["id"]) if primary else int(user["id"])
+            base = await web_default_home_path(uid)
+            return RedirectResponse(f"{base}?error=tg_link_conflict")
+        primary = await _resolve_primary_row(int(user["id"]))
+        uid = int(primary["id"]) if primary else int(user["id"])
+        base = await web_default_home_path(uid)
+        return RedirectResponse(f"{base}?linked=telegram")
 
     except Exception as exc:
         logger.exception("Unexpected error in link_telegram_callback for user_id=%s: %s", user["id"], exc)
-        return RedirectResponse("/community?error=tg_link_failed")
+        _uid = int(user.get("primary_user_id") or user["id"])
+        _b = await web_default_home_path(_uid)
+        return RedirectResponse(f"{_b}?error=tg_link_failed")
 
 
 @router.get("/link-google", response_class=HTMLResponse)
