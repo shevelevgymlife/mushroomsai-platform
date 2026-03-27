@@ -300,6 +300,27 @@ async def run_heavy_startup(app: FastAPI) -> None:
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS start_trial_claimed_at TIMESTAMP",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS start_trial_until TIMESTAMP",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS start_trial_end_notified BOOLEAN DEFAULT false",
+            "ALTER TABLE referrals ADD COLUMN IF NOT EXISTS referral_bonus_amount NUMERIC(12,2)",
+            """CREATE TABLE IF NOT EXISTS referral_withdrawals (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                amount_rub NUMERIC(12,2) NOT NULL,
+                status VARCHAR(20) NOT NULL DEFAULT 'pending',
+                admin_note TEXT,
+                created_at TIMESTAMP DEFAULT NOW(),
+                processed_at TIMESTAMP
+            )""",
+            """CREATE TABLE IF NOT EXISTS referral_promo_links (
+                id SERIAL PRIMARY KEY,
+                token VARCHAR(64) UNIQUE NOT NULL,
+                plan_key VARCHAR(20) NOT NULL,
+                period_days INTEGER NOT NULL DEFAULT 30,
+                max_activations INTEGER,
+                activations_count INTEGER NOT NULL DEFAULT 0,
+                valid_until TIMESTAMP,
+                created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                created_at TIMESTAMP DEFAULT NOW()
+            )""",
             "ALTER TABLE admin_permissions ADD COLUMN IF NOT EXISTS can_radio_downtempo BOOLEAN NOT NULL DEFAULT false",
             """CREATE TABLE IF NOT EXISTS radio_downtempo_tracks (
                 id SERIAL PRIMARY KEY,

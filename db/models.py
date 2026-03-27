@@ -146,6 +146,33 @@ referrals = sqlalchemy.Table(
     sqlalchemy.Column("referrer_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=False),
     sqlalchemy.Column("referred_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=False),
     sqlalchemy.Column("bonus_applied", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column("referral_bonus_amount", sqlalchemy.Numeric(12, 2), nullable=True),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+referral_withdrawals = sqlalchemy.Table(
+    "referral_withdrawals",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("amount_rub", sqlalchemy.Numeric(12, 2), nullable=False),
+    sqlalchemy.Column("status", sqlalchemy.String(20), default="pending", server_default="pending"),
+    sqlalchemy.Column("admin_note", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+    sqlalchemy.Column("processed_at", sqlalchemy.DateTime, nullable=True),
+)
+
+referral_promo_links = sqlalchemy.Table(
+    "referral_promo_links",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("token", sqlalchemy.String(64), unique=True, nullable=False),
+    sqlalchemy.Column("plan_key", sqlalchemy.String(20), nullable=False),
+    sqlalchemy.Column("period_days", sqlalchemy.Integer, nullable=False, server_default="30"),
+    sqlalchemy.Column("max_activations", sqlalchemy.Integer, nullable=True),
+    sqlalchemy.Column("activations_count", sqlalchemy.Integer, default=0, server_default="0"),
+    sqlalchemy.Column("valid_until", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("created_by", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
 

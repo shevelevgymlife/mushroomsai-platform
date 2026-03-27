@@ -35,7 +35,13 @@ from config import settings, shevelev_token_address
 from services.subscription_service import check_subscription, PLANS
 from services.shop_catalog import product_gallery_urls
 from services.legal import legal_acceptance_redirect
-from services.referral_service import attach_invite_ref_from_query, get_referral_stats, ensure_user_referral_code
+from services.referral_service import (
+    attach_invite_ref_from_query,
+    get_referral_stats,
+    ensure_user_referral_code,
+    get_referrer_invites_detailed,
+    request_referral_withdrawal,
+)
 from services.ops_alerts import (
     notify_new_feedback,
     notify_new_order,
@@ -963,6 +969,7 @@ async def referral_program_page(request: Request):
     ref_link = f"https://t.me/{bot}?start={code}" if code else ""
     ref_link_site = f"{base}/login?ref={code}" if code and base else ""
     ref_stats = await get_referral_stats(uid)
+    ref_invites = await get_referrer_invites_detailed(uid)
     display_user = user
     if user.get("primary_user_id"):
         primary = await database.fetch_one(users.select().where(users.c.id == uid))
@@ -980,9 +987,39 @@ async def referral_program_page(request: Request):
             "ref_link": ref_link,
             "ref_link_site": ref_link_site,
             "ref_stats": ref_stats,
+            "ref_invites": ref_invites,
             "visible_block_keys": visible_block_keys,
         },
     )
+
+
+@router.post("/referral/withdraw")
+async def referral_withdraw_submit(request: Request):
+    user = await get_user_from_request(request)
+    if not user:
+        return JSONResponse({"ok": False, "error": "auth"}, status_code=401)
+    uid = user.get("primary_user_id") or user["id"]
+    ok, msg = await request_referral_withdrawal(int(uid))
+    return JSONResponse({"ok": ok, "message": msg})
+
+
+@router.get("/promo/{token}")
+async def promo_link_landing(token: str):
+    """Установить cookie и перейти к регистрации/входу — подписка применится после логина."""
+    tok = (token or "").strip()
+    if not tok or len(tok) > 64:
+        return RedirectResponse("/", status_code=302)
+    next_url = "/login?next=/subscriptions"
+    resp = RedirectResponse(next_url, status_code=302)
+    resp.set_cookie(
+        "promo_token",
+        tok,
+        max_age=30 * 24 * 3600,
+        path="/",
+        httponly=True,
+        samesite="lax",
+    )
+    return resp
 
 
 @router.get("/community")

@@ -39,6 +39,41 @@
       </div>
     </div>
 
+    <div class="card rounded-2xl border border-white/10 bg-white/[0.03] p-5 mb-4">
+      <div style="font-size:15px;font-weight:600;color:#ddd;margin-bottom:12px">Ваши приглашённые</div>
+      {% if ref_invites and ref_invites|length > 0 %}
+      <div class="space-y-2" style="max-height:320px;overflow-y:auto">
+        {% for inv in ref_invites %}
+        <a href="/community/profile/{{ inv.id }}" class="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 hover:border-gold/30 transition-colors" style="text-decoration:none">
+          {% if inv.avatar %}
+          <img src="{{ inv.avatar }}" alt="" class="w-10 h-10 rounded-full object-cover border border-white/10 flex-shrink-0" />
+          {% else %}
+          <div class="w-10 h-10 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center text-sm text-gold font-medium flex-shrink-0">{{ (inv.name or 'U')[0]|upper }}</div>
+          {% endif %}
+          <div class="min-w-0 flex-1">
+            <div class="text-sm text-text font-medium truncate">{{ inv.name }}</div>
+            <div class="text-xs text-muted">{{ inv.subscription_plan }}{% if inv.trial_active %} · пробный{% endif %}</div>
+          </div>
+          <div class="text-sm font-semibold text-gold flex-shrink-0">+{{ '%.0f'|format(inv.bonus_rub) }} ₽</div>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-sm text-muted">Пока никого не пригласили — поделитесь ссылкой выше.</p>
+      {% endif %}
+    </div>
+
+    <div class="card rounded-2xl border border-white/10 bg-white/[0.03] p-5 mb-6">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <div style="font-size:13px;color:#888">Баланс к выводу</div>
+          <div style="font-size:24px;font-weight:700;color:#e8e8e8">{{ ref_stats.balance_rub }} <span style="font-size:16px;font-weight:500;color:#888">₽</span></div>
+        </div>
+        <button type="button" id="refWithdrawBtn" class="btn-g px-5 py-2.5 rounded-xl text-sm font-medium" onclick="requestWithdraw()">Вывести</button>
+      </div>
+      <p id="refWithdrawMsg" class="text-xs mt-3 text-muted" style="display:none"></p>
+    </div>
+
     <div class="card rounded-2xl border border-white/10 bg-white/[0.03] p-5 mb-8">
       <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:12px">Как это работает</div>
       {% for step in ['Отправьте другу ссылку (Telegram или сайт)','Друг регистрируется по ней впервые','На ваш счёт начисляется бонус','Бонус один раз на каждого приглашённого'] %}
@@ -70,6 +105,24 @@ function copyRefSite(){
     var b=document.getElementById('refCopySiteBtn');
     if(b){b.textContent='Скопировано ✓';setTimeout(function(){b.textContent='Копировать'},2200)}
   });
+}
+function requestWithdraw(){
+  var btn=document.getElementById('refWithdrawBtn');
+  var msg=document.getElementById('refWithdrawMsg');
+  if(btn){btn.disabled=true;}
+  fetch('/referral/withdraw',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'}})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(msg){
+        msg.style.display='block';
+        msg.style.color=d.ok?'#6ee7b7':'#f87171';
+        msg.textContent=d.ok?'Заявка отправлена администратору. Мы свяжемся с вами в Telegram.':(d.message||'Не удалось отправить');
+      }
+    })
+    .catch(function(){
+      if(msg){msg.style.display='block';msg.style.color='#f87171';msg.textContent='Ошибка сети';}
+    })
+    .finally(function(){if(btn){btn.disabled=false;}});
 }
 </script>
 {% endblock %}

@@ -1,0 +1,341 @@
+{% extends "base.html" %}
+{% block title %}Реферальная программа — Admin{% endblock %}
+{% block content %}
+<div class="pt-24 pb-16 neo-app-surface">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    {% include "components/admin_nav.html" %}
+
+    <h1 class="text-3xl font-light text-text mb-2">Реферальная программа</h1>
+    <p class="text-sm text-muted mb-6 max-w-3xl">
+      Сводка по переходам, амбассадорам, заявкам на вывод, промо-ссылкам и сегментам пользователей.
+      Канал регистрации (Telegram / Google / веб) определяется по привязанным аккаунтам.
+      Специализированные метрики (LTV, ROI кампаний, когорты) дополняйте выгрузками в BI или таблицах.
+    </p>
+
+    <form method="get" class="flex flex-wrap gap-3 items-end mb-8 p-4 rounded-2xl border border-border bg-surface/40">
+      <div>
+        <label class="block text-xs text-muted mb-1">Дата с</label>
+        <input type="date" name="date_from" value="{{ date_from }}" class="px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text" />
+      </div>
+      <div>
+        <label class="block text-xs text-muted mb-1">Дата по</label>
+        <input type="date" name="date_to" value="{{ date_to }}" class="px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text" />
+      </div>
+      <button type="submit" class="px-4 py-2 rounded-xl bg-gold/20 text-gold border border-gold/30 text-sm font-medium">Применить период</button>
+      <a href="/admin/referral" class="text-sm text-muted hover:text-text py-2">Сбросить</a>
+    </form>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
+      <div class="rounded-2xl border border-border p-4 bg-surface">
+        <div class="text-xs text-muted uppercase tracking-wide">Переходов за период</div>
+        <div class="text-2xl font-semibold text-text mt-1">{{ n_refs_period }}</div>
+      </div>
+      <div class="rounded-2xl border border-border p-4 bg-surface">
+        <div class="text-xs text-muted uppercase tracking-wide">Начислено бонусов (₽) за период</div>
+        <div class="text-2xl font-semibold text-gold mt-1">{{ sum_bonuses_period }}</div>
+      </div>
+      <div class="rounded-2xl border border-border p-4 bg-surface">
+        <div class="text-xs text-muted uppercase tracking-wide">Заявок на вывод (ожидают)</div>
+        <div class="text-2xl font-semibold text-amber-300 mt-1">{{ pending_withdrawals|length }}</div>
+      </div>
+    </div>
+
+    <div class="rounded-2xl border border-dashed border-border/60 p-4 mb-10 text-sm text-muted">
+      <strong class="text-text">Коммуникации и маркетинг:</strong>
+      сегментируйте по каналу (колонка «канал»), отправляйте персональные сообщения из таблицы ниже,
+      отслеживайте «воронку» реферал → пробный → оплата по сегментам, используйте промо-ссылки для партнёров и офлайн-мероприятий.
+      Учёт списаний реф. баланса на оплату подписки появится при подключении оплаты с внутреннего баланса.
+    </div>
+
+    <h2 class="text-xl font-medium text-text mb-3">Топ амбассадоров: сумма бонусов за период</h2>
+    <div class="overflow-x-auto rounded-2xl border border-border mb-10">
+      <table class="w-full text-sm">
+        <thead><tr class="border-b border-border text-left text-muted">
+          <th class="px-3 py-2">#</th><th class="px-3 py-2">Пользователь</th><th class="px-3 py-2">TG</th><th class="px-3 py-2">Бонус за период</th><th class="px-3 py-2">Приглашений</th>
+        </tr></thead>
+        <tbody>
+          {% for r in top_earn %}
+          <tr class="border-b border-border/50 hover:bg-border/10">
+            <td class="px-3 py-2 text-muted">{{ loop.index }}</td>
+            <td class="px-3 py-2"><a href="/community/profile/{{ r.user_id }}" class="text-gold hover:underline" target="_blank">{{ r.name }}</a></td>
+            <td class="px-3 py-2 font-mono text-xs">{% if r.tg_id %}<a href="tg://user?id={{ r.tg_id }}" class="text-muted hover:text-gold">{{ r.tg_id }}</a>{% else %}—{% endif %}</td>
+            <td class="px-3 py-2">{{ '%.2f'|format(r.total_bonus) }} ₽</td>
+            <td class="px-3 py-2">{{ r.invites_in_period }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="px-3 py-6 text-center text-muted">Нет данных за выбранный период</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <h2 class="text-xl font-medium text-text mb-3">Топ по количеству приглашений за период</h2>
+    <div class="overflow-x-auto rounded-2xl border border-border mb-10">
+      <table class="w-full text-sm">
+        <thead><tr class="border-b border-border text-left text-muted">
+          <th class="px-3 py-2">#</th><th class="px-3 py-2">Пользователь</th><th class="px-3 py-2">TG</th><th class="px-3 py-2">Приглашений</th><th class="px-3 py-2">Баланс сейчас</th>
+        </tr></thead>
+        <tbody>
+          {% for r in top_inv %}
+          <tr class="border-b border-border/50 hover:bg-border/10">
+            <td class="px-3 py-2 text-muted">{{ loop.index }}</td>
+            <td class="px-3 py-2"><a href="/community/profile/{{ r.user_id }}" class="text-gold hover:underline" target="_blank">{{ r.name }}</a></td>
+            <td class="px-3 py-2 font-mono text-xs">{% if r.tg_id %}<a href="tg://user?id={{ r.tg_id }}" class="text-muted hover:text-gold">{{ r.tg_id }}</a>{% else %}—{% endif %}</td>
+            <td class="px-3 py-2">{{ r.invite_count }}</td>
+            <td class="px-3 py-2">{{ '%.2f'|format(r.referral_balance) }} ₽</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="px-3 py-6 text-center text-muted">Нет данных</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <h2 class="text-xl font-medium text-text mb-3">Рейтинг по текущему реф. балансу</h2>
+    <div class="overflow-x-auto rounded-2xl border border-border mb-10">
+      <table class="w-full text-sm">
+        <thead><tr class="border-b border-border text-left text-muted">
+          <th class="px-3 py-2">#</th><th class="px-3 py-2">Пользователь</th><th class="px-3 py-2">TG</th><th class="px-3 py-2">Баланс</th>
+        </tr></thead>
+        <tbody>
+          {% for r in lb_bal %}
+          <tr class="border-b border-border/50 hover:bg-border/10">
+            <td class="px-3 py-2 text-muted">{{ loop.index }}</td>
+            <td class="px-3 py-2"><a href="/community/profile/{{ r.user_id }}" class="text-gold hover:underline" target="_blank">{{ r.name }}</a></td>
+            <td class="px-3 py-2 font-mono text-xs">{% if r.tg_id %}<a href="tg://user?id={{ r.tg_id }}" class="text-muted hover:text-gold">{{ r.tg_id }}</a>{% else %}—{% endif %}</td>
+            <td class="px-3 py-2 font-semibold text-gold">{{ '%.2f'|format(r.referral_balance) }} ₽</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" class="px-3 py-6 text-center text-muted">Нет положительных балансов</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <h2 class="text-xl font-medium text-text mb-3">Заявки на вывод</h2>
+    <div class="overflow-x-auto rounded-2xl border border-border mb-4">
+      <table class="w-full text-sm">
+        <thead><tr class="border-b border-border text-left text-muted">
+          <th class="px-3 py-2">Пользователь</th><th class="px-3 py-2">Сумма</th><th class="px-3 py-2">Создано</th><th class="px-3 py-2">Действие</th>
+        </tr></thead>
+        <tbody>
+          {% for w in pending_withdrawals %}
+          <tr class="border-b border-border/50">
+            <td class="px-3 py-2">
+              <a href="/community/profile/{{ w.user_id }}" class="text-gold" target="_blank">{{ w.user_name or w.user_id }}</a>
+              {% if w.tg_id %}<span class="text-xs text-muted font-mono ml-2">{{ w.tg_id }}</span>{% endif %}
+            </td>
+            <td class="px-3 py-2">{{ '%.2f'|format(w.amount_rub) }} ₽</td>
+            <td class="px-3 py-2 text-muted text-xs">{{ w.created_at }}</td>
+            <td class="px-3 py-2">
+              <form method="post" action="/admin/referral/clear-balance" class="flex flex-wrap gap-2 items-center">
+                <input type="hidden" name="user_id" value="{{ w.user_id }}" />
+                <input type="text" name="note" placeholder="Комментарий (необязательно)" class="px-2 py-1 rounded-lg bg-bg border border-border text-xs max-w-xs" />
+                <button type="submit" class="px-3 py-1 rounded-lg bg-amber-500/20 text-amber-200 border border-amber-500/40 text-xs font-medium">Обнулить баланс</button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" class="px-3 py-6 text-center text-muted">Нет ожидающих заявок</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="text-xs text-muted mb-10">После «Обнулить» пользователю уходит сообщение в Telegram с суммой вывода.</p>
+
+    <h2 class="text-xl font-medium text-text mb-3">Подтверждённые выводы за период</h2>
+    <div class="overflow-x-auto rounded-2xl border border-border mb-10">
+      <table class="w-full text-sm">
+        <thead><tr class="border-b border-border text-left text-muted">
+          <th class="px-3 py-2">Пользователь</th><th class="px-3 py-2">Сумма</th><th class="px-3 py-2">Обработано</th><th class="px-3 py-2">Комментарий</th>
+        </tr></thead>
+        <tbody>
+          {% for w in paid_withdrawals %}
+          <tr class="border-b border-border/50">
+            <td class="px-3 py-2"><a href="/community/profile/{{ w.user_id }}" class="text-gold" target="_blank">{{ w.user_name }}</a></td>
+            <td class="px-3 py-2">{{ '%.2f'|format(w.amount_rub) }} ₽</td>
+            <td class="px-3 py-2 text-xs text-muted">{{ w.processed_at }}</td>
+            <td class="px-3 py-2 text-xs text-muted">{{ w.admin_note or '—' }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" class="px-3 py-6 text-center text-muted">Нет записей за период</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <h2 class="text-xl font-medium text-text mb-3">Промо-ссылки на подписку</h2>
+    <form method="post" action="/admin/referral/promo-create" class="flex flex-wrap gap-3 items-end mb-6 p-4 rounded-2xl border border-border bg-surface/30">
+      <div>
+        <label class="block text-xs text-muted mb-1">Тариф</label>
+        <select name="plan_key" class="px-3 py-2 rounded-xl bg-bg border border-border text-sm">
+          {% for k, v in plans.items() %}
+          {% if k != 'free' %}
+          <option value="{{ k }}">{{ v.name }} ({{ k }})</option>
+          {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs text-muted mb-1">Дней подписки</label>
+        <input type="number" name="period_days" value="30" min="1" class="px-3 py-2 rounded-xl bg-bg border border-border text-sm w-24" />
+      </div>
+      <div>
+        <label class="block text-xs text-muted mb-1">Макс. активаций (пусто = ∞)</label>
+        <input type="text" name="max_activations" placeholder="∞" class="px-3 py-2 rounded-xl bg-bg border border-border text-sm w-28" />
+      </div>
+      <div>
+        <label class="block text-xs text-muted mb-1">Срок ссылки (дней, пусто = без срока)</label>
+        <input type="number" name="valid_days" min="1" placeholder="—" class="px-3 py-2 rounded-xl bg-bg border border-border text-sm w-24" />
+      </div>
+      <button type="submit" class="px-4 py-2 rounded-xl bg-gold/20 text-gold border border-gold/30 text-sm font-medium">Создать</button>
+    </form>
+    <div class="overflow-x-auto rounded-2xl border border-border mb-10">
+      <table class="w-full text-sm">
+        <thead><tr class="border-b border-border text-left text-muted">
+          <th class="px-3 py-2">Ссылка</th><th class="px-3 py-2">План</th><th class="px-3 py-2">Дней</th><th class="px-3 py-2">Активаций</th><th class="px-3 py-2">Действует до</th>
+        </tr></thead>
+        <tbody>
+          {% for p in promos %}
+          <tr class="border-b border-border/50">
+            <td class="px-3 py-2 font-mono text-xs break-all">
+              {% if site_base %}<a href="{{ site_base }}/promo/{{ p.token }}" class="text-gold hover:underline" target="_blank">{{ site_base }}/promo/{{ p.token }}</a>{% else %}/promo/{{ p.token }}{% endif %}
+            </td>
+            <td class="px-3 py-2">{{ p.plan_key }}</td>
+            <td class="px-3 py-2">{{ p.period_days }}</td>
+            <td class="px-3 py-2">{{ p.activations_count }}{% if p.max_activations is not none %} / {{ p.max_activations }}{% else %} / ∞{% endif %}</td>
+            <td class="px-3 py-2 text-xs">{{ p.valid_until or '—' }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="px-3 py-6 text-center text-muted">Пока нет ссылок</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <h2 class="text-xl font-medium text-text mb-3">«Продления»: записей подписки за 12 мес.</h2>
+    <p class="text-xs text-muted mb-3">По числу строк в subscriptions (каждое продление/покупка — отдельная запись).</p>
+    <div class="overflow-x-auto rounded-2xl border border-border mb-10">
+      <table class="w-full text-sm">
+        <thead><tr class="border-b border-border text-left text-muted">
+          <th class="px-3 py-2">#</th><th class="px-3 py-2">Пользователь</th><th class="px-3 py-2">Записей</th>
+        </tr></thead>
+        <tbody>
+          {% for r in renewal_rank %}
+          <tr class="border-b border-border/50">
+            <td class="px-3 py-2 text-muted">{{ loop.index }}</td>
+            <td class="px-3 py-2"><a href="/community/profile/{{ r.user_id }}" class="text-gold" target="_blank">{{ r.name }}</a></td>
+            <td class="px-3 py-2">{{ r.subscription_rows_12m }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="3" class="px-3 py-6 text-center text-muted">Нет данных</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <h2 class="text-xl font-medium text-text mb-3">Дерево приглашений пользователя</h2>
+    <form method="get" class="flex flex-wrap gap-2 items-end mb-4">
+      <input type="hidden" name="date_from" value="{{ date_from }}" />
+      <input type="hidden" name="date_to" value="{{ date_to }}" />
+      <div>
+        <label class="block text-xs text-muted mb-1">ID реферера</label>
+        <input type="number" name="ref_uid" value="{{ ref_uid or '' }}" placeholder="например 42" class="px-3 py-2 rounded-xl bg-bg border border-border text-sm w-40" />
+      </div>
+      <button type="submit" class="px-4 py-2 rounded-xl bg-border text-text text-sm">Показать</button>
+    </form>
+    {% if ref_uid and ref_tree %}
+    <div class="rounded-2xl border border-border mb-10 divide-y divide-border">
+      {% for inv in ref_tree %}
+      <div class="px-4 py-3 flex flex-wrap justify-between gap-2 text-sm">
+        <div>
+          <a href="/community/profile/{{ inv.id }}" class="text-gold font-medium" target="_blank">{{ inv.name }}</a>
+          <span class="text-xs text-muted ml-2">{{ inv.subscription_plan }} · {{ inv.registration_channel }}</span>
+        </div>
+        <div class="text-gold">+{{ '%.0f'|format(inv.bonus_rub) }} ₽</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% elif ref_uid %}
+    <p class="text-muted text-sm mb-10">Нет приглашённых.</p>
+    {% endif %}
+
+    <h2 class="text-xl font-medium text-text mb-3">Поиск пользователя</h2>
+    <form method="get" class="flex flex-wrap gap-2 mb-4">
+      <input type="hidden" name="date_from" value="{{ date_from }}" />
+      <input type="hidden" name="date_to" value="{{ date_to }}" />
+      <input type="text" name="user_search" value="{{ user_search }}" placeholder="Имя, email, id или tg id" class="px-3 py-2 rounded-xl bg-bg border border-border text-sm flex-1 min-w-[200px]" />
+      <button type="submit" class="px-4 py-2 rounded-xl bg-border text-sm">Найти</button>
+    </form>
+    {% if search_hits %}
+    <ul class="mb-10 space-y-1 text-sm">
+      {% for u in search_hits %}
+      <li><a href="/community/profile/{{ u.id }}" class="text-gold" target="_blank">{{ u.name or u.id }}</a>
+        <span class="text-muted text-xs">id {{ u.id }}</span></li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    <h2 class="text-xl font-medium text-text mb-3">Сегменты (с учётом периода регистрации)</h2>
+    <form method="get" class="flex flex-wrap gap-3 items-end mb-4">
+      <input type="hidden" name="date_from" value="{{ date_from }}" />
+      <input type="hidden" name="date_to" value="{{ date_to }}" />
+      <div>
+        <label class="block text-xs text-muted mb-1">Сегмент</label>
+        <select name="segment" class="px-3 py-2 rounded-xl bg-bg border border-border text-sm max-w-lg">
+          <option value="all_referred" {{ 'selected' if segment=='all_referred' else '' }}>Все пришедшие по реферальной ссылке</option>
+          <option value="referral_attributed" {{ 'selected' if segment=='referral_attributed' else '' }}>Реферальные (как выше)</option>
+          <option value="organic" {{ 'selected' if segment=='organic' else '' }}>Без реферера (органика)</option>
+          <option value="no_sub_activation" {{ 'selected' if segment=='no_sub_activation' else '' }}>Приглашённые: не активировали пробный</option>
+          <option value="trial_active" {{ 'selected' if segment=='trial_active' else '' }}>Сейчас пробный период</option>
+          <option value="paid_active" {{ 'selected' if segment=='paid_active' else '' }}>Приглашённые с активной платной подпиской</option>
+          <option value="never_trial" {{ 'selected' if segment=='never_trial' else '' }}>Приглашённые: без пробного, free</option>
+          <option value="active_sub_now" {{ 'selected' if segment=='active_sub_now' else '' }}>Все: активная платная подписка сейчас</option>
+          <option value="inactive_after_trial" {{ 'selected' if segment=='inactive_after_trial' else '' }}>Пробный был, сейчас free</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs text-muted mb-1">Фильтр тарифа (опц.)</label>
+        <select name="plan_filter" class="px-3 py-2 rounded-xl bg-bg border border-border text-sm">
+          <option value="">—</option>
+          {% for k in plans.keys() %}
+          <option value="{{ k }}" {{ 'selected' if plan_filter==k else '' }}>{{ k }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="px-4 py-2 rounded-xl bg-gold/20 text-gold border border-gold/30 text-sm">Показать</button>
+    </form>
+    <p class="text-sm text-muted mb-2">В списке: <strong class="text-text">{{ segment_total }}</strong> (показано до 800 строк)</p>
+
+    <form method="post" action="/admin/referral/bulk-message" class="mb-6 p-4 rounded-2xl border border-border bg-surface/20 space-y-3">
+      <div class="text-sm text-muted">Массовое сообщение в бот (как в поддержке): укажите id через запятую или с новой строки.</div>
+      <textarea name="user_ids" rows="2" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono" placeholder="12, 34, 56"></textarea>
+      <textarea name="text" rows="3" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" placeholder="Текст сообщения (HTML поддерживается там же, где в рассылках поддержки)" required></textarea>
+      <button type="submit" class="px-4 py-2 rounded-xl bg-gold/20 text-gold border border-gold/30 text-sm font-medium">Отправить выбранным id</button>
+    </form>
+
+    <div class="overflow-x-auto rounded-2xl border border-border mb-16">
+      <table class="w-full text-sm">
+        <thead><tr class="border-b border-border text-left text-muted">
+          <th class="px-3 py-2">ID</th><th class="px-3 py-2">Имя</th><th class="px-3 py-2">TG</th><th class="px-3 py-2">Тариф</th><th class="px-3 py-2">Канал</th><th class="px-3 py-2">Реферер</th>
+        </tr></thead>
+        <tbody>
+          {% for u in segment_rows %}
+          <tr class="border-b border-border/50 hover:bg-border/10">
+            <td class="px-3 py-2 font-mono">{{ u.id }}</td>
+            <td class="px-3 py-2"><a href="/community/profile/{{ u.id }}" class="text-gold" target="_blank">{{ u.name }}</a></td>
+            <td class="px-3 py-2 text-xs font-mono">{% if u.tg_id %}{{ u.tg_id }}{% else %}—{% endif %}</td>
+            <td class="px-3 py-2">{{ u.subscription_plan }}</td>
+            <td class="px-3 py-2">{{ u.channel }}</td>
+            <td class="px-3 py-2 text-muted">{% if u.referred_by %}<a href="/admin/referral?ref_uid={{ u.referred_by }}" class="text-gold">{{ u.referred_by }}</a>{% else %}—{% endif %}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="px-3 py-6 text-center text-muted">Пусто</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

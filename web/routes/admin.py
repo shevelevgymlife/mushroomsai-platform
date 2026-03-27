@@ -54,6 +54,7 @@ ADMIN_SECTIONS = [
     ("Главная сайта", "/admin/homepage", "can_homepage"),
     ("Блоки кабинета", "/admin/dashboard-blocks", "can_dashboard_blocks"),
     ("Радио Down Tempo", "/admin/radio-downtempo", "can_radio_downtempo"),
+    ("Реферальная программа", "/admin/referral", "can_users"),
 ]
 ADMIN_NAV = [(label, href) for (label, href, _perm) in ADMIN_SECTIONS]
 AI_RETRIEVAL_MODES = [
@@ -2526,3 +2527,162 @@ async def admin_radio_downtempo_publish(request: Request):
 
     v = await bump_playlist_version()
     return JSONResponse({"ok": True, "playlist_version": v})
+
+
+def _admin_parse_date(s: Optional[str], end_of_day: bool = False) -> Optional[datetime]:
+    if not s:
+        return None
+    s = str(s).strip()
+    try:
+        d = datetime.strptime(s[:10], "%Y-%m-%d")
+        if end_of_day:
+            return d.replace(hour=23, minute=59, second=59)
+        return d.replace(hour=0, minute=0, second=0)
+    except ValueError:
+        return None
+
+
+@router.get("/referral", response_class=HTMLResponse)
+async def admin_referral_page(
+    request: Request,
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
+    segment: str = Query("all_referred"),
+    plan_filter: Optional[str] = Query(None),
+    user_search: Optional[str] = Query(None),
+    ref_uid: Optional[int] = Query(None),
+):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    perms = await get_user_permissions(admin)
+
+    d1 = _admin_parse_date(date_from, end_of_day=False)
+    d2 = _admin_parse_date(date_to, end_of_day=True)
+
+    from services import referral_admin as ra
+
+    n_refs = await ra.count_referrals_in_period(d1, d2)
+    sum_b = await ra.sum_bonuses_in_period(d1, d2)
+    top_earn = await ra.top_ambassadors_by_earnings(25, d1, d2)
+    top_inv = await ra.top_ambassadors_by_invite_count(25, d1, d2)
+    lb_bal = await ra.leaderboard_balance_now(30)
+    pend = await ra.pending_withdrawals_list()
+    paid_w = await ra.paid_withdrawals_in_period(d1, d2)
+    promos = await ra.list_promo_links()
+    renew = await ra.renewal_ranking(30)
+    seg_rows, seg_total = await ra.referred_users_segment(segment, d1, d2, plan_filter)
+    search_hits = await ra.search_users(user_search or "", 25) if (user_search or "").strip() else []
+    ref_tree = await ra.invites_for_referrer(int(ref_uid)) if ref_uid else []
+
+    base = (settings.SITE_URL or "").rstrip("/") or ""
+
+    return templates.TemplateResponse(
+        "dashboard/admin_referral.html",
+        {
+            "request": request,
+            "user": admin,
+            "nav": ADMIN_NAV,
+            "user_permissions": perms,
+            "date_from": date_from or "",
+            "date_to": date_to or "",
+            "segment": segment,
+            "plan_filter": plan_filter or "",
+            "user_search": user_search or "",
+            "ref_uid": ref_uid,
+            "n_refs_period": n_refs,
+            "sum_bonuses_period": round(sum_b, 2),
+            "top_earn": top_earn,
+            "top_inv": top_inv,
+            "lb_bal": lb_bal,
+            "pending_withdrawals": pend,
+            "paid_withdrawals": paid_w,
+            "promos": promos,
+            "renewal_rank": renew,
+            "segment_rows": seg_rows,
+            "segment_total": seg_total,
+            "search_hits": search_hits,
+            "ref_tree": ref_tree,
+            "plans": PLANS,
+            "site_base": base,
+        },
+    )
+
+
+@router.post("/referral/clear-balance")
+async def admin_referral_clear_balance(
+    request: Request,
+    user_id: int = Form(...),
+    note: str = Form(""),
+):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    from services.referral_service import admin_clear_referral_balance
+
+    await admin_clear_referral_balance(user_id, note)
+    return RedirectResponse("/admin/referral", status_code=303)
+
+
+@router.post("/referral/promo-create")
+async def admin_referral_promo_create(
+    request: Request,
+    plan_key: str = Form("start"),
+    period_days: int = Form(30),
+    max_activations: Optional[str] = Form(None),
+    valid_days: Optional[str] = Form(None),
+):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    from services.referral_service import create_referral_promo_link
+
+    aid = admin.get("primary_user_id") or admin["id"]
+    ma_raw = (max_activations or "").strip()
+    max_a: Optional[int] = None
+    if ma_raw.isdigit():
+        max_a = int(ma_raw)
+    vu: Optional[datetime] = None
+    if valid_days and str(valid_days).strip().isdigit() and int(valid_days) > 0:
+        vu = datetime.utcnow() + timedelta(days=int(valid_days))
+    await create_referral_promo_link(
+        plan_key=plan_key,
+        period_days=period_days,
+        max_activations=max_a,
+        valid_until=vu,
+        created_by=int(aid),
+    )
+    return RedirectResponse("/admin/referral", status_code=303)
+
+
+@router.post("/referral/bulk-message")
+async def admin_referral_bulk_message(
+    request: Request,
+    user_ids: str = Form(...),
+    text: str = Form(...),
+):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    from services.support_delivery import deliver_support_message
+
+    aid = admin.get("primary_user_id") or admin["id"]
+    raw = (user_ids or "").replace(",", " ").split()
+    ids = []
+    for x in raw:
+        try:
+            ids.append(int(x.strip()))
+        except ValueError:
+            continue
+    ids = list(dict.fromkeys(ids))[:200]
+    sent = 0
+    for uid in ids:
+        r = await deliver_support_message(
+            admin_id=int(aid),
+            recipient_user_id=uid,
+            text=text[:8000],
+            feedback_id=None,
+        )
+        if r.get("ok"):
+            sent += 1
+    return RedirectResponse(f"/admin/referral?bulk_sent={sent}", status_code=303)
