@@ -2006,6 +2006,43 @@ async def profile_following_view_page(request: Request, user_id: int):
     )
 
 
+@router.get("/community/profile/{user_id}/stars/view", response_class=HTMLResponse)
+async def profile_stars_view_page(request: Request, user_id: int):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return RedirectResponse(f"/login?next=/community/profile/{user_id}/stars/view")
+    leg = await legal_acceptance_redirect(request, current_user)
+    if leg:
+        return leg
+    profile_id = await _resolve_community_profile_id(user_id)
+    if profile_id is None:
+        return HTMLResponse("Не найден", status_code=404)
+    rows = await database.fetch_all(
+        profile_likes.select()
+        .where(profile_likes.c.liked_user_id == profile_id)
+        .order_by(profile_likes.c.created_at.desc())
+        .limit(500)
+    )
+    users_list = []
+    seen = set()
+    for row in rows:
+        u = await _user_for_social_list(row["user_id"])
+        if u and u["id"] not in seen:
+            seen.add(u["id"])
+            users_list.append(u)
+    return templates.TemplateResponse(
+        "community_social_list.html",
+        {
+            "request": request,
+            "user": current_user,
+            "page_title": "Кто поставил звезду",
+            "people": users_list,
+            "profile_id": profile_id,
+            "back_href": f"/community/profile/{profile_id}",
+        },
+    )
+
+
 @router.get("/community/profile/{user_id}/publications/view", response_class=HTMLResponse)
 async def profile_publications_view_page(request: Request, user_id: int):
     current_user = await get_user_from_request(request)
