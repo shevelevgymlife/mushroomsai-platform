@@ -62,11 +62,23 @@
     {% for c in circles %}
     <div style="padding:12px;margin-bottom:10px;border-radius:14px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03)">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-        <strong style="color:#e8e8e8;font-size:14px">{{ c.name }}</strong>
+        <strong style="color:#e8e8e8;font-size:14px">Стюрт #{{ loop.index }}</strong>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <a href="/community/profile/{{ (user.primary_user_id or user.id)|int }}/circle/{{ c.id }}" style="font-size:12px;color:#3dd4e0">Открыть стюрт →</a>
         <button type="button" style="font-size:12px;padding:6px 10px;border-radius:8px;border:1px solid rgba(248,113,113,.45);background:rgba(248,113,113,.1);color:#f87171;cursor:pointer" onclick="deleteCircleEdit({{ c.id }})">Удалить стюрт</button>
         </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
+        <input
+          id="circleNameInp{{ c.id }}"
+          type="text"
+          maxlength="80"
+          value="{{ c.name }}"
+          class="sinp"
+          style="flex:1;min-width:180px;padding:8px 10px;border-radius:10px;font-size:13px;background:#0e0e0e;border:1px solid rgba(255,255,255,.12);color:#ccc"
+          placeholder="Имя стюрта"
+        >
+        <button type="button" class="btn-o" style="font-size:12px;padding:8px 12px" onclick="renameCircleEdit({{ c.id }})">Сохранить имя</button>
       </div>
       <label style="font-size:11px;color:#888;margin-top:8px;display:block">Пост в стюрте (по названию)</label>
       <select class="sinp pe-post-sel" data-circle-id="{{ c.id }}" style="width:100%;margin-top:4px;padding:8px 10px;border-radius:10px;font-size:13px;background:#0e0e0e;border:1px solid rgba(255,255,255,.12);color:#ccc">
@@ -103,6 +115,21 @@ async function deleteCircleEdit(cid){
     var d=await r.json().catch(function(){return {};});
     if(r.ok&&d.ok){ location.reload(); }
     else alert(d.error||'Не удалось удалить');
+  }catch(e){ alert('Сеть'); }
+}
+async function renameCircleEdit(cid){
+  var inp=document.getElementById('circleNameInp'+cid);
+  var nm=((inp&&inp.value)||'').trim()||'Стюрт';
+  var fd=new FormData(); fd.append('name', nm);
+  try{
+    var r=await fetch('/community/circle/'+cid+'/rename',{method:'POST',body:fd,credentials:'same-origin'});
+    var d=await r.json().catch(function(){return {};});
+    if(r.ok&&d.ok){
+      if(inp&&d.name) inp.value=d.name;
+      alert('Имя стюрта сохранено');
+    }else{
+      alert(d.error||'Не удалось сохранить имя');
+    }
   }catch(e){ alert('Сеть'); }
 }
 async function attachSelToCircle(cid){
