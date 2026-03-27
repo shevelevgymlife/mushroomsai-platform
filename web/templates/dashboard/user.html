@@ -841,6 +841,86 @@ body.dash-ig-app .ig-lamp-topbar{
   top:calc(64px + env(safe-area-inset-top,0px) + 6px);
 }
 @keyframes igMsgIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ── Shimmer gradient buttons ── */
+@keyframes shimmerBtn {
+  0%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+  100%{background-position:0% 50%}
+}
+.btn-subscribe {
+  background: linear-gradient(135deg, #3dd4e0, #b85fa3);
+  background-size: 200% 200%;
+  animation: shimmerBtn 3s ease infinite;
+  color: #000;
+  font-weight: 700;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 22px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: transform .2s;
+}
+.btn-subscribe:hover { transform: scale(1.04); }
+.btn-subscribe.subscribed {
+  background: rgba(61,212,224,.1);
+  border: 1px solid #3dd4e0;
+  color: #3dd4e0;
+  animation: none;
+}
+.btn-message {
+  border: 1.5px solid;
+  border-image: linear-gradient(135deg, #3dd4e0, #b85fa3) 1;
+  background: transparent;
+  color: #3dd4e0;
+  font-weight: 600;
+  border-radius: 12px;
+  padding: 10px 22px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all .2s;
+  text-decoration: none;
+  display: inline-block;
+}
+.btn-message:hover { background: rgba(61,212,224,.1); }
+
+/* ── Chaos quick-links grid ── */
+.chaos-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  grid-template-rows: auto;
+  gap: 12px;
+}
+.chaos-card {
+  border-radius: 20px;
+  padding: 18px 16px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  cursor: pointer;
+  transition: transform .2s, box-shadow .2s, border-color .2s;
+  text-decoration: none;
+  display: block;
+}
+.chaos-card:hover {
+  transform: scale(1.02);
+}
+.chaos-card .cc-icon {
+  font-size: 32px;
+  margin-bottom: 10px;
+  line-height: 1;
+}
+.chaos-card .cc-name {
+  font-size: 14px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #3dd4e0, #b85fa3, #C9A84C);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+@media(max-width:600px){
+  .chaos-grid { grid-template-columns: 1fr; }
+  .chaos-card { grid-column: span 1 !important; grid-row: span 1 !important; }
+}
 </style>
 
 {% from 'components/stroke_icons.html' import ico %}
@@ -862,6 +942,7 @@ body.dash-ig-app .ig-lamp-topbar{
     <section class="db-sec active" id="sec-home">
       <div class="hero-card" style="margin-bottom:22px">
         <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
+          <!-- Avatar -->
           <div class="av-wrap" onclick="document.getElementById('avInput').click()" title="Изменить фото">
             {% if user.avatar %}
             <img id="avImg" src="{{ user.avatar }}" class="av-circle" style="width:80px;height:80px" alt="">
@@ -872,32 +953,26 @@ body.dash-ig-app .ig-lamp-topbar{
             <div class="av-overlay">✏️</div>
             <input id="avInput" type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="uploadAv(this)">
           </div>
+          <!-- Profile info -->
           <div style="flex:1;min-width:160px">
-            <div style="font-size:24px;font-weight:700;color:#e8e8e8;margin-bottom:4px">{{ user.name or 'Участник' }}</div>
-            <div style="font-size:13px;color:#888;margin-bottom:10px">{{ user.email or ('Telegram ID: ' + (user.tg_id|string) if user.tg_id else 'Google аккаунт') }}</div>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-              <span class="badge-plan badge-{{ plan }}">
+            <!-- Name with shimmer gradient -->
+            <div style="font-size:26px;font-weight:800;margin-bottom:6px;background:linear-gradient(135deg,#3dd4e0,#b85fa3,#C9A84C);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1.2">{{ user.name or 'Участник' }}</div>
+            <!-- Badges row -->
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+              <span class="badge-plan badge-{{ plan }}" style="font-size:12px">
                 {% if plan == 'maxi' %}🏪{% elif plan == 'pro' %}💎{% elif plan == 'start' %}⭐{% else %}🌿{% endif %}
                 {{ plan_info.name }}
               </span>
-              <span style="font-size:12px;color:#888">{{ rep_badge(my_post_count) }}</span>
+              <span style="font-size:12px;color:#aaa;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:3px 9px">{{ rep_badge(my_post_count) }}</span>
+            </div>
+            <!-- Action buttons -->
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+              <button class="btn-subscribe" onclick="toggleSubscribe(this)">Подписаться</button>
+              <button class="btn-message" onclick="goSec('profile')">Сообщение</button>
             </div>
             {% if user.bio %}
-            <div style="font-size:13px;color:#aaa;margin-top:10px;max-width:400px">{{ user.bio }}</div>
+            <div style="font-size:13px;color:#aaa;margin-top:12px;max-width:420px;line-height:1.55">{{ user.bio }}</div>
             {% endif %}
-          </div>
-          <div style="display:flex;flex-direction:column;gap:8px;margin-left:auto">
-            {% if 'community' in vbk %}
-            <button type="button" class="btn-g" onclick="openCreatePostModal()">✏️ Написать пост</button>
-            <button class="btn-o" onclick="goSec('feed')">👥 Моя лента</button>
-            {% endif %}
-            {% if 'knowledge_base' in vbk %}
-            <a href="https://t.me/ShevelevVlog" target="_blank" rel="noopener noreferrer" class="btn-o" style="font-size:12px;padding:7px 14px;text-align:center;text-decoration:none">📚 База знаний</a>
-            {% endif %}
-            {% if 'ai_chat' in vbk %}
-            <button class="btn-o" onclick="goSec('ai')" style="font-size:12px;padding:7px 14px">🤖 AI чат</button>
-            {% endif %}
-            <button class="btn-o" onclick="goSec('profile')" style="font-size:12px;padding:7px 14px">⚙️ Редактировать</button>
           </div>
         </div>
 
@@ -937,36 +1012,56 @@ body.dash-ig-app .ig-lamp-topbar{
       </div>
       {% endif %}
 
-      <!-- Quick links -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px">
+      <!-- Quick links — chaotic mosaic grid -->
+      <div class="chaos-grid">
         {% if 'community' in vbk %}
-        <div class="card-sm" style="cursor:pointer;transition:border-color .2s" onclick="goSec('feed')" onmouseover="this.style.borderColor='rgba(61,212,224,.4)'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)'">
-          <div style="font-size:24px;margin-bottom:8px">👥</div>
-          <div style="font-size:13px;font-weight:600;color:#ccc">Лента</div>
+        <div class="chaos-card"
+          style="grid-column:span 3;grid-row:span 2;background:linear-gradient(135deg,rgba(61,212,224,.18),rgba(61,212,224,.05));border:1px solid rgba(61,212,224,.4);box-shadow:0 0 0 0 rgba(61,212,224,0)"
+          onclick="goSec('feed')"
+          onmouseover="this.style.boxShadow='0 0 18px rgba(61,212,224,.18)';this.style.borderColor='rgba(61,212,224,.7)'"
+          onmouseout="this.style.boxShadow='none';this.style.borderColor='rgba(61,212,224,.4)'">
+          <div class="cc-icon">👥</div>
+          <div class="cc-name">Лента</div>
         </div>
         {% endif %}
         {% if 'ai_chat' in vbk %}
-        <div class="card-sm" style="cursor:pointer;transition:border-color .2s" onclick="goSec('ai')" onmouseover="this.style.borderColor='rgba(61,212,224,.4)'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)'">
-          <div style="font-size:24px;margin-bottom:8px">🤖</div>
-          <div style="font-size:13px;font-weight:600;color:#ccc">AI чат</div>
+        <div class="chaos-card"
+          style="grid-column:span 3;grid-row:span 1;background:linear-gradient(135deg,rgba(184,95,163,.18),rgba(184,95,163,.05));border:1px solid rgba(184,95,163,.4);box-shadow:0 0 0 0 rgba(184,95,163,0)"
+          onclick="goSec('ai')"
+          onmouseover="this.style.boxShadow='0 0 18px rgba(184,95,163,.18)';this.style.borderColor='rgba(184,95,163,.7)'"
+          onmouseout="this.style.boxShadow='none';this.style.borderColor='rgba(184,95,163,.4)'">
+          <div class="cc-icon">🤖</div>
+          <div class="cc-name">AI чат</div>
         </div>
         {% endif %}
         {% if 'knowledge_base' in vbk %}
-        <a href="https://t.me/ShevelevVlog" target="_blank" rel="noopener noreferrer" class="card-sm" style="cursor:pointer;transition:border-color .2s;text-decoration:none;display:block" onmouseover="this.style.borderColor='rgba(61,212,224,.4)'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)'">
-          <div style="font-size:24px;margin-bottom:8px">📚</div>
-          <div style="font-size:13px;font-weight:600;color:#ccc">База знаний</div>
+        <a href="https://t.me/ShevelevVlog" target="_blank" rel="noopener noreferrer"
+          class="chaos-card"
+          style="grid-column:span 2;grid-row:span 1;background:linear-gradient(135deg,rgba(201,168,76,.18),rgba(201,168,76,.05));border:1px solid rgba(201,168,76,.4);box-shadow:0 0 0 0 rgba(201,168,76,0)"
+          onmouseover="this.style.boxShadow='0 0 18px rgba(201,168,76,.18)';this.style.borderColor='rgba(201,168,76,.7)'"
+          onmouseout="this.style.boxShadow='none';this.style.borderColor='rgba(201,168,76,.4)'">
+          <div class="cc-icon">📚</div>
+          <div class="cc-name">База знаний</div>
         </a>
         {% endif %}
         {% if 'shop' in vbk %}
-        <div class="card-sm" style="cursor:pointer;transition:border-color .2s" onclick="goSec('shop')" onmouseover="this.style.borderColor='rgba(61,212,224,.4)'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)'">
-          <div style="font-size:24px;margin-bottom:8px">🛒</div>
-          <div style="font-size:13px;font-weight:600;color:#ccc">Магазин</div>
+        <div class="chaos-card"
+          style="grid-column:span 4;grid-row:span 1;background:linear-gradient(135deg,rgba(61,212,224,.1),rgba(184,95,163,.15));border:1px solid rgba(184,95,163,.3);box-shadow:0 0 0 0 rgba(184,95,163,0)"
+          onclick="goSec('shop')"
+          onmouseover="this.style.boxShadow='0 0 18px rgba(184,95,163,.15)';this.style.borderColor='rgba(184,95,163,.6)'"
+          onmouseout="this.style.boxShadow='none';this.style.borderColor='rgba(184,95,163,.3)'">
+          <div class="cc-icon">🛒</div>
+          <div class="cc-name">Магазин</div>
         </div>
         {% endif %}
         {% if 'tariffs' in vbk %}
-        <div class="card-sm" style="cursor:pointer;transition:border-color .2s" onclick="goSec('plan')" onmouseover="this.style.borderColor='rgba(61,212,224,.4)'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)'">
-          <div style="font-size:24px;margin-bottom:8px">💎</div>
-          <div style="font-size:13px;font-weight:600;color:#ccc">Тарифы</div>
+        <div class="chaos-card"
+          style="grid-column:span 2;grid-row:span 1;background:linear-gradient(135deg,rgba(201,168,76,.15),rgba(61,212,224,.08));border:1px solid rgba(201,168,76,.4);box-shadow:0 0 0 0 rgba(201,168,76,0)"
+          onclick="goSec('plan')"
+          onmouseover="this.style.boxShadow='0 0 18px rgba(201,168,76,.18)';this.style.borderColor='rgba(201,168,76,.7)'"
+          onmouseout="this.style.boxShadow='none';this.style.borderColor='rgba(201,168,76,.4)'">
+          <div class="cc-icon">💎</div>
+          <div class="cc-name">Тарифы</div>
         </div>
         {% endif %}
       </div>
@@ -4368,5 +4463,17 @@ initProfileChaosToggle();
 // ── Util ──
 function esc(t){return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}
 function escAttr(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;')}
+
+// ── Subscribe toggle ──
+function toggleSubscribe(btn) {
+  const sub = btn.classList.contains('subscribed');
+  if (sub) {
+    btn.classList.remove('subscribed');
+    btn.textContent = 'Подписаться';
+  } else {
+    btn.classList.add('subscribed');
+    btn.textContent = '✓ Подписан';
+  }
+}
 </script>
 {% endblock %}
