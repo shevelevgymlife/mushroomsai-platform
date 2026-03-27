@@ -49,12 +49,13 @@ body.profile-app-shell .grain-overlay{opacity:0.22}
 }
 .cp-profile-col-left{display:flex;flex-direction:column;align-items:center;gap:12px;min-width:0;flex-shrink:0}
 .cp-profile-col-right{display:flex;flex-direction:column;align-items:stretch;gap:0;min-width:0;width:100%}
-.cp-hero-bar{display:grid;grid-template-columns:minmax(0,min(260px,46%)) minmax(0,1fr);align-items:stretch;width:100%;max-width:min(100%,920px);margin:0 auto 10px;padding:18px 20px;border-radius:20px;background:linear-gradient(145deg,rgba(255,255,255,.07),rgba(8,9,14,.72));border:1px solid rgba(61,212,224,.22);box-shadow:0 16px 48px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.06);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);gap:0;min-width:0;box-sizing:border-box}
-.cp-hero-left{grid-column:1;position:relative;width:100%;min-width:0;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:16px;padding-right:clamp(10px,2.5vw,20px);box-sizing:border-box}
-.cp-hero-left::after{content:"";position:absolute;right:0;top:50%;transform:translateY(-50%);width:1px;height:min(72%,200px);min-height:44px;background:rgba(255,255,255,.14);border-radius:1px;pointer-events:none}
+.cp-hero-bar{display:grid;grid-template-columns:minmax(0,min(260px,46%)) minmax(0,1fr);align-items:stretch;width:100%;max-width:min(100%,920px);margin:0 auto 12px;padding:20px 22px;border-radius:22px;background:linear-gradient(155deg,rgba(255,255,255,.09),rgba(12,14,22,.78));border:1px solid rgba(61,212,224,.38);box-shadow:0 0 0 1px rgba(61,212,224,.12),0 20px 56px rgba(0,0,0,.42),0 0 40px rgba(61,212,224,.08),inset 0 1px 0 rgba(255,255,255,.1);backdrop-filter:blur(18px) saturate(1.25);-webkit-backdrop-filter:blur(18px) saturate(1.25);gap:0;min-width:0;box-sizing:border-box}
+.cp-hero-left{grid-column:1;position:relative;width:100%;min-width:0;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:14px;padding-right:clamp(12px,3vw,22px);box-sizing:border-box}
+.cp-hero-left::after{content:"";position:absolute;right:0;top:8%;bottom:8%;width:1px;background:linear-gradient(180deg,rgba(255,255,255,0),rgba(255,255,255,.22) 20%,rgba(255,255,255,.22) 80%,rgba(255,255,255,0));border-radius:1px;pointer-events:none}
 .cp-hero-stack{min-width:0;text-align:left;width:100%}
-.cp-hero-bio{font-size:13px;color:#b8bcc8;line-height:1.45;margin-top:4px;max-width:100%}
-.cp-hero-link{display:inline-block;margin-top:6px;font-size:13px;font-weight:600;color:#3dd4e0;text-decoration:underline;text-underline-offset:3px;word-break:break-all}
+.cp-hero-bar .cp-profile-name{font-size:clamp(22px,5.2vw,30px);font-weight:800;line-height:1.15;color:#3dd4e0;background:none;-webkit-text-fill-color:#3dd4e0;background-clip:border-box;-webkit-background-clip:border-box;letter-spacing:-.02em}
+.cp-hero-bio{font-size:13px;color:#e8eaef;line-height:1.5;margin-top:2px;max-width:100%}
+.cp-hero-link{display:inline-block;margin-top:4px;font-size:13px;font-weight:600;color:#3dd4e0;text-decoration:underline;text-underline-offset:4px;word-break:break-all}
 .cp-hero-center{display:flex;justify-content:flex-start;align-items:center;width:100%}
 .cp-like-star-bubble{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:999px;background:radial-gradient(ellipse at 30% 20%,rgba(255,214,120,.22),rgba(20,12,28,.85));border:1px solid rgba(255,214,120,.35);box-shadow:0 8px 28px rgba(255,180,90,.12)}
 .cp-like-star-bubble.clickable{cursor:pointer;transition:transform .14s ease, box-shadow .18s ease}
@@ -64,17 +65,18 @@ body.profile-app-shell .grain-overlay{opacity:0.22}
 .cp-hero-plan{display:flex;justify-content:flex-start;align-items:center;width:100%}
 .cp-plan-badge--xl{font-size:clamp(13px,3.2vw,15px)!important;padding:10px 18px!important;border-width:2px!important;box-shadow:0 12px 40px rgba(255,102,208,.25),inset 0 1px 0 rgba(255,255,255,.12)!important;letter-spacing:.04em}
 .cp-hero-actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:flex-start;margin-top:0;width:100%}
-.cp-hero-thoughts{grid-column:2;min-width:0;width:100%;max-width:100%;display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;align-self:stretch;padding-left:clamp(20px,3.5vw,36px);padding-right:0;border-left:none;box-sizing:border-box}
-.cp-thoughts-inline{width:100%;max-width:100%;min-width:0;min-height:0;padding:2px 0 4px 0;display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;align-self:stretch;flex:1 1 auto;box-sizing:border-box}
-.cp-thoughts-label{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#a8d4e0;margin-bottom:14px;opacity:.85;font-weight:600;width:100%;max-width:100%;text-align:left;align-self:stretch}
-.cp-thoughts-text{font-size:clamp(18px,2.8vw,32px);line-height:1.4;width:100%;min-width:0;max-width:100%;box-sizing:border-box;text-align:left;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere}
+.cp-hero-thoughts{grid-column:2;min-width:0;width:100%;max-width:100%;display:flex;flex-direction:column;justify-content:center;align-items:stretch;align-self:stretch;padding-left:clamp(16px,3.2vw,34px);padding-right:2px;border-left:none;box-sizing:border-box;min-height:0}
+.cp-thoughts-inline{width:100%;max-width:100%;min-width:0;min-height:0;padding:0;display:flex;flex-direction:column;justify-content:center;align-items:stretch;align-self:stretch;flex:1 1 auto;box-sizing:border-box}
+.cp-thoughts-label{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:rgba(200,210,220,.72);margin-bottom:16px;font-weight:600;width:100%;max-width:100%;text-align:left;align-self:stretch}
+.cp-thoughts-text{font-size:clamp(17px,3.1vw,32px);line-height:1.45;width:100%;min-width:0;max-width:100%;box-sizing:border-box;text-align:left;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;font-weight:500}
 @media(max-width:700px){
-  .cp-hero-bar{padding:14px 12px;grid-template-columns:minmax(0,42%) minmax(0,1fr)}
-  .cp-hero-left{gap:12px}
-  .cp-hero-left::after{height:min(68%,180px);min-height:40px}
-  .cp-hero-thoughts{padding-left:clamp(10px,2.8vw,22px)}
-  .cp-thoughts-text{font-size:clamp(14px,3.6vw,24px)}
-  .cp-thoughts-label{font-size:11px;margin-bottom:10px;letter-spacing:.12em}
+  .cp-hero-bar{padding:16px 14px;grid-template-columns:minmax(0,44%) minmax(0,1fr)}
+  .cp-hero-left{gap:11px}
+  .cp-hero-left::after{top:6%;bottom:6%}
+  .cp-hero-bar .cp-profile-name{font-size:clamp(18px,4.8vw,24px)}
+  .cp-hero-thoughts{padding-left:clamp(12px,3vw,22px)}
+  .cp-thoughts-text{font-size:clamp(14px,3.5vw,26px);line-height:1.42}
+  .cp-thoughts-label{font-size:10px;margin-bottom:12px;letter-spacing:.18em}
 }
 .cp-profile-like-row{display:flex;align-items:center;justify-content:center;gap:10px;margin:0 0 12px;flex-wrap:wrap}
 @media(min-width:641px){.cp-profile-like-row{justify-content:flex-start}}
@@ -331,7 +333,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
           </div>
           <div class="cp-hero-thoughts">
             <div class="cp-thoughts-inline">
-              <div class="cp-thoughts-label">Мои мысли</div>
+              <div class="cp-thoughts-label">МОИ МЫСЛИ</div>
               <div class="cp-thoughts-text" style="color:{{ profile.get('profile_thoughts_color') or '#3dd4e0' }};font-family:'{{ profile.get('profile_thoughts_font') or 'Inter' }}',system-ui,sans-serif;">
                 {{ profile.get('profile_thoughts') or 'Здесь может быть одно-два предложения о себе.' }}
               </div>
