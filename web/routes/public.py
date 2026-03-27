@@ -35,6 +35,7 @@ from config import settings, shevelev_token_address
 from services.subscription_service import check_subscription, PLANS, web_default_home_path
 from services.shop_catalog import product_gallery_urls
 from services.legal import legal_acceptance_redirect
+from services.legacy_dm_chat_sync import sync_direct_messages_pair
 from services.referral_service import (
     attach_invite_ref_from_query,
     get_referral_stats,
@@ -2338,6 +2339,10 @@ async def poll_messages(request: Request, other_id: int, after: int = 0):
     msgs = [{"id": r["id"], "sender_id": r["sender_id"], "text": r["text"],
              "is_read": r["is_read"],
              "created_at": r["created_at"].strftime("%H:%M") if r["created_at"] else ""} for r in rows]
+    try:
+        await sync_direct_messages_pair(uid, other_id)
+    except Exception:
+        pass
     return JSONResponse({"messages": msgs})
 
 
@@ -2373,6 +2378,11 @@ async def send_message(request: Request, other_id: int):
         return JSONResponse({"error": str(e)}, status_code=500)
 
     msg_id = row["id"] if row else None
+    try:
+        if other_id and other_id != 0 and msg_id:
+            await sync_direct_messages_pair(uid, other_id, broadcast_legacy_dm_id=int(msg_id))
+    except Exception:
+        pass
     if other_id and other_id != 0:
         try:
             recipient = await database.fetch_one(users.select().where(users.c.id == other_id))

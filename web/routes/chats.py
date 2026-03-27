@@ -28,6 +28,7 @@ from services.chat_ws_manager import (
     touch_presence,
 )
 from services.legal import legal_acceptance_redirect
+from services.legacy_dm_chat_sync import sync_all_partners_for_user
 from web.templates_utils import Jinja2Templates
 
 logger = logging.getLogger(__name__)
@@ -137,6 +138,7 @@ async def api_chats_unread_count(request: Request):
         return JSONResponse({"count": 0})
     uid = _eff_uid(user)
     try:
+        await sync_all_partners_for_user(uid)
         n = await database.fetch_val(
             sa.text(
                 """
@@ -185,6 +187,7 @@ async def api_list_chats(request: Request):
     if not user:
         return JSONResponse({"error": "auth"}, status_code=401)
     uid = _eff_uid(user)
+    await sync_all_partners_for_user(uid)
     rows = await database.fetch_all(
         sa.text(
             """

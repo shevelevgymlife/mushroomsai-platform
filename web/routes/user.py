@@ -31,6 +31,7 @@ from services.subscription_service import (
 )
 from ai.openai_client import chat_with_ai
 from services.plan_access import plan_allowed_block_keys, is_platform_operator, can_use_community_group_chats
+from services.legacy_dm_chat_sync import sync_direct_messages_pair
 from services.community_group_queries import fetch_community_group_row
 from services.legal import legal_acceptance_redirect
 from services.notify_admin import notify_admin_telegram
@@ -548,15 +549,20 @@ async def share_community_post_dm(request: Request, post_id: int):
     ttitle = (post.get("title") or "").strip()
     line = f"🔗 Пост: {ttitle}\n{link}" if ttitle else f"🔗 Пост в сообществе\n{link}"
     try:
-        await database.execute(
+        shr = await database.fetch_one_write(
             sa.text(
                 "INSERT INTO direct_messages (sender_id, recipient_id, text, is_read, is_system) "
-                "VALUES (:s, :r, :t, false, false)"
+                "VALUES (:s, :r, :t, false, false) RETURNING id"
             ).bindparams(s=uid, r=recipient_id, t=line)
         )
     except Exception as e:
         _logger.exception("share dm: %s", e)
         return JSONResponse({"error": "db"}, status_code=500)
+    try:
+        if shr and shr.get("id"):
+            await sync_direct_messages_pair(uid, recipient_id, broadcast_legacy_dm_id=int(shr["id"]))
+    except Exception:
+        pass
     return JSONResponse({"ok": True, "link": link})
 
 
@@ -1062,14 +1068,19 @@ async def shevelev_transfer_notify(request: Request):
         f"Проверьте подтверждение в блокчейне; баланс в кабинете обновляется после синхронизации."
     )
     try:
-        await database.execute(
+        wrow = await database.fetch_one_write(
             sa.text(
                 "INSERT INTO direct_messages (sender_id, recipient_id, text, is_read, is_system) "
-                "VALUES (:s, :r, :t, false, false)"
+                "VALUES (:s, :r, :t, false, false) RETURNING id"
             ).bindparams(s=uid, r=rid, t=msg)
         )
     except Exception:
         return JSONResponse({"error": "dm"}, status_code=500)
+    try:
+        if wrow and wrow.get("id"):
+            await sync_direct_messages_pair(uid, int(rid), broadcast_legacy_dm_id=int(wrow["id"]))
+    except Exception:
+        pass
     tg_id = recipient.get("tg_id") or recipient.get("linked_tg_id")
     last_seen = recipient.get("last_seen_at")
     online = False
@@ -1419,6 +1430,11 @@ async def send_dm(request: Request, recipient_id: int):
             actor_name = user.get("name") or "Участник"
             read_path = f"/messages/{uid}"
             await notify_user_dm_with_read_button(tg_id, actor_name, text, read_path)
+    try:
+        if msg_id:
+            await sync_direct_messages_pair(uid, recipient_id, broadcast_legacy_dm_id=int(msg_id))
+    except Exception:
+        pass
     return JSONResponse({"ok": True, "id": msg_id})
 
 
@@ -1447,6 +1463,10 @@ async def get_dm_thread(request: Request, other_id: int):
         ),
         {"oid": other_id, "uid": uid},
     )
+    try:
+        await sync_direct_messages_pair(uid, other_id)
+    except Exception:
+        pass
     result = [
         {
             "id": r["id"],

@@ -407,6 +407,15 @@ async def run_heavy_startup(app: FastAPI) -> None:
         except Exception as e:
             logger.warning("migrate_v14 chats tables: %s", e)
 
+        try:
+            import migrate_v15_legacy_dm_link as migrate_v15
+
+            for s in migrate_v15.STEPS:
+                await database.execute(sa.text(s))
+            logger.info("Chat messages legacy_direct_message_id (migrate_v15) OK")
+        except Exception as e:
+            logger.warning("migrate_v15 legacy dm link: %s", e)
+
         start_scheduler()
         app.state.startup_complete = True
         logger.info("Heavy startup complete; full traffic enabled")
