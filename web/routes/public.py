@@ -29,7 +29,7 @@ from db.models import (
     direct_messages,
     homepage_blocks,
 )
-from auth.session import get_user_from_request
+from auth.session import get_user_from_request, attach_subscription_effective
 from auth.ui_prefs import attach_screen_rim_prefs
 from config import settings, shevelev_token_address
 from services.subscription_service import check_subscription, PLANS, web_default_home_path
@@ -980,6 +980,7 @@ async def referral_program_page(request: Request):
         if primary:
             display_user = dict(primary)
             attach_screen_rim_prefs(display_user)
+            await attach_subscription_effective(display_user)
     from web.routes.user import compute_visible_blocks
 
     visible_block_keys = await compute_visible_blocks(uid, plan)
@@ -1070,6 +1071,11 @@ async def community_old(request: Request):
 
     # Authenticated: full social network
     effective_user_id = current_user.get("primary_user_id") or current_user["id"]
+    _role = (current_user.get("role") or "user").lower()
+    _eff = await check_subscription(effective_user_id)
+    if _eff == "free" and _role not in ("admin", "moderator"):
+        return RedirectResponse("/subscriptions?locked=1", status_code=302)
+
     display_user = current_user
     if current_user.get("primary_user_id"):
         primary = await database.fetch_one(users.select().where(users.c.id == effective_user_id))
@@ -1192,6 +1198,8 @@ async def community_old(request: Request):
         display_user = dict(full_profile)
         attach_screen_rim_prefs(display_user)
 
+    await attach_subscription_effective(display_user)
+
     _wa = (display_user.get("wallet_address") or "").strip()
     shevelev_auto_sync = _wa.startswith("0x")
 
@@ -1223,12 +1231,19 @@ async def community_post_new_page(request: Request):
         return leg
 
     effective_user_id = current_user.get("primary_user_id") or current_user["id"]
+    _role = (current_user.get("role") or "user").lower()
+    _eff = await check_subscription(effective_user_id)
+    if _eff == "free" and _role not in ("admin", "moderator"):
+        return RedirectResponse("/subscriptions?locked=1", status_code=302)
+
     display_user = current_user
     if current_user.get("primary_user_id"):
         primary = await database.fetch_one(users.select().where(users.c.id == effective_user_id))
         if primary:
             display_user = dict(primary)
             attach_screen_rim_prefs(display_user)
+
+    await attach_subscription_effective(display_user)
 
     my_folders = await database.fetch_all(
         community_folders.select()
