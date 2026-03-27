@@ -68,15 +68,20 @@ body.bg-bg {
   font-family: var(--font-ui);
   font-size: var(--neo-text-base);
   line-height: var(--neo-leading-body);
+  color: var(--neo-text);
+}
+/* Фон «редакционный» только для темы по умолчанию; иначе фон задаёт profile-ui-themes + base.html */
+body.bg-bg[data-profile-ui="default"],
+body.bg-bg:not([data-profile-ui]) {
   background-color: var(--neo-bg) !important;
   background-image: linear-gradient(180deg, #070708 0%, #0a0a0c 55%, #080809 100%),
     radial-gradient(ellipse 90% 50% at 50% -15%, rgba(61, 212, 224, 0.07), transparent 52%) !important;
   background-attachment: fixed;
-  color: var(--neo-text);
 }
 
-/* Явный маркер темы: тонкая линия сверху (если видите — новый CSS точно подключился) */
-html[data-ui-theme="editorial-grain"] body.bg-bg {
+/* Явный маркер темы: тонкая линия сверху — только для фона по умолчанию */
+html[data-ui-theme="editorial-grain"] body.bg-bg[data-profile-ui="default"],
+html[data-ui-theme="editorial-grain"] body.bg-bg:not([data-profile-ui]) {
   box-shadow: inset 0 1px 0 0 rgba(61, 212, 224, 0.22);
 }
 

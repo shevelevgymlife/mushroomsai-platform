@@ -35,6 +35,18 @@ logger = logging.getLogger(__name__)
 
 # -------------------- MIDDLEWARE --------------------
 
+class AuthUserPrimeMiddleware(BaseHTTPMiddleware):
+    """Один раз за запрос загружает пользователя в request.state — тема/фон в Jinja на всех страницах."""
+
+    async def dispatch(self, request: Request, call_next):
+        try:
+            await get_user_from_request(request)
+        except Exception:
+            request.state._auth_user_resolved = True
+            request.state._auth_user = None
+        return await call_next(request)
+
+
 class LanguageMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         lang = request.cookies.get("lang")
@@ -497,6 +509,7 @@ app.add_middleware(
 )
 
 app.add_middleware(LanguageMiddleware)
+app.add_middleware(AuthUserPrimeMiddleware)
 app.add_middleware(CommunitySubscriptionGateMiddleware)
 app.add_middleware(ProbeBlockMiddleware)
 app.add_middleware(LegalAcceptanceGateMiddleware)

@@ -181,3 +181,13 @@
     linear-gradient(125deg, rgba(10, 8, 14, 0.9) 0%, rgba(6, 4, 8, 0.78) 100%),
     url("https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200&q=80") center / cover no-repeat;
 }
+
+/* Глобально: фон темы виден на всех страницах (body), не только в блоке профиля */
+html:has(body.bg-bg[data-profile-ui]:not([data-profile-ui="default"])) {
+  background: transparent !important;
+}
+body[data-profile-ui]:not([data-profile-ui="default"]) main > .neo-app-surface.bg-bg,
+body[data-profile-ui]:not([data-profile-ui="default"]) main > div.min-h-screen.bg-bg {
+  background-color: transparent !important;
+  background-image: none !important;
+}

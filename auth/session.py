@@ -68,11 +68,21 @@ async def attach_subscription_effective(u: dict) -> None:
 
 
 async def get_user_from_request(request) -> Optional[dict]:
+    """Один раз за запрос: кэш в request.state (тема/ободок профиля во всех шаблонах)."""
+    if getattr(request.state, "_auth_user_resolved", False):
+        return getattr(request.state, "_auth_user", None)
+
     token = request.cookies.get("access_token")
     if not token:
         auth_header = request.headers.get("Authorization", "")
         if auth_header.startswith("Bearer "):
             token = auth_header[7:]
     if not token:
+        request.state._auth_user_resolved = True
+        request.state._auth_user = None
         return None
-    return await get_current_user(token)
+
+    u = await get_current_user(token)
+    request.state._auth_user_resolved = True
+    request.state._auth_user = u
+    return u

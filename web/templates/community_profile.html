@@ -243,7 +243,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 }
 </style>
 
-<div class="cp-ig-root" data-profile-ui="{{ profile_ui_theme|default('default') }}">
+<div class="cp-ig-root" data-profile-ui="{{ (user.profile_ui_theme if user and user.profile_ui_theme else 'default') }}">
   <div class="cp-ig-main">
     <div class="ig-me-shell">
       <div class="cp-stats-row">

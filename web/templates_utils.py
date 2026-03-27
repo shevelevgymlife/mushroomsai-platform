@@ -23,6 +23,10 @@ class Jinja2Templates(_Jinja2Templates):
         if request:
             lang = getattr(request.state, "lang", "ru")
 
+            # Тема/фон профиля: подставляем залогиненного пользователя, если роут не передал user
+            if "user" not in context:
+                context["user"] = getattr(request.state, "_auth_user", None)
+
             # Authenticated user's saved language preference wins
             user = context.get("user")
             if user and isinstance(user, dict):
