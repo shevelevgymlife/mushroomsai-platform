@@ -93,6 +93,77 @@
 .cp-ig-root[data-profile-ui="cosmic-dust"] {
   background: radial-gradient(ellipse at 50% 80%, #1a1028 0%, #0a0818 50%, #020208 100%);
 }
+.cp-ig-root[data-profile-ui="city-night"] {
+  background:
+    linear-gradient(165deg, rgba(8, 12, 20, 0.88) 0%, rgba(5, 8, 14, 0.76) 100%),
+    url("https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=1400&q=80") center / cover no-repeat;
+}
+.cp-ig-root[data-profile-ui="city-oldtown"] {
+  background:
+    linear-gradient(160deg, rgba(20, 14, 10, 0.82) 0%, rgba(10, 8, 6, 0.72) 100%),
+    url("https://images.unsplash.com/photo-1467269204594-9661b134dd2b?w=1400&q=80") center / cover no-repeat;
+}
+.cp-ig-root[data-profile-ui="sea-turquoise"] {
+  background:
+    linear-gradient(165deg, rgba(8, 22, 28, 0.72) 0%, rgba(4, 12, 18, 0.66) 100%),
+    url("https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1400&q=80") center / cover no-repeat;
+}
+.cp-ig-root[data-profile-ui="sea-storm"] {
+  background:
+    linear-gradient(170deg, rgba(8, 12, 18, 0.86) 0%, rgba(4, 8, 12, 0.78) 100%),
+    url("https://images.unsplash.com/photo-1500375592092-40eb2168fd21?w=1400&q=80") center / cover no-repeat;
+}
+.cp-ig-root[data-profile-ui="desert-sand"] {
+  background:
+    linear-gradient(170deg, rgba(38, 28, 18, 0.7) 0%, rgba(20, 14, 9, 0.66) 100%),
+    url("https://images.unsplash.com/photo-1509316785289-025f5b846b35?w=1400&q=80") center / cover no-repeat;
+}
+.cp-ig-root[data-profile-ui="nature-waterfall"] {
+  background:
+    linear-gradient(160deg, rgba(8, 20, 18, 0.78) 0%, rgba(4, 10, 10, 0.7) 100%),
+    url("https://images.unsplash.com/photo-1439066615861-d1af74d74000?w=1400&q=80") center / cover no-repeat;
+}
+.cp-ig-root[data-profile-ui="wildlife-tiger"] {
+  background:
+    linear-gradient(165deg, rgba(28, 14, 8, 0.78) 0%, rgba(12, 7, 4, 0.74) 100%),
+    url("https://images.unsplash.com/photo-1546182990-dffeafbe841d?w=1400&q=80") center / cover no-repeat;
+}
+.cp-ig-root[data-profile-ui="flowers-bloom"] {
+  background:
+    linear-gradient(165deg, rgba(22, 10, 22, 0.72) 0%, rgba(10, 5, 12, 0.7) 100%),
+    url("https://images.unsplash.com/photo-1468327768560-75b778cbb551?w=1400&q=80") center / cover no-repeat;
+}
+.cp-ig-root[data-profile-ui="fashion-editorial"] {
+  background:
+    linear-gradient(165deg, rgba(22, 18, 18, 0.72) 0%, rgba(10, 8, 8, 0.68) 100%),
+    url("https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1400&q=80") center / cover no-repeat;
+}
+.cp-ig-root[data-profile-ui="cars-supercar"] {
+  background:
+    linear-gradient(165deg, rgba(14, 14, 18, 0.82) 0%, rgba(6, 6, 10, 0.74) 100%),
+    url("https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=1400&q=80") center / cover no-repeat;
+}
+.cp-ig-root[data-profile-ui="graphics-neon"] {
+  background:
+    radial-gradient(120% 95% at 20% 5%, rgba(61, 212, 224, 0.18) 0%, rgba(0, 0, 0, 0) 45%),
+    radial-gradient(120% 95% at 80% 95%, rgba(184, 95, 163, 0.2) 0%, rgba(0, 0, 0, 0) 45%),
+    linear-gradient(145deg, #0f1022 0%, #080a18 45%, #03040c 100%);
+}
+.cp-ig-root[data-profile-ui="planet-mars"] {
+  background:
+    linear-gradient(165deg, rgba(26, 10, 8, 0.76) 0%, rgba(12, 5, 4, 0.7) 100%),
+    url("https://images.unsplash.com/photo-1614729939124-032f0b6b5d18?w=1400&q=80") center / cover no-repeat;
+}
+.cp-ig-root[data-profile-ui="universe-stars"] {
+  background:
+    linear-gradient(165deg, rgba(7, 8, 18, 0.84) 0%, rgba(4, 4, 10, 0.78) 100%),
+    url("https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=1400&q=80") center / cover no-repeat;
+}
+.cp-ig-root[data-profile-ui="constellation-sky"] {
+  background:
+    linear-gradient(170deg, rgba(8, 12, 28, 0.84) 0%, rgba(4, 6, 14, 0.78) 100%),
+    url("https://images.unsplash.com/photo-1519681393784-d120267933ba?w=1400&q=80") center / cover no-repeat;
+}
 
 /* Фото-темы (градиент поверх фото) */
 .cp-ig-root[data-profile-ui="photo-moss-forest"] {
