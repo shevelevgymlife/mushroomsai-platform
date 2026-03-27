@@ -54,6 +54,9 @@ users = sqlalchemy.Table(
     sqlalchemy.Column("link_merge_secondary_id", sqlalchemy.Integer, nullable=True),
     sqlalchemy.Column("screen_rim_json", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("profile_ui_theme", sqlalchemy.String(64), nullable=True),
+    sqlalchemy.Column("start_trial_claimed_at", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("start_trial_until", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("start_trial_end_notified", sqlalchemy.Boolean, default=False, server_default="false"),
 )
 
 sessions = sqlalchemy.Table(

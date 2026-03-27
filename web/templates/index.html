@@ -17,7 +17,8 @@
 {% set render_order = block_order if block_order else ['hero', 'features', 'pricing', 'community', 'shop'] %}
 
 {% for bkey in render_order %}
-  {% set skip_free_blocks = user and (user.subscription_plan|default('free') == 'free' or user.needs_tariff_choice|default(false)) and bkey in ['community','shop'] %}
+  {% set _eff = user.effective_subscription_plan|default(user.subscription_plan)|default('free') if user else 'free' %}
+  {% set skip_free_blocks = user and (_eff == 'free' or user.needs_tariff_choice|default(false)) and bkey in ['community','shop'] %}
   {% if block_visible(bkey) | trim and not skip_free_blocks %}
     {% set _b = blocks[bkey] if blocks and bkey in blocks else none %}
     {% set section_tpl = "components/index_section_" + bkey + ".html" %}

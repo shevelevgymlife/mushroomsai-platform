@@ -3,9 +3,22 @@
 {% block content %}
 <div class="neo-app-surface min-h-screen bg-bg pt-28 pb-16">
   <div class="max-w-7xl mx-auto px-4">
+    {% if request.query_params.get('locked') %}
+    <div class="max-w-3xl mx-auto mb-6 p-4 rounded-2xl border border-cyan-500/25 bg-cyan-500/10 text-cyan-100 text-sm leading-relaxed text-center">
+      Лента и магазин доступны с тарифа <strong>«Старт»</strong> или в <strong>пробном режиме 3 дня</strong> (акция в меню). Оформите подписку или активируйте пробный период.
+    </div>
+    {% endif %}
     {% if error %}
     <div class="max-w-3xl mx-auto mb-8 p-4 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-200 text-sm text-center leading-relaxed">
       {{ error }}
+    </div>
+    {% endif %}
+    {% if user.get('can_claim_start_trial') %}
+    <div class="max-w-3xl mx-auto mb-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+      <button type="button" onclick="typeof openStartTrialModal==='function'?openStartTrialModal():null" class="nf-shimmer-btn px-8 py-4 rounded-2xl text-sm font-extrabold tracking-widest uppercase text-[#0a0c12] border-0 cursor-pointer" style="background:linear-gradient(120deg,#3dd4e0,#c8a84b,#ff66d0);box-shadow:0 8px 32px rgba(61,212,224,.3)">
+        Попробовать бесплатно 3 дня
+      </button>
+      <span class="text-muted text-sm text-center max-w-md">Пробный доступ как у подписки «Старт» — один раз на аккаунт. Подробности в окне подтверждения.</span>
     </div>
     {% endif %}
     {% set pricing_logged_in = true %}

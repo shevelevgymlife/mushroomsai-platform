@@ -5,7 +5,7 @@ import urllib.parse
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, Response, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -27,6 +27,7 @@ from services.heavy_startup import run_heavy_startup
 from web.templates_utils import Jinja2Templates
 from auth.session import get_user_from_request
 from services.legal import legal_acceptance_redirect
+from services.subscription_service import check_subscription
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -79,6 +80,42 @@ class ProbeBlockMiddleware(BaseHTTPMiddleware):
         if self._is_wp_probe(request.url.path):
             return Response(status_code=404)
         return await call_next(request)
+
+
+class CommunitySubscriptionGateMiddleware(BaseHTTPMiddleware):
+    """Тариф Free без активного пробного: нет доступа к ленте (/community) и магазину (/shop) для авторизованных."""
+
+    @staticmethod
+    def _gated(path: str) -> bool:
+        return path.startswith("/community") or path.startswith("/shop")
+
+    async def dispatch(self, request: Request, call_next):
+        path = request.url.path or ""
+        if not self._gated(path):
+            return await call_next(request)
+        user = await get_user_from_request(request)
+        if not user:
+            return await call_next(request)
+        if (user.get("role") or "").lower() in ("admin", "moderator"):
+            return await call_next(request)
+        uid = int(user.get("primary_user_id") or user["id"])
+        plan = await check_subscription(uid)
+        if plan != "free":
+            return await call_next(request)
+        accept = (request.headers.get("accept") or "").lower()
+        if request.method == "GET" and "text/html" in accept:
+            nxt = path + (("?" + request.url.query) if request.url.query else "")
+            return RedirectResponse(
+                "/subscriptions?locked=1&next=" + urllib.parse.quote(nxt, safe=""),
+                status_code=302,
+            )
+        return JSONResponse(
+            {
+                "error": "subscription_required",
+                "message": "Нужен тариф «Старт», пробный период или выше.",
+            },
+            status_code=402,
+        )
 
 
 _STARTUP_SKIP_PATHS = frozenset({"/health", "/healthz", "/favicon.ico", "/robots.txt", "/sitemap.xml"})
@@ -452,6 +489,7 @@ app.add_middleware(
 )
 
 app.add_middleware(LanguageMiddleware)
+app.add_middleware(CommunitySubscriptionGateMiddleware)
 app.add_middleware(ProbeBlockMiddleware)
 app.add_middleware(LegalAcceptanceGateMiddleware)
 app.add_middleware(StartupGateMiddleware)

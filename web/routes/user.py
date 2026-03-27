@@ -195,7 +195,7 @@ async def onboarding_tariff_submit(request: Request, choice: str = Form(...)):
         .where(users.c.id == uid)
         .values(subscription_plan="free", needs_tariff_choice=False)
     )
-    return RedirectResponse("/community")
+    return RedirectResponse("/subscriptions")
 
 
 @router.get("/dashboard", response_class=HTMLResponse)

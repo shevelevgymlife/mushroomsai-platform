@@ -1,6 +1,6 @@
 {# pricing_logged_in: optional; when true, CTAs for logged-in app (subscriptions page) #}
 {% set _pl = pricing_logged_in if pricing_logged_in is defined else false %}
-{% set _plan = (user.subscription_plan or 'free') if _pl and user else 'none' %}
+{% set _plan = (user.effective_subscription_plan|default(user.subscription_plan) or 'free') if _pl and user else 'none' %}
 <!-- Tariffs -->
 <section class="py-20 sm:py-28 relative scroll-mt-20" id="tariffs">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

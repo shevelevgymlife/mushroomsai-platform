@@ -2,8 +2,9 @@
 {% from 'components/stroke_icons.html' import ico %}
 {% set eff_uid = user.primary_user_id or user.id %}
 {% set vbk = visible_block_keys if visible_block_keys is defined else ['ai_chat','messages','community','shop','profile_photo','posts','tariffs','referral','knowledge_base','pro_telegram','pro_pin_info','seller_marketplace'] %}
-{% set is_locked_free = ((user.subscription_plan or 'free') == 'free') and ((user.role or 'user') not in ['admin','moderator']) %}
-{% set show_community_group_chats = ((user.role or 'user')|lower in ['admin','moderator']) or ((user.subscription_plan or 'free')|lower in ['start','pro','maxi']) %}
+{% set _eff_plan = (user.effective_subscription_plan|default(user.subscription_plan) or 'free') %}
+{% set is_locked_free = (_eff_plan == 'free') and ((user.role or 'user') not in ['admin','moderator']) %}
+{% set show_community_group_chats = ((user.role or 'user')|lower in ['admin','moderator']) or (_eff_plan|lower in ['start','pro','maxi']) %}
 <div class="ig-drawer-backdrop" id="appGlobalDrawerBackdrop" onclick="closeAppGlobalDrawer()"></div>
 <aside class="ig-drawer" id="appGlobalDrawer" aria-label="Меню">
   <div class="ig-drawer-head">
@@ -12,6 +13,11 @@
       <div class="em">{{ user.email or ('Telegram: ' + (user.tg_id|string) if user.tg_id else '') }}</div>
     </div>
   </div>
+  {% if user.get('can_claim_start_trial') %}
+  <button type="button" class="ig-drawer-trial-cta" id="drawerTrialCta" onclick="openStartTrialModal()" style="display:block;width:calc(100% - 20px);margin:10px 10px 8px;padding:12px 14px;border:none;border-radius:14px;cursor:pointer;text-align:center;font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#0a0c12;background:linear-gradient(120deg,#3dd4e0 0%,#c8a84b 50%,#ff66d0 100%);box-shadow:0 6px 24px rgba(61,212,224,.25),inset 0 1px 0 rgba(255,255,255,.35)">
+    Попробовать бесплатно 3 дня
+  </button>
+  {% endif %}
   <div id="drawerFreeAiLimit" style="display:none;padding:10px 12px;margin:10px 10px 6px;border:1px solid rgba(61,212,224,.22);border-radius:14px;background:rgba(61,212,224,.07)">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
       <div style="font-size:12px;font-weight:700;color:#bfeff3">Бесплатный AI-лимит</div>
@@ -82,3 +88,32 @@
     {% endif %}
   </div>
 </aside>
+{% if user.get('can_claim_start_trial') %}
+<div class="mover" id="startTrialModal" onclick="if(event.target===this)closeStartTrialModal()">
+  <div class="mbox" style="max-width:420px;padding-top:8px">
+    <button type="button" onclick="closeStartTrialModal()" style="position:absolute;top:14px;right:14px;background:none;border:none;color:#888;font-size:20px;cursor:pointer" aria-label="Закрыть">✕</button>
+    <h3 style="margin:0 0 10px;font-size:18px;color:#e8e8e8">Пробный период «Старт» — 3 дня</h3>
+    <p style="font-size:13px;color:#9ca3af;line-height:1.55;margin:0 0 14px">
+      Вам откроется всё, что входит в подписку <strong style="color:#3dd4e0">Старт</strong>: лента сообщества, магазин, личные сообщения и остальные функции тарифа (как у пользователей с оплаченным Стартом; права администратора не назначаются автоматически).
+      Акция <strong>один раз на аккаунт</strong>. После окончания можно оформить подписку Старт, Про или Макси.
+    </p>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button type="button" class="bgold" style="width:100%;padding:12px;border:none;border-radius:12px;font-weight:700;cursor:pointer" onclick="confirmStartTrial()">Да, активировать пробный доступ</button>
+      <button type="button" onclick="closeStartTrialModal()" style="width:100%;padding:10px;border:1px solid rgba(255,255,255,.12);border-radius:12px;background:transparent;color:#888;cursor:pointer">Позже</button>
+    </div>
+  </div>
+</div>
+<script>
+function openStartTrialModal(){ try{ closeAppGlobalDrawer(); }catch(e){} var el=document.getElementById('startTrialModal'); if(el) el.classList.add('open'); }
+function closeStartTrialModal(){ var el=document.getElementById('startTrialModal'); if(el) el.classList.remove('open'); }
+async function confirmStartTrial(){
+  try{
+    var r=await fetch('/account/start-trial',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'}});
+    var d=await r.json().catch(function(){return {};});
+    if(r.ok&&d.ok){ closeStartTrialModal(); location.href='/community?trial_started=1'; return; }
+    var msg=d.error==='already_used'?'Вы уже использовали пробный период.':(d.error==='has_paid'?'У вас уже есть активная подписка.':(d.error||'Не удалось активировать'));
+    alert(msg);
+  }catch(e){ alert('Сеть недоступна'); }
+}
+</script>
+{% endif %}

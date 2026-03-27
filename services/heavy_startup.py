@@ -293,6 +293,9 @@ async def run_heavy_startup(app: FastAPI) -> None:
             "ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS from_telegram BOOLEAN NOT NULL DEFAULT false",
             "ALTER TABLE ai_settings ADD COLUMN IF NOT EXISTS retrieval_mode VARCHAR(64) NOT NULL DEFAULT 'title_first'",
             "ALTER TABLE ai_settings ADD COLUMN IF NOT EXISTS retrieval_top_k INTEGER NOT NULL DEFAULT 24",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS start_trial_claimed_at TIMESTAMP",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS start_trial_until TIMESTAMP",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS start_trial_end_notified BOOLEAN DEFAULT false",
         ]
         try:
             await database.execute(

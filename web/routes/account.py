@@ -13,6 +13,7 @@ from web.templates_utils import Jinja2Templates
 from starlette.responses import JSONResponse
 from auth.session import get_user_from_request
 from services.legal import legal_acceptance_redirect
+from services.subscription_service import claim_start_trial
 from auth.telegram_auth import verify_telegram_auth
 from auth.ui_prefs import DEFAULT_SCREEN_RIM, attach_screen_rim_prefs
 from db.database import database
@@ -796,6 +797,21 @@ async def sync_history(request: Request):
         "merged": merged,
         "secondaries": len(secondary_accounts),
     })
+
+
+@router.post("/start-trial")
+async def account_start_trial(request: Request):
+    user = await get_user_from_request(request)
+    if not user:
+        return JSONResponse({"ok": False, "error": "auth"}, status_code=401)
+    leg = await legal_acceptance_redirect(request, user)
+    if leg:
+        return JSONResponse({"ok": False, "error": "legal"}, status_code=403)
+    uid = int(user.get("primary_user_id") or user["id"])
+    r = await claim_start_trial(uid)
+    if not r.get("ok"):
+        return JSONResponse(r, status_code=400)
+    return JSONResponse(r)
 
 
 @router.post("/merge")
