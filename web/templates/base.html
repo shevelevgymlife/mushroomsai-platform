@@ -36,6 +36,7 @@
   </script>
   <link rel="stylesheet" href="/static/css/custom.css?v=3" />
   <link rel="stylesheet" href="/static/css/design-system.css?v=3" />
+  <link rel="stylesheet" href="/static/css/profile-ui-themes.css?v=2" />
   <link rel="stylesheet" href="/static/css/app-mobile-shell.css?v=13" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" />
   <style>
@@ -62,7 +63,7 @@
   </style>
   {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-bg text-text font-sans antialiased min-h-screen app-mobile-layout{% if user %} app-has-mobile-header{% endif %}{% if user and request.url.path != '/' and not request.query_params.get('embed') %} app-has-mobile-footer{% endif %}{% block body_class %}{% endblock %}">
+<body data-profile-ui="{{ (user.profile_ui_theme if user and user.profile_ui_theme else 'default') }}" class="bg-bg text-text font-sans antialiased min-h-screen app-mobile-layout{% if user %} app-has-mobile-header{% endif %}{% if user and request.url.path != '/' and not request.query_params.get('embed') %} app-has-mobile-footer{% endif %}{% block body_class %}{% endblock %}">
 <script>
 (function(){
   try {
@@ -96,6 +97,34 @@
 })();
 </script>
 <script>window._isLoggedIn = {{ 'true' if user else 'false' }};</script>
+<script>
+(function(){
+  var theme = document.body && document.body.getAttribute('data-profile-ui');
+  if(!theme) return;
+  var probe = document.createElement('div');
+  probe.className = 'cp-ig-root';
+  probe.setAttribute('data-profile-ui', theme);
+  probe.style.position = 'fixed';
+  probe.style.left = '-9999px';
+  probe.style.top = '-9999px';
+  probe.style.width = '1px';
+  probe.style.height = '1px';
+  probe.style.pointerEvents = 'none';
+  document.documentElement.appendChild(probe);
+  try{
+    var cs = window.getComputedStyle(probe);
+    if(cs.backgroundImage && cs.backgroundImage !== 'none'){
+      document.body.style.backgroundImage = cs.backgroundImage;
+      document.body.style.backgroundColor = cs.backgroundColor || '#070708';
+      document.body.style.backgroundSize = 'cover';
+      document.body.style.backgroundAttachment = 'fixed';
+    } else if(cs.backgroundColor){
+      document.body.style.background = cs.backgroundColor;
+    }
+  }catch(e){}
+  probe.remove();
+})();
+</script>
 <script>
 /* Telegram Mini App: prevent swipe-down dismiss, expand to full height */
 function _tgLockApp() {
