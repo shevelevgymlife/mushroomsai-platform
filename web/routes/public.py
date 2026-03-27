@@ -118,6 +118,18 @@ def _shop_effective_uid(user: dict) -> int:
     return int(user.get("primary_user_id") or user["id"])
 
 
+def _posts_order_with_pin_first():
+    """Best-effort order: pin first if column exists, else by created_at only."""
+    try:
+        return [community_posts.c.pinned.desc(), community_posts.c.created_at.desc()]
+    except Exception:
+        return [community_posts.c.created_at.desc()]
+
+
+def _order_posts_query(query):
+    return query.order_by(*_posts_order_with_pin_first())
+
+
 async def _shop_cart_qty(user_id: int) -> int:
     q = await database.fetch_val(
         sa.select(sa.func.coalesce(sa.func.sum(shop_cart_items.c.quantity), 0)).where(
@@ -964,10 +976,10 @@ async def community_old(request: Request):
             .limit(10)
         )
         preview_posts = await database.fetch_all(
-            community_posts.select()
-            .where(community_posts.c.approved == True)
-            .order_by(community_posts.c.pinned.desc(), community_posts.c.created_at.desc())
-            .limit(5)
+            _order_posts_query(
+                community_posts.select()
+                .where(community_posts.c.approved == True)
+            ).limit(5)
         )
         return templates.TemplateResponse(
             "community_preview.html",
@@ -1009,7 +1021,7 @@ async def community_old(request: Request):
         followed_ids = [r["following_id"] for r in followed_ids_rows]
         if followed_ids:
             query = base_query.where(community_posts.c.user_id.in_(followed_ids))
-            query = query.order_by(community_posts.c.pinned.desc(), community_posts.c.created_at.desc()).limit(30)
+            query = _order_posts_query(query).limit(30)
             raw_posts = await database.fetch_all(query)
         else:
             raw_posts = []
@@ -1023,12 +1035,12 @@ async def community_old(request: Request):
         saved_post_ids = [r["post_id"] for r in saved_rows_tab]
         if saved_post_ids:
             query = base_query.where(community_posts.c.id.in_(saved_post_ids))
-            query = query.order_by(community_posts.c.pinned.desc(), community_posts.c.created_at.desc()).limit(30)
+            query = _order_posts_query(query).limit(30)
             raw_posts = await database.fetch_all(query)
         else:
             raw_posts = []
     else:
-        query = base_query.order_by(community_posts.c.pinned.desc(), community_posts.c.created_at.desc()).limit(30)
+        query = _order_posts_query(base_query).limit(30)
         raw_posts = await database.fetch_all(query)
 
     # Get saved post IDs for this user
@@ -1306,11 +1318,11 @@ async def community_profile(request: Request, user_id: int):
 
     # User's posts
     raw_posts = await database.fetch_all(
-        community_posts.select()
-        .where(community_posts.c.user_id.in_(family_ids))
-        .where(community_posts.c.approved == True)
-        .order_by(community_posts.c.pinned.desc(), community_posts.c.created_at.desc())
-        .limit(30)
+        _order_posts_query(
+            community_posts.select()
+            .where(community_posts.c.user_id.in_(family_ids))
+            .where(community_posts.c.approved == True)
+        ).limit(30)
     )
 
     # Check liked/saved for each post by viewer
