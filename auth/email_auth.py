@@ -67,16 +67,32 @@ async def register_user(email: str, password: str, name: str) -> Optional[dict]:
     referral_code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
     password_hash = hash_password(password)
 
-    user_id = await database.execute(
-        users.insert().values(
-            email=email,
-            password_hash=password_hash,
-            name=name,
-            referral_code=referral_code,
-            role="user",
-            subscription_plan="free",
-            needs_tariff_choice=True,
+    try:
+        user_id = await database.execute(
+            users.insert().values(
+                email=email,
+                password_hash=password_hash,
+                name=name,
+                referral_code=referral_code,
+                role="user",
+                subscription_plan="free",
+                needs_tariff_choice=True,
+            )
         )
-    )
+    except Exception:
+        # Старые инстансы БД могут не иметь новые поля (напр. needs_tariff_choice).
+        # Пытаемся зарегистрировать с минимальным безопасным набором колонок.
+        try:
+            user_id = await database.execute(
+                users.insert().values(
+                    email=email,
+                    password_hash=password_hash,
+                    name=name,
+                    referral_code=referral_code,
+                    role="user",
+                )
+            )
+        except Exception:
+            return None
     # register_email only needs user id for JWT generation.
     return {"id": int(user_id)}
