@@ -2,10 +2,13 @@
 from __future__ import annotations
 
 from datetime import datetime
+import logging
 
 from sqlalchemy import text
 
 from db.database import database
+
+logger = logging.getLogger(__name__)
 
 
 def collect_identities(user: dict) -> list[tuple[str, str]]:
@@ -86,11 +89,16 @@ async def is_identity_blocked(id_type: str, raw_value: str | None) -> bool:
     v = _normalize_identity(id_type, raw_value or "")
     if not v:
         return False
-    row = await database.fetch_one(
-        text(
-            "SELECT 1 AS x FROM blocked_identities WHERE id_type = :t AND id_value = :v LIMIT 1"
-        ).bindparams(t=id_type, v=v)
-    )
+    try:
+        row = await database.fetch_one(
+            text(
+                "SELECT 1 AS x FROM blocked_identities WHERE id_type = :t AND id_value = :v LIMIT 1"
+            ).bindparams(t=id_type, v=v)
+        )
+    except Exception:
+        # On outdated DB schema, do not break auth/register flow.
+        logger.exception("is_identity_blocked failed; fallback to not blocked")
+        return False
     return row is not None
 
 

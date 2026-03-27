@@ -164,7 +164,22 @@ async def register_email(
     password: str = Form(...),
     name: str = Form(...),
 ):
-    user = await register_user(email, password, name)
+    try:
+        user = await register_user(email, password, name)
+    except Exception:
+        _logger.exception("register_email failed")
+        from config import settings as _s
+        _tg_bot_username = (_s.TELEGRAM_BOT_USERNAME or "").strip() or "mushrooms_ai_bot"
+        return templates.TemplateResponse(
+            "login.html",
+            {
+                "request": request,
+                "user": None,
+                "error": "Временная ошибка регистрации. Попробуйте ещё раз через минуту.",
+                "site_url": _s.SITE_URL,
+                "tg_bot_username": _tg_bot_username,
+            },
+        )
     if not user:
         from config import settings as _s
         _tg_bot_username = (_s.TELEGRAM_BOT_USERNAME or "").strip() or "mushrooms_ai_bot"
