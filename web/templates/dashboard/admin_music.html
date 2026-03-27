@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% block title %}Музыка — Admin{% endblock %}
+{% block content %}
+<div class="pt-24 pb-20 neo-app-surface">
+<div class="max-w-4xl mx-auto px-4">
+  {% include "components/admin_nav.html" %}
+
+  <h1 class="text-2xl font-semibold text-text mb-2">🎵 Радио-плеер</h1>
+  <p class="text-muted text-sm mb-6">Управление треками для персонального радио пользователей</p>
+
+  <!-- Инструкция -->
+  <div style="border:1px solid rgba(201,168,76,.35);background:rgba(201,168,76,.06);border-radius:16px;padding:20px;margin-bottom:24px">
+    <div style="font-weight:700;color:#C9A84C;margin-bottom:10px">📋 Как добавить музыку</div>
+    <ol style="font-size:13px;color:#aaa;line-height:1.9;margin:0;padding-left:18px">
+      <li>Зайди на <b style="color:#ddd">suno.com</b> → войди через Google</li>
+      <li>Нажми <b style="color:#ddd">Create</b> → введи промпт:</li>
+    </ol>
+    <div style="background:#0d0d0d;border-radius:10px;padding:12px 16px;margin:10px 0;font-family:monospace;font-size:12px;color:#C9A84C;border:1px solid #222">
+      downtempo ambient mushroom meditation instrumental relaxing no vocals
+    </div>
+    <ol style="font-size:13px;color:#aaa;line-height:1.9;margin:0;padding-left:18px" start="3">
+      <li>Нажми Generate → жди ~30 сек → ••• → <b style="color:#ddd">Download MP3</b></li>
+      <li>Загрузи файл кнопкой ниже — он сохранится на Google Drive</li>
+    </ol>
+    <div style="margin-top:12px;font-size:12px;color:#666">
+      <b style="color:#888">Другие промпты:</b><br>
+      chill lofi beats nature healing relaxing no vocals<br>
+      atmospheric drone mystical forest instrumental healing
+    </div>
+  </div>
+
+  <!-- Upload -->
+  <div style="background:#111;border:1px solid #222;border-radius:16px;padding:20px;margin-bottom:24px">
+    <div style="font-weight:600;color:#ddd;margin-bottom:14px">📁 Загрузить трек</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <input type="text" id="trackTitle" placeholder="Название трека (необязательно)"
+        style="background:#0d0d0d;border:1px solid #333;border-radius:10px;padding:10px 14px;color:#ddd;font-size:14px;outline:none">
+      <label id="uploadLabel" style="display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;background:rgba(201,168,76,.08);border:2px dashed rgba(201,168,76,.3);border-radius:12px;cursor:pointer;color:#C9A84C;font-size:14px;font-weight:600;transition:all .2s"
+        onmouseover="this.style.background='rgba(201,168,76,.14)'" onmouseout="this.style.background='rgba(201,168,76,.08)'">
+        <span>🎵</span> Выбрать MP3 файл
+        <input type="file" id="trackFile" accept="audio/mp3,audio/mpeg,audio/*" style="display:none" onchange="handleFileSelect(this)">
+      </label>
+      <div id="selectedFile" style="display:none;font-size:13px;color:#888;padding:6px 0"></div>
+      <div id="uploadProgress" style="display:none">
+        <div style="background:#1a1a1a;border-radius:6px;height:6px;overflow:hidden">
+          <div id="uploadBar" style="height:100%;background:#C9A84C;width:0;transition:width .3s"></div>
+        </div>
+        <div id="uploadStatus" style="font-size:12px;color:#888;margin-top:6px">Загрузка...</div>
+      </div>
+      <button onclick="uploadTrack()" id="uploadBtn"
+        style="padding:12px;background:#C9A84C;color:#000;border:none;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;transition:opacity .2s"
+        onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+        ⬆️ Загрузить на Drive
+      </button>
+    </div>
+  </div>
+
+  <!-- Track list -->
+  <div style="margin-bottom:80px">
+    <div style="font-weight:600;color:#ddd;margin-bottom:14px">Список треков ({{ tracks|length }})</div>
+    <div id="trackList">
+    {% for t in tracks %}
+    <div class="track-card" data-id="{{ t.id }}" style="background:#111;border:1px solid #222;border-radius:14px;padding:16px;margin-bottom:10px;display:flex;align-items:center;gap:14px">
+      <span style="font-size:20px;flex-shrink:0">🎵</span>
+      <div style="flex:1;min-width:0">
+        <div class="track-title" style="font-weight:600;color:#ddd;font-size:14px;margin-bottom:6px;cursor:pointer"
+          onclick="inlineRename(this, {{ t.id }})" title="Кликни для переименования">{{ t.title or 'Без названия' }}</div>
+        {% if t.gdrive_url %}
+        <audio controls style="width:100%;height:32px;accent-color:#C9A84C" preload="none">
+          <source src="{{ t.gdrive_url }}" type="audio/mpeg">
+        </audio>
+        {% endif %}
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+        <label style="position:relative;display:inline-block;width:40px;height:22px;cursor:pointer" title="{{ 'Активен' if t.is_active else 'Неактивен' }}">
+          <input type="checkbox" {{ 'checked' if t.is_active else '' }} onchange="toggleTrack({{ t.id }}, this)"
+            style="opacity:0;width:0;height:0;position:absolute">
+          <span class="sw-track" style="position:absolute;inset:0;background:{{ '#C9A84C' if t.is_active else '#333' }};border-radius:22px;transition:background .2s">
+            <span style="position:absolute;left:{{ '20px' if t.is_active else '2px' }};top:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .2s"></span>
+          </span>
+        </label>
+        <button onclick="deleteTrack({{ t.id }}, this)" title="Удалить"
+          style="background:none;border:none;color:#666;font-size:16px;cursor:pointer;padding:4px;transition:color .2s"
+          onmouseover="this.style.color='#e74c3c'" onmouseout="this.style.color='#666'">🗑️</button>
+      </div>
+    </div>
+    {% endfor %}
+    </div>
+    {% if not tracks %}
+    <div style="text-align:center;color:#555;padding:40px;font-size:14px">Треков пока нет — загрузите первый</div>
+    {% endif %}
+  </div>
+
+</div>
+</div>
+
+<script>
+function handleFileSelect(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const el = document.getElementById('selectedFile');
+  el.style.display = 'block';
+  el.textContent = `Выбран: ${file.name} (${(file.size/1024/1024).toFixed(1)} MB)`;
+}
+
+async function uploadTrack() {
+  const fileInput = document.getElementById('trackFile');
+  const file = fileInput.files[0];
+  if (!file) { alert('Выберите MP3 файл'); return; }
+
+  const title = document.getElementById('trackTitle').value.trim();
+  const btn = document.getElementById('uploadBtn');
+  const prog = document.getElementById('uploadProgress');
+  const bar = document.getElementById('uploadBar');
+  const status = document.getElementById('uploadStatus');
+
+  btn.disabled = true;
+  btn.textContent = 'Загрузка...';
+  prog.style.display = 'block';
+  bar.style.width = '30%';
+  status.textContent = 'Загрузка на Google Drive...';
+
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('title', title);
+
+  try {
+    bar.style.width = '60%';
+    const res = await fetch('/admin/music/upload', { method: 'POST', body: formData });
+    const data = await res.json();
+    bar.style.width = '100%';
+    if (data.ok) {
+      status.textContent = '✅ Загружено!';
+      status.style.color = '#C9A84C';
+      setTimeout(() => location.reload(), 800);
+    } else {
+      status.textContent = '❌ ' + (data.error || 'Ошибка');
+      status.style.color = '#e74c3c';
+    }
+  } catch(e) {
+    status.textContent = '❌ Ошибка сети';
+    status.style.color = '#e74c3c';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '⬆️ Загрузить на Drive';
+  }
+}
+
+async function toggleTrack(id, checkbox) {
+  const label = checkbox.closest('label');
+  const track = checkbox.closest('.track-card');
+  const res = await fetch(`/admin/music/${id}/toggle`, { method: 'PATCH' });
+  const data = await res.json();
+  const sw = label.querySelector('.sw-track');
+  const knob = sw.querySelector('span');
+  sw.style.background = data.is_active ? '#C9A84C' : '#333';
+  knob.style.left = data.is_active ? '20px' : '2px';
+  label.title = data.is_active ? 'Активен' : 'Неактивен';
+}
+
+async function deleteTrack(id, btn) {
+  if (!confirm('Удалить трек? Файл будет удалён с Google Drive.')) return;
+  const card = btn.closest('.track-card');
+  const res = await fetch(`/admin/music/${id}`, { method: 'DELETE' });
+  const data = await res.json();
+  if (data.ok) {
+    card.style.opacity = '0';
+    card.style.transform = 'translateX(-20px)';
+    card.style.transition = 'all .3s';
+    setTimeout(() => card.remove(), 300);
+  }
+}
+
+async function inlineRename(el, id) {
+  const oldTitle = el.textContent.trim();
+  const input = document.createElement('input');
+  input.value = oldTitle;
+  input.style.cssText = 'background:#0d0d0d;border:1px solid #C9A84C;border-radius:6px;padding:4px 8px;color:#ddd;font-size:14px;font-weight:600;width:100%;outline:none';
+  el.replaceWith(input);
+  input.focus();
+  input.select();
+
+  const save = async () => {
+    const newTitle = input.value.trim() || oldTitle;
+    await fetch(`/admin/music/${id}/title`, {
+      method: 'PATCH',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({title: newTitle})
+    });
+    const div = document.createElement('div');
+    div.className = 'track-title';
+    div.style.cssText = 'font-weight:600;color:#ddd;font-size:14px;margin-bottom:6px;cursor:pointer';
+    div.title = 'Кликни для переименования';
+    div.textContent = newTitle;
+    div.onclick = () => inlineRename(div, id);
+    input.replaceWith(div);
+  };
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', e => { if(e.key==='Enter') input.blur(); if(e.key==='Escape'){input.value=oldTitle;input.blur();} });
+}
+</script>
+{% endblock %}

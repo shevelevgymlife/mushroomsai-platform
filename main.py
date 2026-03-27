@@ -23,6 +23,7 @@ from web.routes.language import router as language_router
 from web.routes.webhooks import router as webhooks_router
 from web.routes.chats import router as chats_router
 from web.routes.seller import router as seller_router
+from web.routes.music import router as music_router
 from web.translations import TRANSLATIONS, parse_accept_language, SUPPORTED_LANGS
 from services.heavy_startup import run_heavy_startup
 from web.templates_utils import Jinja2Templates
@@ -342,6 +343,26 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("DB migration skipped: %s", e)
 
+    # v14: music player
+    try:
+        await database.execute("""
+            CREATE TABLE IF NOT EXISTS music_tracks (
+                id SERIAL PRIMARY KEY,
+                title VARCHAR(255),
+                gdrive_file_id VARCHAR(255),
+                gdrive_url TEXT,
+                is_active BOOLEAN DEFAULT true,
+                position INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+        await database.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS music_player_enabled BOOLEAN DEFAULT false")
+        await database.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS music_player_position VARCHAR(50) DEFAULT 'bottom-right'")
+        await database.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS music_player_volume FLOAT DEFAULT 0.5")
+        logger.info("DB migration v14: music tables OK")
+    except Exception as e:
+        logger.warning("DB migration v14 skipped: %s", e)
+
     try:
         await database.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS screen_rim_json TEXT")
         logger.info("DB migration: screen_rim_json OK")
@@ -576,3 +597,4 @@ app.include_router(admin_router)
 app.include_router(account_router)
 app.include_router(language_router)
 app.include_router(webhooks_router)
+app.include_router(music_router)

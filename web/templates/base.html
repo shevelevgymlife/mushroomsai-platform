@@ -387,5 +387,268 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
 {% if request.url.path != '/' %}
 <script src="/static/js/social-vision-carousel.js?v=1" defer></script>
 {% endif %}
+{% if user and user.music_player_enabled %}
+<!-- ══════════ RADIO PLAYER ══════════ -->
+<div id="radioBar" style="position:fixed;bottom:0;left:0;width:100%;background:#111;border-top:2px solid #C9A84C;z-index:9998;padding:8px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 -4px 20px rgba(201,168,76,.15);transition:transform .3s">
+  <button onclick="radioPrev()" style="background:none;border:none;color:#C9A84C;font-size:18px;cursor:pointer;padding:4px;line-height:1" title="Предыдущий">⏮</button>
+  <button onclick="radioPlayPause()" id="radioPlayBtn" style="background:none;border:none;color:#C9A84C;font-size:24px;cursor:pointer;padding:4px;line-height:1" title="Пауза/Воспроизведение">⏸</button>
+  <button onclick="radioNext()" style="background:none;border:none;color:#C9A84C;font-size:18px;cursor:pointer;padding:4px;line-height:1" title="Следующий">⏭</button>
+  <div style="flex:1;min-width:0">
+    <div id="radioTitle" style="color:#e8e8e8;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px">Загрузка...</div>
+    <input type="range" id="radioProgress" value="0" min="0" max="100" step="0.1"
+      style="width:100%;height:3px;accent-color:#C9A84C;cursor:pointer;background:transparent"
+      oninput="radioSeek(this.value)">
+  </div>
+  <input type="range" id="radioVol" min="0" max="1" step="0.05" value="{{ user.music_player_volume or 0.5 }}"
+    style="width:60px;accent-color:#C9A84C;cursor:pointer" title="Громкость"
+    oninput="radioSetVolume(this.value)">
+  <button onclick="radioBarToggle()" id="radioBarBtn" style="background:none;border:none;color:#666;cursor:pointer;font-size:12px;padding:4px" title="Свернуть">▼</button>
+</div>
+
+<div id="radioCircle" style="position:fixed;z-index:9999;width:52px;height:52px;border-radius:50%;background:#111;border:2px solid #C9A84C;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 0 15px rgba(201,168,76,.3);touch-action:none;user-select:none;transition:box-shadow .3s"
+  onclick="radioCircleClick(event)" title="Радио">
+  <span id="radioCircleIcon" style="font-size:20px">🎵</span>
+</div>
+
+<style>
+@keyframes radioPulse{0%,100%{box-shadow:0 0 15px rgba(201,168,76,.3)}50%{box-shadow:0 0 28px rgba(201,168,76,.6)}}
+#radioCircle.playing{animation:radioPulse 2s ease-in-out infinite}
+</style>
+
+<script>
+(function(){
+var _audio = new Audio();
+var _tracks = [];
+var _idx = 0;
+var _barHidden = false;
+var _dragging = false;
+var _dragStartX = 0, _dragStartY = 0;
+var _circlePos = '{{ user.music_player_position or "bottom-right" }}';
+var _vol = parseFloat('{{ user.music_player_volume or 0.5 }}') || 0.5;
+
+// Expose globals
+window.radioPlayPause = function(){
+  if(_audio.paused){ _audio.play().catch(()=>{}); } else { _audio.pause(); }
+  _updatePlayBtn();
+};
+window.radioNext = function(){
+  _idx = (_idx+1) % _tracks.length;
+  _loadTrack(_idx, true);
+};
+window.radioPrev = function(){
+  _idx = (_idx-1+_tracks.length) % _tracks.length;
+  _loadTrack(_idx, true);
+};
+window.radioBarToggle = function(){
+  _barHidden = !_barHidden;
+  var bar = document.getElementById('radioBar');
+  bar.style.transform = _barHidden ? 'translateY(100%)' : 'translateY(0)';
+  document.getElementById('radioBarBtn').textContent = _barHidden ? '▲' : '▼';
+};
+window.radioSeek = function(val){
+  if(_audio.duration){ _audio.currentTime = (_audio.duration * val / 100); }
+};
+window.radioSetVolume = function(val){
+  _vol = parseFloat(val);
+  _audio.volume = _vol;
+  try{ localStorage.setItem('radioVol', _vol); }catch(e){}
+  clearTimeout(window._radioVolTimer);
+  window._radioVolTimer = setTimeout(function(){
+    fetch('/api/music/player-settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({volume:_vol})}).catch(()=>{});
+  }, 800);
+};
+window.radioCircleClick = function(e){
+  if(_dragging) return;
+  radioPlayPause();
+};
+
+function _loadTrack(i, play){
+  if(!_tracks.length) return;
+  var t = _tracks[i];
+  _audio.src = t.gdrive_url;
+  _audio.load();
+  var title = document.getElementById('radioTitle');
+  if(title) title.textContent = t.title || 'Трек ' + (i+1);
+  if(play){ _audio.play().catch(()=>{}); }
+  _updatePlayBtn();
+  try{ localStorage.setItem('radioIdx', i); }catch(e){}
+}
+
+function _updatePlayBtn(){
+  var btn = document.getElementById('radioPlayBtn');
+  var circ = document.getElementById('radioCircleIcon');
+  if(!btn) return;
+  if(_audio.paused){
+    btn.textContent = '▶';
+    if(circ) circ.textContent = '🎵';
+    var circle = document.getElementById('radioCircle');
+    if(circle) circle.classList.remove('playing');
+  } else {
+    btn.textContent = '⏸';
+    if(circ) circ.textContent = '⏸';
+    var circle = document.getElementById('radioCircle');
+    if(circle) circle.classList.add('playing');
+  }
+}
+
+function _placeCircle(){
+  var circle = document.getElementById('radioCircle');
+  if(!circle) return;
+  var margin = 16;
+  var w = window.innerWidth, h = window.innerHeight;
+  var sz = 52;
+  var pos = _circlePos || 'bottom-right';
+  var x, y;
+  if(pos === 'bottom-right'){ x = w - sz - margin; y = h - sz - margin - 60; }
+  else if(pos === 'bottom-left'){ x = margin; y = h - sz - margin - 60; }
+  else if(pos === 'top-right'){ x = w - sz - margin; y = margin + 70; }
+  else if(pos === 'top-left'){ x = margin; y = margin + 70; }
+  else { x = w - sz - margin; y = h - sz - margin - 60; }
+  circle.style.left = x + 'px';
+  circle.style.top = y + 'px';
+  circle.style.right = 'auto';
+  circle.style.bottom = 'auto';
+}
+
+function _snapCircle(cx, cy){
+  var margin = 16;
+  var w = window.innerWidth, h = window.innerHeight;
+  var cx2 = cx + 26, cy2 = cy + 26;
+  var toRight = cx2 > w/2;
+  var toBottom = cy2 > h/2;
+  var pos;
+  if(toRight && toBottom) pos='bottom-right';
+  else if(!toRight && toBottom) pos='bottom-left';
+  else if(toRight && !toBottom) pos='top-right';
+  else pos='top-left';
+  _circlePos = pos;
+  _placeCircle();
+  fetch('/api/music/player-settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({position:pos})}).catch(()=>{});
+}
+
+// Drag
+function _initDrag(){
+  var circle = document.getElementById('radioCircle');
+  if(!circle) return;
+  var ox=0, oy=0, startX=0, startY=0;
+
+  function onMove(e){
+    var touch = e.touches ? e.touches[0] : e;
+    var dx = touch.clientX - startX;
+    var dy = touch.clientY - startY;
+    if(Math.abs(dx)>5 || Math.abs(dy)>5) _dragging = true;
+    if(!_dragging) return;
+    var newX = ox + dx;
+    var newY = oy + dy;
+    newX = Math.max(0, Math.min(window.innerWidth-52, newX));
+    newY = Math.max(0, Math.min(window.innerHeight-52, newY));
+    circle.style.left = newX+'px';
+    circle.style.top = newY+'px';
+  }
+  function onUp(e){
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    document.removeEventListener('touchmove', onMove);
+    document.removeEventListener('touchend', onUp);
+    if(_dragging){
+      var r = circle.getBoundingClientRect();
+      _snapCircle(r.left, r.top);
+      setTimeout(function(){ _dragging = false; }, 100);
+    }
+  }
+  function onDown(e){
+    _dragging = false;
+    var touch = e.touches ? e.touches[0] : e;
+    startX = touch.clientX; startY = touch.clientY;
+    var r = circle.getBoundingClientRect();
+    ox = r.left; oy = r.top;
+    circle.style.transition = 'none';
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    document.addEventListener('touchmove', onMove, {passive:false});
+    document.addEventListener('touchend', onUp);
+  }
+  circle.addEventListener('mousedown', onDown);
+  circle.addEventListener('touchstart', onDown, {passive:true});
+}
+
+// Progress update
+setInterval(function(){
+  if(!_audio.paused && _audio.duration){
+    var prog = document.getElementById('radioProgress');
+    if(prog) prog.value = (_audio.currentTime / _audio.duration * 100);
+  }
+}, 1000);
+
+// Auto-next
+_audio.addEventListener('ended', function(){ window.radioNext(); });
+_audio.addEventListener('play', _updatePlayBtn);
+_audio.addEventListener('pause', _updatePlayBtn);
+
+// Restore volume
+try{ var sv = localStorage.getItem('radioVol'); if(sv) _vol = parseFloat(sv); }catch(e){}
+_audio.volume = _vol;
+var volEl = document.getElementById('radioVol');
+if(volEl) volEl.value = _vol;
+
+// Load tracks and start
+fetch('/api/music/tracks').then(function(r){ return r.json(); }).then(function(data){
+  if(!data.length) return;
+  // Shuffle
+  _tracks = data.slice().sort(function(){ return Math.random()-.5; });
+  // Restore state
+  try{
+    var state = JSON.parse(localStorage.getItem('radioState')||'{}');
+    if(state.playing){
+      var savedIdx = parseInt(state.trackIndex||0);
+      _idx = savedIdx < _tracks.length ? savedIdx : 0;
+      _loadTrack(_idx, false);
+      _audio.currentTime = parseFloat(state.currentTime||0);
+      _audio.play().catch(function(){
+        // Autoplay blocked — wait for user interaction
+        document.addEventListener('click', function _firstClick(){
+          _audio.play().catch(()=>{});
+          document.removeEventListener('click', _firstClick);
+        }, {once:true});
+      });
+    } else {
+      _idx = 0;
+      _loadTrack(_idx, false);
+      _audio.play().catch(function(){
+        document.addEventListener('click', function _firstClick(){
+          _audio.play().catch(()=>{});
+          document.removeEventListener('click', _firstClick);
+        }, {once:true});
+      });
+    }
+  }catch(e){
+    _loadTrack(0, true);
+  }
+}).catch(function(){
+  var t = document.getElementById('radioTitle');
+  if(t) t.textContent = 'Нет треков';
+});
+
+// Save state on unload
+window.addEventListener('beforeunload', function(){
+  try{
+    localStorage.setItem('radioState', JSON.stringify({
+      playing: !_audio.paused,
+      trackIndex: _idx,
+      currentTime: _audio.currentTime
+    }));
+  }catch(e){}
+});
+
+document.addEventListener('DOMContentLoaded', function(){
+  _placeCircle();
+  _initDrag();
+});
+window.addEventListener('resize', _placeCircle);
+
+})();
+</script>
+{% endif %}
+<!-- ══════════ END RADIO ══════════ -->
 </body>
 </html>
