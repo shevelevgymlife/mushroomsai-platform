@@ -164,7 +164,11 @@ async def register_email(
     password: str = Form(...),
     name: str = Form(...),
 ):
-    user = await register_user(email, password, name)
+    try:
+        user = await register_user(email, password, name)
+    except Exception:
+        _logger.exception("register_email failed")
+        user = None
     if not user:
         from config import settings as _s
         _tg_bot_username = (_s.TELEGRAM_BOT_USERNAME or "").strip() or "mushrooms_ai_bot"
@@ -173,17 +177,32 @@ async def register_email(
             {
                 "request": request,
                 "user": None,
-                "error": "Email уже зарегистрирован",
+                "error": "Регистрация временно недоступна. Попробуйте чуть позже или войдите через Telegram/Google.",
                 "site_url": _s.SITE_URL,
                 "tg_bot_username": _tg_bot_username,
             },
         )
-    token = create_access_token(user["id"])
-    dest = _pop_login_redirect(request)
-    resp = RedirectResponse(dest, status_code=302)
-    resp.set_cookie("access_token", token, httponly=True, max_age=30 * 24 * 3600)
-    await finalize_web_referral(request, resp, user["id"])
-    return resp
+    try:
+        token = create_access_token(int(user["id"]))
+        dest = _pop_login_redirect(request)
+        resp = RedirectResponse(dest, status_code=302)
+        resp.set_cookie("access_token", token, httponly=True, max_age=30 * 24 * 3600)
+        await finalize_web_referral(request, resp, int(user["id"]))
+        return resp
+    except Exception:
+        _logger.exception("register_email post-create failed")
+        from config import settings as _s
+        _tg_bot_username = (_s.TELEGRAM_BOT_USERNAME or "").strip() or "mushrooms_ai_bot"
+        return templates.TemplateResponse(
+            "login.html",
+            {
+                "request": request,
+                "user": None,
+                "error": "Аккаунт создан, но авто-вход не удался. Войдите через Telegram/Google или по email.",
+                "site_url": _s.SITE_URL,
+                "tg_bot_username": _tg_bot_username,
+            },
+        )
 
 
 @router.get("/auth/telegram")
