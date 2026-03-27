@@ -271,22 +271,6 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
         </div>
       </div>
 
-      <div class="nf-vp-carousel nf-vp-carousel--mode" data-nf-vp-carousel style="margin:6px 0 8px" aria-label="Формат контента">
-        <div class="nf-vp-carousel__parallax" aria-hidden="true"><div class="nf-vp-carousel__particles"></div></div>
-        <button type="button" class="nf-vp-carousel__arrow nf-vp-carousel__arrow--prev" aria-label="Назад">‹</button>
-        <button type="button" class="nf-vp-carousel__arrow nf-vp-carousel__arrow--next" aria-label="Вперёд">›</button>
-        <div class="nf-vp-carousel__viewport">
-          <div class="nf-vp-carousel__fade nf-vp-carousel__fade--left"></div>
-          <div class="nf-vp-carousel__fade nf-vp-carousel__fade--right"></div>
-          <div class="nf-vp-carousel__track" role="tablist">
-            <button type="button" class="nf-vp-carousel__slide nf-vp-mode-pill" onclick="nfProfileContentMode('longread')">Лонгрид</button>
-            <button type="button" class="nf-vp-carousel__slide nf-vp-mode-pill" onclick="nfProfileContentMode('stories')">Сторис</button>
-            <button type="button" class="nf-vp-carousel__slide nf-vp-mode-pill" onclick="nfProfileContentMode('circles')">Кружки</button>
-          </div>
-        </div>
-        <div class="nf-vp-carousel__dots"></div>
-      </div>
-
       <div class="cp-profile-main-grid">
         <div class="cp-profile-top-row">
           <div class="cp-profile-col-left">
@@ -303,12 +287,9 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
           </div>
           <div class="cp-circles-horiz">
             <div class="nf-vp-carousel nf-vp-carousel--circles" data-nf-vp-carousel id="profileCirclesCarousel">
-              <div class="nf-vp-carousel__parallax" aria-hidden="true"><div class="nf-vp-carousel__particles"></div></div>
               <button type="button" class="nf-vp-carousel__arrow nf-vp-carousel__arrow--prev" aria-label="Назад">‹</button>
               <button type="button" class="nf-vp-carousel__arrow nf-vp-carousel__arrow--next" aria-label="Вперёд">›</button>
               <div class="nf-vp-carousel__viewport">
-                <div class="nf-vp-carousel__fade nf-vp-carousel__fade--left"></div>
-                <div class="nf-vp-carousel__fade nf-vp-carousel__fade--right"></div>
                 <div id="profileCirclesRow" class="cp-circles-row cp-circles-chaos nf-vp-carousel__track" data-max-circles="{{ max_profile_circles|default(6) }}">
               {% for c in circles %}
               <a class="cp-circle-item nf-vp-carousel__slide" href="/community/profile/{{ profile_id }}/circle/{{ c.id }}">
@@ -550,19 +531,6 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 <script>
 function _escHtml(t){
   const d=document.createElement('div');d.textContent=t==null?'':String(t);return d.innerHTML;
-}
-function nfProfileContentMode(mode){
-  const grid=document.getElementById('profilePostsGrid');
-  const car=document.getElementById('profileCirclesCarousel');
-  if(mode==='longread'){
-    if(grid) grid.classList.remove('cp-feed--stories-mode');
-    if(grid) grid.scrollIntoView({behavior:'smooth',block:'start'});
-  }else if(mode==='stories'){
-    if(grid) grid.classList.add('cp-feed--stories-mode');
-    if(grid) grid.scrollIntoView({behavior:'smooth',block:'start'});
-  }else if(mode==='circles'){
-    if(car) car.scrollIntoView({behavior:'smooth',block:'center'});
-  }
 }
 function closePostMenus(){
   document.querySelectorAll('.ig-pm .ig-pm-panel').forEach(function(p){ p.style.display='none'; });
