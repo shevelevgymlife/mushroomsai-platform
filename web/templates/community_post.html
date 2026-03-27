@@ -2,18 +2,38 @@
 {% block title %}Пост — NEUROFUNGI AI{% endblock %}
 {% block content %}
 <style>
-.cp-wrap{max-width:900px;margin:calc(4rem + 16px) auto 20px;padding:0 12px}
-.cp-card{border:1px solid rgba(255,255,255,.12);border-radius:18px;background:linear-gradient(165deg,rgba(255,255,255,.07),rgba(10,10,13,.92));overflow:hidden}
-.cp-head{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.08)}
-.cp-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:10px 12px 0}
+.cp-wrap{max-width:min(560px,100%);margin:calc(4rem + 16px) auto 28px;padding:0 12px calc(24px + env(safe-area-inset-bottom,0px))}
+.cp-card{
+  border-radius:26px;overflow:hidden;
+  background:radial-gradient(120% 80% at 10% 0%,rgba(61,212,224,.12),transparent 55%),linear-gradient(165deg,rgba(255,255,255,.09),rgba(8,9,14,.97));
+  border:1px solid rgba(255,255,255,.1);
+  box-shadow:0 24px 64px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.06);
+}
+.cp-head{display:flex;align-items:flex-start;gap:12px;padding:16px 16px 12px;border-bottom:1px solid rgba(255,255,255,.06)}
+.cp-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:12px 14px 0}
 .cp-actions.no-photo{grid-template-columns:repeat(2,minmax(0,1fr))}
-.cp-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px}
-.cp-metric{min-height:52px;border-radius:14px;border:1px solid rgba(255,255,255,.16);font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px}
-.cp-input{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:0 12px 12px}
-.sinp{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#e8e8e8;border-radius:12px;padding:10px 16px;font-size:16px;outline:none;width:100%;box-sizing:border-box}
-.btn-g{background:#3dd4e0;color:#000;border:none;border-radius:999px;padding:11px 14px;font-weight:700;cursor:pointer;min-height:44px;display:inline-flex;align-items:center;justify-content:center}
-.cp-act-btn{min-height:52px;border-radius:14px;border:1px solid rgba(255,255,255,.18);background:linear-gradient(160deg,rgba(255,255,255,.07),rgba(12,13,20,.92));color:#e7ebf5;font-size:16px;font-weight:800}
-.cp-share-modal{display:none;position:fixed;inset:0;z-index:10110;align-items:center;justify-content:center;background:rgba(0,0,0,.86);backdrop-filter:blur(4px)}
+.cp-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px;padding:0 4px}
+.cp-metric{
+  min-height:54px;border-radius:16px;font-size:17px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px;
+  border:1px solid rgba(255,255,255,.14);
+  background:linear-gradient(165deg,rgba(255,255,255,.08),rgba(14,16,24,.88));
+  box-shadow:0 8px 28px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.05);
+  transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;
+}
+.cp-metric:hover{transform:translateY(-2px);box-shadow:0 12px 36px rgba(0,0,0,.35)}
+.cp-input{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:0 14px 16px}
+.sinp{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:#e8e8e8;border-radius:14px;padding:12px 16px;font-size:16px;outline:none;width:100%;box-sizing:border-box;transition:border-color .2s,box-shadow .2s}
+.sinp:focus{border-color:rgba(61,212,224,.45);box-shadow:0 0 0 3px rgba(61,212,224,.12)}
+.btn-g{background:linear-gradient(135deg,#3dd4e0,#2a9daa);color:#050508;border:none;border-radius:999px;padding:12px 18px;font-weight:800;cursor:pointer;min-height:46px;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 8px 28px rgba(61,212,224,.25)}
+.btn-g:hover{filter:brightness(1.06)}
+.cp-act-btn{
+  min-height:48px;border-radius:16px;border:1px solid rgba(255,255,255,.14);
+  background:linear-gradient(165deg,rgba(255,255,255,.07),rgba(10,12,18,.9));
+  color:#e8edf5;font-size:14px;font-weight:700;cursor:pointer;
+  transition:background .2s,border-color .2s,transform .15s;
+}
+.cp-act-btn:hover{border-color:rgba(61,212,224,.35);transform:translateY(-1px)}
+.cp-share-modal{display:none;position:fixed;inset:0;z-index:10110;align-items:center;justify-content:center;background:rgba(0,0,0,.86);backdrop-filter:blur(8px)}
 </style>
 <div class="cp-wrap">
   <div class="cp-card">

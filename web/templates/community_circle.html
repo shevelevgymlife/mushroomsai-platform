@@ -22,6 +22,16 @@
 .cc-save-row{display:flex;justify-content:flex-end}
 .btn-g{background:#3dd4e0;color:#000;font-weight:700;border-radius:10px;padding:10px 18px;border:none;cursor:pointer;font-size:14px}
 .btn-o{border:1px solid rgba(61,212,224,.45);background:rgba(61,212,224,.1);color:#3dd4e0;border-radius:10px;padding:8px 14px;cursor:pointer;font-size:13px}
+.cc-feed-list{display:flex;flex-direction:column;gap:12px;width:100%;max-width:min(720px,100%);margin:0 auto}
+.cc-feed-row{display:grid;grid-template-columns:110px 1fr;gap:0;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.1);background:linear-gradient(165deg,rgba(255,255,255,.06),rgba(8,9,14,.92));cursor:pointer;transition:border-color .2s,box-shadow .2s,transform .15s}
+.cc-feed-row:hover{border-color:rgba(61,212,224,.28);box-shadow:0 12px 36px rgba(0,0,0,.4)}
+.cc-feed-thumb{width:110px;min-height:110px;background:#111;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.cc-feed-thumb img{width:100%;height:100%;object-fit:cover}
+.cc-feed-main{padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.cc-feed-snippet{font-size:13px;color:#b8bcc8;line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.cc-feed-meta{font-size:11px;color:#6b7280}
+.cc-feed-metrics{display:flex;gap:8px;margin-top:auto;flex-wrap:wrap}
+.cc-feed-met{font-size:12px;font-weight:700;padding:4px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:#e5e7eb}
 .ig-feed-shell{max-width:min(1100px,100%);margin:0 auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:start}
 .ig-post{position:relative;border:1px solid rgba(255,255,255,.12);border-radius:20px;overflow:visible;background:linear-gradient(165deg,rgba(255,255,255,.07),rgba(10,10,13,.92));margin-bottom:0;box-shadow:0 16px 50px rgba(0,0,0,.44)}
 .ig-post:nth-child(6n+1){transform:translateY(8px) rotate(-3.4deg)}
@@ -83,36 +93,23 @@
 
   <div id="ccPanelView" style="display:none">
     {% if feed_items %}
-    <div class="ig-feed-shell" id="circleChaosFeed">
+    <div class="cc-feed-list" id="circleChaosFeed">
       {% for item in feed_items %}
       {% set p = item.post %}
-      <div class="ig-post" id="cc-pc-{{ p.id }}" data-pid="{{ p.id }}" onclick="openCommunityPostPage(event, {{ p.id }})">
-        <div class="ig-post-header">
-          <a href="/community/profile/{{ profile_id }}" onclick="event.stopPropagation()" style="text-decoration:none;color:inherit;flex-shrink:0">
-          <div style="width:36px;height:36px;border-radius:50%;border:2px solid #3dd4e0;overflow:hidden">
-            {% if profile.avatar %}<img src="{{ profile.avatar }}" style="width:100%;height:100%;object-fit:cover" alt="">{% else %}<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px">🍄</div>{% endif %}
-          </div>
-          </a>
-          <div style="flex:1;min-width:0">
-            <a href="/community/profile/{{ profile_id }}" onclick="event.stopPropagation()" style="font-size:14px;font-weight:700;color:#e8e8e8;text-decoration:none;display:block">{{ profile.name or 'Участник' }}</a>
-            <div style="font-size:11px;color:#888">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}</div>
-          </div>
+      <div class="cc-feed-row" id="cc-pc-{{ p.id }}" data-pid="{{ p.id }}" onclick="openCommunityPostPage(event, {{ p.id }})">
+        <div class="cc-feed-thumb">
+          {% if p.image_url %}<img src="{{ p.image_url }}" loading="lazy" alt="">
+          {% else %}<span style="font-size:36px;opacity:.5">🍄</span>{% endif %}
         </div>
-        {% if p.image_url %}
-        <img src="{{ p.image_url }}" class="ig-post-img" loading="lazy" alt="">
-        {% elif p.content %}
-        <div class="ig-post-textonly">{{ p.content | truncate(2000, True, '…') }}</div>
-        {% endif %}
-        <div class="ig-post-metrics">
-          <button type="button" class="ig-post-metric ig-post-metric-star" onclick="event.stopPropagation();ccLikePost({{ p.id }},this)">
-            <span>{% if item.liked %}⭐{% else %}✩{% endif %}</span><span class="n" id="cc-lkc-{{ p.id }}">{{ p.likes_count }}</span>
-          </button>
-          <button type="button" class="ig-post-metric ig-post-metric-chat" onclick="event.stopPropagation();openCommunityPostDirect({{ p.id }})">
-            <span>💬</span><span class="n">{{ p.comments_count }}</span>
-          </button>
-          <button type="button" class="ig-post-metric ig-post-metric-share" onclick="event.stopPropagation();location.href='/community/post/{{ p.id }}'">
-            <span>↗</span><span class="n">{{ p.saves_count or 0 }}</span>
-          </button>
+        <div class="cc-feed-main">
+          <div style="font-weight:700;font-size:14px;color:#e8e8e8">{{ (p.title or (p.content or '')[:80] or 'Пост')|truncate(120, True, '…') }}</div>
+          <div class="cc-feed-snippet">{% if p.content %}{{ p.content | truncate(400, True, '…') }}{% else %}Без текста{% endif %}</div>
+          <div class="cc-feed-meta">{{ profile.name or 'Участник' }} · {{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}</div>
+          <div class="cc-feed-metrics">
+            <button type="button" class="cc-feed-met" onclick="event.stopPropagation();ccLikePost({{ p.id }},this)"><span>{% if item.liked %}⭐{% else %}✩{% endif %}</span> <span id="cc-lkc-{{ p.id }}">{{ p.likes_count }}</span></button>
+            <button type="button" class="cc-feed-met" onclick="event.stopPropagation();openCommunityPostDirect({{ p.id }})">💬 {{ p.comments_count }}</button>
+            <span class="cc-feed-met">🏷️ {{ p.saves_count or 0 }}</span>
+          </div>
         </div>
       </div>
       {% endfor %}
@@ -124,36 +121,23 @@
 
   {% else %}
   {% if feed_items %}
-  <div class="ig-feed-shell">
+  <div class="cc-feed-list">
     {% for item in feed_items %}
     {% set p = item.post %}
-    <div class="ig-post" onclick="openCommunityPostPage(event, {{ p.id }})">
-      <div class="ig-post-header">
-        <a href="/community/profile/{{ profile_id }}" onclick="event.stopPropagation()" style="text-decoration:none;color:inherit;flex-shrink:0">
-        <div style="width:36px;height:36px;border-radius:50%;border:2px solid #3dd4e0;overflow:hidden">
-          {% if profile.avatar %}<img src="{{ profile.avatar }}" style="width:100%;height:100%;object-fit:cover" alt="">{% else %}<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px">🍄</div>{% endif %}
-        </div>
-        </a>
-        <div style="flex:1;min-width:0">
-          <a href="/community/profile/{{ profile_id }}" onclick="event.stopPropagation()" style="font-size:14px;font-weight:700;color:#e8e8e8;text-decoration:none;display:block">{{ profile.name or 'Участник' }}</a>
-          <div style="font-size:11px;color:#888">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}</div>
-        </div>
+    <div class="cc-feed-row" onclick="openCommunityPostPage(event, {{ p.id }})">
+      <div class="cc-feed-thumb">
+        {% if p.image_url %}<img src="{{ p.image_url }}" loading="lazy" alt="">
+        {% else %}<span style="font-size:36px;opacity:.5">🍄</span>{% endif %}
       </div>
-      {% if p.image_url %}
-      <img src="{{ p.image_url }}" class="ig-post-img" loading="lazy" alt="">
-      {% elif p.content %}
-      <div class="ig-post-textonly">{{ p.content | truncate(2000, True, '…') }}</div>
-      {% endif %}
-      <div class="ig-post-metrics">
-        <button type="button" class="ig-post-metric ig-post-metric-star" onclick="event.stopPropagation();ccLikePost({{ p.id }},this)">
-          <span>{% if item.liked %}⭐{% else %}✩{% endif %}</span><span class="n" id="cc-lkc-{{ p.id }}">{{ p.likes_count }}</span>
-        </button>
-        <button type="button" class="ig-post-metric ig-post-metric-chat" onclick="event.stopPropagation();openCommunityPostDirect({{ p.id }})">
-          <span>💬</span><span class="n">{{ p.comments_count }}</span>
-        </button>
-        <button type="button" class="ig-post-metric ig-post-metric-share" onclick="event.stopPropagation();location.href='/community/post/{{ p.id }}'">
-          <span>↗</span><span class="n">{{ p.saves_count or 0 }}</span>
-        </button>
+      <div class="cc-feed-main">
+        <div style="font-weight:700;font-size:14px;color:#e8e8e8">{{ (p.title or (p.content or '')[:80] or 'Пост')|truncate(120, True, '…') }}</div>
+        <div class="cc-feed-snippet">{% if p.content %}{{ p.content | truncate(400, True, '…') }}{% else %}Без текста{% endif %}</div>
+        <div class="cc-feed-meta">{{ profile.name or 'Участник' }} · {{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}</div>
+        <div class="cc-feed-metrics">
+          <button type="button" class="cc-feed-met" onclick="event.stopPropagation();ccLikePost({{ p.id }},this)"><span>{% if item.liked %}⭐{% else %}✩{% endif %}</span> <span id="cc-lkc-{{ p.id }}">{{ p.likes_count }}</span></button>
+          <button type="button" class="cc-feed-met" onclick="event.stopPropagation();openCommunityPostDirect({{ p.id }})">💬 {{ p.comments_count }}</button>
+          <span class="cc-feed-met">🏷️ {{ p.saves_count or 0 }}</span>
+        </div>
       </div>
     </div>
     {% endfor %}

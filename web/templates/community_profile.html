@@ -49,11 +49,23 @@ body.profile-app-shell .grain-overlay{opacity:0.22}
 }
 .cp-profile-col-left{display:flex;flex-direction:column;align-items:center;gap:12px;min-width:0;flex-shrink:0}
 .cp-profile-col-right{display:flex;flex-direction:column;align-items:stretch;gap:0;min-width:0;width:100%}
+.cp-hero-bar{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px 10px;width:100%;max-width:min(100%,520px);margin:0 auto 14px;padding:14px 12px;border-radius:20px;background:linear-gradient(145deg,rgba(255,255,255,.05),rgba(8,9,14,.75));border:1px solid rgba(255,255,255,.1);box-shadow:0 16px 48px rgba(0,0,0,.35)}
+@media(max-width:520px){.cp-hero-bar{grid-template-columns:1fr;justify-items:center;text-align:center}}
+.cp-hero-stack{min-width:0;text-align:left}
+@media(max-width:520px){.cp-hero-stack{text-align:center}}
+.cp-hero-bio{font-size:13px;color:#b8bcc8;line-height:1.45;margin-top:4px;max-width:100%}
+.cp-hero-link{display:inline-block;margin-top:6px;font-size:13px;font-weight:600;color:#3dd4e0;text-decoration:underline;text-underline-offset:3px;word-break:break-all}
+.cp-hero-center{display:flex;justify-content:center;align-items:center}
+.cp-like-star-bubble{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:999px;background:radial-gradient(ellipse at 30% 20%,rgba(255,214,120,.22),rgba(20,12,28,.85));border:1px solid rgba(255,214,120,.35);box-shadow:0 8px 28px rgba(255,180,90,.12)}
+.cp-like-star-ico{font-size:22px;line-height:1;color:#ffd84f;filter:drop-shadow(0 0 10px rgba(255,216,120,.45))}
+.cp-like-star-num{font-size:18px;font-weight:800;color:#fef3c7;font-variant-numeric:tabular-nums}
+.cp-hero-plan{display:flex;justify-content:flex-end;align-items:center}
+@media(max-width:520px){.cp-hero-plan{justify-content:center}}
+.cp-plan-badge--xl{font-size:clamp(13px,3.2vw,15px)!important;padding:10px 18px!important;border-width:2px!important;box-shadow:0 12px 40px rgba(255,102,208,.25),inset 0 1px 0 rgba(255,255,255,.12)!important;letter-spacing:.04em}
 .cp-profile-like-row{display:flex;align-items:center;justify-content:center;gap:10px;margin:0 0 12px;flex-wrap:wrap}
 @media(min-width:641px){.cp-profile-like-row{justify-content:flex-start}}
 .cp-profile-like-btn{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:#e8e8e8;border-radius:999px;padding:8px 16px;font-size:14px;font-weight:700;cursor:pointer;transition:background .15s,border-color .15s}
 .cp-profile-like-btn:hover{border-color:rgba(255,102,208,.45);background:rgba(255,102,208,.08)}
-.cp-profile-like-count{font-variant-numeric:tabular-nums;color:#fda4af}
 /* DM fullscreen overlay: поле ввода над нижней панелью (tabbar ~56px + safe area) */
 .cp-dm-panel{position:fixed;top:0;left:0;right:0;bottom:0;z-index:10050;display:none;flex-direction:column;background:#070708;box-sizing:border-box}
 @media(max-width:768px){
@@ -247,29 +259,36 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
             </div>
           </div>
         </div>
-        {% if profile.bio %}
-        <div class="cp-bio-under cp-bio-under--block">{{ profile.bio }}</div>
-        {% endif %}
-        {% if profile.get('profile_link_url') %}
-        <div class="cp-link-under cp-link-under--block">
-          <a href="{{ profile.profile_link_url }}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:8px;color:#3dd4e0;font-weight:600;font-size:14px;text-decoration:underline;text-underline-offset:3px">{{ profile.get('profile_link_label') or profile.profile_link_url }}</a>
+        <div class="cp-hero-bar">
+          <div class="cp-hero-stack">
+            <div class="cp-profile-name">{{ profile.name or 'Участник' }}</div>
+            {% if profile.bio %}
+            <div class="cp-hero-bio">{{ profile.bio }}</div>
+            {% endif %}
+            {% if profile.get('profile_link_url') %}
+            <a class="cp-hero-link" href="{{ profile.profile_link_url }}" target="_blank" rel="noopener noreferrer">{{ profile.get('profile_link_label') or profile.profile_link_url }}</a>
+            {% endif %}
+          </div>
+          <div class="cp-hero-center">
+            <div class="cp-like-star-bubble" title="Лайки страницы">
+              <span class="cp-like-star-ico">★</span>
+              <span class="cp-like-star-num" id="profilePageLikeCount">{{ profile_likes_count|default(0) }}</span>
+            </div>
+          </div>
+          <div class="cp-hero-plan">
+            {% if profile_plan_name %}
+            <span class="cp-plan-badge cp-plan-badge--xl">{{ profile_plan_name }}</span>
+            {% endif %}
+          </div>
         </div>
-        {% endif %}
-        <div class="cp-name-plan-row">
-          <span class="cp-profile-name">{{ profile.name or 'Участник' }}</span>
-          {% if profile_plan_name %}
-          <span class="cp-plan-badge">{{ profile_plan_name }}</span>
-          {% endif %}
-        </div>
+        {% if user and not is_own %}
         <div class="cp-profile-like-row">
-          <span class="cp-profile-like-count" id="profilePageLikeCount">❤️ {{ profile_likes_count|default(0) }}</span>
-          {% if user and not is_own %}
           <button type="button" class="cp-profile-like-btn" id="profilePageLikeBtn" onclick="toggleProfilePageLike()" aria-label="Лайк профиля">
             <span id="profilePageLikeIcon">{{ '❤️' if viewer_liked_profile else '🤍' }}</span>
             <span id="profilePageLikeLabel">{{ 'В избранном' if viewer_liked_profile else 'Лайк' }}</span>
           </button>
-          {% endif %}
         </div>
+        {% endif %}
         {% if not is_own %}
         <div class="cp-profile-toolbar" role="group" aria-label="Действия профиля">
           <div class="cp-toolbar-cell cp-toolbar-cell--full">
@@ -829,7 +848,7 @@ async function toggleProfilePageLike(){
     const icon=document.getElementById('profilePageLikeIcon');
     const lbl=document.getElementById('profilePageLikeLabel');
     const n=(typeof d.count==='number')?d.count:0;
-    if(cnt)cnt.textContent='❤️ '+String(n);
+    if(cnt)cnt.textContent=String(n);
     if(icon)icon.textContent=d.liked?'❤️':'🤍';
     if(lbl)lbl.textContent=d.liked?'В избранном':'Лайк';
   }catch(e){}

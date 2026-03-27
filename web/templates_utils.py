@@ -30,7 +30,10 @@ class Jinja2Templates(_Jinja2Templates):
                 if user_lang and user_lang in SUPPORTED_LANGS:
                     lang = user_lang
 
-            context.setdefault("t", TRANSLATIONS.get(lang, TRANSLATIONS["ru"]))
+            # Слой ru → язык пользователя: непереведённые строки остаются на русском
+            ru = TRANSLATIONS["ru"]
+            loc = TRANSLATIONS.get(lang, ru)
+            context.setdefault("t", {**ru, **loc} if lang != "ru" else dict(ru))
             context.setdefault("lang", lang)
             context.setdefault("shevelev_token", shevelev_token_address())
 

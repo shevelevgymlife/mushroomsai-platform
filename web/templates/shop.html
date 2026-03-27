@@ -42,6 +42,13 @@
   .wb-title { font-size:12px; line-height:1.35; color:#d1d5db; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
   .wb-rating-row { display:flex; align-items:center; gap:6px; margin-top:auto; padding-top:4px; font-size:12px; color:#9ca3af; }
   .wb-rating-row .star { color:var(--wb-orange); width:14px; height:14px; flex-shrink:0; }
+  .wb-cart-badge { position:absolute; top:8px; right:8px; z-index:5; padding:4px 9px; border-radius:999px; font-size:11px; font-weight:800; background:rgba(0,0,0,.72); color:#fde68a; border:1px solid rgba(253,224,71,.45); }
+  #shop-catalog-grid.shop-wb-chaos-on .wb-card { transition: transform .2s ease; }
+  #shop-catalog-grid.shop-wb-chaos-on .wb-card:nth-child(4n+1) { transform: translateY(6px) rotate(-2deg); }
+  #shop-catalog-grid.shop-wb-chaos-on .wb-card:nth-child(4n+2) { transform: translateY(-4px) rotate(1.6deg); }
+  #shop-catalog-grid.shop-wb-chaos-on .wb-card:nth-child(4n+3) { transform: translateY(4px) rotate(1deg); }
+  #shop-catalog-grid.shop-wb-chaos-on .wb-card:nth-child(4n) { transform: translateY(-5px) rotate(-1.3deg); }
+  #shop-catalog-grid.shop-wb-chaos-off .wb-card { transform: none !important; }
 </style>
 
 <div class="pt-24 pb-16 neo-app-surface shop-wb-wrap">
@@ -55,7 +62,7 @@
         </div>
         {% if user %}
         <a href="/shop/cart" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gold/30 text-sm text-gold hover:bg-gold/10 transition-colors shrink-0">
-          Корзина{% if cart_qty %} <span class="font-semibold">({{ cart_qty }})</span>{% endif %}
+          {{ t.shop_cart_short }}{% if cart_qty %} <span class="font-semibold">({{ cart_qty }})</span>{% endif %}
         </a>
         {% endif %}
       </div>
@@ -126,7 +133,7 @@
       </button>
     </div>
 
-    <div id="shop-catalog-grid" class="shop-catalog-grid cols-2">
+    <div id="shop-catalog-grid" class="shop-catalog-grid cols-2 shop-wb-chaos-on">
       {% for p in products %}
       {% set imgs = p._images if p._images is defined else ([p.image_url] if p.image_url else []) %}
       {% set st = review_stats.get(p.id) if review_stats else none %}
@@ -134,9 +141,11 @@
       {% if p.price_old and p.price and p.price_old > p.price %}
         {% set disc = (((p.price_old - p.price) * 100 / p.price_old) | round | int) %}
       {% endif %}
-      <article class="wb-card wb-product-card" data-product-id="{{ p.id }}">
+      <article class="wb-card wb-product-card" data-product-id="{{ p.id }}" data-orig-idx="{{ loop.index0 }}">
         <div class="wb-img-stage">
           {% if disc %}<span class="wb-discount">-{{ disc }}%</span>{% endif %}
+          {% set in_cart = (cart_totals.get(p.id) if cart_totals else 0) or 0 %}
+          {% if in_cart %}<span class="wb-cart-badge" title="В корзинах у пользователей">🛒 {{ in_cart }}</span>{% endif %}
           {% if imgs | length > 0 %}
           <div class="wb-carousel relative z-[1] w-full h-full" data-carousel data-pid="{{ p.id }}">
             {% for img in imgs %}
@@ -254,6 +263,11 @@
       if (!chaosBtn) return;
       chaosBtn.classList.toggle('is-on', chaosOn);
       chaosBtn.querySelector('span').textContent = chaosOn ? '🌀 Хаос вкл.' : '🌀 Хаос';
+      var grid = document.getElementById('shop-catalog-grid');
+      if (grid) {
+        grid.classList.toggle('shop-wb-chaos-on', chaosOn);
+        grid.classList.toggle('shop-wb-chaos-off', !chaosOn);
+      }
     }
     setChaosUi();
     if (chaosOn) shuffleGrid();
@@ -262,6 +276,14 @@
       try { localStorage.setItem(CHAOS_KEY, chaosOn ? '1' : '0'); } catch(e) {}
       setChaosUi();
       if (chaosOn) shuffleGrid();
+      else {
+        var grid = document.getElementById('shop-catalog-grid');
+        if (grid) {
+          var cards = Array.prototype.slice.call(grid.querySelectorAll('.wb-product-card'));
+          cards.sort(function(a, b) { return (parseInt(a.getAttribute('data-orig-idx'), 10) || 0) - (parseInt(b.getAttribute('data-orig-idx'), 10) || 0); });
+          cards.forEach(function(c) { grid.appendChild(c); });
+        }
+      }
     });
 
     document.querySelectorAll('[data-carousel]').forEach(function(root) {

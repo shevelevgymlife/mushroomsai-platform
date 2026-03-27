@@ -327,6 +327,14 @@ async def shop(
     if current_user:
         cart_qty = await _shop_cart_qty(_shop_effective_uid(current_user))
 
+    cart_totals_rows = await database.fetch_all(
+        sa.text(
+            "SELECT product_id, COALESCE(SUM(quantity), 0)::int AS n "
+            "FROM shop_cart_items GROUP BY product_id"
+        )
+    )
+    cart_totals = {int(r["product_id"]): int(r["n"] or 0) for r in cart_totals_rows}
+
     return templates.TemplateResponse(
         "shop.html",
         {
@@ -341,6 +349,7 @@ async def shop(
             "sort": sort,
             "search": search,
             "cart_qty": cart_qty,
+            "cart_totals": cart_totals,
         },
     )
 
@@ -1469,6 +1478,32 @@ async def create_community_circle(request: Request, name: str = Form("Кружо
         community_folders.insert().values(user_id=uid, name=clean_name)
     )
     return JSONResponse({"ok": True, "id": fid, "name": clean_name})
+
+
+@router.post("/community/circle/{circle_id}/delete")
+async def delete_community_circle(request: Request, circle_id: int):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return JSONResponse({"ok": False, "error": "auth required"}, status_code=401)
+    uid = int(current_user.get("primary_user_id") or current_user["id"])
+    circle = await database.fetch_one(
+        community_folders.select().where(community_folders.c.id == circle_id)
+    )
+    if not circle:
+        return JSONResponse({"ok": False, "error": "Кружок не найден"}, status_code=404)
+    if int(circle["user_id"] or 0) != uid:
+        return JSONResponse({"ok": False, "error": "Нет доступа"}, status_code=403)
+    family_ids = await _profile_family_ids(uid)
+    await database.execute(
+        community_posts.update()
+        .where(community_posts.c.folder_id == circle_id)
+        .where(community_posts.c.user_id.in_(family_ids))
+        .values(folder_id=None)
+    )
+    await database.execute(
+        community_folders.delete().where(community_folders.c.id == circle_id)
+    )
+    return JSONResponse({"ok": True})
 
 
 @router.get("/community/circle/{circle_id}/picker-posts")

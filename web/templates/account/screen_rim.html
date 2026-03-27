@@ -2,6 +2,14 @@
 {% block title %}Вид — NEUROFUNGI AI{% endblock %}
 
 {% block content %}
+<style>
+.rim-sv-knob{
+  position:absolute;width:22px;height:22px;border-radius:9999px;pointer-events:none;
+  border:3px solid rgba(255,255,255,.95);
+  box-shadow:0 0 0 1px rgba(0,0,0,.35),0 4px 14px rgba(0,0,0,.45),inset 0 0 0 1px rgba(0,0,0,.15);
+  transform:translate(-50%,-50%);left:50%;top:50%;transition:left .04s ease-out,top .04s ease-out,background .08s;
+}
+</style>
 <div class="pt-24 pb-20 px-4 neo-app-surface max-w-lg mx-auto">
   <h1 class="text-xl font-semibold text-text mb-1" style="color:#3dd4e0">Вид</h1>
   <p class="text-sm text-muted mb-6">Оформление по краю экрана: цвет (как в Tilda), ширина свечения и яркость. Сохраняется в аккаунте.</p>
@@ -15,7 +23,9 @@
     <div>
       <label class="text-xs text-muted block mb-2">Насыщенность и яркость (нажмите или ведите курсор)</label>
       <div id="rimSv" class="relative w-full rounded-xl overflow-hidden cursor-crosshair touch-none" style="height:200px;background:#888">
+        <div id="rimSvKnob" class="rim-sv-knob" aria-hidden="true"></div>
       </div>
+      <p class="text-[11px] text-muted/80 mt-1.5">Кружок показывает выбранный цвет на поле.</p>
     </div>
     <div>
       <label class="text-xs text-muted block mb-2">Ширина по краю экрана <span class="text-muted/70">(тонко — широко)</span></label>
@@ -68,6 +78,7 @@
 
   var hueEl = document.getElementById('rimHue');
   var svEl = document.getElementById('rimSv');
+  var knobEl = document.getElementById('rimSvKnob');
   var strEl = document.getElementById('rimStrength');
   var widEl = document.getElementById('rimWidth');
   var onEl = document.getElementById('rimOn');
@@ -84,12 +95,18 @@
     svEl.style.background =
       'linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, hsl(' + hh + ',100%,50%))';
   }
+  function positionKnob(){
+    if(!knobEl) return;
+    knobEl.style.left = (hsv.s * 100) + '%';
+    knobEl.style.top = ((1 - hsv.v) * 100) + '%';
+    var rgb = hsvToRgb(+hueEl.value, hsv.s, hsv.v);
+    knobEl.style.background = 'rgb(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ')';
+  }
   function setKnobFromHsv(){
     paintSv();
-    var rect = svEl.getBoundingClientRect();
-    /* internal state for pointer */
     svEl.dataset.sat = String(hsv.s);
     svEl.dataset.val = String(hsv.v);
+    positionKnob();
   }
   setKnobFromHsv();
 
@@ -118,6 +135,7 @@
     var patch = { on: onEl.checked, r: rgb[0], g: rgb[1], b: rgb[2], s: s, w: w };
     window.__SCREEN_RIM = patch;
     if (window.applyScreenRimFromPrefs) window.applyScreenRimFromPrefs(patch);
+    positionKnob();
   }
 
   hueEl.addEventListener('input', function(){

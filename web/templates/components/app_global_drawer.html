@@ -40,9 +40,6 @@
     <a href="/community/chats" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('message_sq') }}</span><span class="lbl">Чаты</span></a>
     {% endif %}
     {% if not is_locked_free %}
-    {% if 'messages' in vbk %}
-    <a href="/messages" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('message') }}</span><span class="lbl">Сообщения</span></a>
-    {% endif %}
     {% if 'shop' in vbk %}
     <a href="/shop" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('shop') }}</span><span class="lbl">Магазин</span></a>
     {% endif %}
@@ -67,7 +64,6 @@
     {% else %}
     <a href="/account/link" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('link') }}</span><span class="lbl">Привязать аккаунт</span></a>
     {% endif %}
-    <a href="/account/language" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('globe') }}</span><span class="lbl">Язык интерфейса</span></a>
     <details class="ig-drawer-details" style="border-bottom:1px solid rgba(255,255,255,.06)">
       <summary class="ig-drawer-item ig-drawer-summary" style="list-style:none;cursor:pointer"><span class="e">📄</span><span class="lbl">Документы</span><span class="ig-drawer-chev" style="margin-left:auto;opacity:.5;font-size:10px">▼</span></summary>
       <div style="padding:4px 12px 14px 18px;font-size:13px">
