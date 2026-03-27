@@ -101,13 +101,13 @@ async def _profile_family_ids(profile_id: int) -> list[int]:
 
 
 async def ensure_default_profile_circles(profile_id: int) -> None:
-    """У каждого профиля должен быть хотя бы один кружок (папка)."""
+    """У каждого профиля должен быть хотя бы один стюрт (папка)."""
     cnt = await database.fetch_val(
         sa.select(sa.func.count()).select_from(community_folders).where(community_folders.c.user_id == profile_id)
     ) or 0
     if int(cnt) == 0:
         await database.execute(
-            community_folders.insert().values(user_id=profile_id, name="Кружок")
+            community_folders.insert().values(user_id=profile_id, name="Стюрт")
         )
 
 
@@ -1496,7 +1496,7 @@ async def get_profile_circles(request: Request, user_id: int):
 
 
 @router.post("/community/circle")
-async def create_community_circle(request: Request, name: str = Form("Кружок")):
+async def create_community_circle(request: Request, name: str = Form("Стюрт")):
     current_user = await get_user_from_request(request)
     if not current_user:
         return JSONResponse({"ok": False, "error": "auth required"}, status_code=401)
@@ -1505,8 +1505,8 @@ async def create_community_circle(request: Request, name: str = Form("Кружо
         sa.select(sa.func.count()).select_from(community_folders).where(community_folders.c.user_id == uid)
     ) or 0
     if int(existing) >= MAX_PROFILE_CIRCLES:
-        return JSONResponse({"ok": False, "error": "Не больше 5 кружков"}, status_code=400)
-    clean_name = (name or "").strip()[:80] or "Кружок"
+        return JSONResponse({"ok": False, "error": "Не больше 5 стюртов"}, status_code=400)
+    clean_name = (name or "").strip()[:80] or "Стюрт"
     fid = await database.execute(
         community_folders.insert().values(user_id=uid, name=clean_name)
     )
@@ -1523,7 +1523,7 @@ async def delete_community_circle(request: Request, circle_id: int):
         community_folders.select().where(community_folders.c.id == circle_id)
     )
     if not circle:
-        return JSONResponse({"ok": False, "error": "Кружок не найден"}, status_code=404)
+        return JSONResponse({"ok": False, "error": "Стюрт не найден"}, status_code=404)
     if int(circle["user_id"] or 0) != uid:
         return JSONResponse({"ok": False, "error": "Нет доступа"}, status_code=403)
     family_ids = await _profile_family_ids(uid)
@@ -1549,7 +1549,7 @@ async def circle_picker_posts(request: Request, circle_id: int, q: str = ""):
         community_folders.select().where(community_folders.c.id == circle_id)
     )
     if not circle:
-        return JSONResponse({"ok": False, "error": "Кружок не найден"}, status_code=404)
+        return JSONResponse({"ok": False, "error": "Стюрт не найден"}, status_code=404)
     if int(circle["user_id"] or 0) != uid:
         return JSONResponse({"ok": False, "error": "Нет доступа"}, status_code=403)
     family_ids = await _profile_family_ids(uid)
@@ -1590,7 +1590,7 @@ async def attach_post_to_circle(request: Request, circle_id: int, post_id: int =
         community_folders.select().where(community_folders.c.id == circle_id)
     )
     if not circle:
-        return JSONResponse({"ok": False, "error": "Кружок не найден"}, status_code=404)
+        return JSONResponse({"ok": False, "error": "Стюрт не найден"}, status_code=404)
     if int(circle["user_id"] or 0) != uid:
         return JSONResponse({"ok": False, "error": "Нет доступа"}, status_code=403)
     family_ids = await _profile_family_ids(uid)
@@ -1619,7 +1619,7 @@ async def circle_save_posts(request: Request, circle_id: int):
         community_folders.select().where(community_folders.c.id == circle_id)
     )
     if not circle:
-        return JSONResponse({"ok": False, "error": "Кружок не найден"}, status_code=404)
+        return JSONResponse({"ok": False, "error": "Стюрт не найден"}, status_code=404)
     if int(circle["user_id"] or 0) != uid:
         return JSONResponse({"ok": False, "error": "Нет доступа"}, status_code=403)
     try:
@@ -1668,10 +1668,10 @@ async def circle_rename(request: Request, circle_id: int, name: str = Form(...))
         community_folders.select().where(community_folders.c.id == circle_id)
     )
     if not circle:
-        return JSONResponse({"ok": False, "error": "Кружок не найден"}, status_code=404)
+        return JSONResponse({"ok": False, "error": "Стюрт не найден"}, status_code=404)
     if int(circle["user_id"] or 0) != uid:
         return JSONResponse({"ok": False, "error": "Нет доступа"}, status_code=403)
-    clean = (name or "").strip()[:80] or "Кружок"
+    clean = (name or "").strip()[:80] or "Стюрт"
     await database.execute(
         community_folders.update()
         .where(community_folders.c.id == circle_id)
@@ -1703,7 +1703,7 @@ async def community_profile_circle_page(request: Request, user_id: int, circle_i
         .where(community_folders.c.user_id == profile_id)
     )
     if not circle:
-        return HTMLResponse("Кружок не найден", status_code=404)
+        return HTMLResponse("Стюрт не найден", status_code=404)
     family_rows = await database.fetch_all(
         users.select().with_only_columns(users.c.id).where(
             sa.or_(users.c.id == profile_id, users.c.primary_user_id == profile_id)

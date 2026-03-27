@@ -515,12 +515,12 @@ async function createCircle(){
     const r0=await fetch('/community/profile/'+PROFILE_ID+'/circles',{credentials:'same-origin'});
     const d0=await r0.json().catch(()=>({}));
     const n=(d0.circles&&d0.circles.length)||0;
-    if(n>=max){ alert('Не больше '+max+' кружков'); return; }
+    if(n>=max){ alert('Не больше '+max+' стюртов'); return; }
     const fd=new FormData();
-    fd.append('name','Кружок');
+    fd.append('name','Стюрт');
     const r=await fetch('/community/circle',{method:'POST',body:fd,credentials:'same-origin'});
     const d=await r.json().catch(()=>({}));
-    if(!r.ok||!d.ok){ alert(d.error||'Не удалось создать кружок'); return; }
+    if(!r.ok||!d.ok){ alert(d.error||'Не удалось создать стюрт'); return; }
     await reloadProfileCircles();
     if(d.id) location.href='/community/profile/'+PROFILE_ID+'/circle/'+d.id;
   }catch(e){ alert('Ошибка сети'); }
@@ -538,7 +538,7 @@ async function reloadProfileCircles(){
       '<a class="cp-circle-item" href="/community/profile/'+PROFILE_ID+'/circle/'+c.id+'">'+
         '<div class="cp-circle-avatar">'+
           (c.cover_image?'<img src="'+_escHtml(c.cover_image)+'" alt="">':'<span style="font-size:20px">🍄</span>')+
-        '</div><div class="cp-circle-name">'+_escHtml(c.name||'Кружок')+'</div>'+
+        '</div><div class="cp-circle-name">'+_escHtml(c.name||'Стюрт')+'</div>'+
         '<div class="cp-circle-count">'+String(c.count||0)+' пост.</div>'+
       '</a>'
     )).join('');

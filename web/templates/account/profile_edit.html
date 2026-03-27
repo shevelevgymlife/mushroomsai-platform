@@ -24,19 +24,19 @@
   </form>
 
   <div style="margin-top:28px;padding-top:20px;border-top:1px solid rgba(255,255,255,.08)">
-    <h2 style="font-size:16px;font-weight:700;color:#ddd;margin:0 0 10px">Кружочки</h2>
-    <p style="font-size:12px;color:#888;margin:0 0 14px;line-height:1.45">До {{ max_profile_circles }} кружков. Посты в кружок можно добавить из списка ниже. <a href="/community/profile/{{ (user.primary_user_id or user.id)|int }}" style="color:#3dd4e0">Как выглядит профиль</a></p>
-    <button type="button" class="btn-o" style="width:100%;margin-bottom:14px;box-sizing:border-box;padding:11px;border-radius:12px;cursor:pointer" onclick="addCircleEdit()">+ Добавить кружок</button>
+    <h2 style="font-size:16px;font-weight:700;color:#ddd;margin:0 0 10px">Стюрты</h2>
+    <p style="font-size:12px;color:#888;margin:0 0 14px;line-height:1.45">До {{ max_profile_circles }} стюртов. Посты в стюрт можно добавить из списка ниже. <a href="/community/profile/{{ (user.primary_user_id or user.id)|int }}" style="color:#3dd4e0">Как выглядит профиль</a></p>
+    <button type="button" class="btn-o" style="width:100%;margin-bottom:14px;box-sizing:border-box;padding:11px;border-radius:12px;cursor:pointer" onclick="addCircleEdit()">+ Добавить стюрт</button>
     {% for c in circles %}
     <div style="padding:12px;margin-bottom:10px;border-radius:14px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03)">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
         <strong style="color:#e8e8e8;font-size:14px">{{ c.name }}</strong>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <a href="/community/profile/{{ (user.primary_user_id or user.id)|int }}/circle/{{ c.id }}" style="font-size:12px;color:#3dd4e0">Открыть кружок →</a>
-        <button type="button" style="font-size:12px;padding:6px 10px;border-radius:8px;border:1px solid rgba(248,113,113,.45);background:rgba(248,113,113,.1);color:#f87171;cursor:pointer" onclick="deleteCircleEdit({{ c.id }})">Удалить кружок</button>
+        <a href="/community/profile/{{ (user.primary_user_id or user.id)|int }}/circle/{{ c.id }}" style="font-size:12px;color:#3dd4e0">Открыть стюрт →</a>
+        <button type="button" style="font-size:12px;padding:6px 10px;border-radius:8px;border:1px solid rgba(248,113,113,.45);background:rgba(248,113,113,.1);color:#f87171;cursor:pointer" onclick="deleteCircleEdit({{ c.id }})">Удалить стюрт</button>
         </div>
       </div>
-      <label style="font-size:11px;color:#888;margin-top:8px;display:block">Пост в кружке (по названию)</label>
+      <label style="font-size:11px;color:#888;margin-top:8px;display:block">Пост в стюрте (по названию)</label>
       <select class="sinp pe-post-sel" data-circle-id="{{ c.id }}" style="width:100%;margin-top:4px;padding:8px 10px;border-radius:10px;font-size:13px;background:#0e0e0e;border:1px solid rgba(255,255,255,.12);color:#ccc">
         <option value="">— не выбран —</option>
         {% for p in my_posts %}
@@ -46,7 +46,7 @@
       <button type="button" class="btn-o" style="margin-top:8px;font-size:12px;padding:8px 12px" onclick="attachSelToCircle({{ c.id }})">Привязать выбранный пост</button>
     </div>
     {% else %}
-    <p style="font-size:13px;color:#666">Пока нет кружков — нажмите «Добавить кружок».</p>
+    <p style="font-size:13px;color:#666">Пока нет стюртов — нажмите «Добавить стюрт».</p>
     {% endfor %}
   </div>
 
@@ -55,8 +55,8 @@
 <script>
 var MAXC={{ max_profile_circles|int }};
 async function addCircleEdit(){
-  if(document.querySelectorAll('[data-circle-id]').length>=MAXC){ alert('Не больше '+MAXC+' кружков'); return; }
-  var fd=new FormData(); fd.append('name','Кружок');
+  if(document.querySelectorAll('[data-circle-id]').length>=MAXC){ alert('Не больше '+MAXC+' стюртов'); return; }
+  var fd=new FormData(); fd.append('name','Стюрт');
   try{
     var r=await fetch('/community/circle',{method:'POST',body:fd,credentials:'same-origin'});
     var d=await r.json().catch(function(){return {};});
@@ -65,7 +65,7 @@ async function addCircleEdit(){
   }catch(e){ alert('Сеть'); }
 }
 async function deleteCircleEdit(cid){
-  if(!confirm('Удалить кружок? Посты останутся в ленте, но отвяжутся от кружка.')) return;
+  if(!confirm('Удалить стюрт? Посты останутся в ленте, но отвяжутся от стюрта.')) return;
   try{
     var r=await fetch('/community/circle/'+cid+'/delete',{method:'POST',credentials:'same-origin'});
     var d=await r.json().catch(function(){return {};});

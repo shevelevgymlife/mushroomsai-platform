@@ -20,8 +20,11 @@
 .ai-ya-meta{font-size:12px;color:#6b7280;margin-bottom:8px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .ai-ya-desc{font-size:13px;color:#9ca3af;line-height:1.45;margin:0 0 10px;max-height:4.5em;overflow:hidden}
 .ai-ya-thumb img{max-height:100px;max-width:100%;border-radius:10px;border:1px solid rgba(56,189,248,.25);display:block}
-.cc-card-metrics{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
-.cc-card-met{font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.2);color:#e5e7eb}
+.cc-card-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:4px}
+.cc-card-met{border:1px solid rgba(255,255,255,.14);border-radius:12px;min-height:42px;background:linear-gradient(160deg,rgba(255,255,255,.07),rgba(12,13,20,.92));display:flex;align-items:center;justify-content:center;gap:6px;font-size:14px;font-weight:800;color:#e5e7eb}
+.cc-card-met-star{color:#ffd84f;border-color:rgba(255,216,79,.45)}
+.cc-card-met-chat{color:#8be9ff;border-color:rgba(139,233,255,.38)}
+.cc-card-met-share{color:#f7b3ff;border-color:rgba(247,179,255,.38)}
 </style>
 
 <div class="cc-root">
@@ -33,10 +36,10 @@
 
   <div class="cc-folder-bar">
     <a href="{{ back_url }}">← Профиль</a>
-    <span class="cc-folder-label">Кружок</span>
+    <span class="cc-folder-label">Стюрт</span>
     <span class="cc-folder-name">{{ circle.name }}</span>
   </div>
-  <p class="cc-folder-hint">Посты в этом списке только для просмотра. Название кружка и прикрепление постов — в «Редактировать профиль».</p>
+  <p class="cc-folder-hint">Посты в этом списке только для просмотра. Название стюрта и прикрепление постов — в «Редактировать профиль».</p>
 
   {% if feed_items %}
   <div class="cc-feed-list" id="circleFeedList">
@@ -54,15 +57,15 @@
       {% endif %}
       <p class="ai-ya-desc">{% if p.content %}{{ p.content | truncate(400, True, '…') }}{% else %}Без текста{% endif %}</p>
       <div class="cc-card-metrics">
-        <button type="button" class="cc-card-met" onclick="event.stopPropagation();ccLikePost({{ p.id }},this)"><span>{% if item.liked %}⭐{% else %}✩{% endif %}</span> <span id="cc-lkc-{{ p.id }}">{{ p.likes_count }}</span></button>
-        <button type="button" class="cc-card-met" onclick="event.stopPropagation();openCommunityPostDirect({{ p.id }})">💬 {{ p.comments_count }}</button>
-        <span class="cc-card-met">🏷️ {{ p.saves_count or 0 }}</span>
+        <button type="button" class="cc-card-met cc-card-met-star" onclick="event.stopPropagation();ccLikePost({{ p.id }},this)"><span>{% if item.liked %}⭐{% else %}✩{% endif %}</span> <span id="cc-lkc-{{ p.id }}">{{ p.likes_count }}</span></button>
+        <button type="button" class="cc-card-met cc-card-met-chat" onclick="event.stopPropagation();openCommunityPostDirect({{ p.id }})">💬 {{ p.comments_count }}</button>
+        <span class="cc-card-met cc-card-met-share">↗ {{ p.saves_count or 0 }}</span>
       </div>
     </div>
     {% endfor %}
   </div>
   {% else %}
-  <div style="text-align:center;padding:48px;color:#666;font-size:14px">В этом кружке пока нет постов. Прикрепить посты можно в настройках — «Редактировать профиль».</div>
+  <div style="text-align:center;padding:48px;color:#666;font-size:14px">В этом стюрте пока нет постов. Прикрепить посты можно в настройках — «Редактировать профиль».</div>
   {% endif %}
 </div>
 
