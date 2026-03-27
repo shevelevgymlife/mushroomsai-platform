@@ -28,17 +28,63 @@ BTN_SECURITY = "🔒 Безопасность"
 BTN_SUPPORT = "🆘 Тех. поддержка"
 
 
+SHOP_RUS_URL = "https://t.me/neurotrops_rus_bot?start=rHQemtw"
+SHOP_EU_US_URL = "https://grimmurk.com/?aff=Shevelev"
+
+SHOP_MESSAGE_HTML = (
+    "Вот ссылки на магазины, где можно заказать нужные грибы:\n\n"
+    "• Для России и Белоруссии: магазин Сдэк/Почта РФ — "
+    f'<a href="{SHOP_RUS_URL}">открыть в Telegram</a>\n\n'
+    "• Для Европы и Америки: магазин — "
+    f'<a href="{SHOP_EU_US_URL}">Grimmurk</a>\n\n'
+    "🛍 <b>Маркет плейс NEUROFUNGI</b>\n\n"
+    "Доступен только внутри приложения после регистрации и подписки <b>Старт</b>.\n\n"
+    "В маркет плейсе у каждого товара есть описание, комментарии, отзывы и рейтинг.\n\n"
+    "Если будут вопросы по выбору или приёму — нажмите кнопку «Задать вопрос AI» ниже."
+)
+
+
+async def _enable_ai_mode_and_notify(update, context) -> None:
+    """Включает режим AI и отправляет то же приветствие, что и по кнопке клавиатуры."""
+    context.user_data["tg_ai_mode"] = True
+    site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
+    text = (
+        "🤖 <b>Режим AI включён</b>\n\n"
+        "Напишите вопрос ниже — ответит консультант.\n\n"
+        "После ответа вы сможете выбрать: продолжить с AI или выйти.\n"
+        "Либо нажмите «❌ Выйти из режима AI» или любую кнопку меню (Магазин, Сообщество…), чтобы выйти."
+    )
+    kb = main_keyboard(site, ai_active=True)
+    if update.message:
+        await update.message.reply_text(text, parse_mode="HTML", reply_markup=kb)
+    elif update.callback_query and update.callback_query.message:
+        await update.callback_query.message.reply_text(text, parse_mode="HTML", reply_markup=kb)
+
+
+async def _shop_ask_ai_callback(update, context):
+    await update.callback_query.answer()
+    await _enable_ai_mode_and_notify(update, context)
+
+
 async def _shop_handler(update, context):
     context.user_data["tg_ai_mode"] = False
     site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
+    app_url = site.rstrip("/") + "/app"
     await update.message.reply_text(
-        "🛍 <b>Маркет плейс NEUROFUNGI</b>\n\n"
-        "Доступно только внутри приложения после регистрации и подписки <b>Старт</b>.\n\n"
-        "В маркет плейсе у каждого товара есть описание, комментарии, отзывы и рейтинг.",
+        SHOP_MESSAGE_HTML,
         reply_markup=InlineKeyboardMarkup(
-            [[InlineKeyboardButton("🍄 Открыть приложение по подписке Старт", web_app=WebAppInfo(url=site))]]
+            [
+                [
+                    InlineKeyboardButton(
+                        "🍄 Приложение: регистрация и маркетплейс",
+                        web_app=WebAppInfo(url=app_url),
+                    )
+                ],
+                [InlineKeyboardButton(BTN_AI, callback_data="tg_shop_ask_ai")],
+            ]
         ),
         parse_mode="HTML",
+        disable_web_page_preview=True,
     )
     await update.message.reply_text("⌨️", reply_markup=main_keyboard(site, ai_active=False))
 
@@ -86,16 +132,7 @@ async def _security_handler(update, context):
 
 
 async def _ai_enter_handler(update, context):
-    context.user_data["tg_ai_mode"] = True
-    site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
-    await update.message.reply_text(
-        "🤖 <b>Режим AI включён</b>\n\n"
-        "Напишите вопрос ниже — ответит консультант.\n\n"
-        "После ответа вы сможете выбрать: продолжить с AI или выйти.\n"
-        "Либо нажмите «❌ Выйти из режима AI» или любую кнопку меню (Магазин, Сообщество…), чтобы выйти.",
-        parse_mode="HTML",
-        reply_markup=main_keyboard(site, ai_active=True),
-    )
+    await _enable_ai_mode_and_notify(update, context)
 
 
 async def _ai_exit_handler(update, context):
@@ -133,6 +170,7 @@ def create_bot() -> Application:
     application.add_handler(CallbackQueryHandler(link_merge_callback, pattern=r"^link_merge_ok:"))
     application.add_handler(CallbackQueryHandler(tg_ai_continue_callback, pattern=r"^tg_ai_continue$"))
     application.add_handler(CallbackQueryHandler(tg_ai_exit_callback, pattern=r"^tg_ai_exit$"))
+    application.add_handler(CallbackQueryHandler(_shop_ask_ai_callback, pattern=r"^tg_shop_ask_ai$"))
 
     # Текст: в AI только если включён режим (см. handle_chat_message)
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_chat_message))
