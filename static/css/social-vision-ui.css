@@ -322,7 +322,8 @@
 }
 
 .nf-vp-carousel--hero .nf-vp-carousel__track {
-  align-items: stretch;
+  /* Не тянуть все слайды по высоте самого высокого — иначе блоки выглядят «квадратными» */
+  align-items: flex-start;
 }
 
 @media (max-width: 900px) {
@@ -333,9 +334,21 @@
     padding-bottom: 8px;
   }
 
+  /* Широкая горизонтальная карточка, как основной hero — без scale/blur от режима «кружков» */
   .nf-vp-carousel--hero .nf-vp-carousel__slide {
-    flex: 0 0 min(92vw, 720px);
+    flex: 0 0 min(calc(100vw - 28px), 920px);
+    width: min(calc(100vw - 28px), 920px);
+    max-width: 100%;
     scroll-snap-align: center;
+    transform: none;
+    filter: none;
+    box-shadow: none;
+  }
+
+  .nf-vp-carousel--hero .nf-vp-carousel__slide.is-active {
+    transform: none;
+    filter: none;
+    box-shadow: none;
   }
 }
 
@@ -352,15 +365,17 @@
   max-width: 100%;
   box-sizing: border-box;
   margin: 0;
+  align-self: flex-start;
 }
 
 .cp-hero-slide {
   box-sizing: border-box;
   width: 100%;
+  align-self: flex-start;
 }
 
 .cp-hero-slide-inner {
-  min-height: min(300px, 52vw);
+  min-height: 0;
   padding: 18px 20px 20px;
   border-radius: var(--nf-vp-r);
   background: rgba(255, 255, 255, 0.06);
@@ -446,20 +461,27 @@
 
 .cp-validators-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 12px;
-  margin-top: 16px;
+  margin-top: 14px;
   position: relative;
   z-index: 1;
 }
 
+@media (max-width: 520px) {
+  .cp-validators-row {
+    flex-wrap: wrap;
+  }
+}
+
 .cp-validator-card {
-  flex: 1 1 120px;
-  max-width: 168px;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: none;
   text-align: center;
   text-decoration: none;
   color: inherit;
-  border-radius: 20px;
+  border-radius: 16px;
   overflow: hidden;
   background: rgba(0, 0, 0, 0.25);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -473,8 +495,10 @@
 
 .cp-validator-card img {
   width: 100%;
-  aspect-ratio: 1;
+  aspect-ratio: 2.2 / 1;
+  max-height: 96px;
   object-fit: cover;
+  object-position: center;
   display: block;
 }
 
@@ -492,8 +516,8 @@
 
 .cp-social-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
   position: relative;
   z-index: 1;
 }
@@ -501,13 +525,13 @@
 .cp-social-pill {
   position: relative;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 88px;
-  padding: 14px 10px;
-  border-radius: 22px;
+  justify-content: flex-start;
+  gap: 10px;
+  min-height: 0;
+  padding: 12px 14px;
+  border-radius: 18px;
   text-decoration: none;
   color: #f4f6fb;
   background: rgba(22, 24, 34, 0.65);
@@ -574,6 +598,9 @@
 .cp-social-pill-txt {
   position: relative;
   z-index: 1;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
   font-size: 11px;
   font-weight: 700;
   opacity: 0.92;
