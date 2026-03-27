@@ -431,6 +431,14 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+.cp-hero-slide-inner--crypto .cp-crypto-row {
+  justify-content: center;
+}
+
+.cp-hero-slide-inner--crypto .cp-crypto-val {
+  font-size: clamp(16px, 4vw, 20px);
+}
+
 .cp-crypto-lbl {
   font-size: 12px;
   font-weight: 800;
