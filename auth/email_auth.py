@@ -17,7 +17,25 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 async def authenticate_user(email: str, password: str) -> Optional[dict]:
-    row = await database.fetch_one(users.select().where(users.c.email == email))
+    try:
+        # Keep auth query tolerant to schema drift: fetch only required columns.
+        row = await database.fetch_one(
+            users.select()
+            .with_only_columns(
+                users.c.id,
+                users.c.email,
+                users.c.password_hash,
+                users.c.tg_id,
+                users.c.linked_tg_id,
+                users.c.google_id,
+                users.c.linked_google_id,
+                users.c.is_banned,
+                users.c.ban_until,
+            )
+            .where(users.c.email == email)
+        )
+    except Exception:
+        return None
     if not row:
         return None
     if not row["password_hash"]:
@@ -37,7 +55,12 @@ async def register_user(email: str, password: str, name: str) -> Optional[dict]:
     if await is_identity_blocked("email", em):
         return None
 
-    existing = await database.fetch_one(users.select().where(users.c.email == email))
+    try:
+        existing = await database.fetch_one(
+            users.select().with_only_columns(users.c.id).where(users.c.email == email)
+        )
+    except Exception:
+        return None
     if existing:
         return None
 
@@ -55,4 +78,5 @@ async def register_user(email: str, password: str, name: str) -> Optional[dict]:
             needs_tariff_choice=True,
         )
     )
-    return await database.fetch_one(users.select().where(users.c.id == user_id))
+    # register_email only needs user id for JWT generation.
+    return {"id": int(user_id)}
