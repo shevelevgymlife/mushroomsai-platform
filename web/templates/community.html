@@ -139,11 +139,21 @@
     <form method="get" action="/community" style="margin-bottom:12px">
       <input name="q" value="{{ search }}" class="sinp" placeholder="🔍 Поиск...">
     </form>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
-      <button class="tab {{ 'on' if tab == 'all' }}" onclick="location.href='/community?tab=all'">Все</button>
-      <button class="tab {{ 'on' if tab == 'following' }}" onclick="location.href='/community?tab=following'">Подписки</button>
-      <button class="tab {{ 'on' if tab == 'popular' }}" onclick="location.href='/community?tab=popular'">Популярное</button>
-      <button class="tab {{ 'on' if tab == 'saved' }}" onclick="location.href='/community?tab=saved'">Сохранённое</button>
+    <div class="nf-vp-carousel nf-vp-carousel--tabs" data-nf-vp-carousel style="margin-bottom:16px">
+      <div class="nf-vp-carousel__parallax" aria-hidden="true"><div class="nf-vp-carousel__particles"></div></div>
+      <button type="button" class="nf-vp-carousel__arrow nf-vp-carousel__arrow--prev" aria-label="Назад">‹</button>
+      <button type="button" class="nf-vp-carousel__arrow nf-vp-carousel__arrow--next" aria-label="Вперёд">›</button>
+      <div class="nf-vp-carousel__viewport">
+        <div class="nf-vp-carousel__fade nf-vp-carousel__fade--left"></div>
+        <div class="nf-vp-carousel__fade nf-vp-carousel__fade--right"></div>
+        <div class="nf-vp-carousel__track" style="gap:8px">
+          <button type="button" class="tab nf-vp-carousel__slide {{ 'on' if tab == 'all' }}" onclick="location.href='/community?tab=all'">Все</button>
+          <button type="button" class="tab nf-vp-carousel__slide {{ 'on' if tab == 'following' }}" onclick="location.href='/community?tab=following'">Подписки</button>
+          <button type="button" class="tab nf-vp-carousel__slide {{ 'on' if tab == 'popular' }}" onclick="location.href='/community?tab=popular'">Популярное</button>
+          <button type="button" class="tab nf-vp-carousel__slide {{ 'on' if tab == 'saved' }}" onclick="location.href='/community?tab=saved'">Сохранённое</button>
+        </div>
+      </div>
+      <div class="nf-vp-carousel__dots"></div>
     </div>
 
     <!-- Composer -->

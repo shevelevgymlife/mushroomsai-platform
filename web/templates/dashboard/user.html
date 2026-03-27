@@ -1253,12 +1253,22 @@ body.dash-ig-app .ig-lamp-topbar{
       {% endif %}
 
       {% if 'community' in vbk %}
-      <div class="ig-feed-folders-scroll" aria-label="Папки постов">
-        <button type="button" class="ig-feed-folder-pill ig-feed-folder-pill--on">Все посты</button>
+      <div class="nf-vp-carousel nf-vp-carousel--folders" data-nf-vp-carousel aria-label="Папки постов">
+        <div class="nf-vp-carousel__parallax" aria-hidden="true"><div class="nf-vp-carousel__particles"></div></div>
+        <button type="button" class="nf-vp-carousel__arrow nf-vp-carousel__arrow--prev" aria-label="Назад">‹</button>
+        <button type="button" class="nf-vp-carousel__arrow nf-vp-carousel__arrow--next" aria-label="Вперёд">›</button>
+        <div class="nf-vp-carousel__viewport">
+          <div class="nf-vp-carousel__fade nf-vp-carousel__fade--left"></div>
+          <div class="nf-vp-carousel__fade nf-vp-carousel__fade--right"></div>
+          <div class="ig-feed-folders-scroll nf-vp-carousel__track">
+        <button type="button" class="ig-feed-folder-pill ig-feed-folder-pill--on nf-vp-carousel__slide">Все посты</button>
         {% for f in my_community_folders|default([]) %}
-        <button type="button" class="ig-feed-folder-pill" title="{{ f.name or 'Папка' }}">{{ (f.name or 'Папка')|truncate(18, True, '') }}</button>
+        <button type="button" class="ig-feed-folder-pill nf-vp-carousel__slide" title="{{ f.name or 'Папка' }}">{{ (f.name or 'Папка')|truncate(18, True, '') }}</button>
         {% endfor %}
-        <button type="button" class="ig-feed-folder-pill ig-feed-folder-pill--add" onclick="openCreatePostModal()" title="Новый пост">+</button>
+        <button type="button" class="ig-feed-folder-pill ig-feed-folder-pill--add nf-vp-carousel__slide" onclick="openCreatePostModal()" title="Новый пост">+</button>
+          </div>
+        </div>
+        <div class="nf-vp-carousel__dots"></div>
       </div>
       {% endif %}
 
