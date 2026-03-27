@@ -1912,35 +1912,13 @@ async def fetch_community_groups_for_user(uid: int) -> list[dict]:
     return []
 
 
-@router.get("/community/chats", response_class=HTMLResponse)
-async def community_chats_browser_page(request: Request):
-    """Полноценные групповые чаты (как в кабинете); доступ: Старт+ или admin/moderator."""
+@router.get("/community/chats")
+async def community_chats_legacy_redirect(request: Request):
+    """Старая отдельная страница групп убрана из продукта — ведём в ленту сообщества."""
     user = await require_auth(request)
     if not user:
-        return RedirectResponse("/login?next=/community/chats")
-    leg = await legal_acceptance_redirect(request, user)
-    if leg:
-        return leg
-    uid = _effective_user_id(user)
-    plan = await check_subscription(uid)
-    if not can_use_community_group_chats(user, plan):
-        return RedirectResponse("/subscriptions", status_code=302)
-    group_list = await fetch_community_groups_for_user(uid)
-    can_create_groups = is_platform_operator(user)
-    can_manage_group_settings = is_platform_operator(user)
-    visible_block_keys = await compute_visible_blocks(uid, plan)
-    return templates.TemplateResponse(
-        "community_chats_full.html",
-        {
-            "request": request,
-            "user": user,
-            "group_list": group_list,
-            "effective_user_id": uid,
-            "can_create_groups": can_create_groups,
-            "can_manage_group_settings": can_manage_group_settings,
-            "visible_block_keys": visible_block_keys,
-        },
-    )
+        return RedirectResponse("/login?next=/community")
+    return RedirectResponse("/community", status_code=302)
 
 
 @router.get("/community/groups")

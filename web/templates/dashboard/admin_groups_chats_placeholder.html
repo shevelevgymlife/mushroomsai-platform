@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Группы / Чаты — Admin{% endblock %}
+
+{% block content %}
+<div class="pt-20 pb-16 neo-app-surface">
+  <div class="max-w-3xl mx-auto px-4 sm:px-6">
+    {% include "components/admin_nav.html" ignore missing %}
+
+    <div class="mb-8">
+      <h1 class="text-3xl font-light text-text mb-1">Группы / Чаты</h1>
+      <p class="text-sm text-muted">Раздел для администрирования групповых чатов</p>
+    </div>
+
+    <div class="p-8 rounded-2xl bg-surface border border-border">
+      <p class="text-text text-sm leading-relaxed mb-4">
+        Здесь позже появится панель управления группами и чатами. Старый интерфейс с полным CRUD отключён.
+      </p>
+      <p class="text-muted text-xs">
+        Пользователи общаются в личных чатах (<a href="/chats" class="text-gold hover:underline">/chats</a>) и в разделе «Чаты» кабинета.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

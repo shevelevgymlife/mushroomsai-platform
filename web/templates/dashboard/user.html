@@ -2316,15 +2316,6 @@ function syncIgTabbar(id){
   const key=map[id];
   if(key) bar.querySelector(`[data-app-tab="${key}"]`)?.classList.add('app-uni-tab--on');
 }
-function goToGroupsChatsFromBurger(){
-  closeDbDrawer();
-  try{
-    location.hash = 'groups';
-    location.reload();
-  }catch(e){
-    goSec('groups');
-  }
-}
 function goSec(id){
   closeDbDrawer();
   if(id!=='groups'&&document.body.classList.contains('tg-group-mobile-chat')){

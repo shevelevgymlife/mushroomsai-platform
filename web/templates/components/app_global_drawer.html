@@ -4,7 +4,6 @@
 {% set vbk = visible_block_keys if visible_block_keys is defined else ['ai_chat','messages','community','shop','profile_photo','posts','tariffs','referral','knowledge_base','pro_telegram','pro_pin_info','seller_marketplace'] %}
 {% set _eff_plan = (user.effective_subscription_plan|default(user.subscription_plan) or 'free') %}
 {% set is_locked_free = (_eff_plan == 'free') and ((user.role or 'user') not in ['admin','moderator']) %}
-{% set show_community_group_chats = ((user.role or 'user')|lower in ['admin','moderator']) or (_eff_plan|lower in ['start','pro','maxi']) %}
 <div class="ig-drawer-backdrop" id="appGlobalDrawerBackdrop" onclick="closeAppGlobalDrawer()"></div>
 <aside class="ig-drawer" id="appGlobalDrawer" aria-label="Меню">
   <div class="ig-drawer-head">
@@ -42,9 +41,6 @@
     <a href="/community/profile/{{ eff_uid|int }}" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('grid') }}</span><span class="lbl">Мой профиль</span></a>
     <a href="/community" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('feed') }}</span><span class="lbl">Лента</span></a>
     <a href="/chats" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none;position:relative;padding-right:36px"><span class="e">💬</span><span class="lbl">Чаты</span><span id="drawer-chats-badge" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%)">0</span></a>
-    {% endif %}
-    {% if show_community_group_chats %}
-    <a href="/community/chats" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('message_sq') }}</span><span class="lbl">Группы</span></a>
     {% endif %}
     {% if not is_locked_free %}
     {% if 'shop' in vbk %}
