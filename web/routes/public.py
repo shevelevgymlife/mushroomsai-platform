@@ -1739,7 +1739,6 @@ async def community_profile_circle_page(request: Request, user_id: int, circle_i
             "circle": dict(circle),
             "posts": posts,
             "feed_items": feed_items,
-            "is_owner_view": viewer_id == profile_id,
             "back_url": f"/community/profile/{profile_id}",
         },
     )
