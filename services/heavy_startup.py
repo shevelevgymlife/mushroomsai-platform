@@ -28,6 +28,7 @@ async def run_heavy_startup(app: FastAPI) -> None:
         os.makedirs(f"{_base}/community", exist_ok=True)
         os.makedirs(f"{_base}/community/groups/msg", exist_ok=True)
         os.makedirs(f"{_base}/avatars", exist_ok=True)
+        os.makedirs(f"{_base}/radio/downtempo", exist_ok=True)
         logger.info("Media dirs ready under %s", _base)
 
         try:
@@ -296,6 +297,14 @@ async def run_heavy_startup(app: FastAPI) -> None:
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS start_trial_claimed_at TIMESTAMP",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS start_trial_until TIMESTAMP",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS start_trial_end_notified BOOLEAN DEFAULT false",
+            "ALTER TABLE admin_permissions ADD COLUMN IF NOT EXISTS can_radio_downtempo BOOLEAN NOT NULL DEFAULT false",
+            """CREATE TABLE IF NOT EXISTS radio_downtempo_tracks (
+                id SERIAL PRIMARY KEY,
+                title TEXT NOT NULL,
+                storage_name VARCHAR(255) UNIQUE NOT NULL,
+                sort_order INTEGER NOT NULL DEFAULT 0,
+                created_at TIMESTAMP DEFAULT NOW()
+            )""",
         ]
         try:
             await database.execute(

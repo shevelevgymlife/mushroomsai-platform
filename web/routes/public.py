@@ -910,6 +910,39 @@ async def chat_page(request: Request):
     )
 
 
+@router.get("/downtempo", response_class=HTMLResponse)
+async def downtempo_radio_page(request: Request):
+    """Страница радио Down Tempo (плейлист с сервера, без скачивания у пользователя)."""
+    from services.radio_downtempo import get_playlist_version, list_tracks_ordered
+
+    current_user = await get_user_from_request(request)
+    tracks = await list_tracks_ordered()
+    ver = await get_playlist_version()
+    return templates.TemplateResponse(
+        "downtempo.html",
+        {
+            "request": request,
+            "user": current_user,
+            "tracks": tracks,
+            "playlist_version": ver,
+        },
+    )
+
+
+@router.get("/api/radio/downtempo/playlist")
+async def api_radio_downtempo_playlist():
+    from services.radio_downtempo import get_playlist_version, list_tracks_ordered
+
+    tracks = await list_tracks_ordered()
+    ver = await get_playlist_version()
+    return JSONResponse(
+        {
+            "version": ver,
+            "tracks": [{"id": t["id"], "title": t["title"], "url": t["url"]} for t in tracks],
+        }
+    )
+
+
 @router.get("/referral", response_class=HTMLResponse)
 async def referral_program_page(request: Request):
     """Отдельная страница реферальной программы (ссылки, баланс, статистика)."""

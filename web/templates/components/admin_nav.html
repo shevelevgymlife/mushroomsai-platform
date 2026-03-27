@@ -28,6 +28,7 @@
     ('Чаты', '/admin/groups', 'can_groups', 'message_sq'),
     ('Главная сайта', '/admin/homepage', 'can_homepage', 'home'),
     ('Блоки кабинета', '/admin/dashboard-blocks', 'can_dashboard_blocks', 'grid'),
+    ('Радио Down Tempo', '/admin/radio-downtempo', 'can_radio_downtempo', 'spark'),
   ] %}
   {% for label, href, perm_key, iname in nav_items %}
   {% if user_permissions is not defined or user_permissions.get(perm_key, True) %}

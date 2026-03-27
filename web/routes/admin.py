@@ -31,6 +31,8 @@ from db.models import (
     community_group_join_requests,
     community_group_member_permissions,
     community_group_member_bans,
+    radio_downtempo_tracks,
+    platform_settings,
 )
 import sqlalchemy
 from datetime import datetime, timedelta, date
@@ -51,6 +53,7 @@ ADMIN_SECTIONS = [
     ("Чаты", "/admin/groups", "can_groups"),
     ("Главная сайта", "/admin/homepage", "can_homepage"),
     ("Блоки кабинета", "/admin/dashboard-blocks", "can_dashboard_blocks"),
+    ("Радио Down Tempo", "/admin/radio-downtempo", "can_radio_downtempo"),
 ]
 ADMIN_NAV = [(label, href) for (label, href, _perm) in ADMIN_SECTIONS]
 AI_RETRIEVAL_MODES = [
@@ -80,6 +83,7 @@ PERM_LABELS = {
     "can_groups": "Чаты",
     "can_homepage": "Главная сайта",
     "can_dashboard_blocks": "Блоки кабинета",
+    "can_radio_downtempo": "Радио Down Tempo",
     "can_training_bot": "Бот обучающих постов (Telegram)",
     "can_ai_unlimited": "Безлимит AI (для пользователя)",
 }
@@ -2394,3 +2398,131 @@ async def search_users_api(request: Request, q: str = ""):
         .limit(10)
     )
     return JSONResponse({"users": [{"id": u["id"], "name": u["name"], "email": u["email"]} for u in results]})
+
+
+# ─── Radio Down Tempo ─────────────────────────────────────────────────────────
+
+MAX_RADIO_AUDIO_BYTES = 80 * 1024 * 1024
+
+
+@router.get("/radio-downtempo", response_class=HTMLResponse)
+async def admin_radio_downtempo_page(request: Request):
+    admin = await require_permission(request, "can_radio_downtempo")
+    if not admin:
+        return RedirectResponse("/login")
+    from services.radio_downtempo import get_playlist_version, list_tracks_ordered
+
+    tracks = await list_tracks_ordered()
+    ver = await get_playlist_version()
+    perms = await get_user_permissions(admin)
+    return templates.TemplateResponse(
+        "dashboard/admin_radio_downtempo.html",
+        {
+            "request": request,
+            "user": admin,
+            "user_permissions": perms,
+            "tracks": tracks,
+            "playlist_version": ver,
+        },
+    )
+
+
+@router.post("/radio-downtempo/upload")
+async def admin_radio_downtempo_upload(
+    request: Request,
+    file: UploadFile = File(...),
+    title: str = Form(""),
+):
+    admin = await require_permission(request, "can_radio_downtempo")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    from services.radio_downtempo import (
+        bump_playlist_version,
+        normalize_audio_content_type,
+        next_sort_order,
+        radio_save_dir,
+        safe_audio_ext,
+        slug_title,
+    )
+
+    ct = normalize_audio_content_type(file.content_type, file.filename or "")
+    ext = safe_audio_ext(file.filename or "")
+    if not ct or not ext:
+        return JSONResponse(
+            {"error": "Допустимые форматы: MP3, OGG, WAV, FLAC, M4A/AAC"},
+            status_code=400,
+        )
+    data = await file.read()
+    if len(data) > MAX_RADIO_AUDIO_BYTES:
+        return JSONResponse({"error": "Файл больше 80 МБ"}, status_code=400)
+    storage = f"{uuid.uuid4().hex}.{ext}"
+    save_path = os.path.join(radio_save_dir(), storage)
+    with open(save_path, "wb") as f:
+        f.write(data)
+    ttitle = (title or "").strip() or slug_title(file.filename or storage)
+    so = await next_sort_order()
+    await database.execute(
+        radio_downtempo_tracks.insert().values(title=ttitle, storage_name=storage, sort_order=so)
+    )
+    v = await bump_playlist_version()
+    return JSONResponse({"ok": True, "playlist_version": v})
+
+
+@router.post("/radio-downtempo/delete/{track_id}")
+async def admin_radio_downtempo_delete(request: Request, track_id: int):
+    admin = await require_permission(request, "can_radio_downtempo")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    from services.radio_downtempo import bump_playlist_version, radio_save_dir
+
+    row = await database.fetch_one(
+        radio_downtempo_tracks.select().where(radio_downtempo_tracks.c.id == track_id)
+    )
+    if not row:
+        return JSONResponse({"error": "not_found"}, status_code=404)
+    path = os.path.join(radio_save_dir(), row["storage_name"])
+    if os.path.isfile(path):
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+    await database.execute(radio_downtempo_tracks.delete().where(radio_downtempo_tracks.c.id == track_id))
+    v = await bump_playlist_version()
+    return JSONResponse({"ok": True, "playlist_version": v})
+
+
+@router.post("/radio-downtempo/reorder")
+async def admin_radio_downtempo_reorder(request: Request):
+    admin = await require_permission(request, "can_radio_downtempo")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    from services.radio_downtempo import bump_playlist_version
+
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "invalid_json"}, status_code=400)
+    ids = body.get("ids")
+    if not isinstance(ids, list) or not ids:
+        return JSONResponse({"error": "invalid"}, status_code=400)
+    clean = [int(x) for x in ids]
+    for i, tid in enumerate(clean):
+        await database.execute(
+            radio_downtempo_tracks.update()
+            .where(radio_downtempo_tracks.c.id == tid)
+            .values(sort_order=i)
+        )
+    v = await bump_playlist_version()
+    return JSONResponse({"ok": True, "playlist_version": v})
+
+
+@router.post("/radio-downtempo/publish")
+async def admin_radio_downtempo_publish(request: Request):
+    """Принудительно обновить версию плейлиста у всех слушателей (без изменения треков)."""
+    admin = await require_permission(request, "can_radio_downtempo")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    from services.radio_downtempo import bump_playlist_version
+
+    v = await bump_playlist_version()
+    return JSONResponse({"ok": True, "playlist_version": v})

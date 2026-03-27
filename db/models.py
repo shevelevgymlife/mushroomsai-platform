@@ -413,8 +413,20 @@ admin_permissions = sqlalchemy.Table(
     sqlalchemy.Column("can_groups", sqlalchemy.Boolean, default=False, server_default="false"),
     sqlalchemy.Column("can_homepage", sqlalchemy.Boolean, default=False, server_default="false"),
     sqlalchemy.Column("can_dashboard_blocks", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column("can_radio_downtempo", sqlalchemy.Boolean, default=False, server_default="false"),
     sqlalchemy.Column("can_training_bot", sqlalchemy.Boolean, default=False, server_default="false"),
     sqlalchemy.Column("can_ai_unlimited", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+# Плейлист радио Down Tempo (файлы в media/radio/downtempo/)
+radio_downtempo_tracks = sqlalchemy.Table(
+    "radio_downtempo_tracks",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("title", sqlalchemy.Text, nullable=False),
+    sqlalchemy.Column("storage_name", sqlalchemy.String(255), unique=True, nullable=False),
+    sqlalchemy.Column("sort_order", sqlalchemy.Integer, default=0, server_default="0"),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
 
