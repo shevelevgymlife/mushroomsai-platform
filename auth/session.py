@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Optional
+import logging
 from jose import jwt, JWTError
 from config import settings
 from db.database import database
@@ -10,6 +11,7 @@ from auth.ui_prefs import attach_screen_rim_prefs
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
+logger = logging.getLogger(__name__)
 
 
 def create_access_token(user_id: int) -> str:
@@ -25,18 +27,30 @@ async def get_current_user(token: str) -> Optional[dict]:
     except (JWTError, TypeError, ValueError):
         return None
 
-    row = await database.fetch_one(users.select().where(users.c.id == user_id))
+    try:
+        row = await database.fetch_one(users.select().where(users.c.id == user_id))
+    except Exception:
+        logger.exception("get_current_user: failed to load user by token subject")
+        return None
     if not row:
         return None
     # Always resolve to the primary account
     if row["primary_user_id"]:
-        primary = await database.fetch_one(users.select().where(users.c.id == row["primary_user_id"]))
+        try:
+            primary = await database.fetch_one(users.select().where(users.c.id == row["primary_user_id"]))
+        except Exception:
+            logger.exception("get_current_user: failed to load primary user")
+            return None
         if primary:
             row = primary
     u = dict(row)
     if login_denied_for_user_row_sync(u):
         return None
-    await sync_owner_admin_role(u)
+    try:
+        await sync_owner_admin_role(u)
+    except Exception:
+        logger.exception("get_current_user: failed to sync owner role")
+        return None
     attach_screen_rim_prefs(u)
     return u
 
@@ -49,4 +63,8 @@ async def get_user_from_request(request) -> Optional[dict]:
             token = auth_header[7:]
     if not token:
         return None
-    return await get_current_user(token)
+    try:
+        return await get_current_user(token)
+    except Exception:
+        logger.exception("get_user_from_request: unexpected auth error")
+        return None
