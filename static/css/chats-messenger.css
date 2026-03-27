@@ -1,8 +1,9 @@
 /* NEUROFUNGI мессенджер — тёмная тема, золото #C9A84C */
+/* На телефоне высота #chatsApp = --ch-surface-h (считает JS по visualViewport + клавиатура) */
+
 .chats-messenger-page main {
   padding-left: 0 !important;
   padding-right: 0 !important;
-  padding-bottom: 0 !important;
   max-width: none !important;
 }
 
@@ -15,15 +16,25 @@
   --ch-gold-active: rgba(201, 168, 76, 0.1);
   --ch-bubble-other: #1a1a1a;
   display: flex;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   height: calc(var(--vvh, 100vh) - var(--app-header-h, 52px) - var(--app-tabbar-h, 56px) - env(safe-area-inset-bottom, 0px));
   min-height: 280px;
+  max-height: none;
   background: var(--ch-bg);
   color: #e8e8e8;
   font-family: Inter, system-ui, sans-serif;
+  overflow: hidden;
 }
 
 body:not(.app-has-mobile-footer) #chatsApp {
   height: calc(var(--vvh, 100vh) - var(--app-header-h, 52px) - env(safe-area-inset-bottom, 0px));
+}
+
+.chats-thread {
+  min-height: 0;
+  overflow: hidden;
 }
 
 .chats-sidebar {
@@ -399,10 +410,14 @@ body:not(.app-has-mobile-footer) #chatsApp {
   display: flex;
   align-items: flex-end;
   gap: 10px;
+  min-width: 0;
+  width: 100%;
+  flex-wrap: nowrap;
 }
 
 .chats-compose textarea {
   flex: 1;
+  min-width: 0;
   min-height: 44px;
   max-height: 120px;
   resize: none;
@@ -414,6 +429,9 @@ body:not(.app-has-mobile-footer) #chatsApp {
   font-size: 15px;
   line-height: 1.4;
   font-family: inherit;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .chats-icon-btn {
@@ -560,7 +578,61 @@ body:not(.app-has-mobile-footer) #chatsApp {
   position: relative;
 }
 
-@media (max-width: 768px) {
+/* ── Телефон: вписываем в видимую область (visualViewport), клавиатура, safe-area ── */
+@media (max-width: 900px) {
+  html.chats-vv-root,
+  html.chats-vv-root body.chats-messenger-page {
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
+  }
+
+  html.chats-vv-root body.chats-messenger-page.app-mobile-layout {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  html.chats-vv-root body.chats-messenger-page main {
+    padding-bottom: 0 !important;
+    flex: 1 1 auto;
+    min-height: 0 !important;
+    max-height: none;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  html.chats-vv-root body.chats-messenger-page #chatsApp {
+    flex: none;
+    height: var(--ch-surface-h, calc(100dvh - var(--app-header-h, 56px) - 64px - env(safe-area-inset-bottom, 0px))) !important;
+    max-height: var(--ch-surface-h, calc(100dvh - var(--app-header-h, 56px) - 64px - env(safe-area-inset-bottom, 0px))) !important;
+    min-height: 0 !important;
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+
+  /* В открытом диалоге/группе нижний таббар скрыт — область чата до низа экрана */
+  body.chats-messenger-page.chats-thread-open .app-uni-tabbar {
+    display: none !important;
+  }
+
+  body.chats-messenger-page.chats-thread-open .chats-compose {
+    padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .chats-compose textarea {
+    font-size: 16px !important;
+    line-height: 1.35;
+    max-height: 120px;
+  }
+
+  body.chats-messenger-page.chats-input-focus .chats-scroll {
+    scroll-padding-bottom: 8px;
+  }
+}
+
+@media (max-width: 900px) {
   #chatsApp.mobile-chat-open .chats-sidebar {
     display: none;
   }

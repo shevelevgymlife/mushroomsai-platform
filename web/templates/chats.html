@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Чаты — NEUROFUNGI AI{% endblock %}
 {% block extra_head %}
-<link rel="stylesheet" href="/static/css/chats-messenger.css?v=1" />
+<link rel="stylesheet" href="/static/css/chats-messenger.css?v=2" />
 {% endblock %}
 {% block body_class %} chats-messenger-page{% endblock %}
 {% block content %}
@@ -18,7 +18,7 @@
   </aside>
   <section class="chats-main" id="chatsMain">
     <div class="chats-main-placeholder" id="chatsPlaceholder">Выберите чат слева</div>
-    <div id="chatsThread" style="display:none;flex:1;flex-direction:column;min-height:0">
+    <div id="chatsThread" class="chats-thread" style="display:none;flex:1;flex-direction:column;min-height:0">
       <div class="chats-thread-head">
         <button type="button" class="chats-mobile-back" id="chatsMobileBack" aria-label="Назад">←</button>
         <img class="chats-thread-head-av" id="chatsHeadAv" src="/static/favicon.svg" alt="" />
@@ -98,5 +98,5 @@
     avatar: {{ (user.avatar or '')|tojson }}
   };
 </script>
-<script src="/static/js/chats-messenger.js?v=1" defer></script>
+<script src="/static/js/chats-messenger.js?v=2" defer></script>
 {% endblock %}
