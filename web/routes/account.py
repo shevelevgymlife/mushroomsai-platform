@@ -446,6 +446,9 @@ async def account_profile_edit_save(
     bio: str = Form(""),
     profile_link_label: str = Form(""),
     profile_link_url: str = Form(""),
+    profile_thoughts: str = Form(""),
+    profile_thoughts_font: str = Form(""),
+    profile_thoughts_color: str = Form(""),
 ):
     user = await get_user_from_request(request)
     if not user:
@@ -455,6 +458,18 @@ async def account_profile_edit_save(
     bio_clean = (bio or "").strip()[:4000] or None
     lbl = (profile_link_label or "").strip()[:500] or None
     url = (profile_link_url or "").strip()[:2000] or None
+    thoughts = (profile_thoughts or "").strip()[:1200] or None
+    allowed_fonts = {
+        "Inter", "Roboto", "Open Sans", "Montserrat", "Lora", "Playfair Display", "Manrope",
+    }
+    thought_font = (profile_thoughts_font or "").strip()[:80]
+    if thought_font not in allowed_fonts:
+        thought_font = "Inter"
+    thought_color = (profile_thoughts_color or "").strip()[:16]
+    if not thought_color:
+        thought_color = "#3dd4e0"
+    if not thought_color.startswith("#") or len(thought_color) not in (4, 7):
+        thought_color = "#3dd4e0"
     await database.execute(
         users.update()
         .where(users.c.id == uid)
@@ -463,6 +478,9 @@ async def account_profile_edit_save(
             bio=bio_clean,
             profile_link_label=lbl,
             profile_link_url=url,
+            profile_thoughts=thoughts,
+            profile_thoughts_font=thought_font,
+            profile_thoughts_color=thought_color,
         )
     )
     return RedirectResponse("/account/profile-edit", status_code=302)

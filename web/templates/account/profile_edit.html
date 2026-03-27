@@ -20,6 +20,38 @@
       <label style="font-size:12px;color:#888;display:block;margin-bottom:6px">Адрес ссылки (https://…)</label>
       <input name="profile_link_url" type="url" class="sinp" value="{{ user.profile_link_url or '' }}" maxlength="2000" style="width:100%;box-sizing:border-box;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#e8e8e8" placeholder="https://" />
     </div>
+    <div style="padding:12px;border-radius:12px;border:1px solid rgba(61,212,224,.2);background:rgba(61,212,224,.05)">
+      <label style="font-size:12px;color:#9adfeb;display:block;margin-bottom:6px">Мои мысли</label>
+      <textarea name="profile_thoughts" id="thoughtsText" rows="4" maxlength="1200" class="sinp" style="width:100%;box-sizing:border-box;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#e8e8e8">{{ user.profile_thoughts or '' }}</textarea>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+        <div>
+          <label style="font-size:11px;color:#88a7b4;display:block;margin-bottom:5px">Шрифт</label>
+          <select name="profile_thoughts_font" id="thoughtsFont" class="sinp" style="padding:10px 12px">
+            {% set _tf = user.profile_thoughts_font or 'Inter' %}
+            {% for f in ['Inter','Roboto','Open Sans','Montserrat','Lora','Playfair Display','Manrope'] %}
+            <option value="{{ f }}" {% if _tf == f %}selected{% endif %}>{{ f }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;color:#88a7b4;display:block;margin-bottom:5px">Цвет шрифта</label>
+          <input type="hidden" name="profile_thoughts_color" id="thoughtsColorInput" value="{{ user.profile_thoughts_color or '#3dd4e0' }}">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="thoughtsColorSwatch" style="width:24px;height:24px;border-radius:7px;border:1px solid rgba(255,255,255,.25);background:{{ user.profile_thoughts_color or '#3dd4e0' }}"></span>
+            <code id="thoughtsColorHex" style="font-size:11px;color:#a6bfd2">{{ user.profile_thoughts_color or '#3dd4e0' }}</code>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:10px">
+        <div id="thoughtsSvPad" style="position:relative;height:108px;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.14);cursor:crosshair;background:
+          linear-gradient(to top, #000, transparent),
+          linear-gradient(to right, #fff, rgba(255,255,255,0))">
+          <span id="thoughtsSvKnob" style="position:absolute;width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.4);transform:translate(-7px,-7px);pointer-events:none"></span>
+        </div>
+        <input id="thoughtsHue" type="range" min="0" max="360" step="1" value="185" style="width:100%;margin-top:8px">
+      </div>
+      <div id="thoughtsPreview" style="margin-top:10px;padding:10px 12px;border-radius:10px;border:1px solid rgba(61,212,224,.24);background:rgba(8,12,18,.72);min-height:56px;white-space:pre-wrap;word-break:break-word"></div>
+    </div>
     <button type="submit" class="btn-g" style="width:100%;padding:12px;border:none;border-radius:12px;background:#3dd4e0;color:#000;font-weight:700;cursor:pointer;margin-top:6px">Сохранить профиль</button>
   </form>
 
@@ -85,6 +117,66 @@ async function attachSelToCircle(cid){
     else alert(d.error||'Ошибка');
   }catch(e){ alert('Сеть'); }
 }
+function _thoughtsHex(n){ return Math.max(0,Math.min(255,n|0)).toString(16).padStart(2,'0'); }
+function _thoughtsRgbToHex(r,g,b){ return '#'+_thoughtsHex(r)+_thoughtsHex(g)+_thoughtsHex(b); }
+function _thoughtsHsvToRgb(h,s,v){
+  let c=v*s, x=c*(1-Math.abs((h/60)%2-1)), m=v-c, r=0,g=0,b=0;
+  if(h<60){r=c;g=x;} else if(h<120){r=x;g=c;} else if(h<180){g=c;b=x;}
+  else if(h<240){g=x;b=c;} else if(h<300){r=x;b=c;} else {r=c;b=x;}
+  return {r:Math.round((r+m)*255), g:Math.round((g+m)*255), b:Math.round((b+m)*255)};
+}
+function _thoughtsHexToRgb(hex){
+  const m=String(hex||'').trim().match(/^#?([0-9a-f]{6})$/i); if(!m) return null;
+  const n=parseInt(m[1],16); return {r:(n>>16)&255,g:(n>>8)&255,b:n&255};
+}
+function _thoughtsRgbToHsv(r,g,b){
+  r/=255; g/=255; b/=255;
+  const mx=Math.max(r,g,b), mn=Math.min(r,g,b), d=mx-mn;
+  let h=0; if(d){ if(mx===r) h=60*(((g-b)/d)%6); else if(mx===g) h=60*(((b-r)/d)+2); else h=60*(((r-g)/d)+4); }
+  if(h<0) h+=360; const s=mx===0?0:d/mx; return {h,s,v:mx};
+}
+const _thoughtsState={h:185,s:0.71,v:0.88,drag:false};
+function _thoughtsApply(){
+  const sv=document.getElementById('thoughtsSvPad'), knob=document.getElementById('thoughtsSvKnob');
+  const hue=document.getElementById('thoughtsHue'), inp=document.getElementById('thoughtsColorInput');
+  const sw=document.getElementById('thoughtsColorSwatch'), hex=document.getElementById('thoughtsColorHex');
+  const txt=document.getElementById('thoughtsText'), pv=document.getElementById('thoughtsPreview'), font=document.getElementById('thoughtsFont');
+  if(!sv||!knob||!hue||!inp||!sw||!hex||!pv) return;
+  const pure=_thoughtsHsvToRgb(_thoughtsState.h,1,1);
+  sv.style.background='linear-gradient(to top,#000,transparent),linear-gradient(to right,#fff,rgba(255,255,255,0)),rgb('+pure.r+','+pure.g+','+pure.b+')';
+  const rgb=_thoughtsHsvToRgb(_thoughtsState.h,_thoughtsState.s,_thoughtsState.v);
+  const color=_thoughtsRgbToHex(rgb.r,rgb.g,rgb.b);
+  inp.value=color; sw.style.background=color; hex.textContent=color;
+  const rect=sv.getBoundingClientRect(); knob.style.left=(rect.width*_thoughtsState.s)+'px'; knob.style.top=(rect.height*(1-_thoughtsState.v))+'px';
+  pv.style.color=color; pv.style.fontFamily=(font&&font.value?font.value:'Inter')+', system-ui, sans-serif';
+  pv.textContent=(txt&&txt.value.trim())?txt.value:'Ваши мысли появятся тут красивым текстом.';
+}
+function _thoughtsPick(ev){
+  const sv=document.getElementById('thoughtsSvPad'); if(!sv) return;
+  const rect=sv.getBoundingClientRect();
+  const x=Math.max(0,Math.min(rect.width,(ev.clientX||0)-rect.left));
+  const y=Math.max(0,Math.min(rect.height,(ev.clientY||0)-rect.top));
+  _thoughtsState.s=rect.width?x/rect.width:0; _thoughtsState.v=rect.height?1-(y/rect.height):0;
+  _thoughtsApply();
+}
+document.addEventListener('DOMContentLoaded', function(){
+  const inp=document.getElementById('thoughtsColorInput'), hue=document.getElementById('thoughtsHue');
+  const sv=document.getElementById('thoughtsSvPad'), txt=document.getElementById('thoughtsText'), font=document.getElementById('thoughtsFont');
+  const rgb=_thoughtsHexToRgb(inp&&inp.value);
+  if(rgb){
+    const hsv=_thoughtsRgbToHsv(rgb.r,rgb.g,rgb.b);
+    _thoughtsState.h=hsv.h; _thoughtsState.s=hsv.s; _thoughtsState.v=hsv.v;
+  }
+  if(hue){ hue.value=String(Math.round(_thoughtsState.h)); hue.addEventListener('input',function(){ _thoughtsState.h=parseFloat(this.value)||0; _thoughtsApply(); }); }
+  if(sv){
+    sv.addEventListener('mousedown',function(e){ _thoughtsState.drag=true; _thoughtsPick(e); });
+    window.addEventListener('mousemove',function(e){ if(_thoughtsState.drag) _thoughtsPick(e); });
+    window.addEventListener('mouseup',function(){ _thoughtsState.drag=false; });
+  }
+  if(txt) txt.addEventListener('input', _thoughtsApply);
+  if(font) font.addEventListener('change', _thoughtsApply);
+  _thoughtsApply();
+});
 </script>
 <style>.btn-o{border:1px solid #3dd4e0;color:#3dd4e0;background:transparent;border-radius:10px;font-weight:600}.btn-o:hover{background:rgba(61,212,224,.12)}</style>
 {% endblock %}

@@ -49,21 +49,25 @@ body.profile-app-shell .grain-overlay{opacity:0.22}
 }
 .cp-profile-col-left{display:flex;flex-direction:column;align-items:center;gap:12px;min-width:0;flex-shrink:0}
 .cp-profile-col-right{display:flex;flex-direction:column;align-items:stretch;gap:0;min-width:0;width:100%}
-.cp-hero-bar{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px 10px;width:100%;max-width:min(100%,620px);margin:0 auto 8px;padding:14px 14px;border-radius:20px;background:linear-gradient(145deg,rgba(255,255,255,.05),rgba(8,9,14,.75));border:1px solid rgba(255,255,255,.1);box-shadow:0 16px 48px rgba(0,0,0,.35)}
-@media(max-width:520px){.cp-hero-bar{grid-template-columns:1fr;justify-items:center;text-align:center}}
+.cp-hero-bar{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(220px,.95fr);align-items:stretch;gap:12px;width:100%;max-width:min(100%,920px);margin:0 auto 10px;padding:14px;border-radius:20px;background:linear-gradient(145deg,rgba(255,255,255,.05),rgba(8,9,14,.75));border:1px solid rgba(255,255,255,.1);box-shadow:0 16px 48px rgba(0,0,0,.35)}
+@media(max-width:760px){.cp-hero-bar{grid-template-columns:1fr}}
+.cp-hero-left{display:flex;flex-direction:column;gap:10px;align-items:flex-start;justify-content:flex-start;min-width:0}
 .cp-hero-stack{min-width:0;text-align:left}
-@media(max-width:520px){.cp-hero-stack{text-align:center}}
 .cp-hero-bio{font-size:13px;color:#b8bcc8;line-height:1.45;margin-top:4px;max-width:100%}
 .cp-hero-link{display:inline-block;margin-top:6px;font-size:13px;font-weight:600;color:#3dd4e0;text-decoration:underline;text-underline-offset:3px;word-break:break-all}
-.cp-hero-center{display:flex;justify-content:center;align-items:center}
+.cp-hero-center{display:flex;justify-content:flex-start;align-items:center}
 .cp-like-star-bubble{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:999px;background:radial-gradient(ellipse at 30% 20%,rgba(255,214,120,.22),rgba(20,12,28,.85));border:1px solid rgba(255,214,120,.35);box-shadow:0 8px 28px rgba(255,180,90,.12)}
 .cp-like-star-bubble.clickable{cursor:pointer;transition:transform .14s ease, box-shadow .18s ease}
 .cp-like-star-bubble.clickable:hover{transform:translateY(-1px);box-shadow:0 12px 30px rgba(255,180,90,.18)}
 .cp-like-star-ico{font-size:22px;line-height:1;color:#ffd84f;filter:drop-shadow(0 0 10px rgba(255,216,120,.45))}
 .cp-like-star-num{font-size:18px;font-weight:800;color:#fef3c7;font-variant-numeric:tabular-nums}
-.cp-hero-plan{display:flex;justify-content:flex-end;align-items:center}
-@media(max-width:520px){.cp-hero-plan{justify-content:center}}
+.cp-hero-plan{display:flex;justify-content:flex-start;align-items:center}
 .cp-plan-badge--xl{font-size:clamp(13px,3.2vw,15px)!important;padding:10px 18px!important;border-width:2px!important;box-shadow:0 12px 40px rgba(255,102,208,.25),inset 0 1px 0 rgba(255,255,255,.12)!important;letter-spacing:.04em}
+.cp-hero-actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:flex-start;margin-top:2px}
+.cp-hero-thoughts{display:flex;align-items:stretch}
+.cp-thoughts-card{width:100%;min-height:150px;border-radius:16px;padding:14px 14px;border:1px solid rgba(61,212,224,.25);background:linear-gradient(155deg,rgba(61,212,224,.08),rgba(12,13,20,.88));box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
+.cp-thoughts-label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7dd9e5;margin-bottom:8px}
+.cp-thoughts-text{font-size:18px;line-height:1.45;white-space:pre-wrap;word-break:break-word}
 .cp-profile-like-row{display:flex;align-items:center;justify-content:center;gap:10px;margin:0 0 12px;flex-wrap:wrap}
 @media(min-width:641px){.cp-profile-like-row{justify-content:flex-start}}
 .cp-profile-like-btn{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:#e8e8e8;border-radius:999px;padding:8px 16px;font-size:14px;font-weight:700;cursor:pointer;transition:background .15s,border-color .15s}
@@ -287,38 +291,44 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
           </div>
         </div>
         <div class="cp-hero-bar">
-          <!-- Имя + bio + ссылка -->
-          <div class="cp-hero-stack">
-            <div class="cp-profile-name">{{ profile.name or 'Участник' }}</div>
-            {% if profile.bio %}
-            <div class="cp-hero-bio">{{ profile.bio }}</div>
-            {% endif %}
-            {% if profile.get('profile_link_url') %}
-            <a class="cp-hero-link" href="{{ profile.profile_link_url }}" target="_blank" rel="noopener noreferrer">{{ profile.get('profile_link_label') or profile.profile_link_url }}</a>
+          <div class="cp-hero-left">
+            <div class="cp-hero-stack">
+              <div class="cp-profile-name">{{ profile.name or 'Участник' }}</div>
+              {% if profile.bio %}
+              <div class="cp-hero-bio">{{ profile.bio }}</div>
+              {% endif %}
+              {% if profile.get('profile_link_url') %}
+              <a class="cp-hero-link" href="{{ profile.profile_link_url }}" target="_blank" rel="noopener noreferrer">{{ profile.get('profile_link_label') or profile.profile_link_url }}</a>
+              {% endif %}
+            </div>
+            <div class="cp-hero-center">
+              <div class="cp-like-star-bubble {% if user and not is_own %}clickable{% endif %}" title="Лайки страницы" {% if user and not is_own %}onclick="toggleProfilePageLike()"{% endif %}>
+                <span class="cp-like-star-ico">★</span>
+                <span class="cp-like-star-num" id="profilePageLikeCount">{{ profile_likes_count|default(0) }}</span>
+              </div>
+            </div>
+            <div class="cp-hero-plan">
+              {% if profile_plan_name %}
+              <span class="cp-plan-badge cp-plan-badge--xl">{{ profile_plan_name }}</span>
+              {% endif %}
+            </div>
+            {% if not is_own %}
+            <div class="cp-hero-actions">
+              <button type="button" class="btn-subscribe-hero{% if is_following %} subscribed{% endif %}" id="followBtn" onclick="doFollow()">
+                <span id="followBtnText">{% if is_following %}Подписан{% else %}Подписаться{% endif %}</span>
+              </button>
+              <button type="button" class="btn-message-hero" onclick="openDM()">💬 Сообщение</button>
+            </div>
             {% endif %}
           </div>
-          <!-- Звёзды -->
-          <div class="cp-hero-center">
-            <div class="cp-like-star-bubble {% if user and not is_own %}clickable{% endif %}" title="Лайки страницы" {% if user and not is_own %}onclick="toggleProfilePageLike()"{% endif %}>
-              <span class="cp-like-star-ico">★</span>
-              <span class="cp-like-star-num" id="profilePageLikeCount">{{ profile_likes_count|default(0) }}</span>
+          <div class="cp-hero-thoughts">
+            <div class="cp-thoughts-card">
+              <div class="cp-thoughts-label">Мои мысли</div>
+              <div class="cp-thoughts-text" style="color:{{ profile.get('profile_thoughts_color') or '#3dd4e0' }};font-family:'{{ profile.get('profile_thoughts_font') or 'Inter' }}',system-ui,sans-serif;">
+                {{ profile.get('profile_thoughts') or 'Здесь может быть одно-два предложения о себе.' }}
+              </div>
             </div>
           </div>
-          <!-- Тариф -->
-          <div class="cp-hero-plan">
-            {% if profile_plan_name %}
-            <span class="cp-plan-badge cp-plan-badge--xl">{{ profile_plan_name }}</span>
-            {% endif %}
-          </div>
-          <!-- Кнопки Подписаться + Сообщение — внутри hero bar -->
-          {% if not is_own %}
-          <div style="grid-column:1/-1;display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:8px">
-            <button type="button" class="btn-subscribe-hero{% if is_following %} subscribed{% endif %}" id="followBtn" onclick="doFollow()">
-              <span id="followBtnText">{% if is_following %}Подписан{% else %}Подписаться{% endif %}</span>
-            </button>
-            <button type="button" class="btn-message-hero" onclick="openDM()">💬 Сообщение</button>
-          </div>
-          {% endif %}
         </div>
       </div>
 
