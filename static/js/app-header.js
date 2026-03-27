@@ -95,7 +95,7 @@
       );
     }
     if (it.type === 'message') {
-      var href3 = '/messages/' + encodeURIComponent(String(a.id || ''));
+      var href3 = '/chats?open_user=' + encodeURIComponent(String(a.id || ''));
       var tx = escHtml(String(it.text_preview || ''));
       return (
         '<a class="app-act-row" href="' +
@@ -253,7 +253,7 @@
         var el = document.getElementById('appDmToast');
         if (!el) return;
         var p = window.location.pathname || '';
-        if (p.indexOf('/messages') === 0) return;
+        if (p.indexOf('/chats') === 0) return;
         var last = parseInt(sessionStorage.getItem('dmToastLastId') || '0', 10) || 0;
         var r = await fetch('/community/messages/inbox-toast?after_id=' + last, { credentials: 'same-origin' });
         var d = await r.json();

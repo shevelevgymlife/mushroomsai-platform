@@ -1247,7 +1247,7 @@ body.dash-ig-app .ig-lamp-topbar{
         <div class="ig-feed-actions-top">
           <button type="button" class="ig-ic-btn" title="Новый пост" aria-label="Новый пост" onclick="openCreatePostModal()">＋</button>
           <button type="button" class="ig-ic-btn" title="Участники" aria-label="Участники" style="font-size:16px" onclick="goSec('search')">👥</button>
-          <button type="button" class="ig-ic-btn" title="Сообщения" aria-label="Сообщения" onclick="goSec('messages')">✉</button>
+            <button type="button" class="ig-ic-btn" title="Чаты" aria-label="Чаты" onclick="location.href='/chats'">✉</button>
         </div>
       </div>
       {% endif %}
@@ -1497,7 +1497,7 @@ body.dash-ig-app .ig-lamp-topbar{
     <section class="db-sec" id="sec-messages">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
         <div class="sect-title" style="margin:0">💬 Личные сообщения</div>
-        <a href="/messages" class="btn-g" style="font-size:13px;padding:8px 16px">Открыть ↗</a>
+        <a href="/chats" class="btn-g" style="font-size:13px;padding:8px 16px">Открыть ↗</a>
       </div>
       <div class="card" style="padding:0;overflow:hidden" id="dmPreviewWrap">
         <div id="dmList" style="min-height:120px;display:flex;align-items:center;justify-content:center;color:#444;font-size:14px">
@@ -1919,9 +1919,9 @@ body.dash-ig-app .ig-lamp-topbar{
     {{ ni('groups','💬','Чаты') }}
     {% endif %}
     {% if 'messages' in vbk %}
-    <button class="nav-item" onclick="goSec('messages')" id="nav-messages">
+    <button class="nav-item" type="button" onclick="location.href='/chats'" id="nav-messages">
       💬<span class="nav-badge" id="dash-messages-badge"></span>
-      <span class="nav-tooltip">Сообщения</span>
+      <span class="nav-tooltip">Чаты</span>
     </button>
     {% endif %}
     {% if 'ai_chat' in vbk %}
@@ -2344,7 +2344,7 @@ function goSec(id){
   location.hash=id;
   syncIgTabbar(id);
   if(id==='ai'){setTimeout(()=>{const b=document.getElementById('chatBox');if(b)b.scrollTop=b.scrollHeight},100)}
-  if(id==='messages')loadDMPreview();
+  if(id==='messages'){ window.location.href='/chats'; return; }
   if(id==='feed'){setTimeout(()=>{markActivityRead();},500);}
   if(id==='groups'){
     if(window.__groupsJustCreated){
@@ -2915,7 +2915,7 @@ async function loadDMPreview(){
       const av=c.avatar?`<img src="${escAttr(c.avatar)}" alt="">`:'🍄';
       const bd=ur>0?`<span class="dm-ios-badge">${ur}</span>`:'';
       const t=formatMsgListTime(c.last_time||'');
-      return `<a href="/messages/${c.other_id}" class="dm-ios-row">
+      return `<a href="/chats?open_user=${c.other_id}" class="dm-ios-row">
         <div class="dm-ios-av" style="border-color:${ur>0?'rgba(10,132,255,.6)':'rgba(255,255,255,.1)'}">${av}</div>
         <div class="dm-ios-mid">
           <div class="dm-ios-title-row"><span class="dm-ios-name">${esc(c.name||'Участник')}</span><span class="dm-ios-time">${esc(t)}</span></div>

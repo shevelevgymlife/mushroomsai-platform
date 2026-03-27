@@ -37,7 +37,7 @@
   <link rel="stylesheet" href="/static/css/custom.css?v=3" />
   <link rel="stylesheet" href="/static/css/design-system.css?v=4" />
   <link rel="stylesheet" href="/static/css/profile-ui-themes.css?v=3" />
-  <link rel="stylesheet" href="/static/css/app-mobile-shell.css?v=13" />
+  <link rel="stylesheet" href="/static/css/app-mobile-shell.css?v=14" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" />
   <style>
     /* Global anti-overflow guard for browser + Telegram WebApp */
@@ -332,14 +332,32 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
   </script>
   <script>
   function updateUnreadCount(){
-    fetch('/messages/unread-count').then(r=>r.json()).then(data=>{
-      const count=data.count||0;
+    Promise.all([
+      fetch('/messages/unread-count').then(r=>r.json()).catch(()=>({})),
+      fetch('/api/chats/unread-count').then(r=>r.json()).catch(()=>({}))
+    ]).then(function(pair){
+      const count=(pair[0].count||0)+(pair[1].count||0);
       const txt=count>99?'99+':count;
-      ['messages-badge','dash-messages-badge','community-msg-badge','cpMsgBadge'].forEach(id=>{
+      ['messages-badge','dash-messages-badge','community-msg-badge','cpMsgBadge','drawer-chats-badge'].forEach(function(id){
         const el=document.getElementById(id);
-        if(el){el.textContent=txt;el.style.display=count>0?'flex':'none';}
+        if(el){
+          el.textContent=txt;
+          el.style.display=count>0?'flex':'none';
+          if(id==='drawer-chats-badge'){
+            el.style.alignItems='center';
+            el.style.justifyContent='center';
+            el.style.minWidth='18px';
+            el.style.height='18px';
+            el.style.padding='0 5px';
+            el.style.borderRadius='999px';
+            el.style.fontSize='10px';
+            el.style.fontWeight='800';
+            el.style.background='#C9A84C';
+            el.style.color='#080808';
+          }
+        }
       });
-    }).catch(()=>{});
+    }).catch(function(){});
   }
   setInterval(updateUnreadCount,30000);
   updateUnreadCount();

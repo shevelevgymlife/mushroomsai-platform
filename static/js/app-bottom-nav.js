@@ -40,7 +40,7 @@
         if (feed) feed.classList.add("app-uni-tab--on");
         return;
       }
-      if (path.indexOf("/messages") === 0) {
+      if (path.indexOf("/chats") === 0) {
         var msg = bar.querySelector('.app-uni-tab[data-app-tab="messages"]');
         if (msg) msg.classList.add("app-uni-tab--on");
         return;

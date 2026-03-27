@@ -21,6 +21,7 @@ from web.routes.admin import router as admin_router
 from web.routes.account import router as account_router
 from web.routes.language import router as language_router
 from web.routes.webhooks import router as webhooks_router
+from web.routes.chats import router as chats_router
 from web.routes.seller import router as seller_router
 from web.translations import TRANSLATIONS, parse_accept_language, SUPPORTED_LANGS
 from services.heavy_startup import run_heavy_startup
@@ -565,6 +566,7 @@ async def health(request: Request):
 
 
 # Routers
+app.include_router(chats_router)
 app.include_router(public_router)
 app.include_router(auth_router)
 app.include_router(legal_router)

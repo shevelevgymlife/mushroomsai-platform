@@ -17,9 +17,9 @@
   <a href="/community/members" class="app-uni-tab {% if path.startswith('/community/members') %}app-uni-tab--on{% endif %}" data-app-tab="search">
     <span class="ic">{{ ico('search') }}</span><span class="lbl">{{ t.app_tab_search }}</span>
   </a>
-  <a href="/messages" class="app-uni-tab {% if path.startswith('/messages') %}app-uni-tab--on{% endif %}" data-app-tab="messages" id="cpMsgHeadBottom">
+  <a href="/chats" class="app-uni-tab {% if path.startswith('/chats') %}app-uni-tab--on{% endif %}" data-app-tab="messages" id="cpMsgHeadBottom">
     <span class="ic">{{ ico('message') }}</span><span class="lbl">{{ t.app_tab_chats }}</span>
-    <span id="cpMsgBadge" class="app-notif-badge">0</span>
+    <span id="cpMsgBadge" class="app-notif-badge app-msg-tab-badge">0</span>
   </a>
   <button type="button" class="app-uni-tab app-uni-tab--btn {% if False %}app-uni-tab--on{% endif %}" data-app-tab="activity" id="cpActivityBellBottom" title="Лайки и уведомления" aria-label="Лайки и уведомления">
     <span class="ic">{{ ico('heart') }}</span><span class="lbl">{{ t.app_tab_activity }}</span>
@@ -38,4 +38,4 @@
   </a>
   {% endif %}
 </nav>
-<script src="/static/js/app-bottom-nav.js?v=4" defer></script>
+<script src="/static/js/app-bottom-nav.js?v=5" defer></script>

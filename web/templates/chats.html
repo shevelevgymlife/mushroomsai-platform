@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Чаты — NEUROFUNGI AI{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="/static/css/chats-messenger.css?v=1" />
+{% endblock %}
+{% block body_class %} chats-messenger-page{% endblock %}
+{% block content %}
+<div id="chatsApp">
+  <aside class="chats-sidebar">
+    <div class="chats-sidebar-head">
+      <h1>Чаты</h1>
+      <button type="button" class="chats-btn-new" id="chatsBtnNew">✏️ Новый чат</button>
+    </div>
+    <div class="chats-search">
+      <input type="search" id="chatsSidebarSearch" placeholder="Поиск по чатам" autocomplete="off" />
+    </div>
+    <div class="chats-list" id="chatsList"></div>
+  </aside>
+  <section class="chats-main" id="chatsMain">
+    <div class="chats-main-placeholder" id="chatsPlaceholder">Выберите чат слева</div>
+    <div id="chatsThread" style="display:none;flex:1;flex-direction:column;min-height:0">
+      <div class="chats-thread-head">
+        <button type="button" class="chats-mobile-back" id="chatsMobileBack" aria-label="Назад">←</button>
+        <img class="chats-thread-head-av" id="chatsHeadAv" src="/static/favicon.svg" alt="" />
+        <div class="chats-thread-titles">
+          <div class="t" id="chatsHeadTitle">—</div>
+          <div class="s" id="chatsHeadSub">—</div>
+        </div>
+        <button type="button" class="chats-menu-btn" id="chatsMenuBtn" style="display:none" aria-label="Меню">⋮</button>
+        <div class="chats-drop-menu" id="chatsDropMenu">
+          <button type="button" id="chatsMenuMembers">Участники</button>
+          <button type="button" id="chatsMenuAdd">Добавить участника</button>
+          <button type="button" id="chatsMenuLeave">Выйти из группы</button>
+        </div>
+      </div>
+      <div class="chats-scroll" id="chatsScroll"></div>
+      <div class="chats-compose">
+        <div class="chats-compose-reply" id="chatsReplyBar"></div>
+        <div class="chats-compose-row">
+          <input type="file" id="chatsFile" accept="image/*" style="display:none" />
+          <button type="button" class="chats-icon-btn" id="chatsAttach" title="Фото">📎</button>
+          <textarea id="chatsTextarea" rows="1" placeholder="Сообщение…"></textarea>
+          <button type="button" class="chats-send-btn" id="chatsSend" title="Отправить">➤</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="chats-modal-back" id="chatsModal">
+  <div class="chats-modal" onclick="event.stopPropagation()">
+    <div class="chats-modal-head">
+      <span>Новый чат</span>
+      <button type="button" id="chatsModalClose" style="background:none;border:none;color:#888;font-size:22px;cursor:pointer">×</button>
+    </div>
+    <div class="chats-tabs">
+      <button type="button" class="on" id="chatsTabPersonal">Личное сообщение</button>
+      <button type="button" id="chatsTabGroup">Группа</button>
+    </div>
+    <div class="chats-modal-body" id="chatsPanePersonal">
+      <input
+        type="search"
+        id="chatsUserSearch"
+        placeholder="Поиск по имени или ID"
+        style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid #222;background:#141414;color:#eee;margin-bottom:12px"
+      />
+      <div id="chatsUserResults"></div>
+    </div>
+    <div class="chats-modal-body" id="chatsPaneGroup" style="display:none">
+      <label style="display:block;font-size:13px;color:#aaa;margin-bottom:6px">Название группы</label>
+      <input
+        type="text"
+        id="chatsGroupName"
+        style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid #222;background:#141414;color:#eee;margin-bottom:12px"
+      />
+      <label style="display:block;font-size:13px;color:#aaa;margin-bottom:6px">Аватар (файл)</label>
+      <input type="file" id="chatsGroupAvatar" accept="image/*" style="margin-bottom:12px;color:#ccc" />
+      <label style="display:block;font-size:13px;color:#aaa;margin-bottom:6px">Поиск участников</label>
+      <input
+        type="search"
+        id="chatsGroupSearch"
+        placeholder="Имя или ID"
+        style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid #222;background:#141414;color:#eee;margin-bottom:10px"
+      />
+      <div style="font-size:13px;color:#aaa;margin-bottom:8px">Отметьте участников</div>
+      <div id="chatsGroupMembers" style="max-height:200px;overflow-y:auto"></div>
+      <button type="button" class="chats-send-btn" id="chatsGroupCreate" style="width:100%;margin-top:16px;height:48px;border-radius:12px">
+        Создать
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  window.__CHATS_ME = {
+    id: {{ (user.primary_user_id or user.id)|int }},
+    name: {{ (user.name or '')|tojson }},
+    avatar: {{ (user.avatar or '')|tojson }}
+  };
+</script>
+<script src="/static/js/chats-messenger.js?v=1" defer></script>
+{% endblock %}

@@ -273,6 +273,13 @@ a.app-head-brand:hover {
   display: flex;
 }
 
+/* Золотой акцент для вкладки личных чатов (/chats) */
+.app-msg-tab-badge {
+  background: #c9a84c !important;
+  color: #080808 !important;
+  box-shadow: 0 2px 12px rgba(201, 168, 76, 0.45);
+}
+
 #appActivityPanel {
   display: none;
   position: fixed;

@@ -2303,79 +2303,18 @@ async def messages_thread_api(request: Request, other_id: int):
 async def messages_list(request: Request):
     current_user = await get_user_from_request(request)
     if not current_user:
-        return RedirectResponse("/login?next=/messages")
-    leg = await legal_acceptance_redirect(request, current_user)
-    if leg:
-        return leg
-    uid = current_user.get("primary_user_id") or current_user["id"]
-    convs = await _get_conversations(uid)
-    if _is_free_restricted_user(current_user):
-        convs = [c for c in convs if int(c.get("other_id") or 0) == 0]
-    return templates.TemplateResponse(
-        "messages.html",
-        {
-            "request": request,
-            "user": current_user,
-            "conversations": convs,
-            "active_user_id": None,
-            "chat_messages": [],
-            "chat_partner": None,
-        },
-    )
+        return RedirectResponse("/login?next=/chats")
+    return RedirectResponse("/chats")
 
 
 @router.get("/messages/{other_id}", response_class=HTMLResponse)
 async def messages_thread(request: Request, other_id: int):
     current_user = await get_user_from_request(request)
     if not current_user:
-        return RedirectResponse(f"/login?next=/messages/{other_id}")
-    leg = await legal_acceptance_redirect(request, current_user)
-    if leg:
-        return leg
-    uid = current_user.get("primary_user_id") or current_user["id"]
-    if _is_free_restricted_user(current_user) and other_id != 0:
-        return RedirectResponse("/messages/0")
-    try:
-        if other_id == 0:
-            await database.execute(sa.text(
-                "UPDATE direct_messages SET is_read=true WHERE recipient_id=:uid AND is_system=true AND is_read=false"
-            ), {"uid": uid})
-            chat_partner = {"id": 0, "name": "🛡️ Система", "avatar": None}
-            chat_messages_raw = await database.fetch_all(sa.text(
-                "SELECT * FROM direct_messages WHERE recipient_id=:uid AND is_system=true ORDER BY created_at ASC LIMIT 100"
-            ), {"uid": uid})
-        else:
-            await database.execute(sa.text(
-                "UPDATE direct_messages SET is_read=true WHERE sender_id=:oid AND recipient_id=:uid AND is_read=false AND is_system=false"
-            ), {"oid": other_id, "uid": uid})
-            partner_row = await database.fetch_one(users.select().where(users.c.id == other_id))
-            if not partner_row:
-                return RedirectResponse("/messages")
-            chat_partner = {"id": other_id, "name": partner_row["name"], "avatar": partner_row["avatar"]}
-            chat_messages_raw = await database.fetch_all(sa.text("""
-                SELECT * FROM direct_messages
-                WHERE (sender_id=:uid AND recipient_id=:oid)
-                   OR (sender_id=:oid AND recipient_id=:uid AND is_system=false)
-                ORDER BY created_at ASC LIMIT 100
-            """), {"uid": uid, "oid": other_id})
-
-        chat_messages = [dict(m) for m in chat_messages_raw]
-        convs = await _get_conversations(uid)
-        return templates.TemplateResponse(
-            "messages.html",
-            {
-                "request": request,
-                "user": current_user,
-                "conversations": convs,
-                "active_user_id": other_id,
-                "chat_messages": chat_messages,
-                "chat_partner": chat_partner,
-                "current_uid": uid,
-            },
-        )
-    except Exception as e:
-        print(f"[messages] thread error: {e}")
-        return RedirectResponse("/messages")
+        return RedirectResponse(f"/login?next=/chats")
+    if other_id == 0:
+        return RedirectResponse("/chats")
+    return RedirectResponse(f"/chats?open_user={other_id}")
 
 
 @router.get("/messages/poll/{other_id}")
