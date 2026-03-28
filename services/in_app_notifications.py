@@ -81,6 +81,14 @@ async def should_send_telegram(recipient_user_id: int) -> bool:
     return bool(p.get("telegram_bot", True))
 
 
+async def should_send_telegram_for_event(recipient_user_id: int, ntype: str) -> bool:
+    """Push в Telegram только если включён бот и соответствующий тип события (как для «Событий»)."""
+    p = await load_prefs_for_user(recipient_user_id)
+    if not p.get("telegram_bot", True):
+        return False
+    return prefs_allow_ntype(p, ntype)
+
+
 async def _dedup_exists(
     recipient_id: int, source_kind: str | None, source_id: int | None
 ) -> bool:

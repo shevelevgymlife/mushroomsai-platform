@@ -35,6 +35,7 @@ from services.legacy_dm_chat_sync import sync_direct_messages_pair
 from services.in_app_notifications import (
     create_notification,
     should_send_telegram,
+    should_send_telegram_for_event,
     count_unread_events,
     mark_events_notifications_read,
 )
@@ -1512,12 +1513,12 @@ async def send_dm(request: Request, recipient_id: int):
             source_id=int(msg_id),
         )
     recipient = await database.fetch_one(users.select().where(users.c.id == recipient_id))
-    if recipient and await should_send_telegram(int(recipient_id)):
+    if recipient and await should_send_telegram_for_event(int(recipient_id), "message"):
         tg_id = recipient.get("tg_id") or recipient.get("linked_tg_id")
         if tg_id:
             from services.notify_user_stub import notify_user_dm_with_read_button
 
-            read_path = f"/messages/{uid}"
+            read_path = f"/chats?open_user={uid}"
             await notify_user_dm_with_read_button(tg_id, actor_name, text, read_path)
     try:
         if msg_id:

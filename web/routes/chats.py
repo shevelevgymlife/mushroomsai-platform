@@ -20,6 +20,8 @@ from starlette.responses import HTMLResponse
 from auth.session import get_current_user, get_user_from_request
 from db.database import database
 from db.models import users
+from services.in_app_notifications import create_notification, should_send_telegram_for_event
+from services.notify_user_stub import notify_user_dm_with_read_button
 from services.chat_ws_manager import (
     online_user_ids,
     room_broadcast,
@@ -648,6 +650,48 @@ async def api_send_message(request: Request, chat_id: int, body: SendMessageBody
         "reactions": rc.get(mid, {}),
         "my_reactions": rm.get(mid, []),
     }
+    try:
+        crow = await database.fetch_one(
+            sa.text("SELECT type FROM chats WHERE id = :id"), {"id": chat_id}
+        )
+        if crow and (crow.get("type") or "") == "personal":
+            peers = await database.fetch_all(
+                sa.text(
+                    "SELECT user_id FROM chat_members WHERE chat_id = :cid AND user_id <> :uid"
+                ),
+                {"cid": chat_id, "uid": uid},
+            )
+            actor_name = (srow.get("sender_name") or "").strip() or "Участник"
+            prev = (text or "").strip()
+            if not prev and media:
+                prev = "[медиа]"
+            if not prev:
+                prev = " "
+            link = f"/chats?open_user={uid}"
+            for pr in peers:
+                peer_id = int(pr["user_id"] or 0)
+                if peer_id <= 0:
+                    continue
+                await create_notification(
+                    recipient_id=peer_id,
+                    actor_id=uid,
+                    ntype="message",
+                    title="Личное сообщение",
+                    body=f"{actor_name}: {prev[:400]}",
+                    link_url=link,
+                    source_kind="chat_message",
+                    source_id=mid,
+                )
+                peer_row = await database.fetch_one(users.select().where(users.c.id == peer_id))
+                if peer_row and await should_send_telegram_for_event(peer_id, "message"):
+                    tg_id = peer_row.get("tg_id") or peer_row.get("linked_tg_id")
+                    if tg_id:
+                        await notify_user_dm_with_read_button(
+                            int(tg_id), actor_name, prev, link
+                        )
+    except Exception as e:
+        logger.warning("personal chat notify: %s", e)
+
     await room_broadcast(chat_id, {"type": "message", "payload": payload})
     return JSONResponse({"ok": True, "message": payload})
 
