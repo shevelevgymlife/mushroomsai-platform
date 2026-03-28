@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from collections import defaultdict
 from datetime import datetime, timezone
 
 import sqlalchemy as sa
@@ -17,6 +18,64 @@ from web.templates_utils import Jinja2Templates
 
 router = APIRouter()
 templates = Jinja2Templates(directory="web/templates")
+
+# Группировка ленты «События» по разделам (горизонтальный скролл колонок)
+_NTYPE_SECTION: dict[str, str] = {
+    "post_like": "likes",
+    "profile_like": "likes",
+    "comment": "comments",
+    "comment_reply": "comments",
+    "message": "messages",
+    "follower": "subs",
+    "subscription_post": "subs_posts",
+    "group_post": "groups",
+    "mention": "mentions",
+}
+
+_SECTION_ORDER: tuple[tuple[str, str, str], ...] = (
+    ("likes", "⭐", "Лайки"),
+    ("comments", "💬", "Комментарии"),
+    ("messages", "✉️", "Личные сообщения"),
+    ("subs", "👤", "Подписки"),
+    ("subs_posts", "📰", "Посты подписок"),
+    ("groups", "👥", "Группы"),
+    ("mentions", "@", "Упоминания"),
+)
+
+
+def _bucket_notifications_by_section(items: list[dict]) -> list[dict]:
+    bucket: dict[str, list[dict]] = defaultdict(list)
+    for it in items:
+        key = _NTYPE_SECTION.get(it.get("ntype") or "", "other")
+        bucket[key].append(it)
+    sections: list[dict] = []
+    for sec_key, icon, label in _SECTION_ORDER:
+        lst = bucket.get(sec_key) or []
+        if not lst:
+            continue
+        unread = sum(1 for x in lst if not x.get("read"))
+        sections.append(
+            {
+                "key": sec_key,
+                "icon": icon,
+                "label": label,
+                "items": lst,
+                "unread_count": unread,
+            }
+        )
+    other = bucket.get("other") or []
+    if other:
+        unread_o = sum(1 for x in other if not x.get("read"))
+        sections.append(
+            {
+                "key": "other",
+                "icon": "🔔",
+                "label": "Другое",
+                "items": other,
+                "unread_count": unread_o,
+            }
+        )
+    return sections
 
 
 def _created_at_utc_iso(dt) -> str:
@@ -78,9 +137,15 @@ async def notifications_list_page(request: Request):
                 "actor_avatar": r.get("actor_avatar"),
             }
         )
+    sections = _bucket_notifications_by_section(items)
     return templates.TemplateResponse(
         "notifications/list.html",
-        {"request": request, "user": user, "items": items},
+        {
+            "request": request,
+            "user": user,
+            "items": items,
+            "sections": sections,
+        },
     )
 
 
