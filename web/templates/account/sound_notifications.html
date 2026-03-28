@@ -1,40 +1,40 @@
 {% extends "base.html" %}
 {% block title %}Звук и уведомления — NEUROFUNGI AI{% endblock %}
-{% block extra_head %}
-<style>
-.btn-o{border:1px solid #3dd4e0;color:#3dd4e0;background:transparent;border-radius:12px;cursor:pointer;font-weight:600;transition:all .2s;text-decoration:none;display:inline-block}
-.btn-o:hover{background:rgba(61,212,224,.12)}
-.nf-chk{display:flex;align-items:center;gap:10px;font-size:14px;color:#d8d8de;cursor:pointer}
-.nf-chk input{accent-color:#C9A84C;width:18px;height:18px;flex-shrink:0}
-#nfPrefSaveBtn:hover{filter:brightness(1.08)}
-</style>
-{% endblock %}
 {% block content %}
-<div class="account-wallet-shell nf-sound-page" style="max-width:520px;margin:0 auto;padding:16px calc(14px + env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) calc(14px + env(safe-area-inset-left,0px));background:#080808;min-height:40vh">
-  <p style="margin:0 0 12px"><a href="/account/settings" style="color:#C9A84C;text-decoration:none;font-size:14px;font-weight:600">← Настройки</a></p>
-  <h1 style="font-size:clamp(18px,4.5vw,22px);font-weight:700;color:#C9A84C;margin:0 0 8px">🔔 Звук и уведомления</h1>
-  <p style="font-size:12px;color:#888;margin:0 0 20px">Каналы событий в приложении (страница «События»). Сохраняется в профиль через тот же API, что и раньше.</p>
+<div class="account-wallet-shell" style="max-width:520px;margin:0 auto;padding:16px 14px calc(28px + env(safe-area-inset-bottom,0px))">
+  <p style="margin:0 0 12px;font-size:13px"><a href="/account/settings" style="color:#3dd4e0;text-decoration:none">← Настройки</a></p>
+  <h1 style="font-size:clamp(18px,4.5vw,22px);font-weight:700;color:#e8e8e8;margin:0 0 8px">Звук и уведомления</h1>
+  <p style="font-size:13px;color:#888;margin:0 0 18px;line-height:1.5">Каналы событий в приложении (страница «События»). Настройки сохраняются в профиле.</p>
 
-  <div style="border-radius:16px;border:1px solid rgba(201,168,76,.28);background:rgba(8,8,8,.85);overflow:hidden;padding:0 18px 20px">
-    <div class="nf-pref-grid" style="display:flex;flex-direction:column;gap:10px;margin-top:16px">
-      <label class="nf-chk"><input type="checkbox" name="followers" {% if notification_prefs.followers %}checked{% endif %}> Новые подписчики</label>
-      <label class="nf-chk"><input type="checkbox" name="likes" {% if notification_prefs.likes %}checked{% endif %}> Лайки</label>
-      <label class="nf-chk"><input type="checkbox" name="comments" {% if notification_prefs.comments %}checked{% endif %}> Комментарии</label>
-      <label class="nf-chk"><input type="checkbox" name="dm" {% if notification_prefs.dm %}checked{% endif %}> Личные сообщения</label>
-      <label class="nf-chk"><input type="checkbox" name="comment_replies" {% if notification_prefs.comment_replies %}checked{% endif %}> Ответы на комментарии</label>
-      <label class="nf-chk"><input type="checkbox" name="group_posts" {% if notification_prefs.group_posts %}checked{% endif %}> Публикации в группах</label>
-      <label class="nf-chk"><input type="checkbox" name="mentions" {% if notification_prefs.mentions %}checked{% endif %}> Упоминания</label>
-      <label class="nf-chk"><input type="checkbox" name="subscription_posts" {% if notification_prefs.subscription_posts %}checked{% endif %}> Новые посты подписок</label>
-    </div>
-    <hr style="border:none;border-top:1px solid rgba(255,255,255,.1);margin:18px 0">
-    <label class="nf-chk"><input type="checkbox" name="telegram_bot" {% if notification_prefs.telegram_bot %}checked{% endif %}> Отправлять в Telegram бот</label>
-    <label class="nf-chk" style="margin-top:10px"><input type="checkbox" name="radio_player" {% if notification_prefs.radio_player %}checked{% endif %}> Радио-плеер (Down Tempo и подсказки в интерфейсе)</label>
-    <p id="nfPrefSaveMsg" style="display:none;margin-top:12px;font-size:13px;color:#6ee7b7"></p>
-    <button type="button" id="nfPrefSaveBtn" style="margin-top:16px;width:100%;padding:14px 18px;border-radius:12px;border:1px solid rgba(201,168,76,.5);background:linear-gradient(135deg,rgba(201,168,76,.3),rgba(201,168,76,.12));color:#f5e6c8;font-weight:700;cursor:pointer;font-size:15px">💾 Сохранить настройки</button>
+  <div style="margin-bottom:18px;padding:14px;border-radius:16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
+    <p style="font-size:12px;color:#666;margin:0 0 12px;line-height:1.45">События</p>
+    <label class="sn-row"><span>Новые подписчики</span><input type="checkbox" name="followers" {% if notification_prefs.followers %}checked{% endif %}></label>
+    <label class="sn-row"><span>Лайки</span><input type="checkbox" name="likes" {% if notification_prefs.likes %}checked{% endif %}></label>
+    <label class="sn-row"><span>Комментарии</span><input type="checkbox" name="comments" {% if notification_prefs.comments %}checked{% endif %}></label>
+    <label class="sn-row"><span>Личные сообщения</span><input type="checkbox" name="dm" {% if notification_prefs.dm %}checked{% endif %}></label>
+    <label class="sn-row"><span>Ответы на комментарии</span><input type="checkbox" name="comment_replies" {% if notification_prefs.comment_replies %}checked{% endif %}></label>
+    <label class="sn-row"><span>Публикации в группах</span><input type="checkbox" name="group_posts" {% if notification_prefs.group_posts %}checked{% endif %}></label>
+    <label class="sn-row"><span>Упоминания</span><input type="checkbox" name="mentions" {% if notification_prefs.mentions %}checked{% endif %}></label>
+    <label class="sn-row sn-row--last"><span>Новые посты подписок</span><input type="checkbox" name="subscription_posts" {% if notification_prefs.subscription_posts %}checked{% endif %}></label>
   </div>
 
-  <p style="margin-top:20px;font-size:13px;color:#666"><a href="/notifications" style="color:#3dd4e0;text-decoration:none">Открыть страницу «События»</a></p>
+  <div style="margin-bottom:18px;padding:14px;border-radius:16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
+    <p style="font-size:12px;color:#666;margin:0 0 12px;line-height:1.45">Дополнительно</p>
+    <label class="sn-row"><span>Отправлять в Telegram бот</span><input type="checkbox" name="telegram_bot" {% if notification_prefs.telegram_bot %}checked{% endif %}></label>
+    <label class="sn-row sn-row--last"><span>Радио-плеер (Down Tempo и подсказки в интерфейсе)</span><input type="checkbox" name="radio_player" {% if notification_prefs.radio_player %}checked{% endif %}></label>
+  </div>
+
+  <button type="button" id="nfPrefSaveBtn" class="btn-g" style="width:100%;box-sizing:border-box;padding:12px;border:none;border-radius:12px;background:#3dd4e0;color:#000;font-weight:700;cursor:pointer">Сохранить</button>
+  <p id="nfPrefSaveMsg" style="display:none;margin-top:12px;font-size:13px;color:#4ade80">✓ Сохранено</p>
+
+  <p style="margin-top:20px;font-size:13px;color:#666"><a href="/notifications" style="color:#3dd4e0;text-decoration:none">Страница «События» →</a></p>
 </div>
+<style>
+.sn-row{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;font-size:14px;color:#ccc;margin-bottom:12px;min-width:0}
+.sn-row span{min-width:0;line-height:1.35}
+.sn-row input{width:40px;height:22px;cursor:pointer;accent-color:#3dd4e0;flex-shrink:0}
+.sn-row--last{margin-bottom:0}
+</style>
 <script>
 (function(){
   var btn=document.getElementById('nfPrefSaveBtn');
@@ -42,7 +42,7 @@
   if(!btn)return;
   var keys=['followers','likes','comments','dm','comment_replies','group_posts','mentions','subscription_posts','telegram_bot','radio_player'];
   btn.addEventListener('click',async function(){
-    msg.style.display='none';
+    if(msg){msg.style.display='none';}
     var body={};
     keys.forEach(function(k){
       var el=document.querySelector('input[name="'+k+'"]');
@@ -52,18 +52,12 @@
       var r=await fetch('/api/notifications/settings',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(body)});
       var d=await r.json();
       if(d&&d.ok){
-        msg.textContent='Сохранено';
-        msg.style.color='#6ee7b7';
-        msg.style.display='block';
+        if(msg){msg.textContent='✓ Сохранено';msg.style.color='#4ade80';msg.style.display='block';}
       }else{
-        msg.textContent=(d&&d.error)||'Ошибка';
-        msg.style.color='#f87171';
-        msg.style.display='block';
+        if(msg){msg.textContent=(d&&d.error)||'Ошибка';msg.style.color='#fca5a5';msg.style.display='block';}
       }
     }catch(e){
-      msg.textContent='Сеть недоступна';
-      msg.style.color='#f87171';
-      msg.style.display='block';
+      if(msg){msg.textContent='Сеть недоступна';msg.style.color='#fca5a5';msg.style.display='block';}
     }
   });
 })();
