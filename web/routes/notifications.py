@@ -19,13 +19,13 @@ from web.templates_utils import Jinja2Templates
 router = APIRouter()
 templates = Jinja2Templates(directory="web/templates")
 
-# Группировка ленты «События» по разделам (горизонтальный скролл колонок)
+# Группировка ленты «События» по разделам (горизонтальный скролл колонок).
+# Личные сообщения (ntype message) на страницу не попадают — они в «Чатах».
 _NTYPE_SECTION: dict[str, str] = {
     "post_like": "likes",
     "profile_like": "likes",
     "comment": "comments",
-    "comment_reply": "comments",
-    "message": "messages",
+    "comment_reply": "comment_replies",
     "follower": "subs",
     "subscription_post": "subs_posts",
     "group_post": "groups",
@@ -35,11 +35,11 @@ _NTYPE_SECTION: dict[str, str] = {
 _SECTION_ORDER: tuple[tuple[str, str, str], ...] = (
     ("likes", "⭐", "Лайки"),
     ("comments", "💬", "Комментарии"),
-    ("messages", "✉️", "Личные сообщения"),
     ("subs", "👤", "Подписки"),
-    ("subs_posts", "📰", "Посты подписок"),
-    ("groups", "👥", "Группы"),
+    ("comment_replies", "↩️", "Ответы на комментарии"),
+    ("groups", "👥", "Публикации в группах"),
     ("mentions", "@", "Упоминания"),
+    ("subs_posts", "📰", "Новые посты подписок"),
 )
 
 
@@ -115,6 +115,7 @@ async def notifications_list_page(request: Request):
             in_app_notifications.outerjoin(users, users.c.id == in_app_notifications.c.actor_id)
         )
         .where(in_app_notifications.c.recipient_id == uid)
+        .where(in_app_notifications.c.ntype != "message")
         .order_by(in_app_notifications.c.created_at.desc())
         .limit(500)
     )
