@@ -6,8 +6,10 @@
   display:flex;
   flex-direction:column;
   box-sizing:border-box;
-  min-height:100vh;
-  min-height:100dvh;
+  height:100vh;
+  height:100dvh;
+  max-height:100vh;
+  max-height:100dvh;
   padding-bottom:env(safe-area-inset-bottom,0px);
 }
 .cpc-top{
@@ -28,18 +30,38 @@
 .cpc-preview{
   flex:1;min-width:0;
   font-size:13px;color:#c4c8d3;line-height:1.35;
+  text-decoration:none;
+  display:block;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+  border-radius:10px;
+  padding:4px 2px;
+  margin:-4px -2px;
+}
+.cpc-preview:hover,.cpc-preview:focus-visible{
+  outline:1px solid rgba(61,212,224,.35);
+  background:rgba(61,212,224,.06);
 }
 .cpc-preview strong{color:#e8eaf0;font-size:14px;display:block;margin-bottom:2px}
+.cpc-composer{
+  flex-shrink:0;
+  padding:10px 12px;
+  border-bottom:1px solid rgba(255,255,255,.1);
+  background:rgba(6,8,14,.96);
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:8px;
+  align-items:center;
+}
 .cpc-chaos-scroll{
   flex:1;
-  min-height:min(52vh,480px);
-  max-height:calc(100dvh - 200px);
+  min-height:0;
   overflow-y:auto;
   overflow-x:hidden;
   -webkit-overflow-scrolling:touch;
   overscroll-behavior:contain;
   touch-action:pan-y;
-  padding:14px 8px 120px;
+  padding:14px 8px calc(20px + env(safe-area-inset-bottom,0px));
 }
 .cpc-card{
   margin:16px auto;
@@ -54,16 +76,6 @@
 .cpc-card-meta{font-size:11px;color:#8a8fa0;margin-bottom:6px}
 .cpc-card-meta b{color:#d8deec;font-weight:700}
 .cpc-card-body{font-size:14px;color:#e6e8ef;white-space:pre-wrap;word-break:break-word;line-height:1.5}
-.cpc-foot{
-  flex-shrink:0;
-  padding:10px 12px calc(12px + env(safe-area-inset-bottom,0px));
-  border-top:1px solid rgba(255,255,255,.1);
-  background:rgba(6,8,14,.96);
-  display:grid;
-  grid-template-columns:minmax(0,1fr) auto;
-  gap:8px;
-  align-items:center;
-}
 .cpc-empty{text-align:center;color:#6b7280;font-size:13px;padding:28px 16px}
 .sinp{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#e8e8e8;border-radius:12px;padding:12px 14px;font-size:16px;outline:none;width:100%;box-sizing:border-box}
 .btn-g{background:#3dd4e0;color:#000;border:none;border-radius:999px;padding:12px 16px;font-weight:700;cursor:pointer;min-height:44px}
@@ -71,16 +83,16 @@
 <div class="cpc-root neo-app-surface">
   <div class="cpc-top">
     <button type="button" class="cpc-back" onclick="goBackCpc()" aria-label="Назад">←</button>
-    <div class="cpc-preview">
+    <a class="cpc-preview" href="/community/post/{{ post.id }}?back={{ back_url|urlencode }}" title="Открыть пост целиком">
       <strong>{% if post.title %}{{ post.title }}{% else %}Пост{% endif %}</strong>
       <span>{{ (post.content or '')[:120] }}{% if post.content and post.content|length > 120 %}…{% endif %}</span>
-    </div>
+    </a>
   </div>
-  <div id="cpcChaos" class="cpc-chaos-scroll" role="region" aria-label="Комментарии"></div>
-  <div class="cpc-foot">
+  <div class="cpc-composer">
     <input id="cpcInp" class="sinp nf-mention-field" placeholder="Комментарий… @ — подсказки" autocomplete="off">
     <button type="button" class="btn-g" onclick="cpcSend()">Отпр.</button>
   </div>
+  <div id="cpcChaos" class="cpc-chaos-scroll" role="region" aria-label="Комментарии"></div>
 </div>
 <script>
 const POST_ID={{ post.id }};

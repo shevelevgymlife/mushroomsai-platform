@@ -80,12 +80,12 @@
       <button class="btn-g" type="button" onclick="saveEdit()">Сохранить</button>
     </div>
     {% endif %}
-    <div id="commentsList" style="padding:0 12px 12px;display:flex;flex-direction:column;gap:8px;max-height:36vh;overflow:auto"></div>
     <p id="commentReplyBar" style="display:none;margin:0 12px 8px;font-size:12px;color:#8be9ff"><span id="commentReplyLabel">↩ Ответ</span> <button type="button" onclick="clearReplyTo()" style="margin-left:8px;background:none;border:none;color:#94a3b8;cursor:pointer;text-decoration:underline">отмена</button></p>
-    <div class="cp-input">
+    <div class="cp-input" style="padding-top:4px;border-top:1px solid rgba(255,255,255,.06)">
       <input id="commentInp" class="sinp nf-mention-field" placeholder="Комментарий… @ — подсказки по id" autocomplete="off">
       <button class="btn-g" type="button" onclick="sendComment()">Отправить</button>
     </div>
+    <div id="commentsList" style="padding:8px 12px 12px;display:flex;flex-direction:column;gap:8px;max-height:36vh;overflow:auto;border-top:1px solid rgba(255,255,255,.04)"></div>
   </div>
 </div>
 <div id="shareModal" class="cp-share-modal" onclick="if(event.target===this)closeShareModal()">

@@ -201,11 +201,11 @@
         <button type="button" class="comm-ig-met comm-ig-met--share" onclick="event.stopPropagation();NF_openPostReposts({{ p.id }}, location.href)">↗<span class="n" id="rpc-{{ p.id }}">{{ p.reposts_count|default(0) }}</span></button>
       </div>
       <div class="csec" id="cs-{{ p.id }}" style="overflow:hidden;max-width:100%;box-sizing:border-box;border-top:1px solid rgba(255,255,255,.06)" onclick="event.stopPropagation()">
-        <div id="cl-{{ p.id }}"></div>
-        <div style="display:flex;gap:8px;margin-top:8px;padding:0 8px 8px;overflow:hidden;max-width:100%;box-sizing:border-box">
+        <div style="display:flex;gap:8px;padding:8px 8px 6px;overflow:hidden;max-width:100%;box-sizing:border-box">
           <input type="text" id="ci-{{ p.id }}" class="sinp nf-mention-field" style="flex:1;min-width:0;max-width:100%;width:100%;box-sizing:border-box;font-size:16px" placeholder="Комментарий… @ — подсказки" autocomplete="off">
           <button class="bgold" style="padding:8px 12px;font-size:13px" onclick="submitCmt({{ p.id }})">→</button>
         </div>
+        <div id="cl-{{ p.id }}"></div>
       </div>
     </article>
     {% endfor %}

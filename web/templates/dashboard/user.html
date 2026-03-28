@@ -2201,11 +2201,16 @@ body.dash-ig-app .ig-lamp-topbar{
         <div style="display:flex;align-items:center;justify-content:center;gap:8px;min-height:54px;border-radius:14px;border:1px solid rgba(139,233,255,.4);background:linear-gradient(160deg,rgba(139,233,255,.18),rgba(12,13,20,.92));color:#9df0ff;font-size:19px;font-weight:800">💬 <span id="feedPreviewComments" style="font-size:22px;line-height:1">0</span></div>
         <button type="button" onclick="feedPreviewShare()" style="display:flex;align-items:center;justify-content:center;gap:8px;min-height:54px;border-radius:14px;border:1px solid rgba(247,179,255,.4);background:linear-gradient(160deg,rgba(247,179,255,.18),rgba(12,13,20,.92));color:#ffc6ff;font-size:19px;font-weight:800;cursor:pointer">↗ <span id="feedPreviewSaves" style="font-size:22px;line-height:1">0</span></button>
       </div>
+      <input type="hidden" id="feedPreviewPostId" value="">
+      <div id="feedPreviewCommentRow" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);max-width:100%;width:100%;overflow:hidden;box-sizing:border-box">
+        <input id="feedPreviewCommentInp" class="sinp nf-mention-field" style="min-width:0;width:100%;max-width:100%;box-sizing:border-box;font-size:16px" placeholder="Комментарий… @ — подсказки" autocomplete="off">
+        <button type="button" class="btn-g" style="padding:10px 12px;white-space:nowrap" onclick="submitFeedPreviewComment()">Отпр.</button>
+      </div>
+      <p id="feedPreviewCommentErr" style="display:none;margin-top:8px;font-size:12px;color:#f87171"></p>
       <div id="feedPreviewCommentsWrap" style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)">
         <div style="font-size:12px;color:#8a8fa0;margin-bottom:8px">Комментарии</div>
         <div id="feedPreviewCommentsList" style="display:flex;flex-direction:column;gap:8px;max-height:38vh;overflow-y:auto;padding-right:2px"></div>
       </div>
-      <input type="hidden" id="feedPreviewPostId" value="">
       <div id="feedPreviewActionRow" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);position:sticky;top:0;z-index:2;background:linear-gradient(180deg,rgba(11,12,18,.98),rgba(11,12,18,.93));padding-bottom:8px;overflow:hidden;max-width:100%">
         <button type="button" class="btn-g" id="feedPreviewReadTextBtn" style="padding:10px 12px;white-space:nowrap" onclick="toggleFeedPreviewText()">Почитать текст</button>
         <button type="button" class="btn-g" id="feedPreviewViewPhotoBtn" style="padding:10px 12px;white-space:nowrap" onclick="openFeedPreviewImageFull()">Посмотреть фото</button>
@@ -2221,11 +2226,6 @@ body.dash-ig-app .ig-lamp-topbar{
           <img id="feedPreviewImage" src="" alt="" style="display:block;max-width:100%;max-height:100%;transform-origin:center center;transform:scale(1);background:#000">
         </div>
       </div>
-      <div id="feedPreviewCommentRow" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;margin-top:10px;max-width:100%;width:100%;overflow:hidden;box-sizing:border-box">
-        <input id="feedPreviewCommentInp" class="sinp nf-mention-field" style="min-width:0;width:100%;max-width:100%;box-sizing:border-box;font-size:16px" placeholder="Комментарий… @ — подсказки" autocomplete="off">
-        <button type="button" class="btn-g" style="padding:10px 12px;white-space:nowrap" onclick="submitFeedPreviewComment()">Отправить</button>
-      </div>
-      <p id="feedPreviewCommentErr" style="display:none;margin-top:8px;font-size:12px;color:#f87171"></p>
     </div>
     </div>
   </div>

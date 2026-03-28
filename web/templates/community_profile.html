@@ -467,11 +467,11 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
     <div class="ig-post-body"><span class="ig-cap-user">{{ profile.name or '' }}</span>{{ p.content | linkify_mentions | safe }}</div>
     {% endif %}
     <div class="csec" id="cs-{{ p.id }}" style="display:none;margin:0;padding:12px;border-top:1px solid rgba(255,255,255,.06);overflow:hidden;max-width:100%;box-sizing:border-box">
-      <div id="cl-{{ p.id }}"></div>
-      <div style="display:flex;gap:8px;margin-top:10px;overflow:hidden;max-width:100%;box-sizing:border-box">
-        <input type="text" id="ci-{{ p.id }}" class="sinp" style="flex:1;min-width:0;max-width:100%;width:100%;box-sizing:border-box;font-size:16px" placeholder="Комментарий...">
+      <div style="display:flex;gap:8px;margin-bottom:10px;overflow:hidden;max-width:100%;box-sizing:border-box">
+        <input type="text" id="ci-{{ p.id }}" class="sinp nf-mention-field" style="flex:1;min-width:0;max-width:100%;width:100%;box-sizing:border-box;font-size:16px" placeholder="Комментарий… @ — подсказки" autocomplete="off">
         <button class="btn-g" style="padding:8px 14px;font-size:13px" onclick="submitCmt({{ p.id }})">→</button>
       </div>
+      <div id="cl-{{ p.id }}"></div>
     </div>
   </div>
   {% endfor %}
@@ -508,11 +508,16 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
           <div style="display:flex;align-items:center;justify-content:center;gap:8px;min-height:54px;border-radius:14px;border:1px solid rgba(139,233,255,.4);background:linear-gradient(160deg,rgba(139,233,255,.18),rgba(12,13,20,.92));color:#9df0ff;font-size:19px;font-weight:800">💬 <span id="profilePreviewComments" style="font-size:22px;line-height:1">0</span></div>
           <button type="button" onclick="profilePreviewShare()" style="display:flex;align-items:center;justify-content:center;gap:8px;min-height:54px;border-radius:14px;border:1px solid rgba(247,179,255,.4);background:linear-gradient(160deg,rgba(247,179,255,.18),rgba(12,13,20,.92));color:#ffc6ff;font-size:19px;font-weight:800;cursor:pointer">↗ <span id="profilePreviewSaves" style="font-size:22px;line-height:1">0</span></button>
         </div>
+        <input type="hidden" id="profilePreviewPostId" value="">
+        <div id="profilePreviewCommentRow" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);max-width:100%;width:100%;overflow:hidden;box-sizing:border-box">
+          <input id="profilePreviewCommentInp" class="sinp nf-mention-field" style="min-width:0;width:100%;max-width:100%;box-sizing:border-box;font-size:16px" placeholder="Комментарий… @ — подсказки" autocomplete="off">
+          <button type="button" class="btn-g" style="padding:10px 12px;white-space:nowrap" onclick="submitProfilePreviewComment()">Отпр.</button>
+        </div>
+        <p id="profilePreviewCommentErr" style="display:none;margin-top:8px;font-size:12px;color:#f87171"></p>
         <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)">
           <div style="font-size:12px;color:#8a8fa0;margin-bottom:8px">Комментарии</div>
           <div id="profilePreviewCommentsList" style="display:flex;flex-direction:column;gap:8px;max-height:38vh;overflow-y:auto;padding-right:2px"></div>
         </div>
-        <input type="hidden" id="profilePreviewPostId" value="">
         <div id="profilePreviewActionRow" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);position:sticky;top:0;z-index:2;background:linear-gradient(180deg,rgba(11,12,18,.98),rgba(11,12,18,.93));padding-bottom:8px;overflow:hidden;max-width:100%">
           <button type="button" class="btn-g" id="profilePreviewReadTextBtn" style="padding:10px 12px;white-space:nowrap" onclick="toggleProfilePreviewText()">Почитать текст</button>
           <button type="button" class="btn-g" id="profilePreviewViewPhotoBtn" style="padding:10px 12px;white-space:nowrap" onclick="openProfilePreviewImageFull()">Посмотреть фото</button>
@@ -528,11 +533,6 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
             <img id="profilePreviewImage" src="" alt="" style="display:block;max-width:100%;max-height:100%;transform-origin:center center;transform:scale(1);background:#000">
           </div>
         </div>
-        <div id="profilePreviewCommentRow" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;margin-top:10px;max-width:100%;width:100%;overflow:hidden;box-sizing:border-box">
-          <input id="profilePreviewCommentInp" class="sinp nf-mention-field" style="min-width:0;width:100%;max-width:100%;box-sizing:border-box;font-size:16px" placeholder="Комментарий… @ — подсказки" autocomplete="off">
-          <button type="button" class="btn-g" style="padding:10px 12px;white-space:nowrap" onclick="submitProfilePreviewComment()">Отправить</button>
-        </div>
-        <p id="profilePreviewCommentErr" style="display:none;margin-top:8px;font-size:12px;color:#f87171"></p>
       </div>
     </div>
   </div>
