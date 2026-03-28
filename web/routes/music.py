@@ -58,7 +58,7 @@ async def admin_upload_track(request: Request, file: UploadFile = File(...), tit
 
     try:
         from services.music_service import upload_track
-        stored_filename, public_url = await upload_track(data, filename)
+        gdrive_file_id, gdrive_url = await upload_track(data, filename)
     except Exception as e:
         _logger.error("Music upload error: %s", e)
         return JSONResponse({"error": f"Ошибка загрузки: {e}"}, status_code=500)
@@ -70,9 +70,9 @@ async def admin_upload_track(request: Request, file: UploadFile = File(...), tit
             INSERT INTO music_tracks (title, gdrive_file_id, gdrive_url, is_active, position)
             VALUES (:title, :fid, :url, true, :pos) RETURNING id
         """),
-        {"title": track_title, "fid": stored_filename, "url": public_url, "pos": int(max_pos or 0) + 1},
+        {"title": track_title, "fid": gdrive_file_id, "url": gdrive_url, "pos": int(max_pos or 0) + 1},
     )
-    return JSONResponse({"ok": True, "id": track_id, "title": track_title, "url": public_url})
+    return JSONResponse({"ok": True, "id": track_id, "title": track_title, "url": gdrive_url})
 
 
 @router.delete("/admin/music/{track_id}")
