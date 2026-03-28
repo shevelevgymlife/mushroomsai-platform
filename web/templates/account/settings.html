@@ -1,5 +1,18 @@
 {% extends "base.html" %}
 {% block title %}Настройки — NEUROFUNGI AI{% endblock %}
+{% block extra_head %}
+<style>
+.btn-o{border:1px solid #3dd4e0;color:#3dd4e0;background:transparent;border-radius:12px;cursor:pointer;font-weight:600;transition:all .2s}
+.btn-o:hover{background:rgba(61,212,224,.12)}
+.ns-card{margin-top:18px;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px;background:rgba(255,255,255,.02)}
+.ns-title{font-size:16px;font-weight:700;color:#e8e8e8;margin:0 0 10px}
+.ns-sub{font-size:12px;color:#888;margin:0 0 12px}
+.ns-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid rgba(255,255,255,.08);border-radius:10px;background:rgba(255,255,255,.02);margin-bottom:8px}
+.ns-row input{width:16px;height:16px;cursor:pointer}
+.ns-row span{font-size:13px;color:#ccc}
+.ns-status{font-size:12px;color:#6ee7b7;min-height:16px;margin-top:6px}
+</style>
+{% endblock %}
 {% block content %}
 <div class="account-wallet-shell" style="max-width:520px;margin:0 auto;padding:16px calc(14px + env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) calc(14px + env(safe-area-inset-left,0px))">
   <h1 style="font-size:clamp(18px,4.5vw,22px);font-weight:700;color:#e8e8e8;margin:8px 0 20px">Настройки</h1>
@@ -7,7 +20,87 @@
     <a href="/account/profile-edit" class="btn-o" style="width:100%;box-sizing:border-box;text-align:center;padding:14px 18px;text-decoration:none">Редактировать профиль</a>
     <a href="/account/style" class="btn-o" style="width:100%;box-sizing:border-box;text-align:center;padding:14px 18px;text-decoration:none">Настройка стиля</a>
   </div>
+
+  <section class="ns-card">
+    <h2 class="ns-title">Настройки уведомлений</h2>
+    <p class="ns-sub">Выберите, какие уведомления вы хотите получать.</p>
+
+    <label class="ns-row"><input type="checkbox" id="new_follower"><span>Новый подписчик</span></label>
+    <label class="ns-row"><input type="checkbox" id="new_like"><span>Новый лайк</span></label>
+    <label class="ns-row"><input type="checkbox" id="new_comment"><span>Новый комментарий</span></label>
+    <label class="ns-row"><input type="checkbox" id="new_message"><span>Новое сообщение</span></label>
+    <label class="ns-row"><input type="checkbox" id="new_reply"><span>Ответ на комментарий</span></label>
+    <label class="ns-row"><input type="checkbox" id="post_in_group"><span>Пост в группе</span></label>
+    <label class="ns-row"><input type="checkbox" id="mention"><span>Упоминание</span></label>
+    <label class="ns-row"><input type="checkbox" id="new_post_from_following"><span>Пост от подписок</span></label>
+    <label class="ns-row"><input type="checkbox" id="send_to_telegram"><span>Дублировать в Telegram</span></label>
+
+    <div id="notifSettingsStatus" class="ns-status"></div>
+  </section>
+
   <p style="margin-top:24px;font-size:13px;color:#666"><a href="/community" style="color:#3dd4e0;text-decoration:none">← В ленту</a></p>
 </div>
-<style>.btn-o{border:1px solid #3dd4e0;color:#3dd4e0;background:transparent;border-radius:12px;cursor:pointer;font-weight:600;transition:all .2s}.btn-o:hover{background:rgba(61,212,224,.12)}</style>
+
+<script>
+(function(){
+  var keys = [
+    'new_follower','new_like','new_comment','new_message','new_reply',
+    'post_in_group','mention','new_post_from_following','send_to_telegram'
+  ];
+  var statusEl = document.getElementById('notifSettingsStatus');
+  var saveTimer = null;
+
+  function setStatus(txt, ok){
+    if(!statusEl) return;
+    statusEl.textContent = txt || '';
+    statusEl.style.color = ok ? '#6ee7b7' : '#fca5a5';
+  }
+
+  async function loadSettings(){
+    try{
+      var r = await fetch('/api/notifications/settings', {credentials:'same-origin'});
+      var d = await r.json();
+      if(d && d.ok && d.settings){
+        keys.forEach(function(k){
+          var el = document.getElementById(k);
+          if(el) el.checked = !!d.settings[k];
+        });
+      }
+    }catch(e){
+      setStatus('Не удалось загрузить настройки уведомлений', false);
+    }
+  }
+
+  async function saveSettings(){
+    var body = {};
+    keys.forEach(function(k){
+      var el = document.getElementById(k);
+      if(el) body[k] = !!el.checked;
+    });
+    try{
+      var r = await fetch('/api/notifications/settings', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        credentials:'same-origin',
+        body:JSON.stringify(body)
+      });
+      if(!r.ok) throw new Error('save failed');
+      setStatus('Сохранено', true);
+    }catch(e){
+      setStatus('Ошибка сохранения', false);
+    }
+  }
+
+  function scheduleSave(){
+    if(saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveSettings, 180);
+  }
+
+  keys.forEach(function(k){
+    var el = document.getElementById(k);
+    if(el) el.addEventListener('change', scheduleSave);
+  });
+  loadSettings();
+})();
+</script>
 {% endblock %}
