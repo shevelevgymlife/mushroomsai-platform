@@ -17,6 +17,7 @@ email-validator==2.2.0
 pydantic-settings==2.5.2
 google-api-python-client==2.149.0
 google-auth==2.35.0
+cloudinary==1.41.0
 PyPDF2==3.0.1
 python-docx==1.1.2
 openpyxl==3.1.5

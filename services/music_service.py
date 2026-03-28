@@ -1,61 +1,51 @@
-"""Google Drive music service for MushroomsAI radio player."""
+"""Cloudinary music service for MushroomsAI radio player."""
 import asyncio
 import io
-import json
 import logging
 import os
 
 _logger = logging.getLogger(__name__)
 
-GDRIVE_FOLDER_ID = "192IV0zS3n5novvOgAlgIdDF7LUs0gbKr"
 
-
-def _get_drive_service():
-    raw = os.environ.get("GOOGLE_SERVICE_ACCOUNT", "")
-    if not raw:
-        raise RuntimeError("GOOGLE_SERVICE_ACCOUNT env var not set")
-    info = json.loads(raw)
-    from google.oauth2 import service_account
-    from googleapiclient.discovery import build
-    creds = service_account.Credentials.from_service_account_info(
-        info, scopes=["https://www.googleapis.com/auth/drive"]
+def _get_cloudinary():
+    import cloudinary
+    import cloudinary.uploader
+    cloudinary.config(
+        cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME", "du1aaf27r"),
+        api_key=os.environ.get("CLOUDINARY_API_KEY", "189975495191847"),
+        api_secret=os.environ.get("CLOUDINARY_API_SECRET", "tqEFmI9ED4i5qUSPApDD6bHc9lw"),
+        secure=True,
     )
-    return build("drive", "v3", credentials=creds, cache_discovery=False)
+    return cloudinary.uploader
 
 
 async def upload_track(file_bytes: bytes, filename: str) -> tuple[str, str]:
-    """Upload MP3 to Google Drive folder, return (file_id, public_url)."""
+    """Upload MP3 to Cloudinary, return (public_id, secure_url)."""
     def _upload():
-        from googleapiclient.http import MediaIoBaseUpload
-        service = _get_drive_service()
-        meta = {
-            "name": filename,
-            "parents": [GDRIVE_FOLDER_ID],
-        }
-        media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype="audio/mpeg", resumable=True)
-        f = service.files().create(body=meta, media_body=media, fields="id").execute()
-        file_id = f["id"]
-        # Make public
-        service.permissions().create(
-            fileId=file_id,
-            body={"role": "reader", "type": "anyone"},
-        ).execute()
-        url = f"https://drive.google.com/uc?export=download&id={file_id}"
-        return file_id, url
+        uploader = _get_cloudinary()
+        result = uploader.upload(
+            io.BytesIO(file_bytes),
+            resource_type="video",  # Cloudinary uses "video" for audio files
+            folder="mushroomsai_music",
+            public_id=filename.rsplit(".", 1)[0],
+            overwrite=False,
+            unique_filename=True,
+        )
+        return result["public_id"], result["secure_url"]
 
     return await asyncio.get_event_loop().run_in_executor(None, _upload)
 
 
-async def delete_track(file_id: str) -> bool:
-    """Delete file from Google Drive."""
-    if not file_id:
+async def delete_track(public_id: str) -> bool:
+    """Delete file from Cloudinary."""
+    if not public_id:
         return True
     def _delete():
-        service = _get_drive_service()
-        service.files().delete(fileId=file_id).execute()
+        uploader = _get_cloudinary()
+        uploader.destroy(public_id, resource_type="video")
     try:
         await asyncio.get_event_loop().run_in_executor(None, _delete)
         return True
     except Exception as e:
-        _logger.warning("Drive delete error %s: %s", file_id, e)
+        _logger.warning("Cloudinary delete error %s: %s", public_id, e)
         return False
