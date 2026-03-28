@@ -60,6 +60,14 @@
       return { loadFollowing: function () {} };
     }
 
+    if (config.alreadyForwarded) {
+      try {
+        inp.readOnly = true;
+        inp.disabled = true;
+      } catch (e0) {}
+      return { loadFollowing: function () {} };
+    }
+
     var users = [];
     var _active = false;
     var _state = null;
@@ -219,7 +227,20 @@
         });
         if (r.ok && d.ok) {
           inp.value = "";
+          try {
+            inp.readOnly = true;
+            inp.disabled = true;
+          } catch (e3) {}
           setStatus("Пост отправлен в личку со ссылкой", false);
+          if (typeof d.reposts_count === "number") {
+            try {
+              window.dispatchEvent(
+                new CustomEvent("nf-post-reposts-count", {
+                  detail: { postId: postId, count: d.reposts_count },
+                })
+              );
+            } catch (e1) {}
+          }
           setTimeout(function () {
             setStatus("");
           }, 3200);

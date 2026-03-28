@@ -33,6 +33,7 @@
   <strong>Переслать в личку кому-то ещё</strong>
   <input type="search" id="rpShareSearch" class="sinp2" placeholder="Поиск пользователя…" autocomplete="off" />
   <div id="rpPick" class="nf-rp-pick"></div>
+  <p id="rpShareOk" style="display:none;margin-top:8px;font-size:12px" role="status"></p>
 </div>
 <script>
 const POST_ID={{ post.id }};
@@ -144,8 +145,22 @@ async function shareDm(uid){
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({recipient_id:uid})
     });
+    var d=await r.json().catch(function(){return {};});
     var ok=document.getElementById('rpShareOk');
-    if(r.ok&&ok){ ok.style.display='block'; ok.textContent='Ссылка отправлена в личку'; setTimeout(function(){ ok.style.display='none'; },2800); }
+    if(r.ok&&d.ok&&ok){
+      var tb=document.getElementById('btnToggleRepost');
+      if(tb) tb.textContent='✓ Вы переслали';
+      loadReposters();
+      ok.style.display='block';
+      ok.style.color='#4ade80';
+      ok.textContent='Ссылка отправлена в личку';
+      setTimeout(function(){ ok.style.display='none'; },2800);
+    }else if(ok){
+      ok.style.display='block';
+      ok.style.color='#f87171';
+      ok.textContent=d.error||'Не удалось отправить';
+      setTimeout(function(){ ok.style.display='none'; },4200);
+    }
   }catch(e){}
 }
 </script>

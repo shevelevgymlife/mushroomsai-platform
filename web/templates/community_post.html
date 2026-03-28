@@ -197,7 +197,11 @@ async function shareToUser(uid){
       body:JSON.stringify({recipient_id:uid})
     });
     const d=await r.json().catch(function(){return {};});
-    if(r.ok && d.ok) closeShareModal();
+    if(r.ok && d.ok){
+      const rc=document.getElementById('repostCnt');
+      if(rc && typeof d.reposts_count==='number') rc.textContent=String(d.reposts_count);
+      closeShareModal();
+    }
   }catch(e){}
 }
 window.__replyToCommentId=null;

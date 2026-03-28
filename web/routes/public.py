@@ -2037,6 +2037,12 @@ async def community_post_forward_page(request: Request, post_id: int, back: str 
     if not post:
         return HTMLResponse("Пост не найден", status_code=404)
     back_url = (back or "").strip() or request.headers.get("referer") or f"/community/post/{post_id}"
+    viewer_id = current_user.get("primary_user_id") or current_user["id"]
+    fwd_row = await database.fetch_one(
+        community_reposts.select()
+        .where(community_reposts.c.post_id == post_id)
+        .where(community_reposts.c.user_id == viewer_id)
+    )
     return templates.TemplateResponse(
         "community_post_forward.html",
         {
@@ -2044,6 +2050,7 @@ async def community_post_forward_page(request: Request, post_id: int, back: str 
             "user": current_user,
             "post": post,
             "back_url": back_url,
+            "already_forwarded": fwd_row is not None,
         },
     )
 

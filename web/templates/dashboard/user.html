@@ -4317,6 +4317,8 @@ async function sendPostShare(postId, recipientId){
     const r=await fetch('/community/post/'+postId+'/share-dm',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipient_id:recipientId})});
     const d=await r.json().catch(()=>({}));
     if(r.ok&&d.ok){
+      const rpc=document.getElementById('repost-count-'+postId);
+      if(rpc&&typeof d.reposts_count==='number') rpc.textContent=String(d.reposts_count);
       document.getElementById('sharePostModal').style.display='none';
       showNotification('Ссылка отправлена в личку','success');
     }else{

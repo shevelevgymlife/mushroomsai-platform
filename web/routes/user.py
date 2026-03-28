@@ -50,6 +50,7 @@ from services.legal import legal_acceptance_redirect
 from services.notify_admin import notify_admin_telegram
 from services.ops_alerts import notify_plan_upgrade_request
 import sqlalchemy as sa
+from sqlalchemy.exc import IntegrityError
 import secrets
 import traceback as _traceback
 import logging
@@ -630,7 +631,7 @@ async def edit_community_post(
 
 @router.post("/community/post/{post_id}/share-dm")
 async def share_community_post_dm(request: Request, post_id: int):
-    """Отправить ссылку на пост в личку любому пользователю."""
+    """Отправить ссылку на пост в личку подписчику. Один раз на пост: учёт в reposts_count, повтор запрещён."""
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
@@ -664,7 +665,53 @@ async def share_community_post_dm(request: Request, post_id: int):
     post = await database.fetch_one(community_posts.select().where(community_posts.c.id == post_id))
     if not post:
         return JSONResponse({"error": "not found"}, status_code=404)
-    author_id = post["user_id"]
+
+    async def _current_reposts_count() -> int:
+        row = await database.fetch_one(
+            sa.select(community_posts.c.reposts_count).where(community_posts.c.id == post_id)
+        )
+        return int(row["reposts_count"] or 0) if row else 0
+
+    existing_repost = await database.fetch_one(
+        community_reposts.select()
+        .where(community_reposts.c.post_id == post_id)
+        .where(community_reposts.c.user_id == uid)
+    )
+    if existing_repost:
+        return JSONResponse(
+            {
+                "ok": False,
+                "error": "Вы уже переслали этот пост",
+                "reposts_count": await _current_reposts_count(),
+            },
+            status_code=409,
+        )
+
+    repost_inserted = False
+    try:
+        await database.execute(
+            community_reposts.insert().values(post_id=post_id, user_id=uid)
+        )
+        repost_inserted = True
+        await database.execute(
+            community_posts.update()
+            .where(community_posts.c.id == post_id)
+            .values(reposts_count=community_posts.c.reposts_count + 1)
+        )
+    except IntegrityError:
+        rc = await _current_reposts_count()
+        return JSONResponse(
+            {
+                "ok": False,
+                "error": "Вы уже переслали этот пост",
+                "reposts_count": rc,
+            },
+            status_code=409,
+        )
+    except Exception as e:
+        _logger.exception("share dm repost row: %s", e)
+        return JSONResponse({"error": "db"}, status_code=500)
+
     base = settings.SITE_URL.rstrip("/")
     link = f"{base}/community/post/{post_id}"
     ttitle = (post.get("title") or "").strip()
@@ -678,6 +725,22 @@ async def share_community_post_dm(request: Request, post_id: int):
         )
     except Exception as e:
         _logger.exception("share dm: %s", e)
+        if repost_inserted:
+            await database.execute(
+                community_reposts.delete()
+                .where(community_reposts.c.post_id == post_id)
+                .where(community_reposts.c.user_id == uid)
+            )
+            await database.execute(
+                community_posts.update()
+                .where(community_posts.c.id == post_id)
+                .values(
+                    reposts_count=sa.case(
+                        (community_posts.c.reposts_count > 0, community_posts.c.reposts_count - 1),
+                        else_=0,
+                    )
+                )
+            )
         return JSONResponse({"error": "db"}, status_code=500)
     try:
         if shr and shr.get("id"):
@@ -702,7 +765,8 @@ async def share_community_post_dm(request: Request, post_id: int):
             await sync_direct_messages_pair(uid, recipient_id, broadcast_legacy_dm_id=mid)
     except Exception:
         pass
-    return JSONResponse({"ok": True, "link": link})
+    rc = await _current_reposts_count()
+    return JSONResponse({"ok": True, "link": link, "reposts_count": rc})
 
 
 @router.get("/community/me/following-share")

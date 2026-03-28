@@ -56,6 +56,20 @@
   font-size:14px;
   line-height:1.4;
 }
+.nf-fwd-notice{
+  margin:0 0 14px;
+  padding:12px 14px;
+  border-radius:14px;
+  border:1px solid rgba(247,179,255,.35);
+  background:rgba(247,179,255,.08);
+  color:#e8d4f0;
+  font-size:13px;
+  line-height:1.45;
+}
+.nf-fwd-inp:disabled{
+  opacity:.55;
+  cursor:not-allowed;
+}
 #nf-fwd-dd{
   display:none;
   position:fixed;
@@ -77,12 +91,16 @@
 <div class="nf-fwd-root neo-app-surface">
   <button type="button" class="nf-fwd-back" onclick="goBackFwd()" aria-label="Назад">←</button>
   <p class="nf-fwd-label">Переслать</p>
-  <p class="nf-fwd-hint">Введите <strong style="color:#ffc6ff">@</strong> и выберите человека из ваших подписок — пост уйдёт ему в личные сообщения со ссылкой. Можно дописать цифры id после @, чтобы сузить список.</p>
-  <input type="text" id="nfFwdInp" class="nf-fwd-inp" placeholder="Например: @12…" autocomplete="off" autocapitalize="off" spellcheck="false" />
+  {% if already_forwarded %}
+  <p class="nf-fwd-notice" role="status">Вы уже переслали этот пост. Повторная отправка в личку недоступна — для каждого поста пересылка учитывается один раз.</p>
+  {% else %}
+  <p class="nf-fwd-hint">Введите <strong style="color:#ffc6ff">@</strong> и выберите человека из ваших подписок — пост уйдёт ему в личные сообщения со ссылкой. Переслать каждый пост можно только один раз (счётчик ↗ на посте обновится). Можно дописать цифры id после @, чтобы сузить список.</p>
+  {% endif %}
+  <input type="text" id="nfFwdInp" class="nf-fwd-inp" placeholder="Например: @12…" autocomplete="off" autocapitalize="off" spellcheck="false" {% if already_forwarded %}disabled aria-disabled="true"{% endif %} />
   <p id="nfFwdStatus" class="nf-fwd-status" role="status"></p>
   <div id="nf-fwd-dd" role="listbox" aria-label="Подписки"></div>
 </div>
-<script src="/static/js/nf-following-forward-dm.js?v=1"></script>
+<script src="/static/js/nf-following-forward-dm.js?v=2"></script>
 <script>
 const POST_ID={{ post.id }};
 const BACK_URL={{ back_url|tojson }};
@@ -96,7 +114,8 @@ function goBackFwd(){
     postId:POST_ID,
     input:document.getElementById('nfFwdInp'),
     dropdown:document.getElementById('nf-fwd-dd'),
-    statusEl:document.getElementById('nfFwdStatus')
+    statusEl:document.getElementById('nfFwdStatus'),
+    alreadyForwarded:{{ already_forwarded|tojson }}
   });
 })();
 </script>
