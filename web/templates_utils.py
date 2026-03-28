@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse, urlencode, parse_qs, urlunparse
 
 from fastapi.templating import Jinja2Templates as _Jinja2Templates
 from config import shevelev_token_address
@@ -15,6 +16,14 @@ from services.in_app_notifications import merge_prefs
 from services.mention_html import jinja_linkify_mentions
 from web.community_media import post_image_urls as jinja_post_image_urls
 from web.translations import TRANSLATIONS, SUPPORTED_LANGS
+
+
+def _replace_query_filter(url, **kwargs):
+    """Jinja2 filter: replace/add URL query params. {{ request.url | replace_query(page=2) }}"""
+    parsed = urlparse(str(url))
+    params = {k: v[0] for k, v in parse_qs(parsed.query, keep_blank_values=True).items()}
+    params.update({k: str(v) for k, v in kwargs.items()})
+    return urlunparse(parsed._replace(query=urlencode(params)))
 
 
 class Jinja2Templates(_Jinja2Templates):
@@ -26,6 +35,7 @@ class Jinja2Templates(_Jinja2Templates):
         super().__init__(directory=directory, **kwargs)
         self.env.filters["linkify_mentions"] = jinja_linkify_mentions
         self.env.filters["post_image_urls"] = lambda row: jinja_post_image_urls(dict(row) if row is not None else None)
+        self.env.filters["replace_query"] = _replace_query_filter
 
     def TemplateResponse(self, *args, **kwargs):
         # Support both positional and keyword forms
