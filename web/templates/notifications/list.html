@@ -4,10 +4,10 @@
 <div class="nf-notif-page">
   <h1 class="nf-notif-h1">События</h1>
   <p class="nf-notif-sub">Прокрутите в сторону, чтобы переключить раздел. Непрочитанные подсвечены.</p>
+  {% if not items %}
+  <p class="nf-notif-hint">Пока ни одного события — разделы ниже всё равно можно листать.</p>
+  {% endif %}
 
-  {% if not sections %}
-  <div class="nf-empty">Пока нет событий</div>
-  {% else %}
   <div class="nf-chips" id="nfChips" role="tablist" aria-label="Разделы событий">
     {% for s in sections %}
     <button type="button" class="nf-chip" data-sec="{{ s.key }}" id="nf-chip-{{ s.key }}">
@@ -27,7 +27,8 @@
         {% if s.unread_count > 0 %}<span class="nf-cat-head-badge">{{ s.unread_count }} непрочит.</span>{% endif %}
       </div>
       <div class="nf-cat-inner">
-        {% for it in s['items'] %}
+        {% if s['entries'] %}
+        {% for it in s['entries'] %}
         <a href="/notifications/{{ it.id }}" class="nf-notif-row{% if not it.read %} nf-notif-row--unread{% endif %}">
           <div class="nf-notif-av">
             {% if it.actor_avatar %}<img src="{{ it.actor_avatar }}" alt="">{% else %}<span>🍄</span>{% endif %}
@@ -39,11 +40,13 @@
           </div>
         </a>
         {% endfor %}
+        {% else %}
+        <div class="nf-col-empty">В этом разделе пока пусто</div>
+        {% endif %}
       </div>
     </section>
     {% endfor %}
   </div>
-  {% endif %}
 
   <p class="nf-foot"><a href="/account/settings/sound-notifications">Звук и уведомления</a></p>
 </div>
@@ -66,6 +69,21 @@
   color: #888;
   margin: 0 0 14px;
   line-height: 1.45;
+}
+.nf-notif-hint {
+  font-size: 12px;
+  color: #6b7280;
+  margin: -6px 0 12px;
+  line-height: 1.4;
+}
+.nf-col-empty {
+  padding: 28px 14px;
+  text-align: center;
+  font-size: 13px;
+  color: #6b7280;
+  border-radius: 14px;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.02);
 }
 .nf-empty {
   padding: 40px 16px;

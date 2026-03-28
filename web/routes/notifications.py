@@ -44,22 +44,21 @@ _SECTION_ORDER: tuple[tuple[str, str, str], ...] = (
 
 
 def _bucket_notifications_by_section(items: list[dict]) -> list[dict]:
+    """Всегда возвращает все разделы из _SECTION_ORDER (в т.ч. с пустым списком) — чипы и колонки в скролле всегда на месте."""
     bucket: dict[str, list[dict]] = defaultdict(list)
     for it in items:
         key = _NTYPE_SECTION.get(it.get("ntype") or "", "other")
         bucket[key].append(it)
     sections: list[dict] = []
     for sec_key, icon, label in _SECTION_ORDER:
-        lst = bucket.get(sec_key) or []
-        if not lst:
-            continue
+        lst = list(bucket.get(sec_key) or [])
         unread = sum(1 for x in lst if not x.get("read"))
         sections.append(
             {
                 "key": sec_key,
                 "icon": icon,
                 "label": label,
-                "items": lst,
+                "entries": lst,
                 "unread_count": unread,
             }
         )
@@ -71,7 +70,7 @@ def _bucket_notifications_by_section(items: list[dict]) -> list[dict]:
                 "key": "other",
                 "icon": "🔔",
                 "label": "Другое",
-                "items": other,
+                "entries": other,
                 "unread_count": unread_o,
             }
         )
@@ -247,7 +246,7 @@ async def api_notifications_settings_get(request: Request):
 
 @router.get("/api/notifications/count")
 async def api_notifications_count_compat(request: Request):
-    """Число непрочитанных записей в ленте «События» (все типы, включая личные сообщения)."""
+    """Число непрочитанных записей в ленте «События» (без личных сообщений — они в «Чатах»)."""
     user = await get_user_from_request(request)
     if not user:
         return JSONResponse({"count": 0})
