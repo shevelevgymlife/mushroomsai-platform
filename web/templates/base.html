@@ -220,10 +220,8 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
 
   {% block site_navbar %}{% endblock %}
 
-  <main>
-    <div id="pageContent">
+  <main id="pageContent">
     {% block content %}{% endblock %}
-    </div>
   </main>
 
   {% if user and request.query_params.get('trial_started') %}
