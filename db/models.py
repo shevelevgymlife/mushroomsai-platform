@@ -61,6 +61,9 @@ users = sqlalchemy.Table(
     sqlalchemy.Column("start_trial_claimed_at", sqlalchemy.DateTime, nullable=True),
     sqlalchemy.Column("start_trial_until", sqlalchemy.DateTime, nullable=True),
     sqlalchemy.Column("start_trial_end_notified", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column("music_player_enabled", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column("music_player_position", sqlalchemy.String(50), default="bottom-right", server_default="bottom-right"),
+    sqlalchemy.Column("music_player_volume", sqlalchemy.Float, default=0.5, server_default="0.5"),
 )
 
 sessions = sqlalchemy.Table(
