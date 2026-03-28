@@ -104,6 +104,8 @@ body.profile-app-shell .grain-overlay{opacity:0.22}
 .cp-link-under--block{text-align:center}
 @media(min-width:641px){.cp-link-under--block{text-align:left}}
 .cp-name-plan-row{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:0 0 12px}
+.cp-hero-name-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px;row-gap:8px;width:100%;margin:0 0 4px}
+.cp-hero-name-row .cp-profile-name{margin:0}
 .cp-profile-name{font-size:clamp(18px,4.5vw,22px);font-weight:800;background:linear-gradient(135deg,#3dd4e0,#b85fa3,#C9A84C);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1.2}
 @keyframes shimmerBtn{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
 .btn-subscribe-hero{background:linear-gradient(135deg,#3dd4e0,#b85fa3,#C9A84C);background-size:200% 200%;animation:shimmerBtn 3s ease infinite;color:#000;font-weight:800;border:none;border-radius:12px;padding:10px 22px;cursor:pointer;font-size:14px;transition:transform .2s;display:inline-flex;align-items:center;gap:6px}
@@ -326,7 +328,10 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
               <div class="cp-hero-bar nf-vp-carousel__slide">
           <div class="cp-hero-left">
             <div class="cp-hero-stack">
-              <div class="cp-profile-name">{{ profile.name or 'Участник' }}</div>
+              <div class="cp-hero-name-row">
+                <div class="cp-profile-name">{{ profile.name or 'Участник' }}</div>
+                <button type="button" class="cp-user-id-pill" data-copy-mention="@{{ profile_id }}" title="Скопировать @{{ profile_id }} для упоминания в комментарии" onclick="copyProfileMentionClick(event)"><span class="cp-user-id-pill__k">id</span><span>@{{ profile_id }}</span></button>
+              </div>
               {% if profile.bio %}
               <div class="cp-hero-bio">{{ profile.bio }}</div>
               {% endif %}
@@ -426,7 +431,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
       </div>
       </a>
       <div style="flex:1;min-width:0">
-        <a href="/community/profile/{{ profile_id }}" onclick="event.stopPropagation()" style="font-size:14px;font-weight:700;color:#e8e8e8;text-decoration:none;display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap">{{ profile.name or 'Участник' }}{% if p.from_telegram %}<span class="cp-tg-badge" title="Импорт из Telegram-канала">✓ TG</span>{% endif %}</a>
+        <a href="/community/profile/{{ profile_id }}" onclick="event.stopPropagation()" style="font-size:14px;font-weight:700;color:#e8e8e8;text-decoration:none;display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="overflow:hidden;text-overflow:ellipsis">{{ profile.name or 'Участник' }}</span><span class="cp-user-id-pill" style="font-size:9px;padding:2px 7px;flex-shrink:0;cursor:default;text-decoration:none" title="Упоминание: @{{ profile_id }}">@{{ profile_id }}</span>{% if p.from_telegram %}<span class="cp-tg-badge" title="Импорт из Telegram-канала">✓ TG</span>{% endif %}</a>
         <div style="font-size:11px;color:#888">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}{% if p.pinned %} · 📌{% endif %}{% if item.folder_name %} · 📁 {{ item.folder_name }}{% endif %}</div>
       </div>
       {% if is_own %}
@@ -442,7 +447,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
     {% if p.image_url %}
     <img src="{{ p.image_url }}" class="ig-post-img" loading="lazy" alt="">
     {% elif p.content %}
-    <div class="ig-post-textonly">{{ p.content | truncate(2000, True, '…') }}</div>
+    <div class="ig-post-textonly">{{ p.content | linkify_mentions(2000) | safe }}</div>
     {% endif %}
     <div class="ig-post-metrics">
       <button type="button" class="ig-post-metric ig-post-metric-star" id="lk-{{ p.id }}" onclick="doLike({{ p.id }},this)">
@@ -456,7 +461,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
       </button>
     </div>
     {% if p.image_url and p.content %}
-    <div class="ig-post-body"><span class="ig-cap-user">{{ profile.name or '' }}</span>{{ p.content }}</div>
+    <div class="ig-post-body"><span class="ig-cap-user">{{ profile.name or '' }}</span>{{ p.content | linkify_mentions | safe }}</div>
     {% endif %}
     <div class="csec" id="cs-{{ p.id }}" style="display:none;margin:0;padding:12px;border-top:1px solid rgba(255,255,255,.06);overflow:hidden;max-width:100%;box-sizing:border-box">
       <div id="cl-{{ p.id }}"></div>
@@ -574,7 +579,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
     {% else %}
     <div class="avph" style="width:34px;height:34px;font-size:14px">🍄</div>
     {% endif %}
-    <span style="font-weight:700;flex:1;font-size:14px;color:#e8e8e8">{{ profile.name or 'Участник' }}</span>
+    <span style="font-weight:700;flex:1;font-size:14px;color:#e8e8e8;display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0"><span style="overflow:hidden;text-overflow:ellipsis">{{ profile.name or 'Участник' }}</span><button type="button" class="cp-user-id-pill" style="font-size:9px;padding:2px 8px;flex-shrink:0" data-copy-mention="@{{ profile_id }}" title="Скопировать @{{ profile_id }}" onclick="event.stopPropagation();copyProfileMentionClick(event)">@{{ profile_id }}</button></span>
     <button type="button" onclick="closeDM()" style="background:none;border:none;color:#888;font-size:22px;cursor:pointer;line-height:1;padding:4px" aria-label="Закрыть">✕</button>
   </div>
   <div id="dmMsgs" class="cp-dm-msgs"></div>
@@ -689,6 +694,16 @@ async function openFollowListModal(profileId, kind){
 }
 const PROFILE_ID = {{ profile_id }};
 const IS_OWN = {{ 'true' if is_own else 'false' }};
+function copyProfileMentionClick(ev){
+  var el=ev&&ev.currentTarget; var t=el&&el.getAttribute('data-copy-mention');
+  if(!t)return;
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    ev.preventDefault();
+    navigator.clipboard.writeText(t).then(function(){
+      try{ var o=el.style.opacity; el.style.opacity='0.6'; setTimeout(function(){ el.style.opacity=o||''; },220);}catch(e){}
+    }).catch(function(){});
+  }
+}
 (function(){
   const w=document.getElementById('cpAvWrap');
   const inp=document.getElementById('cpAvInput');
@@ -881,7 +896,8 @@ async function loadCmts(id){
 function cmtHtml(c){
   const isMe = false; // determined server-side; deletion via own-check
   const av=c.author_avatar?`<img src="${c.author_avatar}" class="avg" style="width:28px;height:28px" alt="">`:`<div class="avph" style="width:28px;height:28px;font-size:12px">🍄</div>`;
-  return `<div id="cmt-${c.id}" style="display:flex;gap:8px;margin-bottom:10px">${av}<div style="flex:1;background:rgba(255,255,255,.04);border-radius:10px;padding:7px 11px"><div style="font-size:11px;color:#555;display:flex;justify-content:space-between"><span>${esc(c.author_emoji)} ${esc(c.author_name)} · ${c.created_at}</span><button onclick="delCmt(${c.id},this)" style="background:none;border:none;color:#333;font-size:11px;cursor:pointer" title="Удалить (только свой)">✕</button></div><div style="font-size:13px;color:#ddd;margin-top:2px">${esc(c.content)}</div></div></div>`;
+  var cbody=(typeof linkifyCommunityMentionsPlain==='function')?linkifyCommunityMentionsPlain(c.content):esc(c.content);
+  return `<div id="cmt-${c.id}" style="display:flex;gap:8px;margin-bottom:10px">${av}<div style="flex:1;background:rgba(255,255,255,.04);border-radius:10px;padding:7px 11px"><div style="font-size:11px;color:#555;display:flex;justify-content:space-between"><span>${esc(c.author_emoji)} ${esc(c.author_name)} · ${c.created_at}</span><button onclick="delCmt(${c.id},this)" style="background:none;border:none;color:#333;font-size:11px;cursor:pointer" title="Удалить (только свой)">✕</button></div><div style="font-size:13px;color:#ddd;margin-top:2px;white-space:pre-wrap;word-break:break-word">${cbody}</div></div></div>`;
 }
 async function submitCmt(id){
   const inp=document.getElementById(`ci-${id}`);
@@ -1063,7 +1079,7 @@ function _profilePreviewCommentHtml(c){
     avHtml+
     '<div style="flex:1;min-width:0">'+
     '<div style="font-size:11px;color:#8a8fa0;line-height:1.3"><strong style="color:#d8deec">'+esc(c.author_name||'Участник')+'</strong> · '+esc(c.created_at||'')+'</div>'+
-    '<div style="font-size:13px;color:#e6e8ef;line-height:1.45;white-space:pre-wrap;word-break:break-word">'+esc(c.content||'')+'</div>'+
+    '<div style="font-size:13px;color:#e6e8ef;line-height:1.45;white-space:pre-wrap;word-break:break-word">'+(typeof linkifyCommunityMentionsPlain==='function'?linkifyCommunityMentionsPlain(c.content):esc(c.content||''))+'</div>'+
     '</div></div>';
 }
 async function loadProfilePreviewComments(pid){
@@ -1098,9 +1114,13 @@ function openProfilePostPreview(event, card){
   document.getElementById('profilePreviewDate').textContent=card.getAttribute('data-created')||'';
   const title=(card.getAttribute('data-title')||'').trim();
   const tt=document.getElementById('profilePreviewTitle');
-  if(tt){ tt.style.display=title?'block':'none'; tt.textContent=title; }
+  if(tt){
+    tt.style.display=title?'block':'none';
+    tt.innerHTML=(typeof linkifyCommunityMentionsPlain==='function')?linkifyCommunityMentionsPlain(title):esc(title);
+  }
   const content=(card.getAttribute('data-content')||'').trim();
-  document.getElementById('profilePreviewContent').textContent=content||'Без текста';
+  var pc=document.getElementById('profilePreviewContent');
+  if(pc) pc.innerHTML=(typeof linkifyCommunityMentionsPlain==='function')?linkifyCommunityMentionsPlain(content||'Без текста'):esc(content||'Без текста');
   const img=(card.getAttribute('data-image')||'').trim();
   const ii=document.getElementById('profilePreviewImage');
   const inlinePhotoWrap=document.getElementById('profilePreviewInlinePhotoWrap');

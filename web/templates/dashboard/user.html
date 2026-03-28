@@ -1113,7 +1113,7 @@ body.dash-ig-app .ig-lamp-topbar{
         </div>
         {% for p in recent_posts[:3] %}
         <div style="padding:12px 0;{{ '' if loop.last else 'border-bottom:1px solid rgba(255,255,255,.06)' }}">
-          <div style="font-size:13px;color:#ccc;line-height:1.5;white-space:pre-wrap;word-break:break-word">{{ p.content[:180] }}{% if p.content|length > 180 %}…{% endif %}</div>
+          <div style="font-size:13px;color:#ccc;line-height:1.5;white-space:pre-wrap;word-break:break-word">{{ p.content | linkify_mentions(180) | safe }}</div>
           {% if p.image_url %}<img src="{{ p.image_url }}" style="width:100%;max-height:160px;object-fit:cover;border-radius:8px;margin-top:8px" loading="lazy" alt="">{% endif %}
           <div style="font-size:11px;color:#555;margin-top:6px">{{ p.created_at.strftime('%d.%m.%Y') if p.created_at else '' }} · ❤️ {{ p.likes_count }} · 💬 {{ p.comments_count }}</div>
         </div>
@@ -1206,7 +1206,7 @@ body.dash-ig-app .ig-lamp-topbar{
             <div class="ig-post-header">
               <a href="/community/profile/{{ effective_user_id }}" style="display:block;width:36px;height:36px;border-radius:50%;border:2px solid #3dd4e0;overflow:hidden;text-decoration:none">{% if user.avatar %}<img src="{{ user.avatar }}" style="width:100%;height:100%;object-fit:cover" alt="">{% else %}<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px">🍄</div>{% endif %}</a>
               <div style="flex:1;min-width:0">
-                <div style="font-size:14px;font-weight:700;color:#e8e8e8">{{ user.name or 'Вы' }}</div>
+                <div style="font-size:14px;font-weight:700;color:#e8e8e8;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span>{{ user.name or 'Вы' }}</span><span class="cp-user-id-pill" style="font-size:9px;padding:2px 7px;cursor:default" title="Упоминание: @{{ effective_user_id }}">@{{ effective_user_id }}</span></div>
                 <div style="font-size:11px;color:#888">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}</div>
               </div>
               <details class="ig-pm" onclick="event.stopPropagation()">
@@ -1217,15 +1217,15 @@ body.dash-ig-app .ig-lamp-topbar{
                 </div>
               </details>
             </div>
-            {% if p.title %}<div style="padding:10px 14px 0;font-size:15px;font-weight:700;color:#e8e8e8">{{ p.title }}</div>{% endif %}
+            {% if p.title %}<div style="padding:10px 14px 0;font-size:15px;font-weight:700;color:#e8e8e8">{{ p.title | linkify_mentions | safe }}</div>{% endif %}
             {% if p.image_url %}
             <img src="{{ p.image_url }}" class="ig-post-img" loading="lazy" alt="">
             {% elif p.content %}
-            <div class="ig-post-textonly">{{ p.content[:500] }}{% if p.content|length > 500 %}…{% endif %}</div>
+            <div class="ig-post-textonly">{{ p.content | linkify_mentions(500) | safe }}</div>
             {% endif %}
             <div class="ig-post-snippet">
-              {% if p.title %}<div class="ig-post-snippet-title">{{ p.title }}</div>{% endif %}
-              <div class="ig-post-snippet-text">{% if p.content %}{{ p.content[:140] }}{% if p.content|length > 140 %}…{% endif %}{% else %}Новый пост{% endif %}</div>
+              {% if p.title %}<div class="ig-post-snippet-title">{{ p.title | linkify_mentions | safe }}</div>{% endif %}
+              <div class="ig-post-snippet-text">{% if p.content %}{{ p.content | linkify_mentions(140) | safe }}{% else %}Новый пост{% endif %}</div>
             </div>
             <div class="ig-post-metrics">
               <button type="button" class="ig-post-metric ig-post-metric-star" id="profile-like-btn-{{ p.id }}" onclick="likeProfilePost({{ p.id }},this)">
@@ -1319,9 +1319,9 @@ body.dash-ig-app .ig-lamp-topbar{
           {% if is_mine %}</a>{% else %}</a>{% endif %}
           <div style="flex:1;min-width:0">
             {% if is_mine %}
-            <div style="font-size:14px;font-weight:700;color:#e8e8e8;cursor:pointer;display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap" onclick="goSec('{{ dash_home }}')">{{ a.name if a else 'Участник' }} <span style="font-size:11px;color:#3dd4e0">● я</span>{% if p.from_telegram %}<span class="ig-tg-badge" title="Импорт из Telegram-канала">✓ TG</span>{% endif %}</div>
+            <div style="font-size:14px;font-weight:700;color:#e8e8e8;cursor:pointer;display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap" onclick="goSec('{{ dash_home }}')"><span>{{ a.name if a else 'Участник' }}</span><span class="cp-user-id-pill" style="font-size:9px;padding:2px 7px;cursor:default" title="Упоминание: @{{ p.user_id }}">@{{ p.user_id }}</span> <span style="font-size:11px;color:#3dd4e0">● я</span>{% if p.from_telegram %}<span class="ig-tg-badge" title="Импорт из Telegram-канала">✓ TG</span>{% endif %}</div>
             {% else %}
-            <a href="/community/profile/{{ p.user_id }}" onclick="event.stopPropagation()" style="font-size:14px;font-weight:700;color:#e8e8e8;text-decoration:none;display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap">{{ a.name if a else 'Участник' }}{% if p.from_telegram %}<span class="ig-tg-badge" title="Импорт из Telegram-канала">✓ TG</span>{% endif %}</a>
+            <a href="/community/profile/{{ p.user_id }}" onclick="event.stopPropagation()" style="font-size:14px;font-weight:700;color:#e8e8e8;text-decoration:none;display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap"><span>{{ a.name if a else 'Участник' }}</span><span class="cp-user-id-pill" style="font-size:9px;padding:2px 7px;flex-shrink:0;cursor:default;text-decoration:none" title="Упоминание: @{{ p.user_id }}">@{{ p.user_id }}</span>{% if p.from_telegram %}<span class="ig-tg-badge" title="Импорт из Telegram-канала">✓ TG</span>{% endif %}</a>
             {% endif %}
             <div style="font-size:11px;color:#888">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}{% if p.pinned %} · 📌{% endif %}</div>
           </div>
@@ -1339,19 +1339,19 @@ body.dash-ig-app .ig-lamp-topbar{
           {% endif %}
         </div>
         {% if p.title %}
-        <div style="padding:10px 14px 0;font-size:15px;font-weight:700;color:#e8e8e8">{{ p.title }}</div>
+        <div style="padding:10px 14px 0;font-size:15px;font-weight:700;color:#e8e8e8">{{ p.title | linkify_mentions | safe }}</div>
         {% endif %}
         {% if p.image_url %}
         <img src="{{ p.image_url }}" class="ig-post-img" loading="lazy" alt="">
         {% elif p.content %}
-        <div class="ig-post-textonly">{{ p.content[:500] }}{% if p.content|length > 500 %}…{% endif %}</div>
+        <div class="ig-post-textonly">{{ p.content | linkify_mentions(500) | safe }}</div>
         {% endif %}
         <div class="ig-post-snippet">
           {% if p.title %}
-          <div class="ig-post-snippet-title">{{ p.title }}</div>
+          <div class="ig-post-snippet-title">{{ p.title | linkify_mentions | safe }}</div>
           {% endif %}
           {% if p.content %}
-          <div class="ig-post-snippet-text">{{ p.content[:140] }}{% if p.content|length > 140 %}…{% endif %}</div>
+          <div class="ig-post-snippet-text">{{ p.content | linkify_mentions(140) | safe }}</div>
           {% elif not p.title %}
           <div class="ig-post-snippet-text">Новый пост в ленте сообщества</div>
           {% endif %}
@@ -3878,7 +3878,7 @@ async function loadGroupMessages(gid, opts){
         const txt = String(d.group.pinned_message_text||'').trim();
         if(txt){
           pin.style.display='block';
-          pin.textContent='📌 '+txt;
+          pin.innerHTML='📌 '+(typeof linkifyCommunityMentionsPlain==='function'?linkifyCommunityMentionsPlain(txt):esc(txt));
           pin.title='Нажмите, чтобы открыть';
           pin.onclick = function(){ alert(txt); };
         }
@@ -3892,12 +3892,12 @@ async function loadGroupMessages(gid, opts){
     box.innerHTML = msgs.map(function(m){
       var replyHtml = '';
       if(m.reply_to && m.reply_to.sender_name){
-        replyHtml = '<div class="ig-g-reply">↩ '+esc(m.reply_to.sender_name)+': '+esc(m.reply_to.preview||'')+'</div>';
+        replyHtml = '<div class="ig-g-reply">↩ '+esc(m.reply_to.sender_name)+': '+(typeof linkifyCommunityMentionsPlain==='function'?linkifyCommunityMentionsPlain(m.reply_to.preview||''):esc(m.reply_to.preview||''))+'</div>';
       }
       var addressedHtml = m.addressed_user_id ? '<div class="ig-g-reply" style="color:#8be9ff">→ адресно</div>' : '';
       var imgHtml = m.image_url ? '<img class="ig-g-img" src="'+escUrlAttr(m.image_url)+'" alt="">' : '';
       var audHtml = m.audio_url ? '<audio class="ig-g-audio" controls playsinline preload="metadata" src="'+escUrlAttr(m.audio_url)+'">Ваш браузер не воспроизводит аудио</audio>' : '';
-      var txtHtml = (m.text && String(m.text).trim()) ? '<div class="ig-g-text">'+esc(m.text)+'</div>' : '';
+      var txtHtml = (m.text && String(m.text).trim()) ? '<div class="ig-g-text">'+(typeof linkifyCommunityMentionsPlain==='function'?linkifyCommunityMentionsPlain(m.text):esc(m.text))+'</div>' : '';
       var likeN = Number(m.likes_count||0);
       var liked = !!m.liked;
       var likedUsers = Array.isArray(m.liked_users) ? m.liked_users : [];
@@ -4361,10 +4361,12 @@ function openFeedPostPreview(event, card){
   if(aEl) aEl.textContent=author;
   if(dEl) dEl.textContent=created;
   if(tEl){
-    if(title){ tEl.style.display='block'; tEl.textContent=title; }
-    else{ tEl.style.display='none'; tEl.textContent=''; }
+    if(title){
+      tEl.style.display='block';
+      tEl.innerHTML=(typeof linkifyCommunityMentionsPlain==='function')?linkifyCommunityMentionsPlain(title):esc(title);
+    }else{ tEl.style.display='none'; tEl.textContent=''; }
   }
-  if(cEl) cEl.textContent=content || 'Без текста';
+  if(cEl) cEl.innerHTML=(typeof linkifyCommunityMentionsPlain==='function')?linkifyCommunityMentionsPlain(content||'Без текста'):esc(content||'Без текста');
   if(cWrap) cWrap.style.display='none';
   if(readTextBtn){
     readTextBtn.style.display=(content && String(content).trim()) ? 'inline-flex' : 'none';
@@ -4504,7 +4506,7 @@ function _feedPreviewCommentHtml(c){
     avHtml+
     '<div style="flex:1;min-width:0">'+
     '<div style="font-size:11px;color:#8a8fa0;line-height:1.3"><strong style="color:#d8deec">'+esc(c.author_name||'Участник')+'</strong> · '+esc(c.created_at||'')+'</div>'+
-    '<div style="font-size:13px;color:#e6e8ef;line-height:1.45;white-space:pre-wrap;word-break:break-word">'+esc(c.content||'')+'</div>'+
+    '<div style="font-size:13px;color:#e6e8ef;line-height:1.45;white-space:pre-wrap;word-break:break-word">'+(typeof linkifyCommunityMentionsPlain==='function'?linkifyCommunityMentionsPlain(c.content):esc(c.content||''))+'</div>'+
     '</div></div>';
 }
 async function loadFeedPreviewComments(pid){

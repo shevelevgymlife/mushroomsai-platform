@@ -183,13 +183,13 @@
           {% else %}<div class="avp" style="width:32px;height:32px;font-size:14px">🍄</div>{% endif %}
         </a>
         <div style="flex:1;min-width:0">
-          <a href="{{ '/community/profile/' + (a.id|string) if a else '#' }}" onclick="event.stopPropagation()" style="font-weight:700;font-size:13px;color:#e8e8e8;text-decoration:none;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ a.name if a else 'Участник' }}</a>
+          <a href="{{ '/community/profile/' + (a.id|string) if a else '#' }}" onclick="event.stopPropagation()" style="font-weight:700;font-size:13px;color:#e8e8e8;text-decoration:none;display:flex;align-items:center;gap:6px;flex-wrap:wrap;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="overflow:hidden;text-overflow:ellipsis;min-width:0">{{ a.name if a else 'Участник' }}</span>{% if a and a.id %}<span class="cp-user-id-pill" style="font-size:9px;padding:2px 7px;flex-shrink:0;cursor:default" title="Упоминание: @{{ a.id }}"><span class="cp-user-id-pill__k">id</span>@{{ a.id }}</span>{% endif %}</a>
           <div style="font-size:10px;color:#6b7280">{{ rep(item.author_post_count) }} · {{ p.created_at.strftime('%d.%m %H:%M') if p.created_at else '' }}</div>
         </div>
         {% if item.folder_name %}<span style="font-size:10px;color:#6b7280;flex-shrink:0">📁</span>{% endif %}
       </div>
-      {% if p.title %}<div style="padding:4px 10px 0;font-size:12px;font-weight:700;color:#e5e7eb">{{ p.title }}</div>{% endif %}
-      <div class="comm-ig-body">{{ p.content or '' }}</div>
+      {% if p.title %}<div style="padding:4px 10px 0;font-size:12px;font-weight:700;color:#e5e7eb">{{ p.title | linkify_mentions | safe }}</div>{% endif %}
+      <div class="comm-ig-body">{{ (p.content or '') | linkify_mentions | safe }}</div>
       {% if p.image_url %}
       <img src="{{ p.image_url }}" class="comm-ig-img" loading="lazy" alt="">
       {% endif %}
@@ -201,7 +201,7 @@
       <div class="csec" id="cs-{{ p.id }}" style="overflow:hidden;max-width:100%;box-sizing:border-box;border-top:1px solid rgba(255,255,255,.06)" onclick="event.stopPropagation()">
         <div id="cl-{{ p.id }}"></div>
         <div style="display:flex;gap:8px;margin-top:8px;padding:0 8px 8px;overflow:hidden;max-width:100%;box-sizing:border-box">
-          <input type="text" id="ci-{{ p.id }}" class="sinp" style="flex:1;min-width:0;max-width:100%;width:100%;box-sizing:border-box;font-size:16px" placeholder="Комментарий...">
+          <input type="text" id="ci-{{ p.id }}" class="sinp" style="flex:1;min-width:0;max-width:100%;width:100%;box-sizing:border-box;font-size:16px" placeholder="Комментарий… @ID для упоминания">
           <button class="bgold" style="padding:8px 12px;font-size:13px" onclick="submitCmt({{ p.id }})">→</button>
         </div>
       </div>
@@ -428,7 +428,8 @@ async function loadCmts(id){
 }
 function cmtHtml(c){
   const av=c.author_avatar?`<img src="${c.author_avatar}" class="avg" style="width:28px;height:28px" alt="">`:`<div class="avp" style="width:28px;height:28px;font-size:12px">🍄</div>`;
-  return `<div style="display:flex;gap:8px;margin-bottom:10px">${av}<div style="flex:1;background:#1a1a1a;border-radius:10px;padding:7px 11px"><div style="font-size:11px;color:#666">${c.author_emoji} ${esc(c.author_name)} · ${c.created_at}</div><div style="font-size:13px;color:#ddd;margin-top:2px">${esc(c.content)}</div></div></div>`;
+  const body=(typeof linkifyCommunityMentionsPlain==='function')?linkifyCommunityMentionsPlain(c.content):esc(c.content);
+  return `<div style="display:flex;gap:8px;margin-bottom:10px">${av}<div style="flex:1;background:#1a1a1a;border-radius:10px;padding:7px 11px"><div style="font-size:11px;color:#666">${c.author_emoji} ${esc(c.author_name)} · ${c.created_at}</div><div style="font-size:13px;color:#ddd;margin-top:2px;white-space:pre-wrap;word-break:break-word">${body}</div></div></div>`;
 }
 async function submitCmt(id){
   const inp=document.getElementById(`ci-${id}`);
@@ -459,7 +460,7 @@ async function openUserModal(uid){
   const fBtn=`<button class="bout" id="mflw-${d.id}" onclick="doFollow(${d.id},this);doFollow(${d.id},document.getElementById('flw-${d.id}'))" style="font-size:12px;padding:6px 12px">${d.is_following?'Отписаться':'+ Подписаться'}</button>`;
   const dmBtn=`<button class="abt" onclick="closeM('userModal');openDM(${d.id},'${esc2(d.name||'Участник')}','${esc2(d.avatar||'')}')" style="font-size:13px">✉️ Написать</button>`;
   const profLink=`<a href="/community/profile/${d.id}" style="font-size:12px;color:#3dd4e0;text-decoration:none;display:block;margin-top:12px">Открыть профиль →</a>`;
-  document.getElementById('userModalBody').innerHTML=`${av}<div style="font-weight:700;font-size:18px;margin-top:12px">${esc(d.name||'Участник')}</div>${d.bio?`<div style="font-size:13px;color:#888;margin-top:6px">${esc(d.bio)}</div>`:''}<div style="display:flex;gap:18px;justify-content:center;margin:14px 0;font-size:12px"><div style="text-align:center"><span style="color:#fff;font-weight:700">${d.followers_count||0}</span><br><span style="color:#666">подписчиков</span></div><div style="text-align:center"><span style="color:#fff;font-weight:700">${d.following_count||0}</span><br><span style="color:#666">подписок</span></div><div style="text-align:center"><span style="color:#fff;font-weight:700">${d.post_count||0}</span><br><span style="color:#666">постов</span></div></div>${wl}${sendBtn}<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px">${fBtn}${dmBtn}</div>${profLink}`;
+  document.getElementById('userModalBody').innerHTML=`${av}<div style="font-weight:700;font-size:18px;margin-top:12px;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap">${esc(d.name||'Участник')}<span class="cp-user-id-pill" style="font-size:10px;padding:3px 9px;cursor:default" title="Упоминание в тексте: @${d.id}"><span class="cp-user-id-pill__k">id</span>@${d.id}</span></div>${d.bio?`<div style="font-size:13px;color:#888;margin-top:6px">${esc(d.bio)}</div>`:''}<div style="display:flex;gap:18px;justify-content:center;margin:14px 0;font-size:12px"><div style="text-align:center"><span style="color:#fff;font-weight:700">${d.followers_count||0}</span><br><span style="color:#666">подписчиков</span></div><div style="text-align:center"><span style="color:#fff;font-weight:700">${d.following_count||0}</span><br><span style="color:#666">подписок</span></div><div style="text-align:center"><span style="color:#fff;font-weight:700">${d.post_count||0}</span><br><span style="color:#666">постов</span></div></div>${wl}${sendBtn}<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px">${fBtn}${dmBtn}</div>${profLink}`;
 }
 
 // ---- DM ----

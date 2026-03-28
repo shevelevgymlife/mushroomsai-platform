@@ -4,12 +4,26 @@ from request.state into every template context.
 User's language preference (user["language"]) takes priority over the
 cookie/Accept-Language detected by the middleware.
 """
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
 from fastapi.templating import Jinja2Templates as _Jinja2Templates
 from config import shevelev_token_address
+from services.mention_html import jinja_linkify_mentions
 from web.translations import TRANSLATIONS, SUPPORTED_LANGS
 
 
 class Jinja2Templates(_Jinja2Templates):
+    def __init__(
+        self,
+        directory: str | Path | list[str | Path] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(directory=directory, **kwargs)
+        self.env.filters["linkify_mentions"] = jinja_linkify_mentions
+
     def TemplateResponse(self, *args, **kwargs):
         # Support both positional and keyword forms
         if args:

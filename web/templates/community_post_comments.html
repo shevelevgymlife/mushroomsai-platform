@@ -107,7 +107,7 @@ function cpcCardHtml(c){
   return '<div class="cpc-card" style="transform:translate('+tx+'px,'+ty+'px) rotate('+rot+'deg)">'+
     '<div class="cpc-card-meta"><b>'+esc(c.author_name||'Участник')+'</b> · '+esc(c.created_at||'')+
     (c.author_emoji?(' <span style="opacity:.85">'+esc(c.author_emoji)+'</span>'):'')+'</div>'+
-    '<div class="cpc-card-body">'+esc(c.content||'')+'</div></div>';
+    '<div class="cpc-card-body">'+(typeof linkifyCommunityMentionsPlain==='function'?linkifyCommunityMentionsPlain(c.content||''):esc(c.content||''))+'</div></div>';
 }
 async function cpcLoad(){
   var el=document.getElementById('cpcChaos');

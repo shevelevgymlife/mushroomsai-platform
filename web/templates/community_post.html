@@ -39,7 +39,7 @@
   <div class="cp-card">
     <div class="cp-head">
       <div style="min-width:0;flex:1">
-        <div style="font-size:14px;font-weight:700;color:#e8e8e8;display:flex;align-items:center;gap:8px;flex-wrap:wrap">{{ author.name if author else 'Участник' }}{% if post.from_telegram %}<span style="display:inline-flex;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800;background:rgba(56,189,248,.18);color:#38bdf8;border:1px solid rgba(56,189,248,.5)" title="Импорт из Telegram-канала">✓ TG</span>{% endif %}</div>
+        <div style="font-size:14px;font-weight:700;color:#e8e8e8;display:flex;align-items:center;gap:8px;flex-wrap:wrap">{{ author.name if author else 'Участник' }}{% if author and author.id %}<span class="cp-user-id-pill" style="font-size:10px;padding:2px 8px;cursor:default" title="Упоминание в комментарии: @{{ author.id }}"><span class="cp-user-id-pill__k">id</span>@{{ author.id }}</span>{% endif %}{% if post.from_telegram %}<span style="display:inline-flex;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800;background:rgba(56,189,248,.18);color:#38bdf8;border:1px solid rgba(56,189,248,.5);" title="Импорт из Telegram-канала">✓ TG</span>{% endif %}</div>
         <div style="font-size:11px;color:#8a8fa0">{{ post.created_at.strftime('%d.%m.%Y %H:%M') if post.created_at else '' }}</div>
       </div>
     </div>
@@ -48,9 +48,9 @@
       <button class="cp-act-btn" type="button" onclick="toggleReadText()">Почитать текст</button>
       <button class="cp-act-btn" type="button" onclick="openPhotoPage()" {% if not post.image_url %}style="display:none"{% endif %}>Фото</button>
     </div>
-    {% if post.title %}<div style="padding:12px 12px 0;font-size:18px;font-weight:700;color:#f3f4f6">{{ post.title }}</div>{% endif %}
+    {% if post.title %}<div style="padding:12px 12px 0;font-size:18px;font-weight:700;color:#f3f4f6">{{ post.title | linkify_mentions | safe }}</div>{% endif %}
     <div id="textWrap" style="display:none;margin:12px;border:1px solid rgba(255,255,255,.12);border-radius:12px;background:rgba(8,10,16,.55);padding:10px;max-height:34vh;overflow:auto">
-      <div style="font-size:14px;color:#c4c8d3;line-height:1.55;white-space:pre-wrap;word-break:break-word">{{ post.content or 'Без текста' }}</div>
+      <div style="font-size:14px;color:#c4c8d3;line-height:1.55;white-space:pre-wrap;word-break:break-word">{{ (post.content or 'Без текста') | linkify_mentions | safe }}</div>
     </div>
     <div class="cp-metrics">
       <button type="button" class="cp-metric" id="likeBtn" onclick="toggleLike()" style="border-color:rgba(255,216,79,.45);color:#ffe57f"> <span id="likeIcon">{{ '⭐' if is_liked else '✩' }}</span> <span id="likeCnt">{{ post.likes_count or 0 }}</span> </button>
@@ -71,7 +71,7 @@
     <div id="commentsList" style="padding:0 12px 12px;display:flex;flex-direction:column;gap:8px;max-height:36vh;overflow:auto"></div>
     <p id="commentReplyBar" style="display:none;margin:0 12px 8px;font-size:12px;color:#8be9ff"><span id="commentReplyLabel">↩ Ответ</span> <button type="button" onclick="clearReplyTo()" style="margin-left:8px;background:none;border:none;color:#94a3b8;cursor:pointer;text-decoration:underline">отмена</button></p>
     <div class="cp-input">
-      <input id="commentInp" class="sinp" placeholder="Написать комментарий...">
+      <input id="commentInp" class="sinp" placeholder="Комментарий… Упоминание: @ID (см. профиль)">
       <button class="btn-g" type="button" onclick="sendComment()">Отправить</button>
     </div>
   </div>
@@ -165,7 +165,8 @@ function setReplyToComment(cid, name){
 function cHtml(c){
   var nm=String(c.author_name||'Участник');
   var nameArg=JSON.stringify(nm);
-  return '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:8px 10px"><div style="font-size:11px;color:#8a8fa0;display:flex;justify-content:space-between;align-items:center;gap:8px"><span><strong style="color:#d8deec">'+nm.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</strong> · '+(c.created_at||'')+'</span><button type="button" onclick="setReplyToComment('+c.id+','+nameArg+')" style="background:rgba(61,212,224,.15);border:1px solid rgba(61,212,224,.35);color:#9df0ff;border-radius:8px;padding:2px 8px;font-size:11px;cursor:pointer">↩</button></div><div style="font-size:13px;color:#e6e8ef;white-space:pre-wrap;word-break:break-word">'+(c.content||'')+'</div></div>';
+  var body=(typeof linkifyCommunityMentionsPlain==='function')?linkifyCommunityMentionsPlain(c.content||''):(String(c.content||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'));
+  return '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:8px 10px"><div style="font-size:11px;color:#8a8fa0;display:flex;justify-content:space-between;align-items:center;gap:8px"><span><strong style="color:#d8deec">'+nm.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</strong> · '+(c.created_at||'')+'</span><button type="button" onclick="setReplyToComment('+c.id+','+nameArg+')" style="background:rgba(61,212,224,.15);border:1px solid rgba(61,212,224,.35);color:#9df0ff;border-radius:8px;padding:2px 8px;font-size:11px;cursor:pointer">↩</button></div><div style="font-size:13px;color:#e6e8ef;white-space:pre-wrap;word-break:break-word">'+body+'</div></div>';
 }
 async function loadComments(){ try{ const r=await fetch('/community/comments/'+POST_ID,{credentials:'same-origin'}); const d=await r.json(); const arr=d.comments||[]; document.getElementById('commentsList').innerHTML=arr.length?arr.map(cHtml).join(''):'<div style="font-size:12px;color:#8a8fa0">Комментариев пока нет</div>'; }catch(e){} }
 async function sendComment(){

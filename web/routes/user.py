@@ -3094,6 +3094,7 @@ async def community_group_message_post(request: Request, group_id: int):
             mem_rows = await database.fetch_all(
                 community_group_members.select().where(community_group_members.c.group_id == group_id)
             )
+            member_ids = {int(m["user_id"]) for m in mem_rows}
             for mem in mem_rows:
                 rid = int(mem["user_id"])
                 if rid == uid:
@@ -3131,6 +3132,32 @@ async def community_group_message_post(request: Request, group_id: int):
                         tg_body,
                         "/dashboard/user",
                     )
+            mentioned_sent: set[int] = set()
+            for mid in extract_mentioned_numeric_ids(text or ""):
+                if mid == uid or mid in mentioned_sent:
+                    continue
+                if mid not in member_ids:
+                    continue
+                if not await user_exists(mid):
+                    continue
+                mentioned_sent.add(mid)
+                await create_notification(
+                    recipient_id=mid,
+                    actor_id=uid,
+                    ntype="mention",
+                    title="Вас упомянули в группе",
+                    body=f"{sname} в «{gname}»: {(snippet or 'сообщение')[:350]}",
+                    link_url="/dashboard/user",
+                    source_kind="mention_group_message",
+                    source_id=new_msg_id,
+                )
+                await send_event_telegram_html(
+                    mid,
+                    "mention",
+                    "Упоминание в группе",
+                    f"{sname}: {(snippet or 'сообщение')[:320]}",
+                    "/dashboard/user",
+                )
         except Exception:
             pass
     return JSONResponse({"ok": True})
