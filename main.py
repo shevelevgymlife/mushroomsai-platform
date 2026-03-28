@@ -363,6 +363,22 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("DB migration v14 skipped: %s", e)
 
+    # site_settings table
+    try:
+        await database.execute("""
+            CREATE TABLE IF NOT EXISTS site_settings (
+                key VARCHAR(100) PRIMARY KEY,
+                value TEXT,
+                updated_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+        await database.execute(
+            "INSERT INTO site_settings (key, value) VALUES ('radio_enabled', 'true') ON CONFLICT DO NOTHING"
+        )
+        logger.info("DB migration: site_settings OK")
+    except Exception as e:
+        logger.warning("DB migration site_settings skipped: %s", e)
+
     try:
         await database.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS screen_rim_json TEXT")
         logger.info("DB migration: screen_rim_json OK")
@@ -536,6 +552,27 @@ app.add_middleware(CommunitySubscriptionGateMiddleware)
 app.add_middleware(ProbeBlockMiddleware)
 app.add_middleware(LegalAcceptanceGateMiddleware)
 app.add_middleware(StartupGateMiddleware)
+
+# Global settings cache (refreshed every 30s)
+import time as _time
+_gsettings_cache: dict = {"radio_enabled": True, "ts": 0.0}
+
+class GlobalSettingsMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        now = _time.time()
+        if now - _gsettings_cache["ts"] > 30:
+            try:
+                row = await database.fetch_one(
+                    "SELECT value FROM site_settings WHERE key='radio_enabled'"
+                )
+                _gsettings_cache["radio_enabled"] = (not row or row["value"] == "true")
+            except Exception:
+                _gsettings_cache["radio_enabled"] = True
+            _gsettings_cache["ts"] = now
+        request.state.global_radio_enabled = _gsettings_cache["radio_enabled"]
+        return await call_next(request)
+
+app.add_middleware(GlobalSettingsMiddleware)
 
 # Static
 app.mount("/static", StaticFiles(directory="static"), name="static")

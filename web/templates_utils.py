@@ -40,5 +40,6 @@ class Jinja2Templates(_Jinja2Templates):
             context.setdefault("t", {**ru, **loc} if lang != "ru" else dict(ru))
             context.setdefault("lang", lang)
             context.setdefault("shevelev_token", shevelev_token_address())
+            context.setdefault("global_radio_enabled", getattr(request.state, "global_radio_enabled", True))
 
         return super().TemplateResponse(*args, **kwargs)

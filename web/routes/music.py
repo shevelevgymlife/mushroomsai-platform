@@ -137,6 +137,28 @@ async def admin_reorder_tracks(request: Request):
     return JSONResponse({"ok": True})
 
 
+@router.patch("/admin/music/global-toggle")
+async def admin_global_toggle(request: Request):
+    admin, _ = await _require_admin(request)
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    body = await request.json()
+    enabled = bool(body.get("enabled", True))
+    val = "true" if enabled else "false"
+    await database.execute(
+        sa.text("""
+            INSERT INTO site_settings (key, value, updated_at)
+            VALUES ('radio_enabled', :v, NOW())
+            ON CONFLICT (key) DO UPDATE SET value=:v, updated_at=NOW()
+        """),
+        {"v": val},
+    )
+    # Bust cache
+    import main as _main
+    _main._gsettings_cache["ts"] = 0.0
+    return JSONResponse({"ok": True, "enabled": enabled})
+
+
 # ── Public API ────────────────────────────────────────────────────────────────
 
 @router.get("/api/music/tracks")

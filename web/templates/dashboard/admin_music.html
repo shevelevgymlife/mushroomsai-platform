@@ -8,6 +8,22 @@
   <h1 class="text-2xl font-semibold text-text mb-2">🎵 Радио-плеер</h1>
   <p class="text-muted text-sm mb-6">Управление треками для персонального радио пользователей</p>
 
+  <!-- Global toggle -->
+  <div style="background:#111;border:1px solid #222;border-radius:16px;padding:18px 20px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;gap:16px">
+    <div>
+      <div style="font-weight:600;color:#ddd;margin-bottom:4px">🌐 Радио включено для всех пользователей</div>
+      <div style="font-size:12px;color:#666">Если выключено — значок радио не показывается никому</div>
+    </div>
+    <label style="position:relative;display:inline-block;width:48px;height:26px;flex-shrink:0">
+      <input type="checkbox" id="globalRadioToggle" onchange="setGlobalRadio(this.checked)"
+        {% if global_radio_enabled %}checked{% endif %}
+        style="opacity:0;width:0;height:0">
+      <span id="globalRadioSlider" style="position:absolute;cursor:pointer;inset:0;border-radius:26px;background:{% if global_radio_enabled %}#C9A84C{% else %}#333{% endif %};transition:.3s">
+        <span style="position:absolute;content:'';height:20px;width:20px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;transform:{% if global_radio_enabled %}translateX(22px){% else %}translateX(0){% endif %}"></span>
+      </span>
+    </label>
+  </div>
+
   <!-- Инструкция -->
   <div style="border:1px solid rgba(201,168,76,.35);background:rgba(201,168,76,.06);border-radius:16px;padding:20px;margin-bottom:24px">
     <div style="font-weight:700;color:#C9A84C;margin-bottom:10px">📋 Как добавить музыку</div>
@@ -197,6 +213,20 @@ async function inlineRename(el, id) {
   };
   input.addEventListener('blur', save);
   input.addEventListener('keydown', e => { if(e.key==='Enter') input.blur(); if(e.key==='Escape'){input.value=oldTitle;input.blur();} });
+}
+
+async function setGlobalRadio(enabled) {
+  const slider = document.getElementById('globalRadioSlider');
+  const knob = slider.querySelector('span');
+  slider.style.background = enabled ? '#C9A84C' : '#333';
+  knob.style.transform = enabled ? 'translateX(22px)' : 'translateX(0)';
+  try {
+    await fetch('/admin/music/global-toggle', {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({enabled})
+    });
+  } catch(e) { console.error(e); }
 }
 </script>
 {% endblock %}

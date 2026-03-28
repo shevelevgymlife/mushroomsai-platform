@@ -1856,6 +1856,25 @@ body.dash-ig-app .ig-lamp-topbar{
             <button class="btn-g" style="width:100%" onclick="saveProfile()">Сохранить</button>
             <div id="profOk" style="display:none;text-align:center;margin-top:8px;font-size:13px;color:#4ade80">✓ Сохранено</div>
           </div>
+          <!-- 🔔 Звук и уведомления -->
+          <div class="card">
+            <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:14px">🔔 Звук и уведомления</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
+              <div>
+                <div style="font-size:14px;color:#ddd">Радио-плеер</div>
+                <div style="font-size:12px;color:#666;margin-top:2px">Плавающий кружок с музыкой на всех страницах</div>
+              </div>
+              <label style="position:relative;display:inline-block;width:48px;height:26px;flex-shrink:0">
+                <input type="checkbox" id="radioPlayerToggle" onchange="toggleRadioSetting(this.checked)"
+                  {% if user.music_player_enabled %}checked{% endif %}
+                  style="opacity:0;width:0;height:0">
+                <span id="radioPlayerSlider" style="position:absolute;cursor:pointer;inset:0;border-radius:26px;background:{% if user.music_player_enabled %}#C9A84C{% else %}#333{% endif %};transition:.3s">
+                  <span style="position:absolute;height:20px;width:20px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;transform:{% if user.music_player_enabled %}translateX(22px){% else %}translateX(0){% endif %}"></span>
+                </span>
+              </label>
+            </div>
+          </div>
+
           <div class="card" id="wallet-bind-card">
             <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:14px">Кошелёк Decimal / MetaMask</div>
             <div id="wltSt" style="font-size:12px;color:#666;margin-bottom:10px">
@@ -2348,6 +2367,21 @@ function goToGroupsChatsFromBurger(){
   }catch(e){
     goSec('groups');
   }
+}
+async function toggleRadioSetting(enabled) {
+  const slider = document.getElementById('radioPlayerSlider');
+  const knob = slider.querySelector('span');
+  slider.style.background = enabled ? '#C9A84C' : '#333';
+  knob.style.transform = enabled ? 'translateX(22px)' : 'translateX(0)';
+  try {
+    await fetch('/api/music/player-settings', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({enabled})
+    });
+    // Reload to show/hide player
+    setTimeout(() => location.reload(), 300);
+  } catch(e) { console.error(e); }
 }
 async function toggleRadio(){
   var btn = document.getElementById('radioToggleBtn');
