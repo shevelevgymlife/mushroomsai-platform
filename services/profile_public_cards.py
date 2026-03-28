@@ -6,6 +6,9 @@ from typing import Any
 
 SOCIAL_KEYS = ("telegram", "youtube", "instagram", "vk", "tiktok", "website")
 
+# Порядок свайп-слайдов в карусели профиля (ключи)
+SLIDE_KEYS: tuple[str, ...] = ("about", "crypto", "social")
+
 DEFAULT_VALIDATOR_IMAGES = (
     "/static/img/validators/nf-val-1.svg",
     "/static/img/validators/nf-val-2.svg",
@@ -16,12 +19,38 @@ def default_profile_public_cards() -> dict[str, Any]:
     return {
         "show_crypto_slide": True,
         "show_social_slide": True,
+        "slide_order": list(SLIDE_KEYS),
         "social": {k: "" for k in SOCIAL_KEYS},
         "validators": [
             {"image": DEFAULT_VALIDATOR_IMAGES[0], "label": "Валидатор 1", "url": ""},
             {"image": DEFAULT_VALIDATOR_IMAGES[1], "label": "Валидатор 2", "url": ""},
         ],
     }
+
+
+def normalize_slide_order(raw: Any) -> list[str]:
+    """Строгий порядок: каждый из about/crypto/social ровно один раз."""
+    default = list(SLIDE_KEYS)
+    if raw is None:
+        return default
+    if isinstance(raw, str):
+        parts = [p.strip().lower() for p in raw.replace(" ", "").split(",") if p.strip()]
+    elif isinstance(raw, list):
+        parts = [str(p).strip().lower() for p in raw if str(p).strip()]
+    else:
+        return default
+    allowed = set(SLIDE_KEYS)
+    seen: set[str] = set()
+    out: list[str] = []
+    for p in parts:
+        if p in allowed and p not in seen:
+            out.append(p)
+            seen.add(p)
+    for k in SLIDE_KEYS:
+        if k not in seen:
+            out.append(k)
+            seen.add(k)
+    return out
 
 
 def merge_profile_public_cards(raw: str | None) -> dict[str, Any]:
@@ -38,6 +67,8 @@ def merge_profile_public_cards(raw: str | None) -> dict[str, Any]:
         base["show_crypto_slide"] = bool(data["show_crypto_slide"])
     if "show_social_slide" in data:
         base["show_social_slide"] = bool(data["show_social_slide"])
+    if "slide_order" in data:
+        base["slide_order"] = normalize_slide_order(data.get("slide_order"))
     soc = data.get("social")
     if isinstance(soc, dict):
         for k in SOCIAL_KEYS:
@@ -73,6 +104,7 @@ def dumps_profile_public_cards(data: dict[str, Any]) -> str:
     clean = default_profile_public_cards()
     clean["show_crypto_slide"] = bool(data.get("show_crypto_slide"))
     clean["show_social_slide"] = bool(data.get("show_social_slide"))
+    clean["slide_order"] = normalize_slide_order(data.get("slide_order"))
     for k in SOCIAL_KEYS:
         clean["social"][k] = (str(data.get("social", {}).get(k, "") or "").strip()[:2000]) or ""
     vals = data.get("validators") or []
@@ -101,10 +133,12 @@ def profile_public_cards_from_form(
     v1_img: str,
     v1_label: str,
     v1_url: str,
+    slide_order_csv: str = "",
 ) -> str:
     d = default_profile_public_cards()
     d["show_crypto_slide"] = show_crypto
     d["show_social_slide"] = show_social
+    d["slide_order"] = normalize_slide_order((slide_order_csv or "").strip() or None)
     for k in SOCIAL_KEYS:
         raw = (social_raw.get(k, "") or "").strip()
         d["social"][k] = normalize_social_url(k, raw) if raw else ""

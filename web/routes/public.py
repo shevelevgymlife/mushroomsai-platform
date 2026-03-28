@@ -53,7 +53,7 @@ from services.ops_alerts import (
 )
 from datetime import datetime
 from web.profile_ui_themes import PROFILE_UI_THEME_IDS
-from services.profile_public_cards import merge_profile_public_cards
+from services.profile_public_cards import merge_profile_public_cards, normalize_slide_order
 
 
 def _is_free_restricted_user(user: dict | None) -> bool:
@@ -1506,6 +1506,16 @@ async def community_profile(request: Request, user_id: int):
     any_social_link = any((profile_cards.get("social") or {}).values())
     hero_slide_crypto = bool(profile_cards.get("show_crypto_slide"))
     hero_slide_social = bool(profile_cards.get("show_social_slide")) and (any_social_link or is_own)
+    hero_slides: list[str] = []
+    for k in normalize_slide_order(profile_cards.get("slide_order")):
+        if k == "about":
+            hero_slides.append("about")
+        elif k == "crypto" and hero_slide_crypto:
+            hero_slides.append("crypto")
+        elif k == "social" and hero_slide_social:
+            hero_slides.append("social")
+    if not hero_slides:
+        hero_slides = ["about"]
 
     return templates.TemplateResponse(
         "community_profile.html",
@@ -1534,6 +1544,7 @@ async def community_profile(request: Request, user_id: int):
             "profile_cards": profile_cards,
             "hero_slide_crypto": hero_slide_crypto,
             "hero_slide_social": hero_slide_social,
+            "hero_slides": hero_slides,
             "profile_has_social_links": any_social_link,
         },
     )

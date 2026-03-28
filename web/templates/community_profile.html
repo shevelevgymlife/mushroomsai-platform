@@ -314,6 +314,8 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
           <button type="button" class="nf-vp-carousel__arrow nf-vp-carousel__arrow--next" aria-label="Вперёд">›</button>
           <div class="nf-vp-carousel__viewport">
             <div class="nf-vp-carousel__track">
+              {% for slide in hero_slides %}
+              {% if slide == 'about' %}
               <div class="cp-hero-bar nf-vp-carousel__slide">
           <div class="cp-hero-left">
             <div class="cp-hero-stack">
@@ -357,7 +359,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
             </div>
           </div>
               </div>
-              {% if hero_slide_crypto %}
+              {% elif slide == 'crypto' %}
               <div class="cp-hero-slide cp-hero-slide--crypto nf-vp-carousel__slide">
                 <div class="cp-hero-slide-inner cp-hero-slide-inner--crypto">
                   <div class="cp-crypto-rows">
@@ -377,8 +379,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
                   </div>
                 </div>
               </div>
-              {% endif %}
-              {% if hero_slide_social %}
+              {% elif slide == 'social' %}
               <div class="cp-hero-slide cp-hero-slide--social nf-vp-carousel__slide">
                 <div class="cp-hero-slide-inner cp-social-slide-inner">
                   <div class="cp-hero-slide-title">Соцсети</div>
@@ -397,6 +398,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
                 </div>
               </div>
               {% endif %}
+              {% endfor %}
             </div>
           </div>
           <div class="nf-vp-carousel__dots"></div>

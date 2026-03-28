@@ -488,6 +488,7 @@ async def account_profile_edit_save(
     form = await request.form()
     show_crypto = str(form.get("show_crypto_slide") or "0").strip() == "1"
     show_social = str(form.get("show_social_slide") or "0").strip() == "1"
+    slide_order_csv = str(form.get("profile_slide_order") or "")
     social_raw = {k: str(form.get(f"social_{k}") or "") for k in SOCIAL_KEYS}
     v0_img = str(form.get("validator0_image") or "")
     v0_label = str(form.get("validator0_label") or "")
@@ -496,8 +497,16 @@ async def account_profile_edit_save(
     v1_label = str(form.get("validator1_label") or "")
     v1_url = str(form.get("validator1_url") or "")
     cards_json = profile_public_cards_from_form(
-        show_crypto, show_social, social_raw,
-        v0_img, v0_label, v0_url, v1_img, v1_label, v1_url,
+        show_crypto,
+        show_social,
+        social_raw,
+        v0_img,
+        v0_label,
+        v0_url,
+        v1_img,
+        v1_label,
+        v1_url,
+        slide_order_csv=slide_order_csv,
     )
     nm = (name or "").strip()[:255] or None
     bio_clean = (bio or "").strip()[:4000] or None

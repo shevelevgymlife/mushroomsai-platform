@@ -55,7 +55,23 @@
 
     <div style="padding:14px;border-radius:14px;border:1px solid rgba(255,214,0,.22);background:rgba(255,214,0,.06)">
       <div style="font-size:13px;font-weight:800;color:#fde68a;margin-bottom:4px">Свайп-блоки на странице профиля</div>
-      <p style="font-size:11px;color:#a8a29e;margin:0 0 12px;line-height:1.45">Три большие карточки в одном ряду (как стюрты сверху): «Обо мне», криптоблок с токенами из кошелька, соцсети. Отключённые блоки не показываются гостям.</p>
+      <p style="font-size:11px;color:#a8a29e;margin:0 0 12px;line-height:1.45">Три большие карточки в карусели сверху: «Обо мне», криптоблок с токенами из кошелька, соцсети. Отключённые блоки не показываются гостям.</p>
+      <input type="hidden" name="profile_slide_order" id="profileSlideOrderInp" value="{{ profile_cards.slide_order|join(',') }}">
+      <div style="margin-bottom:14px">
+        <div style="font-size:12px;font-weight:700;color:#fde68a;margin-bottom:6px">Порядок слайдов (свайп)</div>
+        <p style="font-size:11px;color:#a8a29e;margin:0 0 10px;line-height:1.45">Какой блок открывается первым, вторым, третьим. Снятые галочками блоки в карусели пропускаются.</p>
+        <div id="profileSlideOrderRows" style="display:flex;flex-direction:column;gap:8px">
+          {% for key in profile_cards.slide_order %}
+          <div class="pe-slide-row" data-slide-key="{{ key }}" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:10px;background:rgba(0,0,0,.32);border:1px solid rgba(255,255,255,.12)">
+            <span class="pe-slide-label" style="font-size:13px;color:#f5f5f4;font-weight:600">{% if key == 'about' %}Обо мне{% elif key == 'crypto' %}Токены и валидаторы{% else %}Соцсети{% endif %}</span>
+            <span style="display:flex;gap:6px;flex-shrink:0">
+              <button type="button" class="pe-sbtn" data-dir="up" style="min-width:40px;padding:6px 10px;border-radius:8px;border:1px solid rgba(201,168,76,.5);background:rgba(201,168,76,.12);color:#fde68a;font-size:14px;line-height:1;cursor:pointer" title="Выше">↑</button>
+              <button type="button" class="pe-sbtn" data-dir="down" style="min-width:40px;padding:6px 10px;border-radius:8px;border:1px solid rgba(201,168,76,.5);background:rgba(201,168,76,.12);color:#fde68a;font-size:14px;line-height:1;cursor:pointer" title="Ниже">↓</button>
+            </span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
       <input type="hidden" name="show_crypto_slide" value="0">
       <label style="display:flex;align-items:center;gap:10px;font-size:13px;color:#e8e8e8;margin-bottom:10px;cursor:pointer">
         <input type="checkbox" name="show_crypto_slide" value="1" {% if profile_cards.show_crypto_slide %}checked{% endif %} style="width:18px;height:18px">
@@ -231,7 +247,29 @@ function _thoughtsPick(ev){
   _thoughtsState.s=rect.width?x/rect.width:0; _thoughtsState.v=rect.height?1-(y/rect.height):0;
   _thoughtsApply();
 }
+function profileSlideOrderSyncInp(){
+  var rows=document.querySelectorAll('#profileSlideOrderRows .pe-slide-row');
+  var keys=[];
+  for(var i=0;i<rows.length;i++){ keys.push(rows[i].getAttribute('data-slide-key')||''); }
+  var inp=document.getElementById('profileSlideOrderInp');
+  if(inp) inp.value=keys.filter(Boolean).join(',');
+}
 document.addEventListener('DOMContentLoaded', function(){
+  var sob=document.getElementById('profileSlideOrderRows');
+  if(sob){
+    sob.addEventListener('click', function(e){
+      var btn=e.target.closest('.pe-sbtn');
+      if(!btn||!sob.contains(btn)) return;
+      var row=btn.closest('.pe-slide-row');
+      if(!row) return;
+      var dir=btn.getAttribute('data-dir');
+      var prev=row.previousElementSibling;
+      var next=row.nextElementSibling;
+      if(dir==='up'&&prev){ sob.insertBefore(row, prev); profileSlideOrderSyncInp(); }
+      if(dir==='down'&&next){ sob.insertBefore(row, next.nextElementSibling); profileSlideOrderSyncInp(); }
+    });
+    profileSlideOrderSyncInp();
+  }
   const inp=document.getElementById('thoughtsColorInput'), hue=document.getElementById('thoughtsHue');
   const sv=document.getElementById('thoughtsSvPad'), txt=document.getElementById('thoughtsText'), font=document.getElementById('thoughtsFont');
   const rgb=_thoughtsHexToRgb(inp&&inp.value);
