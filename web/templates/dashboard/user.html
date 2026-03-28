@@ -2379,7 +2379,9 @@ async function toggleRadioSetting(enabled) {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({enabled})
     });
-    // Reload to show/hide player
+    if(!enabled && window.radioPlayPause && window._radioGetState && !window._radioGetState().paused){
+      window.radioPlayPause(); // stop audio
+    }
     setTimeout(() => location.reload(), 300);
   } catch(e) { console.error(e); }
 }

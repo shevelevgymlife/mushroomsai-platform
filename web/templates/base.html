@@ -221,7 +221,9 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
   {% block site_navbar %}{% endblock %}
 
   <main>
+    <div id="pageContent">
     {% block content %}{% endblock %}
+    </div>
   </main>
 
   {% if user and request.query_params.get('trial_started') %}
@@ -388,253 +390,167 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
 <script src="/static/js/social-vision-carousel.js?v=1" defer></script>
 {% endif %}
 {% if user and user.music_player_enabled and global_radio_enabled %}
-<!-- ══════════ RADIO PLAYER ══════════ -->
-<div id="radioCircle" style="position:fixed;z-index:9999;width:52px;height:52px;border-radius:50%;background:#111;border:2px solid #C9A84C;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 0 15px rgba(201,168,76,.3);touch-action:none;user-select:none;transition:box-shadow .3s"
-  onclick="radioCircleClick(event)" title="Радио">
-  <span id="radioCircleIcon" style="font-size:20px">🎵</span>
-</div>
-
-<style>
-@keyframes radioPulse{0%,100%{box-shadow:0 0 15px rgba(201,168,76,.3)}50%{box-shadow:0 0 28px rgba(201,168,76,.6)}}
-#radioCircle.playing{animation:radioPulse 2s ease-in-out infinite}
-</style>
-
+<!-- ══════════ RADIO PLAYER (background audio only) ══════════ -->
 <script>
 (function(){
 var _audio = new Audio();
 var _tracks = [];
 var _idx = 0;
-var _dragging = false;
-var _circlePos = '{{ user.music_player_position or "bottom-right" }}';
 var _vol = parseFloat('{{ user.music_player_volume or 0.5 }}') || 0.5;
 
-// Fisher-Yates shuffle
 function _shuffle(arr){
-  var a = arr.slice();
-  for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var tmp=a[i];a[i]=a[j];a[j]=tmp;}
+  var a=arr.slice();
+  for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}
   return a;
 }
 
-window.radioPlayPause = function(){
-  if(_audio.paused){ _audio.play().catch(()=>{}); } else { _audio.pause(); }
-  _updateCircle();
-};
-window.radioNext = function(){
-  _idx = (_idx+1) % _tracks.length;
-  _loadTrack(_idx, true);
-};
-window.radioPrev = function(){
-  _idx = (_idx-1+_tracks.length) % _tracks.length;
-  _loadTrack(_idx, true);
-};
-window.radioCircleClick = function(e){
-  if(_dragging) return;
-  radioPlayPause();
-};
+function _saveState(){
+  if(!_tracks.length) return;
+  try{
+    localStorage.setItem('radioState', JSON.stringify({
+      playing: !_audio.paused,
+      trackUrl: _tracks[_idx] ? _tracks[_idx].gdrive_url : '',
+      trackIndex: _idx,
+      currentTime: _audio.currentTime,
+      savedAt: Date.now(),
+      playlist: _tracks.map(function(t){ return t.gdrive_url; })
+    }));
+  }catch(e){}
+}
 
 function _loadTrack(i, play){
   if(!_tracks.length) return;
-  var t = _tracks[i];
-  _audio.src = t.gdrive_url;
+  _audio.src = _tracks[i].gdrive_url;
   _audio.load();
-  if(play){ _audio.play().catch(()=>{}); }
-  _updateCircle();
+  if(play) _audio.play().catch(()=>{});
+  _updateNoteBtn();
 }
 
-function _updateCircle(){
-  var circ = document.getElementById('radioCircleIcon');
-  var circle = document.getElementById('radioCircle');
-  if(_audio.paused){
-    if(circ) circ.textContent = '🎵';
-    if(circle) circle.classList.remove('playing');
-  } else {
-    if(circ) circ.textContent = '⏸';
-    if(circle) circle.classList.add('playing');
-  }
+function _updateNoteBtn(){
+  // Update the note button on profile page (may not be present on current page)
+  var btn = document.getElementById('radioNoteBtn');
+  if(!btn) return;
+  var playing = !_audio.paused;
+  btn.style.borderColor = playing ? '#C9A84C' : '#444';
+  btn.style.background = playing ? 'rgba(201,168,76,0.2)' : 'rgba(255,255,255,0.05)';
+  btn.style.boxShadow = playing ? '0 0 12px rgba(201,168,76,0.5)' : 'none';
+  var svg = btn.querySelector('svg');
+  if(svg) svg.setAttribute('fill', playing ? '#C9A84C' : '#666');
 }
 
-function _placeCircle(){
-  var circle = document.getElementById('radioCircle');
-  if(!circle) return;
-  var margin = 16;
-  var w = window.innerWidth, h = window.innerHeight;
-  var sz = 52;
-  var pos = _circlePos || 'bottom-right';
-  var x, y;
-  if(pos === 'bottom-right'){ x = w - sz - margin; y = h - sz - margin - 60; }
-  else if(pos === 'bottom-left'){ x = margin; y = h - sz - margin - 60; }
-  else if(pos === 'top-right'){ x = w - sz - margin; y = margin + 70; }
-  else if(pos === 'top-left'){ x = margin; y = margin + 70; }
-  else { x = w - sz - margin; y = h - sz - margin - 60; }
-  circle.style.left = x + 'px';
-  circle.style.top = y + 'px';
-  circle.style.right = 'auto';
-  circle.style.bottom = 'auto';
-}
+// Public API
+window.radioPlayPause = function(){
+  if(_audio.paused){ _audio.play().catch(()=>{}); } else { _audio.pause(); }
+  _updateNoteBtn();
+};
+window.radioNext = function(){ _idx=(_idx+1)%_tracks.length; _loadTrack(_idx,true); };
+window.radioPrev = function(){ _idx=(_idx-1+_tracks.length)%_tracks.length; _loadTrack(_idx,true); };
+window._radioGetState = function(){ return {paused: _audio.paused}; };
 
-function _snapCircle(cx, cy){
-  var margin = 16;
-  var w = window.innerWidth, h = window.innerHeight;
-  var cx2 = cx + 26, cy2 = cy + 26;
-  var toRight = cx2 > w/2;
-  var toBottom = cy2 > h/2;
-  var pos;
-  if(toRight && toBottom) pos='bottom-right';
-  else if(!toRight && toBottom) pos='bottom-left';
-  else if(toRight && !toBottom) pos='top-right';
-  else pos='top-left';
-  _circlePos = pos;
-  _placeCircle();
-  fetch('/api/music/player-settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({position:pos})}).catch(()=>{});
-}
-
-// Drag
-function _initDrag(){
-  var circle = document.getElementById('radioCircle');
-  if(!circle) return;
-  var ox=0, oy=0, startX=0, startY=0;
-
-  function onMove(e){
-    var touch = e.touches ? e.touches[0] : e;
-    var dx = touch.clientX - startX;
-    var dy = touch.clientY - startY;
-    if(Math.abs(dx)>5 || Math.abs(dy)>5) _dragging = true;
-    if(!_dragging) return;
-    var newX = ox + dx;
-    var newY = oy + dy;
-    newX = Math.max(0, Math.min(window.innerWidth-52, newX));
-    newY = Math.max(0, Math.min(window.innerHeight-52, newY));
-    circle.style.left = newX+'px';
-    circle.style.top = newY+'px';
-  }
-  function onUp(e){
-    document.removeEventListener('mousemove', onMove);
-    document.removeEventListener('mouseup', onUp);
-    document.removeEventListener('touchmove', onMove);
-    document.removeEventListener('touchend', onUp);
-    if(_dragging){
-      var r = circle.getBoundingClientRect();
-      _snapCircle(r.left, r.top);
-      setTimeout(function(){ _dragging = false; }, 100);
-    }
-  }
-  function onDown(e){
-    _dragging = false;
-    var touch = e.touches ? e.touches[0] : e;
-    startX = touch.clientX; startY = touch.clientY;
-    var r = circle.getBoundingClientRect();
-    ox = r.left; oy = r.top;
-    circle.style.transition = 'none';
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-    document.addEventListener('touchmove', onMove, {passive:false});
-    document.addEventListener('touchend', onUp);
-  }
-  circle.addEventListener('mousedown', onDown);
-  circle.addEventListener('touchstart', onDown, {passive:true});
-}
-
-// Auto-next
-_audio.addEventListener('ended', function(){ window.radioNext(); });
-_audio.addEventListener('play', _updateCircle);
-_audio.addEventListener('pause', _updateCircle);
+_audio.addEventListener('ended', window.radioNext);
+_audio.addEventListener('play', _updateNoteBtn);
+_audio.addEventListener('pause', _updateNoteBtn);
 
 // Restore volume
-try{ var sv = localStorage.getItem('radioVol'); if(sv) _vol = parseFloat(sv); }catch(e){}
+try{ var sv=localStorage.getItem('radioVol'); if(sv) _vol=parseFloat(sv); }catch(e){}
 _audio.volume = _vol;
 
-// Save state every 2 seconds
-setInterval(function(){
-  if(!_tracks.length) return;
-  try{
-    localStorage.setItem('radioState', JSON.stringify({
-      playing: !_audio.paused,
-      trackUrl: _tracks[_idx] ? _tracks[_idx].gdrive_url : '',
-      trackIndex: _idx,
-      currentTime: _audio.currentTime,
-      savedAt: Date.now(),
-      playlist: _tracks.map(function(t){ return t.gdrive_url; })
-    }));
-  }catch(e){}
-}, 2000);
+// Save state every 2s
+setInterval(_saveState, 2000);
+window.addEventListener('beforeunload', _saveState);
 
-// Save on page unload
-window.addEventListener('beforeunload', function(){
-  if(!_tracks.length) return;
-  try{
-    localStorage.setItem('radioState', JSON.stringify({
-      playing: !_audio.paused,
-      trackUrl: _tracks[_idx] ? _tracks[_idx].gdrive_url : '',
-      trackIndex: _idx,
-      currentTime: _audio.currentTime,
-      savedAt: Date.now(),
-      playlist: _tracks.map(function(t){ return t.gdrive_url; })
-    }));
-  }catch(e){}
-});
-
-// Load tracks and start
+// Load tracks
 fetch('/api/music/tracks').then(function(r){ return r.json(); }).then(function(data){
   if(!data.length) return;
-
   try{
     var state = JSON.parse(localStorage.getItem('radioState')||'{}');
     var wasPlaying = !!state.playing;
-
-    // Restore saved playlist order or shuffle fresh
     if(state.playlist && state.playlist.length === data.length){
-      // Reorder data to match saved playlist
-      var urlMap = {};
-      data.forEach(function(t){ urlMap[t.gdrive_url] = t; });
+      var urlMap={};
+      data.forEach(function(t){ urlMap[t.gdrive_url]=t; });
       var restored = state.playlist.map(function(u){ return urlMap[u]; }).filter(Boolean);
-      _tracks = restored.length === data.length ? restored : _shuffle(data);
-    } else {
-      _tracks = _shuffle(data);
-    }
-
-    // Find track index
+      _tracks = restored.length===data.length ? restored : _shuffle(data);
+    } else { _tracks = _shuffle(data); }
     if(state.trackUrl){
-      var found = _tracks.findIndex(function(t){ return t.gdrive_url === state.trackUrl; });
-      _idx = found >= 0 ? found : 0;
-    } else {
-      _idx = parseInt(state.trackIndex||0);
-      if(_idx >= _tracks.length) _idx = 0;
-    }
-
+      var found = _tracks.findIndex(function(t){ return t.gdrive_url===state.trackUrl; });
+      _idx = found>=0 ? found : 0;
+    } else { _idx = Math.min(parseInt(state.trackIndex||0), _tracks.length-1); }
     _loadTrack(_idx, false);
-
-    // Compensate for time elapsed while page was loading
-    var elapsed = state.savedAt ? (Date.now() - state.savedAt) / 1000 : 0;
-    var resumeTime = parseFloat(state.currentTime||0) + (wasPlaying ? elapsed : 0);
-
-    _audio.addEventListener('canplay', function _onCanPlay(){
-      _audio.removeEventListener('canplay', _onCanPlay);
-      if(resumeTime > 0 && resumeTime < _audio.duration) _audio.currentTime = resumeTime;
-      if(wasPlaying){
-        _audio.play().catch(function(){
-          document.addEventListener('click', function _fc(){ _audio.play().catch(()=>{}); document.removeEventListener('click',_fc); }, {once:true});
-        });
-      }
+    var elapsed = state.savedAt ? (Date.now()-state.savedAt)/1000 : 0;
+    var resumeAt = parseFloat(state.currentTime||0) + (wasPlaying ? elapsed : 0);
+    _audio.addEventListener('canplay', function _onCp(){
+      _audio.removeEventListener('canplay', _onCp);
+      if(resumeAt>0 && resumeAt<_audio.duration) _audio.currentTime=resumeAt;
+      if(wasPlaying) _audio.play().catch(function(){
+        document.addEventListener('click', function _fc(){ _audio.play().catch(()=>{}); document.removeEventListener('click',_fc); }, {once:true});
+      });
     }, {once:true});
-
   }catch(e){
-    _tracks = _shuffle(data);
-    _loadTrack(0, false);
+    _tracks=_shuffle(data); _loadTrack(0,false);
     _audio.play().catch(function(){
-      document.addEventListener('click', function _fc(){ _audio.play().catch(()=>{}); document.removeEventListener('click',_fc); }, {once:true});
+      document.addEventListener('click',function _fc(){ _audio.play().catch(()=>{}); document.removeEventListener('click',_fc); },{once:true});
     });
   }
-}).catch(function(){ });
+}).catch(function(){});
 
-document.addEventListener('DOMContentLoaded', function(){
-  _placeCircle();
-  _initDrag();
-});
-window.addEventListener('resize', _placeCircle);
+// Update note button state after SPA navigation loads it
+document.addEventListener('spaPageLoaded', _updateNoteBtn);
 
 })();
 </script>
 {% endif %}
-<!-- ══════════ END RADIO ══════════ -->
+
+<!-- ══════════ SPA NAVIGATION ══════════ -->
+<script>
+(function(){
+  var _SPA_SKIP = /^\/login|^\/auth|^\/logout|^\/telegram|^\/admin\/music\/upload|^\/api\//;
+
+  function _execScripts(container){
+    container.querySelectorAll('script').forEach(function(old){
+      var s = document.createElement('script');
+      Array.from(old.attributes).forEach(function(a){ s.setAttribute(a.name, a.value); });
+      s.textContent = old.textContent;
+      old.parentNode.replaceChild(s, old);
+    });
+  }
+
+  async function _loadPage(url, pushState){
+    try{
+      var resp = await fetch(url, {credentials:'same-origin'});
+      if(!resp.ok || resp.redirected){ window.location.href = resp.url || url; return; }
+      var html = await resp.text();
+      var doc = new DOMParser().parseFromString(html, 'text/html');
+      var newContent = doc.getElementById('pageContent');
+      if(!newContent){ window.location.href = url; return; }
+      var pc = document.getElementById('pageContent');
+      if(!pc){ window.location.href = url; return; }
+      pc.innerHTML = newContent.innerHTML;
+      _execScripts(pc);
+      if(pushState) history.pushState({spa: true, url: url}, doc.title||'', url);
+      document.title = doc.title || document.title;
+      window.scrollTo(0,0);
+      document.dispatchEvent(new CustomEvent('spaPageLoaded', {detail:{url:url}}));
+    } catch(e){ window.location.href = url; }
+  }
+
+  document.addEventListener('click', function(e){
+    var link = e.target.closest('a[href]');
+    if(!link) return;
+    var href = link.getAttribute('href');
+    if(!href || !href.startsWith('/') || href.startsWith('//')) return;
+    if(_SPA_SKIP.test(href)) return;
+    if(link.getAttribute('target') === '_blank') return;
+    if(link.getAttribute('data-no-spa') !== null) return;
+    e.preventDefault();
+    _loadPage(href, true);
+  });
+
+  window.addEventListener('popstate', function(e){
+    if(e.state && e.state.spa) _loadPage(e.state.url, false);
+    else window.location.reload();
+  });
+})();
+</script>
+<!-- ══════════ END RADIO/SPA ══════════ -->
 </body>
 </html>

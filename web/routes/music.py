@@ -153,9 +153,12 @@ async def admin_global_toggle(request: Request):
         """),
         {"v": val},
     )
-    # Bust cache
-    import main as _main
-    _main._gsettings_cache["ts"] = 0.0
+    # Bust middleware cache so next request re-reads from DB
+    try:
+        import main as _m
+        _m._gsettings_cache["ts"] = 0.0
+    except Exception:
+        pass
     return JSONResponse({"ok": True, "enabled": enabled})
 
 
