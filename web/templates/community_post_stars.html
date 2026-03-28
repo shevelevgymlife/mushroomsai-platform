@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Звёзды поста — NEUROFUNGI AI{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="/static/css/nf-community-posts.css?v=2" />
+<style>
+.nf-stars-top{position:sticky;top:calc(4rem - 2px);z-index:40;background:rgba(6,8,14,.92);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.08);padding:10px 12px 12px;margin:0 -12px 8px}
+.nf-stars-top h1{font-size:17px;margin:0 0 10px;color:#e8eaef;font-weight:800}
+.nf-stars-actions{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:8px 10px;margin-bottom:10px;width:100%;box-sizing:border-box}
+.nf-stars-actions__close{justify-self:start}
+.nf-stars-actions__open{justify-self:end}
+.nf-stars-actions button,.nf-stars-actions a.btnx{border-radius:12px;padding:8px 14px;font-weight:700;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#e8eaef;cursor:pointer;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.nf-stars-actions a.btnx:hover,.nf-stars-actions button:hover{border-color:rgba(61,212,224,.45)}
+.nf-stars-like-on{border-color:rgba(255,216,79,.45)!important;color:#ffe57f!important}
+#starsPageLikeBtn{font-size:15px;min-width:4.5em;justify-content:center}
+#starsPageLikeCnt{font-variant-numeric:tabular-nums;font-weight:800}
+.sinp2{width:100%;box-sizing:border-box;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:#e8eaef;border-radius:12px;padding:10px 14px;font-size:15px}
+.nf-stars-search-wrap{position:relative}
+#nf-stars-at-dd{display:none;position:fixed;z-index:2147483000;min-width:240px;max-width:min(94vw,340px);max-height:min(48vh,320px);overflow:auto;border-radius:16px;border:1px solid rgba(61,212,224,.45);background:rgba(10,12,18,.98);box-shadow:0 20px 56px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.06);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);padding:8px;pointer-events:auto}
+.nf-stars-wrap{max-width:min(960px,100%);margin:calc(4rem + 8px) auto 24px;padding:0 12px calc(24px + env(safe-area-inset-bottom,0px))}
+</style>
+<div class="nf-stars-wrap">
+  <div class="nf-stars-top">
+    <div class="nf-stars-actions">
+      <button type="button" class="nf-stars-actions__close" onclick="goBack()">← Закрыть</button>
+      <button type="button" class="btnx{% if is_liked %} nf-stars-like-on{% endif %}" id="starsPageLikeBtn" onclick="starsPageToggleLike()" title="Нажмите — поставить или убрать звезду. Число — сколько человек поставили звезду этому посту.">
+        <span id="starsPageLikeIcon" aria-hidden="true">{{ '⭐' if is_liked else '✩' }}</span>
+        <span id="starsPageLikeCnt">{{ post.likes_count or 0 }}</span>
+      </button>
+      <a class="btnx nf-stars-actions__open" id="openPostLink" href="/community/post/{{ post.id }}">Открыть пост</a>
+    </div>
+    <h1>⭐ Кто поставил звезду</h1>
+    <div class="nf-stars-search-wrap">
+      <input type="search" id="starSearch" class="sinp2" placeholder="Поиск по имени или @id среди звёзд…" autocomplete="off" />
+    </div>
+    <div id="nf-stars-at-dd" role="listbox" aria-label="Кто поставил звезду по @id"></div>
+  </div>
+  <p id="starLoad" style="color:#8a8fa0;font-size:14px">Загрузка…</p>
+  <div id="starCanvas" class="nf-stars-grid" style="display:none"></div>
+</div>
+<script src="/static/js/nf-post-likers-at-search.js?v=1"></script>
+<script>
+const POST_ID={{ post.id }};
+const BACK_URL={{ back_url|tojson }};
+function goBack(){ if(history.length>1){ history.back(); } else { location.href=BACK_URL||'/community'; } }
+function setStarsLikeUi(liked,count){
+  var btn=document.getElementById('starsPageLikeBtn');
+  var ic=document.getElementById('starsPageLikeIcon');
+  var c=document.getElementById('starsPageLikeCnt');
+  if(ic) ic.textContent=liked?'\u2B50':'\u2729';
+  if(c&&typeof count==='number') c.textContent=String(Math.max(0,count));
+  if(btn){
+    if(liked) btn.classList.add('nf-stars-like-on');
+    else btn.classList.remove('nf-stars-like-on');
+  }
+}
+async function starsPageToggleLike(){
+  var b=document.getElementById('starsPageLikeBtn');
+  if(b) b.disabled=true;
+  try{
+    var r=await fetch('/community/like/'+POST_ID,{method:'POST',credentials:'same-origin'});
+    var d=await r.json().catch(function(){return {};});
+    if(r.ok&&typeof d.liked==='boolean'){
+      setStarsLikeUi(d.liked,typeof d.count==='number'?d.count:undefined);
+      reloadLikers();
+    }
+  }catch(e){}
+  if(b) b.disabled=false;
+}
+function reloadLikers(){
+  var ld=document.getElementById('starLoad');
+  var c=document.getElementById('starCanvas');
+  if(ld){ ld.style.display='block'; ld.textContent='Загрузка…'; }
+  if(c) c.style.display='none';
+  fetch('/community/post/'+POST_ID+'/likers-json',{credentials:'same-origin'})
+    .then(function(r){return r.json();})
+    .then(function(d){ render((d&&d.users)||[]); })
+    .catch(function(){ if(ld) ld.textContent='Не удалось загрузить'; });
+}
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+var _likersAtApi=null;
+function render(users){
+  if(_likersAtApi) _likersAtApi.setLikers(users||[]);
+  var c=document.getElementById('starCanvas');
+  var ld=document.getElementById('starLoad');
+  ld.style.display='none';
+  c.innerHTML='';
+  if(!users.length){
+    c.style.display='block';
+    c.innerHTML='<p style="color:#8a8fa0;padding:20px;text-align:center;margin:0">Пока никто не поставил звезду</p>';
+    return;
+  }
+  c.style.display='grid';
+  users.forEach(function(u,i){
+    var a=document.createElement('a');
+    a.className='nf-stars-card';
+    a.href='/community/profile/'+u.id;
+    a.setAttribute('data-name',(u.name||'').toLowerCase());
+    a.setAttribute('data-id',String(u.id));
+    var av=u.avatar
+      ? '<img src="'+esc(u.avatar)+'" alt="">'
+      : '<div class="ph">🍄</div>';
+    a.innerHTML=av+'<div class="nm">'+esc(u.name||'Участник')+'</div><div class="idp">⭐ @'+u.id+'</div>';
+    c.appendChild(a);
+  });
+}
+(function(){
+  var op=document.getElementById('openPostLink');
+  if(op) op.addEventListener('click',function(e){ e.preventDefault(); location.href='/community/post/'+POST_ID+'?back='+encodeURIComponent(BACK_URL||'/community'); });
+})();
+_likersAtApi=typeof NFPostLikersAtSearch!=='undefined'&&NFPostLikersAtSearch.attach({
+  postId:POST_ID,
+  input:document.getElementById('starSearch'),
+  dropdown:document.getElementById('nf-stars-at-dd'),
+  cardsSelector:'#starCanvas .nf-stars-card'
+});
+reloadLikers();
+</script>
+{% endblock %}

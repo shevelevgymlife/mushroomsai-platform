@@ -676,6 +676,7 @@ async def health(request: Request):
 
 # Routers
 app.include_router(chats_router)
+app.include_router(notifications_router)
 app.include_router(public_router)
 app.include_router(auth_router)
 app.include_router(legal_router)

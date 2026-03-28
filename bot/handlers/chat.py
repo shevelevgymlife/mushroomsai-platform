@@ -70,12 +70,12 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     if not text:
         return
 
-    from bot.handlers.start import BTN_AI, BTN_AI_EXIT, main_keyboard
+    from bot.handlers.start import BTN_AI, BTN_AI_EXIT, BTN_COMMUNITY_POST, main_keyboard
 
     site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
 
     # Кнопки обрабатываются отдельными хендлерами в main_bot; на всякий случай не дублируем
-    if text in (BTN_AI, BTN_AI_EXIT):
+    if text in (BTN_AI, BTN_AI_EXIT, BTN_COMMUNITY_POST):
         return
 
     if not context.user_data.get("tg_ai_mode"):

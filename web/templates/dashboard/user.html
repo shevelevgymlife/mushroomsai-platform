@@ -1002,20 +1002,6 @@ body.dash-ig-app .ig-lamp-topbar{
           </div>
         </div>
         {% endif %}
-
-        <!-- Radio toggle button -->
-        <div style="display:flex;align-items:center;gap:12px;margin-top:16px">
-          <button id="radioToggleBtn" onclick="toggleRadio()"
-            style="width:48px;height:48px;border-radius:50%;background:{% if user.music_player_enabled %}rgba(201,168,76,0.2){% else %}rgba(255,255,255,0.05){% endif %};border:2px solid {% if user.music_player_enabled %}#C9A84C{% else %}#444{% endif %};cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.3s;box-shadow:{% if user.music_player_enabled %}0 0 15px rgba(201,168,76,0.4){% else %}none{% endif %};flex-shrink:0"
-            title="{% if user.music_player_enabled %}Выключить радио{% else %}Включить радио{% endif %}">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="{{ '#C9A84C' if user.music_player_enabled else '#666' }}">
-              <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
-            </svg>
-          </button>
-          <div style="font-size:13px;color:{% if user.music_player_enabled %}#C9A84C{% else %}#555{% endif %}">
-            {% if user.music_player_enabled %}Радио включено{% else %}Радио выключено{% endif %}
-          </div>
-        </div>
       </div>
 
       <!-- Recent AI messages preview -->
@@ -1113,7 +1099,7 @@ body.dash-ig-app .ig-lamp-topbar{
         </div>
         {% for p in recent_posts[:3] %}
         <div style="padding:12px 0;{{ '' if loop.last else 'border-bottom:1px solid rgba(255,255,255,.06)' }}">
-          <div style="font-size:13px;color:#ccc;line-height:1.5;white-space:pre-wrap;word-break:break-word">{{ p.content[:180] }}{% if p.content|length > 180 %}…{% endif %}</div>
+          <div style="font-size:13px;color:#ccc;line-height:1.5;white-space:pre-wrap;word-break:break-word">{{ p.content | linkify_mentions(180) | safe }}</div>
           {% if p.image_url %}<img src="{{ p.image_url }}" style="width:100%;max-height:160px;object-fit:cover;border-radius:8px;margin-top:8px" loading="lazy" alt="">{% endif %}
           <div style="font-size:11px;color:#555;margin-top:6px">{{ p.created_at.strftime('%d.%m.%Y') if p.created_at else '' }} · ❤️ {{ p.likes_count }} · 💬 {{ p.comments_count }}</div>
         </div>
@@ -1193,6 +1179,8 @@ body.dash-ig-app .ig-lamp-topbar{
           </div>
           <div id="meProfOk" style="display:none;margin-top:10px;font-size:13px;color:#4ade80">✓ Сохранено</div>
         </div>
+        <link rel="stylesheet" href="/static/css/nf-community-posts.css?v=1" />
+        <script src="/static/js/nf-community-star-like.js?v=1"></script>
         <div id="profileChaosWrap">
           <label class="feed-chaos-toggle" for="profileChaosToggle">
             <span>Хаос</span>
@@ -1201,12 +1189,13 @@ body.dash-ig-app .ig-lamp-topbar{
         </div>
         <div id="profilePosts" class="profile-chaos-on">
           {% for p in grid_posts %}
+          {% set pimgs = p|post_image_urls %}
           {% set is_liked_me = p.id in liked_post_ids %}
           <div class="fp ig-post" id="mfp-{{ p.id }}" data-pid="{{ p.id }}" data-author="{{ (user.name or 'Вы')|e }}" data-title="{{ (p.title or '')|e }}" data-content="{{ (p.content or '')|e }}" data-image="{{ (p.image_url or '')|e }}" data-created="{{ (p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '')|e }}" data-likes="{{ p.likes_count or 0 }}" data-comments="{{ p.comments_count or 0 }}" data-saves="{{ p.saves_count or 0 }}" onclick="openCommunityPostPage(event, {{ p.id }})">
             <div class="ig-post-header">
               <a href="/community/profile/{{ effective_user_id }}" style="display:block;width:36px;height:36px;border-radius:50%;border:2px solid #3dd4e0;overflow:hidden;text-decoration:none">{% if user.avatar %}<img src="{{ user.avatar }}" style="width:100%;height:100%;object-fit:cover" alt="">{% else %}<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px">🍄</div>{% endif %}</a>
               <div style="flex:1;min-width:0">
-                <div style="font-size:14px;font-weight:700;color:#e8e8e8">{{ user.name or 'Вы' }}</div>
+                <div style="font-size:14px;font-weight:700;color:#e8e8e8;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span>{{ user.name or 'Вы' }}</span><span class="cp-user-id-pill" style="font-size:9px;padding:2px 7px;cursor:default" title="Упоминание: @{{ effective_user_id }}">@{{ effective_user_id }}</span></div>
                 <div style="font-size:11px;color:#888">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}</div>
               </div>
               <details class="ig-pm" onclick="event.stopPropagation()">
@@ -1217,15 +1206,15 @@ body.dash-ig-app .ig-lamp-topbar{
                 </div>
               </details>
             </div>
-            {% if p.title %}<div style="padding:10px 14px 0;font-size:15px;font-weight:700;color:#e8e8e8">{{ p.title }}</div>{% endif %}
-            {% if p.image_url %}
-            <img src="{{ p.image_url }}" class="ig-post-img" loading="lazy" alt="">
+            {% if p.title %}<div style="padding:10px 14px 0;font-size:15px;font-weight:700;color:#e8e8e8">{{ p.title | linkify_mentions | safe }}</div>{% endif %}
+            {% if pimgs %}
+            <div class="nf-post-gallery" onclick="event.stopPropagation()">{% for u in pimgs %}<img src="{{ u }}" class="nf-post-gallery__slide" loading="lazy" alt="">{% endfor %}</div>
             {% elif p.content %}
-            <div class="ig-post-textonly">{{ p.content[:500] }}{% if p.content|length > 500 %}…{% endif %}</div>
+            <div class="ig-post-textonly">{{ p.content | linkify_mentions(500) | safe }}</div>
             {% endif %}
             <div class="ig-post-snippet">
-              {% if p.title %}<div class="ig-post-snippet-title">{{ p.title }}</div>{% endif %}
-              <div class="ig-post-snippet-text">{% if p.content %}{{ p.content[:140] }}{% if p.content|length > 140 %}…{% endif %}{% else %}Новый пост{% endif %}</div>
+              {% if p.title %}<div class="ig-post-snippet-title">{{ p.title | linkify_mentions | safe }}</div>{% endif %}
+              <div class="ig-post-snippet-text">{% if p.content %}{{ p.content | linkify_mentions(140) | safe }}{% else %}Новый пост{% endif %}</div>
             </div>
             <div class="ig-post-metrics">
               <button type="button" class="ig-post-metric ig-post-metric-star" id="profile-like-btn-{{ p.id }}" onclick="likeProfilePost({{ p.id }},this)">
@@ -1234,12 +1223,12 @@ body.dash-ig-app .ig-lamp-topbar{
               <button type="button" class="ig-post-metric ig-post-metric-chat" onclick="event.stopPropagation();openCommunityPostDirect({{ p.id }})">
                 <span>💬</span><span class="n" id="profile-comment-count-{{ p.id }}" data-comment-count-for="{{ p.id }}">{{ p.comments_count or 0 }}</span>
               </button>
-              <button type="button" class="ig-post-metric ig-post-metric-share" onclick="openSharePostModal({{ p.id }})">
-                <span>↗</span><span class="n">{{ p.saves_count or 0 }}</span>
+              <button type="button" class="ig-post-metric ig-post-metric-share" onclick="event.stopPropagation();NF_openPostReposts({{ p.id }}, location.href)">
+                <span>↗</span><span class="n">{{ p.reposts_count|default(0) }}</span>
               </button>
             </div>
             <div id="inline-cmt-profile-{{ p.id }}" style="display:none;padding:10px 12px;border-top:1px solid rgba(255,255,255,.08);gap:8px;align-items:center;overflow:hidden;max-width:100%;box-sizing:border-box">
-              <input id="inline-cmt-inp-profile-{{ p.id }}" class="sinp" style="flex:1;min-width:0;max-width:100%;width:100%;box-sizing:border-box;font-size:16px" placeholder="Комментарий..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendInlineComment({{ p.id }}, 'profile');}">
+              <input id="inline-cmt-inp-profile-{{ p.id }}" class="sinp nf-mention-field" style="flex:1;min-width:0;max-width:100%;width:100%;box-sizing:border-box;font-size:16px" placeholder="Комментарий… @ — подсказки" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();sendInlineComment({{ p.id }}, 'profile');}">
               <button type="button" class="btn-g" style="padding:9px 12px;white-space:nowrap" onclick="sendInlineComment({{ p.id }}, 'profile')">Отправить</button>
             </div>
           </div>
@@ -1297,11 +1286,14 @@ body.dash-ig-app .ig-lamp-topbar{
           <input id="feedChaosToggle" type="checkbox" checked onchange="setFeedChaos(this.checked)">
         </label>
       </div>
+      <link rel="stylesheet" href="/static/css/nf-community-posts.css?v=1" />
+      <script src="/static/js/nf-community-star-like.js?v=1"></script>
 
       <!-- Posts -->
       <div id="feedPosts" class="feed-chaos-on">
       {% if feed_raw %}
       {% for p in feed_raw %}
+      {% set imgs = p|post_image_urls %}
       {% set a = feed_authors.get(p.user_id) %}
       {% set is_mine = p.user_id in (my_account_ids or [effective_user_id]) %}
       {% set is_admin = (user.role | default('', true)) == 'admin' %}
@@ -1319,9 +1311,9 @@ body.dash-ig-app .ig-lamp-topbar{
           {% if is_mine %}</a>{% else %}</a>{% endif %}
           <div style="flex:1;min-width:0">
             {% if is_mine %}
-            <div style="font-size:14px;font-weight:700;color:#e8e8e8;cursor:pointer;display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap" onclick="goSec('{{ dash_home }}')">{{ a.name if a else 'Участник' }} <span style="font-size:11px;color:#3dd4e0">● я</span>{% if p.from_telegram %}<span class="ig-tg-badge" title="Импорт из Telegram-канала">✓ TG</span>{% endif %}</div>
+            <div style="font-size:14px;font-weight:700;color:#e8e8e8;cursor:pointer;display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap" onclick="goSec('{{ dash_home }}')"><span>{{ a.name if a else 'Участник' }}</span><span class="cp-user-id-pill" style="font-size:9px;padding:2px 7px;cursor:default" title="Упоминание: @{{ p.user_id }}">@{{ p.user_id }}</span> <span style="font-size:11px;color:#3dd4e0">● я</span>{% if p.from_telegram %}<span class="ig-tg-badge" title="Импорт из Telegram-канала">✓ TG</span>{% endif %}</div>
             {% else %}
-            <a href="/community/profile/{{ p.user_id }}" onclick="event.stopPropagation()" style="font-size:14px;font-weight:700;color:#e8e8e8;text-decoration:none;display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap">{{ a.name if a else 'Участник' }}{% if p.from_telegram %}<span class="ig-tg-badge" title="Импорт из Telegram-канала">✓ TG</span>{% endif %}</a>
+            <a href="/community/profile/{{ p.user_id }}" onclick="event.stopPropagation()" style="font-size:14px;font-weight:700;color:#e8e8e8;text-decoration:none;display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap"><span>{{ a.name if a else 'Участник' }}</span><span class="cp-user-id-pill" style="font-size:9px;padding:2px 7px;flex-shrink:0;cursor:default;text-decoration:none" title="Упоминание: @{{ p.user_id }}">@{{ p.user_id }}</span>{% if p.from_telegram %}<span class="ig-tg-badge" title="Импорт из Telegram-канала">✓ TG</span>{% endif %}</a>
             {% endif %}
             <div style="font-size:11px;color:#888">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}{% if p.pinned %} · 📌{% endif %}</div>
           </div>
@@ -1339,25 +1331,27 @@ body.dash-ig-app .ig-lamp-topbar{
           {% endif %}
         </div>
         {% if p.title %}
-        <div style="padding:10px 14px 0;font-size:15px;font-weight:700;color:#e8e8e8">{{ p.title }}</div>
+        <div style="padding:10px 14px 0;font-size:15px;font-weight:700;color:#e8e8e8">{{ p.title | linkify_mentions | safe }}</div>
         {% endif %}
-        {% if p.image_url %}
-        <img src="{{ p.image_url }}" class="ig-post-img" loading="lazy" alt="">
+        {% if imgs %}
+        <div class="nf-post-gallery" onclick="event.stopPropagation()" style="max-height:none">
+          {% for u in imgs %}<img src="{{ u }}" class="nf-post-gallery__slide" loading="lazy" alt="">{% endfor %}
+        </div>
         {% elif p.content %}
-        <div class="ig-post-textonly">{{ p.content[:500] }}{% if p.content|length > 500 %}…{% endif %}</div>
+        <div class="ig-post-textonly">{{ p.content | linkify_mentions(500) | safe }}</div>
         {% endif %}
         <div class="ig-post-snippet">
           {% if p.title %}
-          <div class="ig-post-snippet-title">{{ p.title }}</div>
+          <div class="ig-post-snippet-title">{{ p.title | linkify_mentions | safe }}</div>
           {% endif %}
           {% if p.content %}
-          <div class="ig-post-snippet-text">{{ p.content[:140] }}{% if p.content|length > 140 %}…{% endif %}</div>
+          <div class="ig-post-snippet-text">{{ p.content | linkify_mentions(140) | safe }}</div>
           {% elif not p.title %}
           <div class="ig-post-snippet-text">Новый пост в ленте сообщества</div>
           {% endif %}
         </div>
         <div class="ig-post-metrics">
-          <button type="button" class="ig-post-metric ig-post-metric-star" id="like-btn-{{ p.id }}" onclick="likeFeedPost({{ p.id }},this)" title="Лайки" aria-label="Лайки">
+          <button type="button" class="ig-post-metric ig-post-metric-star" id="like-btn-{{ p.id }}" onclick="likeFeedPost({{ p.id }},this)" title="Звезда" aria-label="Звезда">
             <span>{% if is_liked %}⭐{% else %}✩{% endif %}</span><span class="n" id="like-count-{{ p.id }}">{{ p.likes_count }}</span>
           </button>
           {% if is_mine %}
@@ -1369,12 +1363,12 @@ body.dash-ig-app .ig-lamp-topbar{
             <span>💬</span><span class="n" id="comment-count-{{ p.id }}" data-comment-count-for="{{ p.id }}">{{ p.comments_count or 0 }}</span>
           </button>
           {% endif %}
-          <button type="button" class="ig-post-metric ig-post-metric-share" title="Пересылки" onclick="openSharePostModal({{ p.id }})">
-            <span>↗</span><span class="n">{{ p.saves_count or 0 }}</span>
+          <button type="button" class="ig-post-metric ig-post-metric-share" title="Кто переслал" onclick="event.stopPropagation();NF_openPostReposts({{ p.id }}, location.href)">
+            <span>↗</span><span class="n" id="repost-count-{{ p.id }}">{{ p.reposts_count|default(0) }}</span>
           </button>
         </div>
         <div id="inline-cmt-feed-{{ p.id }}" style="display:none;padding:10px 12px;border-top:1px solid rgba(255,255,255,.08);gap:8px;align-items:center;overflow:hidden;max-width:100%;box-sizing:border-box">
-          <input id="inline-cmt-inp-feed-{{ p.id }}" class="sinp" style="flex:1;min-width:0;max-width:100%;width:100%;box-sizing:border-box;font-size:16px" placeholder="Комментарий..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendInlineComment({{ p.id }}, 'feed');}">
+          <input id="inline-cmt-inp-feed-{{ p.id }}" class="sinp nf-mention-field" style="flex:1;min-width:0;max-width:100%;width:100%;box-sizing:border-box;font-size:16px" placeholder="Комментарий… @ — подсказки" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();sendInlineComment({{ p.id }}, 'feed');}">
           <button type="button" class="btn-g" style="padding:9px 12px;white-space:nowrap" onclick="sendInlineComment({{ p.id }}, 'feed')">Отправить</button>
         </div>
       </div>
@@ -1498,7 +1492,7 @@ body.dash-ig-app .ig-lamp-topbar{
               <button type="button" class="btn-o" style="padding:8px 10px;font-size:17px;flex-shrink:0;border-radius:50%;width:40px;height:40px" title="Фото" onclick="document.getElementById('groupChatImgInp').value='';document.getElementById('groupChatImgInp').click()">＋</button>
               <button type="button" id="groupMicBtn" class="btn-o" style="padding:8px 10px;font-size:16px;flex-shrink:0;border-radius:50%;width:40px;height:40px" title="Голосовое до 30 сек: нажмите, затем отправьте кнопкой →" onclick="toggleGroupVoiceRecord()">🎤</button>
               <span id="groupVoiceHint">● Запись…</span>
-              <input type="text" id="groupMsgInput" class="sinp" placeholder="Сообщение…" disabled onkeydown="if(event.key==='Enter'){event.preventDefault();sendGroupChatMessage();}">
+              <input type="text" id="groupMsgInput" class="sinp nf-mention-field" placeholder="Сообщение… @ — подсказки" autocomplete="off" disabled onkeydown="if(event.key==='Enter'){event.preventDefault();sendGroupChatMessage();}">
               <button type="button" class="btn-g" id="groupMsgSend" style="padding:10px 16px" disabled onclick="sendGroupChatMessage()">→</button>
             </div>
           </div>
@@ -1862,7 +1856,7 @@ body.dash-ig-app .ig-lamp-topbar{
             <div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
               <div>
                 <div style="font-size:14px;color:#ddd">Радио-плеер</div>
-                <div style="font-size:12px;color:#666;margin-top:2px">Плавающий кружок с музыкой на всех страницах</div>
+                <div style="font-size:12px;color:#666;margin-top:2px;line-height:1.45">Включить поток и воспроизведение между страницами. Кружок с нотой — поверх всех окон, его можно перетаскивать. Скрыть только кружок (звук может играть дальше): <a href="/account/settings/sound-notifications" style="color:#3dd4e0">Звук и уведомления</a> → «Показывать кружок радио».</div>
               </div>
               <label style="position:relative;display:inline-block;width:48px;height:26px;flex-shrink:0">
                 <input type="checkbox" id="radioPlayerToggle" onchange="toggleRadioSetting(this.checked)"
@@ -1881,15 +1875,15 @@ body.dash-ig-app .ig-lamp-topbar{
             <div style="font-size:12px;color:#666;margin-bottom:14px">Выберите, о чём получать уведомления</div>
             <div style="display:flex;flex-direction:column;gap:10px" id="notifCheckboxes">
               {% set notif_items = [
-                ('new_follower', 'Новый подписчик'),
-                ('new_like', 'Лайк на пост'),
-                ('new_comment', 'Комментарий к посту'),
-                ('new_message', 'Личное сообщение'),
-                ('new_reply', 'Ответ на комментарий'),
-                ('post_in_group', 'Новый пост в группе'),
-                ('mention', 'Упоминание'),
-                ('new_post_from_following', 'Пост от подписок'),
-                ('send_to_telegram', 'Отправлять в Telegram'),
+                ('followers', 'Новый подписчик'),
+                ('likes', 'Лайки'),
+                ('comments', 'Комментарии'),
+                ('dm', 'Личное сообщение'),
+                ('comment_replies', 'Ответ на комментарий'),
+                ('group_posts', 'Публикации в группах'),
+                ('mentions', 'Упоминание'),
+                ('subscription_posts', 'Новые посты подписок'),
+                ('telegram_bot', 'Отправлять в Telegram'),
               ] %}
               {% for key, label in notif_items %}
               <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer">
@@ -2129,10 +2123,10 @@ body.dash-ig-app .ig-lamp-topbar{
 <div id="createPostModal" style="display:none;position:fixed;inset:0;z-index:10021;align-items:center;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(4px)" onclick="if(event.target===this)this.style.display='none'">
   <div class="card" style="max-width:440px;width:92%;padding:22px;border-color:rgba(61,212,224,.28)" onclick="event.stopPropagation()">
     <div style="font-weight:700;margin-bottom:12px;color:#e8e8e8;font-size:17px">Новый пост</div>
-    <input id="createPostTitleInp" class="sinp" style="margin-bottom:10px;width:100%;box-sizing:border-box" placeholder="Название (необязательно)" maxlength="200">
-    <textarea id="createPostBodyInp" class="sinp" style="min-height:100px;margin-bottom:10px;width:100%;box-sizing:border-box" placeholder="Текст поста" maxlength="8000"></textarea>
+    <input id="createPostTitleInp" class="sinp nf-mention-field" style="margin-bottom:10px;width:100%;box-sizing:border-box" placeholder="Название (необязательно)" maxlength="200">
+    <textarea id="createPostBodyInp" class="sinp nf-mention-field" style="min-height:100px;margin-bottom:10px;width:100%;box-sizing:border-box" placeholder="Текст поста" maxlength="8000"></textarea>
     <label style="font-size:12px;color:#888;display:block;margin-bottom:8px">Фото (необязательно)</label>
-    <input id="createPostFileInp" type="file" accept="image/jpeg,image/png,image/webp,image/gif" style="margin-bottom:14px;font-size:13px;color:#aaa">
+    <input id="createPostFileInp" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple style="margin-bottom:14px;font-size:13px;color:#aaa" title="До 5 фото">
     <div style="display:flex;gap:10px;justify-content:flex-end">
       <button type="button" class="btn-o" onclick="document.getElementById('createPostModal').style.display='none'">Отмена</button>
       <button type="button" class="btn-g" onclick="submitCreatePostModal()">Опубликовать</button>
@@ -2145,8 +2139,8 @@ body.dash-ig-app .ig-lamp-topbar{
   <div class="card" style="max-width:440px;width:92%;padding:22px;border-color:rgba(61,212,224,.28)" onclick="event.stopPropagation()">
     <div style="font-weight:700;margin-bottom:12px;color:#e8e8e8;font-size:17px">Изменить пост</div>
     <input type="hidden" id="editPostId" value="">
-    <input id="editPostTitleInp" class="sinp" style="margin-bottom:10px;width:100%;box-sizing:border-box" placeholder="Название" maxlength="200">
-    <textarea id="editPostBodyInp" class="sinp" style="min-height:100px;margin-bottom:10px;width:100%;box-sizing:border-box" placeholder="Текст" maxlength="8000"></textarea>
+    <input id="editPostTitleInp" class="sinp nf-mention-field" style="margin-bottom:10px;width:100%;box-sizing:border-box" placeholder="Название" maxlength="200">
+    <textarea id="editPostBodyInp" class="sinp nf-mention-field" style="min-height:100px;margin-bottom:10px;width:100%;box-sizing:border-box" placeholder="Текст" maxlength="8000"></textarea>
     <label style="font-size:12px;color:#888;display:block;margin-bottom:8px">Новое фото (необязательно)</label>
     <input id="editPostFileInp" type="file" accept="image/jpeg,image/png,image/webp,image/gif" style="margin-bottom:14px;font-size:13px;color:#aaa">
     <div style="display:flex;gap:10px;justify-content:flex-end">
@@ -2162,7 +2156,7 @@ body.dash-ig-app .ig-lamp-topbar{
     <div style="font-weight:700;margin-bottom:4px;color:#e8e8e8;font-size:16px">Кому отправить ссылку</div>
     <p class="muted" style="font-size:12px;margin:0 0 12px;line-height:1.45">Можно выбрать из подписок или найти любого участника по имени.</p>
     <input type="hidden" id="sharePostId" value="">
-    <input id="sharePostSearchInp" class="sinp" style="margin-bottom:10px" placeholder="Поиск участника по имени">
+    <input id="sharePostSearchInp" class="sinp" style="margin-bottom:10px" placeholder="Поиск среди подписок (имя или @id)">
     <div id="sharePostUserList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:10px"></div>
     <p id="sharePostErr" style="display:none;margin-top:10px;font-size:12px;color:#f87171"></p>
   </div>
@@ -2193,11 +2187,16 @@ body.dash-ig-app .ig-lamp-topbar{
         <div style="display:flex;align-items:center;justify-content:center;gap:8px;min-height:54px;border-radius:14px;border:1px solid rgba(139,233,255,.4);background:linear-gradient(160deg,rgba(139,233,255,.18),rgba(12,13,20,.92));color:#9df0ff;font-size:19px;font-weight:800">💬 <span id="feedPreviewComments" style="font-size:22px;line-height:1">0</span></div>
         <button type="button" onclick="feedPreviewShare()" style="display:flex;align-items:center;justify-content:center;gap:8px;min-height:54px;border-radius:14px;border:1px solid rgba(247,179,255,.4);background:linear-gradient(160deg,rgba(247,179,255,.18),rgba(12,13,20,.92));color:#ffc6ff;font-size:19px;font-weight:800;cursor:pointer">↗ <span id="feedPreviewSaves" style="font-size:22px;line-height:1">0</span></button>
       </div>
+      <input type="hidden" id="feedPreviewPostId" value="">
+      <div id="feedPreviewCommentRow" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);max-width:100%;width:100%;overflow:hidden;box-sizing:border-box">
+        <input id="feedPreviewCommentInp" class="sinp nf-mention-field" style="min-width:0;width:100%;max-width:100%;box-sizing:border-box;font-size:16px" placeholder="Комментарий… @ — подсказки" autocomplete="off">
+        <button type="button" class="btn-g" style="padding:10px 12px;white-space:nowrap" onclick="submitFeedPreviewComment()">Отпр.</button>
+      </div>
+      <p id="feedPreviewCommentErr" style="display:none;margin-top:8px;font-size:12px;color:#f87171"></p>
       <div id="feedPreviewCommentsWrap" style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)">
         <div style="font-size:12px;color:#8a8fa0;margin-bottom:8px">Комментарии</div>
         <div id="feedPreviewCommentsList" style="display:flex;flex-direction:column;gap:8px;max-height:38vh;overflow-y:auto;padding-right:2px"></div>
       </div>
-      <input type="hidden" id="feedPreviewPostId" value="">
       <div id="feedPreviewActionRow" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);position:sticky;top:0;z-index:2;background:linear-gradient(180deg,rgba(11,12,18,.98),rgba(11,12,18,.93));padding-bottom:8px;overflow:hidden;max-width:100%">
         <button type="button" class="btn-g" id="feedPreviewReadTextBtn" style="padding:10px 12px;white-space:nowrap" onclick="toggleFeedPreviewText()">Почитать текст</button>
         <button type="button" class="btn-g" id="feedPreviewViewPhotoBtn" style="padding:10px 12px;white-space:nowrap" onclick="openFeedPreviewImageFull()">Посмотреть фото</button>
@@ -2213,11 +2212,6 @@ body.dash-ig-app .ig-lamp-topbar{
           <img id="feedPreviewImage" src="" alt="" style="display:block;max-width:100%;max-height:100%;transform-origin:center center;transform:scale(1);background:#000">
         </div>
       </div>
-      <div id="feedPreviewCommentRow" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;margin-top:10px;max-width:100%;width:100%;overflow:hidden;box-sizing:border-box">
-        <input id="feedPreviewCommentInp" class="sinp" style="min-width:0;width:100%;max-width:100%;box-sizing:border-box;font-size:16px" placeholder="Написать комментарий...">
-        <button type="button" class="btn-g" style="padding:10px 12px;white-space:nowrap" onclick="submitFeedPreviewComment()">Отправить</button>
-      </div>
-      <p id="feedPreviewCommentErr" style="display:none;margin-top:8px;font-size:12px;color:#f87171"></p>
     </div>
     </div>
   </div>
@@ -2402,8 +2396,9 @@ async function loadNotifSettings() {
   try {
     const r = await fetch('/api/notifications/settings', {credentials:'same-origin'});
     const d = await r.json();
-    if (d.ok && d.settings) {
-      Object.entries(d.settings).forEach(([k, v]) => {
+    const p = d.prefs || d.settings;
+    if (d.ok && p) {
+      Object.entries(p).forEach(([k, v]) => {
         const el = document.getElementById('notif_' + k);
         if (el) el.checked = !!v;
       });
@@ -2461,44 +2456,6 @@ async function toggleRadioSetting(enabled) {
     // Reload to show/hide player
     setTimeout(() => location.reload(), 300);
   } catch(e) { console.error(e); }
-}
-async function toggleRadio(){
-  var btn = document.getElementById('radioToggleBtn');
-  var isOn = btn.style.borderColor.indexOf('201') >= 0 || btn.style.borderColor === '#C9A84C';
-  var newVal = !isOn;
-  try {
-    await fetch('/api/music/player-settings', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({enabled: newVal})
-    });
-    if(newVal){
-      btn.style.background = 'rgba(201,168,76,0.2)';
-      btn.style.borderColor = '#C9A84C';
-      btn.style.boxShadow = '0 0 15px rgba(201,168,76,0.4)';
-      btn.querySelector('svg').setAttribute('fill','#C9A84C');
-      btn.title = 'Выключить радио';
-      btn.nextElementSibling.style.color = '#C9A84C';
-      btn.nextElementSibling.textContent = 'Радио включено';
-      // Reload to activate player
-      setTimeout(()=>location.reload(), 300);
-    } else {
-      btn.style.background = 'rgba(255,255,255,0.05)';
-      btn.style.borderColor = '#444';
-      btn.style.boxShadow = 'none';
-      btn.querySelector('svg').setAttribute('fill','#666');
-      btn.title = 'Включить радио';
-      btn.nextElementSibling.style.color = '#555';
-      btn.nextElementSibling.textContent = 'Радио выключено';
-      // Stop player if running
-      var audio = window._radioAudio;
-      if(audio) audio.pause();
-      var bar = document.getElementById('radioBar');
-      if(bar) bar.style.display = 'none';
-      var circle = document.getElementById('radioCircle');
-      if(circle) circle.style.display = 'none';
-      setTimeout(()=>location.reload(), 300);
-    }
-  } catch(e) { console.error('toggleRadio error', e); }
 }
 function goSec(id){
   closeDbDrawer();
@@ -3176,50 +3133,38 @@ if(document.readyState==='loading'){
 }
 
 // ── Like feed post ──
-async function likeFeedPost(postId, btn){
-  try{
-    const cnt=document.getElementById('like-count-'+postId);
-    const icon=btn?btn.querySelector('span'):null;
-    const wasLiked=icon && icon.textContent==='⭐';
-    const base=parseInt(cnt&&cnt.textContent||0);
-    if(btn) btn.style.color=wasLiked?'':'#ffd84f';
-    if(icon) icon.textContent=wasLiked?'✩':'⭐';
-    if(cnt) cnt.textContent=String(Math.max(0, base + (wasLiked ? -1 : 1)));
-    const r=await fetch('/community/like/'+postId,{method:'POST'});
-    const d=await r.json();
-    if(d.liked){
-      btn.style.color='#ffd84f';
-      if(icon) icon.textContent='⭐';
-    }else{
-      btn.style.color='';
-      if(icon) icon.textContent='✩';
+function likeFeedPost(postId, btn){
+  if(typeof NF_communityStarLike!=='function') return;
+  const cnt=document.getElementById('like-count-'+postId);
+  const icon=btn?btn.querySelector('span'):null;
+  const wasLiked=icon && icon.textContent==='⭐';
+  NF_communityStarLike(postId,{
+    wasLiked:wasLiked,
+    backUrl:location.href,
+    onCounts:function(d){
+      if(cnt && typeof d.count==='number') cnt.textContent=String(Math.max(0,d.count));
+      if(d.liked && icon) icon.textContent='⭐';
+      if(btn && d.liked) btn.style.color='#ffd84f';
     }
-    if(cnt && typeof d.count==='number')cnt.textContent=String(Math.max(0,d.count));
-  }catch(e){showNotification('Ошибка','error');}
+  });
 }
 
-async function likeProfilePost(postId, btn){
-  try{
-    const cnt=document.getElementById('profile-like-count-'+postId);
-    const icon=btn?btn.querySelector('span'):null;
-    const wasLiked=icon && icon.textContent==='⭐';
-    const base=parseInt(cnt&&cnt.textContent||0);
-    if(btn) btn.style.color=wasLiked?'':'#ffd84f';
-    if(icon) icon.textContent=wasLiked?'✩':'⭐';
-    if(cnt) cnt.textContent=String(Math.max(0, base + (wasLiked ? -1 : 1)));
-    const r=await fetch('/community/like/'+postId,{method:'POST'});
-    const d=await r.json();
-    if(d.liked){
-      if(btn) btn.style.color='#ffd84f';
-      if(icon) icon.textContent='⭐';
-    }else{
-      if(btn) btn.style.color='';
-      if(icon) icon.textContent='✩';
+function likeProfilePost(postId, btn){
+  if(typeof NF_communityStarLike!=='function') return;
+  const cnt=document.getElementById('profile-like-count-'+postId);
+  const icon=btn?btn.querySelector('span'):null;
+  const wasLiked=icon && icon.textContent==='⭐';
+  NF_communityStarLike(postId,{
+    wasLiked:wasLiked,
+    backUrl:location.href,
+    onCounts:function(d){
+      if(cnt && typeof d.count==='number') cnt.textContent=String(Math.max(0,d.count));
+      const feedCnt=document.getElementById('like-count-'+postId);
+      if(feedCnt && typeof d.count==='number') feedCnt.textContent=String(Math.max(0,d.count));
+      if(d.liked && icon) icon.textContent='⭐';
+      if(btn && d.liked) btn.style.color='#ffd84f';
     }
-    if(cnt && typeof d.count==='number')cnt.textContent=String(Math.max(0,d.count));
-    const feedCnt=document.getElementById('like-count-'+postId);
-    if(feedCnt && typeof d.count==='number')feedCnt.textContent=String(Math.max(0,d.count));
-  }catch(e){showNotification('Ошибка','error');}
+  });
 }
 
 async function deleteFeedPost(postId){
@@ -3877,7 +3822,7 @@ async function loadGroupMessages(gid, opts){
         const txt = String(d.group.pinned_message_text||'').trim();
         if(txt){
           pin.style.display='block';
-          pin.textContent='📌 '+txt;
+          pin.innerHTML='📌 '+(typeof linkifyCommunityMentionsPlain==='function'?linkifyCommunityMentionsPlain(txt):esc(txt));
           pin.title='Нажмите, чтобы открыть';
           pin.onclick = function(){ alert(txt); };
         }
@@ -3891,12 +3836,12 @@ async function loadGroupMessages(gid, opts){
     box.innerHTML = msgs.map(function(m){
       var replyHtml = '';
       if(m.reply_to && m.reply_to.sender_name){
-        replyHtml = '<div class="ig-g-reply">↩ '+esc(m.reply_to.sender_name)+': '+esc(m.reply_to.preview||'')+'</div>';
+        replyHtml = '<div class="ig-g-reply">↩ '+esc(m.reply_to.sender_name)+': '+(typeof linkifyCommunityMentionsPlain==='function'?linkifyCommunityMentionsPlain(m.reply_to.preview||''):esc(m.reply_to.preview||''))+'</div>';
       }
       var addressedHtml = m.addressed_user_id ? '<div class="ig-g-reply" style="color:#8be9ff">→ адресно</div>' : '';
       var imgHtml = m.image_url ? '<img class="ig-g-img" src="'+escUrlAttr(m.image_url)+'" alt="">' : '';
       var audHtml = m.audio_url ? '<audio class="ig-g-audio" controls playsinline preload="metadata" src="'+escUrlAttr(m.audio_url)+'">Ваш браузер не воспроизводит аудио</audio>' : '';
-      var txtHtml = (m.text && String(m.text).trim()) ? '<div class="ig-g-text">'+esc(m.text)+'</div>' : '';
+      var txtHtml = (m.text && String(m.text).trim()) ? '<div class="ig-g-text">'+(typeof linkifyCommunityMentionsPlain==='function'?linkifyCommunityMentionsPlain(m.text):esc(m.text))+'</div>' : '';
       var likeN = Number(m.likes_count||0);
       var liked = !!m.liked;
       var likedUsers = Array.isArray(m.liked_users) ? m.liked_users : [];
@@ -4208,7 +4153,7 @@ async function submitCreatePostModal(){
   const t=document.getElementById('createPostTitleInp');
   if(t&&t.value) fd.append('title',t.value.trim());
   const fi=document.getElementById('createPostFileInp');
-  if(fi&&fi.files&&fi.files[0]) fd.append('image',fi.files[0]);
+  if(fi&&fi.files){ for(var i=0;i<Math.min(fi.files.length,5);i++) fd.append('images',fi.files[i]); }
   try{
     const r=await fetch('/community/post',{method:'POST',body:fd,credentials:'same-origin'});
     const d=await r.json().catch(()=>({}));
@@ -4264,7 +4209,7 @@ async function openSharePostModal(postId){
   if(list) list.innerHTML='<div style="color:#888;font-size:13px;padding:12px">Загрузка…</div>';
   document.getElementById('sharePostModal').style.display='flex';
   try{
-    const rs=await fetch('/community/users/search?q=',{credentials:'same-origin'});
+    const rs=await fetch('/community/me/following-share',{credentials:'same-origin'});
     const ds=await rs.json().catch(()=>({}));
     window.__shareAllUsers=(ds&&ds.users)||[];
     renderShareUserList(window.__shareAllUsers, postId, false);
@@ -4273,8 +4218,9 @@ async function openSharePostModal(postId){
       searchInp.oninput=handleShareSearchInput;
     }
   }catch(e){
+    window.__shareAllUsers=[];
     if(list) list.innerHTML='';
-    if(err){ err.style.display='block'; err.textContent='Не удалось загрузить список'; }
+    if(err){ err.style.display='block'; err.textContent='Не удалось загрузить подписки'; }
   }
 }
 function renderShareUserList(users, postId, fromSearch){
@@ -4294,22 +4240,23 @@ function renderShareUserList(users, postId, fromSearch){
     return '<button type="button" class="btn-o" style="width:100%;min-height:92px;padding:8px 6px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:7px;border-radius:14px;transform:rotate('+rot+'deg)" onclick="sendPostShare('+postId+','+u.id+')">'+avHtml+'<span style="max-width:100%;font-size:11px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center">'+nm+'</span></button>';
   }).join('');
 }
-async function handleShareSearchInput(ev){
+function handleShareSearchInput(ev){
   const q=((ev&&ev.target&&ev.target.value)||'').trim();
   const postId=Number(document.getElementById('sharePostId')&&document.getElementById('sharePostId').value||0);
   const err=document.getElementById('sharePostErr');
   if(err) err.style.display='none';
+  const all=window.__shareAllUsers||[];
   if(q.length<1){
-    renderShareUserList(window.__shareAllUsers||[], postId, false);
+    renderShareUserList(all, postId, false);
     return;
   }
-  try{
-    const r=await fetch('/community/users/search?q='+encodeURIComponent(q),{credentials:'same-origin'});
-    const d=await r.json().catch(()=>({}));
-    renderShareUserList((d&&d.users)||[], postId, true);
-  }catch(e){
-    if(err){ err.style.display='block'; err.textContent='Ошибка поиска'; }
-  }
+  const ql=q.toLowerCase();
+  const filtered=all.filter(function(u){
+    const nm=(u.name||'').toLowerCase();
+    const idStr=String(u.id);
+    return nm.indexOf(ql)>=0||idStr.indexOf(q)===0;
+  });
+  renderShareUserList(filtered, postId, true);
 }
 async function sendPostShare(postId, recipientId){
   const err=document.getElementById('sharePostErr');
@@ -4318,6 +4265,8 @@ async function sendPostShare(postId, recipientId){
     const r=await fetch('/community/post/'+postId+'/share-dm',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipient_id:recipientId})});
     const d=await r.json().catch(()=>({}));
     if(r.ok&&d.ok){
+      const rpc=document.getElementById('repost-count-'+postId);
+      if(rpc&&typeof d.reposts_count==='number') rpc.textContent=String(d.reposts_count);
       document.getElementById('sharePostModal').style.display='none';
       showNotification('Ссылка отправлена в личку','success');
     }else{
@@ -4360,10 +4309,12 @@ function openFeedPostPreview(event, card){
   if(aEl) aEl.textContent=author;
   if(dEl) dEl.textContent=created;
   if(tEl){
-    if(title){ tEl.style.display='block'; tEl.textContent=title; }
-    else{ tEl.style.display='none'; tEl.textContent=''; }
+    if(title){
+      tEl.style.display='block';
+      tEl.innerHTML=(typeof linkifyCommunityMentionsPlain==='function')?linkifyCommunityMentionsPlain(title):esc(title);
+    }else{ tEl.style.display='none'; tEl.textContent=''; }
   }
-  if(cEl) cEl.textContent=content || 'Без текста';
+  if(cEl) cEl.innerHTML=(typeof linkifyCommunityMentionsPlain==='function')?linkifyCommunityMentionsPlain(content||'Без текста'):esc(content||'Без текста');
   if(cWrap) cWrap.style.display='none';
   if(readTextBtn){
     readTextBtn.style.display=(content && String(content).trim()) ? 'inline-flex' : 'none';
@@ -4401,13 +4352,13 @@ function openFeedPostPreview(event, card){
 }
 function openCommunityPostPage(event, postId){
   const t=event&&event.target;
-  if(t && t.closest('a,button,input,textarea,details,summary,.ig-post-metric,.ig-pm')) return;
+  if(t && t.closest('a,button,input,textarea,details,summary,.ig-post-metric,.ig-pm,.nf-post-gallery')) return;
   const back=encodeURIComponent(location.href);
   location.href='/community/post/'+postId+'?back='+back;
 }
 function openCommunityPostDirect(postId){
   const back=encodeURIComponent(location.href);
-  location.href='/community/post/'+postId+'?back='+back;
+  location.href='/community/post/'+postId+'/comments?back='+back;
 }
 function closeFeedPostPreview(){
   const modal=document.getElementById('feedPostPreviewModal');
@@ -4503,7 +4454,7 @@ function _feedPreviewCommentHtml(c){
     avHtml+
     '<div style="flex:1;min-width:0">'+
     '<div style="font-size:11px;color:#8a8fa0;line-height:1.3"><strong style="color:#d8deec">'+esc(c.author_name||'Участник')+'</strong> · '+esc(c.created_at||'')+'</div>'+
-    '<div style="font-size:13px;color:#e6e8ef;line-height:1.45;white-space:pre-wrap;word-break:break-word">'+esc(c.content||'')+'</div>'+
+    '<div style="font-size:13px;color:#e6e8ef;line-height:1.45;white-space:pre-wrap;word-break:break-word">'+(typeof linkifyCommunityMentionsPlain==='function'?linkifyCommunityMentionsPlain(c.content):esc(c.content||''))+'</div>'+
     '</div></div>';
 }
 async function loadFeedPreviewComments(pid){

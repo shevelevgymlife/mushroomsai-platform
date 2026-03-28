@@ -21,7 +21,7 @@
     <span class="ic">{{ ico('message') }}</span><span class="lbl">{{ t.app_tab_chats }}</span>
     <span id="cpMsgBadge" class="app-notif-badge app-msg-tab-badge">0</span>
   </a>
-  <button type="button" class="app-uni-tab app-uni-tab--btn {% if False %}app-uni-tab--on{% endif %}" data-app-tab="activity" id="cpActivityBellBottom" title="Лайки и уведомления" aria-label="Лайки и уведомления">
+  <a href="/notifications" class="app-uni-tab {% if path.startswith('/notifications') %}app-uni-tab--on{% endif %}" data-app-tab="activity" id="cpActivityBellBottom" title="События" aria-label="События">
     <span class="ic">{{ ico('heart') }}</span><span class="lbl">{{ t.app_tab_activity }}</span>
     <span id="cpActivityBadge" class="app-notif-badge">0</span>
   </button>
@@ -38,4 +38,4 @@
   </a>
   {% endif %}
 </nav>
-<script src="/static/js/app-bottom-nav.js?v=5" defer></script>
+<script src="/static/js/app-bottom-nav.js?v=6" defer></script>

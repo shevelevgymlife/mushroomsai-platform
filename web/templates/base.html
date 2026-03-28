@@ -211,7 +211,6 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
   {% set __is_locked_free = user and __eff_plan == 'free' and (user.role or 'user') not in ['admin','moderator'] %}
   {% if user and request.url.path != '/' and not request.query_params.get('embed') %}
   {% include "components/app_mobile_header.html" %}
-  {% include "components/app_activity_panel.html" %}
   {% include "components/app_global_drawer.html" %}
   {% if not __is_locked_free %}
   {% include "components/app_bottom_nav.html" %}
@@ -237,11 +236,15 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
 
   <script src="/static/js/screen-glow.js?v=1"></script>
   <script src="/static/js/app.js"></script>
+  <script src="/static/js/community-mentions.js?v=1"></script>
+  {% if user %}
+  <script src="/static/js/mention-autocomplete.js?v=3"></script>
+  {% endif %}
   {% if user and request.url.path != '/' and not request.query_params.get('embed') %}
   <script src="/static/js/app-global-drawer.js?v=6" defer></script>
   {% endif %}
   {% if user and request.url.path != '/' and not request.query_params.get('embed') %}
-  <script src="/static/js/app-header.js?v=5" defer></script>
+  <script src="/static/js/app-header.js?v=6" defer></script>
   {% endif %}
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
   <script src="/static/js/mobile-shell.js" defer></script>
@@ -389,26 +392,31 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
 {% endif %}
 {% if user and user.music_player_enabled and global_radio_enabled %}
 <!-- ══════════ RADIO PLAYER ══════════ -->
-<div id="radioCircle" style="position:fixed;z-index:9999;width:52px;height:52px;border-radius:50%;background:#111;border:2px solid #C9A84C;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 0 15px rgba(201,168,76,.3);touch-action:none;user-select:none;transition:box-shadow .3s"
-  onclick="radioCircleClick(event)" title="Радио">
-  <span id="radioCircleIcon" style="font-size:20px">🎵</span>
+{% if notification_prefs.radio_player %}
+<div id="radioCircle" style="position:fixed;z-index:2147483000;width:52px;height:52px;border-radius:50%;background:#111;border:2px solid #C9A84C;display:flex;align-items:center;justify-content:center;cursor:grab;box-shadow:0 0 15px rgba(201,168,76,.3);touch-action:none;user-select:none;transition:box-shadow .3s"
+  onclick="radioCircleClick(event)" title="Радио: пауза / воспроизведение. Перетащите кружок — положение сохранится.">
+  <span id="radioCircleIcon" style="font-size:20px;pointer-events:none">🎵</span>
 </div>
-
 <style>
 @keyframes radioPulse{0%,100%{box-shadow:0 0 15px rgba(201,168,76,.3)}50%{box-shadow:0 0 28px rgba(201,168,76,.6)}}
 #radioCircle.playing{animation:radioPulse 2s ease-in-out infinite}
+#radioCircle:active{cursor:grabbing}
 </style>
+{% endif %}
 
 <script>
 (function(){
+var _hasRadioUI = {{ notification_prefs.radio_player|tojson }};
 var _audio = new Audio();
+window._radioAudio = _audio;
 var _tracks = [];
 var _idx = 0;
 var _dragging = false;
-var _circlePos = '{{ user.music_player_position or "bottom-right" }}';
+var _suppressCircleClickUntil = 0;
+var _serverPos = '{{ user.music_player_position or "bottom-right" }}';
 var _vol = parseFloat('{{ user.music_player_volume or 0.5 }}') || 0.5;
+var SZ = 52;
 
-// Fisher-Yates shuffle
 function _shuffle(arr){
   var a = arr.slice();
   for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var tmp=a[i];a[i]=a[j];a[j]=tmp;}
@@ -416,7 +424,7 @@ function _shuffle(arr){
 }
 
 window.radioPlayPause = function(){
-  if(_audio.paused){ _audio.play().catch(()=>{}); } else { _audio.pause(); }
+  if(_audio.paused){ _audio.play().catch(function(){}); } else { _audio.pause(); }
   _updateCircle();
 };
 window.radioNext = function(){
@@ -428,6 +436,7 @@ window.radioPrev = function(){
   _loadTrack(_idx, true);
 };
 window.radioCircleClick = function(e){
+  if(Date.now() < _suppressCircleClickUntil) return;
   if(_dragging) return;
   radioPlayPause();
 };
@@ -437,7 +446,7 @@ function _loadTrack(i, play){
   var t = _tracks[i];
   _audio.src = t.gdrive_url;
   _audio.load();
-  if(play){ _audio.play().catch(()=>{}); }
+  if(play){ _audio.play().catch(function(){}); }
   _updateCircle();
 }
 
@@ -453,73 +462,100 @@ function _updateCircle(){
   }
 }
 
+function _clampPos(left, top){
+  return {
+    left: Math.max(0, Math.min(window.innerWidth - SZ, Math.round(left))),
+    top: Math.max(0, Math.min(window.innerHeight - SZ, Math.round(top)))
+  };
+}
+
 function _placeCircle(){
+  if(!_hasRadioUI) return;
   var circle = document.getElementById('radioCircle');
   if(!circle) return;
-  var margin = 16;
-  var w = window.innerWidth, h = window.innerHeight;
-  var sz = 52;
-  var pos = _circlePos || 'bottom-right';
+  try{
+    var raw = localStorage.getItem('radioCirclePos');
+    if(raw){
+      var o = JSON.parse(raw);
+      if(typeof o.left === 'number' && typeof o.top === 'number'){
+        var p = _clampPos(o.left, o.top);
+        circle.style.left = p.left + 'px';
+        circle.style.top = p.top + 'px';
+        circle.style.right = 'auto';
+        circle.style.bottom = 'auto';
+        return;
+      }
+    }
+  }catch(e){}
+  var srv = _serverPos || 'bottom-right';
+  if(srv.indexOf('free:') === 0){
+    var parts = srv.slice(5).split(',');
+    var lx = parseInt(parts[0], 10), ty = parseInt(parts[1], 10);
+    if(!isNaN(lx) && !isNaN(ty)){
+      var p2 = _clampPos(lx, ty);
+      circle.style.left = p2.left + 'px';
+      circle.style.top = p2.top + 'px';
+      circle.style.right = 'auto';
+      circle.style.bottom = 'auto';
+      return;
+    }
+  }
+  var margin = 16, w = window.innerWidth, h = window.innerHeight;
+  var pos = srv || 'bottom-right';
   var x, y;
-  if(pos === 'bottom-right'){ x = w - sz - margin; y = h - sz - margin - 60; }
-  else if(pos === 'bottom-left'){ x = margin; y = h - sz - margin - 60; }
-  else if(pos === 'top-right'){ x = w - sz - margin; y = margin + 70; }
+  if(pos === 'bottom-right'){ x = w - SZ - margin; y = h - SZ - margin - 60; }
+  else if(pos === 'bottom-left'){ x = margin; y = h - SZ - margin - 60; }
+  else if(pos === 'top-right'){ x = w - SZ - margin; y = margin + 70; }
   else if(pos === 'top-left'){ x = margin; y = margin + 70; }
-  else { x = w - sz - margin; y = h - sz - margin - 60; }
+  else { x = w - SZ - margin; y = h - SZ - margin - 60; }
   circle.style.left = x + 'px';
   circle.style.top = y + 'px';
   circle.style.right = 'auto';
   circle.style.bottom = 'auto';
 }
 
-function _snapCircle(cx, cy){
-  var margin = 16;
-  var w = window.innerWidth, h = window.innerHeight;
-  var cx2 = cx + 26, cy2 = cy + 26;
-  var toRight = cx2 > w/2;
-  var toBottom = cy2 > h/2;
-  var pos;
-  if(toRight && toBottom) pos='bottom-right';
-  else if(!toRight && toBottom) pos='bottom-left';
-  else if(toRight && !toBottom) pos='top-right';
-  else pos='top-left';
-  _circlePos = pos;
-  _placeCircle();
-  fetch('/api/music/player-settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({position:pos})}).catch(()=>{});
-}
-
-// Drag
 function _initDrag(){
+  if(!_hasRadioUI) return;
   var circle = document.getElementById('radioCircle');
   if(!circle) return;
-  var ox=0, oy=0, startX=0, startY=0;
+  var ox=0, oy=0, startX=0, startY=0, moved = false;
 
   function onMove(e){
     var touch = e.touches ? e.touches[0] : e;
     var dx = touch.clientX - startX;
     var dy = touch.clientY - startY;
-    if(Math.abs(dx)>5 || Math.abs(dy)>5) _dragging = true;
+    if(Math.abs(dx)>4 || Math.abs(dy)>4){
+      moved = true;
+      _dragging = true;
+    }
     if(!_dragging) return;
+    if(e.cancelable) e.preventDefault();
     var newX = ox + dx;
     var newY = oy + dy;
-    newX = Math.max(0, Math.min(window.innerWidth-52, newX));
-    newY = Math.max(0, Math.min(window.innerHeight-52, newY));
-    circle.style.left = newX+'px';
-    circle.style.top = newY+'px';
+    var cl = _clampPos(newX, newY);
+    circle.style.left = cl.left+'px';
+    circle.style.top = cl.top+'px';
   }
   function onUp(e){
     document.removeEventListener('mousemove', onMove);
     document.removeEventListener('mouseup', onUp);
     document.removeEventListener('touchmove', onMove);
     document.removeEventListener('touchend', onUp);
-    if(_dragging){
+    if(_dragging && moved){
       var r = circle.getBoundingClientRect();
-      _snapCircle(r.left, r.top);
-      setTimeout(function(){ _dragging = false; }, 100);
+      var left = Math.round(r.left), top = Math.round(r.top);
+      var cl = _clampPos(left, top);
+      try{ localStorage.setItem('radioCirclePos', JSON.stringify({left: cl.left, top: cl.top})); }catch(err){}
+      fetch('/api/music/player-settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({position_px:{left:cl.left,top:cl.top}})}).catch(function(){});
+      _suppressCircleClickUntil = Date.now() + 400;
     }
+    setTimeout(function(){ _dragging = false; moved = false; }, 0);
+    circle.style.transition = '';
   }
   function onDown(e){
+    if(e.button !== undefined && e.button !== 0) return;
     _dragging = false;
+    moved = false;
     var touch = e.touches ? e.touches[0] : e;
     startX = touch.clientX; startY = touch.clientY;
     var r = circle.getBoundingClientRect();
@@ -534,16 +570,13 @@ function _initDrag(){
   circle.addEventListener('touchstart', onDown, {passive:true});
 }
 
-// Auto-next
 _audio.addEventListener('ended', function(){ window.radioNext(); });
 _audio.addEventListener('play', _updateCircle);
 _audio.addEventListener('pause', _updateCircle);
 
-// Restore volume
 try{ var sv = localStorage.getItem('radioVol'); if(sv) _vol = parseFloat(sv); }catch(e){}
 _audio.volume = _vol;
 
-// Save state every 2 seconds
 setInterval(function(){
   if(!_tracks.length) return;
   try{
@@ -558,7 +591,6 @@ setInterval(function(){
   }catch(e){}
 }, 2000);
 
-// Save on page unload
 window.addEventListener('beforeunload', function(){
   if(!_tracks.length) return;
   try{
@@ -573,7 +605,6 @@ window.addEventListener('beforeunload', function(){
   }catch(e){}
 });
 
-// Load tracks and start
 fetch('/api/music/tracks').then(function(r){ return r.json(); }).then(function(data){
   if(!data.length) return;
 
@@ -581,9 +612,7 @@ fetch('/api/music/tracks').then(function(r){ return r.json(); }).then(function(d
     var state = JSON.parse(localStorage.getItem('radioState')||'{}');
     var wasPlaying = !!state.playing;
 
-    // Restore saved playlist order or shuffle fresh
     if(state.playlist && state.playlist.length === data.length){
-      // Reorder data to match saved playlist
       var urlMap = {};
       data.forEach(function(t){ urlMap[t.gdrive_url] = t; });
       var restored = state.playlist.map(function(u){ return urlMap[u]; }).filter(Boolean);
@@ -592,7 +621,6 @@ fetch('/api/music/tracks').then(function(r){ return r.json(); }).then(function(d
       _tracks = _shuffle(data);
     }
 
-    // Find track index
     if(state.trackUrl){
       var found = _tracks.findIndex(function(t){ return t.gdrive_url === state.trackUrl; });
       _idx = found >= 0 ? found : 0;
@@ -603,7 +631,6 @@ fetch('/api/music/tracks').then(function(r){ return r.json(); }).then(function(d
 
     _loadTrack(_idx, false);
 
-    // Compensate for time elapsed while page was loading
     var elapsed = state.savedAt ? (Date.now() - state.savedAt) / 1000 : 0;
     var resumeTime = parseFloat(state.currentTime||0) + (wasPlaying ? elapsed : 0);
 
@@ -612,7 +639,7 @@ fetch('/api/music/tracks').then(function(r){ return r.json(); }).then(function(d
       if(resumeTime > 0 && resumeTime < _audio.duration) _audio.currentTime = resumeTime;
       if(wasPlaying){
         _audio.play().catch(function(){
-          document.addEventListener('click', function _fc(){ _audio.play().catch(()=>{}); document.removeEventListener('click',_fc); }, {once:true});
+          document.addEventListener('click', function _fc(){ _audio.play().catch(function(){}); document.removeEventListener('click',_fc); }, {once:true});
         });
       }
     }, {once:true});
@@ -621,10 +648,10 @@ fetch('/api/music/tracks').then(function(r){ return r.json(); }).then(function(d
     _tracks = _shuffle(data);
     _loadTrack(0, false);
     _audio.play().catch(function(){
-      document.addEventListener('click', function _fc(){ _audio.play().catch(()=>{}); document.removeEventListener('click',_fc); }, {once:true});
+      document.addEventListener('click', function _fc(){ _audio.play().catch(function(){}); document.removeEventListener('click',_fc); }, {once:true});
     });
   }
-}).catch(function(){ });
+}).catch(function(){});
 
 document.addEventListener('DOMContentLoaded', function(){
   _placeCircle();

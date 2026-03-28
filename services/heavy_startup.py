@@ -329,6 +329,15 @@ async def run_heavy_startup(app: FastAPI) -> None:
                 sort_order INTEGER NOT NULL DEFAULT 0,
                 created_at TIMESTAMP DEFAULT NOW()
             )""",
+            "ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS images_json TEXT",
+            "ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS reposts_count INTEGER NOT NULL DEFAULT 0",
+            """CREATE TABLE IF NOT EXISTS community_reposts (
+                id SERIAL PRIMARY KEY,
+                post_id INTEGER NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                created_at TIMESTAMP DEFAULT NOW(),
+                UNIQUE(post_id, user_id)
+            )""",
         ]
         try:
             await database.execute(
@@ -424,6 +433,15 @@ async def run_heavy_startup(app: FastAPI) -> None:
             logger.info("Profile public cards column (migrate_v16) OK")
         except Exception as e:
             logger.warning("migrate_v16 profile_public_cards_json: %s", e)
+
+        try:
+            import migrate_v17_in_app_notifications as migrate_v17
+
+            for s in migrate_v17.STEPS:
+                await database.execute(sa.text(s))
+            logger.info("In-app notifications (migrate_v17) OK")
+        except Exception as e:
+            logger.warning("migrate_v17 in_app_notifications: %s", e)
 
         start_scheduler()
         app.state.startup_complete = True

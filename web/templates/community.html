@@ -11,6 +11,8 @@
 {%- endmacro %}
 
 {% block content %}
+<link rel="stylesheet" href="/static/css/nf-community-posts.css?v=1" />
+<script src="/static/js/nf-community-star-like.js?v=1"></script>
 <style>
 .cl { display:grid; grid-template-columns:260px 1fr 260px; gap:20px; max-width:1200px; margin:0 auto; padding:80px 16px 20px; }
 @media(max-width:1100px){.cl{grid-template-columns:220px 1fr}.rbar{display:none}}
@@ -33,19 +35,19 @@
 #commFeedMain:not(.comm-feed-chaos-off) .comm-ig-post:nth-child(4n+3){transform:translateY(3px) rotate(0.9deg)}
 #commFeedMain:not(.comm-feed-chaos-off) .comm-ig-post:nth-child(4n){transform:translateY(-4px) rotate(-1.2deg)}
 #commFeedMain.comm-feed-chaos-off .comm-ig-post{transform:none!important}
-.comm-feed-shell{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:start;width:100%}
-@media(min-width:900px){.comm-feed-shell{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}}
-.comm-ig-post{position:relative;border:1px solid rgba(255,255,255,.12);border-radius:18px;overflow:hidden;background:linear-gradient(165deg,rgba(255,255,255,.07),rgba(10,10,13,.94));box-shadow:0 12px 40px rgba(0,0,0,.38);transition:transform .2s ease,box-shadow .2s ease;border-radius:20px}
-.comm-ig-post:hover{border-color:rgba(61,212,224,.32);box-shadow:0 16px 48px rgba(0,0,0,.45),0 0 24px rgba(61,212,224,.08)}
-.comm-ig-head{padding:8px 10px;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,.06)}
-.comm-ig-body{padding:8px 10px;font-size:13px;line-height:1.45;color:#ccc;white-space:pre-wrap;word-break:break-word;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
-.comm-ig-img{width:100%;aspect-ratio:4/5;object-fit:cover;background:#0a0a0a;display:block;max-height:200px}
-.comm-ig-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:8px 8px 10px}
-.comm-ig-met{border:1px solid rgba(255,255,255,.14);border-radius:12px;min-height:40px;background:linear-gradient(160deg,rgba(255,255,255,.07),rgba(12,13,20,.92));display:flex;align-items:center;justify-content:center;gap:4px;font-size:13px;font-weight:800;color:#e5e7eb;cursor:pointer;font-family:inherit}
-.comm-ig-met--star{color:#ffd84f;border-color:rgba(255,216,79,.4)}
-.comm-ig-met--cmt{color:#8be9ff;border-color:rgba(139,233,255,.35)}
-.comm-ig-met--save{color:#f7b3ff;border-color:rgba(247,179,255,.35)}
-.comm-ig-met .n{font-size:14px}
+.comm-feed-shell{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start;width:100%;max-width:min(1100px,100%);margin:0 auto}
+@media(min-width:900px){.comm-feed-shell{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}}
+.comm-ig-post{position:relative;border:1px solid rgba(255,255,255,.12);border-radius:20px;overflow:visible;background:linear-gradient(165deg,rgba(255,255,255,.07),rgba(10,10,13,.92));box-shadow:0 16px 50px rgba(0,0,0,.44),0 0 0 1px rgba(61,212,224,.06);transition:transform .2s ease,box-shadow .2s ease}
+.comm-ig-post::before{content:"";position:absolute;inset:0;border-radius:20px;pointer-events:none;background:linear-gradient(120deg,rgba(61,212,224,.08),transparent 40%,rgba(255,102,208,.06))}
+.comm-ig-post:hover{border-color:rgba(61,212,224,.34);box-shadow:0 22px 62px rgba(0,0,0,.5),0 0 28px rgba(61,212,224,.08)}
+.comm-ig-head{padding:10px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.05)}
+.comm-ig-body{padding:0 12px 8px;font-size:13px;line-height:1.4;color:#c8c8c8;white-space:pre-wrap;word-break:break-word;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.comm-ig-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:8px 10px 11px}
+.comm-ig-met{border:1px solid rgba(255,255,255,.14);border-radius:12px;min-height:46px;background:linear-gradient(160deg,rgba(255,255,255,.07),rgba(12,13,20,.92));display:flex;align-items:center;justify-content:center;gap:6px;font-size:15px;font-weight:800;color:#e5e7eb;cursor:pointer;font-family:inherit}
+.comm-ig-met--star{color:#ffd84f;border-color:rgba(255,216,79,.45)}
+.comm-ig-met--cmt{color:#8be9ff;border-color:rgba(139,233,255,.38)}
+.comm-ig-met--share{color:#f7b3ff;border-color:rgba(247,179,255,.38)}
+.comm-ig-met .n{font-size:16px;line-height:1}
 .mover{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
 .mover.open{display:flex}
 .mbox{background:#111;border:1px solid #2a2a2a;border-radius:20px;padding:26px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;position:relative}
@@ -175,7 +177,7 @@
     {% endif %}
 
     <div id="commFeedGrid" class="comm-feed-shell comm-feed-chaos-on">
-    {% for item in feed %}{% set p = item.post %}{% set a = item.author %}
+    {% for item in feed %}{% set p = item.post %}{% set a = item.author %}{% set imgs = p|post_image_urls %}
     <article class="comm-ig-post" id="pc-{{ p.id }}" data-orig-idx="{{ loop.index0 }}" onclick="openCommunityPostPage(event, {{ p.id }})" style="cursor:pointer">
       <div class="comm-ig-head">
         <a href="{{ '/community/profile/' + (a.id|string) if a else '#' }}" onclick="event.stopPropagation()" style="text-decoration:none;flex-shrink:0">
@@ -183,27 +185,27 @@
           {% else %}<div class="avp" style="width:32px;height:32px;font-size:14px">🍄</div>{% endif %}
         </a>
         <div style="flex:1;min-width:0">
-          <a href="{{ '/community/profile/' + (a.id|string) if a else '#' }}" onclick="event.stopPropagation()" style="font-weight:700;font-size:13px;color:#e8e8e8;text-decoration:none;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ a.name if a else 'Участник' }}</a>
+          <a href="{{ '/community/profile/' + (a.id|string) if a else '#' }}" onclick="event.stopPropagation()" style="font-weight:700;font-size:13px;color:#e8e8e8;text-decoration:none;display:flex;align-items:center;gap:6px;flex-wrap:wrap;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="overflow:hidden;text-overflow:ellipsis;min-width:0">{{ a.name if a else 'Участник' }}</span>{% if a and a.id %}<span class="cp-user-id-pill" style="font-size:9px;padding:2px 7px;flex-shrink:0;cursor:default" title="Упоминание: @{{ a.id }}"><span class="cp-user-id-pill__k">id</span>@{{ a.id }}</span>{% endif %}</a>
           <div style="font-size:10px;color:#6b7280">{{ rep(item.author_post_count) }} · {{ p.created_at.strftime('%d.%m %H:%M') if p.created_at else '' }}</div>
         </div>
         {% if item.folder_name %}<span style="font-size:10px;color:#6b7280;flex-shrink:0">📁</span>{% endif %}
       </div>
-      {% if p.title %}<div style="padding:4px 10px 0;font-size:12px;font-weight:700;color:#e5e7eb">{{ p.title }}</div>{% endif %}
-      <div class="comm-ig-body">{{ p.content or '' }}</div>
-      {% if p.image_url %}
-      <img src="{{ p.image_url }}" class="comm-ig-img" loading="lazy" alt="">
+      {% if p.title %}<div style="padding:8px 12px 0;font-size:15px;font-weight:700;color:#e8e8e8">{{ p.title | linkify_mentions | safe }}</div>{% endif %}
+      {% if imgs %}
+      <div class="nf-post-gallery" onclick="event.stopPropagation()">{% for u in imgs %}<img src="{{ u }}" class="nf-post-gallery__slide" loading="lazy" alt="">{% endfor %}</div>
       {% endif %}
+      <div class="comm-ig-body">{{ (p.content or '') | linkify_mentions | safe }}</div>
       <div class="comm-ig-metrics">
-        <button type="button" class="comm-ig-met comm-ig-met--star {{ 'on' if item.liked }}" id="lk-{{ p.id }}" onclick="event.stopPropagation();doLike({{ p.id }},this)"><span>{{ '⭐' if item.liked else '✩' }}</span><span class="n" id="lkc-{{ p.id }}">{{ p.likes_count }}</span></button>
+        <button type="button" class="comm-ig-met comm-ig-met--star {{ 'on' if item.liked }}" id="lk-{{ p.id }}" onclick="event.stopPropagation();commStarLike({{ p.id }},this)"><span>{{ '⭐' if item.liked else '✩' }}</span><span class="n" id="lkc-{{ p.id }}">{{ p.likes_count }}</span></button>
         <button type="button" class="comm-ig-met comm-ig-met--cmt" onclick="event.stopPropagation();openCommunityPostDirect({{ p.id }})">💬<span class="n" id="cmc-{{ p.id }}">{{ p.comments_count }}</span></button>
-        <button type="button" class="comm-ig-met comm-ig-met--save {{ 'on' if item.saved }}" id="sv-{{ p.id }}" onclick="event.stopPropagation();doSave({{ p.id }},this)"><span id="svi-{{ p.id }}">{{ '🔖' if item.saved else '🏷️' }}</span><span class="n" id="svc-{{ p.id }}">{{ p.saves_count }}</span></button>
+        <button type="button" class="comm-ig-met comm-ig-met--share" onclick="event.stopPropagation();NF_openPostReposts({{ p.id }}, location.href)">↗<span class="n" id="rpc-{{ p.id }}">{{ p.reposts_count|default(0) }}</span></button>
       </div>
       <div class="csec" id="cs-{{ p.id }}" style="overflow:hidden;max-width:100%;box-sizing:border-box;border-top:1px solid rgba(255,255,255,.06)" onclick="event.stopPropagation()">
-        <div id="cl-{{ p.id }}"></div>
-        <div style="display:flex;gap:8px;margin-top:8px;padding:0 8px 8px;overflow:hidden;max-width:100%;box-sizing:border-box">
-          <input type="text" id="ci-{{ p.id }}" class="sinp" style="flex:1;min-width:0;max-width:100%;width:100%;box-sizing:border-box;font-size:16px" placeholder="Комментарий...">
+        <div style="display:flex;gap:8px;padding:8px 8px 6px;overflow:hidden;max-width:100%;box-sizing:border-box">
+          <input type="text" id="ci-{{ p.id }}" class="sinp nf-mention-field" style="flex:1;min-width:0;max-width:100%;width:100%;box-sizing:border-box;font-size:16px" placeholder="Комментарий… @ — подсказки" autocomplete="off">
           <button class="bgold" style="padding:8px 12px;font-size:13px" onclick="submitCmt({{ p.id }})">→</button>
         </div>
+        <div id="cl-{{ p.id }}"></div>
       </div>
     </article>
     {% endfor %}
@@ -233,18 +235,18 @@
   <div class="mbox">
     <button onclick="closeM('postModal')" style="position:absolute;top:14px;right:14px;background:none;border:none;color:#888;font-size:20px;cursor:pointer">✕</button>
     <h3 style="margin:0 0 16px;font-size:18px">Новый пост</h3>
-    <form id="communityPostForm" action="/community/post" method="post" enctype="multipart/form-data">
-      <textarea name="content" class="sinp" style="resize:vertical;min-height:110px;font-size:15px" placeholder="Поделитесь опытом..."></textarea>
+    <form id="communityPostForm" action="/community/post" method="post" enctype="multipart/form-data" onsubmit="return submitCommunityFeedPost(event)">
+      <textarea name="content" class="sinp nf-mention-field" style="resize:vertical;min-height:110px;font-size:15px" placeholder="Поделитесь опытом… @ — подсказки"></textarea>
       <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <label style="cursor:pointer;color:#3dd4e0;font-size:13px;display:flex;align-items:center;gap:5px">
-          📷 Фото <input type="file" name="image" accept="image/*" style="display:none" onchange="prvImg(this)">
+          📷 До 5 фото <input type="file" name="images" accept="image/*" multiple style="display:none" id="commPostImgs" onchange="prvImgsComm(this)">
         </label>
         <select name="folder_id" style="background:#1a1a1a;border:1px solid #2a2a2a;color:#888;border-radius:8px;padding:6px 10px;font-size:13px">
           <option value="">Без папки</option>
           {% for f in my_folders %}<option value="{{ f.id }}">📁 {{ f.name }}</option>{% endfor %}
         </select>
       </div>
-      <div id="imgPrv" style="display:none;margin-top:10px"><img id="imgPrvI" style="max-height:180px;border-radius:10px;max-width:100%" alt=""></div>
+      <div id="imgPrv" style="display:none;margin-top:10px;flex-wrap:wrap;gap:8px;max-height:200px;overflow:auto"></div>
       <button type="submit" class="bgold" style="width:100%;margin-top:14px;padding:12px;font-size:15px">Опубликовать</button>
     </form>
   </div>
@@ -279,7 +281,7 @@
     </div>
     <div id="dmMsgs" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding-right:4px"></div>
     <div style="display:flex;gap:8px;margin-top:10px;flex-shrink:0">
-      <input type="text" id="dmInp" class="sinp" style="flex:1" placeholder="Сообщение..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendMsg();}">
+      <input type="text" id="dmInp" class="sinp nf-mention-field" style="flex:1" placeholder="Сообщение… @ — подсказки" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();sendMsg();}">
       <button type="button" class="bgold" style="padding:10px 14px" onclick="sendMsg()">→</button>
     </div>
   </div>
@@ -382,20 +384,20 @@ async function sendTokens(){
   }catch(e){document.getElementById('txSt').innerHTML=`<span style="color:#f87171">Ошибка: ${e.message?.slice(0,60)}</span>`}
 }
 
-// ---- LIKE / SAVE / FOLLOW ----
-async function doLike(id,btn){
-  const c=document.getElementById(`lkc-${id}`);
+// ---- LIKE (звезда → анимация + страница звёзд) / SAVE / FOLLOW ----
+function commStarLike(id,btn){
+  if(typeof NF_communityStarLike!=='function') return;
+  const was=btn.classList.contains('on');
+  const c=document.getElementById('lkc-'+id);
   const icon=btn.querySelector('span:first-child');
-  const wasLiked=btn.classList.contains('on');
-  const n=parseInt(c&&c.textContent||'0',10)||0;
-  btn.classList.toggle('on', !wasLiked);
-  if(icon) icon.textContent= !wasLiked ? '⭐' : '✩';
-  if(c) c.textContent=String(Math.max(0,n+(!wasLiked?1:-1)));
-  const r=await fetch(`/community/like/${id}`,{method:'POST'});
-  const d=await r.json();
-  btn.classList.toggle('on', !!d.liked);
-  if(icon) icon.textContent=d.liked?'⭐':'✩';
-  if(c && typeof d.count==='number') c.textContent=String(Math.max(0,d.count));
+  NF_communityStarLike(id,{
+    wasLiked:was,
+    backUrl:location.href,
+    onCounts:function(d){
+      if(typeof d.count==='number'&&c) c.textContent=String(Math.max(0,d.count));
+      if(d.liked){ btn.classList.add('on'); if(icon) icon.textContent='⭐'; }
+    }
+  });
 }
 async function doSave(id,btn){
   const r=await fetch(`/community/save/${id}`,{method:'POST'});
@@ -428,7 +430,8 @@ async function loadCmts(id){
 }
 function cmtHtml(c){
   const av=c.author_avatar?`<img src="${c.author_avatar}" class="avg" style="width:28px;height:28px" alt="">`:`<div class="avp" style="width:28px;height:28px;font-size:12px">🍄</div>`;
-  return `<div style="display:flex;gap:8px;margin-bottom:10px">${av}<div style="flex:1;background:#1a1a1a;border-radius:10px;padding:7px 11px"><div style="font-size:11px;color:#666">${c.author_emoji} ${esc(c.author_name)} · ${c.created_at}</div><div style="font-size:13px;color:#ddd;margin-top:2px">${esc(c.content)}</div></div></div>`;
+  const body=(typeof linkifyCommunityMentionsPlain==='function')?linkifyCommunityMentionsPlain(c.content):esc(c.content);
+  return `<div style="display:flex;gap:8px;margin-bottom:10px">${av}<div style="flex:1;background:#1a1a1a;border-radius:10px;padding:7px 11px"><div style="font-size:11px;color:#666">${c.author_emoji} ${esc(c.author_name)} · ${c.created_at}</div><div style="font-size:13px;color:#ddd;margin-top:2px;white-space:pre-wrap;word-break:break-word">${body}</div></div></div>`;
 }
 async function submitCmt(id){
   const inp=document.getElementById(`ci-${id}`);
@@ -459,7 +462,7 @@ async function openUserModal(uid){
   const fBtn=`<button class="bout" id="mflw-${d.id}" onclick="doFollow(${d.id},this);doFollow(${d.id},document.getElementById('flw-${d.id}'))" style="font-size:12px;padding:6px 12px">${d.is_following?'Отписаться':'+ Подписаться'}</button>`;
   const dmBtn=`<button class="abt" onclick="closeM('userModal');openDM(${d.id},'${esc2(d.name||'Участник')}','${esc2(d.avatar||'')}')" style="font-size:13px">✉️ Написать</button>`;
   const profLink=`<a href="/community/profile/${d.id}" style="font-size:12px;color:#3dd4e0;text-decoration:none;display:block;margin-top:12px">Открыть профиль →</a>`;
-  document.getElementById('userModalBody').innerHTML=`${av}<div style="font-weight:700;font-size:18px;margin-top:12px">${esc(d.name||'Участник')}</div>${d.bio?`<div style="font-size:13px;color:#888;margin-top:6px">${esc(d.bio)}</div>`:''}<div style="display:flex;gap:18px;justify-content:center;margin:14px 0;font-size:12px"><div style="text-align:center"><span style="color:#fff;font-weight:700">${d.followers_count||0}</span><br><span style="color:#666">подписчиков</span></div><div style="text-align:center"><span style="color:#fff;font-weight:700">${d.following_count||0}</span><br><span style="color:#666">подписок</span></div><div style="text-align:center"><span style="color:#fff;font-weight:700">${d.post_count||0}</span><br><span style="color:#666">постов</span></div></div>${wl}${sendBtn}<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px">${fBtn}${dmBtn}</div>${profLink}`;
+  document.getElementById('userModalBody').innerHTML=`${av}<div style="font-weight:700;font-size:18px;margin-top:12px;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap">${esc(d.name||'Участник')}<span class="cp-user-id-pill" style="font-size:10px;padding:3px 9px;cursor:default" title="Упоминание в тексте: @${d.id}"><span class="cp-user-id-pill__k">id</span>@${d.id}</span></div>${d.bio?`<div style="font-size:13px;color:#888;margin-top:6px">${esc(d.bio)}</div>`:''}<div style="display:flex;gap:18px;justify-content:center;margin:14px 0;font-size:12px"><div style="text-align:center"><span style="color:#fff;font-weight:700">${d.followers_count||0}</span><br><span style="color:#666">подписчиков</span></div><div style="text-align:center"><span style="color:#fff;font-weight:700">${d.following_count||0}</span><br><span style="color:#666">подписок</span></div><div style="text-align:center"><span style="color:#fff;font-weight:700">${d.post_count||0}</span><br><span style="color:#666">постов</span></div></div>${wl}${sendBtn}<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px">${fBtn}${dmBtn}</div>${profLink}`;
 }
 
 // ---- DM ----
@@ -544,34 +547,49 @@ async function upAvatar(input){
   const d=await r.json();if(d.ok)location.reload();
 }
 
-// ---- IMAGE PREVIEW ----
-async function prvImg(input){
-  const f=input.files[0];if(!f)return;
-  let finalFile=f;
-  try{
-    if(window.MAIImageCropper && /^image\//i.test(f.type||'')){
-      const blob=await window.MAIImageCropper.open(f,{aspectRatio:1});
-      if(blob) finalFile=new File([blob],'post.jpg',{type:'image/jpeg'});
-    }
-  }catch(e){
-    input.value='';
-    return;
-  }
+// ---- IMAGE PREVIEW (до 5) ----
+function prvImgsComm(input){
+  const raw=Array.from(input.files||[]).slice(0,5);
   try{
     const dt=new DataTransfer();
-    dt.items.add(finalFile);
+    raw.forEach(function(f){ dt.items.add(f); });
     input.files=dt.files;
   }catch(e){}
-  const rd=new FileReader();
-  rd.onload=e=>{document.getElementById('imgPrvI').src=e.target.result;document.getElementById('imgPrv').style.display='block'};
-  rd.readAsDataURL(finalFile);
+  const box=document.getElementById('imgPrv');
+  if(!box)return;
+  box.innerHTML='';
+  if(!raw.length){ box.style.display='none'; return; }
+  box.style.display='flex';
+  raw.forEach(function(f){
+    const rd=new FileReader();
+    const im=document.createElement('img');
+    im.style.cssText='height:76px;width:auto;max-width:120px;border-radius:10px;object-fit:cover;border:1px solid rgba(61,212,224,.3)';
+    rd.onload=function(e){ im.src=e.target.result; };
+    rd.readAsDataURL(f);
+    box.appendChild(im);
+  });
+}
+async function submitCommunityFeedPost(ev){
+  ev.preventDefault();
+  const form=document.getElementById('communityPostForm');
+  if(!form)return false;
+  const fd=new FormData(form);
+  try{
+    const r=await fetch('/community/post',{method:'POST',body:fd,credentials:'same-origin'});
+    const d=await r.json().catch(function(){return {};});
+    if(d.ok||d.id){
+      closeM('postModal');
+      location.reload();
+    }
+  }catch(e){}
+  return false;
 }
 
 // ---- UTILS ----
 function esc(t){return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function openCommunityPostPage(event, postId){
   const t=event&&event.target;
-  if(t && t.closest('a,button,input,textarea,details,summary,.abt,.sinp,.comm-ig-met,.csec')) return;
+  if(t && t.closest('a,button,input,textarea,details,summary,.abt,.sinp,.comm-ig-met,.csec,.nf-post-gallery')) return;
   const back=encodeURIComponent(location.href);
   location.href='/community/post/'+postId+'?back='+back;
 }
@@ -620,7 +638,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     </div>
     <div id="chat-messages" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px"></div>
     <div style="padding:12px;border-top:1px solid rgba(255,255,255,.06);display:flex;gap:8px;flex-shrink:0">
-      <textarea id="chat-input" placeholder="Сообщение..." rows="1" style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px;color:#e8e8e8;font-size:13px;resize:none;outline:none;font-family:inherit" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();panelSendMsg();}"></textarea>
+      <textarea id="chat-input" class="nf-mention-field" placeholder="Сообщение… @ — подсказки" rows="1" style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px;color:#e8e8e8;font-size:13px;resize:none;outline:none;font-family:inherit" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();panelSendMsg();}"></textarea>
       <button onclick="panelSendMsg()" style="background:#3dd4e0;border:none;border-radius:12px;padding:10px 16px;color:#080808;cursor:pointer;font-weight:700;font-size:16px">→</button>
     </div>
   </div>

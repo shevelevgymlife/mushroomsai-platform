@@ -24,6 +24,7 @@ from db.models import (
     community_folders,
     community_follows,
     community_saved,
+    community_reposts,
     community_comments,
     profile_likes,
     direct_messages,
@@ -36,6 +37,8 @@ from services.subscription_service import check_subscription, PLANS, web_default
 from services.shop_catalog import product_gallery_urls
 from services.legal import legal_acceptance_redirect
 from services.legacy_dm_chat_sync import sync_direct_messages_pair
+from services.in_app_notifications import create_notification, should_send_telegram_for_event
+from web.community_media import post_image_urls
 from services.referral_service import (
     attach_invite_ref_from_query,
     get_referral_stats,
@@ -1158,6 +1161,12 @@ async def community_old(request: Request):
             .where(community_likes.c.user_id == effective_user_id)
         )
         liked = lk is not None
+        rp = await database.fetch_one(
+            community_reposts.select()
+            .where(community_reposts.c.post_id == p["id"])
+            .where(community_reposts.c.user_id == effective_user_id)
+        )
+        reposted = rp is not None
         saved = p["id"] in saved_post_ids_set
         # Check if we follow the author
         is_following = False
@@ -1177,6 +1186,7 @@ async def community_old(request: Request):
             "author": author,
             "author_post_count": post_count,
             "liked": liked,
+            "reposted": reposted,
             "saved": saved,
             "is_following": is_following,
             "folder_name": folder_name,
@@ -1431,6 +1441,11 @@ async def community_profile(request: Request, user_id: int):
             .where(community_likes.c.post_id == p["id"])
             .where(community_likes.c.user_id == viewer_id)
         )
+        rp = await database.fetch_one(
+            community_reposts.select()
+            .where(community_reposts.c.post_id == p["id"])
+            .where(community_reposts.c.user_id == viewer_id)
+        )
         folder_name = None
         if p["folder_id"]:
             fl = await database.fetch_one(
@@ -1440,6 +1455,7 @@ async def community_profile(request: Request, user_id: int):
         feed.append({
             "post": p,
             "liked": lk is not None,
+            "reposted": rp is not None,
             "saved": p["id"] in saved_ids,
             "folder_name": folder_name,
         })
@@ -1799,7 +1815,18 @@ async def community_profile_circle_page(request: Request, user_id: int, circle_i
             .where(community_likes.c.user_id == viewer_id)
         )
         liked_set = {int(r["post_id"]) for r in lk_rows}
-    feed_items = [{"post": p, "liked": p["id"] in liked_set} for p in posts]
+    repost_set: set[int] = set()
+    if post_ids_list:
+        rp_rows = await database.fetch_all(
+            community_reposts.select()
+            .where(community_reposts.c.post_id.in_(post_ids_list))
+            .where(community_reposts.c.user_id == viewer_id)
+        )
+        repost_set = {int(r["post_id"]) for r in rp_rows}
+    feed_items = [
+        {"post": p, "liked": p["id"] in liked_set, "reposted": p["id"] in repost_set}
+        for p in posts
+    ]
     return templates.TemplateResponse(
         "community_circle.html",
         {
@@ -1844,8 +1871,14 @@ async def community_post_page(request: Request, post_id: int, back: str = ""):
         .where(community_saved.c.post_id == post_id)
         .where(community_saved.c.user_id == viewer_id)
     )
+    rep_row = await database.fetch_one(
+        community_reposts.select()
+        .where(community_reposts.c.post_id == post_id)
+        .where(community_reposts.c.user_id == viewer_id)
+    )
     is_owner = int(post["user_id"] or 0) == int(viewer_id)
     back_url = (back or "").strip() or request.headers.get("referer") or "/community"
+    post_images = post_image_urls(dict(post))
 
     return templates.TemplateResponse(
         "community_post.html",
@@ -1853,9 +1886,11 @@ async def community_post_page(request: Request, post_id: int, back: str = ""):
             "request": request,
             "user": current_user,
             "post": post,
+            "post_images": post_images,
             "author": author,
             "is_liked": liked is not None,
             "is_saved": saved is not None,
+            "is_reposted": rep_row is not None,
             "is_owner": is_owner,
             "back_url": back_url,
         },
@@ -1909,7 +1944,8 @@ async def community_post_photo_page(request: Request, post_id: int, back: str = 
     )
     if not post:
         return HTMLResponse("Пост не найден", status_code=404)
-    if not (post.get("image_url") or "").strip():
+    imgs = post_image_urls(dict(post))
+    if not imgs:
         return RedirectResponse(f"/community/post/{post_id}")
     back_url = (back or "").strip() or request.headers.get("referer") or "/community"
     return templates.TemplateResponse(
@@ -1917,7 +1953,104 @@ async def community_post_photo_page(request: Request, post_id: int, back: str = 
         {
             "request": request,
             "post": post,
+            "post_images": imgs,
             "back_url": back_url,
+        },
+    )
+
+
+@router.get("/community/post/{post_id}/stars", response_class=HTMLResponse)
+async def community_post_stars_page(request: Request, post_id: int, back: str = ""):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return RedirectResponse(f"/login?next=/community/post/{post_id}/stars")
+    leg = await legal_acceptance_redirect(request, current_user)
+    if leg:
+        return leg
+    post = await database.fetch_one(
+        community_posts.select()
+        .where(community_posts.c.id == post_id)
+        .where(community_posts.c.approved == True)
+    )
+    if not post:
+        return HTMLResponse("Пост не найден", status_code=404)
+    viewer_id = current_user.get("primary_user_id") or current_user["id"]
+    liked = await database.fetch_one(
+        community_likes.select()
+        .where(community_likes.c.post_id == post_id)
+        .where(community_likes.c.user_id == viewer_id)
+    )
+    back_url = (back or "").strip() or request.headers.get("referer") or f"/community/post/{post_id}"
+    return templates.TemplateResponse(
+        "community_post_stars.html",
+        {
+            "request": request,
+            "user": current_user,
+            "post": post,
+            "back_url": back_url,
+            "is_liked": liked is not None,
+        },
+    )
+
+
+@router.get("/community/post/{post_id}/reposts", response_class=HTMLResponse)
+async def community_post_reposts_page(request: Request, post_id: int, back: str = ""):
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return RedirectResponse(f"/login?next=/community/post/{post_id}/reposts")
+    leg = await legal_acceptance_redirect(request, current_user)
+    if leg:
+        return leg
+    post = await database.fetch_one(
+        community_posts.select()
+        .where(community_posts.c.id == post_id)
+        .where(community_posts.c.approved == True)
+    )
+    if not post:
+        return HTMLResponse("Пост не найден", status_code=404)
+    back_url = (back or "").strip() or request.headers.get("referer") or f"/community/post/{post_id}"
+    return templates.TemplateResponse(
+        "community_post_reposts.html",
+        {
+            "request": request,
+            "user": current_user,
+            "post": post,
+            "back_url": back_url,
+        },
+    )
+
+
+@router.get("/community/post/{post_id}/forward", response_class=HTMLResponse)
+async def community_post_forward_page(request: Request, post_id: int, back: str = ""):
+    """Переслать пост в ЛС подписчику — отдельный экран с выбором после @."""
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return RedirectResponse(f"/login?next=/community/post/{post_id}/forward")
+    leg = await legal_acceptance_redirect(request, current_user)
+    if leg:
+        return leg
+    post = await database.fetch_one(
+        community_posts.select()
+        .where(community_posts.c.id == post_id)
+        .where(community_posts.c.approved == True)
+    )
+    if not post:
+        return HTMLResponse("Пост не найден", status_code=404)
+    back_url = (back or "").strip() or request.headers.get("referer") or f"/community/post/{post_id}"
+    viewer_id = current_user.get("primary_user_id") or current_user["id"]
+    fwd_row = await database.fetch_one(
+        community_reposts.select()
+        .where(community_reposts.c.post_id == post_id)
+        .where(community_reposts.c.user_id == viewer_id)
+    )
+    return templates.TemplateResponse(
+        "community_post_forward.html",
+        {
+            "request": request,
+            "user": current_user,
+            "post": post,
+            "back_url": back_url,
+            "already_forwarded": fwd_row is not None,
         },
     )
 
@@ -2389,6 +2522,22 @@ async def send_message(request: Request, other_id: int):
         return JSONResponse({"error": str(e)}, status_code=500)
 
     msg_id = row["id"] if row else None
+    sender_row = await database.fetch_one(users.select().where(users.c.id == uid))
+    nm = (sender_row.get("name") if sender_row else None) or "Участник"
+    if msg_id and other_id and other_id != 0:
+        try:
+            await create_notification(
+                recipient_id=int(other_id),
+                actor_id=int(uid),
+                ntype="message",
+                title="Личное сообщение",
+                body=f"{nm}: {text[:400]}",
+                link_url=f"/chats?open_user={uid}",
+                source_kind="direct_message",
+                source_id=int(msg_id),
+            )
+        except Exception:
+            pass
     try:
         if other_id and other_id != 0 and msg_id:
             await sync_direct_messages_pair(uid, other_id, broadcast_legacy_dm_id=int(msg_id))
@@ -2397,14 +2546,12 @@ async def send_message(request: Request, other_id: int):
     if other_id and other_id != 0:
         try:
             recipient = await database.fetch_one(users.select().where(users.c.id == other_id))
-            if recipient:
+            if recipient and await should_send_telegram_for_event(int(other_id), "message"):
                 tg_id = recipient.get("tg_id") or recipient.get("linked_tg_id")
                 if tg_id:
                     from services.notify_user_stub import notify_user_dm_with_read_button
 
-                    sender_row = await database.fetch_one(users.select().where(users.c.id == uid))
-                    nm = (sender_row.get("name") if sender_row else None) or "Участник"
-                    await notify_user_dm_with_read_button(tg_id, nm, text, f"/messages/{uid}")
+                    await notify_user_dm_with_read_button(tg_id, nm, text, f"/chats?open_user={uid}")
         except Exception:
             pass
 

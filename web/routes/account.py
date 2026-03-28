@@ -4,6 +4,7 @@ import secrets
 import urllib.parse
 from web.profile_ui_themes import PROFILE_UI_THEMES, PROFILE_UI_THEME_IDS, MAX_PROFILE_CIRCLES_ACCOUNT
 from services.profile_public_cards import merge_profile_public_cards, profile_public_cards_from_form, SOCIAL_KEYS
+from services.in_app_notifications import merge_prefs as merge_notification_prefs
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -407,6 +408,25 @@ async def account_settings_hub(request: Request):
     return templates.TemplateResponse(
         "account/settings.html",
         {"request": request, "user": user},
+    )
+
+
+@router.get("/settings/sound-notifications", response_class=HTMLResponse)
+async def account_sound_notifications_page(request: Request):
+    user = await get_user_from_request(request)
+    if not user:
+        return RedirectResponse("/login?next=/account/settings/sound-notifications", status_code=302)
+    attach_screen_rim_prefs(user)
+    uid = int(user.get("primary_user_id") or user["id"])
+    row = await database.fetch_one(
+        sa.select(users.c.notification_prefs_json).where(users.c.id == uid)
+    )
+    notification_prefs = merge_notification_prefs(
+        row["notification_prefs_json"] if row else None
+    )
+    return templates.TemplateResponse(
+        "account/sound_notifications.html",
+        {"request": request, "user": user, "notification_prefs": notification_prefs},
     )
 
 

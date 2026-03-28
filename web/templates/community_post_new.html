@@ -21,12 +21,12 @@
     <p style="margin:0 0 10px;font-size:13px;color:#f87171">{{ error }}</p>
     {% endif %}
     <form id="communityCreateForm" action="/community/post" method="post" enctype="multipart/form-data">
-      <input name="title" class="sinp" maxlength="200" placeholder="Название (необязательно)" style="margin-bottom:10px">
-      <textarea name="content" class="sinp" maxlength="8000" placeholder="Текст поста" style="min-height:140px;resize:vertical;margin-bottom:10px"></textarea>
+      <input name="title" class="sinp nf-mention-field" maxlength="200" placeholder="Название (необязательно)" style="margin-bottom:10px">
+      <textarea name="content" class="sinp nf-mention-field" maxlength="8000" placeholder="Текст поста" style="min-height:140px;resize:vertical;margin-bottom:10px"></textarea>
       <div class="cp-row" style="margin-bottom:10px">
         <label class="btn-o" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer">
-          {{ ico('image') }} Фото
-          <input id="communityCreateFile" name="image" type="file" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none" onchange="previewCreateImage(this)">
+          {{ ico('image') }} До 5 фото
+          <input id="communityCreateFile" name="images" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple style="display:none" onchange="previewCreateImages(this)">
         </label>
         <select name="folder_id" class="sinp" style="max-width:300px">
           <option value="">Без папки</option>
@@ -35,9 +35,7 @@
           {% endfor %}
         </select>
       </div>
-      <div id="communityCreatePreviewWrap" style="display:none;margin-bottom:10px">
-        <img id="communityCreatePreviewImg" src="" alt="" style="width:100%;max-height:280px;object-fit:cover;border-radius:12px;border:1px solid rgba(255,255,255,.12)">
-      </div>
+      <div id="communityCreatePreviewWrap" style="display:none;margin-bottom:10px;flex-wrap:wrap;gap:8px"></div>
       <div class="cp-row">
         <button type="submit" class="btn-g">Опубликовать</button>
         <a href="/community" class="btn-o">Отмена</a>
@@ -48,33 +46,26 @@
 </div>
 
 <script>
-async function previewCreateImage(input){
-  const f=input.files&&input.files[0];
-  if(!f)return;
-  let finalFile=f;
-  try{
-    if(window.MAIImageCropper && /^image\//i.test(f.type||'')){
-      const blob=await window.MAIImageCropper.open(f,{aspectRatio:1});
-      if(blob) finalFile=new File([blob],'post.jpg',{type:'image/jpeg'});
-    }
-  }catch(e){
-    input.value='';
-    return;
-  }
+function previewCreateImages(input){
+  const files=Array.from(input.files||[]).slice(0,5);
   try{
     const dt=new DataTransfer();
-    dt.items.add(finalFile);
+    files.forEach(function(f){ dt.items.add(f); });
     input.files=dt.files;
   }catch(e){}
-  const rd=new FileReader();
-  rd.onload=function(ev){
-    const wrap=document.getElementById('communityCreatePreviewWrap');
-    const img=document.getElementById('communityCreatePreviewImg');
-    if(!wrap||!img)return;
-    img.src=ev.target.result;
-    wrap.style.display='block';
-  };
-  rd.readAsDataURL(finalFile);
+  const wrap=document.getElementById('communityCreatePreviewWrap');
+  if(!wrap)return;
+  wrap.innerHTML='';
+  if(!files.length){ wrap.style.display='none'; return; }
+  wrap.style.display='flex';
+  files.forEach(function(f){
+    const rd=new FileReader();
+    const im=document.createElement('img');
+    im.style.cssText='height:88px;width:auto;max-width:140px;object-fit:cover;border-radius:10px;border:1px solid rgba(255,255,255,.12)';
+    rd.onload=function(ev){ im.src=ev.target.result; };
+    rd.readAsDataURL(f);
+    wrap.appendChild(im);
+  });
 }
 
 document.getElementById('communityCreateForm')?.addEventListener('submit', async function(e){

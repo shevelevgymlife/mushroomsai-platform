@@ -17,6 +17,8 @@
         if (!isFreeRestrictedUser()) return;
         var a = e.target && e.target.closest ? e.target.closest("a.app-uni-tab") : null;
         if (!a) return;
+        var href = (a.getAttribute("href") || "").split("?")[0];
+        if (href.indexOf("/notifications") === 0) return;
         e.preventDefault();
         e.stopPropagation();
         window.location.href = "/subscriptions";
@@ -43,6 +45,11 @@
       if (path.indexOf("/chats") === 0) {
         var msg = bar.querySelector('.app-uni-tab[data-app-tab="messages"]');
         if (msg) msg.classList.add("app-uni-tab--on");
+        return;
+      }
+      if (path.indexOf("/notifications") === 0) {
+        var act = bar.querySelector('.app-uni-tab[data-app-tab="activity"]');
+        if (act) act.classList.add("app-uni-tab--on");
         return;
       }
       if (path.indexOf("/community/members") === 0) {

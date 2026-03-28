@@ -395,3 +395,46 @@ main .text-5xl.font-display {
   font-family: var(--font-display);
   letter-spacing: -0.03em;
 }
+
+/* Упоминания @user_id в тексте постов и комментариев */
+a.nf-mention {
+  color: #67e8f9;
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(103, 232, 249, 0.38);
+}
+a.nf-mention:hover {
+  color: #a5f3fc;
+  border-bottom-color: rgba(165, 243, 252, 0.55);
+}
+
+/* Бейдж ID на профиле (для копирования @id в комментарии) */
+.cp-user-id-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: rgba(200, 230, 238, 0.95);
+  background: rgba(61, 212, 224, 0.12);
+  border: 1px solid rgba(61, 212, 224, 0.38);
+  border-radius: 999px;
+  padding: 4px 11px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s, border-color 0.15s;
+}
+.cp-user-id-pill:hover {
+  background: rgba(61, 212, 224, 0.2);
+  border-color: rgba(61, 212, 224, 0.55);
+}
+.cp-user-id-pill__k {
+  opacity: 0.72;
+  font-weight: 600;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}

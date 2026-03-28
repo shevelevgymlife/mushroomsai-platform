@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Событие — NEUROFUNGI AI{% endblock %}
+{% block content %}
+<div class="nf-notif-detail" style="max-width:480px;margin:0 auto;padding:16px calc(14px + env(safe-area-inset-right,0px)) calc(100px + env(safe-area-inset-bottom,0px)) calc(14px + env(safe-area-inset-left,0px));min-height:55vh">
+  <a href="/notifications" style="display:inline-flex;align-items:center;gap:8px;font-size:14px;color:#C9A84C;text-decoration:none;margin-bottom:20px;font-weight:600">← Назад к событиям</a>
+
+  <div style="border-radius:22px;padding:24px 20px;background:linear-gradient(155deg,rgba(255,255,255,.07),rgba(12,14,22,.88));border:1px solid rgba(201,168,76,.32);box-shadow:0 0 0 1px rgba(201,168,76,.1),0 20px 56px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.08)">
+    <div style="display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:20px">
+      <div style="width:96px;height:96px;border-radius:50%;overflow:hidden;border:3px solid rgba(201,168,76,.45);box-shadow:0 0 32px rgba(201,168,76,.15);background:#121214;margin-bottom:14px">
+        {% if n.actor_avatar %}<img src="{{ n.actor_avatar }}" alt="" style="width:100%;height:100%;object-fit:cover">{% else %}<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:40px">🍄</div>{% endif %}
+      </div>
+      {% if n.actor_id %}
+      <a href="/community/profile/{{ n.actor_id }}" style="font-size:clamp(18px,4vw,22px);font-weight:800;color:#3dd4e0;text-decoration:none">{{ n.actor_name }}</a>
+      {% else %}
+      <span style="font-size:clamp(18px,4vw,22px);font-weight:800;color:#e8e8ec">{{ n.actor_name }}</span>
+      {% endif %}
+    </div>
+
+    <div style="text-align:center;margin-bottom:18px">
+      <span style="display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#C9A84C;padding:8px 14px;border-radius:999px;background:rgba(201,168,76,.12);border:1px solid rgba(201,168,76,.25)">{{ n.type_icon }} {{ n.type_label }}</span>
+    </div>
+
+    {% if n.title %}
+    <h2 style="font-size:15px;font-weight:700;color:#c4c4cc;margin:0 0 10px">{{ n.title }}</h2>
+    {% endif %}
+    <div style="font-size:15px;line-height:1.55;color:#e4e4ea;white-space:pre-wrap;word-break:break-word">{{ n.body | linkify_mentions | safe }}</div>
+    <p class="nf-notif-ts" style="font-size:12px;color:#7a7a82;margin-top:18px" data-nf-local-utc="{{ n.created_at_iso }}"></p>
+
+    {% if n.link_url %}
+    <a href="{{ n.link_url }}" class="nf-notif-goto" style="display:block;margin-top:22px;text-align:center;padding:14px 20px;border-radius:14px;font-weight:700;font-size:15px;text-decoration:none;background:linear-gradient(135deg,rgba(201,168,76,.25),rgba(201,168,76,.12));color:#f5e6c8;border:1px solid rgba(201,168,76,.45)">Перейти к событию</a>
+    {% endif %}
+  </div>
+</div>
+<style>
+.nf-notif-detail { background: #080808; }
+.nf-notif-goto:hover { filter: brightness(1.08); }
+</style>
+<script src="/static/js/nf-notifications-time.js" defer></script>
+{% endblock %}

@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ circle.name }} — {{ profile.name }}{% endblock %}
 {% block content %}
+<script src="/static/js/nf-community-star-like.js?v=1"></script>
 <style>
 /* Шапка как у обучающих постов в папке (admin AI) */
 .cc-folder-bar{margin-bottom:16px;padding:14px 16px;border-radius:16px;background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.28);display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px}
@@ -45,21 +46,22 @@
   <div class="cc-feed-list" id="circleFeedList">
     {% for item in feed_items %}
     {% set p = item.post %}
+    {% set cimgs = p|post_image_urls %}
     <div class="ai-ya-card" data-pid="{{ p.id }}" onclick="openCommunityPostPage(event, {{ p.id }})">
       <h3 class="ai-ya-title">{{ (p.title or (p.content or '')[:80] or 'Пост')|truncate(120, True, '…') }}</h3>
       <div class="ai-ya-meta">
         <span>{{ profile.name or 'Участник' }}</span>
         <span>{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '—' }}</span>
-        {% if p.image_url %}<span style="color:#38bdf8">▣ фото</span>{% endif %}
+        {% if cimgs %}<span style="color:#38bdf8">▣ {{ cimgs|length }} фото</span>{% endif %}
       </div>
-      {% if p.image_url %}
-      <div class="ai-ya-thumb" style="margin-bottom:8px"><img src="{{ p.image_url }}" loading="lazy" alt=""></div>
+      {% if cimgs %}
+      <div class="ai-ya-thumb" style="margin-bottom:8px"><img src="{{ cimgs[0] }}" loading="lazy" alt=""></div>
       {% endif %}
       <p class="ai-ya-desc">{% if p.content %}{{ p.content | truncate(400, True, '…') }}{% else %}Без текста{% endif %}</p>
       <div class="cc-card-metrics">
         <button type="button" class="cc-card-met cc-card-met-star" onclick="event.stopPropagation();ccLikePost({{ p.id }},this)"><span>{% if item.liked %}⭐{% else %}✩{% endif %}</span> <span id="cc-lkc-{{ p.id }}">{{ p.likes_count }}</span></button>
         <button type="button" class="cc-card-met cc-card-met-chat" onclick="event.stopPropagation();openCommunityPostDirect({{ p.id }})">💬 {{ p.comments_count }}</button>
-        <span class="cc-card-met cc-card-met-share">↗ {{ p.saves_count or 0 }}</span>
+        <button type="button" class="cc-card-met cc-card-met-share" onclick="event.stopPropagation();NF_openPostReposts({{ p.id }}, location.href)">↗ {{ p.reposts_count|default(0) }}</button>
       </div>
     </div>
     {% endfor %}
@@ -81,17 +83,19 @@ function openCommunityPostDirect(postId){
   const back=encodeURIComponent(location.href);
   location.href='/community/post/'+postId+'/comments?back='+back;
 }
-async function ccLikePost(postId, btn){
-  try{
-    const cnt=document.getElementById('cc-lkc-'+postId);
-    const icon=btn&&btn.querySelector('span');
-    const wasLiked=icon && icon.textContent==='⭐';
-    if(icon) icon.textContent=wasLiked?'✩':'⭐';
-    const r=await fetch('/community/like/'+postId,{method:'POST',credentials:'same-origin'});
-    const d=await r.json().catch(()=>({}));
-    if(d.liked){ if(icon) icon.textContent='⭐'; } else { if(icon) icon.textContent='✩'; }
-    if(cnt && typeof d.count==='number') cnt.textContent=String(Math.max(0,d.count));
-  }catch(e){}
+function ccLikePost(postId, btn){
+  if(typeof NF_communityStarLike!=='function') return;
+  const cnt=document.getElementById('cc-lkc-'+postId);
+  const icon=btn&&btn.querySelector('span');
+  const wasLiked=icon && icon.textContent==='⭐';
+  NF_communityStarLike(postId,{
+    wasLiked:wasLiked,
+    backUrl:location.href,
+    onCounts:function(d){
+      if(cnt && typeof d.count==='number') cnt.textContent=String(Math.max(0,d.count));
+      if(d.liked && icon) icon.textContent='⭐';
+    }
+  });
 }
 </script>
 {% endblock %}

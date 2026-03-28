@@ -17,6 +17,13 @@ function formatMsgListTime(iso){
   return pad(d.getDate())+'.'+pad(d.getMonth()+1);
 }
 
+/** Текст сообщения / превью: безопасный HTML + ссылки @user_id */
+function _nfLm(t){
+  if(typeof linkifyCommunityMentionsPlain==='function') return linkifyCommunityMentionsPlain(t);
+  if(typeof esc==='function') return esc(t);
+  var d=document.createElement('div'); d.textContent=t==null?'':String(t); return d.innerHTML;
+}
+
 // ── Group chats ──
 let selectedGroupId = null;
 let groupPollTimer = null;
@@ -636,7 +643,7 @@ async function loadGroupMessages(gid, opts){
         const txt = String(d.group.pinned_message_text||'').trim();
         if(txt){
           pin.style.display='block';
-          pin.textContent='📌 '+txt;
+          pin.innerHTML='📌 '+_nfLm(txt);
           pin.title='Нажмите, чтобы открыть';
           pin.onclick = function(){ alert(txt); };
         }
@@ -650,12 +657,12 @@ async function loadGroupMessages(gid, opts){
     box.innerHTML = msgs.map(function(m){
       var replyHtml = '';
       if(m.reply_to && m.reply_to.sender_name){
-        replyHtml = '<div class="ig-g-reply">↩ '+esc(m.reply_to.sender_name)+': '+esc(m.reply_to.preview||'')+'</div>';
+        replyHtml = '<div class="ig-g-reply">↩ '+esc(m.reply_to.sender_name)+': '+_nfLm(m.reply_to.preview||'')+'</div>';
       }
       var addressedHtml = m.addressed_user_id ? '<div class="ig-g-reply" style="color:#8be9ff">→ адресно</div>' : '';
       var imgHtml = m.image_url ? '<img class="ig-g-img" src="'+escUrlAttr(m.image_url)+'" alt="">' : '';
       var audHtml = m.audio_url ? '<audio class="ig-g-audio" controls playsinline preload="metadata" src="'+escUrlAttr(m.audio_url)+'">Ваш браузер не воспроизводит аудио</audio>' : '';
-      var txtHtml = (m.text && String(m.text).trim()) ? '<div class="ig-g-text">'+esc(m.text)+'</div>' : '';
+      var txtHtml = (m.text && String(m.text).trim()) ? '<div class="ig-g-text">'+_nfLm(m.text)+'</div>' : '';
       var likeN = Number(m.likes_count||0);
       var liked = !!m.liked;
       var likedUsers = Array.isArray(m.liked_users) ? m.liked_users : [];

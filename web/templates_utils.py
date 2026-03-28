@@ -4,12 +4,29 @@ from request.state into every template context.
 User's language preference (user["language"]) takes priority over the
 cookie/Accept-Language detected by the middleware.
 """
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
 from fastapi.templating import Jinja2Templates as _Jinja2Templates
 from config import shevelev_token_address
+from services.in_app_notifications import merge_prefs
+from services.mention_html import jinja_linkify_mentions
+from web.community_media import post_image_urls as jinja_post_image_urls
 from web.translations import TRANSLATIONS, SUPPORTED_LANGS
 
 
 class Jinja2Templates(_Jinja2Templates):
+    def __init__(
+        self,
+        directory: str | Path | list[str | Path] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(directory=directory, **kwargs)
+        self.env.filters["linkify_mentions"] = jinja_linkify_mentions
+        self.env.filters["post_image_urls"] = lambda row: jinja_post_image_urls(dict(row) if row is not None else None)
+
     def TemplateResponse(self, *args, **kwargs):
         # Support both positional and keyword forms
         if args:
@@ -41,5 +58,7 @@ class Jinja2Templates(_Jinja2Templates):
             context.setdefault("lang", lang)
             context.setdefault("shevelev_token", shevelev_token_address())
             context.setdefault("global_radio_enabled", getattr(request.state, "global_radio_enabled", True))
+            ujson = (user.get("notification_prefs_json") if user and isinstance(user, dict) else None)
+            context.setdefault("notification_prefs", merge_prefs(ujson))
 
         return super().TemplateResponse(*args, **kwargs)

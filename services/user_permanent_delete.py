@@ -42,6 +42,7 @@ _CLEANUP_SQL = [
     "DELETE FROM moderation_log WHERE user_id=:uid",
     "DELETE FROM community_likes WHERE user_id=:uid",
     "DELETE FROM community_saved WHERE user_id=:uid",
+    "DELETE FROM community_reposts WHERE user_id=:uid",
     "DELETE FROM community_comments WHERE user_id=:uid",
     "DELETE FROM community_follows WHERE follower_id=:uid OR following_id=:uid",
     "DELETE FROM profile_likes WHERE user_id=:uid OR liked_user_id=:uid",

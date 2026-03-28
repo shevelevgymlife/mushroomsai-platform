@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}Пересылки поста — NEUROFUNGI AI{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="/static/css/nf-community-posts.css?v=1" />
+<style>
+.nf-rp-top{position:sticky;top:calc(4rem - 2px);z-index:40;background:rgba(6,8,14,.92);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.08);padding:10px 12px 12px;margin:0 -12px 8px}
+.nf-rp-top h1{font-size:17px;margin:0 0 10px;color:#e8eaef;font-weight:800}
+.nf-rp-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.nf-rp-actions button,.nf-rp-actions a.btnx{border-radius:12px;padding:8px 14px;font-weight:700;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#e8eaef;cursor:pointer;font-size:13px;text-decoration:none;display:inline-flex;align-items:center}
+.sinp2{width:100%;box-sizing:border-box;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:#e8eaef;border-radius:12px;padding:10px 14px;font-size:15px}
+.nf-rp-wrap{max-width:900px;margin:calc(4rem + 8px) auto 24px;padding:0 12px calc(120px + env(safe-area-inset-bottom,0px))}
+.nf-rp-share{position:fixed;left:0;right:0;bottom:0;z-index:50;background:rgba(8,10,16,.96);border-top:1px solid rgba(61,212,224,.25);padding:10px 12px calc(12px + env(safe-area-inset-bottom,0px));box-shadow:0 -12px 40px rgba(0,0,0,.5)}
+.nf-rp-share strong{display:block;font-size:12px;color:#c7d0dd;margin-bottom:6px}
+.nf-rp-pick{display:flex;gap:8px;flex-wrap:wrap;max-height:120px;overflow-y:auto;margin-top:8px}
+.nf-rp-pick button{display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#e8eaef;font-size:12px;cursor:pointer}
+.nf-rp-pick button:hover{border-color:rgba(247,179,255,.45)}
+</style>
+<div class="nf-rp-wrap">
+  <div class="nf-rp-top">
+    <div class="nf-rp-actions">
+      <button type="button" onclick="goBack()">← Закрыть</button>
+      <a class="btnx" href="/community/post/{{ post.id }}/forward?back={{ back_url|urlencode }}">Переслать в личку</a>
+      <a class="btnx" id="openPostLinkRp" href="/community/post/{{ post.id }}">Открыть пост</a>
+      <button type="button" id="btnToggleRepost" onclick="toggleMyRepost()">↗ Записать пересылку</button>
+    </div>
+    <h1>↗ Кто переслал пост</h1>
+    <input type="search" id="rpSearch" class="sinp2" placeholder="Поиск среди переславших…" autocomplete="off" />
+  </div>
+  <p id="rpLoad" style="color:#8a8fa0;font-size:14px">Загрузка…</p>
+  <div id="rpCanvas" class="nf-chaos-canvas" style="display:none"></div>
+</div>
+<div class="nf-rp-share">
+  <strong>Переслать в личку кому-то ещё</strong>
+  <input type="search" id="rpShareSearch" class="sinp2" placeholder="Поиск пользователя…" autocomplete="off" />
+  <div id="rpPick" class="nf-rp-pick"></div>
+  <p id="rpShareOk" style="display:none;margin-top:8px;font-size:12px" role="status"></p>
+</div>
+<script>
+const POST_ID={{ post.id }};
+const BACK_URL={{ back_url|tojson }};
+function goBack(){ if(history.length>1){ history.back(); } else { location.href=BACK_URL||'/community'; } }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function placeCard(el,i,uid){
+  var x=((uid*19+i*29)%74)+4;
+  var y=((uid*37+i*43)%56)+8;
+  var rot=((uid+i)*11%17)-8;
+  el.style.left=x+'%';
+  el.style.top=y+'%';
+  el.style.transform='rotate('+rot+'deg)';
+  el.style.zIndex=String(10+(i%8));
+}
+function render(users){
+  var c=document.getElementById('rpCanvas');
+  var ld=document.getElementById('rpLoad');
+  ld.style.display='none';
+  c.style.display='block';
+  c.innerHTML='';
+  if(!users.length){
+    c.innerHTML='<p style="color:#8a8fa0;padding:20px;text-align:center">Пока никто не отметил пересылку</p>';
+    return;
+  }
+  users.forEach(function(u,i){
+    var a=document.createElement('a');
+    a.className='nf-chaos-card';
+    a.href='/community/profile/'+u.id;
+    a.setAttribute('data-name',(u.name||'').toLowerCase());
+    a.setAttribute('data-id',String(u.id));
+    var av=u.avatar
+      ? '<img src="'+esc(u.avatar)+'" alt="" style="border-color:rgba(247,179,255,.5)">'
+      : '<div class="ph" style="border-color:rgba(247,179,255,.4)">🍄</div>';
+    a.innerHTML=av+'<div class="nm">'+esc(u.name||'Участник')+'</div><div class="idp">↗ @'+u.id+'</div>';
+    placeCard(a,i,u.id);
+    c.appendChild(a);
+  });
+}
+function filterRp(q){
+  q=(q||'').trim().toLowerCase();
+  document.querySelectorAll('#rpCanvas .nf-chaos-card').forEach(function(el){
+    var nm=el.getAttribute('data-name')||'';
+    var id=el.getAttribute('data-id')||'';
+    el.style.display=(!q||nm.indexOf(q)>=0||id.indexOf(q)>=0)?'block':'none';
+  });
+}
+document.getElementById('rpSearch').addEventListener('input',function(){ filterRp(this.value); });
+function loadReposters(){
+  fetch('/community/post/'+POST_ID+'/reposters-json',{credentials:'same-origin'})
+    .then(function(r){return r.json();})
+    .then(function(d){ render((d&&d.users)||[]); })
+    .catch(function(){ document.getElementById('rpLoad').textContent='Не удалось загрузить'; });
+}
+loadReposters();
+(function(){
+  var op=document.getElementById('openPostLinkRp');
+  if(op) op.addEventListener('click',function(e){ e.preventDefault(); location.href='/community/post/'+POST_ID+'?back='+encodeURIComponent(BACK_URL||'/community'); });
+})();
+async function toggleMyRepost(){
+  try{
+    var r=await fetch('/community/post/'+POST_ID+'/repost',{method:'POST',credentials:'same-origin'});
+    var d=await r.json().catch(function(){return {};});
+    var b=document.getElementById('btnToggleRepost');
+    if(b) b.textContent=(d.reposted?'✓ Вы переслали':'↗ Записать пересылку');
+    loadReposters();
+  }catch(e){}
+}
+var _shareUsers=[];
+async function loadShareFollowing(){
+  try{
+    var r=await fetch('/community/me/following-share',{credentials:'same-origin'});
+    var d=await r.json().catch(function(){return {};});
+    _shareUsers=(d&&d.users)||[];
+  }catch(e){ _shareUsers=[]; }
+}
+function renderSharePick(q){
+  var box=document.getElementById('rpPick');
+  if(!box)return;
+  var needle=(q||'').trim().toLowerCase();
+  var list=_shareUsers;
+  if(needle){
+    list=_shareUsers.filter(function(u){
+      var nm=(u.name||'').toLowerCase();
+      var idStr=String(u.id);
+      return nm.indexOf(needle)>=0||idStr.indexOf(needle)===0;
+    });
+  }
+  if(!list.length){
+    box.innerHTML='<span style="color:#666;font-size:12px">'+(needle?'Никого не найдено':'Нет подписок — подпишитесь в ленте')+'</span>';
+    return;
+  }
+  box.innerHTML=list.slice(0,40).map(function(u){
+    var av=u.avatar
+      ? '<img src="'+esc(u.avatar)+'" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover">'
+      : '<span>🍄</span>';
+    return '<button type="button" onclick="shareDm('+u.id+')">'+av+' '+esc(u.name||'Участник')+' <span style="opacity:.75">@'+u.id+'</span></button>';
+  }).join('');
+}
+document.getElementById('rpShareSearch').addEventListener('input',function(){
+  renderSharePick(this.value);
+});
+loadShareFollowing().then(function(){ renderSharePick(''); });
+async function shareDm(uid){
+  try{
+    var r=await fetch('/community/post/'+POST_ID+'/share-dm',{
+      method:'POST',
+      credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({recipient_id:uid})
+    });
+    var d=await r.json().catch(function(){return {};});
+    var ok=document.getElementById('rpShareOk');
+    if(r.ok&&d.ok&&ok){
+      var tb=document.getElementById('btnToggleRepost');
+      if(tb) tb.textContent='✓ Вы переслали';
+      loadReposters();
+      ok.style.display='block';
+      ok.style.color='#4ade80';
+      ok.textContent='Ссылка отправлена в личку';
+      setTimeout(function(){ ok.style.display='none'; },2800);
+    }else if(ok){
+      ok.style.display='block';
+      ok.style.color='#f87171';
+      ok.textContent=d.error||'Не удалось отправить';
+      setTimeout(function(){ ok.style.display='none'; },4200);
+    }
+  }catch(e){}
+}
+</script>
+{% endblock %}
