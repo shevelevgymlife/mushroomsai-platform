@@ -11,6 +11,7 @@ from typing import Any
 
 from fastapi.templating import Jinja2Templates as _Jinja2Templates
 from config import shevelev_token_address
+from services.in_app_notifications import merge_prefs
 from services.mention_html import jinja_linkify_mentions
 from web.community_media import post_image_urls as jinja_post_image_urls
 from web.translations import TRANSLATIONS, SUPPORTED_LANGS
@@ -57,5 +58,7 @@ class Jinja2Templates(_Jinja2Templates):
             context.setdefault("lang", lang)
             context.setdefault("shevelev_token", shevelev_token_address())
             context.setdefault("global_radio_enabled", getattr(request.state, "global_radio_enabled", True))
+            ujson = (user.get("notification_prefs_json") if user and isinstance(user, dict) else None)
+            context.setdefault("notification_prefs", merge_prefs(ujson))
 
         return super().TemplateResponse(*args, **kwargs)

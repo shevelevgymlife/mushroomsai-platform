@@ -184,6 +184,14 @@ async def api_player_settings(request: Request):
         updates["music_player_volume"] = max(0.0, min(1.0, vol))
     if "position" in body:
         updates["music_player_position"] = str(body["position"])[:50]
+    if "position_px" in body and isinstance(body.get("position_px"), dict):
+        px = body["position_px"]
+        try:
+            lx = int(px.get("left", 0))
+            ty = int(px.get("top", 0))
+            updates["music_player_position"] = f"free:{lx},{ty}"[:50]
+        except (TypeError, ValueError):
+            pass
 
     if updates:
         set_clause = ", ".join(f"{k}=:{k}" for k in updates)
