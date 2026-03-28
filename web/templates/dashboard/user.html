@@ -1193,6 +1193,8 @@ body.dash-ig-app .ig-lamp-topbar{
           </div>
           <div id="meProfOk" style="display:none;margin-top:10px;font-size:13px;color:#4ade80">✓ Сохранено</div>
         </div>
+        <link rel="stylesheet" href="/static/css/nf-community-posts.css?v=1" />
+        <script src="/static/js/nf-community-star-like.js?v=1"></script>
         <div id="profileChaosWrap">
           <label class="feed-chaos-toggle" for="profileChaosToggle">
             <span>Хаос</span>
@@ -1201,6 +1203,7 @@ body.dash-ig-app .ig-lamp-topbar{
         </div>
         <div id="profilePosts" class="profile-chaos-on">
           {% for p in grid_posts %}
+          {% set pimgs = p|post_image_urls %}
           {% set is_liked_me = p.id in liked_post_ids %}
           <div class="fp ig-post" id="mfp-{{ p.id }}" data-pid="{{ p.id }}" data-author="{{ (user.name or 'Вы')|e }}" data-title="{{ (p.title or '')|e }}" data-content="{{ (p.content or '')|e }}" data-image="{{ (p.image_url or '')|e }}" data-created="{{ (p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '')|e }}" data-likes="{{ p.likes_count or 0 }}" data-comments="{{ p.comments_count or 0 }}" data-saves="{{ p.saves_count or 0 }}" onclick="openCommunityPostPage(event, {{ p.id }})">
             <div class="ig-post-header">
@@ -1218,8 +1221,8 @@ body.dash-ig-app .ig-lamp-topbar{
               </details>
             </div>
             {% if p.title %}<div style="padding:10px 14px 0;font-size:15px;font-weight:700;color:#e8e8e8">{{ p.title | linkify_mentions | safe }}</div>{% endif %}
-            {% if p.image_url %}
-            <img src="{{ p.image_url }}" class="ig-post-img" loading="lazy" alt="">
+            {% if pimgs %}
+            <div class="nf-post-gallery" onclick="event.stopPropagation()">{% for u in pimgs %}<img src="{{ u }}" class="nf-post-gallery__slide" loading="lazy" alt="">{% endfor %}</div>
             {% elif p.content %}
             <div class="ig-post-textonly">{{ p.content | linkify_mentions(500) | safe }}</div>
             {% endif %}
@@ -1234,8 +1237,8 @@ body.dash-ig-app .ig-lamp-topbar{
               <button type="button" class="ig-post-metric ig-post-metric-chat" onclick="event.stopPropagation();openCommunityPostDirect({{ p.id }})">
                 <span>💬</span><span class="n" id="profile-comment-count-{{ p.id }}" data-comment-count-for="{{ p.id }}">{{ p.comments_count or 0 }}</span>
               </button>
-              <button type="button" class="ig-post-metric ig-post-metric-share" onclick="openSharePostModal({{ p.id }})">
-                <span>↗</span><span class="n">{{ p.saves_count or 0 }}</span>
+              <button type="button" class="ig-post-metric ig-post-metric-share" onclick="event.stopPropagation();NF_openPostReposts({{ p.id }}, location.href)">
+                <span>↗</span><span class="n">{{ p.reposts_count|default(0) }}</span>
               </button>
             </div>
             <div id="inline-cmt-profile-{{ p.id }}" style="display:none;padding:10px 12px;border-top:1px solid rgba(255,255,255,.08);gap:8px;align-items:center;overflow:hidden;max-width:100%;box-sizing:border-box">
@@ -1297,11 +1300,14 @@ body.dash-ig-app .ig-lamp-topbar{
           <input id="feedChaosToggle" type="checkbox" checked onchange="setFeedChaos(this.checked)">
         </label>
       </div>
+      <link rel="stylesheet" href="/static/css/nf-community-posts.css?v=1" />
+      <script src="/static/js/nf-community-star-like.js?v=1"></script>
 
       <!-- Posts -->
       <div id="feedPosts" class="feed-chaos-on">
       {% if feed_raw %}
       {% for p in feed_raw %}
+      {% set imgs = p|post_image_urls %}
       {% set a = feed_authors.get(p.user_id) %}
       {% set is_mine = p.user_id in (my_account_ids or [effective_user_id]) %}
       {% set is_admin = (user.role | default('', true)) == 'admin' %}
@@ -1341,8 +1347,10 @@ body.dash-ig-app .ig-lamp-topbar{
         {% if p.title %}
         <div style="padding:10px 14px 0;font-size:15px;font-weight:700;color:#e8e8e8">{{ p.title | linkify_mentions | safe }}</div>
         {% endif %}
-        {% if p.image_url %}
-        <img src="{{ p.image_url }}" class="ig-post-img" loading="lazy" alt="">
+        {% if imgs %}
+        <div class="nf-post-gallery" onclick="event.stopPropagation()" style="max-height:none">
+          {% for u in imgs %}<img src="{{ u }}" class="nf-post-gallery__slide" loading="lazy" alt="">{% endfor %}
+        </div>
         {% elif p.content %}
         <div class="ig-post-textonly">{{ p.content | linkify_mentions(500) | safe }}</div>
         {% endif %}
@@ -1357,7 +1365,7 @@ body.dash-ig-app .ig-lamp-topbar{
           {% endif %}
         </div>
         <div class="ig-post-metrics">
-          <button type="button" class="ig-post-metric ig-post-metric-star" id="like-btn-{{ p.id }}" onclick="likeFeedPost({{ p.id }},this)" title="Лайки" aria-label="Лайки">
+          <button type="button" class="ig-post-metric ig-post-metric-star" id="like-btn-{{ p.id }}" onclick="likeFeedPost({{ p.id }},this)" title="Звезда" aria-label="Звезда">
             <span>{% if is_liked %}⭐{% else %}✩{% endif %}</span><span class="n" id="like-count-{{ p.id }}">{{ p.likes_count }}</span>
           </button>
           {% if is_mine %}
@@ -1369,8 +1377,8 @@ body.dash-ig-app .ig-lamp-topbar{
             <span>💬</span><span class="n" id="comment-count-{{ p.id }}" data-comment-count-for="{{ p.id }}">{{ p.comments_count or 0 }}</span>
           </button>
           {% endif %}
-          <button type="button" class="ig-post-metric ig-post-metric-share" title="Пересылки" onclick="openSharePostModal({{ p.id }})">
-            <span>↗</span><span class="n">{{ p.saves_count or 0 }}</span>
+          <button type="button" class="ig-post-metric ig-post-metric-share" title="Кто переслал" onclick="event.stopPropagation();NF_openPostReposts({{ p.id }}, location.href)">
+            <span>↗</span><span class="n" id="repost-count-{{ p.id }}">{{ p.reposts_count|default(0) }}</span>
           </button>
         </div>
         <div id="inline-cmt-feed-{{ p.id }}" style="display:none;padding:10px 12px;border-top:1px solid rgba(255,255,255,.08);gap:8px;align-items:center;overflow:hidden;max-width:100%;box-sizing:border-box">
@@ -2132,7 +2140,7 @@ body.dash-ig-app .ig-lamp-topbar{
     <input id="createPostTitleInp" class="sinp nf-mention-field" style="margin-bottom:10px;width:100%;box-sizing:border-box" placeholder="Название (необязательно)" maxlength="200">
     <textarea id="createPostBodyInp" class="sinp nf-mention-field" style="min-height:100px;margin-bottom:10px;width:100%;box-sizing:border-box" placeholder="Текст поста" maxlength="8000"></textarea>
     <label style="font-size:12px;color:#888;display:block;margin-bottom:8px">Фото (необязательно)</label>
-    <input id="createPostFileInp" type="file" accept="image/jpeg,image/png,image/webp,image/gif" style="margin-bottom:14px;font-size:13px;color:#aaa">
+    <input id="createPostFileInp" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple style="margin-bottom:14px;font-size:13px;color:#aaa" title="До 5 фото">
     <div style="display:flex;gap:10px;justify-content:flex-end">
       <button type="button" class="btn-o" onclick="document.getElementById('createPostModal').style.display='none'">Отмена</button>
       <button type="button" class="btn-g" onclick="submitCreatePostModal()">Опубликовать</button>
@@ -3177,50 +3185,38 @@ if(document.readyState==='loading'){
 }
 
 // ── Like feed post ──
-async function likeFeedPost(postId, btn){
-  try{
-    const cnt=document.getElementById('like-count-'+postId);
-    const icon=btn?btn.querySelector('span'):null;
-    const wasLiked=icon && icon.textContent==='⭐';
-    const base=parseInt(cnt&&cnt.textContent||0);
-    if(btn) btn.style.color=wasLiked?'':'#ffd84f';
-    if(icon) icon.textContent=wasLiked?'✩':'⭐';
-    if(cnt) cnt.textContent=String(Math.max(0, base + (wasLiked ? -1 : 1)));
-    const r=await fetch('/community/like/'+postId,{method:'POST'});
-    const d=await r.json();
-    if(d.liked){
-      btn.style.color='#ffd84f';
-      if(icon) icon.textContent='⭐';
-    }else{
-      btn.style.color='';
-      if(icon) icon.textContent='✩';
+function likeFeedPost(postId, btn){
+  if(typeof NF_communityStarLike!=='function') return;
+  const cnt=document.getElementById('like-count-'+postId);
+  const icon=btn?btn.querySelector('span'):null;
+  const wasLiked=icon && icon.textContent==='⭐';
+  NF_communityStarLike(postId,{
+    wasLiked:wasLiked,
+    backUrl:location.href,
+    onCounts:function(d){
+      if(cnt && typeof d.count==='number') cnt.textContent=String(Math.max(0,d.count));
+      if(d.liked && icon) icon.textContent='⭐';
+      if(btn && d.liked) btn.style.color='#ffd84f';
     }
-    if(cnt && typeof d.count==='number')cnt.textContent=String(Math.max(0,d.count));
-  }catch(e){showNotification('Ошибка','error');}
+  });
 }
 
-async function likeProfilePost(postId, btn){
-  try{
-    const cnt=document.getElementById('profile-like-count-'+postId);
-    const icon=btn?btn.querySelector('span'):null;
-    const wasLiked=icon && icon.textContent==='⭐';
-    const base=parseInt(cnt&&cnt.textContent||0);
-    if(btn) btn.style.color=wasLiked?'':'#ffd84f';
-    if(icon) icon.textContent=wasLiked?'✩':'⭐';
-    if(cnt) cnt.textContent=String(Math.max(0, base + (wasLiked ? -1 : 1)));
-    const r=await fetch('/community/like/'+postId,{method:'POST'});
-    const d=await r.json();
-    if(d.liked){
-      if(btn) btn.style.color='#ffd84f';
-      if(icon) icon.textContent='⭐';
-    }else{
-      if(btn) btn.style.color='';
-      if(icon) icon.textContent='✩';
+function likeProfilePost(postId, btn){
+  if(typeof NF_communityStarLike!=='function') return;
+  const cnt=document.getElementById('profile-like-count-'+postId);
+  const icon=btn?btn.querySelector('span'):null;
+  const wasLiked=icon && icon.textContent==='⭐';
+  NF_communityStarLike(postId,{
+    wasLiked:wasLiked,
+    backUrl:location.href,
+    onCounts:function(d){
+      if(cnt && typeof d.count==='number') cnt.textContent=String(Math.max(0,d.count));
+      const feedCnt=document.getElementById('like-count-'+postId);
+      if(feedCnt && typeof d.count==='number') feedCnt.textContent=String(Math.max(0,d.count));
+      if(d.liked && icon) icon.textContent='⭐';
+      if(btn && d.liked) btn.style.color='#ffd84f';
     }
-    if(cnt && typeof d.count==='number')cnt.textContent=String(Math.max(0,d.count));
-    const feedCnt=document.getElementById('like-count-'+postId);
-    if(feedCnt && typeof d.count==='number')feedCnt.textContent=String(Math.max(0,d.count));
-  }catch(e){showNotification('Ошибка','error');}
+  });
 }
 
 async function deleteFeedPost(postId){
@@ -4209,7 +4205,7 @@ async function submitCreatePostModal(){
   const t=document.getElementById('createPostTitleInp');
   if(t&&t.value) fd.append('title',t.value.trim());
   const fi=document.getElementById('createPostFileInp');
-  if(fi&&fi.files&&fi.files[0]) fd.append('image',fi.files[0]);
+  if(fi&&fi.files){ for(var i=0;i<Math.min(fi.files.length,5);i++) fd.append('images',fi.files[i]); }
   try{
     const r=await fetch('/community/post',{method:'POST',body:fd,credentials:'same-origin'});
     const d=await r.json().catch(()=>({}));
@@ -4404,13 +4400,13 @@ function openFeedPostPreview(event, card){
 }
 function openCommunityPostPage(event, postId){
   const t=event&&event.target;
-  if(t && t.closest('a,button,input,textarea,details,summary,.ig-post-metric,.ig-pm')) return;
+  if(t && t.closest('a,button,input,textarea,details,summary,.ig-post-metric,.ig-pm,.nf-post-gallery')) return;
   const back=encodeURIComponent(location.href);
   location.href='/community/post/'+postId+'?back='+back;
 }
 function openCommunityPostDirect(postId){
   const back=encodeURIComponent(location.href);
-  location.href='/community/post/'+postId+'?back='+back;
+  location.href='/community/post/'+postId+'/comments?back='+back;
 }
 function closeFeedPostPreview(){
   const modal=document.getElementById('feedPostPreviewModal');

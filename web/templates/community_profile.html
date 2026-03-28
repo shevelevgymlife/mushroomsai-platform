@@ -420,9 +420,12 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
           <input id="cpChaosToggle" type="checkbox" checked onchange="setProfileChaos(this.checked)">
         </label>
       </div>
+      <link rel="stylesheet" href="/static/css/nf-community-posts.css?v=1" />
+      <script src="/static/js/nf-community-star-like.js?v=1"></script>
       <div class="ig-feed-shell cp-chaos-on" id="profilePostsGrid" style="margin-top:16px">
   {% for item in feed %}
   {% set p = item.post %}
+  {% set cimgs = p|post_image_urls %}
   <div class="ig-post" id="pc-{{ p.id }}" data-pid="{{ p.id }}" data-author="{{ (profile.name or 'Участник')|e }}" data-title="{{ (p.title or '')|e }}" data-content="{{ (p.content or '')|e }}" data-image="{{ (p.image_url or '')|e }}" data-created="{{ (p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '')|e }}" data-likes="{{ p.likes_count or 0 }}" data-comments="{{ p.comments_count or 0 }}" data-saves="{{ p.saves_count or 0 }}" onclick="openCommunityPostPage(event, {{ p.id }})">
     <div class="ig-post-header">
       <a href="/community/profile/{{ profile_id }}" onclick="event.stopPropagation()" style="text-decoration:none;color:inherit;flex-shrink:0">
@@ -444,23 +447,23 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
       </div>
       {% endif %}
     </div>
-    {% if p.image_url %}
-    <img src="{{ p.image_url }}" class="ig-post-img" loading="lazy" alt="">
+    {% if cimgs %}
+    <div class="nf-post-gallery" onclick="event.stopPropagation()">{% for u in cimgs %}<img src="{{ u }}" class="nf-post-gallery__slide" loading="lazy" alt="">{% endfor %}</div>
     {% elif p.content %}
     <div class="ig-post-textonly">{{ p.content | linkify_mentions(2000) | safe }}</div>
     {% endif %}
     <div class="ig-post-metrics">
-      <button type="button" class="ig-post-metric ig-post-metric-star" id="lk-{{ p.id }}" onclick="doLike({{ p.id }},this)">
+      <button type="button" class="ig-post-metric ig-post-metric-star" id="lk-{{ p.id }}" onclick="cpStarLike({{ p.id }},this)">
         <span>{{ '⭐' if item.liked else '✩' }}</span><span class="n" id="lkc-{{ p.id }}">{{ p.likes_count }}</span>
       </button>
       <button type="button" class="ig-post-metric ig-post-metric-chat" onclick="event.stopPropagation();openCommunityPostDirect({{ p.id }})">
         <span>💬</span><span class="n" id="cmc-{{ p.id }}">{{ p.comments_count }}</span>
       </button>
-      <button type="button" class="ig-post-metric ig-post-metric-share" id="sv-{{ p.id }}" onclick="openSharePostModal({{ p.id }})">
-        <span>↗</span><span class="n" id="svc-{{ p.id }}">{{ p.saves_count }}</span>
+      <button type="button" class="ig-post-metric ig-post-metric-share" onclick="event.stopPropagation();NF_openPostReposts({{ p.id }}, location.href)">
+        <span>↗</span><span class="n" id="rpc-{{ p.id }}">{{ p.reposts_count|default(0) }}</span>
       </button>
     </div>
-    {% if p.image_url and p.content %}
+    {% if cimgs and p.content %}
     <div class="ig-post-body"><span class="ig-cap-user">{{ profile.name or '' }}</span>{{ p.content | linkify_mentions | safe }}</div>
     {% endif %}
     <div class="csec" id="cs-{{ p.id }}" style="display:none;margin:0;padding:12px;border-top:1px solid rgba(255,255,255,.06);overflow:hidden;max-width:100%;box-sizing:border-box">
@@ -758,18 +761,20 @@ async function doFollow(){
   }
 }
 
-// ── Post like ──
-async function doLike(id,btn){
-  const c=document.getElementById(`lkc-${id}`);
+// ── Post like (звезда → анимация + страница звёзд) ──
+function cpStarLike(id,btn){
+  if(typeof NF_communityStarLike!=='function') return;
+  const c=document.getElementById('lkc-'+id);
   const icon=btn&&btn.querySelector('span');
   const wasLiked=icon && icon.textContent==='⭐';
-  const base=parseInt(c&&c.textContent)||0;
-  if(icon)icon.textContent=!wasLiked?'⭐':'✩';
-  if(c)c.textContent=String(Math.max(0, base + (!wasLiked ? 1 : -1)));
-  const r=await fetch(`/community/like/${id}`,{method:'POST'});
-  const d=await r.json();
-  if(icon)icon.textContent=d.liked?'⭐':'✩';
-  if(c && typeof d.count === 'number') c.textContent=String(Math.max(0,d.count));
+  NF_communityStarLike(id,{
+    wasLiked:wasLiked,
+    backUrl:location.href,
+    onCounts:function(d){
+      if(c && typeof d.count==='number') c.textContent=String(Math.max(0,d.count));
+      if(d.liked && icon) icon.textContent='⭐';
+    }
+  });
 }
 
 // ── Save ──
@@ -1163,7 +1168,7 @@ function openProfilePostPreview(event, card){
 }
 function openCommunityPostPage(event, postId){
   const t=event&&event.target;
-  if(t && t.closest('a,button,input,textarea,details,summary,.ig-post-metric,.ig-pm')) return;
+  if(t && t.closest('a,button,input,textarea,details,summary,.ig-post-metric,.ig-pm,.nf-post-gallery')) return;
   const back=encodeURIComponent(location.href);
   location.href='/community/post/'+postId+'?back='+back;
 }

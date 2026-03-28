@@ -329,6 +329,15 @@ async def run_heavy_startup(app: FastAPI) -> None:
                 sort_order INTEGER NOT NULL DEFAULT 0,
                 created_at TIMESTAMP DEFAULT NOW()
             )""",
+            "ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS images_json TEXT",
+            "ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS reposts_count INTEGER NOT NULL DEFAULT 0",
+            """CREATE TABLE IF NOT EXISTS community_reposts (
+                id SERIAL PRIMARY KEY,
+                post_id INTEGER NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                created_at TIMESTAMP DEFAULT NOW(),
+                UNIQUE(post_id, user_id)
+            )""",
         ]
         try:
             await database.execute(

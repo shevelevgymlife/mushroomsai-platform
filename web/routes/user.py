@@ -1,6 +1,7 @@
+import json
 import os
 import uuid
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from typing import Optional
 from fastapi import APIRouter, Request, Form, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
@@ -10,7 +11,7 @@ from auth.ui_prefs import attach_screen_rim_prefs
 from db.database import database
 from db.models import (
     users, messages, orders, posts, post_likes, community_posts, community_likes, community_comments,
-    community_folders, community_follows, community_saved, profile_likes, community_profiles,
+    community_folders, community_follows, community_saved, community_reposts, profile_likes, community_profiles,
     direct_messages,
     dashboard_blocks, user_block_overrides, community_groups, community_group_members, community_group_messages,
     community_group_message_likes,
@@ -52,7 +53,6 @@ import sqlalchemy as sa
 import secrets
 import traceback as _traceback
 import logging
-from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from config import settings
@@ -379,6 +379,42 @@ async def api_chat(request: Request):
 _POST_IMAGE_ALLOWED = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 _POST_IMAGE_MAX = 8 * 1024 * 1024
 
+
+async def _save_community_uploaded_image(image) -> str | None:
+    """Save one uploaded image from multipart form; returns public URL or None."""
+    if image is None or not getattr(image, "filename", None):
+        return None
+    ct = getattr(image, "content_type", None) or ""
+    if ct not in _POST_IMAGE_ALLOWED:
+        return None
+    data = await image.read()
+    if len(data) > _POST_IMAGE_MAX:
+        return None
+    ext = image.filename.rsplit(".", 1)[-1].lower() if "." in image.filename else "jpg"
+    filename = f"{uuid.uuid4().hex}.{ext}"
+    base = "/data" if os.path.exists("/data") else "./media"
+    save_path = os.path.join(base, "community", filename)
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    with open(save_path, "wb") as f:
+        f.write(data)
+    return f"/media/community/{filename}"
+
+
+async def _community_user_brief(user_id: int) -> dict | None:
+    row = await database.fetch_one(users.select().where(users.c.id == user_id))
+    if not row:
+        return None
+    r = dict(row)
+    if r.get("primary_user_id"):
+        p = await database.fetch_one(users.select().where(users.c.id == r["primary_user_id"]))
+        if p:
+            r = dict(p)
+    return {
+        "id": int(r["id"]),
+        "name": (r.get("name") or "").strip() or "Участник",
+        "avatar": (r.get("avatar") or "") or "",
+    }
+
 _GROUP_CHAT_IMG_MAX = 6 * 1024 * 1024
 # До ~1 мин голоса (webm/opus/mp4) с запасом под битрейт
 _GROUP_CHAT_AUDIO_MAX = 6 * 1024 * 1024
@@ -443,39 +479,37 @@ def _reputation(post_count: int) -> dict:
 
 
 @router.post("/community/post")
-async def create_post(
-    request: Request,
-    content: str = Form(...),
-    title: str = Form(""),
-    folder_id: str = Form(""),
-    image: UploadFile = File(None),
-):
+async def create_post(request: Request):
     user = await require_auth(request)
     if not user:
         return RedirectResponse("/login")
 
-    if len(content.strip()) < 2:
+    form = await request.form()
+    content = (form.get("content") or "").strip()
+    title_raw = (form.get("title") or "").strip()
+    folder_id = form.get("folder_id") or ""
+
+    if len(content) < 2:
         uid = int(user.get("primary_user_id") or user["id"])
         return RedirectResponse(await web_default_home_path(uid))
 
-    image_url = None
-    if image and image.filename:
-        if image.content_type in _POST_IMAGE_ALLOWED:
-            data = await image.read()
-            if len(data) <= _POST_IMAGE_MAX:
-                ext = image.filename.rsplit(".", 1)[-1].lower() if "." in image.filename else "jpg"
-                filename = f"{uuid.uuid4().hex}.{ext}"
-                base = "/data" if os.path.exists("/data") else "./media"
-                save_path = os.path.join(base, "community", filename)
-                os.makedirs(os.path.dirname(save_path), exist_ok=True)
-                with open(save_path, "wb") as f:
-                    f.write(data)
-                image_url = f"/media/community/{filename}"
+    imgs = form.getlist("images")
+    if not imgs:
+        one = form.get("image")
+        if one is not None and getattr(one, "filename", None):
+            imgs = [one]
+    urls: list[str] = []
+    for uf in imgs[:5]:
+        u = await _save_community_uploaded_image(uf)
+        if u:
+            urls.append(u)
+    images_json = json.dumps(urls) if urls else None
+    image_url = urls[0] if urls else None
 
-    fid = int(folder_id) if folder_id.strip().isdigit() else None
+    fid = int(folder_id) if str(folder_id).strip().isdigit() else None
     effective_uid = user.get("primary_user_id") or user["id"]
-    tit = (title or "").strip()[:200] or None
-    body_text = content.strip()
+    tit = title_raw[:200] or None
+    body_text = content
     ins_row = await database.fetch_one_write(
         community_posts.insert()
         .values(
@@ -483,6 +517,7 @@ async def create_post(
             title=tit,
             content=body_text,
             image_url=image_url,
+            images_json=images_json,
             folder_id=fid,
             approved=True,
         )
@@ -582,7 +617,9 @@ async def edit_community_post(
             os.makedirs(os.path.dirname(save_path), exist_ok=True)
             with open(save_path, "wb") as f:
                 f.write(data)
-            vals["image_url"] = f"/media/community/{filename}"
+            nu = f"/media/community/{filename}"
+            vals["image_url"] = nu
+            vals["images_json"] = json.dumps([nu])
     if len((vals.get("content") or "").strip()) < 2 and not tit and not has_new_image:
         return JSONResponse({"error": "too short"}, status_code=400)
     await database.execute(
@@ -810,7 +847,11 @@ async def like_post(request: Request, post_id: int):
                 else_=0
             ))
         )
-        return JSONResponse({"liked": False})
+        cnt_row = await database.fetch_one(
+            sa.select(community_posts.c.likes_count).where(community_posts.c.id == post_id)
+        )
+        lc = int(cnt_row["likes_count"] or 0) if cnt_row else 0
+        return JSONResponse({"liked": False, "count": lc})
     else:
         try:
             seen = author_id is not None and author_id == uid
@@ -854,7 +895,117 @@ async def like_post(request: Request, post_id: int):
                 )
         except Exception:
             pass
-        return JSONResponse({"liked": True})
+        cnt_row = await database.fetch_one(
+            sa.select(community_posts.c.likes_count).where(community_posts.c.id == post_id)
+        )
+        lc = int(cnt_row["likes_count"] or 0) if cnt_row else 0
+        return JSONResponse({"liked": True, "count": lc})
+
+
+@router.get("/community/post/{post_id}/likers-json")
+async def community_post_likers_json(request: Request, post_id: int):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    post = await database.fetch_one(community_posts.select().where(community_posts.c.id == post_id))
+    if not post:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    rows = await database.fetch_all(
+        community_likes.select()
+        .where(community_likes.c.post_id == post_id)
+        .order_by(community_likes.c.id.desc())
+    )
+    out: list[dict] = []
+    seen: set[int] = set()
+    for row in rows:
+        uid = int(row["user_id"])
+        if uid in seen:
+            continue
+        seen.add(uid)
+        u = await _community_user_brief(uid)
+        if u:
+            out.append(u)
+    return JSONResponse({"ok": True, "users": out})
+
+
+@router.get("/community/post/{post_id}/reposters-json")
+async def community_post_reposters_json(request: Request, post_id: int):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    post = await database.fetch_one(community_posts.select().where(community_posts.c.id == post_id))
+    if not post:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    rows = await database.fetch_all(
+        community_reposts.select()
+        .where(community_reposts.c.post_id == post_id)
+        .order_by(community_reposts.c.id.desc())
+    )
+    out: list[dict] = []
+    seen: set[int] = set()
+    for row in rows:
+        uid = int(row["user_id"])
+        if uid in seen:
+            continue
+        seen.add(uid)
+        u = await _community_user_brief(uid)
+        if u:
+            out.append(u)
+    return JSONResponse({"ok": True, "users": out})
+
+
+@router.post("/community/post/{post_id}/repost")
+async def toggle_community_post_repost(request: Request, post_id: int):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = user.get("primary_user_id") or user["id"]
+    post = await database.fetch_one(community_posts.select().where(community_posts.c.id == post_id))
+    if not post:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    existing = await database.fetch_one(
+        community_reposts.select()
+        .where(community_reposts.c.post_id == post_id)
+        .where(community_reposts.c.user_id == uid)
+    )
+    if existing:
+        await database.execute(
+            community_reposts.delete()
+            .where(community_reposts.c.post_id == post_id)
+            .where(community_reposts.c.user_id == uid)
+        )
+        await database.execute(
+            community_posts.update()
+            .where(community_posts.c.id == post_id)
+            .values(
+                reposts_count=sa.case(
+                    (community_posts.c.reposts_count > 0, community_posts.c.reposts_count - 1),
+                    else_=0,
+                )
+            )
+        )
+    else:
+        try:
+            await database.execute(
+                community_reposts.insert().values(post_id=post_id, user_id=uid)
+            )
+            await database.execute(
+                community_posts.update()
+                .where(community_posts.c.id == post_id)
+                .values(reposts_count=community_posts.c.reposts_count + 1)
+            )
+        except Exception:
+            pass
+    cnt_row = await database.fetch_one(
+        sa.select(community_posts.c.reposts_count).where(community_posts.c.id == post_id)
+    )
+    rc = int(cnt_row["reposts_count"] or 0) if cnt_row else 0
+    still = await database.fetch_one(
+        community_reposts.select()
+        .where(community_reposts.c.post_id == post_id)
+        .where(community_reposts.c.user_id == uid)
+    )
+    return JSONResponse({"reposted": still is not None, "count": rc})
 
 
 @router.post("/community/comment/{post_id}")

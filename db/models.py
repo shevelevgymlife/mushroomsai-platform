@@ -375,6 +375,7 @@ community_posts = sqlalchemy.Table(
     sqlalchemy.Column("title", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("content", sqlalchemy.Text, nullable=False),
     sqlalchemy.Column("image_url", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("images_json", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column(
         "from_telegram",
         sqlalchemy.Boolean,
@@ -385,6 +386,7 @@ community_posts = sqlalchemy.Table(
     sqlalchemy.Column("likes_count", sqlalchemy.Integer, default=0, server_default="0"),
     sqlalchemy.Column("comments_count", sqlalchemy.Integer, default=0, server_default="0"),
     sqlalchemy.Column("saves_count", sqlalchemy.Integer, default=0, server_default="0"),
+    sqlalchemy.Column("reposts_count", sqlalchemy.Integer, default=0, server_default="0"),
     sqlalchemy.Column("tags", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("pinned", sqlalchemy.Boolean, default=False, server_default="false"),
     sqlalchemy.Column("approved", sqlalchemy.Boolean, default=True, server_default="true"),
@@ -489,6 +491,16 @@ community_saved = sqlalchemy.Table(
     sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
     sqlalchemy.Column("post_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("community_posts.id", ondelete="CASCADE"), nullable=False),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+community_reposts = sqlalchemy.Table(
+    "community_reposts",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("post_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("community_posts.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+    sqlalchemy.UniqueConstraint("post_id", "user_id", name="uq_community_reposts_post_user"),
 )
 
 community_groups = sqlalchemy.Table(

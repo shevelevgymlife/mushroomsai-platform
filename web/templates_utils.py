@@ -12,6 +12,7 @@ from typing import Any
 from fastapi.templating import Jinja2Templates as _Jinja2Templates
 from config import shevelev_token_address
 from services.mention_html import jinja_linkify_mentions
+from web.community_media import post_image_urls as jinja_post_image_urls
 from web.translations import TRANSLATIONS, SUPPORTED_LANGS
 
 
@@ -23,6 +24,7 @@ class Jinja2Templates(_Jinja2Templates):
     ) -> None:
         super().__init__(directory=directory, **kwargs)
         self.env.filters["linkify_mentions"] = jinja_linkify_mentions
+        self.env.filters["post_image_urls"] = lambda row: jinja_post_image_urls(dict(row) if row is not None else None)
 
     def TemplateResponse(self, *args, **kwargs):
         # Support both positional and keyword forms

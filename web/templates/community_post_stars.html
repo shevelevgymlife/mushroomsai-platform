@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Звёзды поста — NEUROFUNGI AI{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="/static/css/nf-community-posts.css?v=1" />
+<style>
+.nf-stars-top{position:sticky;top:calc(4rem - 2px);z-index:40;background:rgba(6,8,14,.92);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.08);padding:10px 12px 12px;margin:0 -12px 8px}
+.nf-stars-top h1{font-size:17px;margin:0 0 10px;color:#e8eaef;font-weight:800}
+.nf-stars-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.nf-stars-actions button,.nf-stars-actions a.btnx{border-radius:12px;padding:8px 14px;font-weight:700;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#e8eaef;cursor:pointer;font-size:13px;text-decoration:none;display:inline-flex;align-items:center}
+.nf-stars-actions a.btnx:hover,.nf-stars-actions button:hover{border-color:rgba(61,212,224,.45)}
+.sinp2{width:100%;box-sizing:border-box;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:#e8eaef;border-radius:12px;padding:10px 14px;font-size:15px}
+.nf-stars-wrap{max-width:900px;margin:calc(4rem + 8px) auto 24px;padding:0 12px calc(24px + env(safe-area-inset-bottom,0px))}
+</style>
+<div class="nf-stars-wrap">
+  <div class="nf-stars-top">
+    <div class="nf-stars-actions">
+      <button type="button" onclick="goBack()">← Закрыть</button>
+      <a class="btnx" id="openPostLink" href="/community/post/{{ post.id }}">Открыть пост</a>
+    </div>
+    <h1>⭐ Кто поставил звезду</h1>
+    <input type="search" id="starSearch" class="sinp2" placeholder="Поиск по имени или id…" autocomplete="off" />
+  </div>
+  <p id="starLoad" style="color:#8a8fa0;font-size:14px">Загрузка…</p>
+  <div id="starCanvas" class="nf-chaos-canvas" style="display:none"></div>
+</div>
+<script>
+const POST_ID={{ post.id }};
+const BACK_URL={{ back_url|tojson }};
+function goBack(){ if(history.length>1){ history.back(); } else { location.href=BACK_URL||'/community'; } }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function placeCard(el,i,uid){
+  var x=((uid*17+i*23)%76)+3;
+  var y=((uid*31+i*41)%58)+6;
+  var rot=((uid+i)*13%15)-7;
+  el.style.left=x+'%';
+  el.style.top=y+'%';
+  el.style.transform='rotate('+rot+'deg)';
+  el.style.zIndex=String(10+(i%8));
+}
+function render(users){
+  var c=document.getElementById('starCanvas');
+  var ld=document.getElementById('starLoad');
+  ld.style.display='none';
+  c.style.display='block';
+  c.innerHTML='';
+  if(!users.length){
+    c.innerHTML='<p style="color:#8a8fa0;padding:20px;text-align:center">Пока никто не поставил звезду</p>';
+    return;
+  }
+  users.forEach(function(u,i){
+    var a=document.createElement('a');
+    a.className='nf-chaos-card';
+    a.href='/community/profile/'+u.id;
+    a.setAttribute('data-name',(u.name||'').toLowerCase());
+    a.setAttribute('data-id',String(u.id));
+    var av=u.avatar
+      ? '<img src="'+esc(u.avatar)+'" alt="">'
+      : '<div class="ph">🍄</div>';
+    a.innerHTML=av+'<div class="nm">'+esc(u.name||'Участник')+'</div><div class="idp">⭐ @'+u.id+'</div>';
+    placeCard(a,i,u.id);
+    c.appendChild(a);
+  });
+}
+function filterStars(q){
+  q=(q||'').trim().toLowerCase();
+  document.querySelectorAll('#starCanvas .nf-chaos-card').forEach(function(el){
+    var nm=el.getAttribute('data-name')||'';
+    var id=el.getAttribute('data-id')||'';
+    el.style.display=(!q||nm.indexOf(q)>=0||id.indexOf(q)>=0)?'block':'none';
+  });
+}
+document.getElementById('starSearch').addEventListener('input',function(){ filterStars(this.value); });
+(function(){
+  var op=document.getElementById('openPostLink');
+  if(op) op.addEventListener('click',function(e){ e.preventDefault(); location.href='/community/post/'+POST_ID+'?back='+encodeURIComponent(BACK_URL||'/community'); });
+})();
+fetch('/community/post/'+POST_ID+'/likers-json',{credentials:'same-origin'})
+  .then(function(r){return r.json();})
+  .then(function(d){
+    render((d&&d.users)||[]);
+  })
+  .catch(function(){
+    document.getElementById('starLoad').textContent='Не удалось загрузить';
+  });
+</script>
+{% endblock %}
