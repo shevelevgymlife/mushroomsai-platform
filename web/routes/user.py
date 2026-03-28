@@ -3026,7 +3026,15 @@ async def community_activity_unread_count(request: Request):
         ) or 0
     except Exception:
         pass
-    activity_total = int(n_likes + n_com + n_pl)
+    n_notif = 0
+    try:
+        n_notif = await database.fetch_val(
+            sa.text("SELECT COUNT(*) FROM notifications WHERE user_id=:uid AND is_read=false"),
+            {"uid": uid}
+        ) or 0
+    except Exception:
+        pass
+    activity_total = int(n_likes + n_com + n_pl + n_notif)
     tot = activity_total + int(n_msg)
     return JSONResponse(
         {
@@ -3034,6 +3042,7 @@ async def community_activity_unread_count(request: Request):
             "comments": int(n_com),
             "profile_likes": int(n_pl),
             "messages": int(n_msg),
+            "notifications": int(n_notif),
             "activity_total": activity_total,
             "total": tot,
         }
