@@ -49,6 +49,7 @@ from services.community_group_queries import fetch_community_group_row
 from services.legal import legal_acceptance_redirect
 from services.notify_admin import notify_admin_telegram
 from services.ops_alerts import notify_plan_upgrade_request
+from services.community_post_publish import publish_community_post
 import sqlalchemy as sa
 from sqlalchemy.exc import IntegrityError
 import secrets
@@ -511,75 +512,17 @@ async def create_post(request: Request):
     effective_uid = user.get("primary_user_id") or user["id"]
     tit = title_raw[:200] or None
     body_text = content
-    ins_row = await database.fetch_one_write(
-        community_posts.insert()
-        .values(
-            user_id=effective_uid,
-            title=tit,
-            content=body_text,
-            image_url=image_url,
-            images_json=images_json,
-            folder_id=fid,
-            approved=True,
-        )
-        .returning(community_posts.c.id)
+    author_name = (user.get("name") or "").strip() or "Участник"
+    post_id = await publish_community_post(
+        user_id=int(effective_uid),
+        author_name=author_name,
+        content=body_text,
+        title=tit,
+        image_url=image_url,
+        images_json=images_json,
+        folder_id=fid,
+        from_telegram=False,
     )
-    post_id = int(ins_row["id"]) if ins_row else None
-    if post_id:
-        author_name = (user.get("name") or "").strip() or "Участник"
-        preview = (tit or body_text[:120] or "Новый пост").strip()
-        try:
-            followers = await database.fetch_all(
-                community_follows.select()
-                .where(community_follows.c.following_id == int(effective_uid))
-                .where(community_follows.c.follower_id != int(effective_uid))
-            )
-            for fr in followers:
-                rid = int(fr["follower_id"])
-                if rid <= 0:
-                    continue
-                await create_notification(
-                    recipient_id=rid,
-                    actor_id=int(effective_uid),
-                    ntype="subscription_post",
-                    title="Новый пост подписки",
-                    body=f"{author_name}: {preview[:400]}",
-                    link_url=f"/community/post/{post_id}",
-                    source_kind="subscription_post",
-                    source_id=int(post_id),
-                )
-                await send_event_telegram_html(
-                    rid,
-                    "subscription_post",
-                    "Новый пост подписки",
-                    f"{author_name}: {preview[:350]}",
-                    f"/community/post/{post_id}",
-                )
-            combined = f"{tit or ''}\n{body_text}"
-            for mid in extract_mentioned_numeric_ids(combined):
-                if mid == int(effective_uid):
-                    continue
-                if not await user_exists(mid):
-                    continue
-                await create_notification(
-                    recipient_id=mid,
-                    actor_id=int(effective_uid),
-                    ntype="mention",
-                    title="Вас упомянули в посте",
-                    body=f"{author_name} в посте: {preview[:380]}",
-                    link_url=f"/community/post/{post_id}",
-                    source_kind="mention_post",
-                    source_id=int(post_id),
-                )
-                await send_event_telegram_html(
-                    mid,
-                    "mention",
-                    "Вас упомянули в посте",
-                    f"{author_name}: {preview[:350]}",
-                    f"/community/post/{post_id}",
-                )
-        except Exception:
-            pass
     return JSONResponse({"ok": True, "id": post_id})
 
 

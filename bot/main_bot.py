@@ -10,6 +10,7 @@ from config import settings
 from bot.handlers.start import BTN_AI, BTN_AI_EXIT, main_keyboard, start
 from bot.handlers.link import link_confirm_callback, link_merge_callback
 from bot.handlers.support import get_support_conversation
+from bot.handlers.community_post_wizard import get_community_post_conversation
 from bot.handlers.chat import (
     handle_chat_message,
     tg_ai_continue_callback,
@@ -152,6 +153,7 @@ def create_bot() -> Application:
     )
 
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(get_community_post_conversation(), group=-1)
     application.add_handler(get_support_conversation())
 
     # Режим AI: вход / выход (до общего текстового хендлера)

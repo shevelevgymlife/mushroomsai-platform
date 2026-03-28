@@ -16,6 +16,8 @@ BLOCKED_BOT_MSG = (
 # Кнопки режима AI (главный бот): нейросеть только после явного нажатия
 BTN_AI = "🤖 Задать вопрос AI"
 BTN_AI_EXIT = "❌ Выйти из режима AI"
+# Публикация поста в ленту сообщества (ConversationHandler в main_bot)
+BTN_COMMUNITY_POST = "📤 Пост в сообщество"
 
 
 async def ensure_user(tg_user) -> dict | None:
@@ -90,6 +92,7 @@ def main_keyboard(site_url: str, ai_active: bool = False):
         top = [[KeyboardButton(BTN_AI)]]
     keyboard = top + [
         [KeyboardButton("🛍 Маркет плейс"), KeyboardButton("🌐 Сообщество")],
+        [KeyboardButton(BTN_COMMUNITY_POST)],
         [KeyboardButton("🌍 Веб версия"), KeyboardButton("🔒 Безопасность")],
         [KeyboardButton("🆘 Тех. поддержка")],
     ]
