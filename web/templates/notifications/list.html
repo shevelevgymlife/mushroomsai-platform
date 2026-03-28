@@ -16,7 +16,7 @@
       <div style="flex:1;min-width:0">
         <div style="font-size:11px;color:#C9A84C;font-weight:700;margin-bottom:4px">{{ it.type_icon }} {{ it.type_label }}</div>
         <div style="font-size:14px;line-height:1.45;color:#e4e4e8;word-break:break-word">{{ it.body or it.title }}</div>
-        <div style="font-size:11px;color:#6b6b74;margin-top:8px">{{ it.created_at }}</div>
+        <div class="nf-notif-ts" style="font-size:11px;color:#6b6b74;margin-top:8px" data-nf-local-utc="{{ it.created_at_iso }}"></div>
       </div>
     </a>
     {% endfor %}
@@ -30,4 +30,5 @@
 .nf-notif-row--unread { background: rgba(201,168,76,.1); border-color: rgba(201,168,76,.28) !important; }
 .nf-notif-row:hover { border-color: rgba(201,168,76,.4); transform: translateY(-1px); }
 </style>
+<script src="/static/js/nf-notifications-time.js" defer></script>
 {% endblock %}

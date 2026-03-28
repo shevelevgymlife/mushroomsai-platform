@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 import sqlalchemy as sa
 from fastapi import APIRouter, Request
@@ -19,12 +19,17 @@ router = APIRouter()
 templates = Jinja2Templates(directory="web/templates")
 
 
-def _fmt_dt(dt) -> str:
+def _created_at_utc_iso(dt) -> str:
+    """Момент события в UTC как ISO8601 Z — браузер покажет локальное «реальное» время."""
     if not dt:
         return ""
-    if isinstance(dt, datetime):
-        return dt.strftime("%d.%m.%Y %H:%M")
-    return str(dt)[:16].replace("T", " ")
+    if not isinstance(dt, datetime):
+        return ""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    else:
+        dt = dt.astimezone(timezone.utc)
+    return dt.strftime("%Y-%m-%dT%H:%M:%S") + "Z"
 
 
 @router.get("/notifications", response_class=HTMLResponse)
@@ -67,7 +72,7 @@ async def notifications_list_page(request: Request):
                 "body": (r.get("body") or "")[:500],
                 "link_url": r.get("link_url"),
                 "read": r.get("read_at") is not None,
-                "created_at": _fmt_dt(r.get("created_at")),
+                "created_at_iso": _created_at_utc_iso(r.get("created_at")),
                 "actor_id": r.get("actor_id"),
                 "actor_name": r.get("actor_name") or "Участник",
                 "actor_avatar": r.get("actor_avatar"),
@@ -130,7 +135,7 @@ async def notification_detail_page(request: Request, nid: int):
                 "title": row.get("title") or "",
                 "body": row.get("body") or "",
                 "link_url": row.get("link_url"),
-                "created_at": _fmt_dt(row.get("created_at")),
+                "created_at_iso": _created_at_utc_iso(row.get("created_at")),
                 "actor_id": actor_id,
                 "actor_name": row.get("actor_name") or "Участник",
                 "actor_avatar": row.get("actor_avatar"),

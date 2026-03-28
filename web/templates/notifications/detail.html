@@ -24,7 +24,7 @@
     <h2 style="font-size:15px;font-weight:700;color:#c4c4cc;margin:0 0 10px">{{ n.title }}</h2>
     {% endif %}
     <div style="font-size:15px;line-height:1.55;color:#e4e4ea;white-space:pre-wrap;word-break:break-word">{{ n.body }}</div>
-    <p style="font-size:12px;color:#7a7a82;margin-top:18px">{{ n.created_at }}</p>
+    <p class="nf-notif-ts" style="font-size:12px;color:#7a7a82;margin-top:18px" data-nf-local-utc="{{ n.created_at_iso }}"></p>
 
     {% if n.link_url %}
     <a href="{{ n.link_url }}" class="nf-notif-goto" style="display:block;margin-top:22px;text-align:center;padding:14px 20px;border-radius:14px;font-weight:700;font-size:15px;text-decoration:none;background:linear-gradient(135deg,rgba(201,168,76,.25),rgba(201,168,76,.12));color:#f5e6c8;border:1px solid rgba(201,168,76,.45)">Перейти к событию</a>
@@ -35,4 +35,5 @@
 .nf-notif-detail { background: #080808; }
 .nf-notif-goto:hover { filter: brightness(1.08); }
 </style>
+<script src="/static/js/nf-notifications-time.js" defer></script>
 {% endblock %}
