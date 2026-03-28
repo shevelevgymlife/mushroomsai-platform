@@ -56,17 +56,6 @@
   font-size:14px;
   line-height:1.4;
 }
-.nf-fwd-extra{
-  margin-top:22px;
-  padding-top:16px;
-  border-top:1px solid rgba(255,255,255,.08);
-}
-.nf-fwd-extra a{
-  color:#3dd4e0;
-  font-size:13px;
-  text-decoration:none;
-}
-.nf-fwd-extra a:hover{text-decoration:underline}
 #nf-fwd-dd{
   display:none;
   position:fixed;
@@ -92,9 +81,6 @@
   <input type="text" id="nfFwdInp" class="nf-fwd-inp" placeholder="Например: @12…" autocomplete="off" autocapitalize="off" spellcheck="false" />
   <p id="nfFwdStatus" class="nf-fwd-status" role="status"></p>
   <div id="nf-fwd-dd" role="listbox" aria-label="Подписки"></div>
-  <div class="nf-fwd-extra">
-    <a href="/community/post/{{ post.id }}/reposts?back={{ back_url|urlencode }}">Кто отметил пересылку у поста →</a>
-  </div>
 </div>
 <script src="/static/js/nf-following-forward-dm.js?v=1"></script>
 <script>
