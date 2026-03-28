@@ -19,6 +19,7 @@
   <div class="nf-rp-top">
     <div class="nf-rp-actions">
       <button type="button" onclick="goBack()">← Закрыть</button>
+      <a class="btnx" href="/community/post/{{ post.id }}/forward?back={{ back_url|urlencode }}">Переслать в личку</a>
       <a class="btnx" id="openPostLinkRp" href="/community/post/{{ post.id }}">Открыть пост</a>
       <button type="button" id="btnToggleRepost" onclick="toggleMyRepost()">↗ Записать пересылку</button>
     </div>
@@ -101,26 +102,40 @@ async function toggleMyRepost(){
   }catch(e){}
 }
 var _shareUsers=[];
-async function loadShareCandidates(q){
-  var box=document.getElementById('rpPick');
-  if(!box)return;
-  box.innerHTML='<span style="color:#666;font-size:12px">Загрузка…</span>';
+async function loadShareFollowing(){
   try{
-    var r=await fetch('/community/users/share-candidates?q='+encodeURIComponent(q||''),{credentials:'same-origin'});
+    var r=await fetch('/community/me/following-share',{credentials:'same-origin'});
     var d=await r.json().catch(function(){return {};});
     _shareUsers=(d&&d.users)||[];
-    box.innerHTML=_shareUsers.map(function(u){
-      var av=u.avatar
-        ? '<img src="'+esc(u.avatar)+'" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover">'
-        : '<span>🍄</span>';
-      return '<button type="button" onclick="shareDm('+u.id+')">'+av+' '+esc(u.name||'Участник')+'</button>';
-    }).join('')||'<span style="color:#666;font-size:12px">Никого не найдено</span>';
-  }catch(e){ box.innerHTML=''; }
+  }catch(e){ _shareUsers=[]; }
+}
+function renderSharePick(q){
+  var box=document.getElementById('rpPick');
+  if(!box)return;
+  var needle=(q||'').trim().toLowerCase();
+  var list=_shareUsers;
+  if(needle){
+    list=_shareUsers.filter(function(u){
+      var nm=(u.name||'').toLowerCase();
+      var idStr=String(u.id);
+      return nm.indexOf(needle)>=0||idStr.indexOf(needle)===0;
+    });
+  }
+  if(!list.length){
+    box.innerHTML='<span style="color:#666;font-size:12px">'+(needle?'Никого не найдено':'Нет подписок — подпишитесь в ленте')+'</span>';
+    return;
+  }
+  box.innerHTML=list.slice(0,40).map(function(u){
+    var av=u.avatar
+      ? '<img src="'+esc(u.avatar)+'" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover">'
+      : '<span>🍄</span>';
+    return '<button type="button" onclick="shareDm('+u.id+')">'+av+' '+esc(u.name||'Участник')+' <span style="opacity:.75">@'+u.id+'</span></button>';
+  }).join('');
 }
 document.getElementById('rpShareSearch').addEventListener('input',function(){
-  loadShareCandidates(this.value);
+  renderSharePick(this.value);
 });
-loadShareCandidates('');
+loadShareFollowing().then(function(){ renderSharePick(''); });
 async function shareDm(uid){
   try{
     var r=await fetch('/community/post/'+POST_ID+'/share-dm',{

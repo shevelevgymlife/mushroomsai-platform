@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Переслать пост — NEUROFUNGI AI{% endblock %}
+{% block content %}
+<style>
+.nf-fwd-root{
+  max-width:min(520px,100%);
+  margin:calc(4rem + 16px) auto 32px;
+  padding:0 14px calc(24px + env(safe-area-inset-bottom,0px));
+  box-sizing:border-box;
+}
+.nf-fwd-back{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:44px;
+  min-height:44px;
+  margin-bottom:18px;
+  border-radius:12px;
+  border:1px solid rgba(61,212,224,.35);
+  background:rgba(12,14,22,.9);
+  color:#9df0ff;
+  font-size:18px;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.nf-fwd-label{
+  font-size:15px;
+  font-weight:800;
+  color:#e8eaef;
+  margin:0 0 8px;
+}
+.nf-fwd-hint{
+  font-size:12px;
+  color:#8a8fa0;
+  line-height:1.45;
+  margin:0 0 12px;
+}
+.nf-fwd-inp{
+  width:100%;
+  box-sizing:border-box;
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.12);
+  color:#e8eaef;
+  border-radius:14px;
+  padding:14px 16px;
+  font-size:16px;
+  outline:none;
+}
+.nf-fwd-inp:focus{
+  border-color:rgba(247,179,255,.45);
+  box-shadow:0 0 0 3px rgba(247,179,255,.12);
+}
+.nf-fwd-status{
+  display:none;
+  margin-top:12px;
+  font-size:14px;
+  line-height:1.4;
+}
+.nf-fwd-extra{
+  margin-top:22px;
+  padding-top:16px;
+  border-top:1px solid rgba(255,255,255,.08);
+}
+.nf-fwd-extra a{
+  color:#3dd4e0;
+  font-size:13px;
+  text-decoration:none;
+}
+.nf-fwd-extra a:hover{text-decoration:underline}
+#nf-fwd-dd{
+  display:none;
+  position:fixed;
+  z-index:2147483000;
+  min-width:240px;
+  max-width:min(94vw,340px);
+  max-height:min(48vh,320px);
+  overflow:auto;
+  border-radius:16px;
+  border:1px solid rgba(247,179,255,.45);
+  background:rgba(10,12,18,.98);
+  box-shadow:0 20px 56px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.06);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  padding:8px;
+  pointer-events:auto;
+}
+</style>
+<div class="nf-fwd-root neo-app-surface">
+  <button type="button" class="nf-fwd-back" onclick="goBackFwd()" aria-label="Назад">←</button>
+  <p class="nf-fwd-label">Переслать</p>
+  <p class="nf-fwd-hint">Введите <strong style="color:#ffc6ff">@</strong> и выберите человека из ваших подписок — пост уйдёт ему в личные сообщения со ссылкой. Можно дописать цифры id после @, чтобы сузить список.</p>
+  <input type="text" id="nfFwdInp" class="nf-fwd-inp" placeholder="Например: @12…" autocomplete="off" autocapitalize="off" spellcheck="false" />
+  <p id="nfFwdStatus" class="nf-fwd-status" role="status"></p>
+  <div id="nf-fwd-dd" role="listbox" aria-label="Подписки"></div>
+  <div class="nf-fwd-extra">
+    <a href="/community/post/{{ post.id }}/reposts?back={{ back_url|urlencode }}">Кто отметил пересылку у поста →</a>
+  </div>
+</div>
+<script src="/static/js/nf-following-forward-dm.js?v=1"></script>
+<script>
+const POST_ID={{ post.id }};
+const BACK_URL={{ back_url|tojson }};
+function goBackFwd(){
+  if(history.length>1){ history.back(); }
+  else { location.href=BACK_URL||'/community'; }
+}
+(function(){
+  if(typeof NFFollowingForwardDm==='undefined') return;
+  NFFollowingForwardDm.attach({
+    postId:POST_ID,
+    input:document.getElementById('nfFwdInp'),
+    dropdown:document.getElementById('nf-fwd-dd'),
+    statusEl:document.getElementById('nfFwdStatus')
+  });
+})();
+</script>
+{% endblock %}

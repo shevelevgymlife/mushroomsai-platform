@@ -95,7 +95,7 @@
       <button type="button" class="cp-act-btn" style="min-height:36px;padding:6px 10px;font-size:13px" onclick="closeShareModal()">Закрыть</button>
     </div>
     <div style="padding:12px 14px">
-      <input id="shareSearchInp" class="sinp" placeholder="Поиск по имени..." oninput="loadShareUsers(this.value)">
+      <input id="shareSearchInp" class="sinp" placeholder="Поиск среди подписок…" oninput="loadShareUsers(this.value)">
     </div>
     <div id="shareUsersList" style="padding:0 14px 14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-height:min(62vh,560px);overflow:auto"></div>
   </div>
@@ -140,18 +140,32 @@ async function openShareModal(){
   if(m) m.style.display='flex';
   const inp=document.getElementById('shareSearchInp');
   if(inp) inp.value='';
+  window.__postShareFollowing=null;
   await loadShareUsers('');
 }
 async function loadShareUsers(q){
   const list=document.getElementById('shareUsersList');
   if(!list) return;
-  list.innerHTML='<div style="grid-column:1/-1;color:#8a8fa0;font-size:13px;padding:8px">Загрузка...</div>';
+  if(!window.__postShareFollowing){
+    list.innerHTML='<div style="grid-column:1/-1;color:#8a8fa0;font-size:13px;padding:8px">Загрузка...</div>';
+    try{
+      const r=await fetch('/community/me/following-share',{credentials:'same-origin'});
+      const d=await r.json().catch(function(){return {};});
+      window.__postShareFollowing=(d&&d.users)||[];
+    }catch(e){
+      window.__postShareFollowing=[];
+    }
+  }
+  const all=window.__postShareFollowing||[];
+  const needle=(q||'').trim().toLowerCase();
+  const arr=needle?all.filter(function(u){
+    const nm=(u.name||'').toLowerCase();
+    const idStr=String(u.id);
+    return nm.indexOf(needle)>=0||idStr.indexOf(needle)===0;
+  }):all;
   try{
-    const r=await fetch('/community/users/share-candidates?q='+encodeURIComponent(q||''),{credentials:'same-origin'});
-    const d=await r.json().catch(function(){return {};});
-    const arr=(d&&d.users)||[];
     if(!arr.length){
-      list.innerHTML='<div style="grid-column:1/-1;color:#8a8fa0;font-size:13px;padding:8px">Никого не найдено</div>';
+      list.innerHTML='<div style="grid-column:1/-1;color:#8a8fa0;font-size:13px;padding:8px">'+(needle?'Никого не найдено':'Нет подписок')+'</div>';
       return;
     }
     list.innerHTML=arr.map(function(u){
@@ -160,7 +174,7 @@ async function loadShareUsers(q){
         :'<div style="width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#1a1a1a;border:2px solid rgba(61,212,224,.25);font-size:12px">\uD83C\uDF44</div>';
       return '<button type="button" onclick="shareToUser('+u.id+')" style="text-align:left;display:flex;align-items:center;gap:8px;padding:8px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.03);color:#e8e8e8;cursor:pointer">'+
         av+
-        '<span style="min-width:0;display:flex;flex-direction:column"><span style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(u.name||'\u0423\u0447\u0430\u0441\u0442\u043d\u0438\u043a')+'</span><span style="font-size:11px;color:#8a8fa0">\u043f\u043e\u0434\u043f\u0438\u0441\u0447\u0438\u043a\u043e\u0432: '+(u.followers_count||0)+'</span></span>'+
+        '<span style="min-width:0;display:flex;flex-direction:column"><span style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(u.name||'\u0423\u0447\u0430\u0441\u0442\u043d\u0438\u043a')+'</span><span style="font-size:11px;color:#8a8fa0">@'+u.id+'</span></span>'+
       '</button>';
     }).join('');
   }catch(e){

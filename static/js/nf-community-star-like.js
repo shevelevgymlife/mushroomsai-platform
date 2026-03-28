@@ -56,8 +56,9 @@
     });
   };
 
+  /** Пересылка ↗: экран «Переслать» (подписки + @), не страница «кто переслал». */
   window.NF_openPostReposts = function (postId, backUrl) {
     var b = encodeURIComponent(backUrl || location.href || "/community");
-    location.href = "/community/post/" + postId + "/reposts?back=" + b;
+    location.href = "/community/post/" + postId + "/forward?back=" + b;
   };
 })();

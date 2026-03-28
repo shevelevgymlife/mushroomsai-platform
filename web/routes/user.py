@@ -645,6 +645,19 @@ async def share_community_post_dm(request: Request, post_id: int):
         recipient_id = 0
     if recipient_id <= 0 or recipient_id == uid:
         return JSONResponse({"error": "bad recipient"}, status_code=400)
+    fol = await database.fetch_one(
+        community_follows.select()
+        .where(community_follows.c.follower_id == uid)
+        .where(community_follows.c.following_id == recipient_id)
+        .limit(1)
+    )
+    if not fol:
+        return JSONResponse(
+            {
+                "error": "Можно отправить только тем, на кого вы подписаны в сообществе",
+            },
+            status_code=403,
+        )
     recipient = await database.fetch_one(users.select().where(users.c.id == recipient_id))
     if not recipient:
         return JSONResponse({"error": "recipient not found"}, status_code=404)

@@ -2020,6 +2020,34 @@ async def community_post_reposts_page(request: Request, post_id: int, back: str 
     )
 
 
+@router.get("/community/post/{post_id}/forward", response_class=HTMLResponse)
+async def community_post_forward_page(request: Request, post_id: int, back: str = ""):
+    """Переслать пост в ЛС подписчику — отдельный экран с выбором после @."""
+    current_user = await get_user_from_request(request)
+    if not current_user:
+        return RedirectResponse(f"/login?next=/community/post/{post_id}/forward")
+    leg = await legal_acceptance_redirect(request, current_user)
+    if leg:
+        return leg
+    post = await database.fetch_one(
+        community_posts.select()
+        .where(community_posts.c.id == post_id)
+        .where(community_posts.c.approved == True)
+    )
+    if not post:
+        return HTMLResponse("Пост не найден", status_code=404)
+    back_url = (back or "").strip() or request.headers.get("referer") or f"/community/post/{post_id}"
+    return templates.TemplateResponse(
+        "community_post_forward.html",
+        {
+            "request": request,
+            "user": current_user,
+            "post": post,
+            "back_url": back_url,
+        },
+    )
+
+
 async def _resolve_community_profile_id(user_id: int):
     """Как на странице профиля: id в URL → основной аккаунт."""
     raw = await database.fetch_one(users.select().where(users.c.id == user_id))
