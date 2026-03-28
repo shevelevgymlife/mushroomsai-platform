@@ -4,13 +4,6 @@
 <style>
 .btn-o{border:1px solid #3dd4e0;color:#3dd4e0;background:transparent;border-radius:12px;cursor:pointer;font-weight:600;transition:all .2s}
 .btn-o:hover{background:rgba(61,212,224,.12)}
-.ns-card{margin-top:18px;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px;background:rgba(255,255,255,.02)}
-.ns-title{font-size:16px;font-weight:700;color:#e8e8e8;margin:0 0 10px}
-.ns-sub{font-size:12px;color:#888;margin:0 0 12px}
-.ns-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid rgba(255,255,255,.08);border-radius:10px;background:rgba(255,255,255,.02);margin-bottom:8px}
-.ns-row input{width:16px;height:16px;cursor:pointer}
-.ns-row span{font-size:13px;color:#ccc}
-.ns-status{font-size:12px;color:#6ee7b7;min-height:16px;margin-top:6px}
 </style>
 {% endblock %}
 {% block content %}
@@ -21,86 +14,67 @@
     <a href="/account/style" class="btn-o" style="width:100%;box-sizing:border-box;text-align:center;padding:14px 18px;text-decoration:none">Настройка стиля</a>
   </div>
 
-  <section class="ns-card">
-    <h2 class="ns-title">Настройки уведомлений</h2>
-    <p class="ns-sub">Выберите, какие уведомления вы хотите получать.</p>
-
-    <label class="ns-row"><input type="checkbox" id="new_follower"><span>Новый подписчик</span></label>
-    <label class="ns-row"><input type="checkbox" id="new_like"><span>Новый лайк</span></label>
-    <label class="ns-row"><input type="checkbox" id="new_comment"><span>Новый комментарий</span></label>
-    <label class="ns-row"><input type="checkbox" id="new_message"><span>Новое сообщение</span></label>
-    <label class="ns-row"><input type="checkbox" id="new_reply"><span>Ответ на комментарий</span></label>
-    <label class="ns-row"><input type="checkbox" id="post_in_group"><span>Пост в группе</span></label>
-    <label class="ns-row"><input type="checkbox" id="mention"><span>Упоминание</span></label>
-    <label class="ns-row"><input type="checkbox" id="new_post_from_following"><span>Пост от подписок</span></label>
-    <label class="ns-row"><input type="checkbox" id="send_to_telegram"><span>Дублировать в Telegram</span></label>
-
-    <div id="notifSettingsStatus" class="ns-status"></div>
-  </section>
+  <details class="nf-set-details" open style="margin-top:22px;border-radius:16px;border:1px solid rgba(201,168,76,.28);background:rgba(8,8,8,.85);overflow:hidden">
+    <summary style="list-style:none;cursor:pointer;padding:16px 18px;font-weight:700;color:#C9A84C;font-size:16px;user-select:none">🔔 Звук и уведомления</summary>
+    <div style="padding:0 18px 20px;border-top:1px solid rgba(255,255,255,.08)">
+      <p style="font-size:12px;color:#888;margin:14px 0 12px">Каналы событий в приложении (страница «События»)</p>
+      <div class="nf-pref-grid" style="display:flex;flex-direction:column;gap:10px">
+        <label class="nf-chk"><input type="checkbox" name="followers" {% if notification_prefs.followers %}checked{% endif %}> Новые подписчики</label>
+        <label class="nf-chk"><input type="checkbox" name="likes" {% if notification_prefs.likes %}checked{% endif %}> Лайки</label>
+        <label class="nf-chk"><input type="checkbox" name="comments" {% if notification_prefs.comments %}checked{% endif %}> Комментарии</label>
+        <label class="nf-chk"><input type="checkbox" name="dm" {% if notification_prefs.dm %}checked{% endif %}> Личные сообщения</label>
+        <label class="nf-chk"><input type="checkbox" name="comment_replies" {% if notification_prefs.comment_replies %}checked{% endif %}> Ответы на комментарии</label>
+        <label class="nf-chk"><input type="checkbox" name="group_posts" {% if notification_prefs.group_posts %}checked{% endif %}> Публикации в группах</label>
+        <label class="nf-chk"><input type="checkbox" name="mentions" {% if notification_prefs.mentions %}checked{% endif %}> Упоминания</label>
+        <label class="nf-chk"><input type="checkbox" name="subscription_posts" {% if notification_prefs.subscription_posts %}checked{% endif %}> Новые посты подписок</label>
+      </div>
+      <hr style="border:none;border-top:1px solid rgba(255,255,255,.1);margin:18px 0">
+      <label class="nf-chk"><input type="checkbox" name="telegram_bot" {% if notification_prefs.telegram_bot %}checked{% endif %}> Отправлять в Telegram бот</label>
+      <label class="nf-chk" style="margin-top:10px"><input type="checkbox" name="radio_player" {% if notification_prefs.radio_player %}checked{% endif %}> Радио-плеер (Down Tempo и подсказки в интерфейсе)</label>
+      <p id="nfPrefSaveMsg" style="display:none;margin-top:12px;font-size:13px;color:#6ee7b7"></p>
+      <button type="button" id="nfPrefSaveBtn" class="btn-gold" style="margin-top:16px;width:100%;padding:14px 18px;border-radius:12px;border:1px solid rgba(201,168,76,.5);background:linear-gradient(135deg,rgba(201,168,76,.3),rgba(201,168,76,.12));color:#f5e6c8;font-weight:700;cursor:pointer;font-size:15px">💾 Сохранить настройки</button>
+    </div>
+  </details>
 
   <p style="margin-top:24px;font-size:13px;color:#666"><a href="/community" style="color:#3dd4e0;text-decoration:none">← В ленту</a></p>
 </div>
-
+<style>
+.nf-set-details summary::-webkit-details-marker{display:none}
+.nf-chk{display:flex;align-items:center;gap:10px;font-size:14px;color:#d8d8de;cursor:pointer}
+.nf-chk input{accent-color:#C9A84C;width:18px;height:18px;flex-shrink:0}
+#nfPrefSaveBtn:hover{filter:brightness(1.08)}
+</style>
 <script>
 (function(){
-  var keys = [
-    'new_follower','new_like','new_comment','new_message','new_reply',
-    'post_in_group','mention','new_post_from_following','send_to_telegram'
-  ];
-  var statusEl = document.getElementById('notifSettingsStatus');
-  var saveTimer = null;
-
-  function setStatus(txt, ok){
-    if(!statusEl) return;
-    statusEl.textContent = txt || '';
-    statusEl.style.color = ok ? '#6ee7b7' : '#fca5a5';
-  }
-
-  async function loadSettings(){
-    try{
-      var r = await fetch('/api/notifications/settings', {credentials:'same-origin'});
-      var d = await r.json();
-      if(d && d.ok && d.settings){
-        keys.forEach(function(k){
-          var el = document.getElementById(k);
-          if(el) el.checked = !!d.settings[k];
-        });
-      }
-    }catch(e){
-      setStatus('Не удалось загрузить настройки уведомлений', false);
-    }
-  }
-
-  async function saveSettings(){
-    var body = {};
+  var btn=document.getElementById('nfPrefSaveBtn');
+  var msg=document.getElementById('nfPrefSaveMsg');
+  if(!btn)return;
+  var keys=['followers','likes','comments','dm','comment_replies','group_posts','mentions','subscription_posts','telegram_bot','radio_player'];
+  btn.addEventListener('click',async function(){
+    msg.style.display='none';
+    var body={};
     keys.forEach(function(k){
-      var el = document.getElementById(k);
-      if(el) body[k] = !!el.checked;
+      var el=document.querySelector('input[name="'+k+'"]');
+      body[k]=!!(el&&el.checked);
     });
     try{
-      var r = await fetch('/api/notifications/settings', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        credentials:'same-origin',
-        body:JSON.stringify(body)
-      });
-      if(!r.ok) throw new Error('save failed');
-      setStatus('Сохранено', true);
+      var r=await fetch('/api/notifications/settings',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(body)});
+      var d=await r.json();
+      if(d&&d.ok){
+        msg.textContent='Сохранено';
+        msg.style.color='#6ee7b7';
+        msg.style.display='block';
+      }else{
+        msg.textContent=(d&&d.error)||'Ошибка';
+        msg.style.color='#f87171';
+        msg.style.display='block';
+      }
     }catch(e){
-      setStatus('Ошибка сохранения', false);
+      msg.textContent='Сеть недоступна';
+      msg.style.color='#f87171';
+      msg.style.display='block';
     }
-  }
-
-  function scheduleSave(){
-    if(saveTimer) clearTimeout(saveTimer);
-    saveTimer = setTimeout(saveSettings, 180);
-  }
-
-  keys.forEach(function(k){
-    var el = document.getElementById(k);
-    if(el) el.addEventListener('change', scheduleSave);
   });
-  loadSettings();
 })();
 </script>
 {% endblock %}

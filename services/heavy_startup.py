@@ -425,6 +425,15 @@ async def run_heavy_startup(app: FastAPI) -> None:
         except Exception as e:
             logger.warning("migrate_v16 profile_public_cards_json: %s", e)
 
+        try:
+            import migrate_v17_in_app_notifications as migrate_v17
+
+            for s in migrate_v17.STEPS:
+                await database.execute(sa.text(s))
+            logger.info("In-app notifications (migrate_v17) OK")
+        except Exception as e:
+            logger.warning("migrate_v17 in_app_notifications: %s", e)
+
         start_scheduler()
         app.state.startup_complete = True
         logger.info("Heavy startup complete; full traffic enabled")

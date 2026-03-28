@@ -64,6 +64,7 @@ users = sqlalchemy.Table(
     sqlalchemy.Column("music_player_enabled", sqlalchemy.Boolean, default=False, server_default="false"),
     sqlalchemy.Column("music_player_position", sqlalchemy.String(50), default="bottom-right", server_default="bottom-right"),
     sqlalchemy.Column("music_player_volume", sqlalchemy.Float, default=0.5, server_default="0.5"),
+    sqlalchemy.Column("notification_prefs_json", sqlalchemy.Text, nullable=True),
 )
 
 sessions = sqlalchemy.Table(
@@ -743,4 +744,22 @@ user_block_overrides = sqlalchemy.Table(
     sqlalchemy.Column("block_key", sqlalchemy.Text, nullable=False),
     sqlalchemy.Column("is_visible", sqlalchemy.Boolean, nullable=True),
     sqlalchemy.Column("custom_name", sqlalchemy.Text, nullable=True),
+)
+
+# Внутриигровые события (лента /notifications) — не удаляются
+in_app_notifications = sqlalchemy.Table(
+    "in_app_notifications",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("recipient_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=False),
+    sqlalchemy.Column("actor_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=True),
+    sqlalchemy.Column("ntype", sqlalchemy.String(40), nullable=False),
+    sqlalchemy.Column("title", sqlalchemy.Text, nullable=False, server_default=""),
+    sqlalchemy.Column("body", sqlalchemy.Text, nullable=False, server_default=""),
+    sqlalchemy.Column("link_url", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("source_kind", sqlalchemy.String(32), nullable=True),
+    sqlalchemy.Column("source_id", sqlalchemy.Integer, nullable=True),
+    sqlalchemy.Column("read_at", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+    sqlalchemy.Column("meta_json", sqlalchemy.Text, nullable=True),
 )

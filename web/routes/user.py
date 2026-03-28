@@ -32,6 +32,12 @@ from services.subscription_service import (
 from ai.openai_client import chat_with_ai
 from services.plan_access import plan_allowed_block_keys, is_platform_operator, can_use_community_group_chats
 from services.legacy_dm_chat_sync import sync_direct_messages_pair
+from services.in_app_notifications import (
+    create_notification,
+    should_send_telegram,
+    count_unread_events,
+    mark_events_notifications_read,
+)
 from services.community_group_queries import fetch_community_group_row
 from services.legal import legal_acceptance_redirect
 from services.notify_admin import notify_admin_telegram
@@ -560,7 +566,18 @@ async def share_community_post_dm(request: Request, post_id: int):
         return JSONResponse({"error": "db"}, status_code=500)
     try:
         if shr and shr.get("id"):
-            await sync_direct_messages_pair(uid, recipient_id, broadcast_legacy_dm_id=int(shr["id"]))
+            mid = int(shr["id"])
+            await create_notification(
+                recipient_id=int(recipient_id),
+                actor_id=int(uid),
+                ntype="message",
+                title="Сообщение",
+                body=line[:400],
+                link_url=f"/chats?open_user={uid}",
+                source_kind="direct_message",
+                source_id=mid,
+            )
+            await sync_direct_messages_pair(uid, recipient_id, broadcast_legacy_dm_id=mid)
     except Exception:
         pass
     return JSONResponse({"ok": True, "link": link})
@@ -685,33 +702,39 @@ async def like_post(request: Request, post_id: int):
     else:
         try:
             seen = author_id is not None and author_id == uid
-            await database.execute(
-                community_likes.insert().values(
+            lk = await database.fetch_one_write(
+                community_likes.insert()
+                .values(
                     post_id=post_id,
                     user_id=uid,
                     seen_by_post_owner=seen,
                 )
+                .returning(community_likes.c.id)
             )
+            like_row_id = int(lk["id"]) if lk else None
             await database.execute(
                 community_posts.update().where(community_posts.c.id == post_id)
                 .values(likes_count=community_posts.c.likes_count + 1)
             )
+            if (
+                author_id
+                and author_id != uid
+                and like_row_id
+                and not seen
+            ):
+                liker_name = user.get("name") or "Участник"
+                await create_notification(
+                    recipient_id=int(author_id),
+                    actor_id=int(uid),
+                    ntype="post_like",
+                    title="Лайк поста",
+                    body=f"{liker_name} оценил(а) ваш пост",
+                    link_url=f"/community/post/{post_id}",
+                    source_kind="community_like",
+                    source_id=like_row_id,
+                )
         except Exception:
             pass
-        if author_id and author_id != uid:
-            try:
-                from services.notification_service import create_notification
-                actor_name = user.get("name") or "Участник"
-                await create_notification(
-                    user_id=author_id,
-                    type="new_like",
-                    title="Лайк на пост",
-                    body=f"{actor_name} поставил лайк вашему посту",
-                    link=f"/community/post/{post_id}",
-                    from_user_id=uid,
-                )
-            except Exception:
-                pass
         return JSONResponse({"liked": True})
 
 
@@ -730,37 +753,37 @@ async def add_comment(request: Request, post_id: int, content: str = Form(...)):
 
     uid = user.get("primary_user_id") or user["id"]
     c_seen = post["user_id"] is not None and post["user_id"] == uid
-    comment_id = await database.execute(
-        community_comments.insert().values(
+    crow = await database.fetch_one_write(
+        community_comments.insert()
+        .values(
             post_id=post_id,
             user_id=uid,
             content=content.strip(),
             seen_by_post_owner=c_seen,
         )
+        .returning(community_comments.c.id)
     )
+    comment_id = int(crow["id"]) if crow else None
     await database.execute(
         community_posts.update().where(community_posts.c.id == post_id)
         .values(comments_count=community_posts.c.comments_count + 1)
     )
+    owner_id = post.get("user_id")
+    if owner_id and owner_id != uid and comment_id and not c_seen:
+        await create_notification(
+            recipient_id=int(owner_id),
+            actor_id=int(uid),
+            ntype="comment",
+            title="Комментарий",
+            body=f"{user.get('name') or 'Участник'}: {content.strip()[:400]}",
+            link_url=f"/community/post/{post_id}",
+            source_kind="community_comment",
+            source_id=comment_id,
+        )
     rep_count = await database.fetch_val(
         sa.select(sa.func.count()).select_from(community_posts).where(community_posts.c.user_id == uid)
     ) or 0
     rep = _reputation(rep_count)
-    # Notify post author
-    if post["user_id"] and post["user_id"] != uid:
-        try:
-            from services.notification_service import create_notification
-            actor_name = user.get("name") or "Участник"
-            await create_notification(
-                user_id=post["user_id"],
-                type="new_comment",
-                title="Новый комментарий",
-                body=f"{actor_name}: {content.strip()[:80]}",
-                link=f"/community/post/{post_id}",
-                from_user_id=uid,
-            )
-        except Exception:
-            pass
     return JSONResponse({
         "ok": True,
         "comment": {
@@ -1107,7 +1130,18 @@ async def shevelev_transfer_notify(request: Request):
         return JSONResponse({"error": "dm"}, status_code=500)
     try:
         if wrow and wrow.get("id"):
-            await sync_direct_messages_pair(uid, int(rid), broadcast_legacy_dm_id=int(wrow["id"]))
+            mid = int(wrow["id"])
+            await create_notification(
+                recipient_id=int(rid),
+                actor_id=int(uid),
+                ntype="message",
+                title="Перевод SHEVELEV",
+                body=msg[:400],
+                link_url=f"/chats?open_user={uid}",
+                source_kind="direct_message",
+                source_id=mid,
+            )
+            await sync_direct_messages_pair(uid, int(rid), broadcast_legacy_dm_id=mid)
     except Exception:
         pass
     tg_id = recipient.get("tg_id") or recipient.get("linked_tg_id")
@@ -1118,7 +1152,7 @@ async def shevelev_transfer_notify(request: Request):
             online = datetime.utcnow() - last_seen < timedelta(minutes=3)
         except Exception:
             online = False
-    if tg_id and not online:
+    if tg_id and not online and await should_send_telegram(int(rid)):
         from services.notify_user_stub import notify_user
 
         tg_line = "💰 " + msg.replace("\n", " ")
@@ -1365,9 +1399,12 @@ async def follow_user(request: Request, target_id: int):
         return JSONResponse({"following": False})
     else:
         try:
-            await database.execute(
-                community_follows.insert().values(follower_id=uid, following_id=target_id)
+            fr = await database.fetch_one_write(
+                community_follows.insert()
+                .values(follower_id=uid, following_id=target_id)
+                .returning(community_follows.c.id)
             )
+            fid = int(fr["id"]) if fr else None
             await database.execute(
                 users.update().where(users.c.id == uid)
                 .values(following_count=users.c.following_count + 1)
@@ -1376,29 +1413,28 @@ async def follow_user(request: Request, target_id: int):
                 users.update().where(users.c.id == target_id)
                 .values(followers_count=users.c.followers_count + 1)
             )
+            if fid:
+                actor_name = user.get("name") or "Участник"
+                await create_notification(
+                    recipient_id=int(target_id),
+                    actor_id=int(uid),
+                    ntype="follower",
+                    title="Новый подписчик",
+                    body=f"{actor_name} подписался(ась) на вас",
+                    link_url=f"/community/profile/{uid}",
+                    source_kind="community_follow",
+                    source_id=fid,
+                )
         except Exception:
             pass
         # Notify target
         target = await database.fetch_one(users.select().where(users.c.id == target_id))
-        if target:
+        if target and await should_send_telegram(int(target_id)):
             tg_id = target.get("tg_id") or target.get("linked_tg_id")
             if tg_id:
                 from services.notify_user_stub import notify_user
                 actor_name = user.get("name") or "Участник"
                 await notify_user(tg_id, f"\U0001f464 <b>{actor_name}</b> подписался на вас в Сообществе NEUROFUNGI AI")
-        try:
-            from services.notification_service import create_notification
-            actor_name = user.get("name") or "Участник"
-            await create_notification(
-                user_id=target_id,
-                type="new_follower",
-                title="Новый подписчик",
-                body=f"{actor_name} подписался на вас",
-                link=f"/community/profile/{uid}",
-                from_user_id=uid,
-            )
-        except Exception:
-            pass
         return JSONResponse({"following": True})
 
 
@@ -1463,13 +1499,24 @@ async def send_dm(request: Request, recipient_id: int):
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
     msg_id = row["id"] if row else None
+    actor_name = user.get("name") or "Участник"
+    if msg_id:
+        await create_notification(
+            recipient_id=int(recipient_id),
+            actor_id=int(uid),
+            ntype="message",
+            title="Личное сообщение",
+            body=f"{actor_name}: {text[:400]}",
+            link_url=f"/chats?open_user={uid}",
+            source_kind="direct_message",
+            source_id=int(msg_id),
+        )
     recipient = await database.fetch_one(users.select().where(users.c.id == recipient_id))
-    if recipient:
+    if recipient and await should_send_telegram(int(recipient_id)):
         tg_id = recipient.get("tg_id") or recipient.get("linked_tg_id")
         if tg_id:
             from services.notify_user_stub import notify_user_dm_with_read_button
 
-            actor_name = user.get("name") or "Участник"
             read_path = f"/messages/{uid}"
             await notify_user_dm_with_read_button(tg_id, actor_name, text, read_path)
     try:
@@ -1664,11 +1711,26 @@ async def like_profile(request: Request, target_id: int):
         return JSONResponse({"liked": False, "count": count})
     else:
         try:
-            await database.execute(
-                profile_likes.insert().values(
+            plr = await database.fetch_one_write(
+                profile_likes.insert()
+                .values(
                     user_id=uid, liked_user_id=target_id, seen_by_owner=False
                 )
+                .returning(profile_likes.c.id)
             )
+            plid = int(plr["id"]) if plr else None
+            if plid:
+                liker_name = user.get("name") or "Участник"
+                await create_notification(
+                    recipient_id=int(target_id),
+                    actor_id=int(uid),
+                    ntype="profile_like",
+                    title="Лайк профиля",
+                    body=f"{liker_name} оценил(а) ваш профиль",
+                    link_url=f"/community/profile/{uid}",
+                    source_kind="profile_like",
+                    source_id=plid,
+                )
         except Exception:
             pass
         count = await database.fetch_val(
@@ -2995,28 +3057,9 @@ async def community_activity_unread_count(request: Request):
             {"likes": 0, "comments": 0, "profile_likes": 0, "messages": 0, "total": 0}
         )
     uid = user.get("primary_user_id") or user["id"]
-    fam = await _owner_family_user_ids(uid)
-    subq = sa.select(community_posts.c.id).where(community_posts.c.user_id.in_(fam))
-    n_likes = n_com = n_pl = n_msg = 0
+    n_events = n_msg = 0
     try:
-        n_likes = await database.fetch_val(
-            sa.select(sa.func.count())
-            .select_from(community_likes)
-            .where(community_likes.c.post_id.in_(subq))
-            .where(community_likes.c.seen_by_post_owner.is_(False))
-        ) or 0
-        n_com = await database.fetch_val(
-            sa.select(sa.func.count())
-            .select_from(community_comments)
-            .where(community_comments.c.post_id.in_(subq))
-            .where(community_comments.c.seen_by_post_owner.is_(False))
-        ) or 0
-        n_pl = await database.fetch_val(
-            sa.select(sa.func.count())
-            .select_from(profile_likes)
-            .where(profile_likes.c.liked_user_id == uid)
-            .where(profile_likes.c.seen_by_owner.is_(False))
-        ) or 0
+        n_events = await count_unread_events(int(uid))
         n_msg = await database.fetch_val(
             sa.select(sa.func.count())
             .select_from(direct_messages)
@@ -3026,23 +3069,15 @@ async def community_activity_unread_count(request: Request):
         ) or 0
     except Exception:
         pass
-    n_notif = 0
-    try:
-        n_notif = await database.fetch_val(
-            sa.text("SELECT COUNT(*) FROM notifications WHERE user_id=:uid AND is_read=false"),
-            {"uid": uid}
-        ) or 0
-    except Exception:
-        pass
-    activity_total = int(n_likes + n_com + n_pl + n_notif)
+    activity_total = int(n_events)
     tot = activity_total + int(n_msg)
     return JSONResponse(
         {
-            "likes": int(n_likes),
-            "comments": int(n_com),
-            "profile_likes": int(n_pl),
+            "likes": 0,
+            "comments": 0,
+            "profile_likes": 0,
             "messages": int(n_msg),
-            "notifications": int(n_notif),
+            "notifications": 0,
             "activity_total": activity_total,
             "total": tot,
         }
@@ -3073,6 +3108,7 @@ async def community_activity_mark_read(request: Request):
             .where(profile_likes.c.liked_user_id == uid)
             .values(seen_by_owner=True)
         )
+        await mark_events_notifications_read(int(uid))
     except Exception:
         pass
     return JSONResponse({"ok": True})

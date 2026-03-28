@@ -1881,15 +1881,15 @@ body.dash-ig-app .ig-lamp-topbar{
             <div style="font-size:12px;color:#666;margin-bottom:14px">Выберите, о чём получать уведомления</div>
             <div style="display:flex;flex-direction:column;gap:10px" id="notifCheckboxes">
               {% set notif_items = [
-                ('new_follower', 'Новый подписчик'),
-                ('new_like', 'Лайк на пост'),
-                ('new_comment', 'Комментарий к посту'),
-                ('new_message', 'Личное сообщение'),
-                ('new_reply', 'Ответ на комментарий'),
-                ('post_in_group', 'Новый пост в группе'),
-                ('mention', 'Упоминание'),
-                ('new_post_from_following', 'Пост от подписок'),
-                ('send_to_telegram', 'Отправлять в Telegram'),
+                ('followers', 'Новый подписчик'),
+                ('likes', 'Лайки'),
+                ('comments', 'Комментарии'),
+                ('dm', 'Личное сообщение'),
+                ('comment_replies', 'Ответ на комментарий'),
+                ('group_posts', 'Публикации в группах'),
+                ('mentions', 'Упоминание'),
+                ('subscription_posts', 'Новые посты подписок'),
+                ('telegram_bot', 'Отправлять в Telegram'),
               ] %}
               {% for key, label in notif_items %}
               <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer">
@@ -2402,8 +2402,9 @@ async function loadNotifSettings() {
   try {
     const r = await fetch('/api/notifications/settings', {credentials:'same-origin'});
     const d = await r.json();
-    if (d.ok && d.settings) {
-      Object.entries(d.settings).forEach(([k, v]) => {
+    const p = d.prefs || d.settings;
+    if (d.ok && p) {
+      Object.entries(p).forEach(([k, v]) => {
         const el = document.getElementById('notif_' + k);
         if (el) el.checked = !!v;
       });

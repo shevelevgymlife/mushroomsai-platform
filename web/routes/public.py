@@ -36,6 +36,7 @@ from services.subscription_service import check_subscription, PLANS, web_default
 from services.shop_catalog import product_gallery_urls
 from services.legal import legal_acceptance_redirect
 from services.legacy_dm_chat_sync import sync_direct_messages_pair
+from services.in_app_notifications import create_notification, should_send_telegram
 from services.referral_service import (
     attach_invite_ref_from_query,
     get_referral_stats,
@@ -2389,6 +2390,22 @@ async def send_message(request: Request, other_id: int):
         return JSONResponse({"error": str(e)}, status_code=500)
 
     msg_id = row["id"] if row else None
+    sender_row = await database.fetch_one(users.select().where(users.c.id == uid))
+    nm = (sender_row.get("name") if sender_row else None) or "Участник"
+    if msg_id and other_id and other_id != 0:
+        try:
+            await create_notification(
+                recipient_id=int(other_id),
+                actor_id=int(uid),
+                ntype="message",
+                title="Личное сообщение",
+                body=f"{nm}: {text[:400]}",
+                link_url=f"/chats?open_user={uid}",
+                source_kind="direct_message",
+                source_id=int(msg_id),
+            )
+        except Exception:
+            pass
     try:
         if other_id and other_id != 0 and msg_id:
             await sync_direct_messages_pair(uid, other_id, broadcast_legacy_dm_id=int(msg_id))
@@ -2397,13 +2414,11 @@ async def send_message(request: Request, other_id: int):
     if other_id and other_id != 0:
         try:
             recipient = await database.fetch_one(users.select().where(users.c.id == other_id))
-            if recipient:
+            if recipient and await should_send_telegram(int(other_id)):
                 tg_id = recipient.get("tg_id") or recipient.get("linked_tg_id")
                 if tg_id:
                     from services.notify_user_stub import notify_user_dm_with_read_button
 
-                    sender_row = await database.fetch_one(users.select().where(users.c.id == uid))
-                    nm = (sender_row.get("name") if sender_row else None) or "Участник"
                     await notify_user_dm_with_read_button(tg_id, nm, text, f"/messages/{uid}")
         except Exception:
             pass

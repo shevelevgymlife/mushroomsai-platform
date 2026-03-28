@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}События — NEUROFUNGI AI{% endblock %}
+{% block content %}
+<div class="nf-notif-page" style="max-width:560px;margin:0 auto;padding:16px calc(14px + env(safe-area-inset-right,0px)) calc(88px + env(safe-area-inset-bottom,0px)) calc(14px + env(safe-area-inset-left,0px));min-height:50vh">
+  <h1 class="nf-notif-h1" style="font-size:clamp(20px,4.5vw,24px);font-weight:800;color:#C9A84C;margin:8px 0 18px;letter-spacing:-.02em">События</h1>
+  <p style="font-size:12px;color:#7a7a82;margin:-8px 0 16px">Все уведомления сохраняются. Непрочитанные подсвечены.</p>
+  {% if not items %}
+  <div style="padding:40px 16px;text-align:center;color:#666;font-size:14px;border-radius:18px;background:rgba(255,255,255,.03);border:1px solid rgba(201,168,76,.15)">Пока нет событий</div>
+  {% else %}
+  <div style="display:flex;flex-direction:column;gap:10px">
+    {% for it in items %}
+    <a href="/notifications/{{ it.id }}" class="nf-notif-row{% if not it.read %} nf-notif-row--unread{% endif %}" style="display:flex;align-items:flex-start;gap:14px;padding:14px 16px;border-radius:16px;text-decoration:none;color:#e8e8ec;border:1px solid rgba(255,255,255,.08);transition:transform .15s ease, border-color .15s ease">
+      <div style="flex-shrink:0;width:48px;height:48px;border-radius:50%;overflow:hidden;border:2px solid rgba(201,168,76,.35);background:#121214">
+        {% if it.actor_avatar %}<img src="{{ it.actor_avatar }}" alt="" style="width:100%;height:100%;object-fit:cover">{% else %}<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:20px">🍄</div>{% endif %}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11px;color:#C9A84C;font-weight:700;margin-bottom:4px">{{ it.type_icon }} {{ it.type_label }}</div>
+        <div style="font-size:14px;line-height:1.45;color:#e4e4e8;word-break:break-word">{{ it.body or it.title }}</div>
+        <div style="font-size:11px;color:#6b6b74;margin-top:8px">{{ it.created_at }}</div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+  <p style="margin-top:24px;font-size:13px"><a href="/account/settings" style="color:#C9A84C;text-decoration:none">⚙ Настройки уведомлений</a></p>
+</div>
+<style>
+.nf-notif-page { background: #080808; }
+.nf-notif-row { background: rgba(255,255,255,.03); }
+.nf-notif-row--unread { background: rgba(201,168,76,.1); border-color: rgba(201,168,76,.28) !important; }
+.nf-notif-row:hover { border-color: rgba(201,168,76,.4); transform: translateY(-1px); }
+</style>
+{% endblock %}
