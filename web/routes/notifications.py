@@ -181,7 +181,7 @@ async def api_notifications_settings_get(request: Request):
 
 @router.get("/api/notifications/count")
 async def api_notifications_count_compat(request: Request):
-    """Совместимость: бейджи, не считая личные сообщения (их — вкладка чатов)."""
+    """Число непрочитанных записей в ленте «События» (все типы, включая личные сообщения)."""
     user = await get_user_from_request(request)
     if not user:
         return JSONResponse({"count": 0})

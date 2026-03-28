@@ -69,6 +69,7 @@
     </div>
     {% endif %}
     <div id="commentsList" style="padding:0 12px 12px;display:flex;flex-direction:column;gap:8px;max-height:36vh;overflow:auto"></div>
+    <p id="commentReplyBar" style="display:none;margin:0 12px 8px;font-size:12px;color:#8be9ff"><span id="commentReplyLabel">↩ Ответ</span> <button type="button" onclick="clearReplyTo()" style="margin-left:8px;background:none;border:none;color:#94a3b8;cursor:pointer;text-decoration:underline">отмена</button></p>
     <div class="cp-input">
       <input id="commentInp" class="sinp" placeholder="Написать комментарий...">
       <button class="btn-g" type="button" onclick="sendComment()">Отправить</button>
@@ -148,9 +149,42 @@ async function shareToUser(uid){
     }
   }catch(e){}
 }
-function cHtml(c){ return '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:8px 10px"><div style="font-size:11px;color:#8a8fa0"><strong style="color:#d8deec">'+(c.author_name||'Участник')+'</strong> · '+(c.created_at||'')+'</div><div style="font-size:13px;color:#e6e8ef;white-space:pre-wrap;word-break:break-word">'+(c.content||'')+'</div></div>'; }
+window.__replyToCommentId=null;
+function clearReplyTo(){
+  window.__replyToCommentId=null;
+  var b=document.getElementById('commentReplyBar');
+  if(b) b.style.display='none';
+}
+function setReplyToComment(cid, name){
+  window.__replyToCommentId=cid;
+  var b=document.getElementById('commentReplyBar');
+  var lb=document.getElementById('commentReplyLabel');
+  if(lb) lb.textContent='↩ Ответ '+(name||'Участник');
+  if(b) b.style.display='block';
+}
+function cHtml(c){
+  var nm=String(c.author_name||'Участник');
+  var nameArg=JSON.stringify(nm);
+  return '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:8px 10px"><div style="font-size:11px;color:#8a8fa0;display:flex;justify-content:space-between;align-items:center;gap:8px"><span><strong style="color:#d8deec">'+nm.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</strong> · '+(c.created_at||'')+'</span><button type="button" onclick="setReplyToComment('+c.id+','+nameArg+')" style="background:rgba(61,212,224,.15);border:1px solid rgba(61,212,224,.35);color:#9df0ff;border-radius:8px;padding:2px 8px;font-size:11px;cursor:pointer">↩</button></div><div style="font-size:13px;color:#e6e8ef;white-space:pre-wrap;word-break:break-word">'+(c.content||'')+'</div></div>';
+}
 async function loadComments(){ try{ const r=await fetch('/community/comments/'+POST_ID,{credentials:'same-origin'}); const d=await r.json(); const arr=d.comments||[]; document.getElementById('commentsList').innerHTML=arr.length?arr.map(cHtml).join(''):'<div style="font-size:12px;color:#8a8fa0">Комментариев пока нет</div>'; }catch(e){} }
-async function sendComment(){ const inp=document.getElementById('commentInp'); const t=(inp.value||'').trim(); if(t.length<1)return; const fd=new FormData(); fd.append('content',t); const r=await fetch('/community/comment/'+POST_ID,{method:'POST',body:fd}); const d=await r.json().catch(()=>({})); if(d.ok){ inp.value=''; const c=document.getElementById('cmtCnt'); c.textContent=String((parseInt(c.textContent||'0',10)||0)+1); loadComments(); } }
+async function sendComment(){
+  const inp=document.getElementById('commentInp');
+  const t=(inp.value||'').trim();
+  if(t.length<1)return;
+  const fd=new FormData();
+  fd.append('content',t);
+  if(window.__replyToCommentId) fd.append('reply_to_comment_id', String(window.__replyToCommentId));
+  const r=await fetch('/community/comment/'+POST_ID,{method:'POST',body:fd,credentials:'same-origin'});
+  const d=await r.json().catch(()=>({}));
+  if(d.ok){
+    inp.value='';
+    clearReplyTo();
+    const c=document.getElementById('cmtCnt');
+    c.textContent=String((parseInt(c.textContent||'0',10)||0)+1);
+    loadComments();
+  }
+}
 function toggleEdit(){ const w=document.getElementById('editWrap'); if(w) w.style.display=(w.style.display==='block'?'none':'block'); }
 async function saveEdit(){
   const fd=new FormData(); fd.append('title',document.getElementById('editTitle').value||''); fd.append('content',document.getElementById('editContent').value||'');

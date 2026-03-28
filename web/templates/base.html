@@ -267,7 +267,10 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
     }
     document.addEventListener('DOMContentLoaded', function(){
       fetchNotifCount();
-      setInterval(fetchNotifCount, 60000);
+      setInterval(fetchNotifCount, 30000);
+    });
+    document.addEventListener('visibilitychange', function(){
+      if(document.visibilityState === 'visible') fetchNotifCount();
     });
   })();
   </script>

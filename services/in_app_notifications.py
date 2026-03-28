@@ -154,7 +154,6 @@ async def count_unread_events(recipient_id: int) -> int:
         .select_from(in_app_notifications)
         .where(in_app_notifications.c.recipient_id == recipient_id)
         .where(in_app_notifications.c.read_at.is_(None))
-        .where(in_app_notifications.c.ntype != "message")
     )
     return int(q or 0)
 
@@ -164,7 +163,6 @@ async def mark_events_notifications_read(recipient_id: int) -> None:
         in_app_notifications.update()
         .where(in_app_notifications.c.recipient_id == recipient_id)
         .where(in_app_notifications.c.read_at.is_(None))
-        .where(in_app_notifications.c.ntype != "message")
         .values(read_at=sa.func.now())
     )
 

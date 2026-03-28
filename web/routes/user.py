@@ -39,6 +39,11 @@ from services.in_app_notifications import (
     count_unread_events,
     mark_events_notifications_read,
 )
+from services.event_notify import (
+    extract_mentioned_numeric_ids,
+    send_event_telegram_html,
+    user_exists,
+)
 from services.community_group_queries import fetch_community_group_row
 from services.legal import legal_acceptance_redirect
 from services.notify_admin import notify_admin_telegram
@@ -470,16 +475,75 @@ async def create_post(
     fid = int(folder_id) if folder_id.strip().isdigit() else None
     effective_uid = user.get("primary_user_id") or user["id"]
     tit = (title or "").strip()[:200] or None
-    post_id = await database.execute(
-        community_posts.insert().values(
+    body_text = content.strip()
+    ins_row = await database.fetch_one_write(
+        community_posts.insert()
+        .values(
             user_id=effective_uid,
             title=tit,
-            content=content.strip(),
+            content=body_text,
             image_url=image_url,
             folder_id=fid,
             approved=True,
         )
+        .returning(community_posts.c.id)
     )
+    post_id = int(ins_row["id"]) if ins_row else None
+    if post_id:
+        author_name = (user.get("name") or "").strip() or "Участник"
+        preview = (tit or body_text[:120] or "Новый пост").strip()
+        try:
+            followers = await database.fetch_all(
+                community_follows.select()
+                .where(community_follows.c.following_id == int(effective_uid))
+                .where(community_follows.c.follower_id != int(effective_uid))
+            )
+            for fr in followers:
+                rid = int(fr["follower_id"])
+                if rid <= 0:
+                    continue
+                await create_notification(
+                    recipient_id=rid,
+                    actor_id=int(effective_uid),
+                    ntype="subscription_post",
+                    title="Новый пост подписки",
+                    body=f"{author_name}: {preview[:400]}",
+                    link_url=f"/community/post/{post_id}",
+                    source_kind="subscription_post",
+                    source_id=int(post_id),
+                )
+                await send_event_telegram_html(
+                    rid,
+                    "subscription_post",
+                    "Новый пост подписки",
+                    f"{author_name}: {preview[:350]}",
+                    f"/community/post/{post_id}",
+                )
+            combined = f"{tit or ''}\n{body_text}"
+            for mid in extract_mentioned_numeric_ids(combined):
+                if mid == int(effective_uid):
+                    continue
+                if not await user_exists(mid):
+                    continue
+                await create_notification(
+                    recipient_id=mid,
+                    actor_id=int(effective_uid),
+                    ntype="mention",
+                    title="Вас упомянули в посте",
+                    body=f"{author_name} в посте: {preview[:380]}",
+                    link_url=f"/community/post/{post_id}",
+                    source_kind="mention_post",
+                    source_id=int(post_id),
+                )
+                await send_event_telegram_html(
+                    mid,
+                    "mention",
+                    "Вас упомянули в посте",
+                    f"{author_name}: {preview[:350]}",
+                    f"/community/post/{post_id}",
+                )
+        except Exception:
+            pass
     return JSONResponse({"ok": True, "id": post_id})
 
 
@@ -577,6 +641,13 @@ async def share_community_post_dm(request: Request, post_id: int):
                 link_url=f"/chats?open_user={uid}",
                 source_kind="direct_message",
                 source_id=mid,
+            )
+            await send_event_telegram_html(
+                int(recipient_id),
+                "message",
+                "Сообщение в личку",
+                line[:350],
+                f"/chats?open_user={uid}",
             )
             await sync_direct_messages_pair(uid, recipient_id, broadcast_legacy_dm_id=mid)
     except Exception:
@@ -734,13 +805,25 @@ async def like_post(request: Request, post_id: int):
                     source_kind="community_like",
                     source_id=like_row_id,
                 )
+                await send_event_telegram_html(
+                    int(author_id),
+                    "post_like",
+                    "Лайк поста",
+                    f"{liker_name} оценил(а) ваш пост",
+                    f"/community/post/{post_id}",
+                )
         except Exception:
             pass
         return JSONResponse({"liked": True})
 
 
 @router.post("/community/comment/{post_id}")
-async def add_comment(request: Request, post_id: int, content: str = Form(...)):
+async def add_comment(
+    request: Request,
+    post_id: int,
+    content: str = Form(...),
+    reply_to_comment_id: str = Form(""),
+):
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
@@ -753,6 +836,19 @@ async def add_comment(request: Request, post_id: int, content: str = Form(...)):
         return JSONResponse({"error": "not found"}, status_code=404)
 
     uid = user.get("primary_user_id") or user["id"]
+    reply_parent_id: int | None = None
+    if (reply_to_comment_id or "").strip().isdigit():
+        reply_parent_id = int(reply_to_comment_id.strip())
+    parent_row = None
+    if reply_parent_id:
+        parent_row = await database.fetch_one(
+            community_comments.select()
+            .where(community_comments.c.id == reply_parent_id)
+            .where(community_comments.c.post_id == post_id)
+        )
+        if not parent_row:
+            reply_parent_id = None
+
     c_seen = post["user_id"] is not None and post["user_id"] == uid
     crow = await database.fetch_one_write(
         community_comments.insert()
@@ -770,17 +866,85 @@ async def add_comment(request: Request, post_id: int, content: str = Form(...)):
         .values(comments_count=community_posts.c.comments_count + 1)
     )
     owner_id = post.get("user_id")
+    actor_nm = user.get("name") or "Участник"
+    stripped = content.strip()
     if owner_id and owner_id != uid and comment_id and not c_seen:
         await create_notification(
             recipient_id=int(owner_id),
             actor_id=int(uid),
             ntype="comment",
             title="Комментарий",
-            body=f"{user.get('name') or 'Участник'}: {content.strip()[:400]}",
+            body=f"{actor_nm}: {stripped[:400]}",
             link_url=f"/community/post/{post_id}",
             source_kind="community_comment",
             source_id=comment_id,
         )
+        await send_event_telegram_html(
+            int(owner_id),
+            "comment",
+            "Комментарий к посту",
+            f"{actor_nm}: {stripped[:350]}",
+            f"/community/post/{post_id}",
+        )
+    if (
+        comment_id
+        and parent_row
+        and parent_row.get("user_id")
+        and int(parent_row["user_id"]) != int(uid)
+    ):
+        puid = int(parent_row["user_id"])
+        await create_notification(
+            recipient_id=puid,
+            actor_id=int(uid),
+            ntype="comment_reply",
+            title="Ответ на ваш комментарий",
+            body=f"{actor_nm}: {stripped[:400]}",
+            link_url=f"/community/post/{post_id}",
+            source_kind="comment_reply",
+            source_id=comment_id,
+        )
+        await send_event_telegram_html(
+            puid,
+            "comment_reply",
+            "Ответ на комментарий",
+            f"{actor_nm}: {stripped[:350]}",
+            f"/community/post/{post_id}",
+        )
+    puid_reply: int | None = None
+    if (
+        parent_row
+        and parent_row.get("user_id")
+        and int(parent_row["user_id"]) != int(uid)
+        and reply_parent_id
+    ):
+        puid_reply = int(parent_row["user_id"])
+    if comment_id:
+        for mid in extract_mentioned_numeric_ids(stripped):
+            if mid == int(uid):
+                continue
+            if owner_id and mid == int(owner_id) and owner_id != uid and not c_seen:
+                continue
+            if puid_reply is not None and mid == puid_reply:
+                continue
+            if not await user_exists(mid):
+                continue
+            await create_notification(
+                recipient_id=mid,
+                actor_id=int(uid),
+                ntype="mention",
+                title="Вас упомянули в комментарии",
+                body=f"{actor_nm}: {stripped[:380]}",
+                link_url=f"/community/post/{post_id}",
+                source_kind="mention_comment",
+                source_id=comment_id,
+            )
+            await send_event_telegram_html(
+                mid,
+                "mention",
+                "Упоминание в комментарии",
+                f"{actor_nm}: {stripped[:350]}",
+                f"/community/post/{post_id}",
+            )
     rep_count = await database.fetch_val(
         sa.select(sa.func.count()).select_from(community_posts).where(community_posts.c.user_id == uid)
     ) or 0
@@ -1426,16 +1590,15 @@ async def follow_user(request: Request, target_id: int):
                     source_kind="community_follow",
                     source_id=fid,
                 )
+                await send_event_telegram_html(
+                    int(target_id),
+                    "follower",
+                    "Новый подписчик",
+                    f"{actor_name} подписался(ась) на вас",
+                    f"/community/profile/{uid}",
+                )
         except Exception:
             pass
-        # Notify target
-        target = await database.fetch_one(users.select().where(users.c.id == target_id))
-        if target and await should_send_telegram(int(target_id)):
-            tg_id = target.get("tg_id") or target.get("linked_tg_id")
-            if tg_id:
-                from services.notify_user_stub import notify_user
-                actor_name = user.get("name") or "Участник"
-                await notify_user(tg_id, f"\U0001f464 <b>{actor_name}</b> подписался на вас в Сообществе NEUROFUNGI AI")
         return JSONResponse({"following": True})
 
 
@@ -1731,6 +1894,13 @@ async def like_profile(request: Request, target_id: int):
                     link_url=f"/community/profile/{uid}",
                     source_kind="profile_like",
                     source_id=plid,
+                )
+                await send_event_telegram_html(
+                    int(target_id),
+                    "profile_like",
+                    "Лайк профиля",
+                    f"{liker_name} оценил(а) ваш профиль",
+                    f"/community/profile/{uid}",
                 )
         except Exception:
             pass
@@ -2897,45 +3067,72 @@ async def community_group_message_post(request: Request, group_id: int):
     if sm_block is not None:
         return sm_block
 
-    await database.execute(
-        community_group_messages.insert().values(
+    msg_row = await database.fetch_one_write(
+        community_group_messages.insert()
+        .values(
             group_id=group_id,
             sender_id=uid,
-            text=text,
+            text=text or "",
             reply_to_id=reply_to,
             addressed_user_id=addressed_user_id,
             image_url=image_url,
             audio_url=audio_url,
         )
+        .returning(community_group_messages.c.id)
     )
-    if addressed_user_id and addressed_user_id != uid:
-        recip = await database.fetch_one(users.select().where(users.c.id == addressed_user_id))
-        gm = await database.fetch_one(
-            community_group_members.select()
-            .where(community_group_members.c.group_id == group_id)
-            .where(community_group_members.c.user_id == addressed_user_id)
-        )
-        sender = await database.fetch_one(users.select().where(users.c.id == uid))
-        should_notify = bool(gm and gm.get("notifications_enabled"))
-        online_in_chat = False
-        if gm and gm.get("chat_last_seen_at"):
-            try:
-                ls = gm["chat_last_seen_at"]
-                ls = ls.replace(tzinfo=None) if getattr(ls, "tzinfo", None) else ls
-                online_in_chat = (datetime.utcnow() - ls) <= timedelta(seconds=90)
-            except Exception:
-                online_in_chat = False
-        if should_notify and (not online_in_chat) and recip and recip.get("tg_id"):
-            try:
-                from services.notify_user_stub import notify_user
-                gname = (g_row or {}).get("name") or f"Чат #{group_id}"
-                sname = (sender or {}).get("name") or "Участник"
-                await notify_user(
-                    int(recip["tg_id"]),
-                    f"Вам написали в чате «{gname}».\nОт: {sname}\nОткройте чат, чтобы ответить.",
+    new_msg_id = int(msg_row["id"]) if msg_row else None
+    if new_msg_id:
+        try:
+            gname = (g_row or {}).get("name") or f"Группа #{group_id}"
+            srow = await database.fetch_one(users.select().where(users.c.id == uid))
+            sname = (srow.get("name") if srow else None) or "Участник"
+            snippet = (text or "").strip()
+            if not snippet and image_url:
+                snippet = "[фото]"
+            elif not snippet and audio_url:
+                snippet = "[аудио]"
+            mem_rows = await database.fetch_all(
+                community_group_members.select().where(community_group_members.c.group_id == group_id)
+            )
+            for mem in mem_rows:
+                rid = int(mem["user_id"])
+                if rid == uid:
+                    continue
+                addr_note = ""
+                if addressed_user_id and rid == int(addressed_user_id):
+                    addr_note = " · адресно вам"
+                body_line = f"«{gname}» — {sname}: {(snippet or 'сообщение')[:300]}{addr_note}"
+                await create_notification(
+                    recipient_id=rid,
+                    actor_id=uid,
+                    ntype="group_post",
+                    title="Сообщение в группе",
+                    body=body_line,
+                    link_url="/dashboard/user",
+                    source_kind="community_group_message",
+                    source_id=new_msg_id,
                 )
-            except Exception:
-                pass
+                if not mem.get("notifications_enabled", True):
+                    continue
+                online_in_chat = False
+                if mem.get("chat_last_seen_at"):
+                    try:
+                        ls = mem["chat_last_seen_at"]
+                        ls = ls.replace(tzinfo=None) if getattr(ls, "tzinfo", None) else ls
+                        online_in_chat = (datetime.utcnow() - ls) <= timedelta(seconds=90)
+                    except Exception:
+                        online_in_chat = False
+                if not online_in_chat:
+                    tg_body = body_line.replace(" · адресно вам", "")
+                    await send_event_telegram_html(
+                        rid,
+                        "group_post",
+                        "Сообщение в группе",
+                        tg_body,
+                        "/dashboard/user",
+                    )
+        except Exception:
+            pass
     return JSONResponse({"ok": True})
 
 
