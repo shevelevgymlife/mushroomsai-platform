@@ -21,8 +21,8 @@
     <p style="margin:0 0 10px;font-size:13px;color:#f87171">{{ error }}</p>
     {% endif %}
     <form id="communityCreateForm" action="/community/post" method="post" enctype="multipart/form-data">
-      <input name="title" class="sinp" maxlength="200" placeholder="Название (необязательно)" style="margin-bottom:10px">
-      <textarea name="content" class="sinp" maxlength="8000" placeholder="Текст поста" style="min-height:140px;resize:vertical;margin-bottom:10px"></textarea>
+      <input name="title" class="sinp nf-mention-field" maxlength="200" placeholder="Название (необязательно)" style="margin-bottom:10px">
+      <textarea name="content" class="sinp nf-mention-field" maxlength="8000" placeholder="Текст поста" style="min-height:140px;resize:vertical;margin-bottom:10px"></textarea>
       <div class="cp-row" style="margin-bottom:10px">
         <label class="btn-o" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer">
           {{ ico('image') }} Фото

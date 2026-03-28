@@ -741,6 +741,46 @@ async def community_share_candidates(request: Request, q: str = ""):
     })
 
 
+@router.get("/community/users/mention-suggest")
+async def community_users_mention_suggest(request: Request, digits: str = ""):
+    """Подсказки для @упоминания: без цифр — топ-10 по подписчикам; с цифрами — id LIKE 'prefix%'."""
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = int(user.get("primary_user_id") or user["id"])
+    d = (digits or "").strip()
+    if d and not d.isdigit():
+        return JSONResponse({"users": []})
+    if len(d) > 12:
+        d = d[:12]
+    qy = (
+        users.select()
+        .where(users.c.id != uid)
+        .where(sa.or_(users.c.is_banned == False, users.c.is_banned.is_(None)))
+    )
+    if d:
+        id_txt = sa.cast(users.c.id, sa.String)
+        qy = qy.where(id_txt.like(f"{d}%"))
+        lim = 20
+    else:
+        lim = 10
+    qy = qy.order_by(users.c.followers_count.desc().nullslast(), users.c.id.asc()).limit(lim)
+    rows = await database.fetch_all(qy)
+    return JSONResponse(
+        {
+            "users": [
+                {
+                    "id": int(r["id"]),
+                    "name": (r.get("name") or "").strip() or "Участник",
+                    "avatar": (r.get("avatar") or "") or "",
+                    "followers_count": int(r.get("followers_count") or 0),
+                }
+                for r in rows
+            ]
+        }
+    )
+
+
 @router.post("/community/like/{post_id}")
 async def like_post(request: Request, post_id: int):
     user = await require_auth(request)

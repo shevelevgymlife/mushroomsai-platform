@@ -237,6 +237,9 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
   <script src="/static/js/screen-glow.js?v=1"></script>
   <script src="/static/js/app.js"></script>
   <script src="/static/js/community-mentions.js?v=1"></script>
+  {% if user %}
+  <script src="/static/js/mention-autocomplete.js?v=1"></script>
+  {% endif %}
   {% if user and request.url.path != '/' and not request.query_params.get('embed') %}
   <script src="/static/js/app-global-drawer.js?v=6" defer></script>
   {% endif %}

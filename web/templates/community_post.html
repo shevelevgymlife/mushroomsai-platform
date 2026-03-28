@@ -62,8 +62,8 @@
       <button class="btn-g" type="button" onclick="toggleEdit()" style="margin-right:8px">Редактировать</button>
     </div>
     <div id="editWrap" style="display:none;padding:0 12px 12px">
-      <input id="editTitle" class="sinp" style="margin-bottom:8px" value="{{ post.title or '' }}" placeholder="Название">
-      <textarea id="editContent" class="sinp" style="min-height:90px;margin-bottom:8px">{{ post.content or '' }}</textarea>
+      <input id="editTitle" class="sinp nf-mention-field" style="margin-bottom:8px" value="{{ post.title or '' }}" placeholder="Название">
+      <textarea id="editContent" class="sinp nf-mention-field" style="min-height:90px;margin-bottom:8px">{{ post.content or '' }}</textarea>
       <input id="editFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" style="margin-bottom:8px">
       <button class="btn-g" type="button" onclick="saveEdit()">Сохранить</button>
     </div>
@@ -71,7 +71,7 @@
     <div id="commentsList" style="padding:0 12px 12px;display:flex;flex-direction:column;gap:8px;max-height:36vh;overflow:auto"></div>
     <p id="commentReplyBar" style="display:none;margin:0 12px 8px;font-size:12px;color:#8be9ff"><span id="commentReplyLabel">↩ Ответ</span> <button type="button" onclick="clearReplyTo()" style="margin-left:8px;background:none;border:none;color:#94a3b8;cursor:pointer;text-decoration:underline">отмена</button></p>
     <div class="cp-input">
-      <input id="commentInp" class="sinp" placeholder="Комментарий… Упоминание: @ID (см. профиль)">
+      <input id="commentInp" class="sinp nf-mention-field" placeholder="Комментарий… @ — подсказки по id" autocomplete="off">
       <button class="btn-g" type="button" onclick="sendComment()">Отправить</button>
     </div>
   </div>
