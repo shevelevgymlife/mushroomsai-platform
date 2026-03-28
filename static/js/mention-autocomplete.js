@@ -64,23 +64,105 @@
     _hi = -1;
   }
 
-  function positionDd(el) {
+  /** Однострочный input: ширина текста до каретки (canvas). */
+  function caretCoordsInput(el, pos) {
+    var val = el.value || "";
+    pos = Math.max(0, Math.min(pos, val.length));
+    var rect = el.getBoundingClientRect();
+    var cs = window.getComputedStyle(el);
+    var bl = parseFloat(cs.borderLeftWidth) || 0;
+    var bt = parseFloat(cs.borderTopWidth) || 0;
+    var pl = parseFloat(cs.paddingLeft) || 0;
+    var pt = parseFloat(cs.paddingTop) || 0;
+    var canvas = document.createElement("canvas");
+    var ctx = canvas.getContext("2d");
+    ctx.font = cs.font || "";
+    var w = ctx.measureText(val.substring(0, pos)).width;
+    var sl = el.scrollLeft || 0;
+    var x = rect.left + bl + pl + w - sl;
+    var fs = parseFloat(cs.fontSize) || 14;
+    var lh = parseFloat(cs.lineHeight);
+    if (!lh || isNaN(lh)) lh = fs * 1.28;
+    var y = rect.top + bt + pt;
+    return { left: x, top: y, height: lh };
+  }
+
+  /** Textarea: зеркальный блок с тем же переносом и прокруткой. */
+  function caretCoordsTextarea(el, position) {
+    var val = el.value || "";
+    position = Math.max(0, Math.min(position, val.length));
+    var rect = el.getBoundingClientRect();
+    var cs = window.getComputedStyle(el);
+    var div = document.createElement("div");
+    document.body.appendChild(div);
+    div.style.cssText =
+      "position:fixed;visibility:hidden;pointer-events:none;overflow:hidden;box-sizing:border-box;white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;";
+    div.style.left = rect.left + "px";
+    div.style.top = rect.top + "px";
+    div.style.width = el.clientWidth + "px";
+    div.style.height = el.clientHeight + "px";
+    div.style.font = cs.font;
+    div.style.padding = cs.padding;
+    div.style.border = cs.border;
+    div.style.lineHeight = cs.lineHeight;
+    div.style.letterSpacing = cs.letterSpacing;
+    div.style.textAlign = cs.textAlign;
+    div.style.textIndent = cs.textIndent;
+    var tab = cs.tabSize || cs.getPropertyValue("-moz-tab-size") || "8";
+    div.style.tabSize = tab;
+    var before = val.substring(0, position);
+    var after = val.substring(position);
+    var span = document.createElement("span");
+    span.textContent = after.length ? after : "\u200b";
+    div.appendChild(document.createTextNode(before));
+    div.appendChild(span);
+    div.scrollTop = el.scrollTop;
+    div.scrollLeft = el.scrollLeft;
+    var sr = span.getBoundingClientRect();
+    var lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.28;
+    document.body.removeChild(div);
+    return {
+      left: sr.left,
+      top: sr.top,
+      height: sr.height > 2 ? sr.height : lh,
+    };
+  }
+
+  function getCaretViewportRect(el, pos) {
+    var tag = (el.tagName || "").toLowerCase();
+    if (tag === "textarea") {
+      return caretCoordsTextarea(el, pos);
+    }
+    return caretCoordsInput(el, pos);
+  }
+
+  /** Панель у каретки (рядом с @ / вводимыми цифрами). */
+  function positionDdAtCaret(el, caretPos) {
+    if (!el || caretPos == null) return;
     var dd = ensureDd();
     dd.style.position = "fixed";
-    var r = el.getBoundingClientRect();
-    var w = Math.max(240, Math.min(r.width, 340));
-    var estH = Math.min(320, window.innerHeight * 0.45);
+    var cr = getCaretViewportRect(el, caretPos);
+    var w = Math.min(340, Math.max(240, window.innerWidth - 20));
     dd.style.width = w + "px";
-    dd.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + "px";
-    var below = r.bottom + 6;
-    var above = r.top - estH - 6;
-    if (below + estH > window.innerHeight - 12 && above > 12) {
-      dd.style.top = Math.max(8, above) + "px";
-      dd.style.maxHeight = Math.min(estH, r.top - 20) + "px";
+    var gap = 6;
+    var left = cr.left;
+    left = Math.max(6, Math.min(left, window.innerWidth - w - 6));
+    var preferTop = cr.top + cr.height + gap;
+    var spaceBelow = window.innerHeight - preferTop - 10;
+    var spaceAbove = cr.top - 10;
+    var maxH = Math.min(320, Math.max(spaceBelow, spaceAbove, 0) - 4);
+    maxH = Math.max(100, maxH);
+    dd.style.maxHeight = maxH + "px";
+    if (spaceBelow >= 140 || spaceBelow >= spaceAbove) {
+      dd.style.top = preferTop + "px";
     } else {
-      dd.style.top = below + "px";
-      dd.style.maxHeight = Math.min(320, window.innerHeight - below - 12) + "px";
+      dd.style.top = Math.max(8, cr.top - maxH - gap) + "px";
     }
+    dd.style.left = left + "px";
+  }
+
+  function syncDdPosition() {
+    if (_activeEl && _state) positionDdAtCaret(_activeEl, _state.pos);
   }
 
   function showLoading() {
@@ -106,6 +188,7 @@
       dd.innerHTML =
         '<div style="padding:14px 12px;font-size:13px;color:#94a3b8;text-align:center">Никого не найдено — введите ещё цифры id</div>';
       dd.style.display = "block";
+      syncDdPosition();
       return;
     }
     dd.innerHTML = users
@@ -142,6 +225,7 @@
     dd.style.display = "block";
     _hi = 0;
     paintHi();
+    syncDdPosition();
   }
 
   function setHighlight(ix) {
@@ -208,6 +292,7 @@
             esc(msg) +
             "</div>";
           dd.style.display = "block";
+          syncDdPosition();
           return;
         }
         var d = pack.d;
@@ -216,6 +301,7 @@
           dd2.innerHTML =
             '<div style="padding:14px;font-size:13px;color:#f87171;text-align:center">Неверный ответ сервера</div>';
           dd2.style.display = "block";
+          syncDdPosition();
           return;
         }
         _items = d.users;
@@ -227,13 +313,14 @@
         dd.innerHTML =
           '<div style="padding:14px;font-size:13px;color:#f87171;text-align:center">Ошибка сети</div>';
         dd.style.display = "block";
+        syncDdPosition();
       });
   }
 
   function scheduleSuggest(el, st) {
     _activeEl = el;
     _state = st;
-    positionDd(el);
+    positionDdAtCaret(el, st.pos);
     showLoading();
     if (_debounce) clearTimeout(_debounce);
     _debounce = setTimeout(function () {
@@ -330,7 +417,7 @@
   }
 
   function onScrollOrResize() {
-    if (_activeEl && _dd && _dd.style.display !== "none") positionDd(_activeEl);
+    if (_activeEl && _dd && _dd.style.display !== "none") syncDdPosition();
   }
   window.addEventListener("scroll", onScrollOrResize, true);
   window.addEventListener("resize", onScrollOrResize);
