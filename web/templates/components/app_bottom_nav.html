@@ -1,10 +1,10 @@
-{# Нижняя панель: лента · поиск · сообщения · уведомления · профиль · пост #}
+{# Нижняя панель: лента · поиск · сообщения · активность · профиль · пост #}
 {% from 'components/stroke_icons.html' import ico %}
 {% set path = request.url.path %}
 {% set eff_uid = user.primary_user_id or user.id %}
 {% set _eff_plan = (user.effective_subscription_plan|default(user.subscription_plan) or 'free') %}
 {% set _feed_locked = (_eff_plan == 'free') and ((user.role or 'user')|lower not in ['admin','moderator']) %}
-<nav class="app-uni-tabbar app-uni-tabbar--six app-uni-tabbar--seven" id="appUniTabbar" aria-label="Нижняя навигация">
+<nav class="app-uni-tabbar app-uni-tabbar--six" id="appUniTabbar" aria-label="Нижняя навигация">
   {% if _feed_locked %}
   <a href="/subscriptions?locked=1" class="app-uni-tab" data-app-tab="feed" data-hash="feed" title="Лента доступна с тарифа Старт или пробного периода">
     <span class="ic">{{ ico('home') }}</span><span class="lbl">{{ t.app_tab_feed }}</span>
@@ -25,10 +25,6 @@
     <span class="ic">{{ ico('heart') }}</span><span class="lbl">{{ t.app_tab_activity }}</span>
     <span id="cpActivityBadge" class="app-notif-badge">0</span>
   </button>
-  <a href="/notifications" class="app-uni-tab {% if path == '/notifications' %}app-uni-tab--on{% endif %}" data-app-tab="notifications" title="Уведомления" aria-label="Уведомления" style="position:relative">
-    <span class="ic">🔔</span><span class="lbl">Уведомления</span>
-    <span id="notifCountBadge" class="app-notif-badge" style="display:none">0</span>
-  </a>
   <a href="/community/profile/{{ eff_uid|int }}" class="app-uni-tab {% if path.startswith('/community/profile') %}app-uni-tab--on{% endif %}" data-app-tab="profile">
     <span class="ic">{{ ico('user') }}</span><span class="lbl">{{ t.app_tab_profile }}</span>
   </a>

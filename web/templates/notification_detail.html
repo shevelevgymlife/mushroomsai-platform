@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Событие — NEUROFUNGI AI{% endblock %}
+
+{% block extra_head %}
+<style>
+.ndetail-wrap { max-width: 520px; margin: 0 auto; padding: 24px 16px 100px; }
+.ndetail-back { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #777; text-decoration: none; margin-bottom: 20px; transition: color .15s; }
+.ndetail-back:hover { color: #C9A84C; }
+.ndetail-card { background: #111; border: 1px solid rgba(201,168,76,.2); border-radius: 18px; padding: 28px 24px; }
+.ndetail-avatar-wrap { display: flex; justify-content: center; margin-bottom: 20px; }
+.ndetail-avatar { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(201,168,76,.4); background: rgba(201,168,76,.1); display: flex; align-items: center; justify-content: center; font-size: 36px; overflow: hidden; }
+.ndetail-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.ndetail-from { text-align: center; font-size: 15px; font-weight: 600; color: #e8e8e8; margin-bottom: 4px; }
+.ndetail-from a { color: #C9A84C; text-decoration: none; }
+.ndetail-from a:hover { text-decoration: underline; }
+.ndetail-type { text-align: center; font-size: 13px; color: #777; margin-bottom: 18px; }
+.ndetail-type-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(201,168,76,.1); border: 1px solid rgba(201,168,76,.2); border-radius: 20px; padding: 4px 12px; font-size: 12px; color: #C9A84C; }
+.ndetail-title { font-size: 17px; font-weight: 700; color: #e8e8e8; margin-bottom: 8px; text-align: center; }
+.ndetail-body { font-size: 14px; color: #aaa; line-height: 1.6; text-align: center; margin-bottom: 20px; }
+.ndetail-time { text-align: center; font-size: 12px; color: #555; margin-bottom: 24px; }
+.ndetail-actions { display: flex; flex-direction: column; gap: 10px; }
+.ndetail-btn-go { display: block; text-align: center; padding: 13px 20px; border-radius: 12px; background: #C9A84C; color: #080808; font-weight: 700; font-size: 14px; text-decoration: none; transition: opacity .15s; }
+.ndetail-btn-go:hover { opacity: .85; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ndetail-wrap">
+  <a href="/notifications" class="ndetail-back">← Назад к событиям</a>
+
+  {% if notif %}
+  <div class="ndetail-card">
+    <div class="ndetail-avatar-wrap">
+      {% if notif.from_avatar %}
+      <div class="ndetail-avatar"><img src="{{ notif.from_avatar }}" onerror="this.parentNode.textContent='{{ type_icon }}'"></div>
+      {% else %}
+      <div class="ndetail-avatar">{{ type_icon }}</div>
+      {% endif %}
+    </div>
+
+    {% if notif.from_name %}
+    <div class="ndetail-from">
+      {% if notif.from_user_id %}
+      <a href="/community/profile/{{ notif.from_user_id }}">{{ notif.from_name }}</a>
+      {% else %}
+      {{ notif.from_name }}
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="ndetail-type">
+      <span class="ndetail-type-badge">{{ type_icon }} {{ type_label }}</span>
+    </div>
+
+    <div class="ndetail-title">{{ notif.title }}</div>
+    <div class="ndetail-body">{{ notif.body }}</div>
+    <div class="ndetail-time">{{ notif.created_at.strftime('%d.%m.%Y %H:%M') if notif.created_at else '' }}</div>
+
+    <div class="ndetail-actions">
+      {% if notif.link %}
+      <a href="{{ notif.link }}" class="ndetail-btn-go">Перейти к событию →</a>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+  <div style="text-align:center;color:#555;padding:60px 20px">Уведомление не найдено</div>
+  {% endif %}
+</div>
+{% endblock %}

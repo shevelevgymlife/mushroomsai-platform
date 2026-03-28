@@ -3,7 +3,7 @@ import logging
 from typing import Optional
 
 import sqlalchemy as sa
-from fastapi import APIRouter, Request, Form
+from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 from auth.session import get_user_from_request
@@ -30,6 +30,55 @@ async def notifications_page(request: Request):
     return templates.TemplateResponse("notifications.html", {
         "request": request,
         "user": user,
+    })
+
+
+# ── HTML: detail page ─────────────────────────────────────────────────────────
+
+_TYPE_LABELS = {
+    "new_follower": ("👤", "Новый подписчик"),
+    "new_like": ("❤️", "Лайк на пост"),
+    "new_comment": ("💬", "Комментарий"),
+    "new_message": ("✉️", "Личное сообщение"),
+    "new_reply": ("↩️", "Ответ на комментарий"),
+    "post_in_group": ("👥", "Пост в группе"),
+    "mention": ("@", "Упоминание"),
+    "new_post_from_following": ("📝", "Новый пост"),
+}
+
+
+@router.get("/notifications/{notif_id}", response_class=HTMLResponse)
+async def notification_detail_page(request: Request, notif_id: int):
+    user = await _require_user(request)
+    if not user:
+        return RedirectResponse(f"/login?next=/notifications/{notif_id}", status_code=302)
+    uid = user.get("primary_user_id") or user["id"]
+    row = await database.fetch_one(
+        sa.text("""
+            SELECT n.*, u.name AS from_name, u.avatar AS from_avatar
+            FROM notifications n
+            LEFT JOIN users u ON u.id = n.from_user_id
+            WHERE n.id = :nid AND n.user_id = :uid
+        """),
+        {"nid": notif_id, "uid": uid}
+    )
+    if row:
+        # Mark as read
+        await database.execute(
+            sa.text("UPDATE notifications SET is_read=true WHERE id=:nid AND user_id=:uid"),
+            {"nid": notif_id, "uid": uid}
+        )
+        notif = dict(row)
+        icon, label = _TYPE_LABELS.get(notif.get("type", ""), ("🔔", "Уведомление"))
+    else:
+        notif = None
+        icon, label = "🔔", "Уведомление"
+    return templates.TemplateResponse("notification_detail.html", {
+        "request": request,
+        "user": user,
+        "notif": notif,
+        "type_icon": icon,
+        "type_label": label,
     })
 
 

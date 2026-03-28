@@ -399,6 +399,11 @@ async def account_settings_hub(request: Request):
     if not user:
         return RedirectResponse("/login?next=/account/settings")
     attach_screen_rim_prefs(user)
+    uid = int(user.get("primary_user_id") or user["id"])
+    row = await database.fetch_one(users.select().where(users.c.id == uid))
+    if row:
+        user = dict(row)
+        attach_screen_rim_prefs(user)
     return templates.TemplateResponse(
         "account/settings.html",
         {"request": request, "user": user},
