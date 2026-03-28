@@ -1857,18 +1857,16 @@ body.dash-ig-app .ig-lamp-topbar{
             <div id="profOk" style="display:none;text-align:center;margin-top:8px;font-size:13px;color:#4ade80">✓ Сохранено</div>
           </div>
           <!-- 🔔 Звук и уведомления -->
-          <div class="card">
-            <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:14px">🔔 Звук и уведомления</div>
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
-              <div>
-                <div style="font-size:14px;color:#ddd">Радио-плеер</div>
-                <div style="font-size:12px;color:#666;margin-top:2px">Плавающий кружок с музыкой на всех страницах</div>
-              </div>
+          <div class="card settings-section">
+            <h3 style="color:#C9A84C;margin-bottom:12px;font-size:15px;font-weight:700">🔔 Звук и уведомления</h3>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid #222">
+              <span style="color:#e8e8e8;font-size:14px">Радио-плеер</span>
               <label style="position:relative;display:inline-block;width:48px;height:26px;flex-shrink:0">
-                <input type="checkbox" id="radioPlayerToggle" onchange="toggleRadioSetting(this.checked)"
+                <input type="checkbox" id="radioEnabledToggle"
                   {% if user.music_player_enabled %}checked{% endif %}
+                  onchange="saveRadioSetting(this.checked)"
                   style="opacity:0;width:0;height:0">
-                <span id="radioPlayerSlider" style="position:absolute;cursor:pointer;inset:0;border-radius:26px;background:{% if user.music_player_enabled %}#C9A84C{% else %}#333{% endif %};transition:.3s">
+                <span id="radioEnabledSlider" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:{% if user.music_player_enabled %}#C9A84C{% else %}#444{% endif %};border-radius:26px;transition:.3s">
                   <span style="position:absolute;height:20px;width:20px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;transform:{% if user.music_player_enabled %}translateX(22px){% else %}translateX(0){% endif %}"></span>
                 </span>
               </label>
@@ -2368,23 +2366,29 @@ function goToGroupsChatsFromBurger(){
     goSec('groups');
   }
 }
-async function toggleRadioSetting(enabled) {
-  const slider = document.getElementById('radioPlayerSlider');
-  const knob = slider.querySelector('span');
-  slider.style.background = enabled ? '#C9A84C' : '#333';
-  knob.style.transform = enabled ? 'translateX(22px)' : 'translateX(0)';
+async function saveRadioSetting(enabled) {
+  const slider = document.getElementById('radioEnabledSlider');
+  if(slider){
+    const knob = slider.querySelector('span');
+    slider.style.background = enabled ? '#C9A84C' : '#444';
+    if(knob) knob.style.transform = enabled ? 'translateX(22px)' : 'translateX(0)';
+  }
   try {
     await fetch('/api/music/player-settings', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({enabled})
+      body: JSON.stringify({enabled: enabled})
     });
-    if(!enabled && window.radioPlayPause && window._radioGetState && !window._radioGetState().paused){
-      window.radioPlayPause(); // stop audio
-    }
+    // обновить кнопку-ноту под аватаркой
+    const radioBtn = document.getElementById('radioNoteBtn');
+    if(radioBtn) radioBtn.style.display = enabled ? 'flex' : 'none';
+    // остановить музыку если выключили
+    if(!enabled && window._radioGetState && !window._radioGetState().paused) window.radioPlayPause();
     setTimeout(() => location.reload(), 300);
   } catch(e) { console.error(e); }
 }
+// legacy alias
+var toggleRadioSetting = saveRadioSetting;
 async function toggleRadio(){
   var btn = document.getElementById('radioToggleBtn');
   var isOn = btn.style.borderColor.indexOf('201') >= 0 || btn.style.borderColor === '#C9A84C';
