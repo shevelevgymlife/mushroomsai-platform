@@ -58,9 +58,9 @@ async def admin_upload_track(request: Request, file: UploadFile = File(...), tit
 
     try:
         from services.music_service import upload_track
-        gdrive_file_id, gdrive_url = await upload_track(data, filename)
+        stored_filename, public_url = await upload_track(data, filename)
     except Exception as e:
-        _logger.error("Drive upload error: %s", e)
+        _logger.error("Music upload error: %s", e)
         return JSONResponse({"error": f"Ошибка загрузки: {e}"}, status_code=500)
 
     # Get next position
@@ -70,9 +70,9 @@ async def admin_upload_track(request: Request, file: UploadFile = File(...), tit
             INSERT INTO music_tracks (title, gdrive_file_id, gdrive_url, is_active, position)
             VALUES (:title, :fid, :url, true, :pos) RETURNING id
         """),
-        {"title": track_title, "fid": gdrive_file_id, "url": gdrive_url, "pos": int(max_pos or 0) + 1},
+        {"title": track_title, "fid": stored_filename, "url": public_url, "pos": int(max_pos or 0) + 1},
     )
-    return JSONResponse({"ok": True, "id": track_id, "title": track_title, "url": gdrive_url})
+    return JSONResponse({"ok": True, "id": track_id, "title": track_title, "url": public_url})
 
 
 @router.delete("/admin/music/{track_id}")
@@ -90,7 +90,7 @@ async def admin_delete_track(request: Request, track_id: int):
             from services.music_service import delete_track
             await delete_track(row["gdrive_file_id"])
         except Exception as e:
-            _logger.warning("Drive delete error: %s", e)
+            _logger.warning("Music delete error: %s", e)
 
     await database.execute(sa.text("DELETE FROM music_tracks WHERE id=:id"), {"id": track_id})
     return JSONResponse({"ok": True})

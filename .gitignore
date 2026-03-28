@@ -13,5 +13,8 @@ dist/
 build/
 .DS_Store
 static/pdfs/*.pdf
+static/music/*.mp3
+static/music/*.m4a
+static/music/*.ogg
 backup_*.zip
 backup_*/

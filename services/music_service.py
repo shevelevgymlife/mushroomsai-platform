@@ -1,100 +1,39 @@
-"""Google Drive music service for MushroomsAI radio player."""
-import io
-import json
+"""Local filesystem music service for MushroomsAI radio player."""
 import logging
 import os
-from typing import Optional
+import uuid
 
 _logger = logging.getLogger(__name__)
 
-FOLDER_NAME = "MushroomsAI_Music"
-_SCOPES = ["https://www.googleapis.com/auth/drive"]
+MUSIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "music")
+BASE_URL = "https://mushroomsai.ru/static/music"
 
 
-def _get_credentials():
-    """Build service account credentials from env var."""
-    sa_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT", "")
-    if not sa_json:
-        raise ValueError("GOOGLE_SERVICE_ACCOUNT env var is not set")
-    try:
-        from google.oauth2 import service_account
-        info = json.loads(sa_json)
-        return service_account.Credentials.from_service_account_info(info, scopes=_SCOPES)
-    except Exception as e:
-        raise ValueError(f"Failed to parse GOOGLE_SERVICE_ACCOUNT: {e}")
-
-
-def _build_service():
-    from googleapiclient.discovery import build
-    creds = _get_credentials()
-    return build("drive", "v3", credentials=creds, cache_discovery=False)
-
-
-async def get_or_create_folder() -> str:
-    """Return folder id for MushroomsAI_Music, creating if needed."""
-    import asyncio
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, _get_or_create_folder_sync)
-
-
-def _get_or_create_folder_sync() -> str:
-    service = _build_service()
-    query = f"name='{FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
-    res = service.files().list(q=query, fields="files(id,name)").execute()
-    files = res.get("files", [])
-    if files:
-        return files[0]["id"]
-    meta = {"name": FOLDER_NAME, "mimeType": "application/vnd.google-apps.folder"}
-    folder = service.files().create(body=meta, fields="id").execute()
-    return folder["id"]
+def _ensure_dir():
+    os.makedirs(MUSIC_DIR, exist_ok=True)
 
 
 async def upload_track(file_bytes: bytes, filename: str) -> tuple[str, str]:
-    """Upload MP3 to Google Drive, make public, return (file_id, public_url)."""
-    import asyncio
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, _upload_track_sync, file_bytes, filename)
+    """Save MP3 to static/music/, return (stored_filename, public_url)."""
+    _ensure_dir()
+    safe_name = filename.replace("/", "_").replace("..", "_")
+    unique_name = f"{uuid.uuid4().hex}_{safe_name}"
+    path = os.path.join(MUSIC_DIR, unique_name)
+    with open(path, "wb") as f:
+        f.write(file_bytes)
+    url = f"{BASE_URL}/{unique_name}"
+    return unique_name, url
 
 
-def _upload_track_sync(file_bytes: bytes, filename: str) -> tuple[str, str]:
-    from googleapiclient.http import MediaIoBaseUpload
-    service = _build_service()
-    folder_id = _get_or_create_folder_sync()
-
-    file_meta = {
-        "name": filename,
-        "parents": [folder_id],
-    }
-    media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype="audio/mpeg", resumable=False)
-    uploaded = service.files().create(
-        body=file_meta,
-        media_body=media,
-        fields="id",
-    ).execute()
-    file_id = uploaded["id"]
-
-    # Make public
-    service.permissions().create(
-        fileId=file_id,
-        body={"role": "reader", "type": "anyone"},
-    ).execute()
-
-    url = f"https://drive.google.com/uc?export=download&id={file_id}"
-    return file_id, url
-
-
-async def delete_track(gdrive_file_id: str) -> bool:
-    """Delete file from Google Drive."""
-    import asyncio
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, _delete_track_sync, gdrive_file_id)
-
-
-def _delete_track_sync(gdrive_file_id: str) -> bool:
+async def delete_track(stored_filename: str) -> bool:
+    """Delete file from static/music/."""
+    if not stored_filename:
+        return True
+    path = os.path.join(MUSIC_DIR, os.path.basename(stored_filename))
     try:
-        service = _build_service()
-        service.files().delete(fileId=gdrive_file_id).execute()
+        if os.path.exists(path):
+            os.remove(path)
         return True
     except Exception as e:
-        _logger.warning("Failed to delete Drive file %s: %s", gdrive_file_id, e)
+        _logger.warning("Failed to delete music file %s: %s", stored_filename, e)
         return False
