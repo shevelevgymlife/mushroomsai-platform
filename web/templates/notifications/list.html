@@ -27,7 +27,7 @@
         {% if s.unread_count > 0 %}<span class="nf-cat-head-badge">{{ s.unread_count }} непрочит.</span>{% endif %}
       </div>
       <div class="nf-cat-inner">
-        {% for it in s.items %}
+        {% for it in s['items'] %}
         <a href="/notifications/{{ it.id }}" class="nf-notif-row{% if not it.read %} nf-notif-row--unread{% endif %}">
           <div class="nf-notif-av">
             {% if it.actor_avatar %}<img src="{{ it.actor_avatar }}" alt="">{% else %}<span>🍄</span>{% endif %}
