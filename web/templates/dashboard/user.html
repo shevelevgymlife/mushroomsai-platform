@@ -1831,6 +1831,26 @@ body.dash-ig-app .ig-lamp-topbar{
       <div class="sect-title">⚙️ Расширенные настройки</div>
       <p style="font-size:12px;color:#666;margin:-8px 0 16px;max-width:520px">Фото — на экране профиля. Кошелёк и приложения Decimal / MetaMask — в меню «Моя криптовалюта» или в блоке ниже.</p>
       <div style="max-width:560px;display:flex;flex-direction:column;gap:16px">
+          <!-- 🔔 Звук и уведомления — ПЕРВЫЙ БЛОК -->
+          <div class="card" style="border:1px solid rgba(201,168,76,.25)">
+            <h3 style="color:#C9A84C;margin:0 0 14px;font-size:15px;font-weight:700">🔔 Звук и уведомления</h3>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0">
+              <div>
+                <div style="color:#e8e8e8;font-size:14px">Радио-плеер</div>
+                <div style="color:#666;font-size:12px;margin-top:2px">Фоновая музыка во время работы в кабинете</div>
+              </div>
+              <label style="position:relative;display:inline-block;width:48px;height:26px;flex-shrink:0;cursor:pointer">
+                <input type="checkbox" id="radioEnabledToggle"
+                  {% if user.music_player_enabled %}checked{% endif %}
+                  onchange="saveRadioSetting(this.checked)"
+                  style="opacity:0;width:0;height:0;position:absolute">
+                <span id="radioEnabledSlider" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:{% if user.music_player_enabled %}#C9A84C{% else %}#444{% endif %};border-radius:26px;transition:.3s">
+                  <span style="position:absolute;height:20px;width:20px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;transform:{% if user.music_player_enabled %}translateX(22px){% else %}translateX(0){% endif %}"></span>
+                </span>
+              </label>
+            </div>
+            <div id="radioSaveStatus" style="font-size:12px;color:#666;min-height:16px;margin-top:4px"></div>
+          </div>
           <div class="card">
             <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:14px">Информация</div>
             <div style="margin-bottom:12px">
@@ -1855,22 +1875,6 @@ body.dash-ig-app .ig-lamp-topbar{
             </div>
             <button class="btn-g" style="width:100%" onclick="saveProfile()">Сохранить</button>
             <div id="profOk" style="display:none;text-align:center;margin-top:8px;font-size:13px;color:#4ade80">✓ Сохранено</div>
-          </div>
-          <!-- 🔔 Звук и уведомления -->
-          <div class="card settings-section">
-            <h3 style="color:#C9A84C;margin-bottom:12px;font-size:15px;font-weight:700">🔔 Звук и уведомления</h3>
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid #222">
-              <span style="color:#e8e8e8;font-size:14px">Радио-плеер</span>
-              <label style="position:relative;display:inline-block;width:48px;height:26px;flex-shrink:0">
-                <input type="checkbox" id="radioEnabledToggle"
-                  {% if user.music_player_enabled %}checked{% endif %}
-                  onchange="saveRadioSetting(this.checked)"
-                  style="opacity:0;width:0;height:0">
-                <span id="radioEnabledSlider" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:{% if user.music_player_enabled %}#C9A84C{% else %}#444{% endif %};border-radius:26px;transition:.3s">
-                  <span style="position:absolute;height:20px;width:20px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;transform:{% if user.music_player_enabled %}translateX(22px){% else %}translateX(0){% endif %}"></span>
-                </span>
-              </label>
-            </div>
           </div>
 
           <div class="card" id="wallet-bind-card">
@@ -2373,22 +2377,26 @@ async function saveRadioSetting(enabled) {
     slider.style.background = enabled ? '#C9A84C' : '#444';
     if(knob) knob.style.transform = enabled ? 'translateX(22px)' : 'translateX(0)';
   }
+  const status = document.getElementById('radioSaveStatus');
+  if(status){ status.textContent = 'Сохранение...'; status.style.color='#888'; }
   try {
-    await fetch('/api/music/player-settings', {
+    const r = await fetch('/api/music/player-settings', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({enabled: enabled})
     });
-    // обновить кнопку-ноту под аватаркой
-    const radioBtn = document.getElementById('radioNoteBtn');
-    if(radioBtn) radioBtn.style.display = enabled ? 'flex' : 'none';
-    // остановить музыку если выключили
-    if(!enabled && window._radioGetState && !window._radioGetState().paused) window.radioPlayPause();
-    setTimeout(() => location.reload(), 300);
-  } catch(e) { console.error(e); }
+    if(r.ok){
+      if(status){ status.textContent = '✓ Сохранено'; status.style.color='#4ade80'; }
+      if(!enabled && window._radioGetState && !window._radioGetState().paused) window.radioPlayPause();
+      setTimeout(() => { if(status) status.textContent=''; location.reload(); }, 800);
+    } else {
+      if(status){ status.textContent = '✗ Ошибка сохранения'; status.style.color='#f87171'; }
+    }
+  } catch(e) {
+    if(status){ status.textContent = '✗ Ошибка сети'; status.style.color='#f87171'; }
+    console.error(e);
+  }
 }
-// legacy alias
-var toggleRadioSetting = saveRadioSetting;
 async function toggleRadio(){
   var btn = document.getElementById('radioToggleBtn');
   var isOn = btn.style.borderColor.indexOf('201') >= 0 || btn.style.borderColor === '#C9A84C';
