@@ -5,19 +5,26 @@
 <style>
 .nf-stars-top{position:sticky;top:calc(4rem - 2px);z-index:40;background:rgba(6,8,14,.92);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.08);padding:10px 12px 12px;margin:0 -12px 8px}
 .nf-stars-top h1{font-size:17px;margin:0 0 10px;color:#e8eaef;font-weight:800}
-.nf-stars-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:10px;width:100%;box-sizing:border-box}
-.nf-stars-actions__right{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:flex-end}
+.nf-stars-actions{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:8px 10px;margin-bottom:10px;width:100%;box-sizing:border-box}
+.nf-stars-actions__close{justify-self:start}
+.nf-stars-actions__open{justify-self:end}
 .nf-stars-actions button,.nf-stars-actions a.btnx{border-radius:12px;padding:8px 14px;font-weight:700;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#e8eaef;cursor:pointer;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
 .nf-stars-actions a.btnx:hover,.nf-stars-actions button:hover{border-color:rgba(61,212,224,.45)}
 .nf-stars-like-on{border-color:rgba(255,216,79,.45)!important;color:#ffe57f!important}
+#starsPageLikeBtn{font-size:15px;min-width:4.5em;justify-content:center}
+#starsPageLikeCnt{font-variant-numeric:tabular-nums;font-weight:800}
 .sinp2{width:100%;box-sizing:border-box;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:#e8eaef;border-radius:12px;padding:10px 14px;font-size:15px}
 .nf-stars-wrap{max-width:min(960px,100%);margin:calc(4rem + 8px) auto 24px;padding:0 12px calc(24px + env(safe-area-inset-bottom,0px))}
 </style>
 <div class="nf-stars-wrap">
   <div class="nf-stars-top">
     <div class="nf-stars-actions">
-      <button type="button" onclick="goBack()">← Закрыть</button>
-      <a class="btnx" id="openPostLink" href="/community/post/{{ post.id }}">Открыть пост</a>
+      <button type="button" class="nf-stars-actions__close" onclick="goBack()">← Закрыть</button>
+      <button type="button" class="btnx{% if is_liked %} nf-stars-like-on{% endif %}" id="starsPageLikeBtn" onclick="starsPageToggleLike()" title="Нажмите — поставить или убрать звезду. Число — сколько человек поставили звезду этому посту.">
+        <span id="starsPageLikeIcon" aria-hidden="true">{{ '⭐' if is_liked else '✩' }}</span>
+        <span id="starsPageLikeCnt">{{ post.likes_count or 0 }}</span>
+      </button>
+      <a class="btnx nf-stars-actions__open" id="openPostLink" href="/community/post/{{ post.id }}">Открыть пост</a>
     </div>
     <h1>⭐ Кто поставил звезду</h1>
     <input type="search" id="starSearch" class="sinp2" placeholder="Поиск по имени или id…" autocomplete="off" />
