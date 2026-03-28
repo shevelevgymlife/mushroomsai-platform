@@ -1974,6 +1974,12 @@ async def community_post_stars_page(request: Request, post_id: int, back: str = 
     )
     if not post:
         return HTMLResponse("Пост не найден", status_code=404)
+    viewer_id = current_user.get("primary_user_id") or current_user["id"]
+    liked = await database.fetch_one(
+        community_likes.select()
+        .where(community_likes.c.post_id == post_id)
+        .where(community_likes.c.user_id == viewer_id)
+    )
     back_url = (back or "").strip() or request.headers.get("referer") or f"/community/post/{post_id}"
     return templates.TemplateResponse(
         "community_post_stars.html",
@@ -1982,6 +1988,7 @@ async def community_post_stars_page(request: Request, post_id: int, back: str = 
             "user": current_user,
             "post": post,
             "back_url": back_url,
+            "is_liked": liked is not None,
         },
     )
 

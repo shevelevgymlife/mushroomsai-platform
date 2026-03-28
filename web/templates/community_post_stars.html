@@ -5,9 +5,11 @@
 <style>
 .nf-stars-top{position:sticky;top:calc(4rem - 2px);z-index:40;background:rgba(6,8,14,.92);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.08);padding:10px 12px 12px;margin:0 -12px 8px}
 .nf-stars-top h1{font-size:17px;margin:0 0 10px;color:#e8eaef;font-weight:800}
-.nf-stars-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
-.nf-stars-actions button,.nf-stars-actions a.btnx{border-radius:12px;padding:8px 14px;font-weight:700;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#e8eaef;cursor:pointer;font-size:13px;text-decoration:none;display:inline-flex;align-items:center}
+.nf-stars-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:10px;width:100%;box-sizing:border-box}
+.nf-stars-actions__right{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:flex-end}
+.nf-stars-actions button,.nf-stars-actions a.btnx{border-radius:12px;padding:8px 14px;font-weight:700;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#e8eaef;cursor:pointer;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
 .nf-stars-actions a.btnx:hover,.nf-stars-actions button:hover{border-color:rgba(61,212,224,.45)}
+.nf-stars-like-on{border-color:rgba(255,216,79,.45)!important;color:#ffe57f!important}
 .sinp2{width:100%;box-sizing:border-box;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:#e8eaef;border-radius:12px;padding:10px 14px;font-size:15px}
 .nf-stars-wrap{max-width:min(960px,100%);margin:calc(4rem + 8px) auto 24px;padding:0 12px calc(24px + env(safe-area-inset-bottom,0px))}
 </style>
@@ -27,6 +29,40 @@
 const POST_ID={{ post.id }};
 const BACK_URL={{ back_url|tojson }};
 function goBack(){ if(history.length>1){ history.back(); } else { location.href=BACK_URL||'/community'; } }
+function setStarsLikeUi(liked,count){
+  var btn=document.getElementById('starsPageLikeBtn');
+  var ic=document.getElementById('starsPageLikeIcon');
+  var c=document.getElementById('starsPageLikeCnt');
+  if(ic) ic.textContent=liked?'\u2B50':'\u2729';
+  if(c&&typeof count==='number') c.textContent=String(Math.max(0,count));
+  if(btn){
+    if(liked) btn.classList.add('nf-stars-like-on');
+    else btn.classList.remove('nf-stars-like-on');
+  }
+}
+async function starsPageToggleLike(){
+  var b=document.getElementById('starsPageLikeBtn');
+  if(b) b.disabled=true;
+  try{
+    var r=await fetch('/community/like/'+POST_ID,{method:'POST',credentials:'same-origin'});
+    var d=await r.json().catch(function(){return {};});
+    if(r.ok&&typeof d.liked==='boolean'){
+      setStarsLikeUi(d.liked,typeof d.count==='number'?d.count:undefined);
+      reloadLikers();
+    }
+  }catch(e){}
+  if(b) b.disabled=false;
+}
+function reloadLikers(){
+  var ld=document.getElementById('starLoad');
+  var c=document.getElementById('starCanvas');
+  if(ld){ ld.style.display='block'; ld.textContent='Загрузка…'; }
+  if(c) c.style.display='none';
+  fetch('/community/post/'+POST_ID+'/likers-json',{credentials:'same-origin'})
+    .then(function(r){return r.json();})
+    .then(function(d){ render((d&&d.users)||[]); })
+    .catch(function(){ if(ld) ld.textContent='Не удалось загрузить'; });
+}
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function render(users){
   var c=document.getElementById('starCanvas');
@@ -65,13 +101,6 @@ document.getElementById('starSearch').addEventListener('input',function(){ filte
   var op=document.getElementById('openPostLink');
   if(op) op.addEventListener('click',function(e){ e.preventDefault(); location.href='/community/post/'+POST_ID+'?back='+encodeURIComponent(BACK_URL||'/community'); });
 })();
-fetch('/community/post/'+POST_ID+'/likers-json',{credentials:'same-origin'})
-  .then(function(r){return r.json();})
-  .then(function(d){
-    render((d&&d.users)||[]);
-  })
-  .catch(function(){
-    document.getElementById('starLoad').textContent='Не удалось загрузить';
-  });
+reloadLikers();
 </script>
 {% endblock %}
