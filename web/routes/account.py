@@ -400,6 +400,18 @@ async def account_settings_hub(request: Request):
     if not user:
         return RedirectResponse("/login?next=/account/settings")
     attach_screen_rim_prefs(user)
+    return templates.TemplateResponse(
+        "account/settings.html",
+        {"request": request, "user": user},
+    )
+
+
+@router.get("/settings/sound-notifications", response_class=HTMLResponse)
+async def account_sound_notifications_page(request: Request):
+    user = await get_user_from_request(request)
+    if not user:
+        return RedirectResponse("/login?next=/account/settings/sound-notifications", status_code=302)
+    attach_screen_rim_prefs(user)
     uid = int(user.get("primary_user_id") or user["id"])
     row = await database.fetch_one(
         sa.select(users.c.notification_prefs_json).where(users.c.id == uid)
@@ -408,7 +420,7 @@ async def account_settings_hub(request: Request):
         row["notification_prefs_json"] if row else None
     )
     return templates.TemplateResponse(
-        "account/settings.html",
+        "account/sound_notifications.html",
         {"request": request, "user": user, "notification_prefs": notification_prefs},
     )
 
