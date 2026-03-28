@@ -1,101 +1,96 @@
 {% extends "base.html" %}
 {% block title %}Пост — NEUROFUNGI AI{% endblock %}
 {% block content %}
-<link rel="stylesheet" href="/static/css/nf-community-posts.css?v=1" />
+<link rel="stylesheet" href="/static/css/nf-community-posts.css?v=2" />
 <script src="/static/js/nf-community-star-like.js?v=1"></script>
 <style>
-.cp-wrap{max-width:min(560px,100%);margin:calc(4rem + 12px) auto 28px;padding:0 12px calc(24px + env(safe-area-inset-bottom,0px))}
-.cp-card{
-  border-radius:26px;overflow:hidden;
-  background:radial-gradient(120% 80% at 10% 0%,rgba(61,212,224,.12),transparent 55%),linear-gradient(165deg,rgba(255,255,255,.09),rgba(8,9,14,.97));
-  border:1px solid rgba(255,255,255,.1);
-  box-shadow:0 24px 64px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.06);
-}
-.cp-topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08)}
-.cp-head{display:flex;align-items:flex-start;gap:12px;padding:14px 16px 10px;border-bottom:1px solid rgba(255,255,255,.06)}
-.cp-actions{display:flex;flex-wrap:wrap;gap:8px;padding:10px 14px 0}
-.cp-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px;padding:0 4px}
-.cp-metric{
-  min-height:54px;border-radius:16px;font-size:17px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px;
-  border:1px solid rgba(255,255,255,.14);
-  background:linear-gradient(165deg,rgba(255,255,255,.08),rgba(14,16,24,.88));
-  box-shadow:0 8px 28px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.05);
-  transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;
-  cursor:pointer;font-family:inherit;color:inherit;
-}
-.cp-metric:hover{transform:translateY(-2px);box-shadow:0 12px 36px rgba(0,0,0,.35)}
-.cp-body-full{padding:12px 16px 8px;font-size:15px;color:#c4c8d3;line-height:1.6;white-space:pre-wrap;word-break:break-word;max-height:min(48vh,420px);overflow-y:auto}
-.cp-input{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:0 14px 16px}
-.sinp{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:#e8e8e8;border-radius:14px;padding:12px 16px;font-size:16px;outline:none;width:100%;box-sizing:border-box;transition:border-color .2s,box-shadow .2s}
-.sinp:focus{border-color:rgba(61,212,224,.45);box-shadow:0 0 0 3px rgba(61,212,224,.12)}
-.btn-g{background:linear-gradient(135deg,#3dd4e0,#2a9daa);color:#050508;border:none;border-radius:999px;padding:12px 18px;font-weight:800;cursor:pointer;min-height:46px;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 8px 28px rgba(61,212,224,.25)}
-.btn-g:hover{filter:brightness(1.06)}
-.cp-act-btn{
-  min-height:44px;border-radius:14px;border:1px solid rgba(255,255,255,.14);
-  background:linear-gradient(165deg,rgba(255,255,255,.07),rgba(10,12,18,.9));
-  color:#e8edf5;font-size:14px;font-weight:700;cursor:pointer;
-  transition:background .2s,border-color .2s,transform .15s;
-}
-.cp-act-btn:hover{border-color:rgba(61,212,224,.35);transform:translateY(-1px)}
 .cp-share-modal{display:none;position:fixed;inset:0;z-index:10110;align-items:center;justify-content:center;background:rgba(0,0,0,.86);backdrop-filter:blur(8px)}
-.cp-save-pill{font-size:12px;font-weight:700;padding:6px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);cursor:pointer;color:#e8eaef}
-.cp-save-pill.on{border-color:rgba(61,212,224,.45);color:#3dd4e0}
 </style>
-<div class="cp-wrap">
-  <div class="cp-card">
-    <div class="cp-topbar">
-      <button class="cp-act-btn" type="button" onclick="goBackPost()" style="min-height:40px">← Закрыть</button>
-      <button type="button" class="cp-save-pill {{ 'on' if is_saved else '' }}" id="savePill" onclick="toggleSavePost()">🔖 <span id="saveCntPill">{{ post.saves_count or 0 }}</span></button>
-    </div>
-    <div class="cp-head">
-      <div style="min-width:0;flex:1">
-        <div style="font-size:14px;font-weight:700;color:#e8e8e8;display:flex;align-items:center;gap:8px;flex-wrap:wrap">{{ author.name if author else 'Участник' }}{% if author and author.id %}<span class="cp-user-id-pill" style="font-size:10px;padding:2px 8px;cursor:default" title="Упоминание в комментарии: @{{ author.id }}"><span class="cp-user-id-pill__k">id</span>@{{ author.id }}</span>{% endif %}{% if post.from_telegram %}<span style="display:inline-flex;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800;background:rgba(56,189,248,.18);color:#38bdf8;border:1px solid rgba(56,189,248,.5);" title="Импорт из Telegram-канала">✓ TG</span>{% endif %}</div>
-        <div style="font-size:11px;color:#8a8fa0">{{ post.created_at.strftime('%d.%m.%Y %H:%M') if post.created_at else '' }}</div>
+<div class="nf-pc-page">
+  <div class="nf-pc-wrap">
+    <article class="nf-pc-card">
+      <div class="nf-pc-head-brand">
+        <span class="nf-pc-logo">NEUROFUNGI AI</span>
+        <button type="button" class="nf-pc-music" id="nfPcMusicBtn" onclick="nfPcMusicTap(event)" aria-label="Радио-плеер">🎵</button>
       </div>
-    </div>
-    <div class="cp-actions">
-      {% if post_images %}<button class="cp-act-btn" type="button" onclick="openPhotoPage()">Галерея фото</button>{% endif %}
-      <button class="cp-act-btn" type="button" onclick="openShareModal()">В личку</button>
-    </div>
-    {% if post.title %}<div style="padding:14px 16px 6px;font-size:20px;font-weight:800;color:#f8fafc;line-height:1.25">{{ post.title | linkify_mentions | safe }}</div>{% endif %}
-    <div class="cp-body-full">{{ (post.content or 'Без текста') | linkify_mentions | safe }}</div>
-    {% if post_images %}
-    <div class="nf-post-gallery" style="padding-top:4px">
-      {% for u in post_images %}<img src="{{ u }}" class="nf-post-gallery__slide" style="max-height:220px" loading="lazy" alt="">{% endfor %}
-    </div>
-    {% endif %}
-    <div class="cp-metrics">
-      <button type="button" class="cp-metric" id="likeBtn" onclick="postPageStar()" style="border-color:rgba(255,216,79,.45);color:#ffe57f"><span id="likeIcon">{{ '⭐' if is_liked else '✩' }}</span> <span id="likeCnt">{{ post.likes_count or 0 }}</span></button>
-      <button type="button" class="cp-metric" style="border-color:rgba(139,233,255,.4);color:#9df0ff" onclick="location.href='/community/post/{{ post.id }}/comments?back='+encodeURIComponent(BACK_URL_JSON)">💬 <span id="cmtCnt">{{ post.comments_count or 0 }}</span></button>
-      <button type="button" class="cp-metric" style="border-color:rgba(247,179,255,.4);color:#ffc6ff" onclick="NF_openPostReposts(POST_ID, BACK_URL_JSON)">↗ <span id="repostCnt">{{ post.reposts_count|default(0) }}</span></button>
-    </div>
-    {% if is_owner %}
-    <div style="padding:0 12px 12px">
-      <button class="btn-g" type="button" onclick="toggleEdit()" style="margin-right:8px">Редактировать</button>
-    </div>
-    <div id="editWrap" style="display:none;padding:0 12px 12px">
-      <input id="editTitle" class="sinp nf-mention-field" style="margin-bottom:8px" value="{{ post.title or '' }}" placeholder="Название">
-      <textarea id="editContent" class="sinp nf-mention-field" style="min-height:90px;margin-bottom:8px">{{ post.content or '' }}</textarea>
-      <input id="editFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" style="margin-bottom:8px">
-      <button class="btn-g" type="button" onclick="saveEdit()">Сохранить</button>
-    </div>
-    {% endif %}
-    <p id="commentReplyBar" style="display:none;margin:0 12px 8px;font-size:12px;color:#8be9ff"><span id="commentReplyLabel">↩ Ответ</span> <button type="button" onclick="clearReplyTo()" style="margin-left:8px;background:none;border:none;color:#94a3b8;cursor:pointer;text-decoration:underline">отмена</button></p>
-    <div class="cp-input" style="padding-top:4px;border-top:1px solid rgba(255,255,255,.06)">
-      <input id="commentInp" class="sinp nf-mention-field" placeholder="Комментарий… @ — подсказки по id" autocomplete="off">
-      <button class="btn-g" type="button" onclick="sendComment()">Отправить</button>
-    </div>
-    <div id="commentsList" style="padding:8px 12px 12px;display:flex;flex-direction:column;gap:8px;max-height:36vh;overflow:auto;border-top:1px solid rgba(255,255,255,.04)"></div>
+      <div class="nf-pc-topbar">
+        <button class="nf-pc-btn-ghost" type="button" onclick="goBackPost()">← Закрыть</button>
+        <button type="button" class="nf-pc-save {{ 'on' if is_saved else '' }}" id="savePill" onclick="toggleSavePost()">🔖 <span id="saveCntPill">{{ post.saves_count or 0 }}</span></button>
+      </div>
+      {% if author and author.id %}
+      <a class="nf-pc-author" href="/community/profile/{{ author.id }}">
+        {% if author.avatar %}
+        <img class="nf-pc-author__av" src="{{ author.avatar }}" alt="">
+        {% else %}
+        <div class="nf-pc-author__ph" aria-hidden="true">🍄</div>
+        {% endif %}
+        <div class="nf-pc-author__meta">
+          <div class="nf-pc-author__name">
+            {{ author.name if author else 'Участник' }}
+            <span class="cp-user-id-pill" style="font-size:10px;padding:2px 8px;cursor:default" title="Упоминание: @{{ author.id }}"><span class="cp-user-id-pill__k">id</span>@{{ author.id }}</span>
+            {% if post.from_telegram %}<span style="display:inline-flex;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800;background:rgba(56,189,248,.18);color:#38bdf8;border:1px solid rgba(56,189,248,.5);">✓ TG</span>{% endif %}
+          </div>
+          <div class="nf-pc-author__date">{{ post.created_at.strftime('%d.%m.%Y %H:%M') if post.created_at else '' }}</div>
+        </div>
+      </a>
+      {% else %}
+      <div class="nf-pc-author" style="pointer-events:none">
+        <div class="nf-pc-author__ph">🍄</div>
+        <div class="nf-pc-author__meta">
+          <div class="nf-pc-author__name">Участник</div>
+          <div class="nf-pc-author__date">{{ post.created_at.strftime('%d.%m.%Y %H:%M') if post.created_at else '' }}</div>
+        </div>
+      </div>
+      {% endif %}
+      <div class="nf-pc-actions">
+        {% if post_images %}<button class="nf-pc-pill nf-pc-pill--gold" type="button" onclick="openPhotoPage()">Галерея фото</button>{% endif %}
+        <button class="nf-pc-pill nf-pc-pill--aqua" type="button" onclick="openShareModal()">В личку</button>
+      </div>
+      {% if post.title %}<h1 class="nf-pc-title">{{ post.title | linkify_mentions | safe }}</h1>{% endif %}
+      <div class="nf-pc-body">{{ (post.content or 'Без текста') | linkify_mentions | safe }}</div>
+      {% if post_images %}
+      <div class="nf-pc-media">
+        <div class="nf-post-gallery">
+          {% for u in post_images %}<img src="{{ u }}" class="nf-post-gallery__slide" loading="lazy" alt="" role="button" tabindex="0" onclick="openPhotoPage()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openPhotoPage();}">{% endfor %}
+        </div>
+        {% if is_owner %}
+        <button type="button" class="nf-pc-edit-fab" onclick="toggleEdit()">Редактировать</button>
+        {% endif %}
+      </div>
+      {% endif %}
+      <div class="nf-pc-metrics">
+        <button type="button" class="nf-pc-metric nf-pc-metric--star" id="likeBtn" onclick="postPageStar()"><span id="likeIcon">{{ '⭐' if is_liked else '✩' }}</span> <span id="likeCnt">{{ post.likes_count or 0 }}</span></button>
+        <button type="button" class="nf-pc-metric nf-pc-metric--cmt" onclick="location.href='/community/post/{{ post.id }}/comments?back='+encodeURIComponent(BACK_URL_JSON)">💬 <span id="cmtCnt">{{ post.comments_count or 0 }}</span></button>
+        <button type="button" class="nf-pc-metric nf-pc-metric--share" onclick="NF_openPostReposts(POST_ID, BACK_URL_JSON)">↗ <span id="repostCnt">{{ post.reposts_count|default(0) }}</span></button>
+      </div>
+      {% if is_owner %}
+      <div class="nf-pc-owner-tools">
+        {% if not post_images %}<button class="nf-pc-btn-primary" type="button" onclick="toggleEdit()">Редактировать</button>{% endif %}
+      </div>
+      <div id="editWrap" class="nf-pc-edit-wrap">
+        <input id="editTitle" class="nf-pc-inp nf-mention-field" style="margin-bottom:8px" value="{{ post.title or '' }}" placeholder="Название">
+        <textarea id="editContent" class="nf-pc-inp nf-mention-field" style="min-height:90px;margin-bottom:8px">{{ post.content or '' }}</textarea>
+        <input id="editFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" style="margin-bottom:8px;font-size:13px;color:#aaa">
+        <button class="nf-pc-btn-primary" type="button" onclick="saveEdit()">Сохранить</button>
+      </div>
+      {% endif %}
+      <p id="commentReplyBar" style="display:none;margin:0 16px 8px;font-size:12px;color:#7ee8d8"><span id="commentReplyLabel">↩ Ответ</span> <button type="button" onclick="clearReplyTo()" style="margin-left:8px;background:none;border:none;color:#94a3b8;cursor:pointer;text-decoration:underline">отмена</button></p>
+      <div class="nf-pc-input-row">
+        <input id="commentInp" class="nf-pc-inp nf-mention-field" placeholder="Комментарий… @ — подсказки" autocomplete="off">
+        <button class="nf-pc-send" type="button" onclick="sendComment()">Отправить</button>
+      </div>
+      <div id="commentsList" class="nf-pc-comments"></div>
+    </article>
   </div>
 </div>
 <div id="shareModal" class="cp-share-modal" onclick="if(event.target===this)closeShareModal()">
   <div style="width:min(560px,92vw);max-height:min(86vh,760px);background:#0f1118;border:1px solid rgba(255,255,255,.14);border-radius:16px;overflow:hidden" onclick="event.stopPropagation()">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.1)">
       <strong style="color:#e8e8e8;font-size:16px">Поделиться в личку</strong>
-      <button type="button" class="cp-act-btn" style="min-height:36px;padding:6px 10px;font-size:13px" onclick="closeShareModal()">Закрыть</button>
+      <button type="button" class="nf-pc-btn-ghost" style="min-height:36px;padding:6px 10px;font-size:13px" onclick="closeShareModal()">Закрыть</button>
     </div>
     <div style="padding:12px 14px">
-      <input id="shareSearchInp" class="sinp" placeholder="Поиск среди подписок…" oninput="loadShareUsers(this.value)">
+      <input id="shareSearchInp" class="nf-pc-inp" style="border-radius:14px" placeholder="Поиск среди подписок…" oninput="loadShareUsers(this.value)">
     </div>
     <div id="shareUsersList" style="padding:0 14px 14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-height:min(62vh,560px);overflow:auto"></div>
   </div>
@@ -104,6 +99,18 @@
 const POST_ID={{ post.id }};
 const BACK_URL={{ back_url|tojson }};
 const BACK_URL_JSON=BACK_URL;
+function nfPcMusicTap(ev){
+  if(ev){ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} }
+  if(typeof radioCircleClick==='function'){
+    try{ radioCircleClick(ev||{}); return; }catch(e){}
+  }
+  if(typeof radioPlayPause==='function') radioPlayPause();
+}
+document.addEventListener('DOMContentLoaded',function(){
+  var m=document.getElementById('nfPcMusicBtn');
+  var r=document.getElementById('radioCircle');
+  if(m && !r) m.style.display='none';
+});
 function goBackPost(){ if(history.length>1){ history.back(); } else { location.href=BACK_URL||'/community'; } }
 function openPhotoPage(){
   const back=encodeURIComponent(BACK_URL||location.href);
@@ -170,8 +177,8 @@ async function loadShareUsers(q){
     }
     list.innerHTML=arr.map(function(u){
       const av=u.avatar
-        ?'<img src="'+u.avatar+'" alt="" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid rgba(61,212,224,.35)">'
-        :'<div style="width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#1a1a1a;border:2px solid rgba(61,212,224,.25);font-size:12px">\uD83C\uDF44</div>';
+        ?'<img src="'+u.avatar+'" alt="" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid rgba(0,245,212,.35)">'
+        :'<div style="width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#1a1a1a;border:2px solid rgba(0,245,212,.25);font-size:12px">\uD83C\uDF44</div>';
       return '<button type="button" onclick="shareToUser('+u.id+')" style="text-align:left;display:flex;align-items:center;gap:8px;padding:8px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.03);color:#e8e8e8;cursor:pointer">'+
         av+
         '<span style="min-width:0;display:flex;flex-direction:column"><span style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(u.name||'\u0423\u0447\u0430\u0441\u0442\u043d\u0438\u043a')+'</span><span style="font-size:11px;color:#8a8fa0">@'+u.id+'</span></span>'+
@@ -210,9 +217,9 @@ function cHtml(c){
   var nm=String(c.author_name||'\u0423\u0447\u0430\u0441\u0442\u043d\u0438\u043a');
   var nameArg=JSON.stringify(nm);
   var body=(typeof linkifyCommunityMentionsPlain==='function')?linkifyCommunityMentionsPlain(c.content||''):(String(c.content||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'));
-  return '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:8px 10px"><div style="font-size:11px;color:#8a8fa0;display:flex;justify-content:space-between;align-items:center;gap:8px"><span><strong style="color:#d8deec">'+nm.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</strong> \u00B7 '+(c.created_at||'')+'</span><button type="button" onclick="setReplyToComment('+c.id+','+nameArg+')" style="background:rgba(61,212,224,.15);border:1px solid rgba(61,212,224,.35);color:#9df0ff;border-radius:8px;padding:2px 8px;font-size:11px;cursor:pointer">\u21A9</button></div><div style="font-size:13px;color:#e6e8ef;white-space:pre-wrap;word-break:break-word">'+body+'</div></div>';
+  return '<div style="background:rgba(255,255,255,.05);border:1px solid rgba(0,245,212,.12);border-radius:14px;padding:10px 12px"><div style="font-size:11px;color:#8a9a90;display:flex;justify-content:space-between;align-items:center;gap:8px"><span><strong style="color:#e8f0ec">'+nm.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</strong> \u00B7 '+(c.created_at||'')+'</span><button type="button" onclick="setReplyToComment('+c.id+','+nameArg+')" style="background:rgba(0,245,212,.12);border:1px solid rgba(0,245,212,.35);color:#7ee8d8;border-radius:8px;padding:2px 8px;font-size:11px;cursor:pointer">\u21A9</button></div><div style="font-size:13px;color:#dce5df;white-space:pre-wrap;word-break:break-word">'+body+'</div></div>';
 }
-async function loadComments(){ try{ const r=await fetch('/community/comments/'+POST_ID,{credentials:'same-origin'}); const d=await r.json(); const arr=d.comments||[]; document.getElementById('commentsList').innerHTML=arr.length?arr.map(cHtml).join(''):'<div style="font-size:12px;color:#8a8fa0">\u041a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0435\u0432 \u043f\u043e\u043a\u0430 \u043d\u0435\u0442</div>'; }catch(e){} }
+async function loadComments(){ try{ const r=await fetch('/community/comments/'+POST_ID,{credentials:'same-origin'}); const d=await r.json(); const arr=d.comments||[]; document.getElementById('commentsList').innerHTML=arr.length?arr.map(cHtml).join(''):'<div style="font-size:12px;color:#8a9a90">\u041a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0435\u0432 \u043f\u043e\u043a\u0430 \u043d\u0435\u0442</div>'; }catch(e){} }
 async function sendComment(){
   const inp=document.getElementById('commentInp');
   const t=(inp.value||'').trim();
@@ -230,7 +237,10 @@ async function sendComment(){
     loadComments();
   }
 }
-function toggleEdit(){ const w=document.getElementById('editWrap'); if(w) w.style.display=(w.style.display==='block'?'none':'block'); }
+function toggleEdit(){
+  var w=document.getElementById('editWrap');
+  if(w) w.classList.toggle('is-open');
+}
 async function saveEdit(){
   const fd=new FormData(); fd.append('title',document.getElementById('editTitle').value||''); fd.append('content',document.getElementById('editContent').value||'');
   const f=document.getElementById('editFile'); if(f&&f.files&&f.files[0]) fd.append('image',f.files[0]);
