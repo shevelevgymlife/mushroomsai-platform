@@ -1003,19 +1003,6 @@ body.dash-ig-app .ig-lamp-topbar{
         </div>
         {% endif %}
 
-        <!-- Radio toggle button -->
-        <div style="display:flex;align-items:center;gap:12px;margin-top:16px">
-          <button id="radioToggleBtn" onclick="toggleRadio()"
-            style="width:48px;height:48px;border-radius:50%;background:{% if user.music_player_enabled %}rgba(201,168,76,0.2){% else %}rgba(255,255,255,0.05){% endif %};border:2px solid {% if user.music_player_enabled %}#C9A84C{% else %}#444{% endif %};cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.3s;box-shadow:{% if user.music_player_enabled %}0 0 15px rgba(201,168,76,0.4){% else %}none{% endif %};flex-shrink:0"
-            title="{% if user.music_player_enabled %}Выключить радио{% else %}Включить радио{% endif %}">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="{{ '#C9A84C' if user.music_player_enabled else '#666' }}">
-              <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
-            </svg>
-          </button>
-          <div style="font-size:13px;color:{% if user.music_player_enabled %}#C9A84C{% else %}#555{% endif %}">
-            {% if user.music_player_enabled %}Радио включено{% else %}Радио выключено{% endif %}
-          </div>
-        </div>
       </div>
 
       <!-- Recent AI messages preview -->
