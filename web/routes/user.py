@@ -698,6 +698,20 @@ async def like_post(request: Request, post_id: int):
             )
         except Exception:
             pass
+        if author_id and author_id != uid:
+            try:
+                from services.notification_service import create_notification
+                actor_name = user.get("name") or "Участник"
+                await create_notification(
+                    user_id=author_id,
+                    type="new_like",
+                    title="Лайк на пост",
+                    body=f"{actor_name} поставил лайк вашему посту",
+                    link=f"/community/post/{post_id}",
+                    from_user_id=uid,
+                )
+            except Exception:
+                pass
         return JSONResponse({"liked": True})
 
 
@@ -732,6 +746,21 @@ async def add_comment(request: Request, post_id: int, content: str = Form(...)):
         sa.select(sa.func.count()).select_from(community_posts).where(community_posts.c.user_id == uid)
     ) or 0
     rep = _reputation(rep_count)
+    # Notify post author
+    if post["user_id"] and post["user_id"] != uid:
+        try:
+            from services.notification_service import create_notification
+            actor_name = user.get("name") or "Участник"
+            await create_notification(
+                user_id=post["user_id"],
+                type="new_comment",
+                title="Новый комментарий",
+                body=f"{actor_name}: {content.strip()[:80]}",
+                link=f"/community/post/{post_id}",
+                from_user_id=uid,
+            )
+        except Exception:
+            pass
     return JSONResponse({
         "ok": True,
         "comment": {
@@ -1356,7 +1385,20 @@ async def follow_user(request: Request, target_id: int):
             if tg_id:
                 from services.notify_user_stub import notify_user
                 actor_name = user.get("name") or "Участник"
-                await notify_user(tg_id, f"👤 <b>{actor_name}</b> подписался на вас в Сообществе NEUROFUNGI AI")
+                await notify_user(tg_id, f"\U0001f464 <b>{actor_name}</b> подписался на вас в Сообществе NEUROFUNGI AI")
+        try:
+            from services.notification_service import create_notification
+            actor_name = user.get("name") or "Участник"
+            await create_notification(
+                user_id=target_id,
+                type="new_follower",
+                title="Новый подписчик",
+                body=f"{actor_name} подписался на вас",
+                link=f"/community/profile/{uid}",
+                from_user_id=uid,
+            )
+        except Exception:
+            pass
         return JSONResponse({"following": True})
 
 

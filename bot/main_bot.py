@@ -178,6 +178,16 @@ def create_bot() -> Application:
     return application
 
 
+async def send_telegram_notification(tg_id: int, text: str) -> None:
+    """Send a text notification to a Telegram user via the main bot."""
+    try:
+        from telegram import Bot
+        bot = Bot(token=settings.TELEGRAM_TOKEN)
+        await bot.send_message(chat_id=tg_id, text=text, parse_mode="HTML")
+    except Exception as e:
+        logger.warning("send_telegram_notification failed for tg_id=%s: %s", tg_id, e)
+
+
 async def setup_bot_menu(application: Application) -> None:
     """Устанавливает кнопку меню бота как WebApp (открывает сайт)."""
     site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")

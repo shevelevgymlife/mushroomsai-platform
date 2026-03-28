@@ -24,6 +24,7 @@ from web.routes.webhooks import router as webhooks_router
 from web.routes.chats import router as chats_router
 from web.routes.seller import router as seller_router
 from web.routes.music import router as music_router
+from web.routes.notifications import router as notifications_router
 from web.translations import TRANSLATIONS, parse_accept_language, SUPPORTED_LANGS
 from services.heavy_startup import run_heavy_startup
 from web.templates_utils import Jinja2Templates
@@ -410,6 +411,49 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("DB migration shop_products catalog: %s", e)
 
+    # v17: notifications system
+    try:
+        from migrate_v17_notifications import run as migrate_v17
+        await migrate_v17()
+    except Exception as e:
+        logger.warning("DB migration v17 notifications skipped: %s", e)
+
+    # v15: notifications tables
+    try:
+        await database.execute("""
+            CREATE TABLE IF NOT EXISTS notifications (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                type VARCHAR(50) NOT NULL,
+                title TEXT NOT NULL,
+                body TEXT DEFAULT '',
+                link TEXT DEFAULT '',
+                from_user_id INTEGER,
+                is_read BOOLEAN DEFAULT false,
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+        await database.execute("CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, is_read)")
+        await database.execute("""
+            CREATE TABLE IF NOT EXISTS notification_settings (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER UNIQUE NOT NULL,
+                new_follower BOOLEAN DEFAULT true,
+                new_like BOOLEAN DEFAULT true,
+                new_comment BOOLEAN DEFAULT true,
+                new_message BOOLEAN DEFAULT true,
+                new_reply BOOLEAN DEFAULT true,
+                post_in_group BOOLEAN DEFAULT true,
+                mention BOOLEAN DEFAULT true,
+                new_post_from_following BOOLEAN DEFAULT false,
+                send_to_telegram BOOLEAN DEFAULT true,
+                updated_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+        logger.info("DB migration v15: notifications tables OK")
+    except Exception as e:
+        logger.warning("DB migration v15 notifications: %s", e)
+
     # Уведомление о деплое в Telegram
     try:
         from services.tg_notify import notify_deploy_ok
@@ -635,3 +679,4 @@ app.include_router(account_router)
 app.include_router(language_router)
 app.include_router(webhooks_router)
 app.include_router(music_router)
+app.include_router(notifications_router)

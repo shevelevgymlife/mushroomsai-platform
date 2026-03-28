@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}Уведомления — NEUROFUNGI AI{% endblock %}
+
+{% block extra_head %}
+<style>
+.notif-page { max-width: 680px; margin: 0 auto; padding: 20px 16px 80px; }
+.notif-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; gap: 12px; }
+.notif-header h1 { font-size: 22px; font-weight: 700; color: #3dd4e0; margin: 0; }
+.notif-read-all { font-size: 13px; color: #3dd4e0; background: none; border: 1px solid rgba(61,212,224,.3); border-radius: 10px; padding: 6px 14px; cursor: pointer; transition: .2s; }
+.notif-read-all:hover { background: rgba(61,212,224,.1); }
+.notif-list { display: flex; flex-direction: column; gap: 8px; }
+.notif-item { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: 14px; border: 1px solid rgba(255,255,255,.07); background: rgba(255,255,255,.02); cursor: pointer; transition: .2s; text-decoration: none; color: inherit; }
+.notif-item.unread { background: rgba(61,212,224,.07); border-color: rgba(61,212,224,.2); }
+.notif-item:hover { background: rgba(255,255,255,.05); }
+.notif-item.unread:hover { background: rgba(61,212,224,.12); }
+.notif-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex-shrink: 0; background: rgba(61,212,224,.15); display: flex; align-items: center; justify-content: center; font-size: 20px; overflow: hidden; }
+.notif-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.notif-body { flex: 1; min-width: 0; }
+.notif-title { font-size: 14px; font-weight: 600; color: #e8e8e8; margin-bottom: 2px; line-height: 1.4; }
+.notif-text { font-size: 13px; color: #999; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.notif-time { font-size: 11px; color: #666; margin-top: 4px; }
+.notif-dot { width: 8px; height: 8px; border-radius: 50%; background: #3dd4e0; flex-shrink: 0; margin-top: 6px; }
+.notif-empty { text-align: center; color: #666; font-size: 14px; padding: 60px 20px; }
+.notif-empty-icon { font-size: 48px; margin-bottom: 12px; }
+.load-more-btn { display: block; width: 100%; margin-top: 16px; padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.02); color: #888; font-size: 14px; cursor: pointer; transition: .2s; }
+.load-more-btn:hover { background: rgba(255,255,255,.05); color: #ccc; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="notif-page">
+  <div class="notif-header">
+    <h1>Уведомления</h1>
+    <button class="notif-read-all" onclick="readAll()">Прочитать все</button>
+  </div>
+  <div class="notif-list" id="notifList">
+    <div class="notif-empty">
+      <div class="notif-empty-icon">🔔</div>
+      <div>Загрузка...</div>
+    </div>
+  </div>
+  <button class="load-more-btn" id="loadMoreBtn" style="display:none" onclick="loadMore()">Загрузить ещё</button>
+</div>
+
+<script>
+var _offset = 0;
+var _loading = false;
+
+function timeAgo(isoStr) {
+  if (!isoStr) return '';
+  var d = new Date(isoStr);
+  var now = new Date();
+  var diff = Math.floor((now - d) / 1000);
+  if (diff < 60) return 'только что';
+  if (diff < 3600) return Math.floor(diff/60) + ' мин назад';
+  if (diff < 86400) return Math.floor(diff/3600) + ' ч назад';
+  if (diff < 86400*7) return Math.floor(diff/86400) + ' дн назад';
+  return d.toLocaleDateString('ru-RU');
+}
+
+function typeIcon(type) {
+  var icons = {
+    new_follower: '👤',
+    new_like: '❤️',
+    new_comment: '💬',
+    new_message: '✉️',
+    new_reply: '↩️',
+    post_in_group: '👥',
+    mention: '@',
+    new_post_from_following: '📝',
+  };
+  return icons[type] || '🔔';
+}
+
+function renderNotif(n) {
+  var cls = n.is_read ? '' : ' unread';
+  var avatarHtml = '';
+  if (n.from_avatar) {
+    avatarHtml = '<div class="notif-avatar"><img src="' + n.from_avatar + '" onerror="this.parentNode.textContent=\'' + typeIcon(n.type) + '\'"></div>';
+  } else {
+    avatarHtml = '<div class="notif-avatar">' + typeIcon(n.type) + '</div>';
+  }
+  var dot = n.is_read ? '' : '<div class="notif-dot"></div>';
+  var href = n.link ? n.link : '#';
+  return '<a class="notif-item' + cls + '" href="' + href + '" data-id="' + n.id + '" onclick="markRead(' + n.id + ',event,\'' + href + '\')">' +
+    avatarHtml +
+    '<div class="notif-body">' +
+      '<div class="notif-title">' + escHtml(n.title) + '</div>' +
+      '<div class="notif-text">' + escHtml(n.body) + '</div>' +
+      '<div class="notif-time">' + timeAgo(n.created_at) + '</div>' +
+    '</div>' +
+    dot +
+    '</a>';
+}
+
+function escHtml(s) {
+  if (!s) return '';
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function loadNotifs(append) {
+  if (_loading) return;
+  _loading = true;
+  try {
+    var r = await fetch('/api/notifications?offset=' + _offset, {credentials:'same-origin'});
+    var d = await r.json();
+    var list = document.getElementById('notifList');
+    var items = d.notifications || [];
+    if (!append) {
+      if (items.length === 0) {
+        list.innerHTML = '<div class="notif-empty"><div class="notif-empty-icon">🔔</div><div>Уведомлений пока нет</div></div>';
+      } else {
+        list.innerHTML = items.map(renderNotif).join('');
+      }
+    } else {
+      if (items.length > 0) {
+        list.insertAdjacentHTML('beforeend', items.map(renderNotif).join(''));
+      }
+    }
+    _offset += items.length;
+    var btn = document.getElementById('loadMoreBtn');
+    if (items.length === 50) {
+      btn.style.display = 'block';
+    } else {
+      btn.style.display = 'none';
+    }
+  } catch(e) {
+    console.error('notif load error', e);
+  } finally {
+    _loading = false;
+  }
+}
+
+function loadMore() {
+  loadNotifs(true);
+}
+
+async function readAll() {
+  await fetch('/api/notifications/read-all', {method:'POST', credentials:'same-origin'});
+  document.querySelectorAll('.notif-item.unread').forEach(function(el) {
+    el.classList.remove('unread');
+  });
+  document.querySelectorAll('.notif-dot').forEach(function(el) {
+    el.remove();
+  });
+  // Update badge
+  var badge = document.getElementById('notifCountBadge');
+  if (badge) { badge.textContent = '0'; badge.style.display = 'none'; }
+}
+
+async function markRead(id, e, href) {
+  fetch('/api/notifications/' + id + '/read', {method:'POST', credentials:'same-origin'});
+  var el = document.querySelector('.notif-item[data-id="' + id + '"]');
+  if (el) {
+    el.classList.remove('unread');
+    var dot = el.querySelector('.notif-dot');
+    if (dot) dot.remove();
+  }
+}
+
+// Auto mark all read on page open
+window.addEventListener('DOMContentLoaded', function() {
+  loadNotifs(false);
+  // Mark all read after small delay
+  setTimeout(function() {
+    fetch('/api/notifications/read-all', {method:'POST', credentials:'same-origin'});
+  }, 1500);
+});
+</script>
+{% endblock %}
