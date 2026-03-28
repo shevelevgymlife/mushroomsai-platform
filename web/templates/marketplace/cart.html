@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+{% block title %}Корзина — NEUROFUNGI AI Market{% endblock %}
+{% block extra_head %}
+<style>
+.mp-wrap { background: #080808; min-height: 100vh; padding-bottom: 80px; }
+.mp-header {
+  background: #0e0e0e; border-bottom: 1px solid rgba(201,168,76,.15);
+  padding: 12px 16px; display: flex; align-items: center; gap: 12px;
+  position: sticky; top: 0; z-index: 100;
+}
+.mp-logo { font-size: 20px; font-weight: 800; color: #C9A84C; text-decoration: none; }
+.mp-page-title { font-size: 18px; font-weight: 700; color: #eee; padding: 20px 16px 10px; }
+.mp-cart-layout { display: flex; gap: 20px; padding: 0 16px; align-items: flex-start; }
+@media (max-width: 768px) { .mp-cart-layout { flex-direction: column; } }
+.mp-cart-items { flex: 1; min-width: 0; }
+.mp-cart-summary { width: 300px; flex-shrink: 0; position: sticky; top: 72px; }
+@media (max-width: 768px) { .mp-cart-summary { width: 100%; position: static; } }
+.mp-cart-item {
+  display: flex; gap: 14px; align-items: flex-start;
+  background: #0e0e0e; border: 1px solid rgba(255,255,255,.06);
+  border-radius: 14px; padding: 14px; margin-bottom: 10px;
+}
+.mp-cart-item-img {
+  width: 80px; height: 80px; border-radius: 10px;
+  overflow: hidden; flex-shrink: 0; background: #1a1a1a;
+  cursor: pointer;
+}
+.mp-cart-item-img img { width: 100%; height: 100%; object-fit: cover; }
+.mp-cart-item-body { flex: 1; min-width: 0; }
+.mp-cart-item-title { font-size: 14px; color: #ddd; font-weight: 500; margin-bottom: 4px; cursor: pointer; }
+.mp-cart-item-title:hover { color: #C9A84C; }
+.mp-cart-item-seller { font-size: 12px; color: #555; margin-bottom: 8px; }
+.mp-cart-item-price { color: #C9A84C; font-size: 18px; font-weight: 700; }
+.mp-cart-item-actions { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.mp-qty-btn {
+  background: #1a1a1a; border: 1px solid rgba(255,255,255,.12);
+  border-radius: 8px; width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: #ccc; font-size: 16px;
+}
+.mp-qty-btn:hover { border-color: #C9A84C; color: #C9A84C; }
+.mp-qty-input {
+  width: 50px; text-align: center;
+  background: #1a1a1a; border: 1px solid rgba(255,255,255,.12);
+  border-radius: 8px; padding: 5px; color: #eee; font-size: 15px;
+}
+.mp-cart-item-del {
+  background: none; border: 1px solid rgba(248,113,113,.2);
+  border-radius: 8px; padding: 6px 12px;
+  color: #f87171; cursor: pointer; font-size: 13px;
+  transition: all .15s; margin-left: auto;
+}
+.mp-cart-item-del:hover { background: rgba(248,113,113,.1); }
+.mp-summary-card {
+  background: #0e0e0e; border: 1px solid rgba(201,168,76,.15);
+  border-radius: 16px; padding: 20px;
+}
+.mp-summary-title { font-size: 16px; font-weight: 700; color: #eee; margin-bottom: 16px; }
+.mp-summary-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; color: #888; }
+.mp-summary-total { font-size: 20px; font-weight: 800; color: #C9A84C; }
+.mp-summary-sep { border: none; border-top: 1px solid rgba(255,255,255,.07); margin: 14px 0; }
+.mp-checkout-btn {
+  display: block; width: 100%;
+  background: #C9A84C; color: #080808;
+  font-weight: 700; font-size: 16px;
+  border: none; border-radius: 12px; padding: 14px;
+  cursor: pointer; margin-top: 14px; transition: opacity .15s;
+}
+.mp-checkout-btn:hover { opacity: .85; }
+.mp-empty-cart {
+  text-align: center; padding: 80px 20px;
+  color: #555;
+}
+.mp-empty-icon { font-size: 64px; margin-bottom: 16px; }
+.mp-empty-title { font-size: 22px; color: #888; margin-bottom: 8px; }
+.mp-go-shopping {
+  display: inline-block; margin-top: 20px;
+  background: #C9A84C; color: #080808;
+  font-weight: 700; border-radius: 12px; padding: 12px 28px;
+  text-decoration: none;
+}
+
+/* Modal */
+.mp-modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.8); z-index: 9999;
+  align-items: center; justify-content: center; padding: 20px;
+}
+.mp-modal-overlay.open { display: flex; }
+.mp-modal {
+  background: #111; border: 1px solid rgba(201,168,76,.2);
+  border-radius: 18px; padding: 28px; width: 100%; max-width: 420px;
+  text-align: center;
+}
+.mp-modal-icon { font-size: 48px; margin-bottom: 12px; }
+.mp-modal-title { font-size: 20px; font-weight: 700; color: #eee; margin-bottom: 10px; }
+.mp-modal-text { font-size: 14px; color: #888; line-height: 1.6; margin-bottom: 20px; }
+.mp-modal-close-btn {
+  background: #C9A84C; color: #080808; font-weight: 700;
+  border: none; border-radius: 10px; padding: 11px 28px;
+  cursor: pointer; font-size: 14px;
+}
+</style>
+{% endblock %}
+{% block content %}
+<div class="mp-wrap">
+  <div class="mp-header">
+    <a href="/marketplace" class="mp-logo">🍄 Market</a>
+    <span style="color:#555">›</span>
+    <span style="font-size:16px;font-weight:700;color:#eee">Корзина</span>
+    <div style="flex:1"></div>
+    <a href="/marketplace/favorites" style="color:#888;font-size:20px;text-decoration:none">♥</a>
+  </div>
+
+  <div class="mp-page-title">Корзина</div>
+
+  <div class="mp-cart-layout">
+    <div class="mp-cart-items" id="cartItems">
+      <p style="color:#555;font-size:14px">Загрузка...</p>
+    </div>
+    <div class="mp-cart-summary">
+      <div class="mp-summary-card" id="summaryCard" style="display:none">
+        <div class="mp-summary-title">Итого</div>
+        <div class="mp-summary-row"><span>Товаров</span><span id="summaryCount">0</span></div>
+        <hr class="mp-summary-sep">
+        <div class="mp-summary-row">
+          <span style="font-size:16px;color:#888">К оплате</span>
+          <span class="mp-summary-total" id="summaryTotal">0 ₽</span>
+        </div>
+        <button class="mp-checkout-btn" onclick="openCheckoutModal()">Оформить заказ</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Checkout modal -->
+<div class="mp-modal-overlay" id="checkoutModal">
+  <div class="mp-modal">
+    <div class="mp-modal-icon">🚚</div>
+    <div class="mp-modal-title">Оформление заказа</div>
+    <div class="mp-modal-text">
+      Для оформления заказа свяжитесь с продавцом напрямую через чат на платформе или в Telegram.<br><br>
+      <strong style="color:#C9A84C">Оплата и доставка обсуждаются индивидуально.</strong>
+    </div>
+    <button class="mp-modal-close-btn" onclick="document.getElementById('checkoutModal').classList.remove('open')">Понятно</button>
+  </div>
+</div>
+
+<script>
+var _cartItems = [];
+
+async function loadCart() {
+  var wrap = document.getElementById('cartItems');
+  try {
+    var r = await fetch('/api/marketplace/cart/items', {credentials:'same-origin'});
+    var d = await r.json();
+    if (!d.ok || !d.items || !d.items.length) {
+      wrap.innerHTML = '<div class="mp-empty-cart"><div class="mp-empty-icon">🛒</div><div class="mp-empty-title">Корзина пуста</div><div>Найдите что-нибудь интересное в каталоге</div><a href="/marketplace" class="mp-go-shopping">Перейти в каталог</a></div>';
+      document.getElementById('summaryCard').style.display = 'none';
+      return;
+    }
+    _cartItems = d.items;
+    renderCart();
+    document.getElementById('summaryCard').style.display = 'block';
+    document.getElementById('summaryCount').textContent = d.items.length;
+    document.getElementById('summaryTotal').textContent = Math.round(d.total) + ' ₽';
+  } catch(e) {
+    wrap.innerHTML = '<p style="color:#f87171">Ошибка загрузки</p>';
+  }
+}
+
+function renderCart() {
+  var wrap = document.getElementById('cartItems');
+  var html = '';
+  _cartItems.forEach(function(item) {
+    var thumb = item.photo ? '<img src="' + item.photo + '" loading="lazy">' : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:32px">🍄</div>';
+    html += '<div class="mp-cart-item" id="item-' + item.id + '">';
+    html += '<div class="mp-cart-item-img" onclick="window.location=\'/marketplace/product/' + item.id + '\'">' + thumb + '</div>';
+    html += '<div class="mp-cart-item-body">';
+    html += '<div class="mp-cart-item-title" onclick="window.location=\'/marketplace/product/' + item.id + '\'">' + (item.title||'').substring(0,60) + '</div>';
+    html += '<div class="mp-cart-item-seller">Продавец: ' + (item.seller_name||'—') + '</div>';
+    html += '<div class="mp-cart-item-price">' + (item.price ? parseInt(item.price) : 0) + ' ₽</div>';
+    html += '<div class="mp-cart-item-actions">';
+    html += '<button class="mp-qty-btn" onclick="changeQty(' + item.id + ', -1)">−</button>';
+    html += '<input type="number" class="mp-qty-input" id="qty-' + item.id + '" value="' + (item.quantity||1) + '" min="1" onchange="updateQty(' + item.id + ')">';
+    html += '<button class="mp-qty-btn" onclick="changeQty(' + item.id + ', 1)">+</button>';
+    html += '<button class="mp-cart-item-del" onclick="removeItem(' + item.id + ')">✕ Удалить</button>';
+    html += '</div>';
+    html += '</div>';
+    html += '</div>';
+  });
+  wrap.innerHTML = html;
+}
+
+async function changeQty(productId, delta) {
+  var input = document.getElementById('qty-' + productId);
+  if (!input) return;
+  var newVal = Math.max(1, parseInt(input.value) + delta);
+  input.value = newVal;
+  await updateQtyVal(productId, newVal);
+}
+
+async function updateQty(productId) {
+  var input = document.getElementById('qty-' + productId);
+  if (!input) return;
+  var val = Math.max(1, parseInt(input.value) || 1);
+  input.value = val;
+  await updateQtyVal(productId, val);
+}
+
+async function updateQtyVal(productId, qty) {
+  try {
+    await fetch('/api/marketplace/cart/' + productId, {
+      method: 'POST', credentials: 'same-origin',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({quantity: qty})
+    });
+    // Recalculate total
+    var item = _cartItems.find(function(i){ return i.id === productId; });
+    if (item) item.quantity = qty;
+    var total = _cartItems.reduce(function(s, i){ return s + (parseFloat(i.price)||0) * (i.quantity||1); }, 0);
+    document.getElementById('summaryTotal').textContent = Math.round(total) + ' ₽';
+  } catch(e) {}
+}
+
+async function removeItem(productId) {
+  try {
+    var r = await fetch('/api/marketplace/cart/' + productId, {method:'DELETE', credentials:'same-origin'});
+    var d = await r.json();
+    if (d.ok) {
+      _cartItems = _cartItems.filter(function(i){ return i.id !== productId; });
+      if (!_cartItems.length) {
+        document.getElementById('cartItems').innerHTML = '<div class="mp-empty-cart"><div class="mp-empty-icon">🛒</div><div class="mp-empty-title">Корзина пуста</div><a href="/marketplace" class="mp-go-shopping">Перейти в каталог</a></div>';
+        document.getElementById('summaryCard').style.display = 'none';
+      } else {
+        renderCart();
+        document.getElementById('summaryCount').textContent = _cartItems.length;
+        var total = _cartItems.reduce(function(s, i){ return s + (parseFloat(i.price)||0) * (i.quantity||1); }, 0);
+        document.getElementById('summaryTotal').textContent = Math.round(total) + ' ₽';
+      }
+    }
+  } catch(e) {}
+}
+
+function openCheckoutModal() {
+  document.getElementById('checkoutModal').classList.add('open');
+}
+
+loadCart();
+</script>
+{% endblock %}

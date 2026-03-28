@@ -1,0 +1,740 @@
+{% extends "base.html" %}
+{% block title %}{{ product.title }} — NEUROFUNGI AI Market{% endblock %}
+{% block extra_head %}
+<style>
+.mp-wrap { background: #080808; min-height: 100vh; padding-bottom: 80px; }
+.mp-header {
+  background: #0e0e0e;
+  border-bottom: 1px solid rgba(201,168,76,.15);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 12px;
+  position: sticky; top: 0; z-index: 100;
+}
+.mp-logo { font-size: 20px; font-weight: 800; color: #C9A84C; text-decoration: none; }
+.mp-icon-btn {
+  position: relative;
+  background: #1a1a1a; border: 1px solid rgba(255,255,255,.08);
+  border-radius: 10px; padding: 8px 12px; color: #ccc;
+  font-size: 18px; text-decoration: none;
+}
+.mp-badge {
+  position: absolute; top: -6px; right: -6px;
+  background: #C9A84C; color: #080808; font-size: 10px; font-weight: 800;
+  border-radius: 999px; min-width: 18px; height: 18px;
+  display: flex; align-items: center; justify-content: center; padding: 0 4px;
+}
+
+/* Breadcrumb */
+.mp-bread { padding: 12px 16px; font-size: 13px; color: #555; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.mp-bread a { color: #888; text-decoration: none; }
+.mp-bread a:hover { color: #C9A84C; }
+
+/* Product layout */
+.mp-product-wrap { display: flex; gap: 32px; padding: 0 16px; align-items: flex-start; }
+@media (max-width: 768px) { .mp-product-wrap { flex-direction: column; } }
+
+/* Gallery */
+.mp-gallery { width: 50%; flex-shrink: 0; position: sticky; top: 72px; }
+@media (max-width: 768px) { .mp-gallery { width: 100%; position: static; } }
+.mp-gallery-main {
+  position: relative;
+  aspect-ratio: 1;
+  background: #111;
+  border-radius: 16px;
+  overflow: hidden;
+  cursor: zoom-in;
+}
+.mp-gallery-main img {
+  width: 100%; height: 100%; object-fit: cover;
+  transition: opacity .3s;
+}
+.mp-gallery-no-photo {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 80px; color: #333;
+}
+.mp-gallery-arrow {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  background: rgba(0,0,0,.6); border: none; border-radius: 50%;
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: #fff; font-size: 18px; z-index: 2;
+}
+.mp-gallery-arrow-left { left: 10px; }
+.mp-gallery-arrow-right { right: 10px; }
+.mp-gallery-counter {
+  position: absolute; bottom: 10px; right: 12px;
+  background: rgba(0,0,0,.6); color: #fff; font-size: 12px;
+  padding: 3px 8px; border-radius: 6px;
+}
+.mp-thumbs { display: flex; gap: 8px; margin-top: 10px; overflow-x: auto; padding-bottom: 4px; }
+.mp-thumb {
+  width: 64px; height: 64px; flex-shrink: 0;
+  border-radius: 8px; overflow: hidden;
+  border: 2px solid transparent; cursor: pointer;
+  transition: border-color .15s;
+}
+.mp-thumb.active { border-color: #C9A84C; }
+.mp-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Product info */
+.mp-product-info { flex: 1; min-width: 0; }
+.mp-category-badge {
+  display: inline-block;
+  background: rgba(201,168,76,.12);
+  color: #C9A84C;
+  font-size: 12px; font-weight: 600;
+  padding: 3px 10px; border-radius: 6px;
+  text-decoration: none; margin-bottom: 10px;
+}
+.mp-product-title { font-size: 22px; font-weight: 700; color: #eee; line-height: 1.3; margin-bottom: 6px; }
+.mp-article { font-size: 12px; color: #555; margin-bottom: 10px; }
+.mp-stars-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.mp-star { font-size: 16px; cursor: pointer; }
+.mp-star.filled { color: #C9A84C; }
+.mp-star.empty { color: #333; }
+.mp-reviews-link { font-size: 13px; color: #888; text-decoration: none; }
+.mp-reviews-link:hover { color: #C9A84C; }
+.mp-brand { font-size: 13px; color: #888; margin-bottom: 12px; }
+.mp-brand span { color: #C9A84C; }
+.mp-price-block { margin-bottom: 16px; }
+.mp-price-main { font-size: 32px; font-weight: 800; color: #C9A84C; }
+.mp-price-old { font-size: 16px; color: #555; text-decoration: line-through; margin-left: 10px; }
+.mp-discount-pill {
+  display: inline-block;
+  background: #e53e3e; color: #fff;
+  font-size: 13px; font-weight: 700;
+  padding: 3px 8px; border-radius: 6px;
+  margin-left: 10px;
+}
+.mp-stock-info { font-size: 14px; margin-bottom: 16px; }
+.mp-in-stock { color: #4caf50; }
+.mp-out-stock { color: #f87171; }
+.mp-qty-wrap { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.mp-qty-btn {
+  background: #1a1a1a; border: 1px solid rgba(255,255,255,.12);
+  border-radius: 8px; width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: #ccc; font-size: 18px;
+}
+.mp-qty-btn:hover { border-color: #C9A84C; color: #C9A84C; }
+.mp-qty-input {
+  width: 60px; text-align: center;
+  background: #1a1a1a; border: 1px solid rgba(255,255,255,.12);
+  border-radius: 8px; padding: 7px;
+  color: #eee; font-size: 16px;
+}
+.mp-action-btns { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+.mp-add-cart-btn {
+  background: #C9A84C; color: #080808;
+  font-weight: 700; font-size: 16px;
+  border: none; border-radius: 12px; padding: 14px;
+  cursor: pointer; transition: opacity .15s;
+}
+.mp-add-cart-btn:hover { opacity: .85; }
+.mp-buy-now-btn {
+  background: transparent; color: #C9A84C;
+  font-weight: 700; font-size: 16px;
+  border: 2px solid #C9A84C; border-radius: 12px; padding: 12px;
+  cursor: pointer; transition: all .15s;
+}
+.mp-buy-now-btn:hover { background: rgba(201,168,76,.1); }
+.mp-fav-product-btn {
+  background: transparent; color: #888;
+  font-size: 14px; border: 1px solid rgba(255,255,255,.1);
+  border-radius: 12px; padding: 10px 16px;
+  cursor: pointer; transition: all .15s; text-align: center;
+}
+.mp-fav-product-btn:hover, .mp-fav-product-btn.active { color: #C9A84C; border-color: #C9A84C; background: rgba(201,168,76,.08); }
+.mp-delivery-block {
+  background: #0e0e0e; border: 1px solid rgba(255,255,255,.06);
+  border-radius: 12px; padding: 14px; margin-bottom: 14px;
+  font-size: 13px; color: #888;
+}
+.mp-seller-block {
+  background: #0e0e0e; border: 1px solid rgba(255,255,255,.06);
+  border-radius: 12px; padding: 14px;
+  display: flex; align-items: center; gap: 12px;
+}
+.mp-seller-avatar {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: linear-gradient(135deg, #C9A84C, #e8c96d);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 700; color: #080808;
+  flex-shrink: 0; overflow: hidden;
+}
+.mp-seller-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.mp-seller-name { font-weight: 600; color: #ddd; font-size: 14px; }
+.mp-seller-link { font-size: 12px; color: #C9A84C; text-decoration: none; }
+.mp-seller-link:hover { text-decoration: underline; }
+
+/* Tabs */
+.mp-tabs-wrap { padding: 32px 16px 0; }
+.mp-tabs-btns { display: flex; gap: 0; border-bottom: 1px solid rgba(255,255,255,.08); overflow-x: auto; }
+.mp-tab-btn {
+  background: none; border: none;
+  padding: 12px 20px; color: #888;
+  font-size: 14px; cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all .15s; white-space: nowrap;
+}
+.mp-tab-btn:hover { color: #C9A84C; }
+.mp-tab-btn.active { color: #C9A84C; border-bottom-color: #C9A84C; font-weight: 600; }
+.mp-tab-content { display: none; padding: 24px 0; }
+.mp-tab-content.active { display: block; }
+.mp-desc-text { color: #ccc; font-size: 15px; line-height: 1.7; white-space: pre-wrap; }
+.mp-desc-more { background: none; border: none; color: #C9A84C; cursor: pointer; font-size: 13px; margin-top: 10px; display: block; }
+.mp-attrs-table { width: 100%; border-collapse: collapse; }
+.mp-attrs-table tr:nth-child(odd) td { background: rgba(255,255,255,.02); }
+.mp-attrs-table td { padding: 9px 14px; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,.05); }
+.mp-attrs-table td:first-child { color: #888; width: 45%; }
+.mp-attrs-table td:last-child { color: #ddd; }
+
+/* Rating summary */
+.mp-rating-summary { display: flex; gap: 24px; margin-bottom: 24px; align-items: center; }
+.mp-rating-big { text-align: center; }
+.mp-rating-num { font-size: 48px; font-weight: 800; color: #C9A84C; line-height: 1; }
+.mp-rating-stars { font-size: 18px; color: #C9A84C; }
+.mp-rating-bars { flex: 1; }
+.mp-rating-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
+.mp-rating-bar-label { font-size: 12px; color: #888; width: 30px; text-align: right; }
+.mp-rating-bar-track { flex: 1; height: 6px; background: #1a1a1a; border-radius: 3px; overflow: hidden; }
+.mp-rating-bar-fill { height: 100%; background: #C9A84C; border-radius: 3px; }
+.mp-rating-bar-count { font-size: 12px; color: #555; width: 30px; }
+
+/* Review cards */
+.mp-review-card {
+  background: #0e0e0e; border: 1px solid rgba(255,255,255,.06);
+  border-radius: 12px; padding: 16px; margin-bottom: 12px;
+}
+.mp-review-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.mp-review-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: #222; display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700; color: #C9A84C; flex-shrink: 0;
+}
+.mp-review-name { font-weight: 600; color: #ddd; font-size: 14px; }
+.mp-review-date { font-size: 12px; color: #555; margin-left: auto; }
+.mp-review-stars { color: #C9A84C; font-size: 14px; }
+.mp-review-pros { font-size: 13px; color: #4caf50; margin-bottom: 4px; }
+.mp-review-cons { font-size: 13px; color: #f87171; margin-bottom: 6px; }
+.mp-review-text { font-size: 14px; color: #bbb; line-height: 1.6; }
+
+/* Review form */
+.mp-review-form {
+  background: #0e0e0e; border: 1px solid rgba(201,168,76,.15);
+  border-radius: 14px; padding: 20px; margin-top: 16px;
+}
+.mp-form-title { font-size: 16px; font-weight: 700; color: #eee; margin-bottom: 14px; }
+.mp-star-select { display: flex; gap: 8px; margin-bottom: 14px; }
+.mp-star-sel { font-size: 28px; cursor: pointer; color: #333; transition: color .1s; }
+.mp-star-sel.filled, .mp-star-sel:hover { color: #C9A84C; }
+.mp-form-input {
+  width: 100%;
+  background: #1a1a1a; border: 1px solid rgba(255,255,255,.1);
+  border-radius: 10px; padding: 10px 14px;
+  color: #eee; font-size: 14px; margin-bottom: 10px;
+  outline: none; resize: vertical; font-family: inherit;
+}
+.mp-form-input:focus { border-color: #C9A84C; }
+.mp-form-submit {
+  background: #C9A84C; color: #080808;
+  font-weight: 700; border: none; border-radius: 10px;
+  padding: 11px 28px; cursor: pointer; font-size: 14px;
+}
+.mp-form-submit:hover { opacity: .85; }
+
+/* Questions */
+.mp-question-card {
+  background: #0e0e0e; border: 1px solid rgba(255,255,255,.06);
+  border-radius: 12px; padding: 14px; margin-bottom: 10px;
+}
+.mp-question-q { font-size: 14px; color: #ddd; font-weight: 600; margin-bottom: 6px; }
+.mp-question-a { font-size: 13px; color: #888; padding-left: 14px; border-left: 2px solid #C9A84C; margin-top: 8px; }
+.mp-question-asker { font-size: 12px; color: #555; margin-top: 4px; }
+
+/* Related */
+.mp-related { padding: 32px 16px; }
+.mp-related-title { font-size: 18px; font-weight: 700; color: #eee; margin-bottom: 16px; }
+.mp-related-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+@media (max-width: 900px) { .mp-related-grid { grid-template-columns: repeat(2, 1fr); } }
+.mp-related-card {
+  background: #111; border: 1px solid rgba(255,255,255,.06);
+  border-radius: 12px; overflow: hidden; cursor: pointer;
+  transition: border-color .2s;
+}
+.mp-related-card:hover { border-color: rgba(201,168,76,.3); }
+.mp-related-img { aspect-ratio: 1; overflow: hidden; background: #181818; }
+.mp-related-img img { width: 100%; height: 100%; object-fit: cover; }
+.mp-related-body { padding: 10px; }
+.mp-related-price { color: #C9A84C; font-weight: 700; font-size: 15px; }
+.mp-related-title-t { font-size: 12px; color: #aaa; margin-top: 4px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* Zoom modal */
+.mp-zoom-modal {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.92); z-index: 9999;
+  align-items: center; justify-content: center;
+}
+.mp-zoom-modal.open { display: flex; }
+.mp-zoom-modal img { max-width: 90vw; max-height: 90vh; border-radius: 10px; object-fit: contain; }
+.mp-zoom-close {
+  position: absolute; top: 20px; right: 20px;
+  background: none; border: none; color: #fff;
+  font-size: 32px; cursor: pointer;
+}
+
+/* Toast */
+.mp-toast {
+  position: fixed; bottom: 80px; right: 20px;
+  background: #1a1a1a; border: 1px solid rgba(201,168,76,.3);
+  border-radius: 12px; padding: 12px 20px; color: #C9A84C;
+  font-size: 14px; font-weight: 600; z-index: 9998;
+  opacity: 0; transform: translateY(10px); transition: all .25s;
+  pointer-events: none;
+}
+.mp-toast.show { opacity: 1; transform: translateY(0); }
+</style>
+{% endblock %}
+{% block content %}
+<div class="mp-wrap">
+  <!-- Header -->
+  <div class="mp-header">
+    <a href="/marketplace" class="mp-logo">🍄 Market</a>
+    <div style="flex:1"></div>
+    {% if user %}
+    <a href="/marketplace/favorites" class="mp-icon-btn">♥ {% if fav_count %}<span class="mp-badge">{{ fav_count }}</span>{% endif %}</a>
+    <a href="/marketplace/cart" class="mp-icon-btn">🛒 <span class="mp-badge" id="cart-badge" style="{{ 'display:none' if not cart_count else '' }}">{{ cart_count or '' }}</span></a>
+    {% endif %}
+  </div>
+
+  <!-- Breadcrumb -->
+  <div class="mp-bread">
+    <a href="/marketplace">Маркетплейс</a>
+    <span>›</span>
+    {% if product.category %}
+    <a href="/marketplace?category={{ product.category }}">{{ product.category }}</a>
+    <span>›</span>
+    {% endif %}
+    <span style="color:#888">{{ product.title[:50] }}{% if product.title|length > 50 %}…{% endif %}</span>
+  </div>
+
+  <!-- Product -->
+  <div class="mp-product-wrap">
+    <!-- Gallery -->
+    <div class="mp-gallery">
+      <div class="mp-gallery-main" id="mainGallery" onclick="openZoom()">
+        {% if photos %}
+        <img id="mainPhoto" src="{{ photos[0].url }}" alt="{{ product.title }}">
+        {% else %}
+        <div class="mp-gallery-no-photo">🍄</div>
+        {% endif %}
+        {% if photos|length > 1 %}
+        <button class="mp-gallery-arrow mp-gallery-arrow-left" onclick="event.stopPropagation();prevPhoto()">‹</button>
+        <button class="mp-gallery-arrow mp-gallery-arrow-right" onclick="event.stopPropagation();nextPhoto()">›</button>
+        <div class="mp-gallery-counter" id="photoCounter">1 / {{ photos|length }}</div>
+        {% endif %}
+      </div>
+      {% if photos|length > 1 %}
+      <div class="mp-thumbs" id="thumbsRow">
+        {% for photo in photos %}
+        <div class="mp-thumb {{ 'active' if loop.first else '' }}" onclick="goToPhoto({{ loop.index0 }})">
+          <img src="{{ photo.url }}" loading="lazy">
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Info -->
+    <div class="mp-product-info">
+      {% if product.category %}
+      <a href="/marketplace?category={{ product.category }}" class="mp-category-badge">{{ product.category }}</a>
+      {% endif %}
+      <h1 class="mp-product-title">{{ product.title }}</h1>
+      <div class="mp-article">Арт. {{ product.id }}</div>
+
+      <!-- Stars -->
+      <div class="mp-stars-row">
+        {% set r = (product.rating or 0)|float %}
+        {% for i in range(1, 6) %}
+        <span class="mp-star {{ 'filled' if i <= r else 'empty' }}">★</span>
+        {% endfor %}
+        <a href="#tab-reviews" class="mp-reviews-link" onclick="switchTab('reviews')">{{ product.reviews_count or 0 }} отзывов</a>
+      </div>
+
+      {% if product.brand %}
+      <div class="mp-brand">Бренд: <span>{{ product.brand }}</span></div>
+      {% endif %}
+
+      <!-- Price -->
+      {% set discount = ((product.old_price - product.price) / product.old_price * 100)|int if product.old_price and product.price and product.old_price > product.price else None %}
+      <div class="mp-price-block">
+        <span class="mp-price-main">{{ product.price|int if product.price else '—' }} ₽</span>
+        {% if product.old_price %}<span class="mp-price-old">{{ product.old_price|int }} ₽</span>{% endif %}
+        {% if discount %}<span class="mp-discount-pill">-{{ discount }}%</span>{% endif %}
+      </div>
+
+      <!-- Stock -->
+      <div class="mp-stock-info">
+        {% if product.in_stock and product.stock_count %}
+        <span class="mp-in-stock">✓ В наличии: {{ product.stock_count }} шт</span>
+        {% elif product.in_stock %}
+        <span class="mp-in-stock">✓ В наличии</span>
+        {% else %}
+        <span class="mp-out-stock">✗ Нет в наличии</span>
+        {% endif %}
+      </div>
+
+      <!-- Quantity -->
+      <div class="mp-qty-wrap">
+        <span style="font-size:14px;color:#888">Количество:</span>
+        <button class="mp-qty-btn" onclick="changeQty(-1)">−</button>
+        <input type="number" class="mp-qty-input" id="qtyInput" value="1" min="1" max="{{ product.stock_count or 99 }}">
+        <button class="mp-qty-btn" onclick="changeQty(1)">+</button>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="mp-action-btns">
+        {% if user %}
+        <button class="mp-add-cart-btn {{ 'added' if in_cart else '' }}" id="mainCartBtn" onclick="addToCart({{ product.id }})">
+          {{ '✓ В корзине' if in_cart else '🛒 В корзину' }}
+        </button>
+        <button class="mp-buy-now-btn" onclick="buyNow()">Купить сейчас</button>
+        <button class="mp-fav-product-btn {{ 'active' if is_favorited else '' }}" id="favBtn" onclick="toggleFav({{ product.id }})">
+          {{ '♥ В избранном' if is_favorited else '♡ В избранное' }}
+        </button>
+        {% else %}
+        <a href="/login?next=/marketplace/product/{{ product.id }}" class="mp-add-cart-btn" style="display:block;text-align:center;text-decoration:none">Войти для покупки</a>
+        {% endif %}
+      </div>
+
+      <!-- Delivery -->
+      <div class="mp-delivery-block">
+        🚚 Доставка обсуждается с продавцом индивидуально
+      </div>
+
+      <!-- Seller -->
+      <div class="mp-seller-block">
+        <div class="mp-seller-avatar">
+          {% if product.seller_avatar %}
+          <img src="{{ product.seller_avatar }}" alt="{{ product.seller_name }}">
+          {% else %}
+          {{ (product.seller_name or 'П')[0] }}
+          {% endif %}
+        </div>
+        <div>
+          <div class="mp-seller-name">{{ product.seller_name or 'Продавец' }}</div>
+          <a href="/marketplace/seller/{{ product.seller_uid }}" class="mp-seller-link">→ Перейти в магазин</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="mp-tabs-wrap">
+    <div class="mp-tabs-btns">
+      <button class="mp-tab-btn active" id="tab-btn-desc" onclick="switchTab('desc')">Описание</button>
+      {% if attributes %}
+      <button class="mp-tab-btn" id="tab-btn-attrs" onclick="switchTab('attrs')">Характеристики</button>
+      {% endif %}
+      <button class="mp-tab-btn" id="tab-btn-reviews" onclick="switchTab('reviews')">Отзывы ({{ product.reviews_count or 0 }})</button>
+      <button class="mp-tab-btn" id="tab-btn-questions" onclick="switchTab('questions')">Вопросы ({{ questions|length }})</button>
+    </div>
+
+    <!-- Description -->
+    <div class="mp-tab-content active" id="tab-desc">
+      {% if product.description %}
+      <div class="mp-desc-text" id="descText" style="max-height:200px;overflow:hidden">{{ product.description }}</div>
+      <button class="mp-desc-more" id="descMoreBtn" onclick="toggleDesc()">Показать полностью ▼</button>
+      {% else %}
+      <p style="color:#555;font-size:14px">Описание не добавлено</p>
+      {% endif %}
+    </div>
+
+    <!-- Attributes -->
+    {% if attributes %}
+    <div class="mp-tab-content" id="tab-attrs">
+      <table class="mp-attrs-table">
+        {% for key, val in attributes.items() %}
+        <tr>
+          <td>{{ key }}</td>
+          <td>{{ val }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+    {% endif %}
+
+    <!-- Reviews -->
+    <div class="mp-tab-content" id="tab-reviews">
+      {% if reviews %}
+      <div class="mp-rating-summary">
+        <div class="mp-rating-big">
+          <div class="mp-rating-num">{{ "%.1f"|format(product.rating or 0) }}</div>
+          <div class="mp-rating-stars">{% for i in range(1, 6) %}{{ '★' if i <= (product.rating or 0)|int else '☆' }}{% endfor %}</div>
+          <div style="font-size:12px;color:#555;margin-top:4px">{{ product.reviews_count or 0 }} отзывов</div>
+        </div>
+        <div class="mp-rating-bars">
+          {% for star in [5, 4, 3, 2, 1] %}
+          {% set cnt = rating_dist[star] %}
+          {% set pct = (cnt / reviews|length * 100)|int if reviews else 0 %}
+          <div class="mp-rating-bar-row">
+            <span class="mp-rating-bar-label">{{ star }}★</span>
+            <div class="mp-rating-bar-track">
+              <div class="mp-rating-bar-fill" style="width:{{ pct }}%"></div>
+            </div>
+            <span class="mp-rating-bar-count">{{ cnt }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% for review in reviews %}
+      <div class="mp-review-card">
+        <div class="mp-review-head">
+          <div class="mp-review-avatar">
+            {% if review.reviewer_avatar %}
+            <img src="{{ review.reviewer_avatar }}" alt="{{ review.reviewer_name }}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">
+            {% else %}
+            {{ (review.reviewer_name or 'А')[0] }}
+            {% endif %}
+          </div>
+          <div>
+            <div class="mp-review-name">{{ review.reviewer_name or 'Аноним' }}</div>
+            <div class="mp-review-stars">{% for i in range(review.rating or 0) %}★{% endfor %}</div>
+          </div>
+          <div class="mp-review-date">{{ review.created_at.strftime('%d.%m.%Y') if review.created_at else '' }}</div>
+        </div>
+        {% if review.pros %}<div class="mp-review-pros">👍 {{ review.pros }}</div>{% endif %}
+        {% if review.cons %}<div class="mp-review-cons">👎 {{ review.cons }}</div>{% endif %}
+        {% if review.text %}<div class="mp-review-text">{{ review.text }}</div>{% endif %}
+      </div>
+      {% endfor %}
+      {% else %}
+      <p style="color:#555;font-size:14px;margin-bottom:16px">Пока нет отзывов. Будьте первым!</p>
+      {% endif %}
+
+      {% if user %}
+      <div class="mp-review-form" id="reviewForm">
+        <div class="mp-form-title">Написать отзыв</div>
+        <div class="mp-star-select" id="starSelect">
+          {% for i in range(1, 6) %}
+          <span class="mp-star-sel" data-val="{{ i }}" onclick="selectStar({{ i }})">★</span>
+          {% endfor %}
+        </div>
+        <textarea class="mp-form-input" id="reviewPros" placeholder="Достоинства" rows="2"></textarea>
+        <textarea class="mp-form-input" id="reviewCons" placeholder="Недостатки" rows="2"></textarea>
+        <textarea class="mp-form-input" id="reviewText" placeholder="Ваш отзыв" rows="3"></textarea>
+        <button class="mp-form-submit" onclick="submitReview()">Отправить отзыв</button>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Questions -->
+    <div class="mp-tab-content" id="tab-questions">
+      {% for q in questions %}
+      <div class="mp-question-card">
+        <div class="mp-question-q">{{ q.question }}</div>
+        <div class="mp-question-asker">{{ q.asker_name or 'Аноним' }} · {{ q.created_at.strftime('%d.%m.%Y') if q.created_at else '' }}</div>
+        {% if q.answer %}
+        <div class="mp-question-a">
+          <strong style="color:#C9A84C">Ответ продавца:</strong> {{ q.answer }}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+      {% if not questions %}
+      <p style="color:#555;font-size:14px;margin-bottom:16px">Вопросов пока нет</p>
+      {% endif %}
+      {% if user %}
+      <div class="mp-review-form">
+        <div class="mp-form-title">Задать вопрос</div>
+        <textarea class="mp-form-input" id="questionText" placeholder="Ваш вопрос о товаре..." rows="3"></textarea>
+        <button class="mp-form-submit" onclick="submitQuestion()">Отправить вопрос</button>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Related products -->
+  {% if related %}
+  <div class="mp-related">
+    <div class="mp-related-title">Похожие товары</div>
+    <div class="mp-related-grid">
+      {% for p in related %}
+      {% set photo = p.photos[0].url if p.photos else None %}
+      <div class="mp-related-card" onclick="window.location='/marketplace/product/{{ p.id }}'">
+        <div class="mp-related-img">
+          {% if photo %}<img src="{{ photo }}" loading="lazy">{% else %}<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:40px">🍄</div>{% endif %}
+        </div>
+        <div class="mp-related-body">
+          <div class="mp-related-price">{{ p.price|int if p.price else '—' }} ₽</div>
+          <div class="mp-related-title-t">{{ p.title }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Zoom modal -->
+<div class="mp-zoom-modal" id="zoomModal" onclick="closeZoom()">
+  <button class="mp-zoom-close" onclick="closeZoom()">✕</button>
+  <img id="zoomImg" src="" alt="">
+</div>
+
+<div class="mp-toast" id="mpToast"></div>
+
+<script>
+var _photos = {{ photos | map(attribute='url') | list | tojson }};
+var _photoIdx = 0;
+var _selectedRating = 5;
+
+function goToPhoto(idx) {
+  _photoIdx = idx;
+  var mainImg = document.getElementById('mainPhoto');
+  if (mainImg) mainImg.src = _photos[idx];
+  var counter = document.getElementById('photoCounter');
+  if (counter) counter.textContent = (idx + 1) + ' / ' + _photos.length;
+  document.querySelectorAll('.mp-thumb').forEach(function(t, i){ t.classList.toggle('active', i === idx); });
+}
+function nextPhoto() { goToPhoto((_photoIdx + 1) % _photos.length); }
+function prevPhoto() { goToPhoto((_photoIdx - 1 + _photos.length) % _photos.length); }
+
+// Swipe
+var _swipeStartX = 0;
+var mainGallery = document.getElementById('mainGallery');
+if (mainGallery) {
+  mainGallery.addEventListener('touchstart', function(e){ _swipeStartX = e.touches[0].clientX; });
+  mainGallery.addEventListener('touchend', function(e){
+    var dx = e.changedTouches[0].clientX - _swipeStartX;
+    if (Math.abs(dx) > 50) { if (dx < 0) nextPhoto(); else prevPhoto(); }
+  });
+}
+
+// Zoom
+function openZoom() {
+  var modal = document.getElementById('zoomModal');
+  var img = document.getElementById('zoomImg');
+  if (_photos.length > 0) { img.src = _photos[_photoIdx]; modal.classList.add('open'); }
+}
+function closeZoom() { document.getElementById('zoomModal').classList.remove('open'); }
+
+// Qty
+function changeQty(delta) {
+  var input = document.getElementById('qtyInput');
+  var v = parseInt(input.value) + delta;
+  input.value = Math.max(1, v);
+}
+
+// Tab switching
+function switchTab(id) {
+  document.querySelectorAll('.mp-tab-btn').forEach(function(b){ b.classList.remove('active'); });
+  document.querySelectorAll('.mp-tab-content').forEach(function(c){ c.classList.remove('active'); });
+  var btn = document.getElementById('tab-btn-' + id);
+  var content = document.getElementById('tab-' + id);
+  if (btn) btn.classList.add('active');
+  if (content) content.classList.add('active');
+  if (id === 'reviews') {
+    setTimeout(function(){ document.getElementById('tab-reviews').scrollIntoView({behavior:'smooth',block:'start'}); }, 50);
+  }
+}
+
+// Desc toggle
+var _descExpanded = false;
+function toggleDesc() {
+  var el = document.getElementById('descText');
+  var btn = document.getElementById('descMoreBtn');
+  _descExpanded = !_descExpanded;
+  el.style.maxHeight = _descExpanded ? 'none' : '200px';
+  btn.textContent = _descExpanded ? 'Свернуть ▲' : 'Показать полностью ▼';
+}
+
+// Stars select
+function selectStar(n) {
+  _selectedRating = n;
+  document.querySelectorAll('.mp-star-sel').forEach(function(s, i){ s.classList.toggle('filled', i < n); });
+}
+
+// Toast
+function showToast(msg) {
+  var t = document.getElementById('mpToast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 2500);
+}
+
+// Cart
+async function addToCart(id) {
+  var qty = parseInt(document.getElementById('qtyInput').value) || 1;
+  try {
+    var r = await fetch('/api/marketplace/cart/' + id, {
+      method: 'POST', credentials: 'same-origin',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({quantity: qty})
+    });
+    var d = await r.json();
+    if (d.ok) {
+      showToast('Добавлено в корзину');
+      var btn = document.getElementById('mainCartBtn');
+      if (btn) { btn.textContent = '✓ В корзине'; btn.classList.add('added'); }
+      var badge = document.getElementById('cart-badge');
+      if (badge && d.count) { badge.textContent = d.count; badge.style.display = ''; }
+    }
+  } catch(e) { showToast('Ошибка'); }
+}
+
+function buyNow() {
+  showToast('Свяжитесь с продавцом для оформления заказа');
+}
+
+// Favorite
+async function toggleFav(id) {
+  try {
+    var r = await fetch('/api/marketplace/favorites/' + id, {method:'POST', credentials:'same-origin'});
+    var d = await r.json();
+    if (d.ok) {
+      var btn = document.getElementById('favBtn');
+      if (d.added) { btn.classList.add('active'); btn.textContent = '♥ В избранном'; showToast('Добавлено в избранное'); }
+      else { btn.classList.remove('active'); btn.textContent = '♡ В избранное'; showToast('Удалено из избранного'); }
+    }
+  } catch(e) {}
+}
+
+// Review
+async function submitReview() {
+  var rating = _selectedRating;
+  var pros = document.getElementById('reviewPros').value.trim();
+  var cons = document.getElementById('reviewCons').value.trim();
+  var text = document.getElementById('reviewText').value.trim();
+  if (!text && !pros && !cons) { showToast('Напишите что-нибудь в отзыве'); return; }
+  try {
+    var r = await fetch('/api/marketplace/reviews/{{ product.id }}', {
+      method: 'POST', credentials: 'same-origin',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({rating: rating, text: text, pros: pros, cons: cons})
+    });
+    var d = await r.json();
+    if (d.ok) { showToast('Отзыв отправлен!'); setTimeout(function(){ location.reload(); }, 1500); }
+    else if (d.error === 'already_reviewed') showToast('Вы уже оставили отзыв');
+    else showToast('Ошибка: ' + (d.error || 'unknown'));
+  } catch(e) { showToast('Ошибка сети'); }
+}
+
+// Question
+async function submitQuestion() {
+  var q = document.getElementById('questionText').value.trim();
+  if (!q) { showToast('Введите вопрос'); return; }
+  try {
+    var r = await fetch('/api/marketplace/questions/{{ product.id }}', {
+      method: 'POST', credentials: 'same-origin',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({question: q})
+    });
+    var d = await r.json();
+    if (d.ok) { showToast('Вопрос отправлен!'); setTimeout(function(){ location.reload(); }, 1500); }
+    else showToast('Ошибка');
+  } catch(e) { showToast('Ошибка сети'); }
+}
+</script>
+{% endblock %}

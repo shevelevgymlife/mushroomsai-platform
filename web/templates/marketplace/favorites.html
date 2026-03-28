@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block title %}Избранное — NEUROFUNGI AI Market{% endblock %}
+{% block extra_head %}
+<style>
+.mp-wrap { background: #080808; min-height: 100vh; padding-bottom: 80px; }
+.mp-header {
+  background: #0e0e0e; border-bottom: 1px solid rgba(201,168,76,.15);
+  padding: 12px 16px; display: flex; align-items: center; gap: 12px;
+  position: sticky; top: 0; z-index: 100;
+}
+.mp-logo { font-size: 20px; font-weight: 800; color: #C9A84C; text-decoration: none; }
+.mp-icon-btn {
+  position: relative; background: #1a1a1a; border: 1px solid rgba(255,255,255,.08);
+  border-radius: 10px; padding: 8px 12px; color: #ccc; font-size: 18px; text-decoration: none;
+}
+.mp-badge {
+  position: absolute; top: -6px; right: -6px; background: #C9A84C; color: #080808;
+  font-size: 10px; font-weight: 800; border-radius: 999px; min-width: 18px; height: 18px;
+  display: flex; align-items: center; justify-content: center; padding: 0 4px;
+}
+.mp-page-title { font-size: 22px; font-weight: 700; color: #eee; padding: 20px 16px 16px; }
+.mp-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 12px; padding: 0 16px;
+}
+@media (max-width: 1200px) { .mp-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 768px) { .mp-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .mp-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 0 8px; } }
+.mp-card {
+  background: #111; border: 1px solid rgba(255,255,255,.06);
+  border-radius: 14px; overflow: hidden; cursor: pointer;
+  transition: border-color .2s, transform .15s;
+}
+.mp-card:hover { border-color: rgba(201,168,76,.3); transform: translateY(-2px); }
+.mp-card-img-wrap { position: relative; aspect-ratio: 1; overflow: hidden; background: #181818; }
+.mp-card-img-wrap img { width: 100%; height: 100%; object-fit: cover; transition: transform .3s; }
+.mp-card:hover .mp-card-img-wrap img { transform: scale(1.04); }
+.mp-no-photo { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 48px; color: #333; }
+.mp-fav-btn {
+  position: absolute; top: 8px; right: 8px;
+  background: rgba(201,168,76,.15); border: none; border-radius: 50%;
+  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 16px; color: #C9A84C; z-index: 2;
+}
+.mp-fav-btn:hover { background: rgba(201,168,76,.3); }
+.mp-card-body { padding: 10px 12px 14px; }
+.mp-price { color: #C9A84C; font-weight: 700; font-size: 18px; }
+.mp-old-price { color: #555; text-decoration: line-through; font-size: 13px; margin-left: 6px; }
+.mp-card-title { font-size: 13px; color: #ccc; margin-top: 4px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.mp-rating { font-size: 12px; color: #888; margin-top: 4px; }
+.mp-cart-btn { display: block; width: 100%; margin-top: 8px; background: #C9A84C; color: #080808; font-weight: 700; border: none; border-radius: 10px; padding: 8px; cursor: pointer; font-size: 13px; }
+.mp-cart-btn:hover { opacity: .85; }
+.mp-cart-btn.added { background: #1a3a1a; color: #4caf50; border: 1px solid #2d5a2d; }
+.mp-empty { text-align: center; padding: 80px 20px; color: #555; }
+.mp-empty-icon { font-size: 64px; margin-bottom: 16px; }
+.mp-empty-title { font-size: 22px; color: #888; margin-bottom: 8px; }
+.mp-toast {
+  position: fixed; bottom: 80px; right: 20px;
+  background: #1a1a1a; border: 1px solid rgba(201,168,76,.3);
+  border-radius: 12px; padding: 12px 20px; color: #C9A84C;
+  font-size: 14px; font-weight: 600; z-index: 9999;
+  opacity: 0; transform: translateY(10px); transition: all .25s;
+  pointer-events: none;
+}
+.mp-toast.show { opacity: 1; transform: translateY(0); }
+</style>
+{% endblock %}
+{% block content %}
+<div class="mp-wrap">
+  <div class="mp-header">
+    <a href="/marketplace" class="mp-logo">🍄 Market</a>
+    <span style="color:#555">›</span>
+    <span style="font-size:16px;font-weight:700;color:#eee">Избранное</span>
+    <div style="flex:1"></div>
+    <a href="/marketplace/cart" class="mp-icon-btn">🛒 <span class="mp-badge" id="cart-badge" style="{{ 'display:none' if not cart_count else '' }}">{{ cart_count or '' }}</span></a>
+  </div>
+
+  <div class="mp-page-title">Избранное</div>
+
+  <div id="favContent">
+    <p style="color:#555;font-size:14px;padding:0 16px">Загрузка...</p>
+  </div>
+</div>
+
+<div class="mp-toast" id="mpToast"></div>
+
+<script>
+function showToast(msg) {
+  var t = document.getElementById('mpToast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 2500);
+}
+
+async function loadFavorites() {
+  var wrap = document.getElementById('favContent');
+  try {
+    var r = await fetch('/api/marketplace/favorites/items', {credentials:'same-origin'});
+    var d = await r.json();
+    if (!d.ok || !d.products || !d.products.length) {
+      wrap.innerHTML = '<div class="mp-empty"><div class="mp-empty-icon">♡</div><div class="mp-empty-title">Список избранного пуст</div><div>Добавляйте товары, которые вас заинтересовали</div><a href="/marketplace" style="display:inline-block;margin-top:20px;background:#C9A84C;color:#080808;font-weight:700;border-radius:12px;padding:12px 28px;text-decoration:none">В каталог</a></div>';
+      return;
+    }
+    var html = '<div class="mp-grid">';
+    d.products.forEach(function(p) {
+      var photo = p.photos && p.photos.length ? p.photos[0].url : null;
+      var img = photo ? '<img src="' + photo + '" loading="lazy">' : '<div class="mp-no-photo">🍄</div>';
+      html += '<div class="mp-card" onclick="window.location=\'/marketplace/product/' + p.id + '\'">';
+      html += '<div class="mp-card-img-wrap">' + img;
+      html += '<button class="mp-fav-btn" onclick="event.stopPropagation();removeFav(' + p.id + ', this)" title="Убрать из избранного">♥</button>';
+      html += '</div>';
+      html += '<div class="mp-card-body">';
+      html += '<div><span class="mp-price">' + (p.price ? parseInt(p.price) + ' ₽' : '—') + '</span>';
+      if (p.old_price) html += '<span class="mp-old-price">' + parseInt(p.old_price) + ' ₽</span>';
+      html += '</div>';
+      html += '<div class="mp-card-title">' + (p.title||'').substring(0,60) + '</div>';
+      html += '<div class="mp-rating">⭐ ' + (p.rating||'0.0') + ' · ' + (p.reviews_count||0) + ' отзывов</div>';
+      html += '<button class="mp-cart-btn" id="cb-' + p.id + '" onclick="event.stopPropagation();addToCart(' + p.id + ')">В корзину</button>';
+      html += '</div></div>';
+    });
+    html += '</div>';
+    wrap.innerHTML = html;
+  } catch(e) {
+    wrap.innerHTML = '<p style="color:#f87171;padding:0 16px">Ошибка загрузки</p>';
+  }
+}
+
+async function removeFav(id, btn) {
+  try {
+    var r = await fetch('/api/marketplace/favorites/' + id, {method:'POST', credentials:'same-origin'});
+    var d = await r.json();
+    if (d.ok && !d.added) {
+      showToast('Удалено из избранного');
+      var card = btn.closest('.mp-card');
+      if (card) card.remove();
+    }
+  } catch(e) {}
+}
+
+async function addToCart(id) {
+  try {
+    var r = await fetch('/api/marketplace/cart/' + id, {
+      method: 'POST', credentials: 'same-origin',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({quantity: 1})
+    });
+    var d = await r.json();
+    if (d.ok) {
+      showToast('Добавлено в корзину');
+      var btn = document.getElementById('cb-' + id);
+      if (btn) { btn.textContent = '✓ В корзине'; btn.classList.add('added'); }
+      var badge = document.getElementById('cart-badge');
+      if (badge && d.count) { badge.textContent = d.count; badge.style.display = ''; }
+    }
+  } catch(e) {}
+}
+
+loadFavorites();
+</script>
+{% endblock %}

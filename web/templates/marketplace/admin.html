@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}Админ маркетплейса — NEUROFUNGI AI{% endblock %}
+{% block extra_head %}
+<style>
+.mp-admin-wrap { background: #080808; min-height: 100vh; padding-bottom: 60px; }
+.mp-header {
+  background: #0e0e0e; border-bottom: 1px solid rgba(201,168,76,.15);
+  padding: 12px 16px; display: flex; align-items: center; gap: 12px;
+  position: sticky; top: 0; z-index: 100;
+}
+.mp-logo { font-size: 20px; font-weight: 800; color: #C9A84C; text-decoration: none; }
+.mp-admin-content { padding: 24px; }
+.mp-admin-title { font-size: 22px; font-weight: 700; color: #eee; margin-bottom: 20px; }
+.mp-admin-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.mp-admin-table th { text-align: left; padding: 10px 12px; color: #666; font-size: 12px; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,.08); }
+.mp-admin-table td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,.05); color: #ccc; vertical-align: middle; }
+.mp-admin-table tr:hover td { background: rgba(255,255,255,.02); }
+.mp-thumb { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; background: #222; }
+.mp-thumb-empty { width: 40px; height: 40px; border-radius: 6px; background: #222; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.mp-badge-active { display: inline-block; background: rgba(76,175,80,.15); color: #4caf50; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; }
+.mp-badge-inactive { display: inline-block; background: rgba(248,113,113,.1); color: #f87171; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; }
+.mp-badge-featured { display: inline-block; background: rgba(201,168,76,.15); color: #C9A84C; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; margin-left: 4px; }
+.mp-action-btn { background: #1a1a1a; border: 1px solid rgba(255,255,255,.1); border-radius: 7px; padding: 5px 10px; cursor: pointer; color: #888; font-size: 12px; transition: all .15s; }
+.mp-action-btn:hover { border-color: #C9A84C; color: #C9A84C; }
+.mp-action-btn.danger:hover { border-color: #f87171; color: #f87171; }
+.mp-pagination { display: flex; justify-content: center; gap: 6px; margin-top: 24px; }
+.mp-page-btn { background: #111; border: 1px solid rgba(255,255,255,.08); border-radius: 8px; padding: 7px 13px; color: #888; font-size: 14px; text-decoration: none; }
+.mp-page-btn:hover { border-color: #C9A84C; color: #C9A84C; }
+.mp-page-btn.active { background: #C9A84C; color: #080808; font-weight: 700; border-color: #C9A84C; }
+.mp-toast {
+  position: fixed; bottom: 80px; right: 20px;
+  background: #1a1a1a; border: 1px solid rgba(201,168,76,.3);
+  border-radius: 12px; padding: 12px 20px; color: #C9A84C;
+  font-size: 14px; font-weight: 600; z-index: 9999;
+  opacity: 0; transform: translateY(10px); transition: all .25s; pointer-events: none;
+}
+.mp-toast.show { opacity: 1; transform: translateY(0); }
+</style>
+{% endblock %}
+{% block content %}
+<div class="mp-admin-wrap">
+  <div class="mp-header">
+    <a href="/marketplace" class="mp-logo">🍄 Market</a>
+    <span style="color:#555">›</span>
+    <span style="font-size:16px;font-weight:700;color:#f87171">Администратор</span>
+    <div style="flex:1"></div>
+    <a href="/marketplace" style="color:#888;font-size:13px;text-decoration:none">← В каталог</a>
+  </div>
+
+  <div class="mp-admin-content">
+    <div class="mp-admin-title">Управление маркетплейсом ({{ total }} товаров)</div>
+
+    {% if products %}
+    <table class="mp-admin-table">
+      <thead>
+        <tr>
+          <th>Фото</th>
+          <th>Название</th>
+          <th>Продавец</th>
+          <th>Цена</th>
+          <th>Статус</th>
+          <th>Просмотры</th>
+          <th>Дата</th>
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody id="productsBody">
+        {% for product in products %}
+        <tr id="row-{{ product.id }}">
+          <td>
+            {% if product.photos %}
+            <img class="mp-thumb" src="" alt="">
+            {% else %}
+            <div class="mp-thumb-empty">🍄</div>
+            {% endif %}
+          </td>
+          <td>
+            <a href="/marketplace/product/{{ product.id }}" target="_blank" style="color:#ddd;text-decoration:none">{{ product.title[:40] }}{% if product.title|length > 40 %}…{% endif %}</a>
+          </td>
+          <td style="color:#888">{{ product.seller_name or '—' }}</td>
+          <td style="color:#C9A84C;font-weight:700">{{ product.price|int if product.price else '—' }} ₽</td>
+          <td>
+            <span class="{{ 'mp-badge-active' if product.is_active else 'mp-badge-inactive' }}" id="status-{{ product.id }}">{{ 'Активен' if product.is_active else 'Скрыт' }}</span>
+            {% if product.is_featured %}<span class="mp-badge-featured" id="feat-{{ product.id }}">⚡ Топ</span>{% else %}<span id="feat-{{ product.id }}"></span>{% endif %}
+          </td>
+          <td style="color:#888">{{ product.views_count or 0 }}</td>
+          <td style="color:#555;font-size:12px">{{ product.created_at.strftime('%d.%m.%y') if product.created_at else '—' }}</td>
+          <td style="display:flex;gap:5px;flex-wrap:wrap">
+            <button class="mp-action-btn" onclick="toggleActive({{ product.id }}, {{ 'true' if product.is_active else 'false' }})">{{ '🙈 Скрыть' if product.is_active else '👁 Показать' }}</button>
+            <button class="mp-action-btn" onclick="toggleFeatured({{ product.id }}, {{ 'true' if product.is_featured else 'false' }})">{{ '⚡ Убрать топ' if product.is_featured else '⚡ В топ' }}</button>
+            <button class="mp-action-btn danger" onclick="hardDelete({{ product.id }})">🗑</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:#555;font-size:14px">Товаров пока нет</p>
+    {% endif %}
+
+    {% if pages > 1 %}
+    <div class="mp-pagination">
+      {% if page > 1 %}<a href="?page={{ page-1 }}" class="mp-page-btn">← Пред</a>{% endif %}
+      {% for p in range([1, page-2]|max, [pages+1, page+3]|min) %}
+      <a href="?page={{ p }}" class="mp-page-btn {{ 'active' if p == page else '' }}">{{ p }}</a>
+      {% endfor %}
+      {% if page < pages %}<a href="?page={{ page+1 }}" class="mp-page-btn">След →</a>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="mp-toast" id="mpToast"></div>
+
+<script>
+function showToast(msg) {
+  var t = document.getElementById('mpToast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 2500);
+}
+
+async function toggleActive(id, currentlyActive) {
+  try {
+    var r = await fetch('/api/marketplace/admin/products/' + id + '/active', {method:'PATCH', credentials:'same-origin'});
+    var d = await r.json();
+    if (d.ok) {
+      var span = document.getElementById('status-' + id);
+      if (span) {
+        span.textContent = d.is_active ? 'Активен' : 'Скрыт';
+        span.className = d.is_active ? 'mp-badge-active' : 'mp-badge-inactive';
+      }
+      showToast(d.is_active ? 'Товар активирован' : 'Товар скрыт');
+    }
+  } catch(e) { showToast('Ошибка'); }
+}
+
+async function toggleFeatured(id, currentlyFeatured) {
+  try {
+    var r = await fetch('/api/marketplace/admin/products/' + id + '/featured', {method:'PATCH', credentials:'same-origin'});
+    var d = await r.json();
+    if (d.ok) {
+      var span = document.getElementById('feat-' + id);
+      if (span) span.textContent = d.is_featured ? '⚡ Топ' : '';
+      showToast(d.is_featured ? 'Добавлено в топ' : 'Убрано из топа');
+    }
+  } catch(e) { showToast('Ошибка'); }
+}
+
+async function hardDelete(id) {
+  if (!confirm('Удалить товар безвозвратно?')) return;
+  try {
+    var r = await fetch('/api/marketplace/admin/products/' + id, {method:'DELETE', credentials:'same-origin'});
+    var d = await r.json();
+    if (d.ok) {
+      var row = document.getElementById('row-' + id);
+      if (row) row.remove();
+      showToast('Товар удалён');
+    }
+  } catch(e) { showToast('Ошибка'); }
+}
+</script>
+{% endblock %}

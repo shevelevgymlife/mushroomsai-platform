@@ -1,0 +1,728 @@
+{% extends "base.html" %}
+{% block title %}Маркетплейс — NEUROFUNGI AI{% endblock %}
+{% block extra_head %}
+<style>
+.mp-wrap { background: #080808; min-height: 100vh; padding-bottom: 60px; }
+.mp-header {
+  background: #0e0e0e;
+  border-bottom: 1px solid rgba(201,168,76,.15);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.mp-logo {
+  font-size: 20px;
+  font-weight: 800;
+  color: #C9A84C;
+  white-space: nowrap;
+  text-decoration: none;
+  letter-spacing: -.5px;
+}
+.mp-search-wrap {
+  flex: 1;
+  position: relative;
+  max-width: 600px;
+}
+.mp-search-wrap input {
+  width: 100%;
+  background: #1a1a1a;
+  border: 1px solid rgba(201,168,76,.2);
+  border-radius: 10px;
+  padding: 9px 44px 9px 14px;
+  color: #eee;
+  font-size: 14px;
+  outline: none;
+  transition: border-color .2s;
+}
+.mp-search-wrap input:focus { border-color: #C9A84C; }
+.mp-search-btn {
+  position: absolute;
+  right: 10px; top: 50%;
+  transform: translateY(-50%);
+  background: none; border: none; cursor: pointer;
+  color: #C9A84C; font-size: 18px;
+}
+.mp-header-actions { display: flex; align-items: center; gap: 8px; }
+.mp-icon-btn {
+  position: relative;
+  background: #1a1a1a;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 10px;
+  padding: 8px 12px;
+  color: #ccc;
+  font-size: 18px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color .2s;
+  display: flex; align-items: center; gap: 5px;
+}
+.mp-icon-btn:hover { border-color: #C9A84C; color: #C9A84C; }
+.mp-badge {
+  position: absolute;
+  top: -6px; right: -6px;
+  background: #C9A84C;
+  color: #080808;
+  font-size: 10px;
+  font-weight: 800;
+  border-radius: 999px;
+  min-width: 18px;
+  height: 18px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 4px;
+}
+.mp-cabinet-btn {
+  background: linear-gradient(135deg, #C9A84C, #e8c96d);
+  color: #080808;
+  font-weight: 700;
+  font-size: 13px;
+  border: none;
+  border-radius: 10px;
+  padding: 9px 16px;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.mp-cabinet-btn:hover { opacity: .9; }
+
+/* Banner */
+.mp-banner {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  margin: 16px;
+  height: 200px;
+}
+.mp-banner-slide {
+  position: absolute;
+  inset: 0;
+  display: flex; align-items: center;
+  padding: 32px;
+  opacity: 0;
+  transition: opacity .5s;
+  pointer-events: none;
+}
+.mp-banner-slide.active { opacity: 1; pointer-events: auto; }
+.mp-banner-slide:nth-child(1) { background: linear-gradient(135deg, #1a0e00, #3d2800, #C9A84C 200%); }
+.mp-banner-slide:nth-child(2) { background: linear-gradient(135deg, #000d1a, #001a3d, #C9A84C 200%); }
+.mp-banner-slide:nth-child(3) { background: linear-gradient(135deg, #0d001a, #1a003d, #C9A84C 200%); }
+.mp-banner-title { font-size: 28px; font-weight: 800; color: #C9A84C; line-height: 1.2; }
+.mp-banner-sub { font-size: 14px; color: rgba(255,255,255,.7); margin-top: 8px; }
+.mp-banner-cta {
+  display: inline-block;
+  margin-top: 16px;
+  background: #C9A84C;
+  color: #080808;
+  font-weight: 700;
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-size: 14px;
+  text-decoration: none;
+}
+.mp-banner-dots {
+  position: absolute;
+  bottom: 12px; left: 50%;
+  transform: translateX(-50%);
+  display: flex; gap: 6px;
+}
+.mp-banner-dot {
+  width: 6px; height: 6px; border-radius: 999px;
+  background: rgba(255,255,255,.3);
+  cursor: pointer; transition: all .2s;
+}
+.mp-banner-dot.active { background: #C9A84C; width: 20px; }
+
+/* Layout */
+.mp-layout {
+  display: flex;
+  gap: 16px;
+  padding: 0 16px;
+  align-items: flex-start;
+}
+.mp-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  background: #0e0e0e;
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 14px;
+  padding: 16px;
+  position: sticky;
+  top: 72px;
+}
+.mp-sidebar-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #C9A84C;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  margin-top: 14px;
+}
+.mp-sidebar-title:first-child { margin-top: 0; }
+.mp-cat-link {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 10px;
+  border-radius: 8px;
+  text-decoration: none;
+  color: #ccc;
+  font-size: 13px;
+  transition: all .15s;
+}
+.mp-cat-link:hover, .mp-cat-link.active {
+  background: rgba(201,168,76,.12);
+  color: #C9A84C;
+}
+.mp-cat-count { font-size: 11px; color: #555; }
+.mp-price-range { display: flex; gap: 8px; align-items: center; }
+.mp-range-input {
+  width: 0;
+  flex: 1;
+  background: #1a1a1a;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 8px;
+  padding: 7px 10px;
+  color: #eee;
+  font-size: 13px;
+  outline: none;
+}
+.mp-range-input:focus { border-color: #C9A84C; }
+.mp-stars-filter { display: flex; gap: 6px; flex-wrap: wrap; }
+.mp-star-btn {
+  background: #1a1a1a;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 8px;
+  padding: 5px 10px;
+  color: #ccc;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.mp-star-btn:hover, .mp-star-btn.active {
+  background: rgba(201,168,76,.15);
+  border-color: #C9A84C;
+  color: #C9A84C;
+}
+.mp-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: #ccc;
+  font-size: 13px;
+}
+.mp-apply-btn {
+  width: 100%;
+  margin-top: 16px;
+  background: #C9A84C;
+  color: #080808;
+  font-weight: 700;
+  border: none;
+  border-radius: 10px;
+  padding: 10px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.mp-apply-btn:hover { opacity: .9; }
+
+/* Main */
+.mp-main { flex: 1; min-width: 0; }
+.mp-sort-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.mp-sort-label { font-size: 13px; color: #666; margin-right: 4px; }
+.mp-sort-btn {
+  background: none;
+  border: none;
+  padding: 6px 12px;
+  color: #888;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all .15s;
+  position: relative;
+}
+.mp-sort-btn:hover { color: #C9A84C; }
+.mp-sort-btn.active {
+  color: #C9A84C;
+  font-weight: 700;
+}
+.mp-sort-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 12px; right: 12px;
+  height: 2px;
+  background: #C9A84C;
+  border-radius: 2px;
+}
+.mp-total { font-size: 13px; color: #555; margin-left: auto; }
+
+/* Grid */
+.mp-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+@media (max-width: 1200px) { .mp-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 900px) { .mp-grid { grid-template-columns: repeat(2, 1fr); } .mp-sidebar { display: none; } }
+@media (max-width: 600px) { .mp-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; } .mp-layout { padding: 0 8px; } }
+
+/* Card */
+.mp-card {
+  background: #111;
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: border-color .2s, transform .15s;
+  cursor: pointer;
+}
+.mp-card:hover { border-color: rgba(201,168,76,.3); transform: translateY(-2px); }
+.mp-card-img-wrap {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: #181818;
+}
+.mp-card-img-wrap img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transition: transform .3s;
+}
+.mp-card:hover .mp-card-img-wrap img { transform: scale(1.04); }
+.mp-no-photo {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 48px;
+  color: #333;
+}
+.mp-fav-btn {
+  position: absolute;
+  top: 8px; right: 8px;
+  background: rgba(0,0,0,.6);
+  border: none;
+  border-radius: 50%;
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  color: #888;
+  transition: all .15s;
+  z-index: 2;
+}
+.mp-fav-btn:hover, .mp-fav-btn.active { color: #C9A84C; background: rgba(201,168,76,.15); }
+.mp-featured-badge {
+  position: absolute;
+  top: 8px; left: 8px;
+  background: linear-gradient(135deg, #C9A84C, #e8c96d);
+  color: #080808;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  z-index: 2;
+}
+.mp-discount-badge {
+  position: absolute;
+  bottom: 8px; left: 8px;
+  background: #e53e3e;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  z-index: 2;
+}
+.mp-img-dots {
+  position: absolute;
+  bottom: 8px; right: 8px;
+  display: flex; gap: 3px;
+}
+.mp-img-dot {
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.4);
+}
+.mp-card-body { padding: 10px 12px 14px; }
+.mp-price-wrap { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.mp-price { color: #C9A84C; font-weight: 700; font-size: 18px; }
+.mp-old-price { color: #555; text-decoration: line-through; font-size: 13px; }
+.mp-card-title {
+  font-size: 13px;
+  color: #ccc;
+  margin-top: 4px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.mp-rating {
+  font-size: 12px;
+  color: #888;
+  margin-top: 6px;
+}
+.mp-cart-btn {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  background: #C9A84C;
+  color: #080808;
+  font-weight: 700;
+  border: none;
+  border-radius: 10px;
+  padding: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: opacity .15s;
+}
+.mp-cart-btn:hover { opacity: .85; }
+.mp-cart-btn.added {
+  background: #1a3a1a;
+  color: #4caf50;
+  border: 1px solid #2d5a2d;
+}
+
+/* Pagination */
+.mp-pagination {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 32px;
+  flex-wrap: wrap;
+}
+.mp-page-btn {
+  background: #111;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 8px;
+  padding: 7px 13px;
+  color: #888;
+  font-size: 14px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all .15s;
+}
+.mp-page-btn:hover { border-color: #C9A84C; color: #C9A84C; }
+.mp-page-btn.active { background: #C9A84C; color: #080808; font-weight: 700; border-color: #C9A84C; }
+
+/* Empty state */
+.mp-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: #555;
+}
+.mp-empty-icon { font-size: 56px; margin-bottom: 16px; }
+.mp-empty-title { font-size: 20px; color: #888; margin-bottom: 8px; }
+
+/* Toast */
+.mp-toast {
+  position: fixed;
+  bottom: 80px; right: 20px;
+  background: #1a1a1a;
+  border: 1px solid rgba(201,168,76,.3);
+  border-radius: 12px;
+  padding: 12px 20px;
+  color: #C9A84C;
+  font-size: 14px;
+  font-weight: 600;
+  z-index: 9999;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all .25s;
+  pointer-events: none;
+}
+.mp-toast.show { opacity: 1; transform: translateY(0); }
+</style>
+{% endblock %}
+{% block content %}
+<div class="mp-wrap">
+  <!-- Header -->
+  <div class="mp-header">
+    <a href="/marketplace" class="mp-logo">🍄 Market</a>
+    <div class="mp-search-wrap">
+      <form method="get" action="/marketplace" style="display:contents">
+        <input type="text" name="q" value="{{ q or '' }}" placeholder="Поиск товаров...">
+        <button type="submit" class="mp-search-btn">🔍</button>
+      </form>
+    </div>
+    <div class="mp-header-actions">
+      {% if user %}
+      <a href="/marketplace/favorites" class="mp-icon-btn" title="Избранное">
+        ♥
+        {% if fav_count %}<span class="mp-badge">{{ fav_count }}</span>{% endif %}
+      </a>
+      <a href="/marketplace/cart" class="mp-icon-btn" title="Корзина">
+        🛒
+        <span class="mp-badge" id="cart-badge" style="{{ 'display:none' if not cart_count else '' }}">{{ cart_count or '' }}</span>
+      </a>
+      {% endif %}
+      <a href="/marketplace/seller-cabinet" class="mp-cabinet-btn">Кабинет продавца</a>
+    </div>
+  </div>
+
+  <!-- Banner -->
+  <div class="mp-banner" id="mpBanner">
+    <div class="mp-banner-slide active">
+      <div>
+        <div class="mp-banner-title">MushroomsAI<br>Маркетплейс</div>
+        <div class="mp-banner-sub">Уникальные товары от авторов сообщества</div>
+        <a href="/marketplace" class="mp-banner-cta">Смотреть каталог</a>
+      </div>
+    </div>
+    <div class="mp-banner-slide">
+      <div>
+        <div class="mp-banner-title">Станьте<br>продавцом</div>
+        <div class="mp-banner-sub">Откройте свой магазин за 5 минут</div>
+        <a href="/marketplace/seller-cabinet" class="mp-banner-cta">Открыть магазин</a>
+      </div>
+    </div>
+    <div class="mp-banner-slide">
+      <div>
+        <div class="mp-banner-title">Тысячи<br>товаров</div>
+        <div class="mp-banner-sub">Находите то, что вас вдохновляет</div>
+        <a href="/marketplace?sort=new" class="mp-banner-cta">Новинки</a>
+      </div>
+    </div>
+    <div class="mp-banner-dots" id="mpBannerDots">
+      <div class="mp-banner-dot active" onclick="mpBannerGo(0)"></div>
+      <div class="mp-banner-dot" onclick="mpBannerGo(1)"></div>
+      <div class="mp-banner-dot" onclick="mpBannerGo(2)"></div>
+    </div>
+  </div>
+
+  <!-- Layout -->
+  <div class="mp-layout">
+    <!-- Sidebar -->
+    <aside class="mp-sidebar">
+      <div class="mp-sidebar-title">Категории</div>
+      <a href="/marketplace" class="mp-cat-link {{ 'active' if not category else '' }}">
+        <span>Все товары</span>
+      </a>
+      {% for cat in categories %}
+      <a href="/marketplace?category={{ cat.category }}" class="mp-cat-link {{ 'active' if category == cat.category else '' }}">
+        <span>{{ cat.category }}</span>
+        <span class="mp-cat-count">{{ cat.cnt }}</span>
+      </a>
+      {% endfor %}
+
+      <div class="mp-sidebar-title">Цена, ₽</div>
+      <div class="mp-price-range">
+        <input type="number" class="mp-range-input" id="filterMinPrice" placeholder="от" value="{{ min_price or '' }}">
+        <span style="color:#555">—</span>
+        <input type="number" class="mp-range-input" id="filterMaxPrice" placeholder="до" value="{{ max_price or '' }}">
+      </div>
+
+      <div class="mp-sidebar-title">Рейтинг</div>
+      <div class="mp-stars-filter">
+        <button class="mp-star-btn {{ 'active' if rating_filter == '4' else '' }}" onclick="setRating('4')">⭐ 4+</button>
+        <button class="mp-star-btn {{ 'active' if rating_filter == '3' else '' }}" onclick="setRating('3')">⭐ 3+</button>
+        <button class="mp-star-btn {{ 'active' if rating_filter == '' else '' }}" onclick="setRating('')">Любой</button>
+      </div>
+
+      <div class="mp-sidebar-title">Наличие</div>
+      <label class="mp-checkbox-label">
+        <input type="checkbox" id="filterInStock" {{ 'checked' if in_stock == '1' else '' }} style="accent-color:#C9A84C">
+        <span>Только в наличии</span>
+      </label>
+
+      <button class="mp-apply-btn" onclick="applyFilters()">Применить фильтры</button>
+    </aside>
+
+    <!-- Main content -->
+    <div class="mp-main">
+      <!-- Sort bar -->
+      <div class="mp-sort-bar">
+        <span class="mp-sort-label">Сортировка:</span>
+        <button class="mp-sort-btn {{ 'active' if sort == 'popular' else '' }}" onclick="setSort('popular')">Популярность</button>
+        <button class="mp-sort-btn {{ 'active' if sort == 'new' else '' }}" onclick="setSort('new')">Новые</button>
+        <button class="mp-sort-btn {{ 'active' if sort == 'price_asc' else '' }}" onclick="setSort('price_asc')">Цена ↑</button>
+        <button class="mp-sort-btn {{ 'active' if sort == 'price_desc' else '' }}" onclick="setSort('price_desc')">Цена ↓</button>
+        <button class="mp-sort-btn {{ 'active' if sort == 'rating' else '' }}" onclick="setSort('rating')">Рейтинг</button>
+        <span class="mp-total">{{ total }} товаров</span>
+      </div>
+
+      <!-- Products grid -->
+      {% if products %}
+      <div class="mp-grid">
+        {% for product in products %}
+        {% set photo = product.photos[0].url if product.photos else None %}
+        {% set discount = ((product.old_price - product.price) / product.old_price * 100)|int if product.old_price and product.price and product.old_price > product.price else None %}
+        <div class="mp-card" onclick="window.location='/marketplace/product/{{ product.id }}'">
+          <div class="mp-card-img-wrap">
+            {% if photo %}
+            <img src="{{ photo }}" loading="lazy" alt="{{ product.title }}">
+            {% else %}
+            <div class="mp-no-photo">🍄</div>
+            {% endif %}
+            {% if user %}
+            <button class="mp-fav-btn {{ 'active' if product.id in fav_ids else '' }}" onclick="event.stopPropagation();toggleFav({{ product.id }}, this)" title="В избранное">♥</button>
+            {% endif %}
+            {% if product.is_featured %}<span class="mp-featured-badge">⚡ Топ</span>{% endif %}
+            {% if discount %}<span class="mp-discount-badge">-{{ discount }}%</span>{% endif %}
+            {% if product.photos|length > 1 %}
+            <div class="mp-img-dots">
+              {% for _ in product.photos[:4] %}<div class="mp-img-dot"></div>{% endfor %}
+            </div>
+            {% endif %}
+          </div>
+          <div class="mp-card-body">
+            <div class="mp-price-wrap">
+              <span class="mp-price">{{ product.price|int if product.price else '—' }} ₽</span>
+              {% if product.old_price %}<span class="mp-old-price">{{ product.old_price|int }} ₽</span>{% endif %}
+            </div>
+            <div class="mp-card-title">{{ product.title }}</div>
+            <div class="mp-rating">⭐ {{ product.rating or '0.0' }} · {{ product.reviews_count or 0 }} отзывов</div>
+            {% if user %}
+            <button class="mp-cart-btn" id="cart-btn-{{ product.id }}" onclick="event.stopPropagation();addToCart({{ product.id }})">В корзину</button>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Pagination -->
+      {% if pages > 1 %}
+      <div class="mp-pagination">
+        {% if page > 1 %}
+        <a href="{{ request.url | replace_query(page=page-1) }}" class="mp-page-btn">← Пред</a>
+        {% endif %}
+        {% for p in range([1, page-2]|max, [pages+1, page+3]|min) %}
+        <a href="{{ request.url | replace_query(page=p) }}" class="mp-page-btn {{ 'active' if p == page else '' }}">{{ p }}</a>
+        {% endfor %}
+        {% if page < pages %}
+        <a href="{{ request.url | replace_query(page=page+1) }}" class="mp-page-btn">След →</a>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      {% else %}
+      <div class="mp-empty">
+        <div class="mp-empty-icon">🍄</div>
+        <div class="mp-empty-title">Товары не найдены</div>
+        <div>Попробуйте изменить фильтры или поисковый запрос</div>
+        {% if q or category %}
+        <a href="/marketplace" style="display:inline-block;margin-top:16px;color:#C9A84C">← Сбросить фильтры</a>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="mp-toast" id="mpToast"></div>
+
+<script>
+var _mpRatingFilter = '{{ rating_filter or "" }}';
+
+// Banner
+var _mpBannerIdx = 0;
+var _mpBannerSlides = document.querySelectorAll('.mp-banner-slide');
+var _mpBannerDots = document.querySelectorAll('.mp-banner-dot');
+function mpBannerGo(idx) {
+  _mpBannerSlides[_mpBannerIdx].classList.remove('active');
+  _mpBannerDots[_mpBannerIdx].classList.remove('active');
+  _mpBannerIdx = idx;
+  _mpBannerSlides[_mpBannerIdx].classList.add('active');
+  _mpBannerDots[_mpBannerIdx].classList.add('active');
+}
+setInterval(function(){ mpBannerGo((_mpBannerIdx + 1) % _mpBannerSlides.length); }, 4000);
+
+// Cart count
+async function updateCartBadge() {
+  try {
+    var r = await fetch('/api/marketplace/cart/count', {credentials:'same-origin'});
+    var d = await r.json();
+    var badge = document.getElementById('cart-badge');
+    if (badge) {
+      if (d.count > 0) { badge.textContent = d.count; badge.style.display = ''; }
+      else { badge.style.display = 'none'; }
+    }
+  } catch(e) {}
+}
+updateCartBadge();
+
+// Toast
+function showToast(msg) {
+  var t = document.getElementById('mpToast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 2500);
+}
+
+// Add to cart
+async function addToCart(id) {
+  {% if not user %}
+  window.location = '/login?next=/marketplace';
+  return;
+  {% endif %}
+  try {
+    var r = await fetch('/api/marketplace/cart/' + id, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({quantity: 1})
+    });
+    var d = await r.json();
+    if (d.ok) {
+      showToast('Добавлено в корзину');
+      var btn = document.getElementById('cart-btn-' + id);
+      if (btn) { btn.textContent = '✓ В корзине'; btn.classList.add('added'); }
+      updateCartBadge();
+    }
+  } catch(e) { showToast('Ошибка'); }
+}
+
+// Toggle favorite
+async function toggleFav(id, btn) {
+  {% if not user %}
+  window.location = '/login?next=/marketplace';
+  return;
+  {% endif %}
+  try {
+    var r = await fetch('/api/marketplace/favorites/' + id, {
+      method: 'POST', credentials: 'same-origin'
+    });
+    var d = await r.json();
+    if (d.ok) {
+      if (d.added) { btn.classList.add('active'); showToast('Добавлено в избранное'); }
+      else { btn.classList.remove('active'); showToast('Удалено из избранного'); }
+    }
+  } catch(e) {}
+}
+
+// Filters
+function setRating(val) {
+  _mpRatingFilter = val;
+  document.querySelectorAll('.mp-star-btn').forEach(function(b) {
+    b.classList.toggle('active', b.textContent.includes(val) || (val === '' && b.textContent.includes('Любой')));
+  });
+}
+
+function setSort(s) {
+  var url = new URL(window.location.href);
+  url.searchParams.set('sort', s);
+  url.searchParams.set('page', '1');
+  window.location = url.toString();
+}
+
+function applyFilters() {
+  var url = new URL(window.location.href);
+  var minP = document.getElementById('filterMinPrice').value;
+  var maxP = document.getElementById('filterMaxPrice').value;
+  var inStock = document.getElementById('filterInStock').checked;
+  if (minP) url.searchParams.set('min_price', minP); else url.searchParams.delete('min_price');
+  if (maxP) url.searchParams.set('max_price', maxP); else url.searchParams.delete('max_price');
+  if (inStock) url.searchParams.set('in_stock', '1'); else url.searchParams.delete('in_stock');
+  if (_mpRatingFilter) url.searchParams.set('rating', _mpRatingFilter); else url.searchParams.delete('rating');
+  url.searchParams.set('page', '1');
+  window.location = url.toString();
+}
+</script>
+{% endblock %}

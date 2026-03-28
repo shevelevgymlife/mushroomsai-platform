@@ -1,0 +1,680 @@
+{% extends "base.html" %}
+{% block title %}Кабинет продавца — NEUROFUNGI AI Market{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+.mp-cabinet-wrap { background: #080808; min-height: 100vh; display: flex; flex-direction: column; }
+.mp-header {
+  background: #0e0e0e; border-bottom: 1px solid rgba(201,168,76,.15);
+  padding: 12px 16px; display: flex; align-items: center; gap: 12px;
+  position: sticky; top: 0; z-index: 100;
+}
+.mp-logo { font-size: 20px; font-weight: 800; color: #C9A84C; text-decoration: none; }
+.mp-header-title { font-size: 16px; font-weight: 700; color: #eee; }
+.mp-content { display: flex; flex: 1; }
+.mp-cabinet-sidebar {
+  width: 200px; flex-shrink: 0;
+  background: #0e0e0e; border-right: 1px solid rgba(255,255,255,.06);
+  padding: 16px 0; position: sticky; top: 57px;
+  height: calc(100vh - 57px); overflow-y: auto;
+}
+.mp-cabinet-nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 20px; cursor: pointer; color: #888;
+  font-size: 14px; transition: all .15s;
+  border-left: 3px solid transparent; text-decoration: none;
+}
+.mp-cabinet-nav-item:hover { color: #C9A84C; background: rgba(201,168,76,.05); }
+.mp-cabinet-nav-item.active { color: #C9A84C; border-left-color: #C9A84C; background: rgba(201,168,76,.08); font-weight: 600; }
+.mp-cabinet-main { flex: 1; min-width: 0; padding: 24px; }
+.mp-tab-pane { display: none; }
+.mp-tab-pane.active { display: block; }
+.mp-pane-title { font-size: 22px; font-weight: 700; color: #eee; margin-bottom: 20px; }
+
+/* Stats cards */
+.mp-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.mp-stat-card {
+  background: #0e0e0e; border: 1px solid rgba(255,255,255,.06);
+  border-radius: 14px; padding: 20px; text-align: center;
+}
+.mp-stat-icon { font-size: 28px; margin-bottom: 8px; }
+.mp-stat-num { font-size: 28px; font-weight: 800; color: #C9A84C; }
+.mp-stat-label { font-size: 12px; color: #666; margin-top: 4px; }
+
+/* Products table */
+.mp-products-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.mp-products-table th { text-align: left; padding: 10px 12px; color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid rgba(255,255,255,.08); }
+.mp-products-table td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,.05); color: #ccc; vertical-align: middle; }
+.mp-products-table tr:hover td { background: rgba(255,255,255,.02); }
+.mp-prod-thumb { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; background: #222; }
+.mp-prod-thumb-empty { width: 40px; height: 40px; border-radius: 6px; background: #222; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.mp-badge-active { display: inline-block; background: rgba(76,175,80,.15); color: #4caf50; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; }
+.mp-badge-inactive { display: inline-block; background: rgba(248,113,113,.1); color: #f87171; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; }
+.mp-action-btn {
+  background: #1a1a1a; border: 1px solid rgba(255,255,255,.1);
+  border-radius: 7px; padding: 5px 10px; cursor: pointer;
+  color: #888; font-size: 12px; transition: all .15s;
+}
+.mp-action-btn:hover { border-color: #C9A84C; color: #C9A84C; }
+.mp-action-btn.danger:hover { border-color: #f87171; color: #f87171; }
+
+/* Add product button */
+.mp-add-product-btn {
+  background: #C9A84C; color: #080808; font-weight: 700;
+  border: none; border-radius: 10px; padding: 10px 20px;
+  cursor: pointer; font-size: 14px; margin-bottom: 16px;
+}
+.mp-add-product-btn:hover { opacity: .85; }
+
+/* Modal */
+.mp-modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.8); z-index: 9999;
+  align-items: flex-start; justify-content: center; padding: 20px;
+  overflow-y: auto;
+}
+.mp-modal-overlay.open { display: flex; }
+.mp-modal {
+  background: #111; border: 1px solid rgba(201,168,76,.2);
+  border-radius: 18px; padding: 28px; width: 100%; max-width: 600px;
+  margin: auto;
+}
+.mp-modal-title { font-size: 20px; font-weight: 700; color: #eee; margin-bottom: 20px; }
+.mp-modal-close {
+  float: right; background: none; border: none; color: #888;
+  font-size: 24px; cursor: pointer; margin-top: -4px;
+}
+.mp-form-group { margin-bottom: 14px; }
+.mp-form-label { display: block; font-size: 12px; color: #888; margin-bottom: 5px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+.mp-form-ctrl {
+  width: 100%; background: #1a1a1a; border: 1px solid rgba(255,255,255,.1);
+  border-radius: 10px; padding: 10px 14px; color: #eee;
+  font-size: 14px; outline: none; font-family: inherit;
+}
+.mp-form-ctrl:focus { border-color: #C9A84C; }
+.mp-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* Photo upload */
+.mp-photo-upload-area {
+  border: 2px dashed rgba(201,168,76,.3);
+  border-radius: 12px; padding: 24px;
+  text-align: center; cursor: pointer;
+  color: #666; font-size: 14px;
+  transition: border-color .2s;
+}
+.mp-photo-upload-area:hover { border-color: #C9A84C; color: #C9A84C; }
+.mp-photo-previews { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.mp-photo-preview { position: relative; width: 80px; height: 80px; border-radius: 8px; overflow: hidden; }
+.mp-photo-preview img { width: 100%; height: 100%; object-fit: cover; }
+.mp-photo-preview-del {
+  position: absolute; top: 2px; right: 2px;
+  background: rgba(0,0,0,.7); border: none; border-radius: 50%;
+  width: 20px; height: 20px; cursor: pointer; color: #fff; font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* Attributes */
+.mp-attrs-list { margin-bottom: 10px; }
+.mp-attr-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+.mp-attr-key, .mp-attr-val {
+  flex: 1; background: #1a1a1a; border: 1px solid rgba(255,255,255,.1);
+  border-radius: 8px; padding: 8px 12px; color: #eee; font-size: 13px; outline: none;
+}
+.mp-attr-key:focus, .mp-attr-val:focus { border-color: #C9A84C; }
+.mp-attr-del { background: none; border: 1px solid rgba(248,113,113,.3); color: #f87171; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+.mp-add-attr-btn { background: none; border: 1px dashed rgba(201,168,76,.3); color: #C9A84C; border-radius: 8px; padding: 7px 14px; cursor: pointer; font-size: 13px; }
+.mp-modal-submit {
+  background: #C9A84C; color: #080808; font-weight: 700;
+  border: none; border-radius: 10px; padding: 12px 28px;
+  cursor: pointer; font-size: 15px; margin-top: 8px;
+}
+.mp-modal-submit:hover { opacity: .85; }
+
+/* Orders table */
+.mp-order-status-pending { color: #f59e0b; background: rgba(245,158,11,.1); padding: 2px 8px; border-radius: 6px; font-size: 12px; }
+.mp-order-status-completed { color: #4caf50; background: rgba(76,175,80,.1); padding: 2px 8px; border-radius: 6px; font-size: 12px; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .mp-cabinet-sidebar { display: none; }
+  .mp-cabinet-main { padding: 16px; }
+}
+
+/* Toast */
+.mp-toast {
+  position: fixed; bottom: 80px; right: 20px;
+  background: #1a1a1a; border: 1px solid rgba(201,168,76,.3);
+  border-radius: 12px; padding: 12px 20px; color: #C9A84C;
+  font-size: 14px; font-weight: 600; z-index: 99999;
+  opacity: 0; transform: translateY(10px); transition: all .25s;
+  pointer-events: none;
+}
+.mp-toast.show { opacity: 1; transform: translateY(0); }
+
+/* Answer form in questions */
+.mp-answer-form { display: none; margin-top: 10px; }
+.mp-answer-form.open { display: flex; gap: 8px; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="mp-cabinet-wrap">
+  <div class="mp-header">
+    <a href="/marketplace" class="mp-logo">🍄 Market</a>
+    <span style="color:#555">›</span>
+    <span class="mp-header-title">Кабинет продавца</span>
+    <div style="flex:1"></div>
+    <a href="/marketplace" style="color:#888;font-size:13px;text-decoration:none">← В каталог</a>
+  </div>
+
+  <div class="mp-content">
+    <!-- Sidebar nav -->
+    <div class="mp-cabinet-sidebar">
+      <div class="mp-cabinet-nav-item active" id="nav-analytics" onclick="switchPane('analytics')">📊 <span>Аналитика</span></div>
+      <div class="mp-cabinet-nav-item" id="nav-products" onclick="switchPane('products')">📦 <span>Мои товары</span></div>
+      <div class="mp-cabinet-nav-item" id="nav-orders" onclick="switchPane('orders')">📋 <span>Заказы</span></div>
+      <div class="mp-cabinet-nav-item" id="nav-reviews" onclick="switchPane('reviews')">⭐ <span>Отзывы</span></div>
+      <div class="mp-cabinet-nav-item" id="nav-questions" onclick="switchPane('questions')">❓ <span>Вопросы</span></div>
+      <div class="mp-cabinet-nav-item" id="nav-settings" onclick="switchPane('settings')">⚙️ <span>Настройки</span></div>
+    </div>
+
+    <!-- Main area -->
+    <div class="mp-cabinet-main">
+
+      <!-- Analytics -->
+      <div class="mp-tab-pane active" id="pane-analytics">
+        <div class="mp-pane-title">Аналитика</div>
+        <div class="mp-stats-grid" id="statsGrid">
+          <div class="mp-stat-card"><div class="mp-stat-icon">📦</div><div class="mp-stat-num" id="stat-products">—</div><div class="mp-stat-label">Товаров</div></div>
+          <div class="mp-stat-card"><div class="mp-stat-icon">🛒</div><div class="mp-stat-num" id="stat-orders">—</div><div class="mp-stat-label">Заказов</div></div>
+          <div class="mp-stat-card"><div class="mp-stat-icon">👁</div><div class="mp-stat-num" id="stat-views">—</div><div class="mp-stat-label">Просмотров</div></div>
+          <div class="mp-stat-card"><div class="mp-stat-icon">♥</div><div class="mp-stat-num" id="stat-fav">—</div><div class="mp-stat-label">В избранном</div></div>
+          <div class="mp-stat-card"><div class="mp-stat-icon">⭐</div><div class="mp-stat-num" id="stat-rating">—</div><div class="mp-stat-label">Средний рейтинг</div></div>
+          <div class="mp-stat-card"><div class="mp-stat-icon">💬</div><div class="mp-stat-num" id="stat-reviews">—</div><div class="mp-stat-label">Отзывов</div></div>
+        </div>
+        <div style="background:#0e0e0e;border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:24px;text-align:center;color:#555;font-size:14px">
+          📈 График продаж в разработке
+        </div>
+      </div>
+
+      <!-- Products -->
+      <div class="mp-tab-pane" id="pane-products">
+        <div class="mp-pane-title">Мои товары</div>
+        <button class="mp-add-product-btn" onclick="openAddModal()">+ Добавить товар</button>
+        <div id="productsTableWrap">
+          <p style="color:#555;font-size:14px">Загрузка...</p>
+        </div>
+      </div>
+
+      <!-- Orders -->
+      <div class="mp-tab-pane" id="pane-orders">
+        <div class="mp-pane-title">Заказы</div>
+        <div id="ordersWrap"><p style="color:#555;font-size:14px">Загрузка...</p></div>
+      </div>
+
+      <!-- Reviews -->
+      <div class="mp-tab-pane" id="pane-reviews">
+        <div class="mp-pane-title">Отзывы</div>
+        <div id="reviewsWrap"><p style="color:#555;font-size:14px">Загрузка...</p></div>
+      </div>
+
+      <!-- Questions -->
+      <div class="mp-tab-pane" id="pane-questions">
+        <div class="mp-pane-title">Вопросы</div>
+        <div id="questionsWrap"><p style="color:#555;font-size:14px">Загрузка...</p></div>
+      </div>
+
+      <!-- Settings -->
+      <div class="mp-tab-pane" id="pane-settings">
+        <div class="mp-pane-title">Настройки магазина</div>
+        <p style="color:#888;font-size:14px">Ваш магазин: <strong style="color:#C9A84C">{{ user.name or user.email }}</strong></p>
+        <a href="/marketplace/seller/{{ user.id }}" style="color:#C9A84C;font-size:14px">→ Страница вашего магазина</a>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Product Modal -->
+<div class="mp-modal-overlay" id="productModal">
+  <div class="mp-modal">
+    <button class="mp-modal-close" onclick="closeProductModal()">✕</button>
+    <div class="mp-modal-title" id="modalTitle">Добавить товар</div>
+    <input type="hidden" id="editProductId">
+    <div class="mp-form-group">
+      <label class="mp-form-label">Название *</label>
+      <input type="text" class="mp-form-ctrl" id="fTitle" placeholder="Название товара">
+    </div>
+    <div class="mp-form-group">
+      <label class="mp-form-label">Описание</label>
+      <textarea class="mp-form-ctrl" id="fDesc" rows="3" placeholder="Описание товара..."></textarea>
+    </div>
+    <div class="mp-form-row">
+      <div class="mp-form-group">
+        <label class="mp-form-label">Категория</label>
+        <select class="mp-form-ctrl" id="fCategory">
+          <option value="">Выберите категорию</option>
+          {% for cat in categories %}
+          <option value="{{ cat.category }}">{{ cat.category }}</option>
+          {% endfor %}
+          <option value="Другое">Другое</option>
+        </select>
+      </div>
+      <div class="mp-form-group">
+        <label class="mp-form-label">Бренд</label>
+        <input type="text" class="mp-form-ctrl" id="fBrand" placeholder="Бренд">
+      </div>
+    </div>
+    <div class="mp-form-row">
+      <div class="mp-form-group">
+        <label class="mp-form-label">Цена, ₽ *</label>
+        <input type="number" class="mp-form-ctrl" id="fPrice" placeholder="0" min="0">
+      </div>
+      <div class="mp-form-group">
+        <label class="mp-form-label">Старая цена, ₽</label>
+        <input type="number" class="mp-form-ctrl" id="fOldPrice" placeholder="0" min="0">
+      </div>
+    </div>
+    <div class="mp-form-group">
+      <label class="mp-form-label">Количество на складе</label>
+      <input type="number" class="mp-form-ctrl" id="fStock" placeholder="0" min="0">
+    </div>
+    <div class="mp-form-group">
+      <label class="mp-form-label">Фотографии</label>
+      <div class="mp-photo-upload-area" id="photoUploadArea" onclick="document.getElementById('photoFileInput').click()">
+        📷 Перетащите фото или нажмите для загрузки
+        <input type="file" id="photoFileInput" multiple accept="image/*" style="display:none" onchange="handlePhotoSelect(this)">
+      </div>
+      <div class="mp-photo-previews" id="photoPreviews"></div>
+    </div>
+    <div class="mp-form-group">
+      <label class="mp-form-label">Характеристики</label>
+      <div class="mp-attrs-list" id="attrsList"></div>
+      <button class="mp-add-attr-btn" onclick="addAttrRow()">+ Добавить характеристику</button>
+    </div>
+    <button class="mp-modal-submit" onclick="submitProduct()">Сохранить товар</button>
+  </div>
+</div>
+
+<div class="mp-toast" id="mpToast"></div>
+
+<script>
+var _editingProductId = null;
+var _selectedFiles = [];
+var _activePane = 'analytics';
+
+function switchPane(name) {
+  document.querySelectorAll('.mp-tab-pane').forEach(function(p){ p.classList.remove('active'); });
+  document.querySelectorAll('.mp-cabinet-nav-item').forEach(function(n){ n.classList.remove('active'); });
+  document.getElementById('pane-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+  _activePane = name;
+  if (name === 'analytics') loadAnalytics();
+  if (name === 'products') loadProducts();
+  if (name === 'orders') loadOrders();
+  if (name === 'reviews') loadReviews();
+  if (name === 'questions') loadQuestions();
+}
+
+function showToast(msg) {
+  var t = document.getElementById('mpToast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 2500);
+}
+
+// Analytics
+async function loadAnalytics() {
+  try {
+    var r = await fetch('/api/marketplace/seller/analytics', {credentials:'same-origin'});
+    var d = await r.json();
+    if (d.ok) {
+      document.getElementById('stat-products').textContent = d.products;
+      document.getElementById('stat-orders').textContent = d.orders;
+      document.getElementById('stat-views').textContent = d.views;
+      document.getElementById('stat-fav').textContent = d.favorites;
+      document.getElementById('stat-rating').textContent = d.avg_rating.toFixed(1);
+      document.getElementById('stat-reviews').textContent = d.reviews;
+    }
+  } catch(e) {}
+}
+loadAnalytics();
+
+// Products
+async function loadProducts() {
+  var wrap = document.getElementById('productsTableWrap');
+  try {
+    var r = await fetch('/api/marketplace/seller/products', {credentials:'same-origin'});
+    var d = await r.json();
+    if (!d.ok || !d.products.length) {
+      wrap.innerHTML = '<p style="color:#555;font-size:14px">Товаров пока нет. Добавьте первый!</p>';
+      return;
+    }
+    var html = '<table class="mp-products-table"><thead><tr><th>Фото</th><th>Название</th><th>Цена</th><th>Наличие</th><th>Просмотры</th><th>Заказы</th><th>Статус</th><th>Действия</th></tr></thead><tbody>';
+    d.products.forEach(function(p) {
+      var thumb = p.photos && p.photos.length ? '<img class="mp-prod-thumb" src="' + p.photos[0].url + '">' : '<div class="mp-prod-thumb-empty">🍄</div>';
+      var statusBadge = p.is_active ? '<span class="mp-badge-active">Активен</span>' : '<span class="mp-badge-inactive">Скрыт</span>';
+      var inStock = p.in_stock ? '<span class="mp-badge-active">В наличии</span>' : '<span class="mp-badge-inactive">Нет</span>';
+      html += '<tr>';
+      html += '<td>' + thumb + '</td>';
+      html += '<td><a href="/marketplace/product/' + p.id + '" style="color:#ddd;text-decoration:none" target="_blank">' + (p.title||'').substring(0,40) + '</a></td>';
+      html += '<td style="color:#C9A84C;font-weight:700">' + (p.price ? parseInt(p.price) + ' ₽' : '—') + '</td>';
+      html += '<td>' + inStock + '</td>';
+      html += '<td style="color:#888">' + (p.views_count||0) + '</td>';
+      html += '<td style="color:#888">' + (p.orders_count||0) + '</td>';
+      html += '<td>' + statusBadge + '</td>';
+      html += '<td style="display:flex;gap:6px;flex-wrap:wrap">';
+      html += '<button class="mp-action-btn" onclick="editProduct(' + JSON.stringify(p).replace(/"/g, '&quot;') + ')">✏️</button>';
+      html += '<button class="mp-action-btn danger" onclick="deleteProduct(' + p.id + ')">🗑</button>';
+      html += '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+  } catch(e) { wrap.innerHTML = '<p style="color:#f87171">Ошибка загрузки</p>'; }
+}
+
+// Orders
+async function loadOrders() {
+  var wrap = document.getElementById('ordersWrap');
+  try {
+    var r = await fetch('/api/marketplace/seller/orders', {credentials:'same-origin'});
+    var d = await r.json();
+    if (!d.ok || !d.orders.length) {
+      wrap.innerHTML = '<p style="color:#555;font-size:14px">Заказов пока нет</p>';
+      return;
+    }
+    var html = '<table class="mp-products-table"><thead><tr><th>Товар</th><th>Покупатель</th><th>Кол-во</th><th>Цена</th><th>Статус</th><th>Дата</th></tr></thead><tbody>';
+    d.orders.forEach(function(o) {
+      var statusCls = o.status === 'completed' ? 'mp-order-status-completed' : 'mp-order-status-pending';
+      var date = o.order_date ? o.order_date.substring(0,10) : '—';
+      html += '<tr><td>' + (o.product_title||'').substring(0,30) + '</td>';
+      html += '<td style="color:#888">' + (o.buyer_name||'—') + '</td>';
+      html += '<td>' + (o.quantity||1) + '</td>';
+      html += '<td style="color:#C9A84C">' + (o.price ? parseInt(o.price) + ' ₽' : '—') + '</td>';
+      html += '<td><span class="' + statusCls + '">' + (o.status||'pending') + '</span></td>';
+      html += '<td style="color:#555">' + date + '</td></tr>';
+    });
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+  } catch(e) { wrap.innerHTML = '<p style="color:#f87171">Ошибка загрузки</p>'; }
+}
+
+// Reviews
+async function loadReviews() {
+  var wrap = document.getElementById('reviewsWrap');
+  try {
+    var r = await fetch('/api/marketplace/seller/reviews', {credentials:'same-origin'});
+    var d = await r.json();
+    if (!d.ok || !d.reviews.length) {
+      wrap.innerHTML = '<p style="color:#555;font-size:14px">Отзывов пока нет</p>';
+      return;
+    }
+    var html = '';
+    d.reviews.forEach(function(rev) {
+      var stars = '★'.repeat(rev.rating||0) + '☆'.repeat(5-(rev.rating||0));
+      html += '<div style="background:#0e0e0e;border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:14px;margin-bottom:10px">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+      html += '<div><strong style="color:#ddd">' + (rev.reviewer_name||'Аноним') + '</strong> <span style="color:#C9A84C">' + stars + '</span></div>';
+      html += '<div style="font-size:12px;color:#555">' + (rev.created_at||'').substring(0,10) + '</div></div>';
+      html += '<div style="font-size:12px;color:#888;margin-bottom:6px">Товар: ' + (rev.product_title||'').substring(0,40) + '</div>';
+      if (rev.pros) html += '<div style="font-size:13px;color:#4caf50;margin-bottom:3px">👍 ' + rev.pros + '</div>';
+      if (rev.cons) html += '<div style="font-size:13px;color:#f87171;margin-bottom:6px">👎 ' + rev.cons + '</div>';
+      if (rev.text) html += '<div style="font-size:14px;color:#bbb">' + rev.text + '</div>';
+      html += '</div>';
+    });
+    wrap.innerHTML = html;
+  } catch(e) { wrap.innerHTML = '<p style="color:#f87171">Ошибка загрузки</p>'; }
+}
+
+// Questions
+async function loadQuestions() {
+  var wrap = document.getElementById('questionsWrap');
+  try {
+    var r = await fetch('/api/marketplace/seller/questions', {credentials:'same-origin'});
+    var d = await r.json();
+    if (!d.ok || !d.questions.length) {
+      wrap.innerHTML = '<p style="color:#555;font-size:14px">Вопросов пока нет</p>';
+      return;
+    }
+    var html = '';
+    d.questions.forEach(function(q) {
+      html += '<div style="background:#0e0e0e;border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:14px;margin-bottom:10px" id="q-' + q.id + '">';
+      html += '<div style="font-size:13px;color:#C9A84C;margin-bottom:6px">Товар: ' + (q.product_title||'').substring(0,40) + '</div>';
+      html += '<div style="font-weight:600;color:#ddd;margin-bottom:4px">' + q.question + '</div>';
+      html += '<div style="font-size:12px;color:#555;margin-bottom:8px">' + (q.asker_name||'Аноним') + ' · ' + (q.created_at||'').substring(0,10) + '</div>';
+      if (q.answer) {
+        html += '<div style="border-left:2px solid #C9A84C;padding-left:12px;font-size:13px;color:#888"><strong style="color:#C9A84C">Ваш ответ:</strong> ' + q.answer + '</div>';
+      } else {
+        html += '<div class="mp-answer-form" id="af-' + q.id + '">';
+        html += '<input type="text" placeholder="Ваш ответ..." style="flex:1;background:#1a1a1a;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 12px;color:#eee;font-size:13px;outline:none" id="ai-' + q.id + '">';
+        html += '<button class="mp-action-btn" onclick="submitAnswer(' + q.id + ')">Ответить</button>';
+        html += '</div>';
+        html += '<button class="mp-action-btn" onclick="toggleAnswerForm(' + q.id + ')" style="margin-top:6px">Ответить на вопрос</button>';
+      }
+      html += '</div>';
+    });
+    wrap.innerHTML = html;
+  } catch(e) { wrap.innerHTML = '<p style="color:#f87171">Ошибка загрузки</p>'; }
+}
+
+function toggleAnswerForm(qid) {
+  var af = document.getElementById('af-' + qid);
+  if (af) af.classList.toggle('open');
+}
+
+async function submitAnswer(qid) {
+  var input = document.getElementById('ai-' + qid);
+  var answer = input ? input.value.trim() : '';
+  if (!answer) { showToast('Введите ответ'); return; }
+  try {
+    var r = await fetch('/api/marketplace/seller/questions/' + qid + '/answer', {
+      method: 'PATCH', credentials: 'same-origin',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({answer: answer})
+    });
+    var d = await r.json();
+    if (d.ok) { showToast('Ответ сохранён'); loadQuestions(); }
+    else showToast('Ошибка');
+  } catch(e) { showToast('Ошибка сети'); }
+}
+
+// Product modal
+function openAddModal() {
+  _editingProductId = null;
+  document.getElementById('modalTitle').textContent = 'Добавить товар';
+  document.getElementById('editProductId').value = '';
+  document.getElementById('fTitle').value = '';
+  document.getElementById('fDesc').value = '';
+  document.getElementById('fCategory').value = '';
+  document.getElementById('fBrand').value = '';
+  document.getElementById('fPrice').value = '';
+  document.getElementById('fOldPrice').value = '';
+  document.getElementById('fStock').value = '';
+  document.getElementById('attrsList').innerHTML = '';
+  document.getElementById('photoPreviews').innerHTML = '';
+  _selectedFiles = [];
+  document.getElementById('productModal').classList.add('open');
+}
+
+function editProduct(p) {
+  _editingProductId = p.id;
+  document.getElementById('modalTitle').textContent = 'Редактировать товар';
+  document.getElementById('editProductId').value = p.id;
+  document.getElementById('fTitle').value = p.title || '';
+  document.getElementById('fDesc').value = p.description || '';
+  document.getElementById('fCategory').value = p.category || '';
+  document.getElementById('fBrand').value = p.brand || '';
+  document.getElementById('fPrice').value = p.price || '';
+  document.getElementById('fOldPrice').value = p.old_price || '';
+  document.getElementById('fStock').value = p.stock_count || '';
+  document.getElementById('attrsList').innerHTML = '';
+  _selectedFiles = [];
+  var attrs = p.attributes || {};
+  Object.entries(attrs).forEach(function(e){ addAttrRow(e[0], e[1]); });
+  var previews = document.getElementById('photoPreviews');
+  previews.innerHTML = '';
+  if (p.photos) {
+    p.photos.forEach(function(ph) {
+      var div = document.createElement('div');
+      div.className = 'mp-photo-preview';
+      div.innerHTML = '<img src="' + ph.url + '"><button class="mp-photo-preview-del" onclick="deleteExistingPhoto(' + ph.id + ', this.parentNode)">✕</button>';
+      previews.appendChild(div);
+    });
+  }
+  document.getElementById('productModal').classList.add('open');
+}
+
+function closeProductModal() {
+  document.getElementById('productModal').classList.remove('open');
+}
+
+function handlePhotoSelect(input) {
+  var files = Array.from(input.files);
+  _selectedFiles = _selectedFiles.concat(files);
+  var previews = document.getElementById('photoPreviews');
+  files.forEach(function(f, i) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var div = document.createElement('div');
+      div.className = 'mp-photo-preview';
+      div.dataset.fileIdx = _selectedFiles.length - files.length + i;
+      div.innerHTML = '<img src="' + e.target.result + '"><button class="mp-photo-preview-del" onclick="removeSelectedFile(' + (_selectedFiles.length - files.length + i) + ', this.parentNode)">✕</button>';
+      previews.appendChild(div);
+    };
+    reader.readAsDataURL(f);
+  });
+}
+
+function removeSelectedFile(idx, el) {
+  _selectedFiles[idx] = null;
+  if (el) el.remove();
+}
+
+async function deleteExistingPhoto(photoId, el) {
+  try {
+    var r = await fetch('/api/marketplace/seller/photos/' + photoId, {method:'DELETE', credentials:'same-origin'});
+    var d = await r.json();
+    if (d.ok) { el.remove(); showToast('Фото удалено'); }
+  } catch(e) {}
+}
+
+function addAttrRow(key, val) {
+  var list = document.getElementById('attrsList');
+  var row = document.createElement('div');
+  row.className = 'mp-attr-row';
+  row.innerHTML = '<input type="text" class="mp-attr-key" placeholder="Ключ" value="' + (key||'') + '">' +
+    '<input type="text" class="mp-attr-val" placeholder="Значение" value="' + (val||'') + '">' +
+    '<button class="mp-attr-del" onclick="this.parentNode.remove()">✕</button>';
+  list.appendChild(row);
+}
+
+async function submitProduct() {
+  var title = document.getElementById('fTitle').value.trim();
+  if (!title) { showToast('Введите название'); return; }
+
+  var attrs = {};
+  document.querySelectorAll('.mp-attr-row').forEach(function(row) {
+    var k = row.querySelector('.mp-attr-key').value.trim();
+    var v = row.querySelector('.mp-attr-val').value.trim();
+    if (k) attrs[k] = v;
+  });
+
+  if (_editingProductId) {
+    // PUT update
+    try {
+      var body = {
+        title: title,
+        description: document.getElementById('fDesc').value,
+        category: document.getElementById('fCategory').value,
+        brand: document.getElementById('fBrand').value,
+        price: parseFloat(document.getElementById('fPrice').value) || 0,
+        stock_count: parseInt(document.getElementById('fStock').value) || 0,
+        attributes: attrs,
+      };
+      var oldP = document.getElementById('fOldPrice').value;
+      if (oldP) body.old_price = parseFloat(oldP);
+      var r = await fetch('/api/marketplace/seller/products/' + _editingProductId, {
+        method: 'PUT', credentials: 'same-origin',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(body)
+      });
+      var d = await r.json();
+      if (d.ok) {
+        // Upload new photos if any
+        var newFiles = _selectedFiles.filter(function(f){ return f !== null; });
+        if (newFiles.length) {
+          var fd = new FormData();
+          newFiles.forEach(function(f){ fd.append('photos', f); });
+          await fetch('/api/marketplace/seller/products/' + _editingProductId + '/photos', {
+            method: 'POST', credentials: 'same-origin', body: fd
+          });
+        }
+        showToast('Товар обновлён');
+        closeProductModal();
+        loadProducts();
+      } else showToast('Ошибка: ' + (d.error||'unknown'));
+    } catch(e) { showToast('Ошибка сети'); }
+  } else {
+    // POST create
+    try {
+      var fd = new FormData();
+      fd.append('title', title);
+      fd.append('description', document.getElementById('fDesc').value);
+      fd.append('category', document.getElementById('fCategory').value);
+      fd.append('brand', document.getElementById('fBrand').value);
+      fd.append('price', document.getElementById('fPrice').value || '0');
+      fd.append('old_price', document.getElementById('fOldPrice').value || '');
+      fd.append('stock_count', document.getElementById('fStock').value || '0');
+      fd.append('attributes', JSON.stringify(attrs));
+      _selectedFiles.filter(function(f){ return f!==null; }).forEach(function(f){ fd.append('photos', f); });
+      var r = await fetch('/api/marketplace/seller/products', {method:'POST', credentials:'same-origin', body: fd});
+      var d = await r.json();
+      if (d.ok) {
+        showToast('Товар добавлен!');
+        closeProductModal();
+        loadProducts();
+      } else showToast('Ошибка: ' + (d.error||'unknown'));
+    } catch(e) { showToast('Ошибка сети'); }
+  }
+}
+
+async function deleteProduct(id) {
+  if (!confirm('Удалить товар?')) return;
+  try {
+    var r = await fetch('/api/marketplace/seller/products/' + id, {method:'DELETE', credentials:'same-origin'});
+    var d = await r.json();
+    if (d.ok) { showToast('Товар скрыт'); loadProducts(); }
+    else showToast('Ошибка');
+  } catch(e) { showToast('Ошибка сети'); }
+}
+
+// Photo drag & drop
+var uploadArea = document.getElementById('photoUploadArea');
+if (uploadArea) {
+  uploadArea.addEventListener('dragover', function(e){ e.preventDefault(); uploadArea.style.borderColor='#C9A84C'; });
+  uploadArea.addEventListener('dragleave', function(){ uploadArea.style.borderColor=''; });
+  uploadArea.addEventListener('drop', function(e){
+    e.preventDefault();
+    uploadArea.style.borderColor='';
+    var files = Array.from(e.dataTransfer.files).filter(function(f){ return f.type.startsWith('image/'); });
+    var input = document.getElementById('photoFileInput');
+    // Manually handle dropped files
+    _selectedFiles = _selectedFiles.concat(files);
+    var previews = document.getElementById('photoPreviews');
+    files.forEach(function(f, i) {
+      var reader = new FileReader();
+      reader.onload = function(e2) {
+        var div = document.createElement('div');
+        div.className = 'mp-photo-preview';
+        div.innerHTML = '<img src="' + e2.target.result + '"><button class="mp-photo-preview-del" onclick="this.parentNode.remove()">✕</button>';
+        previews.appendChild(div);
+      };
+      reader.readAsDataURL(f);
+    });
+  });
+}
+
+// Initial tab from URL
+var _initTab = '{{ tab }}';
+if (_initTab && _initTab !== 'analytics') switchPane(_initTab);
+</script>
+{% endblock %}

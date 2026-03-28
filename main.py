@@ -25,6 +25,7 @@ from web.routes.chats import router as chats_router
 from web.routes.seller import router as seller_router
 from web.routes.music import router as music_router
 from web.routes.notifications import router as notifications_router
+from web.routes.marketplace import router as marketplace_router
 from web.translations import TRANSLATIONS, parse_accept_language, SUPPORTED_LANGS
 from services.heavy_startup import run_heavy_startup
 from web.templates_utils import Jinja2Templates
@@ -418,6 +419,12 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("DB migration v17 notifications skipped: %s", e)
 
+    try:
+        from migrate_v18_marketplace import run as migrate_v18
+        await migrate_v18()
+    except Exception as e:
+        logger.warning("DB migration v18 marketplace skipped: %s", e)
+
     # v15: notifications tables
     try:
         await database.execute("""
@@ -680,3 +687,4 @@ app.include_router(language_router)
 app.include_router(webhooks_router)
 app.include_router(music_router)
 app.include_router(notifications_router)
+app.include_router(marketplace_router)
