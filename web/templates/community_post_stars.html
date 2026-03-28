@@ -14,6 +14,8 @@
 #starsPageLikeBtn{font-size:15px;min-width:4.5em;justify-content:center}
 #starsPageLikeCnt{font-variant-numeric:tabular-nums;font-weight:800}
 .sinp2{width:100%;box-sizing:border-box;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:#e8eaef;border-radius:12px;padding:10px 14px;font-size:15px}
+.nf-stars-search-wrap{position:relative}
+#nf-stars-at-dd{display:none;position:fixed;z-index:2147483000;min-width:240px;max-width:min(94vw,340px);max-height:min(48vh,320px);overflow:auto;border-radius:16px;border:1px solid rgba(61,212,224,.45);background:rgba(10,12,18,.98);box-shadow:0 20px 56px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.06);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);padding:8px;pointer-events:auto}
 .nf-stars-wrap{max-width:min(960px,100%);margin:calc(4rem + 8px) auto 24px;padding:0 12px calc(24px + env(safe-area-inset-bottom,0px))}
 </style>
 <div class="nf-stars-wrap">
@@ -27,11 +29,15 @@
       <a class="btnx nf-stars-actions__open" id="openPostLink" href="/community/post/{{ post.id }}">Открыть пост</a>
     </div>
     <h1>⭐ Кто поставил звезду</h1>
-    <input type="search" id="starSearch" class="sinp2" placeholder="Поиск по имени или id…" autocomplete="off" />
+    <div class="nf-stars-search-wrap">
+      <input type="search" id="starSearch" class="sinp2" placeholder="Поиск по имени или @id среди звёзд…" autocomplete="off" />
+    </div>
+    <div id="nf-stars-at-dd" role="listbox" aria-label="Кто поставил звезду по @id"></div>
   </div>
   <p id="starLoad" style="color:#8a8fa0;font-size:14px">Загрузка…</p>
   <div id="starCanvas" class="nf-stars-grid" style="display:none"></div>
 </div>
+<script src="/static/js/nf-post-likers-at-search.js?v=1"></script>
 <script>
 const POST_ID={{ post.id }};
 const BACK_URL={{ back_url|tojson }};
@@ -71,7 +77,9 @@ function reloadLikers(){
     .catch(function(){ if(ld) ld.textContent='Не удалось загрузить'; });
 }
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+var _likersAtApi=null;
 function render(users){
+  if(_likersAtApi) _likersAtApi.setLikers(users||[]);
   var c=document.getElementById('starCanvas');
   var ld=document.getElementById('starLoad');
   ld.style.display='none';
@@ -95,19 +103,16 @@ function render(users){
     c.appendChild(a);
   });
 }
-function filterStars(q){
-  q=(q||'').trim().toLowerCase();
-  document.querySelectorAll('#starCanvas .nf-stars-card').forEach(function(el){
-    var nm=el.getAttribute('data-name')||'';
-    var id=el.getAttribute('data-id')||'';
-    el.style.display=(!q||nm.indexOf(q)>=0||id.indexOf(q)>=0)?'block':'none';
-  });
-}
-document.getElementById('starSearch').addEventListener('input',function(){ filterStars(this.value); });
 (function(){
   var op=document.getElementById('openPostLink');
   if(op) op.addEventListener('click',function(e){ e.preventDefault(); location.href='/community/post/'+POST_ID+'?back='+encodeURIComponent(BACK_URL||'/community'); });
 })();
+_likersAtApi=typeof NFPostLikersAtSearch!=='undefined'&&NFPostLikersAtSearch.attach({
+  postId:POST_ID,
+  input:document.getElementById('starSearch'),
+  dropdown:document.getElementById('nf-stars-at-dd'),
+  cardsSelector:'#starCanvas .nf-stars-card'
+});
 reloadLikers();
 </script>
 {% endblock %}
