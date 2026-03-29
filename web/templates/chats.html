@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Чаты — NEUROFUNGI AI{% endblock %}
 {% block extra_head %}
-<link rel="stylesheet" href="/static/css/chats-messenger.css?v=10" />
+<link rel="stylesheet" href="/static/css/chats-messenger.css?v=11" />
 {% endblock %}
 {% block body_class %} chats-messenger-page{% endblock %}
 {% block content %}
@@ -23,6 +23,7 @@
     <symbol id="ch-ic-bell-off" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" d="M13.73 21a2 2 0 0 1-3.46 0M18 8A6 6 0 0 0 6 8c0 4-2 7-2 7h14M1 1l22 22"/></symbol>
     <symbol id="ch-ic-search" viewBox="0 0 24 24"><circle fill="none" stroke="currentColor" stroke-width="1.75" cx="11" cy="11" r="8"/><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" d="m21 21-4.35-4.35"/></symbol>
     <symbol id="ch-ic-more" viewBox="0 0 24 24"><circle fill="currentColor" cx="12" cy="12" r="1.5"/><circle fill="currentColor" cx="19" cy="12" r="1.5"/><circle fill="currentColor" cx="5" cy="12" r="1.5"/></symbol>
+    <symbol id="ch-ic-phone" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.44 12.44 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.44 12.44 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></symbol>
   </defs>
 </svg>
 <div id="chatsApp">
@@ -41,7 +42,7 @@
     <div id="chatsThread" class="chats-thread" style="display:none;flex:1;flex-direction:column;min-height:0">
       <div class="chats-thread-head">
         <button type="button" class="chats-mobile-back" id="chatsMobileBack" aria-label="Назад">←</button>
-        <button type="button" class="chats-thread-head-hit" id="chatsThreadHeadHit" aria-label="Профиль группы" disabled>
+        <button type="button" class="chats-thread-head-hit" id="chatsThreadHeadHit" aria-label="Чат" disabled>
           <img class="chats-thread-head-av" id="chatsHeadAv" src="/static/favicon.svg" alt="" />
           <div class="chats-thread-titles">
             <div class="t" id="chatsHeadTitle">—</div>
@@ -109,6 +110,62 @@
       <button type="button" class="chats-send-btn" id="chatsGroupCreate" style="width:100%;margin-top:16px;height:48px;border-radius:12px">
         Создать
       </button>
+    </div>
+  </div>
+</div>
+
+<div class="ch-shell ch-shell--personal" id="chPersonalShell" hidden>
+  <div class="ch-shell-inner ch-shell-inner--personal">
+    <div class="ch-pview" data-ch-pview="hub">
+      <div class="ch-per-topbar">
+        <button type="button" class="ch-shell-back ch-per-back" id="chPersonalClose" aria-label="Закрыть">←</button>
+        <a class="ch-per-profile-link" id="chPersonalOpenProfile" href="#" target="_blank" rel="noopener">Профиль →</a>
+      </div>
+      <div class="ch-per-hero">
+        <img class="ch-per-hero-av" id="chPerHeroAv" src="/static/favicon.svg" alt="" />
+        <div class="ch-per-hero-name" id="chPerName">—</div>
+        <div class="ch-per-hero-status" id="chPerStatus">—</div>
+      </div>
+      <div class="ch-quick-row ch-quick-row--five">
+        <button type="button" class="ch-quick-btn" id="chPerCall" title="Аудио (Jitsi)">
+          <span class="ch-q-ic"><svg class="ch-ic-svg" aria-hidden="true"><use href="#ch-ic-phone"/></svg></span><span>звонок</span>
+        </button>
+        <button type="button" class="ch-quick-btn" id="chPerVideo" title="Видео">
+          <span class="ch-q-ic"><svg class="ch-ic-svg" aria-hidden="true"><use href="#ch-ic-video"/></svg></span><span>видео</span>
+        </button>
+        <button type="button" class="ch-quick-btn" id="chPerMute" title="Без звука: не приходят уведомления о сообщениях от этого человека">
+          <span class="ch-q-ic" id="chPerMuteIcWrap"><svg class="ch-ic-svg" aria-hidden="true"><use href="#ch-ic-bell"/></svg></span><span id="chPerMuteLbl">звук</span>
+        </button>
+        <button type="button" class="ch-quick-btn" id="chPerSearch" title="Поиск в переписке">
+          <span class="ch-q-ic"><svg class="ch-ic-svg" aria-hidden="true"><use href="#ch-ic-search"/></svg></span><span>поиск</span>
+        </button>
+        <button type="button" class="ch-quick-btn" id="chPerMore" title="Страница в сообществе">
+          <span class="ch-q-ic"><svg class="ch-ic-svg" aria-hidden="true"><use href="#ch-ic-more"/></svg></span><span>ещё</span>
+        </button>
+      </div>
+      <div class="ch-per-card" id="chPerCard"></div>
+      <div class="ch-tabs ch-tabs--personal" role="tablist">
+        <button type="button" class="on" data-ch-ptab="posts" id="chTabPerPosts">Публикации</button>
+        <button type="button" data-ch-ptab="media" id="chTabPerMedia">Медиа</button>
+        <button type="button" data-ch-ptab="links" id="chTabPerLinks">Ссылки</button>
+      </div>
+      <div class="ch-tab-body-personal" id="chPerBodyPosts">
+        <div class="ch-per-posts" id="chPerPostsList"></div>
+      </div>
+      <div class="ch-tab-body-personal" id="chPerBodyMedia" hidden>
+        <div class="ch-media-grid" id="chPersonalMediaGrid"></div>
+      </div>
+      <div class="ch-tab-body-personal" id="chPerBodyLinks" hidden>
+        <div class="ch-search-results ch-per-links" id="chPersonalLinksList"></div>
+      </div>
+    </div>
+    <div class="ch-pview" data-ch-pview="search" hidden>
+      <div class="ch-shell-top">
+        <button type="button" class="ch-shell-back" id="chPersonalSearchBack" aria-label="Назад">←</button>
+        <div class="ch-shell-title">Поиск в чате</div>
+      </div>
+      <input type="search" class="ch-field" id="chPersonalSearchInput" placeholder="Слово из сообщения…" autocomplete="off" style="margin:12px" />
+      <div class="ch-search-results" id="chPersonalSearchResults"></div>
     </div>
   </div>
 </div>
@@ -311,5 +368,5 @@
     avatar: {{ (user.avatar or '')|tojson }}
   };
 </script>
-<script src="/static/js/chats-messenger.js?v=10" defer></script>
+<script src="/static/js/chats-messenger.js?v=11" defer></script>
 {% endblock %}

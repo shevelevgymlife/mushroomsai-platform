@@ -128,6 +128,10 @@
   if (el.groupShell && el.groupShell.parentNode) {
     document.body.appendChild(el.groupShell);
   }
+  const personalShell = document.getElementById("chPersonalShell");
+  if (personalShell && personalShell.parentNode) {
+    document.body.appendChild(personalShell);
+  }
   if (el.addMemberBack && el.addMemberBack.parentNode) {
     document.body.appendChild(el.addMemberBack);
   }
@@ -218,13 +222,22 @@
   let addMemberSearchT = null;
   let partSearchT = null;
   let chatSearchT = null;
+  let personalSearchT = null;
   let pendingFocusMessageId = null;
+  let personalPartnerId = null;
 
   function esc(s) {
     if (!s) return "";
     const d = document.createElement("div");
     d.textContent = s;
     return d.innerHTML;
+  }
+
+  function escAttr(s) {
+    return String(s || "")
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;");
   }
 
   function bubbleMsgHtml(text) {
@@ -405,12 +418,12 @@
     el.headAv.src = currentMeta.avatar_url || "/static/favicon.svg";
     applyGroupTheme(currentMeta);
     if (el.headHit) {
+      el.headHit.disabled = false;
+      el.headHit.style.display = "flex";
       if (currentMeta.type === "group") {
-        el.headHit.disabled = false;
-        el.headHit.style.display = "flex";
+        el.headHit.setAttribute("aria-label", "Настройки группы");
       } else {
-        el.headHit.disabled = true;
-        el.headHit.style.display = "flex";
+        el.headHit.setAttribute("aria-label", "Профиль и переписка");
       }
     }
     if (currentMeta.type === "group") {
@@ -804,13 +817,13 @@
     }
   }
 
-  async function loadGroupMedia() {
-    if (!el.mediaGrid || !activeChatId) return;
+  async function loadChatMedia(gridEl, onBeforeOpen) {
+    if (!gridEl || !activeChatId) return;
     const r = await api("/api/chats/" + activeChatId + "/media");
     const d = await r.json();
     if (!r.ok) return;
     const items = d.items || [];
-    el.mediaGrid.innerHTML = "";
+    gridEl.innerHTML = "";
     const byDay = {};
     items.forEach(function (it) {
       const day = it.created_at ? fmtDay(it.created_at) : "—";
@@ -821,7 +834,7 @@
       const h = document.createElement("div");
       h.className = "ch-media-date";
       h.textContent = day;
-      el.mediaGrid.appendChild(h);
+      gridEl.appendChild(h);
       const tiles = document.createElement("div");
       tiles.className = "ch-media-tiles";
       byDay[day].forEach(function (it) {
@@ -829,16 +842,235 @@
         img.src = it.media_url;
         img.alt = "";
         img.onclick = function () {
-          closeGroupShell();
+          if (typeof onBeforeOpen === "function") onBeforeOpen();
           openChat(activeChatId, { focusMessageId: it.message_id });
         };
         tiles.appendChild(img);
       });
-      el.mediaGrid.appendChild(tiles);
+      gridEl.appendChild(tiles);
     });
     if (!items.length) {
-      el.mediaGrid.innerHTML = '<p style="color:#888;font-size:13px;padding:16px">Пока нет фото в чате.</p>';
+      gridEl.innerHTML = '<p style="color:#888;font-size:13px;padding:16px">Пока нет фото в чате.</p>';
     }
+  }
+
+  async function loadGroupMedia() {
+    await loadChatMedia(el.mediaGrid, function () {
+      closeGroupShell();
+    });
+  }
+
+  function chShowPersonalView(name) {
+    if (!personalShell) return;
+    personalShell.querySelectorAll(".ch-pview").forEach(function (v) {
+      v.hidden = v.getAttribute("data-ch-pview") !== name;
+    });
+  }
+
+  function closePersonalShell() {
+    if (!personalShell) return;
+    personalShell.hidden = true;
+    document.body.style.overflow = "";
+    document.body.classList.remove("ch-group-shell-open");
+    chShowPersonalView("hub");
+    const psi = document.getElementById("chPersonalSearchInput");
+    if (psi) psi.value = "";
+    const psr = document.getElementById("chPersonalSearchResults");
+    if (psr) psr.innerHTML = "";
+  }
+
+  function syncPersonalMuteBtn() {
+    const wrap = document.getElementById("chPerMuteIcWrap");
+    const lbl = document.getElementById("chPerMuteLbl");
+    if (!wrap || !lbl || !currentMeta) return;
+    const m = !!currentMeta.mute_notifications;
+    wrap.innerHTML =
+      '<svg class="ch-ic-svg" aria-hidden="true"><use href="' +
+      (m ? "#ch-ic-bell-off" : "#ch-ic-bell") +
+      '"/></svg>';
+    lbl.textContent = m ? "без звука" : "звук";
+  }
+
+  function personalStatusLine(lastSeenIso, partnerId) {
+    const online =
+      currentMeta &&
+      currentMeta.online_user_ids &&
+      partnerId &&
+      currentMeta.online_user_ids.indexOf(partnerId) >= 0;
+    if (online) return { text: "онлайн", online: true };
+    if (!lastSeenIso) return { text: "не в сети", online: false };
+    const t = new Date(lastSeenIso).getTime();
+    if (!Number.isFinite(t)) return { text: "не в сети", online: false };
+    const diff = Date.now() - t;
+    if (diff < 120000) return { text: "был(а) недавно", online: false };
+    if (diff < 86400000) return { text: "был(а) сегодня", online: false };
+    try {
+      return {
+        text: "был(а) " + new Date(lastSeenIso).toLocaleString([], { day: "numeric", month: "short" }),
+        online: false,
+      };
+    } catch (e) {
+      return { text: "не в сети", online: false };
+    }
+  }
+
+  function jitsiDmRoom() {
+    const a = uid;
+    const b = personalPartnerId || (currentMeta && currentMeta.partner && currentMeta.partner.id) || 0;
+    if (!a || !b) return "NeuroFungiDM-0";
+    const lo = Math.min(a, b);
+    const hi = Math.max(a, b);
+    return "NeuroFungiDM-" + lo + "-" + hi;
+  }
+
+  function switchPersonalTab(tab) {
+    const posts = tab === "posts";
+    const media = tab === "media";
+    const links = tab === "links";
+    const tp = document.getElementById("chTabPerPosts");
+    const tm = document.getElementById("chTabPerMedia");
+    const tl = document.getElementById("chTabPerLinks");
+    if (tp) tp.classList.toggle("on", posts);
+    if (tm) tm.classList.toggle("on", media);
+    if (tl) tl.classList.toggle("on", links);
+    const bp = document.getElementById("chPerBodyPosts");
+    const bm = document.getElementById("chPerBodyMedia");
+    const bl = document.getElementById("chPerBodyLinks");
+    if (bp) bp.hidden = !posts;
+    if (bm) bm.hidden = !media;
+    if (bl) bl.hidden = !links;
+    if (media) loadChatMedia(document.getElementById("chPersonalMediaGrid"), closePersonalShell);
+    if (links) loadPersonalLinks();
+  }
+
+  async function loadPersonalLinks() {
+    const box = document.getElementById("chPersonalLinksList");
+    if (!box || !activeChatId) return;
+    box.innerHTML = '<p style="color:#888;padding:12px;font-size:13px">Загрузка…</p>';
+    const r = await api("/api/chats/" + activeChatId + "/messages/links");
+    const d = await r.json().catch(function () {
+      return {};
+    });
+    if (!r.ok) {
+      box.innerHTML = '<p style="color:#888;padding:12px">Не удалось загрузить.</p>';
+      return;
+    }
+    box.innerHTML = "";
+    (d.results || []).forEach(function (hit) {
+      const div = document.createElement("div");
+      div.className = "ch-search-hit";
+      div.innerHTML =
+        "<strong>#" +
+        hit.id +
+        "</strong> · " +
+        esc(hit.sender_name || "") +
+        '<br><span style="font-size:12px;color:#888">' +
+        esc(hit.text || "") +
+        "</span>";
+      div.onclick = function () {
+        closePersonalShell();
+        openChat(activeChatId, { focusMessageId: hit.id });
+      };
+      box.appendChild(div);
+    });
+    if (!box.children.length) {
+      box.innerHTML = '<p style="color:#888;font-size:13px;padding:12px">Нет сообщений со ссылками.</p>';
+    }
+  }
+
+  async function openPersonalShell() {
+    if (!personalShell || !activeChatId || !currentMeta || currentMeta.type !== "personal") return;
+    personalShell.hidden = false;
+    document.body.style.overflow = "hidden";
+    document.body.classList.add("ch-group-shell-open");
+    chShowPersonalView("hub");
+    switchPersonalTab("posts");
+    syncPersonalMuteBtn();
+    const r = await api("/api/chats/" + activeChatId + "/partner-profile");
+    const d = await r.json().catch(function () {
+      return {};
+    });
+    const pmeta = currentMeta.partner || {};
+    personalPartnerId = pmeta.id || null;
+    if (!r.ok) {
+      document.getElementById("chPerName").textContent = pmeta.name || "—";
+      const img = document.getElementById("chPerHeroAv");
+      if (img) {
+        img.src = pmeta.avatar || "/static/favicon.svg";
+        img.onerror = function () {
+          this.src = "/static/favicon.svg";
+        };
+      }
+      const st = personalStatusLine(null, personalPartnerId);
+      const stEl = document.getElementById("chPerStatus");
+      if (stEl) {
+        stEl.textContent = st.text;
+        stEl.classList.toggle("is-online", st.online);
+      }
+      const profLink = document.getElementById("chPersonalOpenProfile");
+      if (profLink && personalPartnerId) profLink.href = "/community/profile/" + personalPartnerId;
+      const card = document.getElementById("chPerCard");
+      if (card) card.innerHTML = '<div style="color:#666">Не удалось загрузить карточку.</div>';
+      const postsEl = document.getElementById("chPerPostsList");
+      if (postsEl) postsEl.innerHTML = "";
+      await loadChatMedia(document.getElementById("chPersonalMediaGrid"), closePersonalShell);
+      await loadPersonalLinks();
+      return;
+    }
+    personalPartnerId = d.partner_id;
+    const disp = d.display_name || (d.profile && d.profile.name) || "Участник";
+    document.getElementById("chPerName").textContent = disp;
+    const img = document.getElementById("chPerHeroAv");
+    if (img) {
+      img.src = (d.profile && d.profile.avatar) || "/static/favicon.svg";
+      img.onerror = function () {
+        this.src = "/static/favicon.svg";
+      };
+    }
+    const st = personalStatusLine(d.last_seen_at, personalPartnerId);
+    const stEl = document.getElementById("chPerStatus");
+    if (stEl) {
+      stEl.textContent = st.text;
+      stEl.classList.toggle("is-online", st.online);
+    }
+    const profLink = document.getElementById("chPersonalOpenProfile");
+    if (profLink && d.profile_url) profLink.href = d.profile_url;
+    const p = d.profile || {};
+    const card = document.getElementById("chPerCard");
+    const bits = [];
+    if (p.bio && String(p.bio).trim()) bits.push('<div class="ch-per-bio">' + esc(String(p.bio).trim()) + "</div>");
+    if (p.profile_link_url && String(p.profile_link_url).trim()) {
+      const lab = (p.profile_link_label || "Ссылка").trim();
+      bits.push(
+        '<div style="margin-top:10px"><span style="color:#888;font-size:12px">' +
+          esc(lab) +
+          '</span><br><a href="' +
+          escAttr(p.profile_link_url) +
+          '" target="_blank" rel="noopener">' +
+          esc(p.profile_link_url) +
+          "</a></div>"
+      );
+    }
+    if (p.profile_thoughts && String(p.profile_thoughts).trim()) {
+      bits.push('<div class="ch-per-thoughts">' + esc(String(p.profile_thoughts).trim()) + "</div>");
+    }
+    if (!bits.length) bits.push('<div style="color:#666;font-size:13px">Нет описания в профиле.</div>');
+    card.innerHTML = bits.join("");
+    const postsEl = document.getElementById("chPerPostsList");
+    postsEl.innerHTML = "";
+    (d.recent_posts || []).forEach(function (rp) {
+      const a = document.createElement("a");
+      a.className = "ch-per-post-row";
+      a.href = "/community/post/" + rp.id;
+      a.innerHTML =
+        "<strong>" + esc(rp.title || "Публикация #" + rp.id) + "</strong><span>" + esc(rp.snippet || "") + "</span>";
+      postsEl.appendChild(a);
+    });
+    if (!(d.recent_posts && d.recent_posts.length)) {
+      postsEl.innerHTML = '<p style="color:#888;font-size:13px;padding:8px">Пока нет одобренных публикаций.</p>';
+    }
+    await loadChatMedia(document.getElementById("chPersonalMediaGrid"), closePersonalShell);
+    await loadPersonalLinks();
   }
 
   function openAddMemberModal() {
@@ -1373,9 +1605,117 @@
 
   if (el.headHit) {
     el.headHit.addEventListener("click", function () {
-      if (!currentMeta || currentMeta.type !== "group") return;
-      openGroupShell("participants");
+      if (!currentMeta) return;
+      if (currentMeta.type === "group") openGroupShell("participants");
+      else if (currentMeta.type === "personal") openPersonalShell();
     });
+  }
+
+  if (personalShell) {
+    document.getElementById("chPersonalClose") &&
+      document.getElementById("chPersonalClose").addEventListener("click", closePersonalShell);
+    document.getElementById("chPersonalSearchBack") &&
+      document.getElementById("chPersonalSearchBack").addEventListener("click", function () {
+        chShowPersonalView("hub");
+      });
+    document.getElementById("chTabPerPosts") &&
+      document.getElementById("chTabPerPosts").addEventListener("click", function () {
+        switchPersonalTab("posts");
+      });
+    document.getElementById("chTabPerMedia") &&
+      document.getElementById("chTabPerMedia").addEventListener("click", function () {
+        switchPersonalTab("media");
+      });
+    document.getElementById("chTabPerLinks") &&
+      document.getElementById("chTabPerLinks").addEventListener("click", function () {
+        switchPersonalTab("links");
+      });
+    const chPerCall = document.getElementById("chPerCall");
+    if (chPerCall) {
+      chPerCall.addEventListener("click", function () {
+        window.open(
+          "https://meet.jit.si/" + encodeURIComponent(jitsiDmRoom()) + "#config.startWithVideoMuted=true",
+          "_blank",
+          "noopener,noreferrer"
+        );
+      });
+    }
+    const chPerVideo = document.getElementById("chPerVideo");
+    if (chPerVideo) {
+      chPerVideo.addEventListener("click", function () {
+        window.open(
+          "https://meet.jit.si/" + encodeURIComponent(jitsiDmRoom()),
+          "_blank",
+          "noopener,noreferrer"
+        );
+      });
+    }
+    const chPerMute = document.getElementById("chPerMute");
+    if (chPerMute) {
+      chPerMute.addEventListener("click", async function () {
+        if (!activeChatId || !currentMeta) return;
+        const next = !currentMeta.mute_notifications;
+        const r = await api("/api/chats/" + activeChatId + "/members/me/mute", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ muted: next }),
+        });
+        if (r.ok) {
+          await loadMeta(activeChatId);
+          syncPersonalMuteBtn();
+          syncMuteBtn();
+        }
+      });
+    }
+    const chPerSearch = document.getElementById("chPerSearch");
+    if (chPerSearch) {
+      chPerSearch.addEventListener("click", function () {
+        chShowPersonalView("search");
+        const inp = document.getElementById("chPersonalSearchInput");
+        if (inp) inp.focus();
+      });
+    }
+    const chPerMore = document.getElementById("chPerMore");
+    if (chPerMore) {
+      chPerMore.addEventListener("click", function () {
+        const a = document.getElementById("chPersonalOpenProfile");
+        if (a && a.href) window.open(a.href, "_blank", "noopener,noreferrer");
+      });
+    }
+    const chPsi = document.getElementById("chPersonalSearchInput");
+    if (chPsi) {
+      chPsi.addEventListener("input", function () {
+        clearTimeout(personalSearchT);
+        personalSearchT = setTimeout(async function () {
+          const box = document.getElementById("chPersonalSearchResults");
+          if (!box || !activeChatId) return;
+          const q = (chPsi.value || "").trim();
+          box.innerHTML = "";
+          if (q.length < 1) return;
+          const r = await api("/api/chats/" + activeChatId + "/messages/search?q=" + encodeURIComponent(q));
+          const d = await r.json().catch(function () {
+            return {};
+          });
+          (d.results || []).forEach(function (hit) {
+            const div = document.createElement("div");
+            div.className = "ch-search-hit";
+            div.innerHTML =
+              "<strong>#" +
+              hit.id +
+              "</strong> · " +
+              esc(hit.sender_name || "") +
+              '<br><span style="font-size:12px;color:#888">' +
+              esc(hit.text || "") +
+              "</span>";
+            div.onclick = function () {
+              closePersonalShell();
+              openChat(activeChatId, { focusMessageId: hit.id });
+            };
+            box.appendChild(div);
+          });
+        }, 320);
+      });
+    }
   }
 
   if (el.addMemberBack) {

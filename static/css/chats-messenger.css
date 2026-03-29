@@ -1337,3 +1337,193 @@ body.ch-group-shell-open #chatsApp {
 .ch-search-hit:hover {
   border-color: rgba(61, 212, 224, 0.35);
 }
+
+/* ——— Личный чат: шапка собеседника ——— */
+.ch-shell--personal .ch-shell-inner--personal {
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.ch-shell-inner--personal > .ch-pview:not([hidden]) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.ch-shell-inner--personal > .ch-pview[hidden] {
+  display: none !important;
+}
+
+.ch-per-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px 0;
+  position: relative;
+  z-index: 2;
+}
+
+.ch-per-back {
+  border: none;
+  background: transparent;
+  color: #fff;
+  font-size: 22px;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+
+.ch-per-back:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.ch-per-profile-link {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+  padding: 6px 10px;
+}
+
+.ch-per-profile-link:hover {
+  color: var(--ch-accent);
+}
+
+.ch-per-hero {
+  text-align: center;
+  padding: 8px 20px 20px;
+  background: linear-gradient(165deg, #5c2a4a 0%, #1a1520 42%, #0a0a0a 100%);
+  border-radius: 0 0 22px 22px;
+  margin: 0 0 12px;
+}
+
+.ch-per-hero-av {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  background: #222;
+}
+
+.ch-per-hero-name {
+  margin-top: 14px;
+  font-size: 20px;
+  font-weight: 800;
+  color: #f5f5f7;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.ch-per-hero-status {
+  margin-top: 6px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.ch-per-hero-status.is-online {
+  color: #6ee7b7;
+}
+
+.ch-quick-row--five {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 10px 14px;
+}
+
+.ch-quick-row--five .ch-quick-btn {
+  flex: 1 1 calc(33% - 8px);
+  min-width: 88px;
+  max-width: 120px;
+}
+
+.ch-per-card {
+  margin: 0 12px 16px;
+  padding: 14px 14px;
+  border-radius: 16px;
+  background: #121212;
+  border: 1px solid var(--ch-border);
+  font-size: 14px;
+  line-height: 1.5;
+  color: #ccc;
+}
+
+.ch-per-card a {
+  color: var(--ch-accent);
+  word-break: break-all;
+}
+
+.ch-per-card .ch-per-thoughts {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 13px;
+  color: #aaa;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ch-tabs--personal {
+  margin: 0 12px 8px;
+}
+
+.ch-tab-body-personal {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 28px;
+}
+
+.ch-per-posts {
+  padding: 0 12px 20px;
+}
+
+.ch-per-post-row {
+  display: block;
+  padding: 12px;
+  margin-bottom: 8px;
+  border-radius: 12px;
+  border: 1px solid var(--ch-border);
+  background: #111;
+  text-decoration: none;
+  color: inherit;
+}
+
+.ch-per-post-row:hover {
+  border-color: rgba(61, 212, 224, 0.35);
+}
+
+.ch-per-post-row strong {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 4px;
+  color: #eee;
+}
+
+.ch-per-post-row span {
+  font-size: 12px;
+  color: #777;
+}
+
+.ch-per-links .ch-search-hit {
+  text-align: left;
+}
+
+.ch-shell--personal .ch-pview[data-ch-pview="search"] {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.ch-shell--personal .ch-pview[data-ch-pview="search"] .ch-field {
+  margin: 12px !important;
+  width: calc(100% - 24px);
+  box-sizing: border-box;
+}

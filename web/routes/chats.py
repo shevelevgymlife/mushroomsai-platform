@@ -20,7 +20,7 @@ from starlette.responses import HTMLResponse
 
 from auth.session import get_current_user, get_user_from_request
 from db.database import database
-from db.models import users
+from db.models import community_posts, community_profiles, users
 from services.in_app_notifications import (
     create_notification,
     load_prefs_for_user,
@@ -38,6 +38,7 @@ from services.legal import legal_acceptance_redirect
 from services.legacy_dm_chat_sync import sync_all_partners_for_user
 from services.messenger_unread import count_chat_unread, mark_chat_viewed
 from web.templates_utils import Jinja2Templates
+from web.routes.public import apply_token_privacy_for_viewer, get_public_user_data
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +64,19 @@ async def _member_row(chat_id: int, user_id: int) -> dict | None:
             "SELECT * FROM chat_members WHERE chat_id = :cid AND user_id = :uid"
         ).bindparams(cid=chat_id, uid=user_id)
     )
+
+
+async def _personal_partner_user_id(chat_id: int, viewer_id: int) -> int | None:
+    crow = await database.fetch_one(sa.text("SELECT type FROM chats WHERE id = :id"), {"id": chat_id})
+    if not crow or (crow.get("type") or "") != "personal":
+        return None
+    row = await database.fetch_one(
+        sa.text(
+            "SELECT user_id FROM chat_members WHERE chat_id = :cid AND user_id <> :uid LIMIT 1"
+        ),
+        {"cid": chat_id, "uid": viewer_id},
+    )
+    return int(row["user_id"]) if row and row.get("user_id") is not None else None
 
 
 async def _find_personal_chat(uid: int, oid: int) -> int | None:
@@ -1034,10 +1048,13 @@ async def api_send_message(request: Request, chat_id: int, body: SendMessageBody
                 prev = "[медиа]"
             if not prev:
                 prev = " "
-            link = f"/chats?open_user={uid}"
+            link = f"/chats?open_chat={chat_id}"
             for pr in peers:
                 peer_id = int(pr["user_id"] or 0)
                 if peer_id <= 0:
+                    continue
+                peer_mem = await _member_row(chat_id, peer_id)
+                if peer_mem and bool(peer_mem.get("mute_notifications")):
                     continue
                 await create_notification(
                     recipient_id=peer_id,
@@ -1323,6 +1340,135 @@ async def api_messages_search(request: Request, chat_id: int, q: str = ""):
                     "text": (r.get("text") or "")[:240],
                     "created_at": r["created_at"].isoformat() if r.get("created_at") else None,
                     "sender_name": r.get("sender_name"),
+                }
+                for r in rows
+            ]
+        }
+    )
+
+
+@router.get("/api/chats/{chat_id}/partner-profile")
+async def api_chat_partner_profile(request: Request, chat_id: int):
+    """Карточка собеседника для личного чата (шапка переписки)."""
+    user = await _require_user(request)
+    if not user:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    uid = _eff_uid(user)
+    if not await _member_row(chat_id, uid):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    partner_id = await _personal_partner_user_id(chat_id, uid)
+    if partner_id is None:
+        return JSONResponse({"error": "not_personal"}, status_code=400)
+    raw = await database.fetch_one(users.select().where(users.c.id == partner_id))
+    if not raw:
+        return JSONResponse({"error": "not_found"}, status_code=404)
+    if raw.get("primary_user_id"):
+        primary = await database.fetch_one(
+            users.select().where(users.c.id == int(raw["primary_user_id"]))
+        )
+        if primary:
+            raw = primary
+            partner_id = int(primary["id"])
+    cpro = await database.fetch_one(
+        sa.select(community_profiles.c.display_name, community_profiles.c.bio).where(
+            community_profiles.c.user_id == partner_id
+        )
+    )
+    profile = get_public_user_data(dict(raw))
+    apply_token_privacy_for_viewer(profile, uid, partner_id)
+    display_name = profile.get("name") or f"User {partner_id}"
+    if cpro and (cpro.get("display_name") or "").strip():
+        display_name = (cpro.get("display_name") or "").strip()
+    if cpro and cpro.get("bio") and not (profile.get("bio") or "").strip():
+        profile["bio"] = cpro.get("bio")
+    post_count = await database.fetch_val(
+        sa.select(sa.func.count())
+        .select_from(community_posts)
+        .where(community_posts.c.user_id == partner_id)
+        .where(community_posts.c.approved == True)
+    ) or 0
+    post_rows = await database.fetch_all(
+        sa.select(
+            community_posts.c.id,
+            community_posts.c.title,
+            community_posts.c.content,
+            community_posts.c.image_url,
+            community_posts.c.created_at,
+        )
+        .where(community_posts.c.user_id == partner_id)
+        .where(community_posts.c.approved == True)
+        .order_by(community_posts.c.created_at.desc())
+        .limit(20)
+    )
+    recent_posts = []
+    for pr in post_rows:
+        body = (pr.get("content") or "")[:160]
+        recent_posts.append(
+            {
+                "id": int(pr["id"]),
+                "title": (pr.get("title") or "")[:200],
+                "snippet": body,
+                "image_url": pr.get("image_url"),
+                "created_at": pr["created_at"].isoformat() if pr.get("created_at") else None,
+            }
+        )
+    ls_raw = await database.fetch_one(
+        sa.select(users.c.last_seen_at).where(users.c.id == partner_id)
+    )
+    last_seen_at = None
+    if ls_raw and ls_raw.get("last_seen_at") is not None:
+        v = ls_raw["last_seen_at"]
+        last_seen_at = v.isoformat() if hasattr(v, "isoformat") else None
+    return JSONResponse(
+        {
+            "partner_id": partner_id,
+            "display_name": display_name,
+            "profile": profile,
+            "post_count": int(post_count),
+            "recent_posts": recent_posts,
+            "profile_url": f"/community/profile/{partner_id}",
+            "last_seen_at": last_seen_at,
+        }
+    )
+
+
+@router.get("/api/chats/{chat_id}/messages/links")
+async def api_chat_messages_links(request: Request, chat_id: int):
+    """Сообщения чата, в тексте которых есть ссылка (http, www., t.me/…)."""
+    user = await _require_user(request)
+    if not user:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    uid = _eff_uid(user)
+    if not await _member_row(chat_id, uid):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    rows = await database.fetch_all(
+        sa.text(
+            """
+            SELECT m.id, m.text, m.created_at, m.user_id, u.name AS sender_name
+            FROM chat_messages m
+            JOIN users u ON u.id = m.user_id
+            WHERE m.chat_id = :cid AND m.is_deleted = false
+              AND m.text IS NOT NULL AND TRIM(m.text) <> ''
+              AND (
+                COALESCE(m.text, '') ~* 'https?://'
+                OR COALESCE(m.text, '') ~* 'www\\.'
+                OR COALESCE(m.text, '') ~* 't\\.me/'
+              )
+            ORDER BY m.id DESC
+            LIMIT 200
+            """
+        ),
+        {"cid": chat_id},
+    )
+    return JSONResponse(
+        {
+            "results": [
+                {
+                    "id": int(r["id"]),
+                    "text": (r.get("text") or "")[:400],
+                    "created_at": r["created_at"].isoformat() if r.get("created_at") else None,
+                    "sender_name": r.get("sender_name"),
+                    "user_id": int(r["user_id"]),
                 }
                 for r in rows
             ]
