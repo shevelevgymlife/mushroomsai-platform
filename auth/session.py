@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from jose import jwt, JWTError
 from config import settings
@@ -55,6 +55,8 @@ async def attach_subscription_effective(u: dict) -> None:
     if not row:
         u["start_trial_active"] = False
         u["can_claim_start_trial"] = False
+        u["drawer_trial_countdown"] = False
+        u["start_trial_until_iso"] = None
         return
     now = datetime.utcnow()
     tu = row.get("start_trial_until")
@@ -65,6 +67,15 @@ async def attach_subscription_effective(u: dict) -> None:
         row.get("subscription_end") and row["subscription_end"] > now and sp in ("start", "pro", "maxi")
     )
     u["can_claim_start_trial"] = role not in ("admin", "moderator") and not claimed and not paid_active
+
+    # Бургер: обратный отсчёт пробного «Старт» (без активной оплаты)
+    if tu and tu > now and not paid_active:
+        u["drawer_trial_countdown"] = True
+        tu_utc = tu.replace(tzinfo=timezone.utc) if tu.tzinfo is None else tu.astimezone(timezone.utc)
+        u["start_trial_until_iso"] = tu_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
+    else:
+        u["drawer_trial_countdown"] = False
+        u["start_trial_until_iso"] = None
 
 
 async def get_user_from_request(request) -> Optional[dict]:

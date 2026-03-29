@@ -83,6 +83,20 @@
     {% if user.role in ['admin', 'moderator'] %}
     <button type="button" class="ig-drawer-item" onclick="closeAppGlobalDrawer();window.location='/admin'" style="color:#f87171"><span class="e">{{ ico('shield') }}</span><span class="lbl">{{ 'Администратор' if user.role == 'admin' else 'Модератор' }}</span></button>
     {% endif %}
+    {% if user.get('drawer_trial_countdown') and user.get('start_trial_until_iso') %}
+    <div id="drawerTrialCountdown" class="ig-drawer-trial-banner" data-until="{{ user.start_trial_until_iso }}" role="status" aria-live="polite">
+      <div class="ig-drawer-trial-banner__head">
+        <span class="ig-drawer-trial-banner__title">Пробный «Старт»</span>
+      </div>
+      <p class="ig-drawer-trial-banner__sub" id="drawerTrialSub">Осталось до окончания доступа</p>
+      <div class="ig-drawer-trial-banner__grid" aria-hidden="true">
+        <div class="ig-drawer-trial-chip"><span class="ig-drawer-trial-chip__val" id="drawerTrialD">—</span><span class="ig-drawer-trial-chip__unit">дн</span></div>
+        <div class="ig-drawer-trial-chip"><span class="ig-drawer-trial-chip__val" id="drawerTrialH">—</span><span class="ig-drawer-trial-chip__unit">ч</span></div>
+        <div class="ig-drawer-trial-chip"><span class="ig-drawer-trial-chip__val" id="drawerTrialM">—</span><span class="ig-drawer-trial-chip__unit">мин</span></div>
+      </div>
+      <a href="/subscriptions" class="ig-drawer-trial-banner__cta" onclick="closeAppGlobalDrawer()">Перейти к подписке</a>
+    </div>
+    {% endif %}
   </div>
 </aside>
 {% if user.get('can_claim_start_trial') %}

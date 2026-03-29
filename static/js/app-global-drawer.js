@@ -68,11 +68,70 @@
     } catch (e) {}
   }
 
+  var _drawerTrialTimer = null;
+
+  function stopDrawerTrialCountdown() {
+    if (_drawerTrialTimer) {
+      clearInterval(_drawerTrialTimer);
+      _drawerTrialTimer = null;
+    }
+  }
+
+  function updateDrawerTrialCountdown() {
+    var el = document.getElementById("drawerTrialCountdown");
+    if (!el) return;
+    var iso = el.getAttribute("data-until");
+    if (!iso) return;
+    var end = Date.parse(iso);
+    if (!end || isNaN(end)) return;
+    var dEl = document.getElementById("drawerTrialD");
+    var hEl = document.getElementById("drawerTrialH");
+    var mEl = document.getElementById("drawerTrialM");
+    var sub = document.getElementById("drawerTrialSub");
+    if (!dEl || !hEl || !mEl) return;
+
+    var ms = end - Date.now();
+    if (ms <= 0) {
+      dEl.textContent = "0";
+      hEl.textContent = "0";
+      mEl.textContent = "0";
+      if (sub) sub.textContent = "Пробный период завершён — доступ как на бесплатном тарифе";
+      if (!window.__trialCountdownExpiredReload) {
+        window.__trialCountdownExpiredReload = true;
+        setTimeout(function () {
+          try {
+            location.reload();
+          } catch (e) {}
+        }, 1200);
+      }
+      stopDrawerTrialCountdown();
+      return;
+    }
+
+    var sec = Math.floor(ms / 1000);
+    var d = Math.floor(sec / 86400);
+    var h = Math.floor((sec % 86400) / 3600);
+    var m = Math.floor((sec % 3600) / 60);
+    dEl.textContent = String(d);
+    hEl.textContent = String(h);
+    mEl.textContent = String(m);
+    if (sub) sub.textContent = "Осталось до окончания доступа";
+  }
+
+  function startDrawerTrialCountdownIfNeeded() {
+    stopDrawerTrialCountdown();
+    var el = document.getElementById("drawerTrialCountdown");
+    if (!el) return;
+    updateDrawerTrialCountdown();
+    _drawerTrialTimer = setInterval(updateDrawerTrialCountdown, 30000);
+  }
+
   function closeAppGlobalDrawer() {
     var dr = document.getElementById("appGlobalDrawer");
     var bd = document.getElementById("appGlobalDrawerBackdrop");
     if (dr) dr.classList.remove("open");
     if (bd) bd.classList.remove("on");
+    stopDrawerTrialCountdown();
     try {
       document.body.style.overflow = "";
     } catch (e) {}
@@ -88,6 +147,7 @@
     dr.classList.add("open");
     bd.classList.add("on");
     try { refreshFreeAiDrawerStatus(); } catch (e) {}
+    try { startDrawerTrialCountdownIfNeeded(); } catch (e) {}
     try {
       document.body.style.overflow = "hidden";
     } catch (e) {}
@@ -105,6 +165,9 @@
     bd.classList.toggle("on", willOpen);
     if (willOpen) {
       try { refreshFreeAiDrawerStatus(); } catch (e) {}
+      try { startDrawerTrialCountdownIfNeeded(); } catch (e) {}
+    } else {
+      stopDrawerTrialCountdown();
     }
     try {
       document.body.style.overflow = willOpen ? "hidden" : "";
