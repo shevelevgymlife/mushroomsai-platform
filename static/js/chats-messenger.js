@@ -309,7 +309,7 @@
       bubble.className = "chats-bubble";
       if (!mine) {
         const nm = document.createElement("div");
-        nm.style.cssText = "font-size:12px;color:#C9A84C;margin-bottom:6px;font-weight:600";
+        nm.style.cssText = "font-size:12px;color:#3dd4e0;margin-bottom:6px;font-weight:600";
         nm.textContent = m.sender_name || "Участник";
         bubble.appendChild(nm);
       }
@@ -368,7 +368,7 @@
       esc(m.sender_name || "") +
       "</strong> — " +
       esc((m.text || "").slice(0, 80)) +
-      " <button type=\"button\" id=\"chatsReplyCancel2\" style=\"float:right;background:none;border:none;color:#C9A84C;cursor:pointer\">✕</button>";
+      " <button type=\"button\" id=\"chatsReplyCancel2\" style=\"float:right;background:none;border:none;color:#3dd4e0;cursor:pointer\">✕</button>";
     document.getElementById("chatsReplyCancel2").onclick = clearReply;
   }
 

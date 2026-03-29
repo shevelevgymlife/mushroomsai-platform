@@ -1,0 +1,198 @@
+/**
+ * Единый стиль экранов настроек аккаунта и смежных страниц.
+ * Акцент только бирюза (--neo-cyan), без золотых оттенков.
+ */
+.accneo-wrap {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 16px 14px calc(80px + env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+}
+.accneo-title {
+  font-size: clamp(20px, 5vw, 26px);
+  font-weight: 700;
+  color: #e8e8e8;
+  margin: 8px 0 24px;
+  letter-spacing: -0.02em;
+}
+.accneo-title--sub {
+  font-size: clamp(18px, 4.5vw, 22px);
+  margin: 0 0 8px;
+}
+.accneo-lead {
+  font-size: 13px;
+  color: #888;
+  margin: 0 0 18px;
+  line-height: 1.5;
+}
+.accneo-back {
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0 0 16px;
+}
+.accneo-back a {
+  color: var(--neo-cyan, #3dd4e0);
+  text-decoration: none;
+}
+.accneo-back a:hover {
+  color: #7ef0f5;
+}
+.accneo-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.accneo-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 16px 22px;
+  border-radius: 18px;
+  border: 1px solid rgba(61, 212, 224, 0.65);
+  background: rgba(8, 10, 16, 0.25);
+  color: var(--neo-cyan, #3dd4e0);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  font-family: inherit;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, color 0.2s;
+}
+.accneo-btn:hover {
+  background: rgba(61, 212, 224, 0.1);
+  border-color: rgba(94, 232, 240, 0.95);
+  color: #5ee8f0;
+  box-shadow: 0 0 28px rgba(61, 212, 224, 0.12);
+}
+.accneo-panel {
+  margin-bottom: 18px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: rgba(8, 10, 16, 0.45);
+  border: 1px solid rgba(61, 212, 224, 0.22);
+  box-sizing: border-box;
+}
+.accneo-panel--strong {
+  border-color: rgba(61, 212, 224, 0.38);
+  background: rgba(61, 212, 224, 0.06);
+}
+.accneo-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--neo-cyan, #3dd4e0);
+  margin: 0 0 14px;
+  opacity: 0.95;
+}
+.accneo-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #ccc;
+  margin-bottom: 14px;
+  min-width: 0;
+}
+.accneo-row:last-child {
+  margin-bottom: 0;
+}
+.accneo-row span {
+  min-width: 0;
+  line-height: 1.35;
+}
+.accneo-row input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: var(--neo-cyan, #3dd4e0);
+}
+.accneo-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 4px 0 8px;
+}
+.accneo-toggle-label {
+  font-size: 14px;
+  color: #ccc;
+}
+.accneo-toggle-sub {
+  font-size: 11px;
+  color: #555;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+.accneo-toggle {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 26px;
+  flex-shrink: 0;
+}
+.accneo-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.accneo-toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  border-radius: 26px;
+  background: #333;
+  transition: 0.3s;
+}
+.accneo-toggle-slider::before {
+  content: "";
+  position: absolute;
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: 0.3s;
+}
+.accneo-toggle input:checked + .accneo-toggle-slider {
+  background: var(--neo-cyan, #3dd4e0);
+}
+.accneo-toggle input:checked + .accneo-toggle-slider::before {
+  transform: translateX(22px);
+}
+.accneo-primary {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px 22px;
+  border: none;
+  border-radius: 18px;
+  background: var(--neo-cyan, #3dd4e0);
+  color: #070708;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  transition: opacity 0.2s, box-shadow 0.2s;
+}
+.accneo-primary:hover {
+  opacity: 0.92;
+  box-shadow: 0 0 24px rgba(61, 212, 224, 0.35);
+}
+.accneo-foot {
+  margin-top: 22px;
+  font-size: 13px;
+  color: #666;
+}
+.accneo-foot a {
+  color: var(--neo-cyan, #3dd4e0);
+  text-decoration: none;
+}
+.accneo-foot a:hover {
+  color: #7ef0f5;
+}

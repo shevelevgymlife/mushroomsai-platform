@@ -58,15 +58,15 @@
       <p style="font-size:11px;color:#a8a29e;margin:0 0 12px;line-height:1.45">Три большие карточки в карусели сверху: «Обо мне», криптоблок с токенами из кошелька, соцсети. Отключённые блоки не показываются гостям.</p>
       <input type="hidden" name="profile_slide_order" id="profileSlideOrderInp" value="{{ profile_cards.slide_order|join(',') }}">
       <div style="margin-bottom:14px">
-        <div style="font-size:12px;font-weight:700;color:#fde68a;margin-bottom:6px">Порядок слайдов (свайп)</div>
+        <div style="font-size:12px;font-weight:700;color:#9ad8de;margin-bottom:6px">Порядок слайдов (свайп)</div>
         <p style="font-size:11px;color:#a8a29e;margin:0 0 10px;line-height:1.45">Какой блок открывается первым, вторым, третьим. Снятые галочками блоки в карусели пропускаются.</p>
         <div id="profileSlideOrderRows" style="display:flex;flex-direction:column;gap:8px">
           {% for key in profile_cards.slide_order %}
           <div class="pe-slide-row" data-slide-key="{{ key }}" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:10px;background:rgba(0,0,0,.32);border:1px solid rgba(255,255,255,.12)">
             <span class="pe-slide-label" style="font-size:13px;color:#f5f5f4;font-weight:600">{% if key == 'about' %}Обо мне{% elif key == 'crypto' %}Токены и валидаторы{% else %}Соцсети{% endif %}</span>
             <span style="display:flex;gap:6px;flex-shrink:0">
-              <button type="button" class="pe-sbtn" data-dir="up" style="min-width:40px;padding:6px 10px;border-radius:8px;border:1px solid rgba(201,168,76,.5);background:rgba(201,168,76,.12);color:#fde68a;font-size:14px;line-height:1;cursor:pointer" title="Выше">↑</button>
-              <button type="button" class="pe-sbtn" data-dir="down" style="min-width:40px;padding:6px 10px;border-radius:8px;border:1px solid rgba(201,168,76,.5);background:rgba(201,168,76,.12);color:#fde68a;font-size:14px;line-height:1;cursor:pointer" title="Ниже">↓</button>
+              <button type="button" class="pe-sbtn" data-dir="up" style="min-width:40px;padding:6px 10px;border-radius:8px;border:1px solid rgba(61,212,224,.45);background:rgba(61,212,224,.1);color:#7ef0f5;font-size:14px;line-height:1;cursor:pointer" title="Выше">↑</button>
+              <button type="button" class="pe-sbtn" data-dir="down" style="min-width:40px;padding:6px 10px;border-radius:8px;border:1px solid rgba(61,212,224,.45);background:rgba(61,212,224,.1);color:#7ef0f5;font-size:14px;line-height:1;cursor:pointer" title="Ниже">↓</button>
             </span>
           </div>
           {% endfor %}

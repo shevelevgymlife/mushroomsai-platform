@@ -225,12 +225,12 @@
   margin-top: 4px;
 }
 
-/* ─── Страница поста: премиум PostCard (тёмный лес + неон turquoise / gold) ─── */
+/* ─── Страница поста: премиум PostCard (тёмный лес + неон turquoise / orchid) ─── */
 .nf-pc-page {
   --nf-pc-aqua: #00f5d4;
   --nf-pc-aqua-dim: rgba(0, 245, 212, 0.35);
-  --nf-pc-gold: #ffd700;
-  --nf-pc-gold-dim: rgba(255, 215, 0, 0.4);
+  --nf-pc-accent: #ff66d0;
+  --nf-pc-accent-dim: rgba(255, 102, 208, 0.42);
   --nf-pc-bg: #0a0f0a;
   min-height: 100vh;
   min-height: 100dvh;
@@ -276,7 +276,7 @@
   border: 1px solid rgba(0, 245, 212, 0.12);
   box-shadow: 0 4px 0 1px rgba(0, 0, 0, 0.35),
     0 24px 64px rgba(0, 0, 0, 0.55),
-    0 0 0 1px rgba(255, 215, 0, 0.06) inset,
+    0 0 0 1px rgba(61, 212, 224, 0.08) inset,
     0 0 48px rgba(0, 245, 212, 0.06);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Inter", sans-serif;
 }
@@ -293,7 +293,7 @@
   font-weight: 800;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  background: linear-gradient(120deg, #e8fff8 0%, var(--nf-pc-aqua) 42%, var(--nf-pc-gold) 100%);
+  background: linear-gradient(120deg, #e8fff8 0%, var(--nf-pc-aqua) 42%, var(--nf-pc-accent) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -303,15 +303,15 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  border: 1px solid var(--nf-pc-gold-dim);
-  background: radial-gradient(circle at 30% 30%, rgba(255, 215, 0, 0.2), rgba(10, 14, 12, 0.95));
-  color: var(--nf-pc-gold);
+  border: 1px solid var(--nf-pc-accent-dim);
+  background: radial-gradient(circle at 30% 30%, rgba(255, 102, 208, 0.22), rgba(10, 14, 12, 0.95));
+  color: #ffc8ef;
   font-size: 18px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 20px rgba(255, 215, 0, 0.15), 0 0 24px rgba(0, 245, 212, 0.08);
+  box-shadow: 0 0 20px rgba(255, 102, 208, 0.14), 0 0 24px rgba(0, 245, 212, 0.08);
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   -webkit-tap-highlight-color: transparent;
 }
@@ -445,15 +445,15 @@
 .nf-pc-pill:active {
   transform: scale(0.95);
 }
-.nf-pc-pill--gold {
-  border: 1px solid var(--nf-pc-gold-dim);
-  background: linear-gradient(165deg, rgba(255, 215, 0, 0.12), rgba(12, 14, 12, 0.92));
-  color: #fff8e0;
-  box-shadow: 0 0 20px rgba(255, 215, 0, 0.08);
+.nf-pc-pill--accent {
+  border: 1px solid var(--nf-pc-accent-dim);
+  background: linear-gradient(165deg, rgba(255, 102, 208, 0.14), rgba(12, 14, 12, 0.92));
+  color: #ffe8f8;
+  box-shadow: 0 0 20px rgba(255, 102, 208, 0.1);
 }
-.nf-pc-pill--gold:hover {
-  box-shadow: 0 0 28px rgba(255, 215, 0, 0.2);
-  border-color: var(--nf-pc-gold);
+.nf-pc-pill--accent:hover {
+  box-shadow: 0 0 28px rgba(255, 102, 208, 0.22);
+  border-color: var(--nf-pc-accent);
 }
 .nf-pc-pill--aqua {
   border: 1px solid var(--nf-pc-aqua-dim);

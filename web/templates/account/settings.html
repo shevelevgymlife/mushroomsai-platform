@@ -1,74 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Настройки — NEUROFUNGI AI{% endblock %}
-{% block extra_head %}
-<style>
-/* Хаб настроек: тёмный фон, контуры и текст бирюзовые (#3dd4e0) — без золотых заголовков */
-.s-wrap {
-  max-width: 520px;
-  margin: 0 auto;
-  padding: 16px 14px calc(80px + env(safe-area-inset-bottom, 0px));
-}
-.s-wrap h1 {
-  font-size: clamp(20px, 5vw, 26px);
-  font-weight: 700;
-  color: #e8e8e8;
-  margin: 8px 0 24px;
-  letter-spacing: -0.02em;
-}
-.s-hub-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.s-hub-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  box-sizing: border-box;
-  padding: 16px 22px;
-  border-radius: 18px;
-  border: 1px solid rgba(61, 212, 224, 0.65);
-  background: rgba(8, 10, 16, 0.25);
-  color: #3dd4e0;
-  font-size: 15px;
-  font-weight: 600;
-  text-decoration: none;
-  font-family: inherit;
-  text-align: center;
-  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, color 0.2s;
-}
-.s-hub-btn:hover {
-  background: rgba(61, 212, 224, 0.1);
-  border-color: rgba(94, 232, 240, 0.95);
-  color: #5ee8f0;
-  box-shadow: 0 0 28px rgba(61, 212, 224, 0.12);
-}
-.s-hub-back {
-  margin-top: 28px;
-  font-size: 14px;
-  font-weight: 500;
-}
-.s-hub-back a {
-  color: #3dd4e0;
-  text-decoration: none;
-}
-.s-hub-back a:hover {
-  color: #7ef0f5;
-}
-</style>
-{% endblock %}
-
 {% block content %}
-<div class="s-wrap">
-  <h1>Настройки</h1>
+<div class="accneo-wrap">
+  <h1 class="accneo-title">Настройки</h1>
 
-  <div class="s-hub-stack">
-    <a href="/account/profile-edit" class="s-hub-btn">Редактировать профиль</a>
-    <a href="/account/style" class="s-hub-btn">Настройка стиля</a>
-    <a href="/account/settings/sound-notifications" class="s-hub-btn">Звук и уведомления</a>
+  <div class="accneo-stack">
+    <a href="/account/profile-edit" class="accneo-btn">Редактировать профиль</a>
+    <a href="/account/style" class="accneo-btn">Настройка стиля</a>
+    <a href="/account/settings/sound-notifications" class="accneo-btn">Звук и уведомления</a>
   </div>
 
-  <p class="s-hub-back"><a href="/community">← В ленту</a></p>
+  <p class="accneo-back" style="margin-top:28px"><a href="/community">← В ленту</a></p>
 </div>
 {% endblock %}

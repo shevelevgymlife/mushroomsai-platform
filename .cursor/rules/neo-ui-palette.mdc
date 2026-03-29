@@ -1,0 +1,29 @@
+---
+description: Единая нео-палитра сайта (бирюза), без золотых акцентов
+globs: web/templates/**/*.html, static/css/**/*.css
+alwaysApply: false
+---
+
+# Визуальный язык NEUROFUNGI / MushroomsAI
+
+## Акцент и ссылки
+
+- **Основной акцент:** `#3dd4e0` (бирюза / neo-cyan). CSS-переменная: `var(--neo-cyan, #3dd4e0)` там, где она объявлена.
+- **Второй акцент (градиенты, кнопки):** `#b85fa3`, `#ff66d0` — допустимы рядом с бирюзой.
+- **Не использовать** для UI: `#C9A84C`, «золото», жёлто-коричневые кнопки и рамки, `#ffd700` как акцент текста/кнопок.
+
+## Настройки аккаунта и смежные экраны
+
+- Подключён глобально: `/static/css/account-neo-hub.css`.
+- Классы: `accneo-wrap`, `accneo-title`, `accneo-back`, `accneo-stack`, `accneo-btn`, `accneo-panel`, `accneo-eyebrow`, `accneo-row`, `accneo-toggle`, `accneo-primary`, `accneo-foot`.
+- Новые страницы в `web/templates/account/` — на этих классах, без отдельных золотых тем.
+
+## Tailwind в админке
+
+- Классы `text-gold`, `border-gold/*`, `bg-gold/*` в проекте **переопределены** в `static/css/design-system.css` на бирюзу — их можно оставлять в разметке, но **не** добавлять сырой hex золота в инлайн-стилях.
+
+## Чекбоксы и переключатели
+
+- `accent-color: #3dd4e0` (или классы из `accneo-*`).
+
+Новые шаблоны и блоки — только в этой палитре, без исключений «на один экран».
