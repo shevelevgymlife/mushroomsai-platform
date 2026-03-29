@@ -78,6 +78,10 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     if text in (BTN_AI, BTN_AI_EXIT, BTN_COMMUNITY_POST):
         return
 
+    # Мастер «Пост в сообщество» — не показывать подсказку про нейросеть (текст обрабатывает мастер или игнорируется)
+    if context.user_data.get("cp_post_wizard"):
+        return
+
     if not context.user_data.get("tg_ai_mode"):
         await update.message.reply_text(
             "💬 <b>Нейросеть не подключена.</b>\n\n"

@@ -27,14 +27,76 @@ CP_BODY = 2
 CP_PHOTO = 3
 CP_CONFIRM = 4
 
+# Тексты кнопок нижней клавиатуры — в мастере поста не считаем их вводом шага
+_WIZARD_BLOCK_TEXTS = frozenset(
+    {
+        "🤖 Задать вопрос AI",
+        "❌ Выйти из режима AI",
+        "📤 Пост в сообщество",
+        "🛍 Маркет плейс",
+        "🌐 Сообщество",
+        "🌍 Веб версия",
+        "🔒 Безопасность",
+        "🆘 Тех. поддержка",
+    }
+)
+
 
 def _esc(s: str) -> str:
     return html.escape((s or "").strip(), quote=False)
 
 
 def _clear_draft(context: ContextTypes.DEFAULT_TYPE) -> None:
-    for k in ("cp_title", "cp_body", "cp_image_url", "cp_author_id", "cp_author_name"):
+    for k in (
+        "cp_title",
+        "cp_body",
+        "cp_image_url",
+        "cp_author_id",
+        "cp_author_name",
+        "cp_post_wizard",
+    ):
         context.user_data.pop(k, None)
+
+
+def _wizard_exit_markup() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [[InlineKeyboardButton("🏠 Выйти в общий режим", callback_data="cp_exit_main")]]
+    )
+
+
+def _kb_photo_step() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton("🚫 Без фото", callback_data="cp_skip_photo")],
+            [InlineKeyboardButton("🏠 Выйти в общий режим", callback_data="cp_exit_main")],
+        ]
+    )
+
+
+def _kb_confirm_step() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton("✅ Отправить", callback_data="cp_send")],
+            [InlineKeyboardButton("❌ Отмена", callback_data="cp_cancel")],
+            [InlineKeyboardButton("🏠 Выйти в общий режим", callback_data="cp_exit_main")],
+        ]
+    )
+
+
+async def _reject_menu_button_during_wizard(
+    update: Update,
+    reply_markup: InlineKeyboardMarkup,
+) -> bool:
+    if not update.message:
+        return False
+    t = (update.message.text or "").strip()
+    if t not in _WIZARD_BLOCK_TEXTS:
+        return False
+    await update.message.reply_text(
+        "Сейчас активен только режим «Пост в сообщество». Завершите шаги, нажмите «🏠 Выйти в общий режим» или /cancel.",
+        reply_markup=reply_markup,
+    )
+    return True
 
 
 def _preview_caption(title: str, body: str) -> str:
@@ -69,12 +131,16 @@ async def start_wizard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     _clear_draft(context)
     context.user_data["cp_author_id"] = int(row.get("primary_user_id") or row["id"])
     context.user_data["cp_author_name"] = (row.get("name") or "").strip() or "Участник"
+    context.user_data["cp_post_wizard"] = True
 
     await update.message.reply_text(
         "📝 <b>Публикация в сообщество</b>\n\n"
+        "Сейчас активен <b>только этот режим</b>: сообщения не уходят в нейросеть и не обрабатываются как обычный чат. "
+        "Вопросы AI — после выхода и кнопки «🤖 Задать вопрос AI».\n\n"
         "Шаг 1 из 3: пришлите <b>название</b> поста одним сообщением.\n\n"
-        "/cancel — отменить.",
+        "/cancel — отменить публикацию.",
         parse_mode="HTML",
+        reply_markup=_wizard_exit_markup(),
     )
     return CP_TITLE
 
@@ -82,9 +148,14 @@ async def start_wizard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 async def receive_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not update.message:
         return CP_TITLE
+    if await _reject_menu_button_during_wizard(update, _wizard_exit_markup()):
+        return CP_TITLE
     t = (update.message.text or "").strip()
     if len(t) < 1:
-        await update.message.reply_text("Нужно непустое название. Пришлите текст или /cancel.")
+        await update.message.reply_text(
+            "Нужно непустое название. Пришлите текст или /cancel.",
+            reply_markup=_wizard_exit_markup(),
+        )
         return CP_TITLE
     if len(t) > 200:
         t = t[:200]
@@ -93,6 +164,7 @@ async def receive_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         "Шаг 2 из 3: пришлите <b>текст поста</b> (описание).\n\n"
         "Минимум 2 символа.\n/cancel — отменить.",
         parse_mode="HTML",
+        reply_markup=_wizard_exit_markup(),
     )
     return CP_BODY
 
@@ -100,25 +172,32 @@ async def receive_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 async def receive_body(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not update.message:
         return CP_BODY
+    if await _reject_menu_button_during_wizard(update, _wizard_exit_markup()):
+        return CP_BODY
     t = (update.message.text or "").strip()
     if len(t) < 2:
-        await update.message.reply_text("Текст слишком короткий. Нужно минимум 2 символа.")
+        await update.message.reply_text(
+            "Текст слишком короткий. Нужно минимум 2 символа.",
+            reply_markup=_wizard_exit_markup(),
+        )
         return CP_BODY
     context.user_data["cp_body"] = t
-    kb = InlineKeyboardMarkup([[InlineKeyboardButton("🚫 Без фото", callback_data="cp_skip_photo")]])
     await update.message.reply_text(
         "Шаг 3 из 3: пришлите <b>фото</b> для поста (как фото).\n\n"
         "Или нажмите «Без фото», если картинка не нужна.",
         parse_mode="HTML",
-        reply_markup=kb,
+        reply_markup=_kb_photo_step(),
     )
     return CP_PHOTO
 
 
 async def wrong_in_photo_step(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if update.message:
+        if await _reject_menu_button_during_wizard(update, _kb_photo_step()):
+            return CP_PHOTO
         await update.message.reply_text(
-            "Ожидается фото. Отправьте изображение как «Фото» или нажмите «Без фото» в предыдущем сообщении."
+            "Ожидается фото. Отправьте изображение как «Фото» или кнопки ниже.",
+            reply_markup=_kb_photo_step(),
         )
     return CP_PHOTO
 
@@ -133,11 +212,17 @@ async def receive_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     best = max(photos, key=lambda p: (p.width or 0) * (p.height or 0))
     raw = await download_telegram_file_bytes(token, best.file_id)
     if not raw:
-        await update.message.reply_text("Не удалось скачать фото. Попробуйте другое или «Без фото».")
+        await update.message.reply_text(
+            "Не удалось скачать фото. Попробуйте другое или «Без фото».",
+            reply_markup=_kb_photo_step(),
+        )
         return CP_PHOTO
     url = save_channel_ingest_image(raw)
     if not url:
-        await update.message.reply_text("Файл слишком большой или формат не подходит (до 8 МБ).")
+        await update.message.reply_text(
+            "Файл слишком большой или формат не подходит (до 8 МБ).",
+            reply_markup=_kb_photo_step(),
+        )
         return CP_PHOTO
     context.user_data["cp_image_url"] = url
     await _reply_preview(update.message, context)
@@ -156,13 +241,7 @@ async def skip_photo_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         pass
     chat = q.message.chat
     cap = _preview_caption(context.user_data.get("cp_title") or "", context.user_data.get("cp_body") or "")
-    kb = InlineKeyboardMarkup(
-        [
-            [InlineKeyboardButton("✅ Отправить", callback_data="cp_send")],
-            [InlineKeyboardButton("❌ Отмена", callback_data="cp_cancel")],
-        ]
-    )
-    await context.bot.send_message(chat_id=chat.id, text=cap, parse_mode="HTML", reply_markup=kb)
+    await context.bot.send_message(chat_id=chat.id, text=cap, parse_mode="HTML", reply_markup=_kb_confirm_step())
     return CP_CONFIRM
 
 
@@ -171,12 +250,7 @@ async def _reply_preview(message, context: ContextTypes.DEFAULT_TYPE) -> None:
     body = context.user_data.get("cp_body") or ""
     img = context.user_data.get("cp_image_url")
     cap = _preview_caption(title, body)
-    kb = InlineKeyboardMarkup(
-        [
-            [InlineKeyboardButton("✅ Отправить", callback_data="cp_send")],
-            [InlineKeyboardButton("❌ Отмена", callback_data="cp_cancel")],
-        ]
-    )
+    kb = _kb_confirm_step()
     site = (settings.SITE_URL or "").rstrip("/")
     if img:
         full = site + img if img.startswith("/") else img
@@ -237,6 +311,39 @@ async def send_post_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     return ConversationHandler.END
 
 
+async def exit_to_main_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    q = update.callback_query
+    if not q:
+        return ConversationHandler.END
+    await q.answer("Выход в общий режим")
+    try:
+        await q.edit_message_reply_markup(reply_markup=None)
+    except Exception:
+        pass
+    site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
+    context.user_data["tg_ai_mode"] = False
+    _clear_draft(context)
+    msg = q.message
+    if msg:
+        await msg.reply_text(
+            "Вы вышли из режима «Пост в сообщество». Снова работают кнопки главного меню; вопросы в AI — только после «🤖 Задать вопрос AI».",
+            reply_markup=main_keyboard(site, ai_active=False),
+        )
+    return ConversationHandler.END
+
+
+async def cp_confirm_stray_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not update.message:
+        return CP_CONFIRM
+    if await _reject_menu_button_during_wizard(update, _kb_confirm_step()):
+        return CP_CONFIRM
+    await update.message.reply_text(
+        "Сейчас нужно нажать кнопку под предпросмотром: «✅ Отправить», «❌ Отмена» или «🏠 Выйти в общий режим».",
+        reply_markup=_kb_confirm_step(),
+    )
+    return CP_CONFIRM
+
+
 async def cancel_post_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     q = update.callback_query
     if q:
@@ -281,9 +388,13 @@ def get_community_post_conversation() -> ConversationHandler:
             CP_CONFIRM: [
                 CallbackQueryHandler(send_post_cb, pattern=r"^cp_send$"),
                 CallbackQueryHandler(cancel_post_cb, pattern=r"^cp_cancel$"),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, cp_confirm_stray_text),
             ],
         },
-        fallbacks=[CommandHandler("cancel", cancel_cmd)],
+        fallbacks=[
+            CommandHandler("cancel", cancel_cmd),
+            CallbackQueryHandler(exit_to_main_cb, pattern=r"^cp_exit_main$"),
+        ],
         per_user=True,
         per_chat=True,
         allow_reentry=True,
