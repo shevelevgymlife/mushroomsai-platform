@@ -405,6 +405,8 @@ async def account_settings_hub(request: Request):
     if row:
         user = dict(row)
         attach_screen_rim_prefs(user)
+        # Иначе effective_subscription_plan теряется: в БД при пробном «Старт» plan остаётся free → бургер режет ленту/чаты.
+        await attach_subscription_effective(user)
     return templates.TemplateResponse(
         "account/settings.html",
         {"request": request, "user": user},
@@ -422,6 +424,7 @@ async def account_sound_notifications_page(request: Request):
     if row:
         user = dict(row)
         attach_screen_rim_prefs(user)
+        await attach_subscription_effective(user)
     prefs_row = await database.fetch_one(
         sa.select(users.c.notification_prefs_json).where(users.c.id == uid)
     )
