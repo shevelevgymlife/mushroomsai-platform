@@ -169,39 +169,61 @@
     renderList();
   }
 
+  function appendChatRow(c) {
+    const row = document.createElement("div");
+    row.className = "chats-row" + (c.id === activeChatId ? " active" : "");
+    row.dataset.id = String(c.id);
+    const av = c.avatar_url || "/static/favicon.svg";
+    const badge = c.unread > 0 ? " on" : "";
+    const isGroup = (c.type || "") === "group";
+    const kindLabel = isGroup ? "Группа" : "ЛС";
+    row.innerHTML =
+      '<img class="chats-row-av" src="' +
+      esc(av) +
+      '" alt="" onerror="this.src=\'/static/favicon.svg\'">' +
+      '<div class="chats-row-body">' +
+      '<div class="chats-row-top"><span class="chats-row-name">' +
+      esc(c.name) +
+      '</span><span class="chats-row-time">' +
+      esc(fmtTime(c.last_at)) +
+      "</span></div>" +
+      '<div class="chats-row-kind">' +
+      kindLabel +
+      "</div>" +
+      '<div class="chats-row-preview">' +
+      esc(c.last_message || "—") +
+      "</div></div>" +
+      '<span class="chats-row-badge' +
+      badge +
+      '">' +
+      (c.unread > 99 ? "99+" : c.unread) +
+      "</span>";
+    row.onclick = () => openChat(c.id);
+    el.list.appendChild(row);
+  }
+
   function renderList() {
     const q = (el.search && el.search.value) || "";
     const ql = q.trim().toLowerCase();
     el.list.innerHTML = "";
-    chats
-      .filter((c) => !ql || (c.name || "").toLowerCase().includes(ql))
-      .forEach((c) => {
-        const row = document.createElement("div");
-        row.className = "chats-row" + (c.id === activeChatId ? " active" : "");
-        row.dataset.id = String(c.id);
-        const av = c.avatar_url || "/static/favicon.svg";
-        const badge = c.unread > 0 ? " on" : "";
-        row.innerHTML =
-          '<img class="chats-row-av" src="' +
-          esc(av) +
-          '" alt="" onerror="this.src=\'/static/favicon.svg\'">' +
-          '<div class="chats-row-body">' +
-          '<div class="chats-row-top"><span class="chats-row-name">' +
-          esc(c.name) +
-          '</span><span class="chats-row-time">' +
-          esc(fmtTime(c.last_at)) +
-          "</span></div>" +
-          '<div class="chats-row-preview">' +
-          esc(c.last_message || "—") +
-          "</div></div>" +
-          '<span class="chats-row-badge' +
-          badge +
-          '">' +
-          (c.unread > 99 ? "99+" : c.unread) +
-          "</span>";
-        row.onclick = () => openChat(c.id);
-        el.list.appendChild(row);
-      });
+    const filtered = chats.filter((c) => !ql || (c.name || "").toLowerCase().includes(ql));
+    const groupChats = [];
+    const personalChats = [];
+    filtered.forEach((c) => {
+      if ((c.type || "") === "group") groupChats.push(c);
+      else personalChats.push(c);
+    });
+    function appendSection(title, arr) {
+      if (!arr.length) return;
+      const h = document.createElement("div");
+      h.className = "chats-list-section-title";
+      h.setAttribute("role", "presentation");
+      h.textContent = title;
+      el.list.appendChild(h);
+      arr.forEach(appendChatRow);
+    }
+    appendSection("Группы", groupChats);
+    appendSection("Личные чаты (ЛС)", personalChats);
   }
 
   function setMobileOpen(on) {

@@ -98,6 +98,29 @@ body:not(.app-has-mobile-footer) #chatsApp {
   min-height: 0;
 }
 
+.chats-list-section-title {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 12px 14px 8px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6b7a7c;
+  background: linear-gradient(180deg, var(--ch-panel) 70%, transparent);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.chats-row-kind {
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(61, 212, 224, 0.65);
+  letter-spacing: 0.04em;
+  margin: 2px 0 4px;
+  text-transform: uppercase;
+}
+
 .chats-row {
   display: flex;
   align-items: center;
@@ -157,7 +180,7 @@ body:not(.app-has-mobile-footer) #chatsApp {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-top: 3px;
+  margin-top: 0;
 }
 
 .chats-row-badge {
