@@ -48,6 +48,8 @@ from db.models import (
     support_message_deliveries,
     community_profiles,
     admin_permissions,
+    training_bot_operators,
+    training_bot_access_requests,
     user_block_overrides,
     shop_product_likes,
     shop_cart_items,
@@ -272,6 +274,23 @@ async def merge_accounts(primary_id: int, secondary_id: int):
         await database.execute(
             admin_permissions.delete().where(admin_permissions.c.user_id == secondary_id)
         )
+
+    pri_tb = await database.fetch_one(training_bot_operators.select().where(training_bot_operators.c.user_id == primary_id))
+    sec_tb = await database.fetch_one(training_bot_operators.select().where(training_bot_operators.c.user_id == secondary_id))
+    if sec_tb and not pri_tb:
+        await database.execute(
+            training_bot_operators.update().where(training_bot_operators.c.user_id == secondary_id).values(user_id=primary_id)
+        )
+    elif sec_tb and pri_tb:
+        await database.execute(
+            training_bot_operators.delete().where(training_bot_operators.c.user_id == secondary_id)
+        )
+
+    await database.execute(
+        training_bot_access_requests.update()
+        .where(training_bot_access_requests.c.user_id == secondary_id)
+        .values(user_id=primary_id)
+    )
 
     # Carry over stronger fields.
     updates = {}

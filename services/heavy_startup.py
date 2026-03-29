@@ -294,6 +294,20 @@ async def run_heavy_startup(app: FastAPI) -> None:
             "ALTER TABLE ai_training_posts ADD COLUMN IF NOT EXISTS ingest_tg_message_id BIGINT",
             "CREATE UNIQUE INDEX IF NOT EXISTS uq_ai_training_posts_tg_channel_msg ON ai_training_posts(ingest_tg_chat_id, ingest_tg_message_id) WHERE ingest_tg_chat_id IS NOT NULL AND ingest_tg_message_id IS NOT NULL",
             "ALTER TABLE ai_training_posts ADD COLUMN IF NOT EXISTS image_url TEXT",
+            """CREATE TABLE IF NOT EXISTS training_bot_operators (
+            user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            granted_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            created_at TIMESTAMP DEFAULT NOW()
+        )""",
+            """CREATE TABLE IF NOT EXISTS training_bot_access_requests (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            requester_tg_id BIGINT NOT NULL,
+            status VARCHAR(24) NOT NULL DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT NOW()
+        )""",
+            "CREATE INDEX IF NOT EXISTS idx_tb_access_req_user_status ON training_bot_access_requests(user_id, status)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_tb_access_one_pending ON training_bot_access_requests(user_id) WHERE status = 'pending'",
             "ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS from_telegram BOOLEAN NOT NULL DEFAULT false",
             "ALTER TABLE ai_settings ADD COLUMN IF NOT EXISTS retrieval_mode VARCHAR(64) NOT NULL DEFAULT 'title_first'",
             "ALTER TABLE ai_settings ADD COLUMN IF NOT EXISTS retrieval_top_k INTEGER NOT NULL DEFAULT 24",

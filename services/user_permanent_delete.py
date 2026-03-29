@@ -18,6 +18,8 @@ _CLEANUP_SQL = [
     "UPDATE users SET referred_by=NULL WHERE referred_by=:uid",
     "UPDATE ai_settings SET updated_by=NULL WHERE updated_by=:uid",
     "DELETE FROM admin_permissions WHERE user_id=:uid",
+    "DELETE FROM training_bot_operators WHERE user_id=:uid",
+    "DELETE FROM training_bot_access_requests WHERE user_id=:uid",
     "DELETE FROM referrals WHERE referrer_id=:uid OR referred_id=:uid",
     "DELETE FROM community_messages WHERE sender_id=:uid OR recipient_id=:uid",
     "UPDATE community_posts SET folder_id=NULL WHERE folder_id IN (SELECT id FROM community_folders WHERE user_id=:uid)",

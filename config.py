@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str = ""
     JWT_SECRET: str = "change-me-in-production"
     ADMIN_TG_ID: int = 0
+    # Доп. Telegram ID (через запятую), кто подтверждает заявки в боте обучающих постов (помимо ADMIN_TG_ID и владельца).
+    TRAINING_BOT_APPROVER_TG_IDS: str = ""
     # Email владельца (полный доступ в админку + sync role=admin). В Render можно переопределить env.
     ADMIN_EMAIL: str = "shevelevgymlife@gmail.com"
     DEPLOY_NOTIFY_EMAIL_TO: str = ""  # куда слать уведомление о деплое
