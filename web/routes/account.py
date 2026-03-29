@@ -293,6 +293,7 @@ async def merge_accounts(primary_id: int, secondary_id: int):
     ):
         updates["subscription_plan"] = secondary.get("subscription_plan")
         updates["subscription_end"] = secondary.get("subscription_end")
+        updates["subscription_admin_granted"] = bool(secondary.get("subscription_admin_granted"))
     if not primary.get("legal_accepted_at") and secondary.get("legal_accepted_at"):
         updates["legal_accepted_at"] = secondary.get("legal_accepted_at")
         if secondary.get("legal_docs_version"):

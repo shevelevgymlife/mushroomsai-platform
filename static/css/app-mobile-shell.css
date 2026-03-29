@@ -564,6 +564,10 @@ details.ig-drawer-details > summary {
   outline: none;
 }
 
+.ig-drawer-sub-countdown--hidden {
+  display: none !important;
+}
+
 /* Тумблер «Свет» токенов (DEL / SHEVELEV) в бургере */
 .drawer-token-lamp-toggle {
   display: inline-flex;

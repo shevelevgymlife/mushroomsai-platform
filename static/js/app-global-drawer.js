@@ -68,26 +68,28 @@
     } catch (e) {}
   }
 
-  var _drawerTrialTimer = null;
+  var _drawerSubTimer = null;
 
-  function stopDrawerTrialCountdown() {
-    if (_drawerTrialTimer) {
-      clearInterval(_drawerTrialTimer);
-      _drawerTrialTimer = null;
+  function stopDrawerSubscriptionCountdown() {
+    if (_drawerSubTimer) {
+      clearInterval(_drawerSubTimer);
+      _drawerSubTimer = null;
     }
   }
 
-  function updateDrawerTrialCountdown() {
-    var el = document.getElementById("drawerTrialCountdown");
+  function updateDrawerSubscriptionBanner() {
+    var el = document.getElementById("drawerSubscriptionBanner");
     if (!el) return;
+    if (el.getAttribute("data-countdown") !== "1") return;
     var iso = el.getAttribute("data-until");
     if (!iso) return;
     var end = Date.parse(iso);
     if (!end || isNaN(end)) return;
-    var dEl = document.getElementById("drawerTrialD");
-    var hEl = document.getElementById("drawerTrialH");
-    var mEl = document.getElementById("drawerTrialM");
-    var sub = document.getElementById("drawerTrialSub");
+    var kind = el.getAttribute("data-kind") || "trial";
+    var dEl = document.getElementById("drawerSubD");
+    var hEl = document.getElementById("drawerSubH");
+    var mEl = document.getElementById("drawerSubM");
+    var sub = document.getElementById("drawerSubSub");
     if (!dEl || !hEl || !mEl) return;
 
     var ms = end - Date.now();
@@ -95,16 +97,22 @@
       dEl.textContent = "0";
       hEl.textContent = "0";
       mEl.textContent = "0";
-      if (sub) sub.textContent = "Пробный период завершён — доступ как на бесплатном тарифе";
-      if (!window.__trialCountdownExpiredReload) {
-        window.__trialCountdownExpiredReload = true;
+      if (sub) {
+        if (kind === "paid_self") {
+          sub.textContent = "Срок оплаченной подписки истёк — выберите тариф снова";
+        } else {
+          sub.textContent = "Пробный период завершён — доступ как на бесплатном тарифе";
+        }
+      }
+      if (!window.__drawerSubExpiredReload) {
+        window.__drawerSubExpiredReload = true;
         setTimeout(function () {
           try {
             location.reload();
           } catch (e) {}
         }, 1200);
       }
-      stopDrawerTrialCountdown();
+      stopDrawerSubscriptionCountdown();
       return;
     }
 
@@ -115,15 +123,21 @@
     dEl.textContent = String(d);
     hEl.textContent = String(h);
     mEl.textContent = String(m);
-    if (sub) sub.textContent = "Осталось до окончания доступа";
+    if (sub) {
+      if (kind === "paid_self") {
+        sub.textContent = "Осталось до окончания оплаченного периода";
+      } else {
+        sub.textContent = "Осталось до окончания пробного доступа";
+      }
+    }
   }
 
-  function startDrawerTrialCountdownIfNeeded() {
-    stopDrawerTrialCountdown();
-    var el = document.getElementById("drawerTrialCountdown");
-    if (!el) return;
-    updateDrawerTrialCountdown();
-    _drawerTrialTimer = setInterval(updateDrawerTrialCountdown, 30000);
+  function startDrawerSubscriptionCountdownIfNeeded() {
+    stopDrawerSubscriptionCountdown();
+    var el = document.getElementById("drawerSubscriptionBanner");
+    if (!el || el.getAttribute("data-countdown") !== "1") return;
+    updateDrawerSubscriptionBanner();
+    _drawerSubTimer = setInterval(updateDrawerSubscriptionBanner, 30000);
   }
 
   function closeAppGlobalDrawer() {
@@ -131,7 +145,7 @@
     var bd = document.getElementById("appGlobalDrawerBackdrop");
     if (dr) dr.classList.remove("open");
     if (bd) bd.classList.remove("on");
-    stopDrawerTrialCountdown();
+    stopDrawerSubscriptionCountdown();
     try {
       document.body.style.overflow = "";
     } catch (e) {}
@@ -147,7 +161,7 @@
     dr.classList.add("open");
     bd.classList.add("on");
     try { refreshFreeAiDrawerStatus(); } catch (e) {}
-    try { startDrawerTrialCountdownIfNeeded(); } catch (e) {}
+    try { startDrawerSubscriptionCountdownIfNeeded(); } catch (e) {}
     try {
       document.body.style.overflow = "hidden";
     } catch (e) {}
@@ -165,9 +179,9 @@
     bd.classList.toggle("on", willOpen);
     if (willOpen) {
       try { refreshFreeAiDrawerStatus(); } catch (e) {}
-      try { startDrawerTrialCountdownIfNeeded(); } catch (e) {}
+      try { startDrawerSubscriptionCountdownIfNeeded(); } catch (e) {}
     } else {
-      stopDrawerTrialCountdown();
+      stopDrawerSubscriptionCountdown();
     }
     try {
       document.body.style.overflow = willOpen ? "hidden" : "";

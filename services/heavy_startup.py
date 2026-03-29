@@ -300,6 +300,7 @@ async def run_heavy_startup(app: FastAPI) -> None:
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS start_trial_claimed_at TIMESTAMP",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS start_trial_until TIMESTAMP",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS start_trial_end_notified BOOLEAN DEFAULT false",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_admin_granted BOOLEAN DEFAULT false",
             "ALTER TABLE referrals ADD COLUMN IF NOT EXISTS referral_bonus_amount NUMERIC(12,2)",
             """CREATE TABLE IF NOT EXISTS referral_withdrawals (
                 id SERIAL PRIMARY KEY,

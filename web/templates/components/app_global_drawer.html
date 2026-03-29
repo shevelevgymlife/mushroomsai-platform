@@ -83,20 +83,23 @@
     {% if user.role in ['admin', 'moderator'] %}
     <button type="button" class="ig-drawer-item" onclick="closeAppGlobalDrawer();window.location='/admin'" style="color:#f87171"><span class="e">{{ ico('shield') }}</span><span class="lbl">{{ 'Администратор' if user.role == 'admin' else 'Модератор' }}</span></button>
     {% endif %}
-    {% if user.get('drawer_trial_countdown') and user.get('start_trial_until_iso') %}
-    <div id="drawerTrialCountdown" class="ig-drawer-trial-banner" data-until="{{ user.start_trial_until_iso }}" role="status" aria-live="polite">
+    {% set _sub_kind = user.get('drawer_sub_kind') or 'free' %}
+    {% set _sub_show_cd = user.get('drawer_sub_show_countdown') %}
+    {% set _sub_until = user.get('drawer_sub_until_iso') or '' %}
+    <div id="drawerSubscriptionBanner" class="ig-drawer-trial-banner" data-countdown="{{ '1' if _sub_show_cd else '0' }}" data-until="{{ _sub_until }}" data-kind="{{ _sub_kind }}" role="status" aria-live="polite">
       <div class="ig-drawer-trial-banner__head">
-        <span class="ig-drawer-trial-banner__title">Пробный «Старт»</span>
+        <span class="ig-drawer-trial-banner__title" id="drawerSubHead">{{ user.get('drawer_sub_head') or 'Бесплатный' }}</span>
       </div>
-      <p class="ig-drawer-trial-banner__sub" id="drawerTrialSub">Осталось до окончания доступа</p>
-      <div class="ig-drawer-trial-banner__grid" aria-hidden="true">
-        <div class="ig-drawer-trial-chip"><span class="ig-drawer-trial-chip__val" id="drawerTrialD">—</span><span class="ig-drawer-trial-chip__unit">дн</span></div>
-        <div class="ig-drawer-trial-chip"><span class="ig-drawer-trial-chip__val" id="drawerTrialH">—</span><span class="ig-drawer-trial-chip__unit">ч</span></div>
-        <div class="ig-drawer-trial-chip"><span class="ig-drawer-trial-chip__val" id="drawerTrialM">—</span><span class="ig-drawer-trial-chip__unit">мин</span></div>
+      <p class="ig-drawer-trial-banner__sub" id="drawerSubSub">{{ user.get('drawer_sub_sub') or 'Без ограничения по времени' }}</p>
+      <div id="drawerSubCountdown" class="ig-drawer-trial-banner__grid{% if not _sub_show_cd %} ig-drawer-sub-countdown--hidden{% endif %}" aria-hidden="{{ 'true' if not _sub_show_cd else 'false' }}">
+        <div class="ig-drawer-trial-chip"><span class="ig-drawer-trial-chip__val" id="drawerSubD">—</span><span class="ig-drawer-trial-chip__unit">дн</span></div>
+        <div class="ig-drawer-trial-chip"><span class="ig-drawer-trial-chip__val" id="drawerSubH">—</span><span class="ig-drawer-trial-chip__unit">ч</span></div>
+        <div class="ig-drawer-trial-chip"><span class="ig-drawer-trial-chip__val" id="drawerSubM">—</span><span class="ig-drawer-trial-chip__unit">мин</span></div>
       </div>
-      <a href="/subscriptions" class="ig-drawer-trial-banner__cta" onclick="closeAppGlobalDrawer()">Перейти к подписке</a>
+      {% if _sub_kind != 'staff' %}
+      <a href="/subscriptions" class="ig-drawer-trial-banner__cta" onclick="closeAppGlobalDrawer()">{% if _sub_kind in ('paid_self', 'paid_admin') %}Управление подпиской{% else %}Перейти к подписке{% endif %}</a>
+      {% endif %}
     </div>
-    {% endif %}
   </div>
 </aside>
 {% if user.get('can_claim_start_trial') %}

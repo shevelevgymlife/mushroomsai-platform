@@ -7,7 +7,12 @@ from db.models import users, sessions
 from auth.blocked_identities import login_denied_for_user_row_sync
 from auth.owner import sync_owner_admin_role
 from auth.ui_prefs import attach_screen_rim_prefs
-from services.subscription_service import check_subscription
+from services.subscription_service import PLANS, check_subscription
+
+
+def _plan_display_name(plan_key: str | None) -> str:
+    k = (plan_key or "free").lower()
+    return (PLANS.get(k) or PLANS["free"])["name"]
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
@@ -57,6 +62,11 @@ async def attach_subscription_effective(u: dict) -> None:
         u["can_claim_start_trial"] = False
         u["drawer_trial_countdown"] = False
         u["start_trial_until_iso"] = None
+        u["drawer_sub_head"] = _plan_display_name("free")
+        u["drawer_sub_sub"] = "Без ограничения по времени"
+        u["drawer_sub_show_countdown"] = False
+        u["drawer_sub_until_iso"] = None
+        u["drawer_sub_kind"] = "free"
         return
     now = datetime.utcnow()
     tu = row.get("start_trial_until")
@@ -68,14 +78,51 @@ async def attach_subscription_effective(u: dict) -> None:
     )
     u["can_claim_start_trial"] = role not in ("admin", "moderator") and not claimed and not paid_active
 
-    # Бургер: обратный отсчёт пробного «Старт» (без активной оплаты)
-    if tu and tu > now and not paid_active:
-        u["drawer_trial_countdown"] = True
+    admin_granted = bool(row.get("subscription_admin_granted"))
+    trial_active = bool(tu and tu > now and not paid_active)
+
+    # Единая карточка тарифа в бургере (пробный 3 дня не трогаем в БД — только отображение)
+    u["drawer_trial_countdown"] = False
+    u["start_trial_until_iso"] = None
+
+    head = _plan_display_name("free")
+    sub = "Без ограничения по времени"
+    show_cd = False
+    until_iso = None
+    kind = "free"
+
+    if role in ("admin", "moderator"):
+        head = "Администратор" if role == "admin" else "Модератор"
+        sub = "Служебный доступ"
+        kind = "staff"
+    elif paid_active and admin_granted:
+        head = f"Подписка «{_plan_display_name(sp)}»"
+        sub = "Назначена администратором · срок в меню не отображается"
+        kind = "paid_admin"
+    elif paid_active:
+        head = f"Подписка «{_plan_display_name(sp)}»"
+        sub = "Осталось до окончания оплаченного периода"
+        se = row.get("subscription_end")
+        if se:
+            se_utc = se.replace(tzinfo=timezone.utc) if se.tzinfo is None else se.astimezone(timezone.utc)
+            until_iso = se_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
+        show_cd = bool(until_iso)
+        kind = "paid_self"
+    elif trial_active:
+        head = "Пробный «Старт»"
+        sub = "Осталось до окончания пробного доступа"
+        show_cd = True
         tu_utc = tu.replace(tzinfo=timezone.utc) if tu.tzinfo is None else tu.astimezone(timezone.utc)
-        u["start_trial_until_iso"] = tu_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
-    else:
-        u["drawer_trial_countdown"] = False
-        u["start_trial_until_iso"] = None
+        until_iso = tu_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
+        kind = "trial"
+        u["drawer_trial_countdown"] = True
+        u["start_trial_until_iso"] = until_iso
+
+    u["drawer_sub_head"] = head
+    u["drawer_sub_sub"] = sub
+    u["drawer_sub_show_countdown"] = show_cd
+    u["drawer_sub_until_iso"] = until_iso
+    u["drawer_sub_kind"] = kind
 
 
 async def get_user_from_request(request) -> Optional[dict]:

@@ -15,6 +15,7 @@ users = sqlalchemy.Table(
     sqlalchemy.Column("language", sqlalchemy.String(10), default="ru", server_default="ru"),
     sqlalchemy.Column("subscription_plan", sqlalchemy.String(20), default="free", server_default="free"),
     sqlalchemy.Column("subscription_end", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("subscription_admin_granted", sqlalchemy.Boolean, default=False, server_default="false"),
     sqlalchemy.Column("referral_code", sqlalchemy.String(20), unique=True, nullable=True),
     sqlalchemy.Column("referred_by", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=True),
     sqlalchemy.Column("linked_tg_id", sqlalchemy.BigInteger, nullable=True),

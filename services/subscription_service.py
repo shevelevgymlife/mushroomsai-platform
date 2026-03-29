@@ -33,7 +33,11 @@ async def activate_subscription(user_id: int, plan: str, months: int = 1):
     await database.execute(
         users.update()
         .where(users.c.id == user_id)
-        .values(subscription_plan=plan, subscription_end=end_date)
+        .values(
+            subscription_plan=plan,
+            subscription_end=end_date,
+            subscription_admin_granted=False,
+        )
     )
     return True
 
@@ -127,7 +131,11 @@ async def check_subscription(user_id: int) -> str:
         await database.execute(
             users.update()
             .where(users.c.id == user_id)
-            .values(subscription_plan="free", subscription_end=None)
+            .values(
+                subscription_plan="free",
+                subscription_end=None,
+                subscription_admin_granted=False,
+            )
         )
         row = await database.fetch_one(users.select().where(users.c.id == user_id)) or row
 

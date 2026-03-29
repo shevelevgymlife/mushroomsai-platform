@@ -350,7 +350,11 @@ async def apply_promo_token_from_cookie(request, response, user_id: int) -> None
     await database.execute(
         users.update()
         .where(users.c.id == user_id)
-        .values(subscription_plan=plan, subscription_end=end)
+        .values(
+            subscription_plan=plan,
+            subscription_end=end,
+            subscription_admin_granted=False,
+        )
     )
     await database.execute(
         referral_promo_links.update()

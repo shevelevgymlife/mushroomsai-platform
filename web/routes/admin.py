@@ -858,9 +858,12 @@ async def change_subscription(request: Request, user_id: int, plan: str = Form(.
     else:
         end_date = datetime.utcnow() + timedelta(days=30)
 
+    granted = plan != "free"
     await database.execute(
         users.update().where(users.c.id == user_id).values(
-            subscription_plan=plan, subscription_end=end_date
+            subscription_plan=plan,
+            subscription_end=end_date,
+            subscription_admin_granted=granted,
         )
     )
     return JSONResponse({"ok": True, "plan": plan})
@@ -888,9 +891,12 @@ async def patch_user_plan(request: Request, user_id: int):
             end_date = datetime.utcnow() + timedelta(days=30)
     else:
         end_date = datetime.utcnow() + timedelta(days=30)
+    granted = plan != "free"
     await database.execute(
         users.update().where(users.c.id == user_id).values(
-            subscription_plan=plan, subscription_end=end_date
+            subscription_plan=plan,
+            subscription_end=end_date,
+            subscription_admin_granted=granted,
         )
     )
     return JSONResponse({"ok": True, "plan": plan})

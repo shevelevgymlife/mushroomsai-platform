@@ -214,7 +214,11 @@ async def onboarding_tariff_submit(request: Request, choice: str = Form(...)):
     await database.execute(
         users.update()
         .where(users.c.id == uid)
-        .values(subscription_plan="free", needs_tariff_choice=False)
+        .values(
+            subscription_plan="free",
+            needs_tariff_choice=False,
+            subscription_admin_granted=False,
+        )
     )
     return RedirectResponse("/subscriptions")
 
