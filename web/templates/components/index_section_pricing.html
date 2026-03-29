@@ -32,20 +32,22 @@
           {% if user and user.needs_tariff_choice %}
           <form method="post" action="/onboarding/tariff" class="mt-auto">
             <button type="submit" name="choice" value="free" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">
-              {{ t.btn_start_free }}
+              Подключиться
             </button>
           </form>
           {% elif user and _plan == 'free' %}
           <div class="block text-center px-4 py-3 rounded-xl text-sm border border-gold/35 text-gold/90 bg-gold/[0.06]">Текущий план</div>
           {% else %}
-          <p class="text-[11px] text-muted/90 text-center leading-snug">Смена на бесплатный — через администратора</p>
+          <form method="post" action="/subscriptions/connect" class="mt-auto">
+            <input type="hidden" name="plan" value="free" />
+            <button type="submit" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">Подключиться</button>
+          </form>
           {% endif %}
         {% else %}
         <a href="/login?next=/subscriptions" class="block text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">
-          {{ t.btn_start_free }}
+          Подключиться
         </a>
         {% endif %}
-        <p class="text-[11px] text-muted/90 text-center mt-3 leading-snug">Вход и регистрация с бесплатным планом</p>
       </div>
 
       <!-- Start -->
@@ -61,15 +63,17 @@
           {% endfor %}
         </ul>
         {% if _pl %}
-        <button type="button" class="js-paid-plan block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">
-          {{ t.payment_not_connected }}
-        </button>
+          {% if _plan == 'start' %}
+          <div class="block text-center px-4 py-3 rounded-xl text-sm border border-gold/35 text-gold/90 bg-gold/[0.06]">Текущий план</div>
+          {% else %}
+          <form method="post" action="/subscriptions/connect" class="mt-auto">
+            <input type="hidden" name="plan" value="start" />
+            <button type="submit" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">Подключиться</button>
+          </form>
+          {% endif %}
         {% else %}
-        <button type="button" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">
-          {{ t.payment_not_connected }}
-        </button>
+        <a href="/login?next=/subscriptions" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">Подключиться</a>
         {% endif %}
-        <p class="text-[11px] text-muted/90 text-center mt-3 leading-snug">После входа с бесплатным планом можно запросить смену тарифа у администратора</p>
       </div>
 
       <!-- Pro -->
@@ -84,15 +88,17 @@
           {% endfor %}
         </ul>
         {% if _pl %}
-        <button type="button" class="js-paid-plan block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">
-          {{ t.payment_not_connected }}
-        </button>
+          {% if _plan == 'pro' %}
+          <div class="block text-center px-4 py-3 rounded-xl text-sm border border-gold/35 text-gold/90 bg-gold/[0.06]">Текущий план</div>
+          {% else %}
+          <form method="post" action="/subscriptions/connect" class="mt-auto">
+            <input type="hidden" name="plan" value="pro" />
+            <button type="submit" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">Подключиться</button>
+          </form>
+          {% endif %}
         {% else %}
-        <button type="button" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">
-          {{ t.payment_not_connected }}
-        </button>
+        <a href="/login?next=/subscriptions" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">Подключиться</a>
         {% endif %}
-        <p class="text-[11px] text-muted/90 text-center mt-3 leading-snug">Запрос тарифа — из кабинета после регистрации</p>
       </div>
 
       <!-- Maxi -->
@@ -107,15 +113,17 @@
           {% endfor %}
         </ul>
         {% if _pl %}
-        <button type="button" class="js-paid-plan block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">
-          {{ t.payment_not_connected }}
-        </button>
+          {% if _plan == 'maxi' %}
+          <div class="block text-center px-4 py-3 rounded-xl text-sm border border-gold/35 text-gold/90 bg-gold/[0.06]">Текущий план</div>
+          {% else %}
+          <form method="post" action="/subscriptions/connect" class="mt-auto">
+            <input type="hidden" name="plan" value="maxi" />
+            <button type="submit" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">Подключиться</button>
+          </form>
+          {% endif %}
         {% else %}
-        <button type="button" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">
-          {{ t.payment_not_connected }}
-        </button>
+        <a href="/login?next=/subscriptions" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">Подключиться</a>
         {% endif %}
-        <p class="text-[11px] text-muted/90 text-center mt-3 leading-snug">Запрос тарифа — из кабинета</p>
       </div>
     </div>
   </div>

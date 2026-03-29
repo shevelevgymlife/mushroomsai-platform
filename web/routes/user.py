@@ -24,6 +24,7 @@ from db.models import (
 )
 from services.referral_service import get_referral_stats
 from services.subscription_service import (
+    activate_subscription,
     check_subscription,
     PLANS,
     web_default_home_path,
@@ -171,6 +172,40 @@ async def subscriptions_page(request: Request):
     )
 
 
+@router.post("/subscriptions/connect")
+async def subscriptions_connect(request: Request, plan: str = Form(...)):
+    """Временно без оплаты: подключение тарифа на 30 дней (или free)."""
+    user = await require_auth(request)
+    if not user:
+        return RedirectResponse("/login?next=/subscriptions", status_code=302)
+    leg = await legal_acceptance_redirect(request, user)
+    if leg:
+        return leg
+    uid = int(user.get("primary_user_id") or user["id"])
+    plan_key = (plan or "").strip().lower()
+    if plan_key not in ("free", "start", "pro", "maxi"):
+        return RedirectResponse("/subscriptions", status_code=302)
+    if plan_key == "free":
+        await database.execute(
+            users.update()
+            .where(users.c.id == uid)
+            .values(
+                subscription_plan="free",
+                subscription_end=None,
+                subscription_admin_granted=False,
+                needs_tariff_choice=False,
+            )
+        )
+    else:
+        ok = await activate_subscription(uid, plan_key, months=1)
+        if not ok:
+            return RedirectResponse("/subscriptions", status_code=302)
+        await database.execute(
+            users.update().where(users.c.id == uid).values(needs_tariff_choice=False)
+        )
+    return RedirectResponse("/subscriptions?connected=1", status_code=302)
+
+
 @router.get("/onboarding/tariff", response_class=HTMLResponse)
 async def onboarding_tariff_page(request: Request):
     user = await require_auth(request)
@@ -197,30 +232,26 @@ async def onboarding_tariff_submit(request: Request, choice: str = Form(...)):
     choice = (choice or "").strip().lower()
     if choice not in ("free", "start", "pro", "maxi"):
         return RedirectResponse("/subscriptions")
-    # Платный приём на сайте не подключён — доступен только бесплатный план при регистрации.
-    if choice != "free":
-        blocks = await _fetch_homepage_blocks_for_pricing()
-        return templates.TemplateResponse(
-            "subscriptions.html",
-            {
-                "request": request,
-                "user": user,
-                "plans": PLANS,
-                "blocks": blocks,
-                "error": "Оплата тарифов на сайте пока не подключена. Выберите бесплатный план — он доступен сразу. Платные тарифы можно запросить у администратора через кабинет после входа.",
-            },
-            status_code=400,
+    if choice == "free":
+        await database.execute(
+            users.update()
+            .where(users.c.id == uid)
+            .values(
+                subscription_plan="free",
+                subscription_end=None,
+                needs_tariff_choice=False,
+                subscription_admin_granted=False,
+            )
         )
-    await database.execute(
-        users.update()
-        .where(users.c.id == uid)
-        .values(
-            subscription_plan="free",
-            needs_tariff_choice=False,
-            subscription_admin_granted=False,
+    else:
+        ok = await activate_subscription(int(uid), choice, months=1)
+        if not ok:
+            return RedirectResponse("/subscriptions")
+        await database.execute(
+            users.update().where(users.c.id == uid).values(needs_tariff_choice=False)
         )
-    )
-    return RedirectResponse("/subscriptions")
+    dest = await web_default_home_path(int(uid))
+    return RedirectResponse(dest, status_code=302)
 
 
 @router.get("/dashboard", response_class=HTMLResponse)

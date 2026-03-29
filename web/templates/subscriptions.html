@@ -3,6 +3,11 @@
 {% block content %}
 <div class="neo-app-surface min-h-screen bg-bg pt-28 pb-16">
   <div class="max-w-7xl mx-auto px-4">
+    {% if request.query_params.get('connected') %}
+    <div class="max-w-3xl mx-auto mb-6 p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 text-sm leading-relaxed text-center">
+      Тариф подключён. Срок отображается в меню (бургер) внизу.
+    </div>
+    {% endif %}
     {% if request.query_params.get('locked') %}
     <div class="max-w-3xl mx-auto mb-6 p-4 rounded-2xl border border-cyan-500/25 bg-cyan-500/10 text-cyan-100 text-sm leading-relaxed text-center">
       Лента и магазин доступны с тарифа <strong>«Старт»</strong> или в <strong>пробном режиме 3 дня</strong> (акция в меню). Оформите подписку или активируйте пробный период.
@@ -25,15 +30,4 @@
     {% include "components/index_section_pricing.html" %}
   </div>
 </div>
-{% endblock %}
-{% block extra_scripts %}
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-  document.querySelectorAll('.js-paid-plan').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      alert('Оплата подключается ...');
-    });
-  });
-});
-</script>
 {% endblock %}
