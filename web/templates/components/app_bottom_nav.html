@@ -24,7 +24,7 @@
   <a href="/notifications" class="app-uni-tab {% if path.startswith('/notifications') %}app-uni-tab--on{% endif %}" data-app-tab="activity" id="cpActivityBellBottom" title="События" aria-label="События">
     <span class="ic">{{ ico('heart') }}</span><span class="lbl">{{ t.app_tab_activity }}</span>
     <span id="cpActivityBadge" class="app-notif-badge">0</span>
-  </button>
+  </a>
   <a href="/community/profile/{{ eff_uid|int }}" class="app-uni-tab {% if path.startswith('/community/profile') %}app-uni-tab--on{% endif %}" data-app-tab="profile">
     <span class="ic">{{ ico('user') }}</span><span class="lbl">{{ t.app_tab_profile }}</span>
   </a>

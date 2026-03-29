@@ -659,6 +659,9 @@ details.ig-drawer-details > summary {
   min-width: 0;
   font-family: inherit;
   cursor: pointer;
+  /* Иначе .app-notif-badge позиционируется от всего tabbar и оказывается над «+ пост» */
+  position: relative;
+  z-index: 1;
 }
 .app-uni-tab .ic {
   font-size: 24px;
