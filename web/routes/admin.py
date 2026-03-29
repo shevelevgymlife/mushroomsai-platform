@@ -10,7 +10,7 @@ from fastapi import APIRouter, Request, Form, UploadFile, File, Query
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from web.templates_utils import Jinja2Templates
 from config import settings
-from services.subscription_service import PLANS
+from services.subscription_service import PLANS, record_subscription_event
 from services.shop_catalog import extra_image_lines_from_json, extra_image_urls_from_text
 from auth.session import get_user_from_request
 from auth.blocked_identities import block_identities_for_user, unblock_identities_for_user
@@ -866,6 +866,19 @@ async def change_subscription(request: Request, user_id: int, plan: str = Form(.
             subscription_admin_granted=granted,
         )
     )
+    now = datetime.utcnow()
+    if plan == "free":
+        await record_subscription_event(int(user_id), "admin", "free", 0.0, now, None, None)
+    else:
+        await record_subscription_event(
+            int(user_id),
+            "admin",
+            plan,
+            float(PLANS[plan]["price"]),
+            now,
+            end_date,
+            None,
+        )
     return JSONResponse({"ok": True, "plan": plan})
 
 
@@ -899,6 +912,19 @@ async def patch_user_plan(request: Request, user_id: int):
             subscription_admin_granted=granted,
         )
     )
+    now = datetime.utcnow()
+    if plan == "free":
+        await record_subscription_event(int(user_id), "admin", "free", 0.0, now, None, None)
+    else:
+        await record_subscription_event(
+            int(user_id),
+            "admin",
+            plan,
+            float(PLANS[plan]["price"]),
+            now,
+            end_date,
+            None,
+        )
     return JSONResponse({"ok": True, "plan": plan})
 
 

@@ -30,6 +30,9 @@ from services.subscription_service import (
     web_default_home_path,
     can_ask_question,
     increment_question_count,
+    record_subscription_event,
+    gift_subscription,
+    fetch_subscription_history_display,
 )
 from ai.openai_client import chat_with_ai
 from services.plan_access import plan_allowed_block_keys, is_platform_operator, can_use_community_group_chats
@@ -186,6 +189,7 @@ async def subscriptions_connect(request: Request, plan: str = Form(...)):
     if plan_key not in ("free", "start", "pro", "maxi"):
         return RedirectResponse("/subscriptions", status_code=302)
     if plan_key == "free":
+        _now = datetime.utcnow()
         await database.execute(
             users.update()
             .where(users.c.id == uid)
@@ -196,6 +200,7 @@ async def subscriptions_connect(request: Request, plan: str = Form(...)):
                 needs_tariff_choice=False,
             )
         )
+        await record_subscription_event(uid, "free", "free", 0.0, _now, None, None)
     else:
         ok = await activate_subscription(uid, plan_key, months=1)
         if not ok:
@@ -204,6 +209,77 @@ async def subscriptions_connect(request: Request, plan: str = Form(...)):
             users.update().where(users.c.id == uid).values(needs_tariff_choice=False)
         )
     return RedirectResponse("/subscriptions?connected=1", status_code=302)
+
+
+@router.get("/subscriptions/history", response_class=HTMLResponse)
+async def subscriptions_history_page(request: Request):
+    user = await require_auth(request)
+    if not user:
+        return RedirectResponse("/login?next=/subscriptions/history")
+    leg = await legal_acceptance_redirect(request, user)
+    if leg:
+        return leg
+    uid = int(user.get("primary_user_id") or user["id"])
+    history = await fetch_subscription_history_display(uid)
+    return templates.TemplateResponse(
+        "subscription_history.html",
+        {"request": request, "user": user, "history": history},
+    )
+
+
+@router.get("/subscriptions/users-search")
+async def subscriptions_users_search(request: Request, q: str = ""):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    q = (q or "").strip()
+    uid = int(user.get("primary_user_id") or user["id"])
+    out: list[dict] = []
+    if q.isdigit() and int(q) > 0:
+        row = await database.fetch_one(
+            users.select().where(users.c.id == int(q)).where(users.c.id != uid)
+        )
+        if row:
+            nm = (row.get("name") or "").strip() or f"Участник #{row['id']}"
+            out.append({"id": int(row["id"]), "name": nm})
+        return JSONResponse({"users": out})
+    if len(q) < 2:
+        return JSONResponse({"users": []})
+    like = f"%{q[:80]}%"
+    rows = await database.fetch_all(
+        users.select()
+        .where(users.c.id != uid)
+        .where(sa.or_(users.c.name.ilike(like), users.c.email.ilike(like)))
+        .limit(30)
+    )
+    for row in rows:
+        nm = (row.get("name") or "").strip() or f"Участник #{row['id']}"
+        out.append({"id": int(row["id"]), "name": nm})
+    return JSONResponse({"users": out})
+
+
+@router.post("/subscriptions/gift")
+async def subscriptions_gift_submit(
+    request: Request,
+    plan: str = Form(...),
+    recipient_user_id: int = Form(...),
+):
+    user = await require_auth(request)
+    if not user:
+        return RedirectResponse("/login?next=/subscriptions", status_code=302)
+    leg = await legal_acceptance_redirect(request, user)
+    if leg:
+        return leg
+    giver_id = int(user.get("primary_user_id") or user["id"])
+    plan_key = (plan or "").strip().lower()
+    try:
+        rid = int(recipient_user_id)
+    except (TypeError, ValueError):
+        return RedirectResponse("/subscriptions?gift_error=invalid", status_code=302)
+    ok, err = await gift_subscription(giver_id, rid, plan_key)
+    if not ok:
+        return RedirectResponse(f"/subscriptions?gift_error={err}", status_code=302)
+    return RedirectResponse("/subscriptions?gifted=1", status_code=302)
 
 
 @router.get("/onboarding/tariff", response_class=HTMLResponse)
@@ -233,6 +309,7 @@ async def onboarding_tariff_submit(request: Request, choice: str = Form(...)):
     if choice not in ("free", "start", "pro", "maxi"):
         return RedirectResponse("/subscriptions")
     if choice == "free":
+        _now = datetime.utcnow()
         await database.execute(
             users.update()
             .where(users.c.id == uid)
@@ -243,6 +320,7 @@ async def onboarding_tariff_submit(request: Request, choice: str = Form(...)):
                 subscription_admin_granted=False,
             )
         )
+        await record_subscription_event(int(uid), "free", "free", 0.0, _now, None, None)
     else:
         ok = await activate_subscription(int(uid), choice, months=1)
         if not ok:

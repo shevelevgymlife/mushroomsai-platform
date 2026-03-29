@@ -216,6 +216,20 @@ subscriptions = sqlalchemy.Table(
     sqlalchemy.Column("active", sqlalchemy.Boolean, default=True, server_default="true"),
 )
 
+subscription_events = sqlalchemy.Table(
+    "subscription_events",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("subject_user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=False),
+    sqlalchemy.Column("kind", sqlalchemy.String(32), nullable=False),
+    sqlalchemy.Column("plan", sqlalchemy.String(20), nullable=False),
+    sqlalchemy.Column("price", sqlalchemy.Numeric(12, 2), nullable=False, server_default="0"),
+    sqlalchemy.Column("valid_from", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("valid_to", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("counterparty_user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=True),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
 page_views = sqlalchemy.Table(
     "page_views",
     metadata,

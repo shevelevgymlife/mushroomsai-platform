@@ -361,6 +361,11 @@ async def apply_promo_token_from_cookie(request, response, user_id: int) -> None
         .where(referral_promo_links.c.id == r["id"])
         .values(activations_count=cnt + 1)
     )
+    from services.subscription_service import record_subscription_event
+
+    await record_subscription_event(
+        int(user_id), "promo", plan, float(price), now, end, None
+    )
     response.delete_cookie("promo_token", path="/")
 
 

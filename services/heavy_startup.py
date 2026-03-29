@@ -301,6 +301,18 @@ async def run_heavy_startup(app: FastAPI) -> None:
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS start_trial_until TIMESTAMP",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS start_trial_end_notified BOOLEAN DEFAULT false",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_admin_granted BOOLEAN DEFAULT false",
+            """CREATE TABLE IF NOT EXISTS subscription_events (
+                id SERIAL PRIMARY KEY,
+                subject_user_id INTEGER NOT NULL REFERENCES users(id),
+                kind VARCHAR(32) NOT NULL,
+                plan VARCHAR(20) NOT NULL,
+                price NUMERIC(12,2) NOT NULL DEFAULT 0,
+                valid_from TIMESTAMP,
+                valid_to TIMESTAMP,
+                counterparty_user_id INTEGER REFERENCES users(id),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )""",
+            "CREATE INDEX IF NOT EXISTS ix_subscription_events_subject_created ON subscription_events (subject_user_id, created_at DESC)",
             "ALTER TABLE referrals ADD COLUMN IF NOT EXISTS referral_bonus_amount NUMERIC(12,2)",
             """CREATE TABLE IF NOT EXISTS referral_withdrawals (
                 id SERIAL PRIMARY KEY,

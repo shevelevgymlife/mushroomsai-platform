@@ -35,6 +35,7 @@ _CLEANUP_SQL = [
     "DELETE FROM post_likes WHERE user_id=:uid",
     "DELETE FROM posts WHERE user_id=:uid",
     "DELETE FROM subscriptions WHERE user_id=:uid",
+    "DELETE FROM subscription_events WHERE subject_user_id=:uid OR counterparty_user_id=:uid",
     "DELETE FROM leads WHERE user_id=:uid",
     "DELETE FROM followups WHERE user_id=:uid",
     "DELETE FROM page_views WHERE user_id=:uid",

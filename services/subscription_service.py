@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, date
 
 from config import settings
 from db.database import database
-from db.models import users, subscriptions
+from db.models import users, subscriptions, subscription_events
 
 PLANS = {
     "free":  {"name": "Бесплатный", "price": 0,    "questions_per_day": 5,  "recipes_per_day": 1},
@@ -14,12 +14,42 @@ PLANS = {
 START_TRIAL_DAYS = 3
 
 
-async def activate_subscription(user_id: int, plan: str, months: int = 1):
+async def record_subscription_event(
+    subject_user_id: int,
+    kind: str,
+    plan: str,
+    price: float,
+    valid_from: datetime | None,
+    valid_to: datetime | None,
+    counterparty_user_id: int | None = None,
+) -> None:
+    """Запись в историю подписок (лента в кабинете). Ошибки БД не пробрасываем."""
+    try:
+        pk = (plan or "free").lower()[:20]
+        await database.execute(
+            subscription_events.insert().values(
+                subject_user_id=int(subject_user_id),
+                kind=(kind or "")[:32],
+                plan=pk,
+                price=float(price or 0),
+                valid_from=valid_from,
+                valid_to=valid_to,
+                counterparty_user_id=counterparty_user_id,
+            )
+        )
+    except Exception:
+        pass
+
+
+async def activate_subscription(
+    user_id: int, plan: str, months: int = 1, *, skip_event_log: bool = False
+):
     if plan not in PLANS:
         return False
 
     end_date = datetime.utcnow() + timedelta(days=30 * months)
     price = PLANS[plan]["price"] * months
+    now = datetime.utcnow()
 
     await database.execute(
         subscriptions.insert().values(
@@ -39,7 +69,42 @@ async def activate_subscription(user_id: int, plan: str, months: int = 1):
             subscription_admin_granted=False,
         )
     )
+    if not skip_event_log:
+        await record_subscription_event(
+            int(user_id),
+            "activation",
+            plan,
+            float(price),
+            now,
+            end_date,
+            None,
+        )
     return True
+
+
+async def gift_subscription(giver_id: int, recipient_id: int, plan: str) -> tuple[bool, str]:
+    """Подарок тарифа на 1 месяц получателю (без оплаты; позже привяжете к оплате)."""
+    if plan not in ("start", "pro", "maxi"):
+        return False, "invalid_plan"
+    if int(giver_id) == int(recipient_id):
+        return False, "self"
+    row = await database.fetch_one(users.select().where(users.c.id == int(recipient_id)))
+    if not row:
+        return False, "recipient_not_found"
+    ok = await activate_subscription(int(recipient_id), plan, 1, skip_event_log=True)
+    if not ok:
+        return False, "activate_failed"
+    now = datetime.utcnow()
+    refreshed = await database.fetch_one(users.select().where(users.c.id == int(recipient_id)))
+    end_date = refreshed.get("subscription_end") if refreshed else None
+    p = float(PLANS[plan]["price"])
+    await record_subscription_event(
+        int(recipient_id), "gift_in", plan, p, now, end_date, int(giver_id)
+    )
+    await record_subscription_event(
+        int(giver_id), "gift_out", plan, p, now, end_date, int(recipient_id)
+    )
+    return True, "ok"
 
 
 async def _notify_trial_started(user_id: int) -> None:
@@ -106,6 +171,9 @@ async def claim_start_trial(user_id: int) -> dict:
         )
     )
     await _notify_trial_started(user_id)
+    await record_subscription_event(
+        int(user_id), "trial_start", "start", 0.0, now, until, None
+    )
     return {"ok": True, "until": until.isoformat() + "Z"}
 
 
@@ -215,3 +283,108 @@ async def increment_question_count(user_id: int):
         .where(users.c.id == user_id)
         .values(daily_questions=users.c.daily_questions + 1)
     )
+
+
+_KIND_LABEL_RU = {
+    "trial_start": "Пробный период «Старт»",
+    "activation": "Подключение тарифа",
+    "free": "Бесплатный тариф",
+    "gift_in": "Подарок от пользователя",
+    "gift_out": "Подарок другому пользователю",
+    "promo": "Промо-активация",
+    "admin": "Назначение администратором",
+}
+
+
+async def fetch_subscription_history_display(user_id: int) -> list[dict]:
+    """События истории + старые строки subscriptions без дубликатов с событиями."""
+    uid = int(user_id)
+    ev_rows = await database.fetch_all(
+        subscription_events.select()
+        .where(subscription_events.c.subject_user_id == uid)
+        .order_by(subscription_events.c.created_at.desc())
+    )
+    sub_rows = await database.fetch_all(
+        subscriptions.select()
+        .where(subscriptions.c.user_id == uid)
+        .order_by(subscriptions.c.start_date.desc())
+    )
+    items: list[dict] = []
+    for r in ev_rows:
+        d = dict(r)
+        d["source"] = "event"
+        d["row_id"] = f"e-{d['id']}"
+        d["kind_label"] = _KIND_LABEL_RU.get(d.get("kind") or "", d.get("kind") or "—")
+        items.append(d)
+
+    used_sub_ids: set[int] = set()
+    for e in items:
+        vf = e.get("valid_from") or e.get("created_at")
+        if vf is None:
+            continue
+        for s in sub_rows:
+            if (s.get("plan") or "") != (e.get("plan") or ""):
+                continue
+            sd = s.get("start_date")
+            if sd is None:
+                continue
+            try:
+                if abs((vf - sd).total_seconds()) < 180:
+                    used_sub_ids.add(int(s["id"]))
+            except Exception:
+                pass
+
+    for s in sub_rows:
+        sid = int(s["id"])
+        if sid in used_sub_ids:
+            continue
+        items.append(
+            {
+                "source": "legacy_sub",
+                "row_id": f"s-{sid}",
+                "id": sid,
+                "kind": "activation",
+                "kind_label": _KIND_LABEL_RU["activation"],
+                "plan": s.get("plan") or "free",
+                "price": float(s.get("price") or 0),
+                "valid_from": s.get("start_date"),
+                "valid_to": s.get("end_date"),
+                "counterparty_user_id": None,
+                "created_at": s.get("start_date"),
+            }
+        )
+
+    items.sort(
+        key=lambda x: x.get("created_at") or datetime.min,
+        reverse=True,
+    )
+
+    cp_ids = {int(i["counterparty_user_id"]) for i in items if i.get("counterparty_user_id")}
+    names: dict[int, str] = {}
+    if cp_ids:
+        for crow in await database.fetch_all(users.select().where(users.c.id.in_(cp_ids))):
+            cid = int(crow["id"])
+            names[cid] = ((crow.get("name") or "").strip() or f"Участник #{cid}")
+    for i in items:
+        cid = i.get("counterparty_user_id")
+        i["counterparty_name"] = names.get(int(cid), "") if cid else ""
+
+    def _fmt(dt):
+        if dt is None:
+            return ""
+        if hasattr(dt, "strftime"):
+            return dt.strftime("%d.%m.%Y %H:%M")
+        return str(dt)
+
+    for i in items:
+        pk = (i.get("plan") or "free").lower()
+        i["plan_name"] = PLANS.get(pk, PLANS["free"])["name"]
+        i["valid_from_s"] = _fmt(i.get("valid_from"))
+        i["valid_to_s"] = _fmt(i.get("valid_to"))
+        i["created_s"] = _fmt(i.get("created_at"))
+        try:
+            i["price_display"] = float(i.get("price") or 0)
+        except (TypeError, ValueError):
+            i["price_display"] = 0.0
+
+    return items
