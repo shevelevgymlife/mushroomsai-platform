@@ -272,7 +272,7 @@
 
 <!-- DM MODAL -->
 <div class="mover" id="dmModal">
-  <div class="mbox" style="max-width:460px;display:flex;flex-direction:column;height:70vh;padding:18px">
+  <div class="mbox" style="max-width:460px;display:flex;flex-direction:column;height:min(70vh,calc(var(--vvh,100dvh) - 100px));padding:18px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-shrink:0">
       <img id="dmAv" src="" class="avg" style="width:38px;height:38px;display:none" alt="">
       <div id="dmAvFb" class="avp" style="width:38px;height:38px;font-size:16px">🍄</div>
@@ -624,7 +624,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 {% endif %}
 
 <!-- ── FLOATING MESSAGES PANEL ── -->
-<div id="messages-panel" style="display:none;position:fixed;right:80px;bottom:20px;width:360px;height:520px;background:rgba(8,8,8,.98);border:1px solid rgba(61,212,224,.3);border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.6);z-index:999;flex-direction:column;overflow:hidden">
+<div id="messages-panel" style="display:none;position:fixed;right:80px;bottom:calc(20px + var(--keyboard-inset,0px));width:360px;height:520px;background:rgba(8,8,8,.98);border:1px solid rgba(61,212,224,.3);border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.6);z-index:999;flex-direction:column;overflow:hidden">
   <div style="padding:16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
     <div id="panel-header" style="color:#e8e8e8;font-size:15px;font-weight:600">💬 Сообщения</div>
     <button onclick="closeMessages()" style="background:none;border:none;color:#666;font-size:22px;cursor:pointer;line-height:1">×</button>

@@ -4,6 +4,8 @@
   --app-header-h: 56px;
   --neo-cyan: #22d3ee;
   --neo-cyan-soft: rgba(34, 211, 238, 0.42);
+  /* Высота перекрытия снизу виртуальной клавиатурой (iOS Safari и др.); задаётся из base.html по visualViewport */
+  --keyboard-inset: 0px;
 }
 
 body.app-mobile-layout {

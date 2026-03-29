@@ -618,7 +618,7 @@ body:not(.app-has-mobile-footer) #chatsApp {
   }
 
   body.chats-messenger-page.chats-thread-open .chats-compose {
-    padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(max(12px, env(safe-area-inset-bottom, 0px)) + var(--keyboard-inset, 0px));
   }
 
   .chats-compose textarea {

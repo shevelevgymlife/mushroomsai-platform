@@ -85,13 +85,13 @@ body.profile-app-shell .grain-overlay{opacity:0.22}
 /* DM fullscreen overlay: поле ввода над нижней панелью (tabbar ~56px + safe area) */
 .cp-dm-panel{position:fixed;top:0;left:0;right:0;bottom:0;z-index:10050;display:none;flex-direction:column;background:#070708;box-sizing:border-box}
 @media(max-width:768px){
-  .cp-dm-panel{bottom:calc(56px + env(safe-area-inset-bottom,0px))}
+  .cp-dm-panel{bottom:calc(56px + env(safe-area-inset-bottom,0px) + var(--keyboard-inset,0px))}
 }
 .cp-dm-panel .cp-dm-head{flex-shrink:0;display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.07);background:#0a0a0a;padding-top:calc(14px + env(safe-area-inset-top,0px))}
 .cp-dm-panel .cp-dm-msgs{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:14px;min-height:0}
-.cp-dm-panel .cp-dm-composer{flex-shrink:0;display:flex;gap:8px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.07);background:#0a0a0a;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+.cp-dm-panel .cp-dm-composer{flex-shrink:0;display:flex;gap:8px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.07);background:#0a0a0a;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px) + var(--keyboard-inset,0px))}
 @media(max-width:768px){
-  .cp-dm-panel .cp-dm-composer{padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+  .cp-dm-panel .cp-dm-composer{padding-bottom:calc(10px + env(safe-area-inset-bottom,0px) + var(--keyboard-inset,0px))}
 }
 .cp-av-clickable{cursor:pointer}
 .cp-av-clickable:focus-visible{outline:2px solid rgba(61,212,224,.5);outline-offset:4px;border-radius:50%}

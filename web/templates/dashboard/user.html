@@ -503,9 +503,12 @@
 body.tg-chat-open #sec-groups .tg-chat-main{
   display:flex!important;
   position:fixed;
-  inset:72px 0 0 0;
+  top:72px;
+  left:0;
+  right:0;
+  bottom:var(--keyboard-inset,0px);
   z-index:980;
-  min-height:calc(var(--vvh, 100vh) - 72px);
+  min-height:0;
   max-height:none;
   width:100vw;
   max-width:100vw;
@@ -566,7 +569,7 @@ body.tg-chat-open #groupImageRow{
   #sec-groups .ig-g-item.tg-chat-item:nth-child(4n+2){transform:translateY(0) rotate(2.4deg)}
   #sec-groups .ig-g-item.tg-chat-item:nth-child(4n+3){transform:translateY(0) rotate(1.2deg)}
   #sec-groups .ig-g-item.tg-chat-item:nth-child(4n+4){transform:translateY(0) rotate(-1.7deg)}
-  body.tg-chat-open #sec-groups .tg-chat-main{inset:64px 0 0 0}
+  body.tg-chat-open #sec-groups .tg-chat-main{top:64px;left:0;right:0;bottom:var(--keyboard-inset,0px)}
   body.tg-chat-open .tg-chat-header-row #groupChatTitle{font-size:15px}
   body.tg-chat-open .tg-chat-header-row .btn-o{padding:6px 10px!important;font-size:12px!important}
   body.tg-chat-open #sec-groups .ig-g-msg-wrap{padding-left:8px;padding-right:8px}
@@ -605,6 +608,9 @@ body.tg-chat-open #groupImageRow{
     flex-direction:column;
     overflow:hidden;
   }
+  body.tg-chat-open.tg-group-mobile-chat #sec-groups .tg-chat-main{
+    min-height:0!important;
+  }
   body.tg-group-mobile-chat #groupChatPanel{
     flex:1;
     min-height:0!important;
@@ -617,7 +623,7 @@ body.tg-chat-open #groupImageRow{
   body.tg-group-mobile-chat #sec-groups .tg-chat-input-row{
     position:fixed;
     /* над нижней навигацией (ig-tabbar), не под ней — иначе строка скрыта и не кликается */
-    bottom:calc(56px + env(safe-area-inset-bottom, 0px));
+    bottom:calc(56px + env(safe-area-inset-bottom, 0px) + var(--keyboard-inset, 0px));
     left:0;
     right:0;
     z-index:960;
@@ -631,8 +637,8 @@ body.tg-chat-open #groupImageRow{
     border-top:1px solid rgba(61,212,224,.12);
   }
   body.tg-group-mobile-chat #sec-groups .ig-g-msg-wrap{
-    /* место под строку ввода + таббар */
-    padding-bottom:calc(120px + env(safe-area-inset-bottom, 0px))!important;
+    /* место под строку ввода + таббар + виртуальная клавиатура */
+    padding-bottom:calc(120px + env(safe-area-inset-bottom, 0px) + var(--keyboard-inset, 0px))!important;
   }
   body.tg-group-mobile-chat #groupMsgBox{
     padding-bottom:8px;
