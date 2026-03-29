@@ -496,19 +496,22 @@
     });
     el.ta.addEventListener("focus", function () {
       document.body.classList.add("chats-input-focus");
+      if (window.__nfSyncViewportKb) window.__nfSyncViewportKb();
       syncChatsViewport();
       setTimeout(function () {
+        if (window.__nfSyncViewportKb) window.__nfSyncViewportKb();
         syncChatsViewport();
         scrollMessagesToEnd();
         try {
           if (el.compose && el.compose.scrollIntoView) {
             el.compose.scrollIntoView({ block: "end", behavior: "smooth" });
           } else {
-            el.ta.scrollIntoView({ block: "nearest", behavior: "smooth" });
+            el.ta.scrollIntoView({ block: "center", behavior: "smooth" });
           }
         } catch (e) {}
       }, 120);
       setTimeout(function () {
+        if (window.__nfSyncViewportKb) window.__nfSyncViewportKb();
         syncChatsViewport();
         scrollMessagesToEnd();
       }, 350);

@@ -4141,6 +4141,16 @@ async function createGroupSubmit(){
       if(_typingPingTimer) clearTimeout(_typingPingTimer);
       _typingPingTimer = setTimeout(pingGroupTyping, 2200);
     });
+    inp.addEventListener('focus', function(){
+      try{
+        if(window.__nfSyncViewportKb) window.__nfSyncViewportKb();
+        var row = inp.closest('.tg-chat-input-row');
+        if(row && row.scrollIntoView) row.scrollIntoView({ block: 'end', behavior: 'smooth' });
+        else inp.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }catch(_){}
+      setTimeout(function(){ if(window.__nfSyncViewportKb) window.__nfSyncViewportKb(); }, 150);
+      setTimeout(function(){ if(window.__nfSyncViewportKb) window.__nfSyncViewportKb(); }, 400);
+    });
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire);
   else wire();

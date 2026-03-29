@@ -617,8 +617,22 @@ body:not(.app-has-mobile-footer) #chatsApp {
     display: none !important;
   }
 
-  body.chats-messenger-page.chats-thread-open .chats-compose {
-    padding-bottom: calc(max(12px, env(safe-area-inset-bottom, 0px)) + var(--keyboard-inset, 0px));
+  /* Панель ввода поверх клавиатуры (Android / iOS WebView): не только padding внутри flex */
+  body.chats-messenger-page.chats-thread-open .chats-thread .chats-compose {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: var(--keyboard-inset, 0px);
+    z-index: 960;
+    padding: 10px 16px max(12px, env(safe-area-inset-bottom, 0px)) 16px;
+    border-top: 1px solid var(--ch-border);
+    box-sizing: border-box;
+    max-width: 100vw;
+    background: var(--ch-panel);
+  }
+
+  body.chats-messenger-page.chats-thread-open .chats-thread .chats-scroll {
+    padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px) + var(--keyboard-inset, 0px)) !important;
   }
 
   .chats-compose textarea {

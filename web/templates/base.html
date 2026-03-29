@@ -92,15 +92,46 @@
 <script>
 (function(){
   var root = document.documentElement;
+  var kbPollTimer = null;
   function syncVisualViewportVars(){
     var vv = window.visualViewport;
     var vh = vv ? vv.height : window.innerHeight;
-    root.style.setProperty('--vvh', vh + 'px');
+    root.style.setProperty('--vvh', Math.round(vh) + 'px');
     var insetPx = 0;
     if (vv) {
-      insetPx = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      var ih = window.innerHeight;
+      var ch = document.documentElement.clientHeight || ih;
+      insetPx = Math.max(0, ih - vv.height - vv.offsetTop, ch - vv.height - vv.offsetTop);
     }
     root.style.setProperty('--keyboard-inset', Math.round(insetPx) + 'px');
+  }
+  window.__nfSyncViewportKb = syncVisualViewportVars;
+  function startKeyboardPoll(){
+    if (kbPollTimer) return;
+    var n = 0;
+    kbPollTimer = setInterval(function () {
+      syncVisualViewportVars();
+      n++;
+      if (n >= 50) {
+        clearInterval(kbPollTimer);
+        kbPollTimer = null;
+      }
+    }, 72);
+  }
+  function stopKeyboardPollSoon(){
+    setTimeout(function () {
+      var ae = document.activeElement;
+      var tag = ae && ae.tagName;
+      var typ = ae && (ae.type || '').toLowerCase();
+      if (tag === 'TEXTAREA') return;
+      if (tag === 'INPUT' && typ && ['text','search','email','tel','url','password','number'].indexOf(typ) >= 0) return;
+      if (tag === 'SELECT') return;
+      if (kbPollTimer) {
+        clearInterval(kbPollTimer);
+        kbPollTimer = null;
+      }
+      syncVisualViewportVars();
+    }, 160);
   }
   syncVisualViewportVars();
   window.addEventListener('resize', syncVisualViewportVars);
@@ -115,18 +146,22 @@
     if (tag !== 'TEXTAREA' && tag !== 'INPUT' && tag !== 'SELECT') return;
     var typ = (t.type || '').toLowerCase();
     if (typ === 'hidden' || typ === 'button' || typ === 'submit' || typ === 'checkbox' || typ === 'radio' || typ === 'file') return;
+    startKeyboardPoll();
     var run = function () {
       try {
-        t.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
+        t.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'auto' });
       } catch (err) {}
     };
     requestAnimationFrame(function () {
       requestAnimationFrame(run);
     });
-    setTimeout(run, 120);
-    setTimeout(run, 350);
-    setTimeout(syncVisualViewportVars, 400);
+    setTimeout(run, 80);
+    setTimeout(run, 200);
+    setTimeout(run, 450);
+    setTimeout(syncVisualViewportVars, 100);
+    setTimeout(syncVisualViewportVars, 500);
   }, true);
+  document.addEventListener('focusout', stopKeyboardPollSoon, true);
 })();
 </script>
 <script>window._isLoggedIn = {{ 'true' if user else 'false' }};</script>
