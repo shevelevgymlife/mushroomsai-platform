@@ -470,7 +470,12 @@ async def lifespan(app: FastAPI):
             bot_app = create_bot()
             await bot_app.initialize()
             await bot_app.start()
-            await bot_app.updater.start_polling(drop_pending_updates=True)
+            from telegram import Update as TgUpdate
+
+            await bot_app.updater.start_polling(
+                drop_pending_updates=True,
+                allowed_updates=TgUpdate.ALL_TYPES,
+            )
             await setup_bot_menu(bot_app)
             logger.info("Main bot started")
         except Exception as e:

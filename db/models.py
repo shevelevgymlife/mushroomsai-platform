@@ -773,6 +773,29 @@ user_block_overrides = sqlalchemy.Table(
     sqlalchemy.Column("custom_name", sqlalchemy.Text, nullable=True),
 )
 
+# Автопост из личного Telegram-канала пользователя в ленту сообщества (главный бот)
+user_channel_autopost = sqlalchemy.Table(
+    "user_channel_autopost",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=False, unique=True),
+    sqlalchemy.Column("channel_chat_id", sqlalchemy.BigInteger, nullable=False, unique=True),
+    sqlalchemy.Column("channel_title", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("channel_username", sqlalchemy.String(255), nullable=True),
+    sqlalchemy.Column("autopost_enabled", sqlalchemy.Boolean, default=True, server_default="true"),
+    sqlalchemy.Column("linked_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+    sqlalchemy.Column("updated_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+channel_autopost_log = sqlalchemy.Table(
+    "channel_autopost_log",
+    metadata,
+    sqlalchemy.Column("channel_chat_id", sqlalchemy.BigInteger, nullable=False),
+    sqlalchemy.Column("message_id", sqlalchemy.Integer, nullable=False),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+    sqlalchemy.PrimaryKeyConstraint("channel_chat_id", "message_id"),
+)
+
 # Внутриигровые события (лента /notifications) — не удаляются
 in_app_notifications = sqlalchemy.Table(
     "in_app_notifications",

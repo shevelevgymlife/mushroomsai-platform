@@ -18,6 +18,8 @@ BTN_AI = "🤖 Задать вопрос AI"
 BTN_AI_EXIT = "❌ Выйти из режима AI"
 # Публикация поста в ленту сообщества (ConversationHandler в main_bot)
 BTN_COMMUNITY_POST = "📤 Пост в сообщество"
+# Автопост из личного Telegram-канала в ленту сообщества
+BTN_CONNECT_CHANNEL = "📢 Подключить свой канал"
 
 
 async def ensure_user(tg_user) -> dict | None:
@@ -84,7 +86,7 @@ async def ensure_user_or_blocked_reply(update: Update) -> dict | None:
     return None
 
 
-def main_keyboard(site_url: str, ai_active: bool = False):
+def main_keyboard(site_url: str, ai_active: bool = False, extra_rows: list | None = None):
     """Клавиатура главного бота. Режим AI — отдельная строка: вход или выход."""
     if ai_active:
         top = [[KeyboardButton(BTN_AI_EXIT)]]
@@ -93,9 +95,12 @@ def main_keyboard(site_url: str, ai_active: bool = False):
     keyboard = top + [
         [KeyboardButton("🛍 Маркет плейс"), KeyboardButton("🌐 Сообщество")],
         [KeyboardButton(BTN_COMMUNITY_POST)],
+        [KeyboardButton(BTN_CONNECT_CHANNEL)],
         [KeyboardButton("🌍 Веб версия"), KeyboardButton("🔒 Безопасность")],
         [KeyboardButton("🆘 Тех. поддержка")],
     ]
+    if extra_rows:
+        keyboard = keyboard + list(extra_rows)
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, is_persistent=True)
 
 
@@ -158,14 +163,17 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "или обратитесь в службу поддержки.</i>"
     )
 
+    from bot.handlers.channel_autopost import main_keyboard_with_autopost
+
+    site = (site_url or settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
     await update.message.reply_text(
         welcome_text,
-        reply_markup=main_keyboard(site_url),
+        reply_markup=await main_keyboard_with_autopost(site, False, int(user["id"])),
         parse_mode="HTML",
     )
     await update.message.reply_text(
         "👇 Нажмите, чтобы открыть приложение:",
-        reply_markup=main_inline_keyboard(site_url),
+        reply_markup=main_inline_keyboard(site),
         parse_mode="HTML",
     )
     support_msg = await update.message.reply_text(

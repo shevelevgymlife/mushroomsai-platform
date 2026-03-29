@@ -70,12 +70,26 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     if not text:
         return
 
-    from bot.handlers.start import BTN_AI, BTN_AI_EXIT, BTN_COMMUNITY_POST, main_keyboard
+    from bot.handlers.start import (
+        BTN_AI,
+        BTN_AI_EXIT,
+        BTN_COMMUNITY_POST,
+        BTN_CONNECT_CHANNEL,
+        main_keyboard,
+    )
+    from bot.handlers.channel_autopost import BTN_AUTOPOST_DISABLE, BTN_AUTOPOST_ENABLE
 
     site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
 
     # Кнопки обрабатываются отдельными хендлерами в main_bot; на всякий случай не дублируем
-    if text in (BTN_AI, BTN_AI_EXIT, BTN_COMMUNITY_POST):
+    if text in (
+        BTN_AI,
+        BTN_AI_EXIT,
+        BTN_COMMUNITY_POST,
+        BTN_CONNECT_CHANNEL,
+        BTN_AUTOPOST_DISABLE,
+        BTN_AUTOPOST_ENABLE,
+    ):
         return
 
     # Мастер «Пост в сообщество» — не показывать подсказку про нейросеть (текст обрабатывает мастер или игнорируется)

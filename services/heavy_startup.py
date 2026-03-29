@@ -351,6 +351,22 @@ async def run_heavy_startup(app: FastAPI) -> None:
                 created_at TIMESTAMP DEFAULT NOW(),
                 UNIQUE(post_id, user_id)
             )""",
+            """CREATE TABLE IF NOT EXISTS user_channel_autopost (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+                channel_chat_id BIGINT NOT NULL UNIQUE,
+                channel_title TEXT,
+                channel_username VARCHAR(255),
+                autopost_enabled BOOLEAN NOT NULL DEFAULT true,
+                linked_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW()
+            )""",
+            """CREATE TABLE IF NOT EXISTS channel_autopost_log (
+                channel_chat_id BIGINT NOT NULL,
+                message_id INTEGER NOT NULL,
+                created_at TIMESTAMP DEFAULT NOW(),
+                PRIMARY KEY (channel_chat_id, message_id)
+            )""",
         ]
         try:
             await database.execute(

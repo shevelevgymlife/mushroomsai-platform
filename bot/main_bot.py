@@ -1,13 +1,18 @@
 import logging
+import re
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, MenuButtonWebApp, WebAppInfo
 from telegram.ext import (
-    Application, CommandHandler, CallbackQueryHandler,
-    MessageHandler, filters,
+    Application,
+    CallbackQueryHandler,
+    ChatMemberHandler,
+    CommandHandler,
+    MessageHandler,
+    filters,
 )
 
 from config import settings
-from bot.handlers.start import BTN_AI, BTN_AI_EXIT, main_keyboard, start
+from bot.handlers.start import BTN_AI, BTN_AI_EXIT, BTN_CONNECT_CHANNEL, main_keyboard, start
 from bot.handlers.link import link_confirm_callback, link_merge_callback
 from bot.handlers.support import get_support_conversation
 from bot.handlers.community_post_wizard import get_community_post_conversation
@@ -20,6 +25,19 @@ from bot.handlers.chat import (
 logger = logging.getLogger(__name__)
 
 SECURITY_URL = "https://t.me/VPN_POLETELI_bot?start=742166400"
+
+
+async def _reply_kb(update, context, ai_active: bool):
+    site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
+    from bot.handlers.start import ensure_user
+    from bot.handlers.channel_autopost import main_keyboard_with_autopost
+
+    if not update.effective_user:
+        return main_keyboard(site, ai_active)
+    u = await ensure_user(update.effective_user)
+    if not u:
+        return main_keyboard(site, ai_active)
+    return await main_keyboard_with_autopost(site, ai_active, int(u["id"]))
 
 # Тексты кнопок клавиатуры
 BTN_SHOP = "🛍 Маркет плейс"
@@ -55,7 +73,7 @@ async def _enable_ai_mode_and_notify(update, context) -> None:
         "После ответа вы сможете выбрать: продолжить с AI или выйти.\n"
         "Либо нажмите «❌ Выйти из режима AI» или любую кнопку меню (Магазин, Сообщество…), чтобы выйти."
     )
-    kb = main_keyboard(site, ai_active=True)
+    kb = await _reply_kb(update, context, ai_active=True)
     if update.message:
         await update.message.reply_text(text, parse_mode="HTML", reply_markup=kb)
     elif update.callback_query and update.callback_query.message:
@@ -87,7 +105,7 @@ async def _shop_handler(update, context):
         parse_mode="HTML",
         disable_web_page_preview=True,
     )
-    await update.message.reply_text("⌨️", reply_markup=main_keyboard(site, ai_active=False))
+    await update.message.reply_text("⌨️", reply_markup=await _reply_kb(update, context, ai_active=False))
 
 
 async def _community_handler(update, context):
@@ -107,7 +125,7 @@ async def _community_handler(update, context):
         ),
         parse_mode="HTML",
     )
-    await update.message.reply_text("⌨️", reply_markup=main_keyboard(site, ai_active=False))
+    await update.message.reply_text("⌨️", reply_markup=await _reply_kb(update, context, ai_active=False))
 
 
 async def _web_handler(update, context):
@@ -118,7 +136,7 @@ async def _web_handler(update, context):
         reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🌍 Открыть сайт", url=site)]]),
         parse_mode="HTML",
     )
-    await update.message.reply_text("⌨️", reply_markup=main_keyboard(site, ai_active=False))
+    await update.message.reply_text("⌨️", reply_markup=await _reply_kb(update, context, ai_active=False))
 
 
 async def _security_handler(update, context):
@@ -129,7 +147,7 @@ async def _security_handler(update, context):
         reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔒 Открыть", url=SECURITY_URL)]]),
         parse_mode="HTML",
     )
-    await update.message.reply_text("⌨️", reply_markup=main_keyboard(site, ai_active=False))
+    await update.message.reply_text("⌨️", reply_markup=await _reply_kb(update, context, ai_active=False))
 
 
 async def _ai_enter_handler(update, context):
@@ -141,7 +159,7 @@ async def _ai_exit_handler(update, context):
     site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
     await update.message.reply_text(
         "Вы вышли из режима AI. Кнопки бота снова в обычном режиме.",
-        reply_markup=main_keyboard(site, ai_active=False),
+        reply_markup=await _reply_kb(update, context, ai_active=False),
     )
 
 
@@ -151,10 +169,37 @@ def create_bot() -> Application:
         .token(settings.TELEGRAM_TOKEN)
         .build()
     )
+    application.bot_data.setdefault("channel_autopost_pending", {})
+
+    from bot.handlers.channel_autopost import (
+        ch_link_done_callback,
+        connect_channel_handler,
+        get_channel_forward_handler,
+        get_toggle_autopost_handler,
+        on_channel_post,
+        on_my_chat_member,
+    )
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(get_community_post_conversation(), group=-1)
     application.add_handler(get_support_conversation())
+
+    application.add_handler(
+        ChatMemberHandler(on_my_chat_member, chat_member_types=ChatMemberHandler.MY_CHAT_MEMBER)
+    )
+    application.add_handler(CallbackQueryHandler(ch_link_done_callback, pattern=r"^ch_link_done$"))
+
+    ch_group = -2
+    application.add_handler(MessageHandler(filters.UpdateType.CHANNEL_POST, on_channel_post), group=ch_group)
+    application.add_handler(get_channel_forward_handler(), group=ch_group)
+    application.add_handler(
+        MessageHandler(
+            filters.ChatType.PRIVATE & filters.Regex(f"^{re.escape(BTN_CONNECT_CHANNEL)}$"),
+            connect_channel_handler,
+        ),
+        group=ch_group,
+    )
+    application.add_handler(get_toggle_autopost_handler(), group=ch_group)
 
     # Режим AI: вход / выход (до общего текстового хендлера)
     application.add_handler(MessageHandler(filters.Regex(f"^{BTN_AI_EXIT}$"), _ai_exit_handler))
