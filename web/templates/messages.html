@@ -232,11 +232,17 @@ function esc(t){return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function escAttr(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;')}
 function linkifyDisplay(raw){
   const s=String(raw||'');
+  function mentionsEsc(e){
+    if (typeof linkifyMentionsInEscapedFragment === 'function') return linkifyMentionsInEscapedFragment(e);
+    return e.replace(/(?<![\w/])@(\d{1,12})\b/g, function(_, id){
+      return '<a class="nf-mention" href="/community/profile/'+id+'" title="Профиль участника">@'+id+'</a>';
+    });
+  }
   return s.split(/(https?:\/\/[^\s<]+)/g).map(function(p){
     if(/^https?:\/\//.test(p)){
       return '<a href="'+escAttr(p)+'" target="_blank" rel="noopener noreferrer" style="color:#3dd4e0;text-decoration:underline;word-break:break-all">'+esc(p)+'</a>';
     }
-    return esc(p);
+    return mentionsEsc(esc(p));
   }).join('');
 }
 (function(){

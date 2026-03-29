@@ -172,7 +172,7 @@
       <div class="space-y-3 mb-6">
         {% for item in shop_comments %}
         <div class="p-4 rounded-xl bg-surface border border-border">
-          <p class="text-sm text-text whitespace-pre-wrap">{{ item.c.content }}</p>
+          <p class="text-sm text-text whitespace-pre-wrap">{{ item.c.content | linkify_mentions | safe }}</p>
           <p class="text-xs text-muted mt-2">
             {{ item.author.name if item.author and item.author.name else 'Участник' }}
             {% if item.c.created_at %} · {{ item.c.created_at.strftime('%d.%m.%Y %H:%M') }}{% endif %}
@@ -283,7 +283,7 @@
             </div>
           </div>
           {% if rv.text %}
-          <p class="text-sm text-muted leading-relaxed">{{ rv.text }}</p>
+          <p class="text-sm text-muted leading-relaxed whitespace-pre-wrap">{{ rv.text | linkify_mentions | safe }}</p>
           {% endif %}
         </div>
         {% endfor %}

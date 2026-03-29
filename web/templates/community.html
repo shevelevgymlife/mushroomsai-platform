@@ -479,7 +479,7 @@ async function loadThread(){
   const r=await fetch(`/community/messages/${dmPid}`);
   const d=await r.json();
   const box=document.getElementById('dmMsgs');
-  box.innerHTML=d.messages.map(m=>`<div class="dmmsg ${m.is_mine?'me':'them'}">${esc(m.text)}<span style="font-size:10px;color:#555;display:block;margin-top:2px">${m.created_at}</span></div>`).join('');
+  box.innerHTML=d.messages.map(m=>`<div class="dmmsg ${m.is_mine?'me':'them'}">${dmBubbleHtml(m.text)}<span style="font-size:10px;color:#555;display:block;margin-top:2px">${m.created_at}</span></div>`).join('');
   box.scrollTop=box.scrollHeight;
 }
 let _dmSendLock=false;
@@ -505,7 +505,7 @@ async function loadConvos(targetId){
   el.innerHTML=d.conversations.map(c=>{
     tot+=c.unread||0;
     const av=c.avatar?`<img src="${c.avatar}" class="avg" style="width:34px;height:34px" alt="">`:`<div class="avp" style="width:34px;height:34px;font-size:14px">🍄</div>`;
-    return `<div onclick="closeM('msgsModal');openDM(${c.user_id},'${esc2(c.name||'')}','${esc2(c.avatar||'')}')" style="display:flex;gap:8px;align-items:center;padding:7px 4px;cursor:pointer;border-radius:8px" onmouseover="this.style.background='#1a1a1a'" onmouseout="this.style.background='transparent'">${av}<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.name)}</div><div style="color:#444;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.last_text)}</div></div><div style="font-size:11px;color:#555;flex-shrink:0">${c.last_at}${c.unread?`<br><span class="ubadge">${c.unread}</span>`:''}</div></div>`;
+    return `<div onclick="closeM('msgsModal');openDM(${c.user_id},'${esc2(c.name||'')}','${esc2(c.avatar||'')}')" style="display:flex;gap:8px;align-items:center;padding:7px 4px;cursor:pointer;border-radius:8px" onmouseover="this.style.background='#1a1a1a'" onmouseout="this.style.background='transparent'">${av}<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.name)}</div><div style="color:#444;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${mentionLineHtml(c.last_text||'')}</div></div><div style="font-size:11px;color:#555;flex-shrink:0">${c.last_at}${c.unread?`<br><span class="ubadge">${c.unread}</span>`:''}</div></div>`;
   }).join('');
   if(tot>0){const b=document.getElementById('unreadBadge');if(b){b.textContent=tot;b.style.display='inline-flex'}}
 }
@@ -587,6 +587,8 @@ async function submitCommunityFeedPost(ev){
 
 // ---- UTILS ----
 function esc(t){return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function mentionLineHtml(line){return (typeof linkifyCommunityMentionsPlain==='function')?linkifyCommunityMentionsPlain(line):esc(line)}
+function dmBubbleHtml(t){return String(t==null?'':t).split('\n').map(mentionLineHtml).join('<br>')}
 function openCommunityPostPage(event, postId){
   const t=event&&event.target;
   if(t && t.closest('a,button,input,textarea,details,summary,.abt,.sinp,.comm-ig-met,.csec,.nf-post-gallery')) return;
@@ -684,7 +686,7 @@ function panelRenderDialogs(dialogs){
       </div>
       <div style="flex:1;min-width:0">
         <div style="color:#e8e8e8;font-size:13px;font-weight:600">${d.is_system?'🛡️ Система':esc(d.name||'Участник')}</div>
-        <div style="color:#555;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(d.last_message||'')}</div>
+        <div style="color:#555;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${mentionLineHtml(d.last_message||'')}</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
         <div style="color:#444;font-size:10px">${d.time||''}</div>
@@ -716,8 +718,8 @@ async function panelLoadChat(){
     const box=document.getElementById('chat-messages');
     const atBottom=box.scrollHeight-box.scrollTop<=box.clientHeight+50;
     box.innerHTML=msgs.map(m=>{
-      if(m.is_system)return`<div style="text-align:center;color:#3dd4e0;font-size:11px;font-style:italic;padding:4px 8px;background:rgba(61,212,224,.08);border-radius:8px">${esc(m.text)}</div>`;
-      return`<div style="display:flex;justify-content:${m.is_mine?'flex-end':'flex-start'}"><div style="max-width:75%;padding:10px 14px;border-radius:${m.is_mine?'16px 16px 4px 16px':'16px 16px 16px 4px'};background:${m.is_mine?'rgba(61,212,224,.15)':'rgba(255,255,255,.05)'};color:#e8e8e8;font-size:13px;line-height:1.4;word-break:break-word">${esc(m.text)}<div style="font-size:10px;color:rgba(232,232,232,.3);margin-top:3px;text-align:right">${m.time}</div></div></div>`;
+      if(m.is_system)return`<div style="text-align:center;color:#3dd4e0;font-size:11px;font-style:italic;padding:4px 8px;background:rgba(61,212,224,.08);border-radius:8px">${dmBubbleHtml(m.text)}</div>`;
+      return`<div style="display:flex;justify-content:${m.is_mine?'flex-end':'flex-start'}"><div style="max-width:75%;padding:10px 14px;border-radius:${m.is_mine?'16px 16px 4px 16px':'16px 16px 16px 4px'};background:${m.is_mine?'rgba(61,212,224,.15)':'rgba(255,255,255,.05)'};color:#e8e8e8;font-size:13px;line-height:1.4;word-break:break-word">${dmBubbleHtml(m.text)}<div style="font-size:10px;color:rgba(232,232,232,.3);margin-top:3px;text-align:right">${m.time}</div></div></div>`;
     }).join('');
     if(atBottom)box.scrollTop=box.scrollHeight;
   }catch(e){}

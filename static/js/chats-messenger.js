@@ -131,6 +131,16 @@
     return d.innerHTML;
   }
 
+  function bubbleMsgHtml(text) {
+    const raw = String(text == null ? "" : text);
+    const lines = raw.split("\n");
+    const fmt = (line) =>
+      typeof window.linkifyCommunityMentionsPlain === "function"
+        ? window.linkifyCommunityMentionsPlain(line)
+        : esc(line);
+    return lines.map(fmt).join("<br>");
+  }
+
   function fmtTime(iso) {
     if (!iso) return "";
     const d = new Date(iso);
@@ -320,12 +330,12 @@
           "<strong>" +
           esc(m.reply_preview.sender_name || "…") +
           "</strong>" +
-          esc(m.reply_preview.text || "");
+          bubbleMsgHtml(m.reply_preview.text || "");
         bubble.appendChild(rp);
       }
       if (m.text) {
         const t = document.createElement("div");
-        t.textContent = m.text;
+        t.innerHTML = bubbleMsgHtml(m.text);
         bubble.appendChild(t);
       }
       if (m.media_url) {

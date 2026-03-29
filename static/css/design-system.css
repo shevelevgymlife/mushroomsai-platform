@@ -400,6 +400,7 @@ a.nf-mention {
   font-weight: 600;
   text-decoration: none;
   border-bottom: 1px solid rgba(103, 232, 249, 0.38);
+  cursor: pointer;
 }
 a.nf-mention:hover {
   color: #a5f3fc;

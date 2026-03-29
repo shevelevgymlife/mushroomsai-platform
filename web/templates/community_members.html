@@ -134,6 +134,12 @@
 
 <script>
 let _membUid = null;
+function membMsgHtml(t){
+  const raw=String(t==null?'':t);
+  return raw.split('\n').map(function(line){
+    return (typeof linkifyCommunityMentionsPlain==='function')?linkifyCommunityMentionsPlain(line):String(line||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }).join('<br>');
+}
 
 async function openDmWith(uid, name) {
   _membUid = uid;
@@ -147,7 +153,7 @@ async function openDmWith(uid, name) {
   (d.messages || []).forEach(m => {
     const div = document.createElement('div');
     div.style.cssText = `max-width:80%;padding:6px 10px;border-radius:10px;font-size:13px;align-self:${m.is_mine?'flex-end':'flex-start'};background:${m.is_mine?'rgba(61,212,224,.2)':'rgba(255,255,255,.07)'};color:#e8e8e8`;
-    div.textContent = m.text;
+    div.innerHTML = membMsgHtml(m.text);
     box.appendChild(div);
   });
   box.scrollTop = box.scrollHeight;
@@ -174,7 +180,7 @@ async function membSend() {
     const box = document.getElementById('dm-members-msgs');
     const div = document.createElement('div');
     div.style.cssText = 'max-width:80%;padding:6px 10px;border-radius:10px;font-size:13px;align-self:flex-end;background:rgba(61,212,224,.2);color:#e8e8e8';
-    div.textContent = text;
+    div.innerHTML = membMsgHtml(text);
     box.appendChild(div);
     box.scrollTop = box.scrollHeight;
   }

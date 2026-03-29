@@ -25,12 +25,12 @@ function appendMessage(role, text) {
         <span class="text-black font-bold text-xs">AI</span>
       </div>
       <div class="bg-[#111] border border-[#222] rounded-2xl rounded-tl-sm px-4 py-3" style="max-width:min(100%,28rem)">
-        <p class="text-sm text-[#e8e8e8] leading-relaxed whitespace-pre-wrap">${escapeHtml(text)}</p>
+        <p class="text-sm text-[#e8e8e8] leading-relaxed whitespace-pre-wrap">${formatChatBubbleHtml(text)}</p>
       </div>`;
   } else {
     wrapper.innerHTML = `
       <div class="max-w-sm px-4 py-3 rounded-2xl rounded-tr-sm bg-[#3dd4e0]/10 border border-[#3dd4e0]/25">
-        <p class="text-sm text-[#e8e8e8] leading-relaxed whitespace-pre-wrap">${escapeHtml(text)}</p>
+        <p class="text-sm text-[#e8e8e8] leading-relaxed whitespace-pre-wrap">${formatChatBubbleHtml(text)}</p>
       </div>`;
   }
 
@@ -73,6 +73,19 @@ function escapeHtml(text) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+/** Текст в пузырьке: переносы строк + кликабельные @id и ссылки на профиль */
+function formatChatBubbleHtml(text) {
+  const raw = String(text == null ? '' : text);
+  const lines = raw.split('\n');
+  const fmtLine = (line) => {
+    if (typeof linkifyCommunityMentionsPlain === 'function') {
+      return linkifyCommunityMentionsPlain(line);
+    }
+    return escapeHtml(line);
+  };
+  return lines.map(fmtLine).join('<br>');
 }
 
 async function sendMessage() {

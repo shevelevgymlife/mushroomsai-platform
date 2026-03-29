@@ -951,7 +951,7 @@ async function loadThread(){
   const r=await fetch(`/community/messages/${PROFILE_ID}`);
   const d=await r.json();
   const box=document.getElementById('dmMsgs');
-  box.innerHTML=d.messages.map(m=>`<div class="dmmsg ${m.is_mine?'me':'them'}">${esc(m.text)}<span style="font-size:10px;color:#555;display:block;margin-top:2px">${m.created_at}</span></div>`).join('');
+  box.innerHTML=d.messages.map(m=>`<div class="dmmsg ${m.is_mine?'me':'them'}">${dmBubbleHtml(m.text)}<span style="font-size:10px;color:#555;display:block;margin-top:2px">${m.created_at}</span></div>`).join('');
   box.scrollTop=box.scrollHeight;
 }
 async function sendMsg(){
@@ -985,6 +985,8 @@ async function toggleProfilePageLike(){
 }
 
 function esc(t){return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function mentionLineHtml(line){return (typeof linkifyCommunityMentionsPlain==='function')?linkifyCommunityMentionsPlain(line):esc(line)}
+function dmBubbleHtml(t){return String(t==null?'':t).split('\n').map(mentionLineHtml).join('<br>')}
 function escAttr(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;')}
 
 function closeProfilePostPreview(){
