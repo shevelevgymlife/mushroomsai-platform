@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import uuid
 from datetime import datetime
 from typing import Any
@@ -20,8 +21,12 @@ from starlette.responses import HTMLResponse
 from auth.session import get_current_user, get_user_from_request
 from db.database import database
 from db.models import users
-from services.in_app_notifications import create_notification, should_send_telegram_for_event
-from services.notify_user_stub import notify_user_dm_with_read_button
+from services.in_app_notifications import (
+    create_notification,
+    load_prefs_for_user,
+    should_send_telegram_for_event,
+)
+from services.notify_user_stub import notify_user_dm_with_read_button, notify_user_group_chat_button
 from services.chat_ws_manager import (
     online_user_ids,
     room_broadcast,
@@ -209,6 +214,135 @@ def _parse_group_settings(raw: str | None) -> dict[str, Any]:
 
 def _settings_json_from_dict(d: dict[str, Any]) -> str:
     return json.dumps(d, ensure_ascii=False)
+
+
+def _mention_user_ids_from_chat_text(t: str | None) -> set[int]:
+    if not t:
+        return set()
+    out: set[int] = set()
+    for m in re.finditer(r"@(\d{1,12})\b", t):
+        try:
+            out.add(int(m.group(1)))
+        except ValueError:
+            pass
+    return out
+
+
+async def _notify_group_chat_message(
+    *,
+    chat_id: int,
+    sender_id: int,
+    message_id: int,
+    text: str | None,
+    media_url: str | None,
+    reply_to_id: int | None,
+    sender_name: str,
+) -> None:
+    crow = await database.fetch_one(sa.text("SELECT * FROM chats WHERE id = :id"), {"id": chat_id})
+    if not crow or (crow.get("type") or "") != "group":
+        return
+    chat_title = ((crow.get("name") or "") or "Группа").strip() or "Группа"
+    link = f"/chats?open_chat={chat_id}"
+    body_prev = (text or "").strip()
+    if not body_prev and media_url:
+        body_prev = "[медиа]"
+    if not body_prev:
+        body_prev = " "
+    body_prev = body_prev[:400]
+
+    mention_ids = _mention_user_ids_from_chat_text(text)
+    reply_to_uid: int | None = None
+    if reply_to_id:
+        rpr = await database.fetch_one(
+            sa.text(
+                "SELECT user_id FROM chat_messages WHERE id = :id AND chat_id = :cid AND is_deleted = false"
+            ),
+            {"id": reply_to_id, "cid": chat_id},
+        )
+        if rpr and rpr.get("user_id") is not None:
+            reply_to_uid = int(rpr["user_id"])
+
+    members = await database.fetch_all(
+        sa.text(
+            """
+            SELECT user_id, COALESCE(mute_notifications, false) AS mute_notifications
+            FROM chat_members
+            WHERE chat_id = :cid AND user_id <> :sender
+            """
+        ),
+        {"cid": chat_id, "sender": sender_id},
+    )
+    sn = (sender_name or "").strip() or "Участник"
+
+    for mrow in members:
+        rid = int(mrow["user_id"])
+        muted = bool(mrow["mute_notifications"])
+        mentioned = rid in mention_ids
+        is_reply = reply_to_uid is not None and reply_to_uid == rid
+        priority = mentioned or is_reply
+
+        if muted and not priority:
+            continue
+
+        prefs = await load_prefs_for_user(rid)
+
+        if priority:
+            if mentioned and is_reply:
+                ntype = "mention"
+                title = "Упоминание и ответ"
+                body_n = f"{sn} ответил вам и упомянул вас в «{chat_title}»"
+            elif mentioned:
+                ntype = "mention"
+                title = "Упоминание в чате"
+                body_n = f"{sn} упомянул вас в «{chat_title}»"
+            else:
+                ntype = "group_post"
+                title = "Ответ в чате"
+                body_n = f"{sn} ответил вам в «{chat_title}»"
+            await create_notification(
+                recipient_id=rid,
+                actor_id=sender_id,
+                ntype=ntype,
+                title=title,
+                body=body_n,
+                link_url=link,
+                source_kind="chat_group_message",
+                source_id=message_id,
+                skip_prefs=True,
+            )
+        else:
+            await create_notification(
+                recipient_id=rid,
+                actor_id=sender_id,
+                ntype="group_post",
+                title="Сообщение в группе",
+                body=f"{sn} в «{chat_title}»: {body_prev[:280]}",
+                link_url=link,
+                source_kind="chat_group_message",
+                source_id=message_id,
+                skip_prefs=False,
+            )
+
+        if not prefs.get("telegram_bot", True):
+            continue
+        if not priority:
+            continue
+        allow_tg = (mentioned and prefs.get("mentions", True)) or (
+            is_reply and prefs.get("group_posts", True)
+        )
+        if not allow_tg:
+            continue
+        peer_row = await database.fetch_one(users.select().where(users.c.id == rid))
+        tg_id = (peer_row.get("tg_id") or peer_row.get("linked_tg_id")) if peer_row else None
+        if not tg_id:
+            continue
+        await notify_user_group_chat_button(
+            int(tg_id),
+            chat_title=chat_title,
+            open_path=link,
+            is_mention=mentioned,
+            is_reply=is_reply,
+        )
 
 
 async def _audit(chat_id: int, actor_id: int | None, action: str, detail: dict | None = None) -> None:
@@ -922,8 +1056,18 @@ async def api_send_message(request: Request, chat_id: int, body: SendMessageBody
                         await notify_user_dm_with_read_button(
                             int(tg_id), actor_name, prev, link
                         )
+        elif crow and (crow.get("type") or "") == "group":
+            await _notify_group_chat_message(
+                chat_id=chat_id,
+                sender_id=uid,
+                message_id=mid,
+                text=text,
+                media_url=media,
+                reply_to_id=body.reply_to_id,
+                sender_name=(srow.get("sender_name") or "").strip() or "Участник",
+            )
     except Exception as e:
-        logger.warning("personal chat notify: %s", e)
+        logger.warning("chat notify: %s", e)
 
     await room_broadcast(chat_id, {"type": "message", "payload": payload})
     return JSONResponse({"ok": True, "message": payload})

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Чаты — NEUROFUNGI AI{% endblock %}
 {% block extra_head %}
-<link rel="stylesheet" href="/static/css/chats-messenger.css?v=9" />
+<link rel="stylesheet" href="/static/css/chats-messenger.css?v=10" />
 {% endblock %}
 {% block body_class %} chats-messenger-page{% endblock %}
 {% block content %}
@@ -50,8 +50,8 @@
         </button>
         <button type="button" class="chats-menu-btn" id="chatsMenuBtn" style="display:none" aria-label="Меню">⋮</button>
         <div class="chats-drop-menu" id="chatsDropMenu">
-          <button type="button" id="chatsMenuMembers">Участники</button>
-          <button type="button" id="chatsMenuAdd">Добавить участника</button>
+          <button type="button" id="chatsMenuSettings">Настройки</button>
+          <button type="button" id="chatsMenuAdd" data-ch-requires-manage="1">Добавить участника</button>
           <button type="button" id="chatsMenuLeave">Выйти из группы</button>
         </div>
       </div>
@@ -136,17 +136,17 @@
         <button type="button" class="ch-quick-btn" id="chQuickVideo" title="Видеочат">
           <span class="ch-q-ic"><svg class="ch-ic-svg" aria-hidden="true"><use href="#ch-ic-video"/></svg></span><span>видеочат</span>
         </button>
-        <button type="button" class="ch-quick-btn" id="chQuickMute" title="Уведомления">
+        <button type="button" class="ch-quick-btn" id="chQuickMute" title="Без звука: обычные сообщения не приходят в Telegram; в бот — только ответы вам и @упоминания (если включено в личных настройках).">
           <span class="ch-q-ic" id="chQuickMuteIcWrap"><svg class="ch-ic-svg" aria-hidden="true"><use href="#ch-ic-bell"/></svg></span><span id="chQuickMuteLbl">звук</span>
         </button>
-        <button type="button" class="ch-quick-btn" id="chQuickSearch" title="Поиск">
+        <button type="button" class="ch-quick-btn" id="chQuickSearch" data-ch-requires-manage="1" title="Поиск">
           <span class="ch-q-ic"><svg class="ch-ic-svg" aria-hidden="true"><use href="#ch-ic-search"/></svg></span><span>поиск</span>
         </button>
-        <button type="button" class="ch-quick-btn" id="chQuickMore" title="Ещё">
+        <button type="button" class="ch-quick-btn" id="chQuickMore" data-ch-requires-manage="1" title="Ещё">
           <span class="ch-q-ic"><svg class="ch-ic-svg" aria-hidden="true"><use href="#ch-ic-more"/></svg></span><span>ещё</span>
         </button>
       </div>
-      <button type="button" class="ch-settings-row" id="chOpenDeepSettings">
+      <button type="button" class="ch-settings-row" id="chOpenDeepSettings" data-ch-requires-manage="1">
         <span class="ch-settings-ic"><svg class="ch-ic-svg" aria-hidden="true"><use href="#ch-ic-gear"/></svg></span>
         <span class="ch-settings-txt">Настройки группы</span>
         <span class="ch-settings-arr">›</span>
@@ -311,5 +311,5 @@
     avatar: {{ (user.avatar or '')|tojson }}
   };
 </script>
-<script src="/static/js/chats-messenger.js?v=9" defer></script>
+<script src="/static/js/chats-messenger.js?v=10" defer></script>
 {% endblock %}

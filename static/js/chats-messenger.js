@@ -328,6 +328,23 @@
     syncChatsViewport();
   }
 
+  function syncGroupMemberChrome() {
+    var nodes = document.querySelectorAll("[data-ch-requires-manage]");
+    var addBtn = document.getElementById("chatsMenuAdd");
+    if (!currentMeta || currentMeta.type !== "group") {
+      nodes.forEach(function (n) {
+        n.style.removeProperty("display");
+      });
+      if (addBtn) addBtn.style.removeProperty("display");
+      return;
+    }
+    var can = !!currentMeta.can_manage_members;
+    nodes.forEach(function (n) {
+      n.style.display = can ? "" : "none";
+    });
+    if (addBtn) addBtn.style.display = can ? "" : "none";
+  }
+
   function applyGroupTheme(meta) {
     if (!el.app) return;
     if (meta && meta.type === "group" && meta.group_settings) {
@@ -410,6 +427,7 @@
       el.headSub.classList.toggle("online", !!online);
       el.menuBtn.style.display = "none";
     }
+    syncGroupMemberChrome();
   }
 
   async function loadMessages(cid, beforeId, extra) {
@@ -1199,8 +1217,8 @@
     document.addEventListener("click", () => el.drop.classList.remove("open"));
   }
 
-  document.getElementById("chatsMenuMembers") &&
-    (document.getElementById("chatsMenuMembers").onclick = function () {
+  document.getElementById("chatsMenuSettings") &&
+    (document.getElementById("chatsMenuSettings").onclick = function () {
       el.drop.classList.remove("open");
       openGroupShell("participants");
     });

@@ -30,6 +30,10 @@
     <label class="accneo-row"><span>Личные сообщения</span><input type="checkbox" name="dm" {% if notification_prefs.dm %}checked{% endif %}></label>
     <label class="accneo-row"><span>Ответы на комментарии</span><input type="checkbox" name="comment_replies" {% if notification_prefs.comment_replies %}checked{% endif %}></label>
     <label class="accneo-row"><span>Публикации в группах</span><input type="checkbox" name="group_posts" {% if notification_prefs.group_posts %}checked{% endif %}></label>
+    <p class="accneo-hint" style="margin:-4px 0 10px;font-size:12px;color:#94a3b8;line-height:1.45">
+      В групповых чатах кнопка «без звука» в настройках группы отключает обычные уведомления по этому чату.
+      В Telegram-бот при этом по-прежнему приходят только ответы на ваши сообщения и @упоминания (если ниже включены «Отправлять в Telegram», «Публикации в группах» для ответов и «Упоминания» для @).
+    </p>
     <label class="accneo-row"><span>Упоминания</span><input type="checkbox" name="mentions" {% if notification_prefs.mentions %}checked{% endif %}></label>
     <label class="accneo-row"><span>Новые посты подписок</span><input type="checkbox" name="subscription_posts" {% if notification_prefs.subscription_posts %}checked{% endif %}></label>
   </div>

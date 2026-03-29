@@ -91,6 +91,59 @@ async def notify_dm_read_button(
     return False
 
 
+async def notify_group_chat_button(
+    tg_chat_id: int,
+    *,
+    chat_title: str,
+    open_path: str,
+    is_mention: bool,
+    is_reply: bool,
+) -> bool:
+    """Упоминание или ответ в групповом чате — кнопка «Открыть чат» (часто при «без звука» в группе)."""
+    if not tg_chat_id:
+        return False
+    tokens = _user_tokens()
+    if not tokens:
+        return False
+    url = (open_path or "").strip()
+    if not url.startswith("http"):
+        base = (getattr(settings, "SITE_URL", None) or "").rstrip("/")
+        url = f"{base}{url}" if url.startswith("/") else f"{base}/{url}"
+    title = (chat_title or "Чат").replace("<", "").replace("&", "")[:120]
+    if is_mention and is_reply:
+        head = "Вас упомянули и ответили вам"
+    elif is_mention:
+        head = "Вас упомянули"
+    else:
+        head = "Вам ответили"
+    msg_text = (
+        f"👥 <b>{head}</b> в групповом чате «{title}».\n"
+        f"Откройте переписку на сайте."
+    )
+    payload = {
+        "chat_id": int(tg_chat_id),
+        "text": msg_text[:_MAX_LEN],
+        "parse_mode": "HTML",
+        "disable_web_page_preview": True,
+        "reply_markup": {
+            "inline_keyboard": [[{"text": "💬 Открыть чат", "url": url}]]
+        },
+    }
+    for token in tokens:
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                r = await client.post(
+                    f"https://api.telegram.org/bot{token}/sendMessage",
+                    json=payload,
+                )
+                if r.status_code == 200:
+                    return True
+                logger.warning("notify_group_chat_button failed: %s %s", r.status_code, r.text[:200])
+        except Exception as e:
+            logger.warning("notify_group_chat_button exception: %s", e)
+    return False
+
+
 async def notify_user_telegram(chat_id: int, text: str, parse_mode: str = "HTML") -> bool:
     """Сообщение пользователю по chat_id (тот же бот, что и для админа)."""
     if not chat_id:

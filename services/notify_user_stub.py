@@ -19,3 +19,25 @@ async def notify_user_dm_with_read_button(
         return await notify_dm_read_button(int(tg_id), sender_name, text_preview, read_path)
     except Exception:
         return False
+
+
+async def notify_user_group_chat_button(
+    tg_id: int,
+    *,
+    chat_title: str,
+    open_path: str,
+    is_mention: bool,
+    is_reply: bool,
+) -> bool:
+    try:
+        from services.tg_notify import notify_group_chat_button
+
+        return await notify_group_chat_button(
+            int(tg_id),
+            chat_title=chat_title,
+            open_path=open_path,
+            is_mention=is_mention,
+            is_reply=is_reply,
+        )
+    except Exception:
+        return False
