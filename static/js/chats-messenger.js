@@ -92,7 +92,7 @@
     openDeepSettings: document.getElementById("chOpenDeepSettings"),
     quickVideo: document.getElementById("chQuickVideo"),
     quickMute: document.getElementById("chQuickMute"),
-    quickMuteIc: document.getElementById("chQuickMuteIc"),
+    quickMuteIcWrap: document.getElementById("chQuickMuteIcWrap"),
     quickMuteLbl: document.getElementById("chQuickMuteLbl"),
     quickSearch: document.getElementById("chQuickSearch"),
     quickMore: document.getElementById("chQuickMore"),
@@ -120,6 +120,17 @@
     bansList: document.getElementById("chBansList"),
     auditList: document.getElementById("chAuditList"),
   };
+
+  const chSpr = document.querySelector(".ch-svg-sprite");
+  if (chSpr && chSpr.parentNode) {
+    document.body.appendChild(chSpr);
+  }
+  if (el.groupShell && el.groupShell.parentNode) {
+    document.body.appendChild(el.groupShell);
+  }
+  if (el.addMemberBack && el.addMemberBack.parentNode) {
+    document.body.appendChild(el.addMemberBack);
+  }
 
   function isChatsMobile() {
     return window.matchMedia("(max-width: 900px)").matches;
@@ -603,12 +614,14 @@
     if (!el.groupShell) return;
     el.groupShell.hidden = true;
     document.body.style.overflow = "";
+    document.body.classList.remove("ch-group-shell-open");
   }
 
   function openGroupShell(tab) {
     if (!el.groupShell || !activeChatId || !currentMeta || currentMeta.type !== "group") return;
     el.groupShell.hidden = false;
     document.body.style.overflow = "hidden";
+    document.body.classList.add("ch-group-shell-open");
     chShowView("hub");
     switchGroupTab(tab || "participants");
     refreshParticipantsList();
@@ -628,9 +641,12 @@
   }
 
   function syncMuteBtn() {
-    if (!el.quickMuteIc || !el.quickMuteLbl || !currentMeta) return;
+    if (!el.quickMuteIcWrap || !el.quickMuteLbl || !currentMeta) return;
     const m = !!currentMeta.mute_notifications;
-    el.quickMuteIc.textContent = m ? "🔕" : "🔔";
+    el.quickMuteIcWrap.innerHTML =
+      '<svg class="ch-ic-svg" aria-hidden="true"><use href="' +
+      (m ? "#ch-ic-bell-off" : "#ch-ic-bell") +
+      '"/></svg>';
     el.quickMuteLbl.textContent = m ? "без звука" : "звук";
   }
 

@@ -1,10 +1,30 @@
 {% extends "base.html" %}
 {% block title %}Чаты — NEUROFUNGI AI{% endblock %}
 {% block extra_head %}
-<link rel="stylesheet" href="/static/css/chats-messenger.css?v=8" />
+<link rel="stylesheet" href="/static/css/chats-messenger.css?v=9" />
 {% endblock %}
 {% block body_class %} chats-messenger-page{% endblock %}
 {% block content %}
+<svg xmlns="http://www.w3.org/2000/svg" class="ch-svg-sprite" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="ch-ic-users" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle fill="none" stroke="currentColor" stroke-width="1.75" cx="9" cy="7" r="4"/><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="ch-ic-megaphone" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" d="M3 11v4a1 1 0 0 0 1 1h2l4 3V7L6 10H4a1 1 0 0 0-1 1zM16 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14"/></symbol>
+    <symbol id="ch-ic-heart" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></symbol>
+    <symbol id="ch-ic-palette" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" d="M12 2a10 10 0 1 0 10 10c0-5.5-4.5-6-8-6s-4-1-4-4 2-6 2-6"/><circle cx="6.5" cy="11.5" r=".75" fill="currentColor"/><circle cx="9.5" cy="7.5" r=".75" fill="currentColor"/><circle cx="14.5" cy="6.5" r=".75" fill="currentColor"/><circle cx="18.5" cy="10.5" r=".75" fill="currentColor"/></symbol>
+    <symbol id="ch-ic-list" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+    <symbol id="ch-ic-user" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle fill="none" stroke="currentColor" stroke-width="1.75" cx="12" cy="7" r="4"/></symbol>
+    <symbol id="ch-ic-key" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.78 7.78 5.5 5.5 0 0 1 7.78-7.78zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></symbol>
+    <symbol id="ch-ic-shield" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol>
+    <symbol id="ch-ic-block" viewBox="0 0 24 24"><circle fill="none" stroke="currentColor" stroke-width="1.75" cx="12" cy="12" r="10"/><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" d="M4.93 4.93l14.14 14.14"/></symbol>
+    <symbol id="ch-ic-log" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle fill="none" stroke="currentColor" stroke-width="1.75" cx="12" cy="12" r="3"/></symbol>
+    <symbol id="ch-ic-gear" viewBox="0 0 24 24"><circle fill="none" stroke="currentColor" stroke-width="1.75" cx="12" cy="12" r="3"/><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></symbol>
+    <symbol id="ch-ic-video" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" d="M23 7l-7 5 7 5V7z"/><rect fill="none" stroke="currentColor" stroke-width="1.75" x="1" y="5" width="15" height="14" rx="2" ry="2"/></symbol>
+    <symbol id="ch-ic-bell" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></symbol>
+    <symbol id="ch-ic-bell-off" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" d="M13.73 21a2 2 0 0 1-3.46 0M18 8A6 6 0 0 0 6 8c0 4-2 7-2 7h14M1 1l22 22"/></symbol>
+    <symbol id="ch-ic-search" viewBox="0 0 24 24"><circle fill="none" stroke="currentColor" stroke-width="1.75" cx="11" cy="11" r="8"/><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" d="m21 21-4.35-4.35"/></symbol>
+    <symbol id="ch-ic-more" viewBox="0 0 24 24"><circle fill="currentColor" cx="12" cy="12" r="1.5"/><circle fill="currentColor" cx="19" cy="12" r="1.5"/><circle fill="currentColor" cx="5" cy="12" r="1.5"/></symbol>
+  </defs>
+</svg>
 <div id="chatsApp">
   <aside class="chats-sidebar">
     <div class="chats-sidebar-head">
@@ -114,20 +134,20 @@
       </div>
       <div class="ch-quick-row" id="chQuickRow">
         <button type="button" class="ch-quick-btn" id="chQuickVideo" title="Видеочат">
-          <span class="ch-q-ic">▦</span><span>видеочат</span>
+          <span class="ch-q-ic"><svg class="ch-ic-svg" aria-hidden="true"><use href="#ch-ic-video"/></svg></span><span>видеочат</span>
         </button>
         <button type="button" class="ch-quick-btn" id="chQuickMute" title="Уведомления">
-          <span class="ch-q-ic" id="chQuickMuteIc">🔔</span><span id="chQuickMuteLbl">звук</span>
+          <span class="ch-q-ic" id="chQuickMuteIcWrap"><svg class="ch-ic-svg" aria-hidden="true"><use href="#ch-ic-bell"/></svg></span><span id="chQuickMuteLbl">звук</span>
         </button>
         <button type="button" class="ch-quick-btn" id="chQuickSearch" title="Поиск">
-          <span class="ch-q-ic">⌕</span><span>поиск</span>
+          <span class="ch-q-ic"><svg class="ch-ic-svg" aria-hidden="true"><use href="#ch-ic-search"/></svg></span><span>поиск</span>
         </button>
         <button type="button" class="ch-quick-btn" id="chQuickMore" title="Ещё">
-          <span class="ch-q-ic">⋯</span><span>ещё</span>
+          <span class="ch-q-ic"><svg class="ch-ic-svg" aria-hidden="true"><use href="#ch-ic-more"/></svg></span><span>ещё</span>
         </button>
       </div>
       <button type="button" class="ch-settings-row" id="chOpenDeepSettings">
-        <span class="ch-settings-ic">⚙</span>
+        <span class="ch-settings-ic"><svg class="ch-ic-svg" aria-hidden="true"><use href="#ch-ic-gear"/></svg></span>
         <span class="ch-settings-txt">Настройки группы</span>
         <span class="ch-settings-arr">›</span>
       </button>
@@ -145,8 +165,9 @@
     </div>
 
     <div class="ch-view" data-ch-view="settings" hidden>
-      <div class="ch-shell-top">
+      <div class="ch-shell-top ch-shell-top--bar">
         <button type="button" class="ch-shell-back" data-ch-back="hub">←</button>
+        <div class="ch-shell-title ch-shell-title--left">Настройки</div>
         <button type="button" class="ch-shell-done" id="chSettingsSave">Готово</button>
       </div>
       <div class="ch-settings-scroll">
@@ -155,7 +176,7 @@
           <textarea class="ch-field ch-ta" id="chSetDesc" rows="2" placeholder="Описание"></textarea>
         </div>
         <div class="ch-set-row" id="chRowPublic" data-nav="noop">
-          <span class="ch-set-ic">👥</span>
+          <span class="ch-ic-wrap" aria-hidden="true"><svg class="ch-ic-svg"><use href="#ch-ic-users"/></svg></span>
           <div class="ch-set-mid">
             <div class="ch-set-label">Тип группы</div>
             <div class="ch-set-sub" id="chSetPublicVal">Публичная</div>
@@ -163,7 +184,7 @@
           <button type="button" class="ch-set-toggle" id="chTogglePublic" aria-label="Переключить тип">⇄</button>
         </div>
         <div class="ch-set-row ch-set-row-dim">
-          <span class="ch-set-ic">📣</span>
+          <span class="ch-ic-wrap ch-ic-wrap--dim" aria-hidden="true"><svg class="ch-ic-svg"><use href="#ch-ic-megaphone"/></svg></span>
           <div class="ch-set-mid">
             <div class="ch-set-label">Привязанный канал</div>
             <div class="ch-set-sub">Только отображение</div>
@@ -171,7 +192,7 @@
           <span class="ch-settings-arr">›</span>
         </div>
         <div class="ch-set-row" id="chRowReactions" data-nav="noop">
-          <span class="ch-set-ic">❤</span>
+          <span class="ch-ic-wrap" aria-hidden="true"><svg class="ch-ic-svg"><use href="#ch-ic-heart"/></svg></span>
           <div class="ch-set-mid">
             <div class="ch-set-label">Реакции</div>
             <div class="ch-set-sub" id="chSetReactVal">Все реакции</div>
@@ -179,7 +200,7 @@
           <button type="button" class="ch-set-toggle" id="chToggleReactions">⇄</button>
         </div>
         <div class="ch-set-row" id="chRowAppearance" data-nav="noop">
-          <span class="ch-set-ic">🎨</span>
+          <span class="ch-ic-wrap" aria-hidden="true"><svg class="ch-ic-svg"><use href="#ch-ic-palette"/></svg></span>
           <div class="ch-set-mid">
             <div class="ch-set-label">Оформление</div>
             <div class="ch-set-sub" id="chSetAppearVal">Бирюза</div>
@@ -187,7 +208,7 @@
           <button type="button" class="ch-set-toggle" id="chCycleAppearance">⇄</button>
         </div>
         <div class="ch-set-row" id="chRowTopics" data-nav="noop">
-          <span class="ch-set-ic">📋</span>
+          <span class="ch-ic-wrap" aria-hidden="true"><svg class="ch-ic-svg"><use href="#ch-ic-list"/></svg></span>
           <div class="ch-set-mid">
             <div class="ch-set-label">Темы</div>
             <div class="ch-set-sub" id="chSetTopicsVal">Отключены</div>
@@ -196,7 +217,7 @@
         </div>
         <p class="ch-caption">Чат группы можно разделять на темы (флаг в настройках).</p>
         <div class="ch-set-row" data-nav="participants">
-          <span class="ch-set-ic">👤</span>
+          <span class="ch-ic-wrap" aria-hidden="true"><svg class="ch-ic-svg"><use href="#ch-ic-user"/></svg></span>
           <div class="ch-set-mid">
             <div class="ch-set-label">Участники</div>
             <div class="ch-set-sub" id="chSetMembersCount">0</div>
@@ -204,7 +225,7 @@
           <span class="ch-settings-arr">›</span>
         </div>
         <div class="ch-set-row" data-nav="perms">
-          <span class="ch-set-ic">🔑</span>
+          <span class="ch-ic-wrap" aria-hidden="true"><svg class="ch-ic-svg"><use href="#ch-ic-key"/></svg></span>
           <div class="ch-set-mid">
             <div class="ch-set-label">Разрешения</div>
             <div class="ch-set-sub" id="chSetPermsScore">14/14</div>
@@ -212,7 +233,7 @@
           <span class="ch-settings-arr">›</span>
         </div>
         <div class="ch-set-row" data-nav="admins">
-          <span class="ch-set-ic">🛡</span>
+          <span class="ch-ic-wrap" aria-hidden="true"><svg class="ch-ic-svg"><use href="#ch-ic-shield"/></svg></span>
           <div class="ch-set-mid">
             <div class="ch-set-label">Администраторы</div>
             <div class="ch-set-sub" id="chSetAdminCount">0</div>
@@ -220,7 +241,7 @@
           <span class="ch-settings-arr">›</span>
         </div>
         <div class="ch-set-row" data-nav="bans">
-          <span class="ch-set-ic">⛔</span>
+          <span class="ch-ic-wrap" aria-hidden="true"><svg class="ch-ic-svg"><use href="#ch-ic-block"/></svg></span>
           <div class="ch-set-mid">
             <div class="ch-set-label">Чёрный список</div>
             <div class="ch-set-sub" id="chSetBanCount">0</div>
@@ -228,7 +249,7 @@
           <span class="ch-settings-arr">›</span>
         </div>
         <div class="ch-set-row" data-nav="audit">
-          <span class="ch-set-ic">👁</span>
+          <span class="ch-ic-wrap" aria-hidden="true"><svg class="ch-ic-svg"><use href="#ch-ic-log"/></svg></span>
           <div class="ch-set-mid">
             <div class="ch-set-label">Недавние действия</div>
             <div class="ch-set-sub">Журнал</div>
@@ -290,5 +311,5 @@
     avatar: {{ (user.avatar or '')|tojson }}
   };
 </script>
-<script src="/static/js/chats-messenger.js?v=8" defer></script>
+<script src="/static/js/chats-messenger.js?v=9" defer></script>
 {% endblock %}
