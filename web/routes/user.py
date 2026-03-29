@@ -232,20 +232,45 @@ async def subscriptions_users_search(request: Request, q: str = ""):
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth"}, status_code=401)
-    q = (q or "").strip()
+    raw = (q or "").strip()
     uid = int(user.get("primary_user_id") or user["id"])
     out: list[dict] = []
-    if q.isdigit() and int(q) > 0:
-        row = await database.fetch_one(
-            users.select().where(users.c.id == int(q)).where(users.c.id != uid)
+    inner = raw.lstrip("@").strip()
+
+    # Только «@» / «@@»… — показать список (как при вводе собаки)
+    if not inner and raw.startswith("@"):
+        rows = await database.fetch_all(
+            users.select()
+            .where(users.c.id != uid)
+            .order_by(users.c.id.desc())
+            .limit(30)
         )
-        if row:
+        for row in rows:
             nm = (row.get("name") or "").strip() or f"Участник #{row['id']}"
             out.append({"id": int(row["id"]), "name": nm})
         return JSONResponse({"users": out})
-    if len(q) < 2:
+
+    if not inner:
         return JSONResponse({"users": []})
-    like = f"%{q[:80]}%"
+
+    # ID: только цифры — префикс (12 → 12, 120, 123…)
+    if inner.isdigit() and int(inner) >= 0:
+        pattern = f"{inner}%"
+        rows = await database.fetch_all(
+            users.select()
+            .where(users.c.id != uid)
+            .where(sa.cast(users.c.id, sa.String).like(pattern))
+            .order_by(users.c.id)
+            .limit(30)
+        )
+        for row in rows:
+            nm = (row.get("name") or "").strip() or f"Участник #{row['id']}"
+            out.append({"id": int(row["id"]), "name": nm})
+        return JSONResponse({"users": out})
+
+    if len(inner) < 2:
+        return JSONResponse({"users": []})
+    like = f"%{inner[:80]}%"
     rows = await database.fetch_all(
         users.select()
         .where(users.c.id != uid)
