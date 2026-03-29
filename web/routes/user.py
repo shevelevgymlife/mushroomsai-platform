@@ -232,13 +232,14 @@ async def subscriptions_users_search(request: Request, q: str = ""):
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth"}, status_code=401)
-    raw = (q or "").strip()
+    # Полноширинная «@» (U+FF20) как обычная, чтобы поиск с собакой работал везде
+    raw = (q or "").strip().replace("\uff20", "@")
     uid = int(user.get("primary_user_id") or user["id"])
     out: list[dict] = []
     inner = raw.lstrip("@").strip()
 
-    # Только «@» / «@@»… — показать список (как при вводе собаки)
-    if not inner and raw.startswith("@"):
+    # Только одна или несколько «@» без текста — показать список участников
+    if not inner and raw.startswith("@") and set(raw) <= {"@"}:
         rows = await database.fetch_all(
             users.select()
             .where(users.c.id != uid)
@@ -253,14 +254,18 @@ async def subscriptions_users_search(request: Request, q: str = ""):
     if not inner:
         return JSONResponse({"users": []})
 
-    # ID: только цифры — префикс (12 → 12, 120, 123…)
+    # ID: только цифры после @ — точное совпадение + префикс по строковому id (12 → 12, 120…)
     if inner.isdigit() and int(inner) >= 0:
+        n = int(inner)
         pattern = f"{inner}%"
         rows = await database.fetch_all(
             users.select()
             .where(users.c.id != uid)
-            .where(sa.cast(users.c.id, sa.String).like(pattern))
-            .order_by(users.c.id)
+            .where(sa.or_(users.c.id == n, sa.cast(users.c.id, sa.String).like(pattern)))
+            .order_by(
+                sa.case((users.c.id == n, 0), else_=1),
+                users.c.id,
+            )
             .limit(30)
         )
         for row in rows:
