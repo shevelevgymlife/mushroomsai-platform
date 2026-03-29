@@ -3,6 +3,7 @@
 """
 from __future__ import annotations
 
+import html
 import logging
 import re
 
@@ -23,6 +24,8 @@ logger = logging.getLogger(__name__)
 
 BTN_AUTOPOST_DISABLE = "🔕 Выключить автопост из канала в ленту"
 BTN_AUTOPOST_ENABLE = "🔔 Включить автопост из канала в ленту"
+BTN_CH_SOC_ON = "🔔 Показывать кнопку «В соцсеть» под постами канала"
+BTN_CH_SOC_OFF = "🔕 Убрать кнопку «В соцсеть» с постов канала"
 
 def build_link_instructions_html() -> str:
     """Текст перед назначением бота админом канала: что делает функция и какие права выдать."""
@@ -58,12 +61,56 @@ def build_link_instructions_html() -> str:
         "6. Сохраните изменения (Готово / Сохранить).\n\n"
         "<b>Дальше в этом чате</b>\n"
         "Нажмите кнопку <b>«Я подвязал»</b> ниже. Если бот напишет, что канал не найден — "
-        "перешлите сюда <b>любое сообщение из канала</b> (из того канала, который подключаете).\n\n"
+        "перешлите сюда <b>любое сообщение из канала</b> (из того канала, который подключаете).\n"
+        "После успешной привязки бот спросит, нужна ли <b>кнопка «Войти в социальную сеть»</b> "
+        "под каждым новым постом в канале (можно включить или отказаться).\n\n"
         f'<b>Соцсеть в браузере</b>: <a href="{site}">{site}</a>\n\n'
         "<b>Что попадает в ленту сейчас</b>\n"
         "Только <b>текст</b> и <b>одно фото</b> (в т.ч. с подписью). "
         "Видео, файлы, опросы, стикеры и альбомы из нескольких фото <b>не</b> публикуются."
     )
+
+
+def _social_button_choice_markup() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton("✅ Да, добавлять кнопку", callback_data="ch_soc_btn:1"),
+                InlineKeyboardButton("⏭ Нет", callback_data="ch_soc_btn:0"),
+            ]
+        ]
+    )
+
+
+async def _attach_social_button_to_post(bot, channel_chat_id: int, message_id: int) -> None:
+    url = _social_network_entry_url()
+    try:
+        await bot.edit_message_reply_markup(
+            chat_id=channel_chat_id,
+            message_id=message_id,
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("Войти в социальную сеть", url=url)]]
+            ),
+        )
+    except Exception as e:
+        logger.debug("channel social button markup: %s", e)
+
+
+async def _prompt_social_button_choice(
+    message: Message,
+    context: ContextTypes.DEFAULT_TYPE,
+    main_kb: object,
+) -> None:
+    await message.reply_html(
+        "<b>Кнопка под постами в канале</b>\n\n"
+        "Добавлять под <b>каждым новым</b> постом в канале кнопку "
+        "«<b>Войти в социальную сеть</b>» (ссылка на бота или приложение)?\n\n"
+        "<i>Нужно право бота <b>изменять сообщения</b> в канале. "
+        "Без него Telegram не даст дописать кнопку к посту.</i>\n\n"
+        "Вы всегда можете сменить это решение: кнопки внизу экрана или снова «Подключить свой канал».",
+        reply_markup=_social_button_choice_markup(),
+    )
+    await message.reply_text("⌨️", reply_markup=main_kb)
 
 
 def _pending_map(context: ContextTypes.DEFAULT_TYPE) -> dict:
@@ -89,6 +136,26 @@ def _pop_pending(context: ContextTypes.DEFAULT_TYPE, tg_uid: int) -> dict | None
     return _pending_map(context).pop(int(tg_uid), None)
 
 
+def _social_network_entry_url() -> str:
+    bot_u = (settings.TELEGRAM_BOT_USERNAME or "").strip().lstrip("@")
+    site = (settings.SITE_URL or "https://mushroomsai.ru").rstrip("/")
+    if bot_u:
+        return f"https://t.me/{bot_u}"
+    return f"{site}/app"
+
+
+async def _verify_bot_can_edit_channel_messages(bot, channel_chat_id: int) -> bool:
+    me = await bot.get_me()
+    try:
+        m = await bot.get_chat_member(chat_id=channel_chat_id, user_id=me.id)
+    except Exception as e:
+        logger.debug("channel_autopost verify can_edit: %s", e)
+        return False
+    if m.status == ChatMemberStatus.ADMINISTRATOR:
+        return bool(getattr(m, "can_edit_messages", False))
+    return False
+
+
 async def _verify_bot_can_post(bot, channel_chat_id: int) -> bool:
     me = await bot.get_me()
     try:
@@ -107,7 +174,8 @@ async def _verify_bot_can_post(bot, channel_chat_id: int) -> bool:
 async def _row_for_user(internal_user_id: int) -> dict | None:
     r = await database.fetch_one(
         sa.text(
-            "SELECT user_id, channel_chat_id, channel_title, channel_username, autopost_enabled "
+            "SELECT user_id, channel_chat_id, channel_title, channel_username, autopost_enabled, "
+            "channel_social_button_enabled "
             "FROM user_channel_autopost WHERE user_id = :u"
         ),
         {"u": int(internal_user_id)},
@@ -119,9 +187,15 @@ async def autopost_extra_rows(internal_user_id: int) -> list[list[KeyboardButton
     row = await _row_for_user(internal_user_id)
     if not row:
         return None
-    if row.get("autopost_enabled"):
-        return [[KeyboardButton(BTN_AUTOPOST_DISABLE)]]
-    return [[KeyboardButton(BTN_AUTOPOST_ENABLE)]]
+    ap = [[KeyboardButton(BTN_AUTOPOST_DISABLE if row.get("autopost_enabled") else BTN_AUTOPOST_ENABLE)]]
+    soc = [
+        [
+            KeyboardButton(
+                BTN_CH_SOC_OFF if row.get("channel_social_button_enabled") else BTN_CH_SOC_ON
+            )
+        ]
+    ]
+    return ap + soc
 
 
 async def main_keyboard_with_autopost(site_url: str, ai_active: bool, internal_user_id: int):
@@ -148,8 +222,9 @@ async def _save_link(
             sa.text(
                 """
                 INSERT INTO user_channel_autopost
-                    (user_id, channel_chat_id, channel_title, channel_username, autopost_enabled, linked_at, updated_at)
-                VALUES (:uid, :ccid, :tit, :un, true, NOW(), NOW())
+                    (user_id, channel_chat_id, channel_title, channel_username, autopost_enabled,
+                     channel_social_button_enabled, linked_at, updated_at)
+                VALUES (:uid, :ccid, :tit, :un, true, false, NOW(), NOW())
                 ON CONFLICT (user_id) DO UPDATE SET
                     channel_chat_id = EXCLUDED.channel_chat_id,
                     channel_title = EXCLUDED.channel_title,
@@ -215,6 +290,55 @@ async def _try_finalize_link(
     return True, kb
 
 
+async def ch_soc_btn_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    q = update.callback_query
+    if not q or not q.data:
+        return
+    m = re.match(r"^ch_soc_btn:([01])$", q.data)
+    if not m:
+        return
+    await q.answer()
+    user = await ensure_user_or_blocked_reply(update)
+    if not user:
+        return
+    val = m.group(1) == "1"
+    row = await _row_for_user(int(user["id"]))
+    if not row:
+        await q.message.reply_text("Сначала подключите канал.")
+        return
+    try:
+        await database.execute(
+            sa.text(
+                "UPDATE user_channel_autopost SET channel_social_button_enabled = :v, updated_at = NOW() "
+                "WHERE user_id = :u"
+            ),
+            {"v": val, "u": int(user["id"])},
+        )
+    except Exception as e:
+        logger.warning("ch_soc_btn: %s", e)
+        await q.answer("Не удалось сохранить.", show_alert=True)
+        return
+    site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
+    kb = await main_keyboard_with_autopost(site, context.user_data.get("tg_ai_mode"), int(user["id"]))
+    warn = ""
+    if val:
+        ok_edit = await _verify_bot_can_edit_channel_messages(context.bot, int(row["channel_chat_id"]))
+        if not ok_edit:
+            warn = (
+                "\n\n⚠️ У бота пока <b>нет права изменять сообщения</b> в канале — "
+                "включите его у этого бота в списке администраторов канала, иначе кнопка под постами не появится."
+            )
+    state = "включена" if val else "выключена"
+    try:
+        await q.edit_message_reply_markup(reply_markup=None)
+    except Exception:
+        pass
+    await q.message.reply_html(
+        f"Сохранено: кнопка «Войти в социальную сеть» под новыми постами в канале <b>{state}</b>.{warn}",
+        reply_markup=kb,
+    )
+
+
 async def on_my_chat_member(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     res = update.my_chat_member
     if not res or not res.chat:
@@ -253,6 +377,23 @@ async def connect_channel_handler(update: Update, context: ContextTypes.DEFAULT_
     if not user or not update.message:
         return
     context.user_data["tg_ai_mode"] = False
+    site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
+    existing = await _row_for_user(int(user["id"]))
+    if existing:
+        ch = existing.get("channel_title") or existing.get("channel_username") or "канал"
+        soc = "включена" if existing.get("channel_social_button_enabled") else "выключена"
+        ap = "включён" if existing.get("autopost_enabled") else "выключен"
+        main_kb = await main_keyboard_with_autopost(site, False, int(user["id"]))
+        await update.message.reply_html(
+            f"Канал уже подключён: <b>{html.escape(str(ch))}</b>.\n"
+            f"Автопост в ленту сообщества: <b>{ap}</b>.\n"
+            f"Кнопка «Войти в социальную сеть» под новыми постами: <b>{soc}</b>.\n\n"
+            "Нужно изменить кнопку под постами? Выберите:",
+            reply_markup=_social_button_choice_markup(),
+        )
+        await update.message.reply_text("⌨️", reply_markup=main_kb)
+        raise ApplicationHandlerStop
+
     context.user_data["channel_link_awaiting"] = True
     context.user_data.pop("channel_link_need_forward", None)
     kb = InlineKeyboardMarkup([[InlineKeyboardButton("✅ Я подвязал", callback_data="ch_link_done")]])
@@ -290,10 +431,10 @@ async def ch_link_done_callback(update: Update, context: ContextTypes.DEFAULT_TY
             pass
         await q.message.reply_html(
             "✅ <b>Канал успешно подключён.</b>\n\n"
-            "Новые посты канала (текст и фото) будут появляться в вашей ленте сообщества, "
-            "пока включён автопост. Кнопка внизу переключает публикацию.",
-            reply_markup=payload,
+            "При включённом автопосте новые посты канала (текст и фото) дублируются в ленту сообщества. "
+            "Переключатель автопоста — внизу экрана.",
         )
+        await _prompt_social_button_choice(q.message, context, payload)
         return
 
     context.user_data["channel_link_need_forward"] = True
@@ -342,9 +483,10 @@ async def channel_forward_link_handler(update: Update, context: ContextTypes.DEF
         context.user_data.pop("channel_link_awaiting", None)
         context.user_data.pop("channel_link_need_forward", None)
         await msg.reply_html(
-            "✅ <b>Канал успешно подключён</b> (по пересланному сообщению).",
-            reply_markup=payload,
+            "✅ <b>Канал успешно подключён</b> (по пересланному сообщению).\n\n"
+            "При включённом автопосте посты дублируются в ленту сообщества.",
         )
+        await _prompt_social_button_choice(msg, context, payload)
     else:
         await msg.reply_html(
             f"❌ {payload}",
@@ -391,6 +533,56 @@ async def toggle_autopost_handler(update: Update, context: ContextTypes.DEFAULT_
     raise ApplicationHandlerStop
 
 
+async def toggle_channel_social_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not update.message:
+        return
+    context.user_data["tg_ai_mode"] = False
+    user = await ensure_user_or_blocked_reply(update)
+    if not user:
+        return
+    row = await _row_for_user(int(user["id"]))
+    site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
+    if not row:
+        await update.message.reply_text(
+            "Сначала подключите канал — кнопка «📢 Подключить свой канал».",
+            reply_markup=main_keyboard(site, context.user_data.get("tg_ai_mode")),
+        )
+        raise ApplicationHandlerStop
+    t = (update.message.text or "").strip()
+    if t == BTN_CH_SOC_ON:
+        new_val = True
+    elif t == BTN_CH_SOC_OFF:
+        new_val = False
+    else:
+        return
+    try:
+        await database.execute(
+            sa.text(
+                "UPDATE user_channel_autopost SET channel_social_button_enabled = :v, updated_at = NOW() "
+                "WHERE user_id = :u"
+            ),
+            {"v": new_val, "u": int(user["id"])},
+        )
+    except Exception as e:
+        logger.warning("toggle channel social btn: %s", e)
+        await update.message.reply_text("Не удалось сохранить. Попробуйте позже.")
+        raise ApplicationHandlerStop
+    kb = await main_keyboard_with_autopost(site, context.user_data.get("tg_ai_mode"), int(user["id"]))
+    warn = ""
+    if new_val and not await _verify_bot_can_edit_channel_messages(
+        context.bot, int(row["channel_chat_id"])
+    ):
+        warn = (
+            "\n\n⚠️ Нужно право бота <b>изменять сообщения</b> в канале — иначе кнопка не появится под постами."
+        )
+    state = "включена" if new_val else "выключена"
+    await update.message.reply_html(
+        f"Кнопка «Войти в социальную сеть» под новыми постами в канале <b>{state}</b>.{warn}",
+        reply_markup=kb,
+    )
+    raise ApplicationHandlerStop
+
+
 def _channel_post_publishable(msg: Message) -> bool:
     if msg.video or msg.video_note or msg.animation:
         return False
@@ -415,11 +607,18 @@ async def on_channel_post(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     chat_id = int(post.chat_id)
     link = await database.fetch_one(
         sa.text(
-            "SELECT user_id FROM user_channel_autopost WHERE channel_chat_id = :c AND autopost_enabled = true"
+            "SELECT user_id, autopost_enabled, channel_social_button_enabled "
+            "FROM user_channel_autopost WHERE channel_chat_id = :c LIMIT 1"
         ),
         {"c": chat_id},
     )
     if not link:
+        return
+
+    if link.get("channel_social_button_enabled"):
+        await _attach_social_button_to_post(context.bot, chat_id, int(post.message_id))
+
+    if not link.get("autopost_enabled"):
         return
 
     if not _channel_post_publishable(post):
@@ -502,7 +701,17 @@ def get_channel_forward_handler() -> MessageHandler:
 _TOGGLE_PATTERN = re.compile(
     "^(" + re.escape(BTN_AUTOPOST_DISABLE) + "|" + re.escape(BTN_AUTOPOST_ENABLE) + ")$"
 )
+_CH_SOC_TOGGLE_PATTERN = re.compile(
+    "^(" + re.escape(BTN_CH_SOC_ON) + "|" + re.escape(BTN_CH_SOC_OFF) + ")$"
+)
 
 
 def get_toggle_autopost_handler() -> MessageHandler:
     return MessageHandler(filters.Regex(_TOGGLE_PATTERN) & filters.ChatType.PRIVATE, toggle_autopost_handler)
+
+
+def get_toggle_channel_social_button_handler() -> MessageHandler:
+    return MessageHandler(
+        filters.Regex(_CH_SOC_TOGGLE_PATTERN) & filters.ChatType.PRIVATE,
+        toggle_channel_social_button_handler,
+    )

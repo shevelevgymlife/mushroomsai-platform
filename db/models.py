@@ -783,6 +783,12 @@ user_channel_autopost = sqlalchemy.Table(
     sqlalchemy.Column("channel_title", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("channel_username", sqlalchemy.String(255), nullable=True),
     sqlalchemy.Column("autopost_enabled", sqlalchemy.Boolean, default=True, server_default="true"),
+    sqlalchemy.Column(
+        "channel_social_button_enabled",
+        sqlalchemy.Boolean,
+        default=False,
+        server_default="false",
+    ),
     sqlalchemy.Column("linked_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
     sqlalchemy.Column("updated_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )

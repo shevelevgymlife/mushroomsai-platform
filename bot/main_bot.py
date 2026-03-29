@@ -173,9 +173,11 @@ def create_bot() -> Application:
 
     from bot.handlers.channel_autopost import (
         ch_link_done_callback,
+        ch_soc_btn_callback,
         connect_channel_handler,
         get_channel_forward_handler,
         get_toggle_autopost_handler,
+        get_toggle_channel_social_button_handler,
         on_channel_post,
         on_my_chat_member,
     )
@@ -188,6 +190,7 @@ def create_bot() -> Application:
         ChatMemberHandler(on_my_chat_member, chat_member_types=ChatMemberHandler.MY_CHAT_MEMBER)
     )
     application.add_handler(CallbackQueryHandler(ch_link_done_callback, pattern=r"^ch_link_done$"))
+    application.add_handler(CallbackQueryHandler(ch_soc_btn_callback, pattern=r"^ch_soc_btn:[01]$"))
 
     ch_group = -2
     application.add_handler(MessageHandler(filters.UpdateType.CHANNEL_POST, on_channel_post), group=ch_group)
@@ -200,6 +203,7 @@ def create_bot() -> Application:
         group=ch_group,
     )
     application.add_handler(get_toggle_autopost_handler(), group=ch_group)
+    application.add_handler(get_toggle_channel_social_button_handler(), group=ch_group)
 
     # Режим AI: вход / выход (до общего текстового хендлера)
     application.add_handler(MessageHandler(filters.Regex(f"^{BTN_AI_EXIT}$"), _ai_exit_handler))

@@ -77,7 +77,12 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         BTN_CONNECT_CHANNEL,
         main_keyboard,
     )
-    from bot.handlers.channel_autopost import BTN_AUTOPOST_DISABLE, BTN_AUTOPOST_ENABLE
+    from bot.handlers.channel_autopost import (
+        BTN_AUTOPOST_DISABLE,
+        BTN_AUTOPOST_ENABLE,
+        BTN_CH_SOC_OFF,
+        BTN_CH_SOC_ON,
+    )
 
     site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
 
@@ -89,6 +94,8 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         BTN_CONNECT_CHANNEL,
         BTN_AUTOPOST_DISABLE,
         BTN_AUTOPOST_ENABLE,
+        BTN_CH_SOC_ON,
+        BTN_CH_SOC_OFF,
     ):
         return
 

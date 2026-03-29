@@ -358,6 +358,7 @@ async def run_heavy_startup(app: FastAPI) -> None:
                 channel_title TEXT,
                 channel_username VARCHAR(255),
                 autopost_enabled BOOLEAN NOT NULL DEFAULT true,
+                channel_social_button_enabled BOOLEAN NOT NULL DEFAULT false,
                 linked_at TIMESTAMP DEFAULT NOW(),
                 updated_at TIMESTAMP DEFAULT NOW()
             )""",
@@ -367,6 +368,7 @@ async def run_heavy_startup(app: FastAPI) -> None:
                 created_at TIMESTAMP DEFAULT NOW(),
                 PRIMARY KEY (channel_chat_id, message_id)
             )""",
+            "ALTER TABLE user_channel_autopost ADD COLUMN IF NOT EXISTS channel_social_button_enabled BOOLEAN NOT NULL DEFAULT false",
         ]
         try:
             await database.execute(
