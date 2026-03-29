@@ -38,6 +38,7 @@ from services.subscription_service import check_subscription, PLANS, web_default
 from services.shop_catalog import product_gallery_urls
 from services.legal import legal_acceptance_redirect
 from services.legacy_dm_chat_sync import sync_direct_messages_pair
+from services.messenger_unread import count_chat_unread, count_standalone_direct_unread
 from services.in_app_notifications import create_notification, should_send_telegram_for_event
 from web.community_media import post_image_urls
 from services.referral_service import (
@@ -2394,10 +2395,9 @@ async def messages_unread_count(request: Request):
                 "SELECT COUNT(*) FROM direct_messages WHERE recipient_id=:uid AND is_system=true AND is_read=false"
             ), {"uid": uid}) or 0
         else:
-            count = await database.fetch_val(sa.text(
-                "SELECT COUNT(*) FROM direct_messages WHERE recipient_id=:uid AND is_read=false"
-            ), {"uid": uid}) or 0
-        return JSONResponse({"count": count})
+            # Не дублировать с /api/chats/unread-count (base.html складывает оба)
+            count = await count_standalone_direct_unread(int(uid))
+        return JSONResponse({"count": int(count)})
     except Exception as e:
         logging.getLogger(__name__).warning("messages unread-count: %s", e)
         return JSONResponse({"count": 0})

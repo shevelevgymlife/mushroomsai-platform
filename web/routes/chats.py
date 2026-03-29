@@ -31,6 +31,7 @@ from services.chat_ws_manager import (
 )
 from services.legal import legal_acceptance_redirect
 from services.legacy_dm_chat_sync import sync_all_partners_for_user
+from services.messenger_unread import count_chat_unread, mark_chat_viewed
 from web.templates_utils import Jinja2Templates
 
 logger = logging.getLogger(__name__)
@@ -141,19 +142,8 @@ async def api_chats_unread_count(request: Request):
     uid = _eff_uid(user)
     try:
         await sync_all_partners_for_user(uid)
-        n = await database.fetch_val(
-            sa.text(
-                """
-                SELECT COUNT(*) FROM chat_messages m
-                JOIN chat_members cm ON cm.chat_id = m.chat_id AND cm.user_id = :uid
-                WHERE m.is_deleted = false
-                  AND m.user_id != :uid
-                  AND m.id > COALESCE(cm.last_read_message_id, 0)
-                """
-            ),
-            {"uid": uid},
-        )
-        return JSONResponse({"count": int(n or 0)})
+        n = await count_chat_unread(uid)
+        return JSONResponse({"count": n})
     except Exception as e:
         logger.warning("chats unread-count: %s", e)
         return JSONResponse({"count": 0})
@@ -445,16 +435,7 @@ async def api_chat_messages(
         )
         max_mid = int(max_id_row["x"] or 0) if max_id_row else 0
         if max_mid:
-            await database.execute(
-                sa.text(
-                    """
-                    UPDATE chat_members
-                    SET last_read_message_id = GREATEST(COALESCE(last_read_message_id, 0), :mid)
-                    WHERE chat_id = :cid AND user_id = :uid
-                    """
-                ),
-                {"mid": max_mid, "cid": chat_id, "uid": uid},
-            )
+            await mark_chat_viewed(uid, chat_id, max_mid)
 
     return JSONResponse({"messages": messages, "has_more": len(rows) >= limit})
 

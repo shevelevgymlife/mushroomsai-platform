@@ -267,6 +267,12 @@
     }
     loadingMore = false;
     await loadChats();
+    if (!beforeId) {
+      try {
+        if (typeof updateUnreadCount === "function") updateUnreadCount();
+        if (typeof refreshAppHeaderBadges === "function") refreshAppHeaderBadges();
+      } catch (e) {}
+    }
   }
 
   function renderMessages() {

@@ -44,6 +44,7 @@ from services.in_app_notifications import (
     count_unread_events,
     mark_events_notifications_read,
 )
+from services.messenger_unread import count_chat_unread, count_standalone_direct_unread
 from services.event_notify import (
     extract_mentioned_numeric_ids,
     send_event_telegram_html,
@@ -3655,13 +3656,8 @@ async def community_activity_unread_count(request: Request):
     n_events = n_msg = 0
     try:
         n_events = await count_unread_events(int(uid))
-        n_msg = await database.fetch_val(
-            sa.select(sa.func.count())
-            .select_from(direct_messages)
-            .where(direct_messages.c.recipient_id == uid)
-            .where(direct_messages.c.is_read.is_(False))
-            .where(direct_messages.c.is_system.is_(False))
-        ) or 0
+        # ЛС: новый мессенджер + legacy без дублей (одно сообщение не считается дважды)
+        n_msg = await count_standalone_direct_unread(int(uid)) + await count_chat_unread(int(uid))
     except Exception:
         pass
     activity_total = int(n_events)

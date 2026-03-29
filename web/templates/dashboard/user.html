@@ -3876,7 +3876,10 @@ async function loadGroupMessages(gid, opts){
     initGroupSwipe(box);
     if(forceBottom || atBottom) box.scrollTop = box.scrollHeight;
     else box.scrollTop = Math.max(0, box.scrollHeight - prev);
-    if(!silent) fetch('/community/groups/'+gid+'/mark-read',{method:'POST',credentials:'same-origin'}).catch(function(){});
+    if(!silent) fetch('/community/groups/'+gid+'/mark-read',{method:'POST',credentials:'same-origin'}).then(function(){
+      try{ if(typeof updateUnreadCount==='function') updateUnreadCount(); }catch(e){}
+      try{ if(typeof refreshAppHeaderBadges==='function') refreshAppHeaderBadges(); }catch(e){}
+    }).catch(function(){});
   }catch(e){ if(!silent) box.innerHTML = '<div style="color:#f87171;text-align:center">Ошибка загрузки</div>'; }
 }
 
