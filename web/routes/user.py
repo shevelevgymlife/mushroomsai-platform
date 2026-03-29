@@ -942,29 +942,45 @@ async def community_share_candidates(request: Request, q: str = ""):
 
 
 @router.get("/community/users/mention-suggest")
-async def community_users_mention_suggest(request: Request, digits: str = ""):
-    """Подсказки для @упоминания: без цифр — топ-10 по подписчикам; с цифрами — id LIKE 'prefix%'."""
+async def community_users_mention_suggest(request: Request, q: str = "", digits: str = ""):
+    """
+    Подсказки для @упоминания в полях ввода:
+    пустой хвост — список участников; только цифры — сужение по префиксу id (+ точное совпадение первым);
+    буквы/смешанный ввод — поиск по имени и email.
+    Параметр digits оставлен для совместимости со старым клиентом.
+    """
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
     uid = int(user.get("primary_user_id") or user["id"])
-    d = (digits or "").strip()
-    if d and not d.isdigit():
-        return JSONResponse({"users": []})
-    if len(d) > 12:
-        d = d[:12]
+    raw = ((q or digits) or "").strip().replace("\uff20", "@").lstrip("@").strip()
+    if len(raw) > 80:
+        raw = raw[:80]
+
     qy = (
         users.select()
         .where(users.c.id != uid)
         .where(sa.or_(users.c.is_banned == False, users.c.is_banned.is_(None)))
     )
-    if d:
+    lim = 30
+
+    if not raw:
+        qy = qy.order_by(users.c.followers_count.desc().nullslast(), users.c.id.desc()).limit(lim)
+    elif raw.isdigit():
+        rd = raw[:12]
+        n = int(rd)
         id_txt = sa.cast(users.c.id, sa.String)
-        qy = qy.where(id_txt.like(f"{d}%"))
-        lim = 20
+        qy = qy.where(sa.or_(users.c.id == n, id_txt.like(f"{rd}%")))
+        qy = qy.order_by(
+            sa.case((users.c.id == n, 0), else_=1),
+            users.c.followers_count.desc().nullslast(),
+            users.c.id.asc(),
+        ).limit(lim)
     else:
-        lim = 10
-    qy = qy.order_by(users.c.followers_count.desc().nullslast(), users.c.id.asc()).limit(lim)
+        like = f"%{raw}%"
+        qy = qy.where(sa.or_(users.c.name.ilike(like), users.c.email.ilike(like)))
+        qy = qy.order_by(users.c.followers_count.desc().nullslast(), users.c.id.asc()).limit(lim)
+
     rows = await database.fetch_all(qy)
     return JSONResponse(
         {

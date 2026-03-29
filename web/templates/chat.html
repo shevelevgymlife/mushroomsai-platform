@@ -128,8 +128,8 @@
     <div class="max-w-3xl mx-auto w-full min-w-0">
       <div class="chat-input-row-inner">
         <textarea id="messageInput" rows="1"
-          placeholder="Напишите ваш вопрос..."
-          class="px-3 sm:px-4 py-3 rounded-xl bg-surface border border-border text-text placeholder-muted text-sm focus:outline-none focus:border-gold/60 transition-colors duration-300 resize-none"
+          placeholder="Напишите вопрос… @ — упоминание участника"
+          class="px-3 sm:px-4 py-3 rounded-xl bg-surface border border-border text-text placeholder-muted text-sm focus:outline-none focus:border-gold/60 transition-colors duration-300 resize-none nf-mention-field"
           style="flex:1;min-width:0;min-height:48px;max-height:120px;font-size:16px;"
           onkeydown="handleKey(event)"></textarea>
         <button onclick="sendMessage()"

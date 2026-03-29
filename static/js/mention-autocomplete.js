@@ -1,6 +1,6 @@
 /**
- * Подсказки @упоминание: после @ — топ по популярности; цифры — фильтр по префиксу id.
- * Поля с class="nf-mention-field"
+ * Подсказки @упоминание для всех полей с class="nf-mention-field":
+ * сразу после @ — список участников; цифры — сужение по id; буквы — имя / email.
  */
 (function () {
   var API = "/community/users/mention-suggest";
@@ -41,7 +41,11 @@
     return String(s || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;");
   }
 
-  /** @returns {{ at: number, digits: string, pos: number } | null} */
+  function isAtChar(ch) {
+    return ch === "@" || ch === "\uff20";
+  }
+
+  /** Текущее «активное» упоминание: от @ до каретки, без пробелов. */
   function getMentionState(el) {
     var v = el.value;
     if (v == null) return null;
@@ -49,11 +53,16 @@
       typeof el.selectionStart === "number" ? el.selectionStart : v.length;
     if (pos < 1) return null;
     var i = pos - 1;
-    while (i >= 0 && /\d/.test(v.charAt(i))) i--;
-    if (i < 0 || v.charAt(i) !== "@") return null;
-    var chunk = v.slice(i + 1, pos);
-    if (!/^\d*$/.test(chunk)) return null;
-    return { at: i, digits: chunk, pos: pos };
+    while (i >= 0) {
+      var ch = v.charAt(i);
+      if (isAtChar(ch)) break;
+      if (/\s/.test(ch) || ch === "\n" || ch === "\r") return null;
+      i--;
+    }
+    if (i < 0 || !isAtChar(v.charAt(i))) return null;
+    var query = v.slice(i + 1, pos);
+    if (query.length > 80) query = query.slice(0, 80);
+    return { at: i, query: query, pos: pos };
   }
 
   function hide() {
@@ -186,7 +195,7 @@
       _items = [];
       _hi = -1;
       dd.innerHTML =
-        '<div style="padding:14px 12px;font-size:13px;color:#94a3b8;text-align:center">Никого не найдено — введите ещё цифры id</div>';
+        '<div style="padding:14px 12px;font-size:13px;color:#94a3b8;text-align:center">Никого не найдено — уточните id, имя или email</div>';
       dd.style.display = "block";
       syncDdPosition();
       return;
@@ -269,9 +278,9 @@
     } catch (e) {}
   }
 
-  function fetchSuggest(digits) {
-    var q = digits || "";
-    var url = API + "?digits=" + encodeURIComponent(q);
+  function fetchSuggest(query) {
+    var q = query || "";
+    var url = API + "?q=" + encodeURIComponent(q);
     var my = ++_reqSeq;
     fetch(url, { credentials: "same-origin" })
       .then(function (r) {
@@ -325,7 +334,7 @@
     if (_debounce) clearTimeout(_debounce);
     _debounce = setTimeout(function () {
       _debounce = null;
-      fetchSuggest(st.digits);
+      fetchSuggest(st.query);
     }, debounceMs);
   }
 
@@ -394,6 +403,9 @@
     _bound.add(el);
     el.addEventListener("input", onInput);
     el.addEventListener("keyup", onKeyup);
+    el.addEventListener("click", function () {
+      checkField(el);
+    });
     el.addEventListener("keydown", onKeydown, true);
     el.addEventListener("blur", onBlur);
   }
