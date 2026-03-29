@@ -323,5 +323,17 @@
   });
   syncChipsFromScroll();
 })();
+(function () {
+  function nfSyncBadges() {
+    try {
+      if (typeof updateUnreadCount === "function") updateUnreadCount();
+    } catch (e) {}
+    try {
+      if (typeof refreshAppHeaderBadges === "function") refreshAppHeaderBadges();
+    } catch (e) {}
+  }
+  document.addEventListener("DOMContentLoaded", nfSyncBadges);
+  document.addEventListener("turbo:load", nfSyncBadges);
+})();
 </script>
 {% endblock %}

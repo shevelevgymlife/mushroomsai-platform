@@ -13,7 +13,13 @@ from auth.session import get_user_from_request
 from auth.ui_prefs import attach_screen_rim_prefs
 from db.database import database
 from db.models import in_app_notifications, users
-from services.in_app_notifications import count_unread_events, load_prefs_for_user, mark_one_read, type_display
+from services.in_app_notifications import (
+    count_unread_events,
+    load_prefs_for_user,
+    mark_events_notifications_read,
+    mark_one_read,
+    type_display,
+)
 from web.templates_utils import Jinja2Templates
 
 router = APIRouter()
@@ -77,6 +83,8 @@ async def notifications_list_page(request: Request):
         return RedirectResponse("/login?next=/notifications", status_code=302)
     attach_screen_rim_prefs(user)
     uid = int(user.get("primary_user_id") or user["id"])
+    # Просмотр ленты событий = все непрочитанные (лайки, комментарии, подписки и т.д.) считаются прочитанными
+    await mark_events_notifications_read(uid)
     rows = await database.fetch_all(
         sa.select(
             in_app_notifications.c.id,
