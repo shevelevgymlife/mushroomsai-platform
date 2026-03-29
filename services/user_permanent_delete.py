@@ -147,6 +147,7 @@ _CLEANUP_SQL = [
     "DELETE FROM chat_messages WHERE user_id=:uid",
     "DELETE FROM chat_group_bans WHERE user_id=:uid OR banned_by=:uid",
     "DELETE FROM chat_group_audit WHERE actor_id=:uid",
+    "DELETE FROM dm_user_blocks WHERE blocker_id=:uid OR blocked_id=:uid",
     "DELETE FROM chat_members WHERE user_id=:uid",
     "DELETE FROM chats c WHERE NOT EXISTS (SELECT 1 FROM chat_members m WHERE m.chat_id = c.id)",
     "UPDATE chats SET created_by=NULL WHERE created_by=:uid",

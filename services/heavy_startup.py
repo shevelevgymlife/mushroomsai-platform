@@ -533,6 +533,15 @@ async def run_heavy_startup(app: FastAPI) -> None:
         except Exception as e:
             logger.warning("migrate_v18 chats group: %s", e)
 
+        try:
+            import migrate_v19_dm_blocks as migrate_v19
+
+            for s in migrate_v19.STEPS:
+                await database.execute(sa.text(s))
+            logger.info("DM blocks & auto-delete TTL (migrate_v19) OK")
+        except Exception as e:
+            logger.warning("migrate_v19 dm blocks: %s", e)
+
         start_scheduler()
         app.state.startup_complete = True
         logger.info("Heavy startup complete; full traffic enabled")

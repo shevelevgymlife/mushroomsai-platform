@@ -88,6 +88,23 @@
   var form = inp && inp.closest('form');
   if (!inp || !box || !hid) return;
 
+  var giftQs = new URLSearchParams(location.search).get('gift_user');
+  if (giftQs && /^\d+$/.test(String(giftQs).trim())) {
+    var gid = String(giftQs).trim();
+    hid.value = gid;
+    if (lbl) {
+      lbl.textContent = 'Получатель: id ' + gid + ' (можно сменить поиском ниже)';
+      lbl.classList.remove('text-muted');
+      lbl.classList.add('text-gold');
+    }
+    var giftModal = document.getElementById('giftSubModal');
+    if (giftModal) {
+      giftModal.classList.remove('hidden');
+      giftModal.classList.add('flex');
+      document.body.style.overflow = 'hidden';
+    }
+  }
+
   function normAt(s) {
     return (s || '').replace(/\uFF20/g, '@');
   }

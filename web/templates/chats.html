@@ -58,6 +58,7 @@
       </div>
       <div class="chats-scroll" id="chatsScroll"></div>
       <div class="chats-compose">
+        <div class="chats-dm-block-banner" id="chatsDmBlockBanner" hidden></div>
         <div class="chats-compose-reply" id="chatsReplyBar"></div>
         <div class="chats-compose-row">
           <input type="file" id="chatsFile" accept="image/*" style="display:none" />
@@ -166,6 +167,82 @@
       </div>
       <input type="search" class="ch-field" id="chPersonalSearchInput" placeholder="Слово из сообщения…" autocomplete="off" style="margin:12px" />
       <div class="ch-search-results" id="chPersonalSearchResults"></div>
+    </div>
+  </div>
+</div>
+
+<div class="ch-modal-back" id="chDmExtraBack" hidden>
+  <div class="ch-modal ch-modal-narrow" role="dialog" aria-modal="true" onclick="event.stopPropagation()">
+    <div class="ch-modal-head">
+      <span>Ещё</span>
+      <button type="button" class="ch-modal-x" id="chDmExtraClose" aria-label="Закрыть">×</button>
+    </div>
+    <div class="ch-dm-extra-list">
+      <button type="button" class="ch-dm-extra-btn" id="chDmExtraProfile">Открыть профиль</button>
+      <button type="button" class="ch-dm-extra-btn" id="chDmExtraGift">Подарить подписку</button>
+      <button type="button" class="ch-dm-extra-btn" id="chDmExtraAuto">Автоудаление сообщений…</button>
+      <button type="button" class="ch-dm-extra-btn ch-dm-extra-warn" id="chDmExtraClear">Удалить всю переписку…</button>
+      <button type="button" class="ch-dm-extra-btn ch-dm-extra-warn" id="chDmExtraBlock">Заблокировать…</button>
+    </div>
+  </div>
+</div>
+
+<div class="ch-modal-back" id="chAutoDeleteBack" hidden>
+  <div class="ch-modal ch-modal-narrow" role="dialog" aria-modal="true" onclick="event.stopPropagation()">
+    <div class="ch-modal-head">
+      <span>Автоудаление</span>
+      <button type="button" class="ch-modal-x" id="chAutoDeleteClose" aria-label="Закрыть">×</button>
+    </div>
+    <p class="ch-modal-hint" style="margin:0 0 12px;font-size:13px;color:#aaa;line-height:1.45">
+      У вас в этом чате не показываются сообщения старше выбранного срока. У собеседника история не меняется.
+    </p>
+    <label class="ch-modal-hint" style="display:block;margin-bottom:6px;font-size:12px;color:#888">Срок</label>
+    <select id="chAutoDeleteSelect" class="ch-field" style="width:100%;margin-bottom:14px;box-sizing:border-box">
+      <option value="0">Выключено</option>
+      <option value="86400">1 день</option>
+      <option value="604800">7 дней</option>
+      <option value="2592000">30 дней</option>
+    </select>
+    <button type="button" class="chats-send-btn" id="chAutoDeleteSave" style="width:100%;height:44px;border-radius:12px">Сохранить</button>
+  </div>
+</div>
+
+<div class="ch-modal-back" id="chClearHistoryBack" hidden>
+  <div class="ch-modal ch-modal-narrow" role="dialog" aria-modal="true" onclick="event.stopPropagation()">
+    <div class="ch-modal-head">
+      <span>Удалить переписку</span>
+      <button type="button" class="ch-modal-x" id="chClearHistoryClose" aria-label="Закрыть">×</button>
+    </div>
+    <p class="ch-modal-hint" style="margin:0 0 16px;font-size:14px;color:#ccc;line-height:1.5">
+      Удалить всю переписку в этом чате для обоих? Это действие нельзя отменить.
+    </p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button type="button" class="chats-send-btn" id="chClearHistoryYes" style="flex:1;min-width:120px;height:44px;border-radius:12px;background:#8b2942">
+        Да, удалить
+      </button>
+      <button type="button" class="ch-modal-x" id="chClearHistoryNo" style="flex:1;min-width:120px;height:44px;border-radius:12px;border:1px solid #444;background:#222;color:#ddd;font-size:15px;width:auto;padding:0 16px">
+        Отмена
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="ch-modal-back" id="chBlockConfirmBack" hidden>
+  <div class="ch-modal ch-modal-narrow" role="dialog" aria-modal="true" onclick="event.stopPropagation()">
+    <div class="ch-modal-head">
+      <span>Блокировка</span>
+      <button type="button" class="ch-modal-x" id="chBlockConfirmClose" aria-label="Закрыть">×</button>
+    </div>
+    <p class="ch-modal-hint" id="chBlockConfirmText" style="margin:0 0 16px;font-size:14px;color:#ccc;line-height:1.5">
+      Заблокировать этого пользователя в личных сообщениях? Он не сможет писать вам и открывать вашу страницу в сообществе.
+    </p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button type="button" class="chats-send-btn" id="chBlockConfirmYes" style="flex:1;min-width:120px;height:44px;border-radius:12px;background:#8b2942">
+        Заблокировать
+      </button>
+      <button type="button" class="ch-modal-x" id="chBlockConfirmNo" style="flex:1;min-width:120px;height:44px;border-radius:12px;border:1px solid #444;background:#222;color:#ddd;font-size:15px;width:auto;padding:0 16px">
+        Отмена
+      </button>
     </div>
   </div>
 </div>

@@ -75,6 +75,7 @@
     gMembers: document.getElementById("chatsGroupMembers"),
     gCreate: document.getElementById("chatsGroupCreate"),
     compose: document.querySelector(".chats-compose"),
+    dmBlockBanner: document.getElementById("chatsDmBlockBanner"),
     addMemberBack: document.getElementById("chAddMemberBack"),
     addMemberClose: document.getElementById("chAddMemberClose"),
     addMemberSearch: document.getElementById("chAddMemberSearch"),
@@ -135,6 +136,10 @@
   if (el.addMemberBack && el.addMemberBack.parentNode) {
     document.body.appendChild(el.addMemberBack);
   }
+  ["chDmExtraBack", "chAutoDeleteBack", "chClearHistoryBack", "chBlockConfirmBack"].forEach(function (mid) {
+    const n = document.getElementById(mid);
+    if (n && n.parentNode) document.body.appendChild(n);
+  });
 
   function isChatsMobile() {
     return window.matchMedia("(max-width: 900px)").matches;
@@ -231,6 +236,52 @@
     const d = document.createElement("div");
     d.textContent = s;
     return d.innerHTML;
+  }
+
+  function normalizeUrlForHref(u) {
+    const t = String(u || "").trim();
+    if (!t) return "#";
+    if (/^https?:\/\//i.test(t)) return t;
+    if (/^www\./i.test(t)) return "https://" + t;
+    if (/^t\.me\//i.test(t)) return "https://" + t;
+    return t;
+  }
+
+  function linkifySnippetWithUrls(text, urls) {
+    const t = String(text || "");
+    if (!urls || !urls.length) return esc(t);
+    const positions = [];
+    urls.forEach(function (u) {
+      const needle = String(u).trim();
+      if (!needle) return;
+      let idx = t.indexOf(needle);
+      if (idx < 0) idx = t.toLowerCase().indexOf(needle.toLowerCase());
+      if (idx < 0) return;
+      positions.push({ start: idx, end: idx + needle.length, url: needle });
+    });
+    positions.sort(function (a, b) {
+      return a.start - b.start;
+    });
+    const merged = [];
+    positions.forEach(function (p) {
+      if (merged.length && p.start < merged[merged.length - 1].end) return;
+      merged.push(p);
+    });
+    let out = "";
+    let cursor = 0;
+    merged.forEach(function (p) {
+      out += esc(t.slice(cursor, p.start));
+      const href = escAttr(normalizeUrlForHref(p.url));
+      out +=
+        '<a href="' +
+        href +
+        '" target="_blank" rel="noopener noreferrer" class="ch-link-in-hit" onclick="event.stopPropagation()">' +
+        esc(p.url) +
+        "</a>";
+      cursor = p.end;
+    });
+    out += esc(t.slice(cursor));
+    return out;
   }
 
   function escAttr(s) {
@@ -369,6 +420,33 @@
     }
   }
 
+  function syncDmBlockUi() {
+    const ban = el.dmBlockBanner;
+    if (!ban) return;
+    const blocked =
+      currentMeta && currentMeta.type === "personal" && currentMeta.dm_blocked_by_partner;
+    const name =
+      (currentMeta && currentMeta.partner && currentMeta.partner.name) || "Собеседник";
+    if (blocked) {
+      ban.hidden = false;
+      ban.textContent = "Вас заблокировал " + name + ". Написать в этот чат нельзя.";
+      if (el.ta) {
+        el.ta.disabled = true;
+        el.ta.placeholder = "Вас заблокировали…";
+      }
+      if (el.send) el.send.disabled = true;
+      if (el.attach) el.attach.disabled = true;
+    } else {
+      ban.hidden = true;
+      if (el.ta) {
+        el.ta.disabled = false;
+        el.ta.placeholder = "Сообщение… @ — подсказки";
+      }
+      if (el.send) el.send.disabled = false;
+      if (el.attach) el.attach.disabled = false;
+    }
+  }
+
   function focusMessageInScroll(mid) {
     const sc = el.scroll;
     if (!sc || !mid) return;
@@ -404,7 +482,16 @@
     } else {
       await loadMessages(cid, null);
     }
-    connectWs(cid);
+    if (!(currentMeta && currentMeta.type === "personal" && currentMeta.dm_blocked_by_partner)) {
+      connectWs(cid);
+    } else {
+      if (ws) {
+        try {
+          ws.close();
+        } catch (e) {}
+        ws = null;
+      }
+    }
     resizeTa();
     syncChatsViewport();
     if (!opts || !opts.focusMessageId) scrollMessagesToEnd();
@@ -441,6 +528,7 @@
       el.menuBtn.style.display = "none";
     }
     syncGroupMemberChrome();
+    syncDmBlockUi();
   }
 
   async function loadMessages(cid, beforeId, extra) {
@@ -959,15 +1047,17 @@
     (d.results || []).forEach(function (hit) {
       const div = document.createElement("div");
       div.className = "ch-search-hit";
+      const snippet = linkifySnippetWithUrls(hit.text || "", hit.urls || []);
       div.innerHTML =
         "<strong>#" +
         hit.id +
         "</strong> · " +
         esc(hit.sender_name || "") +
         '<br><span style="font-size:12px;color:#888">' +
-        esc(hit.text || "") +
+        snippet +
         "</span>";
-      div.onclick = function () {
+      div.onclick = function (ev) {
+        if (ev.target && ev.target.closest && ev.target.closest("a")) return;
         closePersonalShell();
         openChat(activeChatId, { focusMessageId: hit.id });
       };
@@ -1310,6 +1400,11 @@
           messages = messages.filter((x) => x.id !== d.payload.id);
           renderMessages();
         }
+        if (d.type === "history_cleared") {
+          messages = [];
+          renderMessages();
+          loadChats();
+        }
         if (d.type === "reaction" && d.payload) {
           const mid = d.payload.message_id;
           const m = messages.find((x) => x.id === mid);
@@ -1334,6 +1429,7 @@
 
   async function sendMessage() {
     if (!activeChatId) return;
+    if (currentMeta && currentMeta.type === "personal" && currentMeta.dm_blocked_by_partner) return;
     const text = (el.ta.value || "").trim();
     if (!text && !pendingMediaUrl) return;
     const body = { text, media_url: pendingMediaUrl, reply_to_id: replyToId };
@@ -1569,6 +1665,9 @@
         const cj = await cr.json();
         closeModal();
         if (cj.chat_id) await openChat(cj.chat_id);
+        else if (cj.error === "blocked_by_peer")
+          alert("Этот пользователь вас заблокировал в личных сообщениях.");
+        else if (!cr.ok) alert(cj.error || "Не удалось открыть чат");
       };
       el.userResults.appendChild(row);
     });
@@ -1676,10 +1775,173 @@
       });
     }
     const chPerMore = document.getElementById("chPerMore");
+    const chDmExtraBack = document.getElementById("chDmExtraBack");
+    function closeDmExtraModal() {
+      if (chDmExtraBack) chDmExtraBack.hidden = true;
+    }
+    function openDmExtraModal() {
+      if (!chDmExtraBack || !currentMeta || currentMeta.type !== "personal") return;
+      const bb = document.getElementById("chDmExtraBlock");
+      if (bb) {
+        if (currentMeta.dm_i_blocked_partner) {
+          bb.textContent = "Разблокировать";
+          bb.classList.remove("ch-dm-extra-warn");
+        } else {
+          bb.textContent = "Заблокировать…";
+          bb.classList.add("ch-dm-extra-warn");
+        }
+      }
+      chDmExtraBack.hidden = false;
+    }
     if (chPerMore) {
       chPerMore.addEventListener("click", function () {
+        openDmExtraModal();
+      });
+    }
+    if (chDmExtraBack) {
+      chDmExtraBack.addEventListener("click", function (e) {
+        if (e.target === chDmExtraBack) closeDmExtraModal();
+      });
+    }
+    const chDmExtraClose = document.getElementById("chDmExtraClose");
+    if (chDmExtraClose) chDmExtraClose.addEventListener("click", closeDmExtraModal);
+    const chDmExtraProfile = document.getElementById("chDmExtraProfile");
+    if (chDmExtraProfile) {
+      chDmExtraProfile.addEventListener("click", function () {
         const a = document.getElementById("chPersonalOpenProfile");
+        closeDmExtraModal();
         if (a && a.href) window.open(a.href, "_blank", "noopener,noreferrer");
+      });
+    }
+    const chDmExtraGift = document.getElementById("chDmExtraGift");
+    if (chDmExtraGift) {
+      chDmExtraGift.addEventListener("click", function () {
+        const pid = personalPartnerId || (currentMeta && currentMeta.partner && currentMeta.partner.id);
+        closeDmExtraModal();
+        if (pid) location.href = "/subscriptions?gift_user=" + encodeURIComponent(String(pid));
+        else location.href = "/subscriptions";
+      });
+    }
+    const chAutoDeleteBack = document.getElementById("chAutoDeleteBack");
+    const chAutoDeleteClose = document.getElementById("chAutoDeleteClose");
+    const chAutoDeleteSelect = document.getElementById("chAutoDeleteSelect");
+    const chAutoDeleteSave = document.getElementById("chAutoDeleteSave");
+    const chDmExtraAuto = document.getElementById("chDmExtraAuto");
+    function closeAutoDeleteModal() {
+      if (chAutoDeleteBack) chAutoDeleteBack.hidden = true;
+    }
+    if (chDmExtraAuto && chAutoDeleteBack) {
+      chDmExtraAuto.addEventListener("click", function () {
+        closeDmExtraModal();
+        const v = currentMeta && currentMeta.auto_delete_ttl_seconds;
+        if (chAutoDeleteSelect) {
+          chAutoDeleteSelect.value = v ? String(v) : "0";
+        }
+        chAutoDeleteBack.hidden = false;
+      });
+    }
+    if (chAutoDeleteBack) {
+      chAutoDeleteBack.addEventListener("click", function (e) {
+        if (e.target === chAutoDeleteBack) closeAutoDeleteModal();
+      });
+    }
+    if (chAutoDeleteClose) chAutoDeleteClose.addEventListener("click", closeAutoDeleteModal);
+    if (chAutoDeleteSave) {
+      chAutoDeleteSave.addEventListener("click", async function () {
+        if (!activeChatId || !chAutoDeleteSelect) return;
+        const raw = parseInt(chAutoDeleteSelect.value, 10);
+        const body = { auto_delete_ttl_seconds: !Number.isFinite(raw) || raw === 0 ? 0 : raw };
+        const r = await api("/api/chats/" + activeChatId + "/members/me/settings", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const j = await r.json().catch(function () {
+          return {};
+        });
+        if (r.ok) {
+          closeAutoDeleteModal();
+          await loadMeta(activeChatId);
+          await loadMessages(activeChatId, null);
+        } else alert(j.error || "Не удалось сохранить");
+      });
+    }
+    const chClearHistoryBack = document.getElementById("chClearHistoryBack");
+    const chClearHistoryClose = document.getElementById("chClearHistoryClose");
+    const chClearHistoryNo = document.getElementById("chClearHistoryNo");
+    const chClearHistoryYes = document.getElementById("chClearHistoryYes");
+    const chDmExtraClear = document.getElementById("chDmExtraClear");
+    function closeClearHistoryModal() {
+      if (chClearHistoryBack) chClearHistoryBack.hidden = true;
+    }
+    if (chDmExtraClear && chClearHistoryBack) {
+      chDmExtraClear.addEventListener("click", function () {
+        closeDmExtraModal();
+        chClearHistoryBack.hidden = false;
+      });
+    }
+    if (chClearHistoryBack) {
+      chClearHistoryBack.addEventListener("click", function (e) {
+        if (e.target === chClearHistoryBack) closeClearHistoryModal();
+      });
+    }
+    if (chClearHistoryClose) chClearHistoryClose.addEventListener("click", closeClearHistoryModal);
+    if (chClearHistoryNo) chClearHistoryNo.addEventListener("click", closeClearHistoryModal);
+    if (chClearHistoryYes) {
+      chClearHistoryYes.addEventListener("click", async function () {
+        if (!activeChatId) return;
+        const r = await api("/api/chats/" + activeChatId + "/clear-history", { method: "POST" });
+        const j = await r.json().catch(function () {
+          return {};
+        });
+        if (r.ok) {
+          closeClearHistoryModal();
+          messages = [];
+          renderMessages();
+          await loadChats();
+        } else alert(j.error || "Не удалось удалить");
+      });
+    }
+    const chBlockConfirmBack = document.getElementById("chBlockConfirmBack");
+    const chBlockConfirmClose = document.getElementById("chBlockConfirmClose");
+    const chBlockConfirmNo = document.getElementById("chBlockConfirmNo");
+    const chBlockConfirmYes = document.getElementById("chBlockConfirmYes");
+    const chDmExtraBlock = document.getElementById("chDmExtraBlock");
+    function closeBlockConfirmModal() {
+      if (chBlockConfirmBack) chBlockConfirmBack.hidden = true;
+    }
+    if (chDmExtraBlock) {
+      chDmExtraBlock.addEventListener("click", async function () {
+        if (!activeChatId || !currentMeta) return;
+        if (currentMeta.dm_i_blocked_partner) {
+          const r = await api("/api/chats/" + activeChatId + "/dm-block", { method: "DELETE" });
+          if (r.ok) {
+            closeDmExtraModal();
+            await loadMeta(activeChatId);
+            syncDmBlockUi();
+          }
+          return;
+        }
+        closeDmExtraModal();
+        if (chBlockConfirmBack) chBlockConfirmBack.hidden = false;
+      });
+    }
+    if (chBlockConfirmBack) {
+      chBlockConfirmBack.addEventListener("click", function (e) {
+        if (e.target === chBlockConfirmBack) closeBlockConfirmModal();
+      });
+    }
+    if (chBlockConfirmClose) chBlockConfirmClose.addEventListener("click", closeBlockConfirmModal);
+    if (chBlockConfirmNo) chBlockConfirmNo.addEventListener("click", closeBlockConfirmModal);
+    if (chBlockConfirmYes) {
+      chBlockConfirmYes.addEventListener("click", async function () {
+        if (!activeChatId) return;
+        const r = await api("/api/chats/" + activeChatId + "/dm-block", { method: "POST" });
+        if (r.ok) {
+          closeBlockConfirmModal();
+          await loadMeta(activeChatId);
+          syncDmBlockUi();
+        }
       });
     }
     const chPsi = document.getElementById("chPersonalSearchInput");
@@ -1937,6 +2199,8 @@
         api("/api/chats/personal/" + oid, { method: "POST" }).then((r) =>
           r.json().then((cj) => {
             if (cj.chat_id) openChat(cj.chat_id);
+            else if (cj.error === "blocked_by_peer")
+              alert("Этот пользователь вас заблокировал в личных сообщениях.");
           })
         );
     }

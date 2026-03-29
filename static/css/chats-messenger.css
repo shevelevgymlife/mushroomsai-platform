@@ -1527,3 +1527,52 @@ body.ch-group-shell-open #chatsApp {
   width: calc(100% - 24px);
   box-sizing: border-box;
 }
+
+.chats-dm-block-banner {
+  margin: 0 10px 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(139, 41, 66, 0.35);
+  border: 1px solid rgba(255, 102, 208, 0.35);
+  color: #f5d0dc;
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.ch-dm-extra-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0 8px;
+}
+
+.ch-dm-extra-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--ch-border);
+  background: #141414;
+  color: #e8e8e8;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.ch-dm-extra-btn:hover {
+  border-color: rgba(61, 212, 224, 0.35);
+  background: #181818;
+}
+
+.ch-dm-extra-btn.ch-dm-extra-warn {
+  border-color: rgba(139, 41, 66, 0.45);
+  color: #f0b4c4;
+}
+
+.ch-link-in-hit {
+  color: var(--ch-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-all;
+}

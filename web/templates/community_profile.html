@@ -254,10 +254,22 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
   .ig-post-metric .n{font-size:15px}
   .cp-ig-main{padding-bottom:calc(28px + env(safe-area-inset-bottom,0px))}
 }
+.cp-blocked-overlay{position:absolute;inset:0;z-index:80;background:rgba(6,6,8,.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box}
+.cp-blocked-card{max-width:340px;text-align:center;color:#e8eaef;padding:28px 22px;border-radius:20px;border:1px solid rgba(255,102,208,.35);background:rgba(20,12,28,.92);box-shadow:0 20px 60px rgba(0,0,0,.55)}
+.cp-blocked-card h2{margin:0 0 10px;font-size:1.25rem;font-weight:800;color:#ff8cc8}
+.cp-blocked-card p{margin:0;font-size:14px;line-height:1.55;color:rgba(230,232,240,.85)}
 </style>
 
 <div class="cp-ig-root" data-profile-ui="{{ (user.profile_ui_theme if user and user.profile_ui_theme else 'default') }}">
-  <div class="cp-ig-main">
+  <div class="cp-ig-main" style="position:relative">
+    {% if dm_blocked_by_profile %}
+    <div class="cp-blocked-overlay" role="alert" aria-live="polite">
+      <div class="cp-blocked-card">
+        <h2>Вас заблокировали</h2>
+        <p>Пользователь ограничил для вас доступ к странице и личным сообщениям.</p>
+      </div>
+    </div>
+    {% endif %}
     <div class="ig-me-shell">
       <div class="cp-stats-row">
         <div class="ig-profile-stats cp-stats-inner">

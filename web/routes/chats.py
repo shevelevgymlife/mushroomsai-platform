@@ -9,7 +9,7 @@ import logging
 import os
 import re
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import sqlalchemy as sa
@@ -36,6 +36,7 @@ from services.chat_ws_manager import (
 )
 from services.legal import legal_acceptance_redirect
 from services.legacy_dm_chat_sync import sync_all_partners_for_user
+from services.dm_blocks import dm_block_user, dm_unblock_user, is_dm_blocked
 from services.messenger_unread import count_chat_unread, mark_chat_viewed
 from web.templates_utils import Jinja2Templates
 from web.routes.public import apply_token_privacy_for_viewer, get_public_user_data
@@ -77,6 +78,24 @@ async def _personal_partner_user_id(chat_id: int, viewer_id: int) -> int | None:
         {"cid": chat_id, "uid": viewer_id},
     )
     return int(row["user_id"]) if row and row.get("user_id") is not None else None
+
+
+async def _viewer_message_cutoff_datetime(chat_id: int, viewer_id: int) -> datetime | None:
+    try:
+        row = await database.fetch_one(
+            sa.text(
+                "SELECT auto_delete_ttl_seconds FROM chat_members WHERE chat_id = :c AND user_id = :u"
+            ),
+            {"c": chat_id, "u": viewer_id},
+        )
+    except Exception:
+        return None
+    if not row or row.get("auto_delete_ttl_seconds") is None:
+        return None
+    sec = int(row["auto_delete_ttl_seconds"] or 0)
+    if sec <= 0:
+        return None
+    return datetime.now(timezone.utc) - timedelta(seconds=sec)
 
 
 async def _find_personal_chat(uid: int, oid: int) -> int | None:
@@ -153,6 +172,37 @@ class GroupPatchBody(BaseModel):
 
 class MuteBody(BaseModel):
     muted: bool
+
+
+class MemberMeSettingsBody(BaseModel):
+    """Автоудаление с экрана: только для этого участника; NULL/0 = выкл."""
+
+    auto_delete_ttl_seconds: int | None = None
+
+
+ALLOWED_AUTO_DELETE_TTL = frozenset(
+    {
+        24 * 3600,
+        7 * 24 * 3600,
+        30 * 24 * 3600,
+    }
+)
+
+_URL_FIND = re.compile(
+    r"(https?://[^\s<>\]\)\"'\]]+|(?:www\.)[^\s<>\]\)\"'\]]+|t\.me/[^\s<>\]\)\"'\]]+)",
+    re.IGNORECASE,
+)
+
+
+def _urls_from_message_text(text: str | None) -> list[str]:
+    if not text:
+        return []
+    out: list[str] = []
+    for m in _URL_FIND.finditer(text):
+        u = m.group(0).strip().rstrip(").,;]")
+        if u and u not in out:
+            out.append(u)
+    return out
 
 
 class BanBody(BaseModel):
@@ -581,6 +631,12 @@ async def api_chat_meta(request: Request, chat_id: int):
     mem = await _member_row(chat_id, uid)
     my_role = (mem.get("role") or "member") if mem else "member"
     mute = bool(mem.get("mute_notifications")) if mem else False
+    adel = None
+    if mem and mem.get("auto_delete_ttl_seconds") is not None:
+        try:
+            adel = int(mem["auto_delete_ttl_seconds"])
+        except (TypeError, ValueError):
+            adel = None
     payload: dict[str, Any] = {
         "id": chat_id,
         "type": ctype,
@@ -591,7 +647,12 @@ async def api_chat_meta(request: Request, chat_id: int):
         "online_user_ids": online,
         "my_role": my_role,
         "mute_notifications": mute,
+        "auto_delete_ttl_seconds": adel,
     }
+    if ctype == "personal" and partner:
+        pid = int(partner["id"])
+        payload["dm_blocked_by_partner"] = await is_dm_blocked(blocker_id=pid, blocked_id=uid)
+        payload["dm_i_blocked_partner"] = await is_dm_blocked(blocker_id=uid, blocked_id=pid)
     if ctype == "group":
         st = _parse_group_settings(crow.get("group_settings_json") if crow else None)
         admin_n = await database.fetch_val(
@@ -671,6 +732,13 @@ async def api_chat_messages(
     if not await _member_row(chat_id, uid):
         return JSONResponse({"error": "forbidden"}, status_code=403)
 
+    cutoff = await _viewer_message_cutoff_datetime(chat_id, uid)
+    ac = ""
+    apx: dict[str, Any] = {}
+    if cutoff is not None:
+        ac = " AND m.created_at >= :auto_cutoff "
+        apx["auto_cutoff"] = cutoff
+
     half = max(1, min(limit // 2, 50))
     rows: list[Any] = []
     before_rows: list[Any] = []
@@ -678,65 +746,69 @@ async def api_chat_messages(
     if around_message_id is not None:
         anchor = await database.fetch_one(
             sa.text(
-                """
+                f"""
                 SELECT id FROM chat_messages
                 WHERE id = :mid AND chat_id = :cid AND is_deleted = false
+                {ac}
                 """
             ),
-            {"mid": around_message_id, "cid": chat_id},
+            {"mid": around_message_id, "cid": chat_id, **apx},
         )
         if not anchor:
             return JSONResponse({"error": "not_found"}, status_code=404)
         aid = int(anchor["id"])
         before_rows = await database.fetch_all(
             sa.text(
-                """
+                f"""
                 SELECT m.id, m.chat_id, m.user_id, m.text, m.media_url, m.reply_to_id,
                        m.is_edited, m.is_deleted, m.created_at,
                        u.name AS sender_name, u.avatar AS sender_avatar
                 FROM chat_messages m
                 JOIN users u ON u.id = m.user_id
                 WHERE m.chat_id = :cid AND m.is_deleted = false AND m.id < :aid
+                {ac}
                 ORDER BY m.id DESC
                 LIMIT :lim
                 """
             ),
-            {"cid": chat_id, "aid": aid, "lim": half},
+            {"cid": chat_id, "aid": aid, "lim": half, **apx},
         )
         after_rows = await database.fetch_all(
             sa.text(
-                """
+                f"""
                 SELECT m.id, m.chat_id, m.user_id, m.text, m.media_url, m.reply_to_id,
                        m.is_edited, m.is_deleted, m.created_at,
                        u.name AS sender_name, u.avatar AS sender_avatar
                 FROM chat_messages m
                 JOIN users u ON u.id = m.user_id
                 WHERE m.chat_id = :cid AND m.is_deleted = false AND m.id > :aid
+                {ac}
                 ORDER BY m.id ASC
                 LIMIT :lim2
                 """
             ),
-            {"cid": chat_id, "aid": aid, "lim2": half},
+            {"cid": chat_id, "aid": aid, "lim2": half, **apx},
         )
         center = await database.fetch_one(
             sa.text(
-                """
+                f"""
                 SELECT m.id, m.chat_id, m.user_id, m.text, m.media_url, m.reply_to_id,
                        m.is_edited, m.is_deleted, m.created_at,
                        u.name AS sender_name, u.avatar AS sender_avatar
                 FROM chat_messages m
                 JOIN users u ON u.id = m.user_id
                 WHERE m.id = :aid AND m.chat_id = :cid AND m.is_deleted = false
+                {ac}
                 """
             ),
-            {"aid": aid, "cid": chat_id},
+            {"aid": aid, "cid": chat_id, **apx},
         )
         rows = list(reversed(before_rows))
         if center:
             rows.append(center)
         rows.extend(after_rows)
     else:
-        params: dict[str, Any] = {"cid": chat_id, "lim": limit}
+        params: dict[str, Any] = {"cid": chat_id, "lim": limit, **apx}
         before_sql = ""
         if before_id is not None:
             before_sql = "AND m.id < :before_id"
@@ -752,6 +824,7 @@ async def api_chat_messages(
                 JOIN users u ON u.id = m.user_id
                 WHERE m.chat_id = :cid AND m.is_deleted = false
                 {before_sql}
+                {ac}
                 ORDER BY m.id DESC
                 LIMIT :lim
                 """
@@ -839,6 +912,8 @@ async def api_create_personal(request: Request, other_id: int):
     other = await database.fetch_one(users.select().where(users.c.id == other_id))
     if not other:
         return JSONResponse({"error": "user_not_found"}, status_code=404)
+    if await is_dm_blocked(blocker_id=other_id, blocked_id=uid):
+        return JSONResponse({"error": "blocked_by_peer"}, status_code=403)
     existing = await _find_personal_chat(uid, other_id)
     if existing:
         return JSONResponse({"chat_id": existing, "existing": True})
@@ -932,6 +1007,16 @@ async def api_send_message(request: Request, chat_id: int, body: SendMessageBody
     mem = await _member_row(chat_id, uid)
     if not mem:
         return JSONResponse({"error": "forbidden"}, status_code=403)
+    crow_probe = await database.fetch_one(sa.text("SELECT type FROM chats WHERE id = :id"), {"id": chat_id})
+    if crow_probe and (crow_probe.get("type") or "") == "personal":
+        pr = await database.fetch_one(
+            sa.text(
+                "SELECT user_id FROM chat_members WHERE chat_id = :c AND user_id <> :u LIMIT 1"
+            ),
+            {"c": chat_id, "u": uid},
+        )
+        if pr and await is_dm_blocked(blocker_id=int(pr["user_id"]), blocked_id=uid):
+            return JSONResponse({"error": "blocked_by_peer"}, status_code=403)
     text = (body.text or "").strip()
     media = (body.media_url or "").strip() or None
     if not text and not media:
@@ -1276,19 +1361,26 @@ async def api_chat_media(request: Request, chat_id: int):
     uid = _eff_uid(user)
     if not await _member_row(chat_id, uid):
         return JSONResponse({"error": "forbidden"}, status_code=403)
+    cutoff = await _viewer_message_cutoff_datetime(chat_id, uid)
+    extra_where = ""
+    params: dict[str, Any] = {"cid": chat_id}
+    if cutoff is not None:
+        extra_where = " AND m.created_at >= :auto_cutoff "
+        params["auto_cutoff"] = cutoff
     rows = await database.fetch_all(
         sa.text(
-            """
+            f"""
             SELECT m.id AS message_id, m.media_url, m.created_at, m.user_id, u.name AS sender_name
             FROM chat_messages m
             JOIN users u ON u.id = m.user_id
             WHERE m.chat_id = :cid AND m.is_deleted = false
               AND m.media_url IS NOT NULL AND TRIM(m.media_url) <> ''
+              {extra_where}
             ORDER BY m.id DESC
             LIMIT 500
             """
         ),
-        {"cid": chat_id},
+        params,
     )
     items = [
         {
@@ -1315,9 +1407,15 @@ async def api_messages_search(request: Request, chat_id: int, q: str = ""):
     if len(qn) < 1:
         return JSONResponse({"results": []})
     like = f"%{qn}%"
+    cutoff = await _viewer_message_cutoff_datetime(chat_id, uid)
+    extra_where = ""
+    sparams: dict[str, Any] = {"cid": chat_id, "like": like, "pref": f"{qn}%"}
+    if cutoff is not None:
+        extra_where = " AND m.created_at >= :auto_cutoff "
+        sparams["auto_cutoff"] = cutoff
     rows = await database.fetch_all(
         sa.text(
-            """
+            f"""
             SELECT m.id, m.text, m.created_at, u.name AS sender_name
             FROM chat_messages m
             JOIN users u ON u.id = m.user_id
@@ -1326,11 +1424,12 @@ async def api_messages_search(request: Request, chat_id: int, q: str = ""):
                 LOWER(COALESCE(m.text, '')) LIKE LOWER(:like)
                 OR CAST(m.id AS TEXT) LIKE :pref
               )
+              {extra_where}
             ORDER BY m.id DESC
             LIMIT 50
             """
         ),
-        {"cid": chat_id, "like": like, "pref": f"{qn}%"},
+        sparams,
     )
     return JSONResponse(
         {
@@ -1441,9 +1540,15 @@ async def api_chat_messages_links(request: Request, chat_id: int):
     uid = _eff_uid(user)
     if not await _member_row(chat_id, uid):
         return JSONResponse({"error": "forbidden"}, status_code=403)
+    cutoff = await _viewer_message_cutoff_datetime(chat_id, uid)
+    extra_where = ""
+    lparams: dict[str, Any] = {"cid": chat_id}
+    if cutoff is not None:
+        extra_where = " AND m.created_at >= :auto_cutoff "
+        lparams["auto_cutoff"] = cutoff
     rows = await database.fetch_all(
         sa.text(
-            """
+            f"""
             SELECT m.id, m.text, m.created_at, m.user_id, u.name AS sender_name
             FROM chat_messages m
             JOIN users u ON u.id = m.user_id
@@ -1454,11 +1559,12 @@ async def api_chat_messages_links(request: Request, chat_id: int):
                 OR COALESCE(m.text, '') ~* 'www\\.'
                 OR COALESCE(m.text, '') ~* 't\\.me/'
               )
+              {extra_where}
             ORDER BY m.id DESC
             LIMIT 200
             """
         ),
-        {"cid": chat_id},
+        lparams,
     )
     return JSONResponse(
         {
@@ -1469,6 +1575,7 @@ async def api_chat_messages_links(request: Request, chat_id: int):
                     "created_at": r["created_at"].isoformat() if r.get("created_at") else None,
                     "sender_name": r.get("sender_name"),
                     "user_id": int(r["user_id"]),
+                    "urls": _urls_from_message_text(r.get("text")),
                 }
                 for r in rows
             ]
@@ -1495,6 +1602,98 @@ async def api_chat_mute_me(request: Request, chat_id: int, body: MuteBody):
     )
     await _audit(chat_id, uid, "mute_toggle", {"muted": bool(body.muted)})
     return JSONResponse({"ok": True, "mute_notifications": bool(body.muted)})
+
+
+@router.patch("/api/chats/{chat_id}/members/me/settings")
+async def api_chat_member_me_settings(
+    request: Request, chat_id: int, body: MemberMeSettingsBody
+):
+    user = await _require_user(request)
+    if not user:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    uid = _eff_uid(user)
+    if not await _member_row(chat_id, uid):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    v = body.auto_delete_ttl_seconds
+    if v is not None and v != 0 and int(v) not in ALLOWED_AUTO_DELETE_TTL:
+        return JSONResponse({"error": "invalid_ttl"}, status_code=400)
+    if v is None or int(v or 0) == 0:
+        await database.execute(
+            sa.text(
+                """
+                UPDATE chat_members SET auto_delete_ttl_seconds = NULL
+                WHERE chat_id = :c AND user_id = :u
+                """
+            ),
+            {"c": chat_id, "u": uid},
+        )
+        saved = None
+    else:
+        sec = int(v)
+        await database.execute(
+            sa.text(
+                """
+                UPDATE chat_members SET auto_delete_ttl_seconds = :sec
+                WHERE chat_id = :c AND user_id = :u
+                """
+            ),
+            {"sec": sec, "c": chat_id, "u": uid},
+        )
+        saved = sec
+    await _audit(chat_id, uid, "auto_delete_set", {"ttl_seconds": saved})
+    return JSONResponse({"ok": True, "auto_delete_ttl_seconds": saved})
+
+
+@router.post("/api/chats/{chat_id}/clear-history")
+async def api_chat_clear_history(request: Request, chat_id: int):
+    user = await _require_user(request)
+    if not user:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    uid = _eff_uid(user)
+    if not await _member_row(chat_id, uid):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    crow = await database.fetch_one(sa.text("SELECT type FROM chats WHERE id = :id"), {"id": chat_id})
+    if not crow or (crow.get("type") or "") != "personal":
+        return JSONResponse({"error": "not_personal"}, status_code=400)
+    await database.execute(
+        sa.text("DELETE FROM chat_messages WHERE chat_id = :c"),
+        {"c": chat_id},
+    )
+    await _audit(chat_id, uid, "clear_history", {})
+    await room_broadcast(chat_id, {"type": "history_cleared", "payload": {}})
+    return JSONResponse({"ok": True})
+
+
+@router.post("/api/chats/{chat_id}/dm-block")
+async def api_dm_block_chat(request: Request, chat_id: int):
+    user = await _require_user(request)
+    if not user:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    uid = _eff_uid(user)
+    if not await _member_row(chat_id, uid):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    partner_id = await _personal_partner_user_id(chat_id, uid)
+    if partner_id is None:
+        return JSONResponse({"error": "not_personal"}, status_code=400)
+    await dm_block_user(blocker_id=uid, blocked_id=partner_id)
+    await _audit(chat_id, uid, "dm_block", {"blocked_user_id": partner_id})
+    return JSONResponse({"ok": True})
+
+
+@router.delete("/api/chats/{chat_id}/dm-block")
+async def api_dm_unblock_chat(request: Request, chat_id: int):
+    user = await _require_user(request)
+    if not user:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    uid = _eff_uid(user)
+    if not await _member_row(chat_id, uid):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    partner_id = await _personal_partner_user_id(chat_id, uid)
+    if partner_id is None:
+        return JSONResponse({"error": "not_personal"}, status_code=400)
+    await dm_unblock_user(blocker_id=uid, blocked_id=partner_id)
+    await _audit(chat_id, uid, "dm_unblock", {"unblocked_user_id": partner_id})
+    return JSONResponse({"ok": True})
 
 
 @router.patch("/api/chats/{chat_id}/group")
@@ -1799,6 +1998,12 @@ async def ws_chats(websocket: WebSocket, chat_id: int):
     if not await _member_row(chat_id, uid):
         await websocket.close(code=4403)
         return
+    crow_ws = await database.fetch_one(sa.text("SELECT type FROM chats WHERE id = :id"), {"id": chat_id})
+    if crow_ws and (crow_ws.get("type") or "") == "personal":
+        pid_ws = await _personal_partner_user_id(chat_id, uid)
+        if pid_ws is not None and await is_dm_blocked(blocker_id=pid_ws, blocked_id=uid):
+            await websocket.close(code=4403)
+            return
     await room_connect(chat_id, websocket)
     touch_presence(chat_id, uid)
     try:

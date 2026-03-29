@@ -37,6 +37,7 @@ from config import settings, shevelev_token_address
 from services.subscription_service import check_subscription, PLANS, web_default_home_path
 from services.shop_catalog import product_gallery_urls
 from services.legal import legal_acceptance_redirect
+from services.dm_blocks import is_dm_blocked
 from services.legacy_dm_chat_sync import sync_direct_messages_pair
 from services.messenger_unread import count_chat_unread, count_standalone_direct_unread
 from services.in_app_notifications import create_notification, should_send_telegram_for_event
@@ -1430,7 +1431,9 @@ async def community_profile(request: Request, user_id: int):
     viewer_liked_profile = False
     is_following = False
     is_own = viewer_id == profile_id
+    dm_blocked_by_profile = False
     if not is_own:
+        dm_blocked_by_profile = await is_dm_blocked(blocker_id=profile_id, blocked_id=viewer_id)
         pl = await database.fetch_one(
             profile_likes.select()
             .where(profile_likes.c.user_id == viewer_id)
@@ -1558,6 +1561,7 @@ async def community_profile(request: Request, user_id: int):
             "viewer_liked_profile": viewer_liked_profile,
             "is_following": is_following,
             "is_own": is_own,
+            "dm_blocked_by_profile": dm_blocked_by_profile,
             "feed": feed,
             "circles": circles,
             "max_profile_circles": MAX_PROFILE_CIRCLES,
