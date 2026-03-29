@@ -241,8 +241,9 @@ async function saveGlobalRadio() {
   if (msg) msg.style.display = 'none';
   try {
     var res = await fetch('/admin/music/global-toggle', {
-      method: 'PATCH',
-      headers: {'Content-Type': 'application/json'},
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
       body: JSON.stringify({ enabled: enabled })
     });
     var data = await res.json().catch(function () { return {}; });

@@ -68,6 +68,9 @@ class AsyncDatabase:
         return await asyncio.to_thread(_run)
 
     async def fetch_one(self, query, params: Optional[dict] = None) -> Optional[dict]:
+        if isinstance(query, str):
+            query = text(query)
+
         def _run():
             with get_engine().connect() as conn:
                 result = conn.execute(query, params) if params is not None else conn.execute(query)
@@ -88,6 +91,9 @@ class AsyncDatabase:
         return await asyncio.to_thread(_run)
 
     async def fetch_all(self, query, params: Optional[dict] = None) -> List[dict]:
+        if isinstance(query, str):
+            query = text(query)
+
         def _run():
             with get_engine().connect() as conn:
                 result = conn.execute(query, params) if params is not None else conn.execute(query)
@@ -95,6 +101,9 @@ class AsyncDatabase:
         return await asyncio.to_thread(_run)
 
     async def fetch_val(self, query, params: Optional[dict] = None) -> Any:
+        if isinstance(query, str):
+            query = text(query)
+
         def _run():
             with get_engine().connect() as conn:
                 result = conn.execute(query, params) if params is not None else conn.execute(query)

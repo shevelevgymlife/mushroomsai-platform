@@ -614,8 +614,10 @@ class GlobalSettingsMiddleware(BaseHTTPMiddleware):
                 row = await database.fetch_one(
                     "SELECT value FROM site_settings WHERE key='radio_enabled'"
                 )
-                _gsettings_cache["radio_enabled"] = (not row or row["value"] == "true")
-            except Exception:
+                raw = str((row or {}).get("value") or "").strip().lower()
+                _gsettings_cache["radio_enabled"] = raw in ("true", "1", "yes", "on")
+            except Exception as e:
+                logger.warning("global_radio_enabled: read site_settings failed: %s", e)
                 _gsettings_cache["radio_enabled"] = True
             _gsettings_cache["ts"] = now
         request.state.global_radio_enabled = _gsettings_cache["radio_enabled"]

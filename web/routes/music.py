@@ -137,6 +137,7 @@ async def admin_reorder_tracks(request: Request):
     return JSONResponse({"ok": True})
 
 
+@router.post("/admin/music/global-toggle")
 @router.patch("/admin/music/global-toggle")
 async def admin_global_toggle(request: Request):
     admin, _ = await _require_admin(request)
