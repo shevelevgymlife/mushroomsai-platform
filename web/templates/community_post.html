@@ -11,7 +11,7 @@
     <article class="nf-pc-card">
       <div class="nf-pc-head-brand">
         <span class="nf-pc-logo">NEUROFUNGI AI</span>
-        <button type="button" class="nf-pc-music" id="nfPcMusicBtn" onclick="nfPcMusicTap(event)" aria-label="Радио-плеер">🎵</button>
+        {% if global_radio_enabled %}<button type="button" class="nf-pc-music" id="nfPcMusicBtn" onclick="nfPcMusicTap(event)" aria-label="Радио-плеер">🎵</button>{% endif %}
       </div>
       <div class="nf-pc-topbar">
         <button class="nf-pc-btn-ghost" type="button" onclick="goBackPost()">← Закрыть</button>

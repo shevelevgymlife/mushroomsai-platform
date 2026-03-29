@@ -163,6 +163,8 @@ async def admin_global_toggle(request: Request):
 
 @router.get("/api/music/tracks")
 async def api_get_tracks(request: Request):
+    if not getattr(request.state, "global_radio_enabled", True):
+        return JSONResponse([])
     tracks = await database.fetch_all(
         sa.text("SELECT id, title, gdrive_url FROM music_tracks WHERE is_active=true ORDER BY position ASC, id ASC")
     )
@@ -174,6 +176,8 @@ async def api_player_settings(request: Request):
     user = await get_user_from_request(request)
     if not user:
         return JSONResponse({"error": "unauthorized"}, status_code=401)
+    if not getattr(request.state, "global_radio_enabled", True):
+        return JSONResponse({"error": "radio_disabled"}, status_code=403)
 
     body = await request.json()
     updates = {}

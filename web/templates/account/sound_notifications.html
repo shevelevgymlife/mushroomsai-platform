@@ -6,6 +6,7 @@
   <h1 class="accneo-title accneo-title--sub">Звук и уведомления</h1>
   <p class="accneo-lead">Каналы событий в приложении (страница «События»). Настройки сохраняются в профиле.</p>
 
+  {% if global_radio_enabled %}
   <div class="accneo-panel accneo-panel--strong">
     <div class="accneo-eyebrow">Радио-плеер</div>
     <div class="accneo-toggle-row">
@@ -19,6 +20,7 @@
       </label>
     </div>
   </div>
+  {% endif %}
 
   <div class="accneo-panel">
     <div class="accneo-eyebrow">События</div>
@@ -35,7 +37,9 @@
   <div class="accneo-panel accneo-panel--strong">
     <div class="accneo-eyebrow">Дополнительно</div>
     <label class="accneo-row"><span>Отправлять в Telegram бот</span><input type="checkbox" name="telegram_bot" {% if notification_prefs.telegram_bot %}checked{% endif %}></label>
+    {% if global_radio_enabled %}
     <label class="accneo-row"><span>Показывать кружок радио на сайте (музыка может продолжать играть при переходах; пауза — нажатием на кружок)</span><input type="checkbox" name="radio_player" {% if notification_prefs.radio_player %}checked{% endif %}></label>
+    {% endif %}
   </div>
 
   <button type="button" id="nfPrefSaveBtn" class="accneo-primary">Сохранить</button>
@@ -53,7 +57,7 @@ async function snSaveRadio(enabled){
   var btn=document.getElementById('nfPrefSaveBtn');
   var msg=document.getElementById('nfPrefSaveMsg');
   if(!btn)return;
-  var keys=['followers','likes','comments','dm','comment_replies','group_posts','mentions','subscription_posts','telegram_bot','radio_player'];
+  var keys=['followers','likes','comments','dm','comment_replies','group_posts','mentions','subscription_posts','telegram_bot'{% if global_radio_enabled %},'radio_player'{% endif %}];
   btn.addEventListener('click',async function(){
     if(msg){msg.style.display='none';}
     var body={};

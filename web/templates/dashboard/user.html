@@ -1856,7 +1856,8 @@ body.dash-ig-app .ig-lamp-topbar{
             <button class="btn-g" style="width:100%" onclick="saveProfile()">Сохранить</button>
             <div id="profOk" style="display:none;text-align:center;margin-top:8px;font-size:13px;color:#4ade80">✓ Сохранено</div>
           </div>
-          <!-- 🔔 Звук и уведомления -->
+          {% if global_radio_enabled %}
+          <!-- 🔔 Радио-плеер (скрыто, если админ выключил радио на сайте) -->
           <div class="card">
             <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:14px">🔔 Звук и уведомления</div>
             <div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
@@ -1874,6 +1875,7 @@ body.dash-ig-app .ig-lamp-topbar{
               </label>
             </div>
           </div>
+          {% endif %}
 
           <!-- Notification settings -->
           <div class="card" id="notifSettingsCard">

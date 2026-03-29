@@ -8,20 +8,26 @@
   <h1 class="text-2xl font-semibold text-text mb-2">🎵 Радио-плеер</h1>
   <p class="text-muted text-sm mb-6">Управление треками для персонального радио пользователей</p>
 
-  <!-- Global toggle -->
-  <div style="background:#111;border:1px solid #222;border-radius:16px;padding:18px 20px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;gap:16px">
-    <div>
-      <div style="font-weight:600;color:#ddd;margin-bottom:4px">🌐 Радио включено для всех пользователей</div>
-      <div style="font-size:12px;color:#666">Если выключено — значок радио не показывается никому</div>
+  <!-- Кружок с нотой: глобально для всех страниц (сохраняется в БД по кнопке) -->
+  <div style="background:#111;border:1px solid #222;border-radius:16px;padding:18px 20px;margin-bottom:24px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">
+    <div style="flex:1;min-width:220px">
+      <div style="font-weight:600;color:#ddd;margin-bottom:4px">🎵 Показывать кружок с нотой всем на всех страницах</div>
+      <div style="font-size:12px;color:#666;line-height:1.5">Включено — работает сайтовое радио и плавающий кружок (если пользователь сам включил радио в профиле). Выключите и нажмите <b style="color:#888">Сохранить</b> — кружок исчезнет у всех, плейлист не отдаётся, в «Звук и уведомления» и в кабинете пропадёт блок «включить / выключить радио».</div>
+      <p id="globalRadioSaveMsg" style="display:none;margin:10px 0 0;font-size:13px"></p>
     </div>
-    <label style="position:relative;display:inline-block;width:48px;height:26px;flex-shrink:0">
-      <input type="checkbox" id="globalRadioToggle" onchange="setGlobalRadio(this.checked)"
-        {% if global_radio_enabled %}checked{% endif %}
-        style="opacity:0;width:0;height:0">
-      <span id="globalRadioSlider" style="position:absolute;cursor:pointer;inset:0;border-radius:26px;background:{% if global_radio_enabled %}#3dd4e0{% else %}#333{% endif %};transition:.3s">
-        <span style="position:absolute;content:'';height:20px;width:20px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;transform:{% if global_radio_enabled %}translateX(22px){% else %}translateX(0){% endif %}"></span>
-      </span>
-    </label>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px;flex-shrink:0">
+      <label style="position:relative;display:inline-block;width:48px;height:26px">
+        <input type="checkbox" id="globalRadioToggle" onchange="syncGlobalRadioSlider()"
+          {% if global_radio_enabled %}checked{% endif %}
+          style="opacity:0;width:0;height:0">
+        <span id="globalRadioSlider" style="position:absolute;cursor:pointer;inset:0;border-radius:26px;background:{% if global_radio_enabled %}#3dd4e0{% else %}#333{% endif %};transition:.3s">
+          <span style="position:absolute;content:'';height:20px;width:20px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;transform:{% if global_radio_enabled %}translateX(22px){% else %}translateX(0){% endif %}"></span>
+        </span>
+      </label>
+      <button type="button" id="globalRadioSaveBtn" onclick="saveGlobalRadio()"
+        style="padding:10px 18px;background:#3dd4e0;color:#000;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;transition:opacity .2s"
+        onmouseover="this.style.opacity='.9'" onmouseout="this.style.opacity='1'">Сохранить</button>
+    </div>
   </div>
 
   <!-- Инструкция -->
@@ -215,18 +221,55 @@ async function inlineRename(el, id) {
   input.addEventListener('keydown', e => { if(e.key==='Enter') input.blur(); if(e.key==='Escape'){input.value=oldTitle;input.blur();} });
 }
 
-async function setGlobalRadio(enabled) {
-  const slider = document.getElementById('globalRadioSlider');
-  const knob = slider.querySelector('span');
-  slider.style.background = enabled ? '#3dd4e0' : '#333';
-  knob.style.transform = enabled ? 'translateX(22px)' : 'translateX(0)';
+function syncGlobalRadioSlider() {
+  var cb = document.getElementById('globalRadioToggle');
+  var slider = document.getElementById('globalRadioSlider');
+  if (!cb || !slider) return;
+  var knob = slider.querySelector('span');
+  var on = cb.checked;
+  slider.style.background = on ? '#3dd4e0' : '#333';
+  knob.style.transform = on ? 'translateX(22px)' : 'translateX(0)';
+}
+
+async function saveGlobalRadio() {
+  var cb = document.getElementById('globalRadioToggle');
+  var btn = document.getElementById('globalRadioSaveBtn');
+  var msg = document.getElementById('globalRadioSaveMsg');
+  if (!cb || !btn) return;
+  var enabled = cb.checked;
+  btn.disabled = true;
+  if (msg) msg.style.display = 'none';
   try {
-    await fetch('/admin/music/global-toggle', {
+    var res = await fetch('/admin/music/global-toggle', {
       method: 'PATCH',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({enabled})
+      body: JSON.stringify({ enabled: enabled })
     });
-  } catch(e) { console.error(e); }
+    var data = await res.json().catch(function () { return {}; });
+    if (res.ok && data.ok) {
+      if (msg) {
+        msg.style.display = 'block';
+        msg.style.color = '#4ade80';
+        msg.textContent = enabled
+          ? 'Сохранено: кружок и радио снова доступны (после обновления страниц).'
+          : 'Сохранено: кружок скрыт у всех, настройки радио у пользователей скрыты. Обновите открытые вкладки.';
+      }
+    } else {
+      if (msg) {
+        msg.style.display = 'block';
+        msg.style.color = '#f87171';
+        msg.textContent = (data && data.error) ? String(data.error) : 'Не удалось сохранить.';
+      }
+    }
+  } catch (e) {
+    if (msg) {
+      msg.style.display = 'block';
+      msg.style.color = '#f87171';
+      msg.textContent = 'Ошибка сети.';
+    }
+  } finally {
+    btn.disabled = false;
+  }
 }
 </script>
 {% endblock %}
