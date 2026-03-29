@@ -90,6 +90,26 @@
 
   <div class="flex-1 overflow-y-auto min-h-0" id="chatContainer">
     <div class="max-w-3xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 w-full min-w-0" id="messages">
+      {% if ai_chat_history and ai_chat_history|length > 0 %}
+        {% for m in ai_chat_history %}
+          {% if m.role == 'assistant' %}
+      <div class="chat-message flex gap-3">
+        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-gold to-gold-light flex-shrink-0 flex items-center justify-center">
+          <span class="text-bg font-bold text-xs">AI</span>
+        </div>
+        <div class="bg-surface border border-border rounded-2xl rounded-tl-sm px-3 sm:px-4 py-3 max-w-[min(100%,28rem)] min-w-0">
+          <p class="text-sm text-text leading-relaxed break-words whitespace-pre-wrap">{{ m.content }}</p>
+        </div>
+      </div>
+          {% else %}
+      <div class="chat-message flex gap-3 justify-end">
+        <div class="max-w-sm px-3 sm:px-4 py-3 rounded-2xl rounded-tr-sm bg-[#3dd4e0]/10 border border-[#3dd4e0]/25 min-w-0">
+          <p class="text-sm text-[#e8e8e8] leading-relaxed whitespace-pre-wrap break-words">{{ m.content }}</p>
+        </div>
+      </div>
+          {% endif %}
+        {% endfor %}
+      {% else %}
       <div class="chat-message flex gap-3">
         <div class="w-8 h-8 rounded-full bg-gradient-to-br from-gold to-gold-light flex-shrink-0 flex items-center justify-center">
           <span class="text-bg font-bold text-xs">AI</span>
@@ -100,6 +120,7 @@
           </p>
         </div>
       </div>
+      {% endif %}
     </div>
   </div>
 
@@ -122,10 +143,10 @@
       </div>
       <p class="text-[11px] sm:text-xs text-muted text-center mt-2 px-1 leading-snug" id="chat-limit-line">
         {% if user %}
-          {% if (subscription_plan or user.subscription_plan or 'free') == 'free' %}
-            Бесплатный тариф: до <strong class="text-gold">5</strong> сообщений к AI в сутки. Тарифы Старт и выше — безлимит.
+          {% if (subscription_plan or 'free') == 'free' %}
+            Бесплатный тариф: до <strong class="text-gold">5</strong> сообщений к AI в сутки. Тарифы Старт и выше — безлимит и сохранение истории в этой вкладке.
           {% else %}
-            Безлимитный диалог с AI по вашей подписке.
+            Безлимитный диалог с AI; история переписки сохраняется — при возврате на эту страницу она подгружается снова.
           {% endif %}
           <span class="block mt-1 opacity-80">Информация носит образовательный характер.</span>
         {% else %}
@@ -158,5 +179,5 @@ function openCabinet() {
 </script>
 {% endblock %}
 {% block extra_scripts %}
-<script src="/static/js/chat.js?v=2"></script>
+<script src="/static/js/chat.js?v=3"></script>
 {% endblock %}

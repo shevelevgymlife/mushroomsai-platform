@@ -3,6 +3,11 @@ const inputEl = document.getElementById('messageInput');
 const sendBtn = document.getElementById('sendBtn');
 let isLoading = false;
 
+document.addEventListener('DOMContentLoaded', function () {
+  var c = document.getElementById('chatContainer');
+  if (c) c.scrollTop = c.scrollHeight;
+});
+
 function handleKey(e) {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();

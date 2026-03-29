@@ -28,6 +28,7 @@ from db.models import (
     community_comments,
     profile_likes,
     direct_messages,
+    messages,
     homepage_blocks,
 )
 from auth.session import get_user_from_request, attach_subscription_effective
@@ -916,16 +917,39 @@ async def api_decimal_balance(address: str = ""):
     return JSONResponse({"ok": True, "del": bal, "formatted": fmt})
 
 
+AI_CHAT_UI_ROW_LIMIT = 200  # пары user/assistant; только отображение, полная история в БД
+
+
+async def _fetch_ai_chat_transcript_for_ui(user_id: int) -> list[dict]:
+    rows = await database.fetch_all(
+        messages.select()
+        .where(messages.c.user_id == user_id)
+        .order_by(messages.c.created_at.desc())
+        .limit(AI_CHAT_UI_ROW_LIMIT)
+    )
+    return [{"role": r["role"], "content": (r.get("content") or "")} for r in reversed(rows)]
+
+
 @router.get("/chat", response_class=HTMLResponse)
 async def chat_page(request: Request):
     current_user = await get_user_from_request(request)
     plan = None
+    ai_chat_history: list = []
     if current_user:
-        uid = current_user.get("primary_user_id") or current_user["id"]
+        uid = int(current_user.get("primary_user_id") or current_user["id"])
         plan = await check_subscription(uid)
+        role = (current_user.get("role") or "user").lower()
+        # Персистентная лента в UI — как у оплаченного/пробного Старт; free без админки не подгружаем
+        if plan != "free" or role in ("admin", "moderator"):
+            ai_chat_history = await _fetch_ai_chat_transcript_for_ui(uid)
     return templates.TemplateResponse(
         "chat.html",
-        {"request": request, "user": current_user, "subscription_plan": plan},
+        {
+            "request": request,
+            "user": current_user,
+            "subscription_plan": plan,
+            "ai_chat_history": ai_chat_history,
+        },
     )
 
 
