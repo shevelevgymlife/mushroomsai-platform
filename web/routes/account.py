@@ -49,7 +49,6 @@ from db.models import (
     community_profiles,
     admin_permissions,
     training_bot_operators,
-    training_bot_access_requests,
     user_block_overrides,
     shop_product_likes,
     shop_cart_items,
@@ -285,12 +284,6 @@ async def merge_accounts(primary_id: int, secondary_id: int):
         await database.execute(
             training_bot_operators.delete().where(training_bot_operators.c.user_id == secondary_id)
         )
-
-    await database.execute(
-        training_bot_access_requests.update()
-        .where(training_bot_access_requests.c.user_id == secondary_id)
-        .values(user_id=primary_id)
-    )
 
     # Carry over stronger fields.
     updates = {}

@@ -19,7 +19,16 @@ _CLEANUP_SQL = [
     "UPDATE ai_settings SET updated_by=NULL WHERE updated_by=:uid",
     "DELETE FROM admin_permissions WHERE user_id=:uid",
     "DELETE FROM training_bot_operators WHERE user_id=:uid",
-    "DELETE FROM training_bot_access_requests WHERE user_id=:uid",
+    """DELETE FROM training_bot_operators WHERE telegram_id IN (
+        SELECT tg_id FROM users WHERE id=:uid AND tg_id IS NOT NULL
+        UNION
+        SELECT linked_tg_id FROM users WHERE id=:uid AND linked_tg_id IS NOT NULL
+    )""",
+    """DELETE FROM training_bot_access_requests WHERE requester_tg_id IN (
+        SELECT tg_id FROM users WHERE id=:uid AND tg_id IS NOT NULL
+        UNION
+        SELECT linked_tg_id FROM users WHERE id=:uid AND linked_tg_id IS NOT NULL
+    )""",
     "DELETE FROM referrals WHERE referrer_id=:uid OR referred_id=:uid",
     "DELETE FROM community_messages WHERE sender_id=:uid OR recipient_id=:uid",
     "UPDATE community_posts SET folder_id=NULL WHERE folder_id IN (SELECT id FROM community_folders WHERE user_id=:uid)",

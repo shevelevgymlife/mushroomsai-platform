@@ -295,19 +295,55 @@ async def run_heavy_startup(app: FastAPI) -> None:
             "CREATE UNIQUE INDEX IF NOT EXISTS uq_ai_training_posts_tg_channel_msg ON ai_training_posts(ingest_tg_chat_id, ingest_tg_message_id) WHERE ingest_tg_chat_id IS NOT NULL AND ingest_tg_message_id IS NOT NULL",
             "ALTER TABLE ai_training_posts ADD COLUMN IF NOT EXISTS image_url TEXT",
             """CREATE TABLE IF NOT EXISTS training_bot_operators (
-            user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            telegram_id BIGINT PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
             granted_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            granted_by_tg_id BIGINT,
+            display_label TEXT,
             created_at TIMESTAMP DEFAULT NOW()
         )""",
             """CREATE TABLE IF NOT EXISTS training_bot_access_requests (
             id SERIAL PRIMARY KEY,
-            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
             requester_tg_id BIGINT NOT NULL,
+            requester_label TEXT,
             status VARCHAR(24) NOT NULL DEFAULT 'pending',
             created_at TIMESTAMP DEFAULT NOW()
         )""",
-            "CREATE INDEX IF NOT EXISTS idx_tb_access_req_user_status ON training_bot_access_requests(user_id, status)",
-            "CREATE UNIQUE INDEX IF NOT EXISTS uq_tb_access_one_pending ON training_bot_access_requests(user_id) WHERE status = 'pending'",
+            "ALTER TABLE training_bot_operators ADD COLUMN IF NOT EXISTS telegram_id BIGINT",
+            "ALTER TABLE training_bot_operators ADD COLUMN IF NOT EXISTS granted_by_tg_id BIGINT",
+            "ALTER TABLE training_bot_operators ADD COLUMN IF NOT EXISTS display_label TEXT",
+            """UPDATE training_bot_operators o SET telegram_id = COALESCE(u.tg_id, u.linked_tg_id)
+               FROM users u WHERE u.id = o.user_id AND o.telegram_id IS NULL""",
+            "DELETE FROM training_bot_operators WHERE telegram_id IS NULL",
+            """DO $$
+               BEGIN
+                 IF EXISTS (
+                   SELECT 1 FROM information_schema.table_constraints tc
+                   JOIN information_schema.key_column_usage kcu
+                     ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
+                   WHERE tc.table_schema = 'public' AND tc.table_name = 'training_bot_operators'
+                     AND tc.constraint_type = 'PRIMARY KEY' AND kcu.column_name = 'user_id'
+                 ) THEN
+                   ALTER TABLE training_bot_operators DROP CONSTRAINT training_bot_operators_pkey;
+                   ALTER TABLE training_bot_operators ALTER COLUMN user_id DROP NOT NULL;
+                   ALTER TABLE training_bot_operators ADD CONSTRAINT training_bot_operators_pkey PRIMARY KEY (telegram_id);
+                 END IF;
+               END $$""",
+            "ALTER TABLE training_bot_access_requests ADD COLUMN IF NOT EXISTS requester_label TEXT",
+            "DROP INDEX IF EXISTS uq_tb_access_one_pending",
+            "DROP INDEX IF EXISTS idx_tb_access_req_user_status",
+            """DO $$
+               BEGIN
+                 IF EXISTS (
+                   SELECT 1 FROM information_schema.columns
+                   WHERE table_schema = 'public' AND table_name = 'training_bot_access_requests' AND column_name = 'user_id'
+                 ) THEN
+                   ALTER TABLE training_bot_access_requests DROP CONSTRAINT IF EXISTS training_bot_access_requests_user_id_fkey;
+                   ALTER TABLE training_bot_access_requests DROP COLUMN user_id;
+                 END IF;
+               END $$""",
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_tb_access_one_pending ON training_bot_access_requests(requester_tg_id) WHERE status = 'pending'",
+            "CREATE INDEX IF NOT EXISTS idx_tb_access_req_tg_status ON training_bot_access_requests(requester_tg_id, status)",
             "ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS from_telegram BOOLEAN NOT NULL DEFAULT false",
             "ALTER TABLE ai_settings ADD COLUMN IF NOT EXISTS retrieval_mode VARCHAR(64) NOT NULL DEFAULT 'title_first'",
             "ALTER TABLE ai_settings ADD COLUMN IF NOT EXISTS retrieval_top_k INTEGER NOT NULL DEFAULT 24",

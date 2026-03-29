@@ -1,17 +1,17 @@
 """
 Отдельный Telegram-бот для добавления папок и обучающих постов (та же БД, что и админка).
-Токен: settings.TRAINING_BOT_TOKEN. Доступ: заявка «Получить разрешение» → подтверждение в боте, training_bot_operators, can_training_bot или владелец.
+Токен: settings.TRAINING_BOT_TOKEN. Доступ по Telegram ID: заявка → подтверждение в боте (training_bot_operators),
+либо аккаунт на сайте с правом can_training_bot / владелец.
 """
 from __future__ import annotations
 
 import html
 import logging
 from datetime import datetime, timezone
-from typing import Any
 
 import sqlalchemy as sa
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, Update, User as TgUser
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
@@ -27,7 +27,7 @@ from db.models import ai_training_folders, ai_training_posts, training_bot_acces
 from services.training_bot_access import (
     resolve_registered_site_user_by_telegram,
     resolve_user_for_training_bot,
-    training_bot_access_allowed,
+    training_bot_access_allowed_by_telegram,
 )
 from services.training_bot_approvers import (
     is_training_bot_approver_telegram,
@@ -45,6 +45,19 @@ BTN_REQUEST_ACCESS = "📩 Получить разрешение на отпра
 BTN_LIST_GRANTED = "👥 Кому выдан доступ"
 QUICK_INGEST_FOLDER = "Из Telegram"
 PER_PAGE = 10
+
+
+def _tg_requester_label(eu: TgUser | None) -> str:
+    if not eu:
+        return ""
+    bits: list[str] = []
+    name = " ".join(x for x in (eu.first_name or "", eu.last_name or "") if x).strip()
+    if name:
+        bits.append(name)
+    if eu.username:
+        bits.append(f"@{eu.username}")
+    s = " · ".join(bits)
+    return (s[:200] if s else str(eu.id)) or str(eu.id)
 
 
 def _is_main_menu_button(text: str) -> bool:
@@ -187,14 +200,16 @@ async def _site_user_id_from_telegram(tg_id: int) -> int | None:
     return int(u["id"])
 
 
-async def _submit_access_request(update: Update, context: ContextTypes.DEFAULT_TYPE, u_reg: dict, tg_id: int) -> None:
-    uid = int(u_reg["id"])
-    if await training_bot_access_allowed(u_reg):
-        await update.message.reply_text("У вас уже есть доступ. Нажмите /start.", reply_markup=main_reply_kb(is_approver=await is_training_bot_approver_telegram(tg_id)))
+async def _submit_access_request(update: Update, context: ContextTypes.DEFAULT_TYPE, tg_id: int) -> None:
+    if await training_bot_access_allowed_by_telegram(tg_id):
+        await update.message.reply_text(
+            "У вас уже есть доступ. Нажмите /start.",
+            reply_markup=main_reply_kb(is_approver=await is_training_bot_approver_telegram(tg_id)),
+        )
         return
     pending = await database.fetch_one(
         training_bot_access_requests.select()
-        .where(training_bot_access_requests.c.user_id == uid)
+        .where(training_bot_access_requests.c.requester_tg_id == int(tg_id))
         .where(training_bot_access_requests.c.status == "pending")
     )
     if pending:
@@ -203,15 +218,21 @@ async def _submit_access_request(update: Update, context: ContextTypes.DEFAULT_T
             reply_markup=request_access_reply_kb(),
         )
         return
+    eu = update.effective_user
+    label = _tg_requester_label(eu)
     try:
         await database.execute(
-            training_bot_access_requests.insert().values(user_id=uid, requester_tg_id=int(tg_id), status="pending")
+            training_bot_access_requests.insert().values(
+                requester_tg_id=int(tg_id),
+                requester_label=label,
+                status="pending",
+            )
         )
     except Exception as e:
         logger.warning("training_bot: insert access request: %s", e)
         pending2 = await database.fetch_one(
             training_bot_access_requests.select()
-            .where(training_bot_access_requests.c.user_id == uid)
+            .where(training_bot_access_requests.c.requester_tg_id == int(tg_id))
             .where(training_bot_access_requests.c.status == "pending")
         )
         if pending2:
@@ -227,24 +248,35 @@ async def _submit_access_request(update: Update, context: ContextTypes.DEFAULT_T
         return
     req = await database.fetch_one(
         training_bot_access_requests.select()
-        .where(training_bot_access_requests.c.user_id == uid)
+        .where(training_bot_access_requests.c.requester_tg_id == int(tg_id))
         .where(training_bot_access_requests.c.status == "pending")
         .order_by(training_bot_access_requests.c.id.desc())
     )
     rid = int(req["id"]) if req else 0
-    uname = html.escape((u_reg.get("name") or "Без имени")[:120])
-    uemail = html.escape((u_reg.get("email") or "")[:120])
+    tg_label = html.escape(label[:120] if label else "—")
     lines = [
         "📩 <b>Запрос доступа к боту обучающих постов</b>",
         "",
-        f"Сайт: {uname}",
+        "<b>По Telegram</b> (аккаунт на сайте не обязателен):",
+        f"Имя / username: {tg_label}",
+        f"Telegram ID: <code>{tg_id}</code>",
     ]
-    if uemail:
-        lines.append(f"Email: {uemail}")
+    u_site = await resolve_registered_site_user_by_telegram(tg_id)
+    if u_site:
+        uname = html.escape((u_site.get("name") or "")[:120])
+        uemail = html.escape((u_site.get("email") or "")[:120])
+        lines.append("")
+        lines.append("<i>Также привязан аккаунт на сайте:</i>")
+        if uname:
+            lines.append(f"Имя: {uname}")
+        if uemail:
+            lines.append(f"Email: {uemail}")
+        lines.append(f"<code>user_id={int(u_site['id'])}</code>")
+    else:
+        lines.append("")
+        lines.append("<i>Аккаунт на сайте с этим Telegram не найден — доступ только через подтверждение здесь.</i>")
     lines.extend(
         [
-            f"<code>user_id={uid}</code>",
-            f"Telegram ID: <code>{tg_id}</code>",
             "",
             "Разрешить папки, посты и весь функционал бота?",
         ]
@@ -283,15 +315,9 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not update.effective_user or not update.message:
         return
     tg_id = update.effective_user.id
-    u_reg = await resolve_registered_site_user_by_telegram(tg_id)
-    if not u_reg:
-        await update.message.reply_text(
-            "Сначала зарегистрируйтесь на сайте и привяжите этот Telegram к аккаунту, затем снова /start.",
-        )
-        return
     context.user_data.clear()
     is_apr = await is_training_bot_approver_telegram(tg_id)
-    if await training_bot_access_allowed(u_reg):
+    if await training_bot_access_allowed_by_telegram(tg_id):
         await update.message.reply_text(
             "Привет! Здесь вы наполняете <b>обучающие посты</b> — их подмешивает AI на сайте в ответы (как и материалы из админки).\n\n"
             "• <b>«Принимаю в базу»</b> — бот пишет, что готов; дальше <b>каждое</b> ваше текстовое сообщение сохраняется отдельным постом "
@@ -316,10 +342,9 @@ async def cancel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     if not update.message or not update.effective_user:
         return
     tg_id = update.effective_user.id
-    u_reg = await resolve_registered_site_user_by_telegram(tg_id)
     kb = (
         main_reply_kb(is_approver=await is_training_bot_approver_telegram(tg_id))
-        if u_reg and await training_bot_access_allowed(u_reg)
+        if await training_bot_access_allowed_by_telegram(tg_id)
         else request_access_reply_kb()
     )
     await update.message.reply_text("Состояние сброшено.", reply_markup=kb)
@@ -331,14 +356,9 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     tg_id = update.effective_user.id
     text = (update.message.text or "").strip()
 
-    u_reg = await resolve_registered_site_user_by_telegram(tg_id)
-    if not u_reg:
-        await update.message.reply_text("Сначала зарегистрируйтесь на сайте и привяжите Telegram.")
-        return
-
-    if not await training_bot_access_allowed(u_reg):
+    if not await training_bot_access_allowed_by_telegram(tg_id):
         if text == BTN_REQUEST_ACCESS:
-            await _submit_access_request(update, context, u_reg, tg_id)
+            await _submit_access_request(update, context, tg_id)
         else:
             await update.message.reply_text(
                 "Нет доступа. Нажмите «Получить разрешение на отправку постов» или команду /start.",
@@ -346,7 +366,6 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             )
         return
 
-    user = u_reg
     is_apr = await is_training_bot_approver_telegram(tg_id)
     state = context.user_data.get("state")
 
@@ -358,9 +377,7 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             )
             return
         op_rows = await database.fetch_all(
-            sa.select(training_bot_operators.c.user_id, users.c.name)
-            .select_from(training_bot_operators.join(users, users.c.id == training_bot_operators.c.user_id))
-            .order_by(training_bot_operators.c.created_at.desc())
+            training_bot_operators.select().order_by(training_bot_operators.c.created_at.desc())
         )
         if not op_rows:
             await update.message.reply_text(
@@ -368,14 +385,14 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 reply_markup=main_reply_kb(is_approver=True),
             )
             return
-        lines = ["<b>Доступ к боту обучающих постов:</b>\n"]
+        lines = ["<b>Доступ к боту обучающих постов (по Telegram):</b>\n"]
         buttons: list[list[InlineKeyboardButton]] = []
         for r in op_rows[:35]:
-            uid = int(r["user_id"])
-            nm = html.escape((r.get("name") or f"id {uid}")[:48])
-            lines.append(f"• {nm} · <code>{uid}</code>")
+            tid = int(r["telegram_id"])
+            nm = html.escape((r.get("display_label") or f"TG {tid}")[:48])
+            lines.append(f"• {nm} · <code>{tid}</code>")
             buttons.append(
-                [InlineKeyboardButton(f"🚫 Отозвать {nm[:28]}", callback_data=f"tba:rv:{uid}")]
+                [InlineKeyboardButton(f"🚫 Отозвать {nm[:28]}", callback_data=f"tba:rv:{tid}")]
             )
         if len(op_rows) > 35:
             lines.append(f"\n… и ещё {len(op_rows) - 35}")
@@ -582,33 +599,6 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 
-async def _telegram_chat_id_for_site_user(user_id: int) -> int | None:
-    row = await database.fetch_one(users.select().where(users.c.id == int(user_id)))
-    if not row:
-        return None
-    u = dict(row)
-    tid = u.get("tg_id") or u.get("linked_tg_id")
-    if tid is not None:
-        try:
-            return int(tid)
-        except (TypeError, ValueError):
-            pass
-    fam = await database.fetch_one(
-        users.select()
-        .where(users.c.primary_user_id == int(user_id))
-        .where(sa.or_(users.c.tg_id.isnot(None), users.c.linked_tg_id.isnot(None)))
-        .order_by(users.c.id.asc())
-    )
-    if fam:
-        t2 = fam.get("tg_id") or fam.get("linked_tg_id")
-        if t2 is not None:
-            try:
-                return int(t2)
-            except (TypeError, ValueError):
-                pass
-    return None
-
-
 async def on_tba_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     if not query or not query.data or not update.effective_user:
@@ -644,14 +634,22 @@ async def on_tba_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             except Exception:
                 pass
             return
-        uid = int(req["user_id"])
+        requester_tg = int(req["requester_tg_id"])
+        label = ((req.get("requester_label") or "") or str(requester_tg)).strip()[:500]
+        uid_site = await _site_user_id_from_telegram(requester_tg)
         granter = await _site_user_id_from_telegram(tg_id)
         try:
             await database.execute(
-                training_bot_operators.insert().values(user_id=uid, granted_by=granter)
+                training_bot_operators.insert().values(
+                    telegram_id=requester_tg,
+                    user_id=uid_site,
+                    granted_by=granter,
+                    granted_by_tg_id=int(tg_id),
+                    display_label=label,
+                )
             )
         except Exception:
-            logger.debug("training_bot: operator insert duplicate or error user_id=%s", uid)
+            logger.debug("training_bot: operator insert duplicate or error telegram_id=%s", requester_tg)
         await database.execute(
             training_bot_access_requests.update()
             .where(training_bot_access_requests.c.id == rid)
@@ -659,20 +657,18 @@ async def on_tba_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         )
         await database.execute(
             training_bot_access_requests.update()
-            .where(training_bot_access_requests.c.user_id == uid)
+            .where(training_bot_access_requests.c.requester_tg_id == requester_tg)
             .where(training_bot_access_requests.c.status == "pending")
             .where(training_bot_access_requests.c.id != rid)
             .values(status="rejected")
         )
-        chat_u = await _telegram_chat_id_for_site_user(uid)
-        if chat_u:
-            try:
-                await context.bot.send_message(
-                    chat_id=chat_u,
-                    text="✅ Вам подтвердили доступ к боту обучающих постов. Откройте меню и нажмите /start.",
-                )
-            except Exception as e:
-                logger.warning("training_bot: notify granted user: %s", e)
+        try:
+            await context.bot.send_message(
+                chat_id=requester_tg,
+                text="✅ Вам подтвердили доступ к боту обучающих постов. Откройте меню и нажмите /start.",
+            )
+        except Exception as e:
+            logger.warning("training_bot: notify granted user: %s", e)
         try:
             await query.edit_message_text("✅ Доступ выдан (папки, посты, весь функционал). Пользователь уведомлён.")
         except Exception:
@@ -698,15 +694,13 @@ async def on_tba_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             .where(training_bot_access_requests.c.id == rid)
             .values(status="rejected")
         )
-        chat_u = await _telegram_chat_id_for_site_user(int(req["user_id"]))
-        if chat_u:
-            try:
-                await context.bot.send_message(
-                    chat_id=chat_u,
-                    text="❌ В доступе к боту обучающих постов отказано. При необходимости свяжитесь с администратором.",
-                )
-            except Exception as e:
-                logger.warning("training_bot: notify rejected user: %s", e)
+        try:
+            await context.bot.send_message(
+                chat_id=int(req["requester_tg_id"]),
+                text="❌ В доступе к боту обучающих постов отказано. При необходимости свяжитесь с администратором.",
+            )
+        except Exception as e:
+            logger.warning("training_bot: notify rejected user: %s", e)
         try:
             await query.edit_message_text("Заявка отклонена.")
         except Exception:
@@ -715,24 +709,24 @@ async def on_tba_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     if action == "rv":
         try:
-            uid = int(arg)
+            target_tg = int(arg)
         except ValueError:
             return
-        await database.execute(training_bot_operators.delete().where(training_bot_operators.c.user_id == uid))
-        chat_u = await _telegram_chat_id_for_site_user(uid)
-        if chat_u:
-            try:
-                await context.bot.send_message(
-                    chat_id=chat_u,
-                    text="❌ Ваш доступ к боту обучающих постов отозван администратором.",
-                )
-            except Exception as e:
-                logger.warning("training_bot: notify revoked user: %s", e)
+        await database.execute(
+            training_bot_operators.delete().where(training_bot_operators.c.telegram_id == target_tg)
+        )
         try:
-            await query.edit_message_text(f"🚫 Доступ отозван (user_id={uid}).")
+            await context.bot.send_message(
+                chat_id=target_tg,
+                text="❌ Ваш доступ к боту обучающих постов отозван администратором.",
+            )
+        except Exception as e:
+            logger.warning("training_bot: notify revoked user: %s", e)
+        try:
+            await query.edit_message_text(f"🚫 Доступ отозван (Telegram <code>{target_tg}</code>).", parse_mode="HTML")
         except Exception:
             try:
-                await query.message.reply_text(f"🚫 Доступ отозван (user_id={uid}).")
+                await query.message.reply_text(f"🚫 Доступ отозван (Telegram {target_tg}).")
             except Exception:
                 pass
 
@@ -747,10 +741,10 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         pass
 
     tg_id = update.effective_user.id
-    user, err = await resolve_user_for_training_bot(tg_id)
-    if not user:
+    _user, err = await resolve_user_for_training_bot(tg_id)
+    if err:
         try:
-            await query.edit_message_text(err or "Доступ запрещён.")
+            await query.edit_message_text(err)
         except Exception:
             pass
         return

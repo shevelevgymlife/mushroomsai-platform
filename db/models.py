@@ -451,8 +451,11 @@ feedback = sqlalchemy.Table(
 training_bot_operators = sqlalchemy.Table(
     "training_bot_operators",
     metadata,
-    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    sqlalchemy.Column("telegram_id", sqlalchemy.BigInteger, primary_key=True),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
     sqlalchemy.Column("granted_by", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
+    sqlalchemy.Column("granted_by_tg_id", sqlalchemy.BigInteger, nullable=True),
+    sqlalchemy.Column("display_label", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
 
@@ -460,8 +463,8 @@ training_bot_access_requests = sqlalchemy.Table(
     "training_bot_access_requests",
     metadata,
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
-    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
     sqlalchemy.Column("requester_tg_id", sqlalchemy.BigInteger, nullable=False),
+    sqlalchemy.Column("requester_label", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("status", sqlalchemy.String(24), nullable=False, server_default="pending"),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )

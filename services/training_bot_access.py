@@ -1,4 +1,4 @@
-"""Доступ к боту обучающих постов: владелец платформы, запись в training_bot_operators или can_training_bot в admin_permissions."""
+"""Доступ к боту обучающих постов: запись в training_bot_operators по Telegram ID, либо аккаунт на сайте (владелец / can_training_bot)."""
 from __future__ import annotations
 
 from db.database import database
@@ -24,16 +24,19 @@ async def resolve_registered_site_user_by_telegram(tg_id: int) -> dict | None:
     return u
 
 
-async def training_bot_access_allowed(u: dict) -> bool:
-    """Разрешён ли пользователю (по primary id) полный функционал бота обучающих постов."""
-    if is_platform_owner(u):
-        return True
-    uid = int(u["id"])
+async def training_bot_access_allowed_by_telegram(tg_id: int) -> bool:
+    """Полный функционал бота: одобренный Telegram ID, либо сайт (владелец / право can_training_bot)."""
     op = await database.fetch_one(
-        training_bot_operators.select().where(training_bot_operators.c.user_id == uid)
+        training_bot_operators.select().where(training_bot_operators.c.telegram_id == int(tg_id))
     )
     if op:
         return True
+    u = await resolve_registered_site_user_by_telegram(tg_id)
+    if not u:
+        return False
+    if is_platform_owner(u):
+        return True
+    uid = int(u["id"])
     prow = await database.fetch_one(
         admin_permissions.select().where(admin_permissions.c.user_id == uid)
     )
@@ -44,24 +47,13 @@ async def training_bot_access_allowed(u: dict) -> bool:
 
 async def resolve_user_for_training_bot(tg_id: int) -> tuple[dict | None, str | None]:
     """
-    Возвращает (user_dict, error_message).
-    user_dict — основной аккаунт (primary), если был привязан вторичный.
+    Для колбэков и сценариев, где нужен dict пользователя сайта.
+    При доступе только по Telegram (без аккаунта на сайте) user будет None — это нормально.
     """
-    row = await database.fetch_one(
-        users.select().where(
-            sa.or_(users.c.tg_id == tg_id, users.c.linked_tg_id == tg_id)
+    if not await training_bot_access_allowed_by_telegram(tg_id):
+        return None, (
+            "Нет доступа к боту обучающих постов. "
+            "Нажмите «Получить разрешение на отправку постов» в меню или команду /start."
         )
-    )
-    if not row:
-        return None, "Сначала войдите на сайте и привяжите этот Telegram к аккаунту."
-    u = dict(row)
-    if u.get("primary_user_id"):
-        primary = await database.fetch_one(users.select().where(users.c.id == u["primary_user_id"]))
-        if primary:
-            u = dict(primary)
-    if await training_bot_access_allowed(u):
-        return u, None
-    return None, (
-        "Нет доступа к боту обучающих постов (@Neuro_fungi_system_info_bot). "
-        "Администратор может выдать доступ в кабинете: раздел «Обучающие посты» → доступ к боту."
-    )
+    u = await resolve_registered_site_user_by_telegram(tg_id)
+    return u, None
