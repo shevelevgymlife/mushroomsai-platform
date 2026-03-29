@@ -10,25 +10,6 @@
 .s-link { display: flex; align-items: center; justify-content: space-between; padding: 15px 16px; text-decoration: none; color: #ddd; font-size: 14px; font-weight: 500; transition: background .15s; }
 .s-link:hover { background: rgba(255,255,255,.04); }
 .s-link .s-arr { color: #555; font-size: 16px; }
-.s-notif-card { background: #111; border: 1px solid rgba(201,168,76,.15); border-radius: 14px; padding: 20px 16px; }
-.s-notif-title { font-size: 15px; font-weight: 700; color: #C9A84C; margin-bottom: 16px; }
-.s-check-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.04); }
-.s-check-row:last-of-type { border-bottom: none; }
-.s-check-label { font-size: 13px; color: #ccc; }
-.s-check-row input[type=checkbox] { width: 18px; height: 18px; accent-color: #C9A84C; cursor: pointer; flex-shrink: 0; }
-.s-divider { height: 1px; background: rgba(255,255,255,.06); margin: 12px 0; }
-.s-save-btn { margin-top: 16px; width: 100%; padding: 13px; background: #C9A84C; color: #080808; font-weight: 700; font-size: 14px; border: none; border-radius: 12px; cursor: pointer; transition: opacity .15s; }
-.s-save-btn:hover { opacity: .85; }
-.s-status { font-size: 12px; color: #4ade80; margin-top: 8px; text-align: center; min-height: 18px; }
-.s-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 8px 0; }
-.s-toggle-label { font-size: 13px; color: #ccc; }
-.s-toggle-sub { font-size: 11px; color: #555; margin-top: 2px; }
-.s-toggle { position: relative; display: inline-block; width: 48px; height: 26px; flex-shrink: 0; }
-.s-toggle input { opacity: 0; width: 0; height: 0; }
-.s-toggle-slider { position: absolute; cursor: pointer; inset: 0; border-radius: 26px; background: #333; transition: .3s; }
-.s-toggle-slider::before { content: ''; position: absolute; height: 20px; width: 20px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: .3s; }
-.s-toggle input:checked + .s-toggle-slider { background: #C9A84C; }
-.s-toggle input:checked + .s-toggle-slider::before { transform: translateX(22px); }
 </style>
 {% endblock %}
 
@@ -46,100 +27,11 @@
 
   <div class="s-section">
     <div class="s-section-title">🔔 Звук и уведомления</div>
-    <div class="s-notif-card">
-
-      <div class="s-notif-title">Радио-плеер</div>
-      <div class="s-toggle-row">
-        <div>
-          <div class="s-toggle-label">Включить радио</div>
-          <div class="s-toggle-sub">Фоновая музыка на всех страницах</div>
-        </div>
-        <label class="s-toggle">
-          <input type="checkbox" id="radioPlayerToggle" {% if user.music_player_enabled %}checked{% endif %} onchange="saveRadio(this.checked)">
-          <span class="s-toggle-slider"></span>
-        </label>
-      </div>
-
-      <div class="s-divider"></div>
-
-      <div class="s-notif-title" style="margin-top:4px">Уведомления</div>
-      <div id="notifCheckboxes">
-        {% set notif_items = [
-          ('new_follower', 'Новые подписчики'),
-          ('new_like', 'Лайки на посты'),
-          ('new_comment', 'Комментарии к постам'),
-          ('new_message', 'Личные сообщения'),
-          ('new_reply', 'Ответы на комментарии'),
-          ('post_in_group', 'Публикации в группах'),
-          ('mention', 'Упоминания'),
-          ('new_post_from_following', 'Новые посты подписок'),
-        ] %}
-        {% for key, label in notif_items %}
-        <div class="s-check-row">
-          <label class="s-check-label" for="notif_{{ key }}">{{ label }}</label>
-          <input type="checkbox" data-notif-key="{{ key }}" id="notif_{{ key }}">
-        </div>
-        {% endfor %}
-      </div>
-
-      <div class="s-divider"></div>
-
-      <div class="s-check-row">
-        <label class="s-check-label" for="notif_send_to_telegram" style="color:#229ED9">Отправлять в Telegram бот</label>
-        <input type="checkbox" data-notif-key="send_to_telegram" id="notif_send_to_telegram">
-      </div>
-
-      <button class="s-save-btn" onclick="saveNotifSettings()">💾 Сохранить настройки</button>
-      <div class="s-status" id="notifStatus"></div>
+    <div class="s-card">
+      <a href="/account/settings/sound-notifications" class="s-link">Звук и уведомления <span class="s-arr">›</span></a>
     </div>
   </div>
 
   <p style="margin-top:8px;font-size:13px;color:#555"><a href="/community" style="color:#C9A84C;text-decoration:none">← В ленту</a></p>
 </div>
-
-<script>
-// Load notification settings
-(async function() {
-  try {
-    var r = await fetch('/api/notifications/settings', {credentials:'same-origin'});
-    var d = await r.json();
-    if (d.ok && d.settings) {
-      Object.entries(d.settings).forEach(function([k, v]) {
-        var el = document.getElementById('notif_' + k);
-        if (el) el.checked = !!v;
-      });
-    }
-  } catch(e) {}
-})();
-
-async function saveNotifSettings() {
-  var vals = {};
-  document.querySelectorAll('[data-notif-key]').forEach(function(el) {
-    vals[el.dataset.notifKey] = el.checked;
-  });
-  try {
-    await fetch('/api/notifications/settings', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      credentials: 'same-origin',
-      body: JSON.stringify(vals)
-    });
-    var st = document.getElementById('notifStatus');
-    st.textContent = '✓ Сохранено';
-    setTimeout(function() { st.textContent = ''; }, 2500);
-  } catch(e) {
-    document.getElementById('notifStatus').textContent = '✗ Ошибка';
-  }
-}
-
-async function saveRadio(enabled) {
-  try {
-    await fetch('/api/music/player-settings', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({enabled: enabled})
-    });
-  } catch(e) {}
-}
-</script>
 {% endblock %}

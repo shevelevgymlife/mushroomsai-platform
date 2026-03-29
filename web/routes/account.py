@@ -418,11 +418,15 @@ async def account_sound_notifications_page(request: Request):
         return RedirectResponse("/login?next=/account/settings/sound-notifications", status_code=302)
     attach_screen_rim_prefs(user)
     uid = int(user.get("primary_user_id") or user["id"])
-    row = await database.fetch_one(
+    row = await database.fetch_one(users.select().where(users.c.id == uid))
+    if row:
+        user = dict(row)
+        attach_screen_rim_prefs(user)
+    prefs_row = await database.fetch_one(
         sa.select(users.c.notification_prefs_json).where(users.c.id == uid)
     )
     notification_prefs = merge_notification_prefs(
-        row["notification_prefs_json"] if row else None
+        prefs_row["notification_prefs_json"] if prefs_row else None
     )
     return templates.TemplateResponse(
         "account/sound_notifications.html",
