@@ -1,8 +1,10 @@
+import html
+import time
 from datetime import datetime, timedelta, date
 
 from config import settings
 from db.database import database
-from db.models import users, subscriptions, subscription_events
+from db.models import users, subscriptions, subscription_events, direct_messages
 
 PLANS = {
     "free":  {"name": "Бесплатный", "price": 0,    "questions_per_day": 5,  "recipes_per_day": 1},
@@ -104,7 +106,77 @@ async def gift_subscription(giver_id: int, recipient_id: int, plan: str) -> tupl
     await record_subscription_event(
         int(giver_id), "gift_out", plan, p, now, end_date, int(recipient_id)
     )
+    await _notify_subscription_gift_recipient(int(recipient_id), int(giver_id), plan)
     return True, "ok"
+
+
+async def _notify_subscription_gift_recipient(recipient_id: int, giver_id: int, plan_key: str) -> None:
+    """Telegram + личное сообщение в чатах сайта о подаренной подписке."""
+    giver = await database.fetch_one(users.select().where(users.c.id == int(giver_id)))
+    recipient = await database.fetch_one(users.select().where(users.c.id == int(recipient_id)))
+    if not recipient:
+        return
+    gname = ((giver.get("name") or "").strip() or "Участник") if giver else "Участник"
+    pname = PLANS.get((plan_key or "start").lower(), PLANS["start"])["name"]
+    site = (settings.SITE_URL or "").rstrip("/")
+
+    dm_text = (
+        f"🎁 Вам подарили подписку «{pname}» на месяц.\n\n"
+        f"Подарок от: {gname}.\n\n"
+        "Тариф уже активен — доступны функции выбранного плана."
+    )
+    try:
+        dm_row = await database.fetch_one_write(
+            direct_messages.insert()
+            .values(
+                sender_id=int(giver_id),
+                recipient_id=int(recipient_id),
+                text=dm_text,
+                is_read=False,
+                is_system=True,
+            )
+            .returning(direct_messages.c.id)
+        )
+        mid = int(dm_row["id"]) if dm_row else None
+        if mid:
+            from services.legacy_dm_chat_sync import sync_direct_messages_pair
+
+            await sync_direct_messages_pair(
+                int(giver_id), int(recipient_id), broadcast_legacy_dm_id=mid
+            )
+    except Exception:
+        pass
+
+    try:
+        from services.in_app_notifications import create_notification
+
+        await create_notification(
+            recipient_id=int(recipient_id),
+            actor_id=int(giver_id),
+            ntype="subscription_gift",
+            title="Подарок подписки",
+            body=f"{gname} подарил(а) вам «{pname}» на месяц. Тариф уже активен.",
+            link_url="/subscriptions",
+            source_kind="subscription_gift",
+            source_id=int(time.time() * 1000) % (2**31 - 1) or int(recipient_id),
+            skip_prefs=True,
+        )
+    except Exception:
+        pass
+
+    tg = recipient.get("tg_id") or recipient.get("linked_tg_id")
+    if not tg:
+        return
+    from services.tg_notify import notify_user_telegram
+
+    sub_url = f"{site}/subscriptions" if site else "/subscriptions"
+    tg_html = (
+        f"🎁 <b>Вам подарили подписку «{html.escape(pname)}»</b> на месяц.\n"
+        f"От: <b>{html.escape(gname)}</b>.\n"
+        "Тариф уже активен.\n"
+        f'<a href="{html.escape(sub_url, quote=True)}">Открыть раздел подписок</a>'
+    )
+    await notify_user_telegram(int(tg), tg_html)
 
 
 async def _notify_trial_started(user_id: int) -> None:
