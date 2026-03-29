@@ -21,8 +21,9 @@ def save_channel_ingest_image(data: bytes) -> str | None:
     elif head.startswith(b"RIFF") and b"WEBP" in head:
         ext = "webp"
     filename = f"tgch_{uuid.uuid4().hex}.{ext}"
-    base = "/data" if os.path.exists("/data") else "."
-    save_path = os.path.join(base, "media", "community", filename)
+    # Как в web.routes.user._save_community_uploaded_image: /media → корень /data или ./media
+    base = "/data" if os.path.exists("/data") else "./media"
+    save_path = os.path.join(base, "community", filename)
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     try:
         with open(save_path, "wb") as f:
