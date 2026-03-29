@@ -524,6 +524,15 @@ async def run_heavy_startup(app: FastAPI) -> None:
         except Exception as e:
             logger.warning("migrate_v17 in_app_notifications: %s", e)
 
+        try:
+            import migrate_v18_chats_group as migrate_v18
+
+            for s in migrate_v18.STEPS:
+                await database.execute(sa.text(s))
+            logger.info("Chats group features (migrate_v18) OK")
+        except Exception as e:
+            logger.warning("migrate_v18 chats group: %s", e)
+
         start_scheduler()
         app.state.startup_complete = True
         logger.info("Heavy startup complete; full traffic enabled")

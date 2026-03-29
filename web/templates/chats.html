@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Чаты — NEUROFUNGI AI{% endblock %}
 {% block extra_head %}
-<link rel="stylesheet" href="/static/css/chats-messenger.css?v=6" />
+<link rel="stylesheet" href="/static/css/chats-messenger.css?v=8" />
 {% endblock %}
 {% block body_class %} chats-messenger-page{% endblock %}
 {% block content %}
@@ -21,11 +21,13 @@
     <div id="chatsThread" class="chats-thread" style="display:none;flex:1;flex-direction:column;min-height:0">
       <div class="chats-thread-head">
         <button type="button" class="chats-mobile-back" id="chatsMobileBack" aria-label="Назад">←</button>
-        <img class="chats-thread-head-av" id="chatsHeadAv" src="/static/favicon.svg" alt="" />
-        <div class="chats-thread-titles">
-          <div class="t" id="chatsHeadTitle">—</div>
-          <div class="s" id="chatsHeadSub">—</div>
-        </div>
+        <button type="button" class="chats-thread-head-hit" id="chatsThreadHeadHit" aria-label="Профиль группы" disabled>
+          <img class="chats-thread-head-av" id="chatsHeadAv" src="/static/favicon.svg" alt="" />
+          <div class="chats-thread-titles">
+            <div class="t" id="chatsHeadTitle">—</div>
+            <div class="s" id="chatsHeadSub">—</div>
+          </div>
+        </button>
         <button type="button" class="chats-menu-btn" id="chatsMenuBtn" style="display:none" aria-label="Меню">⋮</button>
         <div class="chats-drop-menu" id="chatsDropMenu">
           <button type="button" id="chatsMenuMembers">Участники</button>
@@ -91,6 +93,196 @@
   </div>
 </div>
 
+<div class="ch-modal-back" id="chAddMemberBack" hidden>
+  <div class="ch-modal ch-modal-narrow" role="dialog" aria-modal="true" onclick="event.stopPropagation()">
+    <div class="ch-modal-head">
+      <span>Добавить участника</span>
+      <button type="button" class="ch-modal-x" id="chAddMemberClose" aria-label="Закрыть">×</button>
+    </div>
+    <p class="ch-modal-hint">Введите @ или имя — выберите пользователя из списка.</p>
+    <input type="search" class="ch-field" id="chAddMemberSearch" placeholder="@ник или имя, ID…" autocomplete="off" />
+    <div class="ch-add-results" id="chAddMemberResults"></div>
+  </div>
+</div>
+
+<div class="ch-shell" id="chGroupShell" hidden>
+  <div class="ch-shell-inner">
+    <div class="ch-view" data-ch-view="hub">
+      <div class="ch-shell-top">
+        <button type="button" class="ch-shell-back" id="chShellClose" aria-label="Закрыть">←</button>
+        <div class="ch-shell-title" id="chShellHubTitle">Группа</div>
+      </div>
+      <div class="ch-quick-row" id="chQuickRow">
+        <button type="button" class="ch-quick-btn" id="chQuickVideo" title="Видеочат">
+          <span class="ch-q-ic">▦</span><span>видеочат</span>
+        </button>
+        <button type="button" class="ch-quick-btn" id="chQuickMute" title="Уведомления">
+          <span class="ch-q-ic" id="chQuickMuteIc">🔔</span><span id="chQuickMuteLbl">звук</span>
+        </button>
+        <button type="button" class="ch-quick-btn" id="chQuickSearch" title="Поиск">
+          <span class="ch-q-ic">⌕</span><span>поиск</span>
+        </button>
+        <button type="button" class="ch-quick-btn" id="chQuickMore" title="Ещё">
+          <span class="ch-q-ic">⋯</span><span>ещё</span>
+        </button>
+      </div>
+      <button type="button" class="ch-settings-row" id="chOpenDeepSettings">
+        <span class="ch-settings-ic">⚙</span>
+        <span class="ch-settings-txt">Настройки группы</span>
+        <span class="ch-settings-arr">›</span>
+      </button>
+      <div class="ch-tabs" role="tablist">
+        <button type="button" class="on" data-tab="participants" id="chTabParticipants">Участники</button>
+        <button type="button" data-tab="media" id="chTabMedia">Медиа</button>
+      </div>
+      <div class="ch-tab-body" id="chTabBodyParticipants">
+        <input type="search" class="ch-field" id="chPartSearch" placeholder="Поиск участника, @ или id…" autocomplete="off" />
+        <div class="ch-part-list" id="chPartList"></div>
+      </div>
+      <div class="ch-tab-body" id="chTabBodyMedia" hidden>
+        <div class="ch-media-grid" id="chMediaGrid"></div>
+      </div>
+    </div>
+
+    <div class="ch-view" data-ch-view="settings" hidden>
+      <div class="ch-shell-top">
+        <button type="button" class="ch-shell-back" data-ch-back="hub">←</button>
+        <button type="button" class="ch-shell-done" id="chSettingsSave">Готово</button>
+      </div>
+      <div class="ch-settings-scroll">
+        <div class="ch-settings-block">
+          <input type="text" class="ch-field ch-field-lg" id="chSetName" placeholder="Название" />
+          <textarea class="ch-field ch-ta" id="chSetDesc" rows="2" placeholder="Описание"></textarea>
+        </div>
+        <div class="ch-set-row" id="chRowPublic" data-nav="noop">
+          <span class="ch-set-ic">👥</span>
+          <div class="ch-set-mid">
+            <div class="ch-set-label">Тип группы</div>
+            <div class="ch-set-sub" id="chSetPublicVal">Публичная</div>
+          </div>
+          <button type="button" class="ch-set-toggle" id="chTogglePublic" aria-label="Переключить тип">⇄</button>
+        </div>
+        <div class="ch-set-row ch-set-row-dim">
+          <span class="ch-set-ic">📣</span>
+          <div class="ch-set-mid">
+            <div class="ch-set-label">Привязанный канал</div>
+            <div class="ch-set-sub">Только отображение</div>
+          </div>
+          <span class="ch-settings-arr">›</span>
+        </div>
+        <div class="ch-set-row" id="chRowReactions" data-nav="noop">
+          <span class="ch-set-ic">❤</span>
+          <div class="ch-set-mid">
+            <div class="ch-set-label">Реакции</div>
+            <div class="ch-set-sub" id="chSetReactVal">Все реакции</div>
+          </div>
+          <button type="button" class="ch-set-toggle" id="chToggleReactions">⇄</button>
+        </div>
+        <div class="ch-set-row" id="chRowAppearance" data-nav="noop">
+          <span class="ch-set-ic">🎨</span>
+          <div class="ch-set-mid">
+            <div class="ch-set-label">Оформление</div>
+            <div class="ch-set-sub" id="chSetAppearVal">Бирюза</div>
+          </div>
+          <button type="button" class="ch-set-toggle" id="chCycleAppearance">⇄</button>
+        </div>
+        <div class="ch-set-row" id="chRowTopics" data-nav="noop">
+          <span class="ch-set-ic">📋</span>
+          <div class="ch-set-mid">
+            <div class="ch-set-label">Темы</div>
+            <div class="ch-set-sub" id="chSetTopicsVal">Отключены</div>
+          </div>
+          <button type="button" class="ch-set-toggle" id="chToggleTopics">⇄</button>
+        </div>
+        <p class="ch-caption">Чат группы можно разделять на темы (флаг в настройках).</p>
+        <div class="ch-set-row" data-nav="participants">
+          <span class="ch-set-ic">👤</span>
+          <div class="ch-set-mid">
+            <div class="ch-set-label">Участники</div>
+            <div class="ch-set-sub" id="chSetMembersCount">0</div>
+          </div>
+          <span class="ch-settings-arr">›</span>
+        </div>
+        <div class="ch-set-row" data-nav="perms">
+          <span class="ch-set-ic">🔑</span>
+          <div class="ch-set-mid">
+            <div class="ch-set-label">Разрешения</div>
+            <div class="ch-set-sub" id="chSetPermsScore">14/14</div>
+          </div>
+          <span class="ch-settings-arr">›</span>
+        </div>
+        <div class="ch-set-row" data-nav="admins">
+          <span class="ch-set-ic">🛡</span>
+          <div class="ch-set-mid">
+            <div class="ch-set-label">Администраторы</div>
+            <div class="ch-set-sub" id="chSetAdminCount">0</div>
+          </div>
+          <span class="ch-settings-arr">›</span>
+        </div>
+        <div class="ch-set-row" data-nav="bans">
+          <span class="ch-set-ic">⛔</span>
+          <div class="ch-set-mid">
+            <div class="ch-set-label">Чёрный список</div>
+            <div class="ch-set-sub" id="chSetBanCount">0</div>
+          </div>
+          <span class="ch-settings-arr">›</span>
+        </div>
+        <div class="ch-set-row" data-nav="audit">
+          <span class="ch-set-ic">👁</span>
+          <div class="ch-set-mid">
+            <div class="ch-set-label">Недавние действия</div>
+            <div class="ch-set-sub">Журнал</div>
+          </div>
+          <span class="ch-settings-arr">›</span>
+        </div>
+        <button type="button" class="ch-danger-btn" id="chDeleteGroup">Удалить группу</button>
+      </div>
+    </div>
+
+    <div class="ch-view" data-ch-view="perms" hidden>
+      <div class="ch-shell-top">
+        <button type="button" class="ch-shell-back" data-ch-back="settings">←</button>
+        <div class="ch-shell-title">Разрешения</div>
+        <button type="button" class="ch-shell-done" id="chPermsSave">Сохранить</button>
+      </div>
+      <div class="ch-perms-list" id="chPermsList"></div>
+    </div>
+
+    <div class="ch-view" data-ch-view="admins" hidden>
+      <div class="ch-shell-top">
+        <button type="button" class="ch-shell-back" data-ch-back="settings">←</button>
+        <div class="ch-shell-title">Администраторы</div>
+      </div>
+      <div class="ch-part-list" id="chAdminsList"></div>
+    </div>
+
+    <div class="ch-view" data-ch-view="bans" hidden>
+      <div class="ch-shell-top">
+        <button type="button" class="ch-shell-back" data-ch-back="settings">←</button>
+        <div class="ch-shell-title">Чёрный список</div>
+      </div>
+      <div class="ch-part-list" id="chBansList"></div>
+    </div>
+
+    <div class="ch-view" data-ch-view="audit" hidden>
+      <div class="ch-shell-top">
+        <button type="button" class="ch-shell-back" data-ch-back="settings">←</button>
+        <div class="ch-shell-title">Недавние действия</div>
+      </div>
+      <div class="ch-audit-list" id="chAuditList"></div>
+    </div>
+
+    <div class="ch-view" data-ch-view="chatSearch" hidden>
+      <div class="ch-shell-top">
+        <button type="button" class="ch-shell-back" data-ch-back="hub">←</button>
+        <div class="ch-shell-title">Поиск в чате</div>
+      </div>
+      <input type="search" class="ch-field" id="chChatSearchInput" placeholder="Текст сообщения…" autocomplete="off" />
+      <div class="ch-search-results" id="chChatSearchResults"></div>
+    </div>
+  </div>
+</div>
+
 <script>
   window.__CHATS_ME = {
     id: {{ (user.primary_user_id or user.id)|int }},
@@ -98,5 +290,5 @@
     avatar: {{ (user.avatar or '')|tojson }}
   };
 </script>
-<script src="/static/js/chats-messenger.js?v=7" defer></script>
+<script src="/static/js/chats-messenger.js?v=8" defer></script>
 {% endblock %}

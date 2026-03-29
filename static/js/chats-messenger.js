@@ -3,6 +3,41 @@
   const uid = ME.id;
   const qs = new URLSearchParams(location.search);
   const openUserParam = qs.get("open_user");
+  const openChatParam = qs.get("open_chat");
+  const focusMsgParam = qs.get("focus_msg");
+
+  const PERM_KEYS = [
+    "send_messages",
+    "send_media",
+    "invite_members",
+    "pin_messages",
+    "edit_group_info",
+    "delete_others_messages",
+    "add_admins",
+    "ban_members",
+    "send_stickers",
+    "send_voice",
+    "send_links",
+    "mention_everyone",
+    "slow_mode_bypass",
+    "manage_topics",
+  ];
+  const PERM_LABELS = {
+    send_messages: "Сообщения",
+    send_media: "Фото и медиа",
+    invite_members: "Приглашения",
+    pin_messages: "Закреп",
+    edit_group_info: "Инфо о группе",
+    delete_others_messages: "Удаление чужих",
+    add_admins: "Назначение админов",
+    ban_members: "Блокировки",
+    send_stickers: "Стикеры",
+    send_voice: "Голосовые",
+    send_links: "Ссылки",
+    mention_everyone: "Упоминания всех",
+    slow_mode_bypass: "Обход slow mode",
+    manage_topics: "Темы",
+  };
 
   const el = {
     app: document.getElementById("chatsApp"),
@@ -12,6 +47,7 @@
     placeholder: document.getElementById("chatsPlaceholder"),
     thread: document.getElementById("chatsThread"),
     scroll: document.getElementById("chatsScroll"),
+    headHit: document.getElementById("chatsThreadHeadHit"),
     headTitle: document.getElementById("chatsHeadTitle"),
     headSub: document.getElementById("chatsHeadSub"),
     headAv: document.getElementById("chatsHeadAv"),
@@ -39,6 +75,50 @@
     gMembers: document.getElementById("chatsGroupMembers"),
     gCreate: document.getElementById("chatsGroupCreate"),
     compose: document.querySelector(".chats-compose"),
+    addMemberBack: document.getElementById("chAddMemberBack"),
+    addMemberClose: document.getElementById("chAddMemberClose"),
+    addMemberSearch: document.getElementById("chAddMemberSearch"),
+    addMemberResults: document.getElementById("chAddMemberResults"),
+    groupShell: document.getElementById("chGroupShell"),
+    shellClose: document.getElementById("chShellClose"),
+    shellHubTitle: document.getElementById("chShellHubTitle"),
+    tabParticipants: document.getElementById("chTabParticipants"),
+    tabMedia: document.getElementById("chTabMedia"),
+    tabBodyParticipants: document.getElementById("chTabBodyParticipants"),
+    tabBodyMedia: document.getElementById("chTabBodyMedia"),
+    partSearch: document.getElementById("chPartSearch"),
+    partList: document.getElementById("chPartList"),
+    mediaGrid: document.getElementById("chMediaGrid"),
+    openDeepSettings: document.getElementById("chOpenDeepSettings"),
+    quickVideo: document.getElementById("chQuickVideo"),
+    quickMute: document.getElementById("chQuickMute"),
+    quickMuteIc: document.getElementById("chQuickMuteIc"),
+    quickMuteLbl: document.getElementById("chQuickMuteLbl"),
+    quickSearch: document.getElementById("chQuickSearch"),
+    quickMore: document.getElementById("chQuickMore"),
+    chatSearchInput: document.getElementById("chChatSearchInput"),
+    chatSearchResults: document.getElementById("chChatSearchResults"),
+    setName: document.getElementById("chSetName"),
+    setDesc: document.getElementById("chSetDesc"),
+    togglePublic: document.getElementById("chTogglePublic"),
+    setPublicVal: document.getElementById("chSetPublicVal"),
+    toggleReactions: document.getElementById("chToggleReactions"),
+    setReactVal: document.getElementById("chSetReactVal"),
+    cycleAppearance: document.getElementById("chCycleAppearance"),
+    setAppearVal: document.getElementById("chSetAppearVal"),
+    toggleTopics: document.getElementById("chToggleTopics"),
+    setTopicsVal: document.getElementById("chSetTopicsVal"),
+    setMembersCount: document.getElementById("chSetMembersCount"),
+    setPermsScore: document.getElementById("chSetPermsScore"),
+    setAdminCount: document.getElementById("chSetAdminCount"),
+    setBanCount: document.getElementById("chSetBanCount"),
+    settingsSave: document.getElementById("chSettingsSave"),
+    deleteGroup: document.getElementById("chDeleteGroup"),
+    permsList: document.getElementById("chPermsList"),
+    permsSave: document.getElementById("chPermsSave"),
+    adminsList: document.getElementById("chAdminsList"),
+    bansList: document.getElementById("chBansList"),
+    auditList: document.getElementById("chAuditList"),
   };
 
   function isChatsMobile() {
@@ -123,6 +203,11 @@
   let hasMoreOlder = false;
   let currentMeta = null;
   let selectedGroupIds = new Set();
+  let membersCache = [];
+  let addMemberSearchT = null;
+  let partSearchT = null;
+  let chatSearchT = null;
+  let pendingFocusMessageId = null;
 
   function esc(s) {
     if (!s) return "";
@@ -232,18 +317,56 @@
     syncChatsViewport();
   }
 
-  async function openChat(cid) {
+  function applyGroupTheme(meta) {
+    if (!el.app) return;
+    if (meta && meta.type === "group" && meta.group_settings) {
+      const a = meta.group_settings.appearance || "cyan";
+      if (a === "cyan") delete el.app.dataset.groupTheme;
+      else el.app.dataset.groupTheme = a;
+    } else {
+      delete el.app.dataset.groupTheme;
+    }
+  }
+
+  function focusMessageInScroll(mid) {
+    const sc = el.scroll;
+    if (!sc || !mid) return;
+    const n = sc.querySelector('.chats-msg-wrap[data-mid="' + String(mid) + '"]');
+    if (!n) return;
+    n.classList.add("ch-msg-focus");
+    try {
+      n.scrollIntoView({ block: "center", behavior: "smooth" });
+    } catch (e) {
+      n.scrollIntoView(true);
+    }
+    setTimeout(function () {
+      n.classList.remove("ch-msg-focus");
+    }, 2400);
+  }
+
+  async function openChat(cid, opts) {
     activeChatId = cid;
+    pendingFocusMessageId = opts && opts.focusMessageId ? parseInt(opts.focusMessageId, 10) : null;
+    if (pendingFocusMessageId && !Number.isFinite(pendingFocusMessageId)) pendingFocusMessageId = null;
     setMobileOpen(true);
     el.placeholder.style.display = "none";
     el.thread.style.display = "flex";
     renderList();
     await loadMeta(cid);
-    await loadMessages(cid, null);
+    if (pendingFocusMessageId) {
+      const am = pendingFocusMessageId;
+      pendingFocusMessageId = null;
+      await loadMessages(cid, null, { aroundMessageId: am });
+      setTimeout(function () {
+        focusMessageInScroll(am);
+      }, 80);
+    } else {
+      await loadMessages(cid, null);
+    }
     connectWs(cid);
     resizeTa();
     syncChatsViewport();
-    scrollMessagesToEnd();
+    if (!opts || !opts.focusMessageId) scrollMessagesToEnd();
   }
 
   async function loadMeta(cid) {
@@ -252,6 +375,16 @@
     if (!r.ok) return;
     el.headTitle.textContent = currentMeta.name || "Чат";
     el.headAv.src = currentMeta.avatar_url || "/static/favicon.svg";
+    applyGroupTheme(currentMeta);
+    if (el.headHit) {
+      if (currentMeta.type === "group") {
+        el.headHit.disabled = false;
+        el.headHit.style.display = "flex";
+      } else {
+        el.headHit.disabled = true;
+        el.headHit.style.display = "flex";
+      }
+    }
     if (currentMeta.type === "group") {
       const n = currentMeta.member_count || 0;
       const on = (currentMeta.online_user_ids || []).length;
@@ -268,10 +401,12 @@
     }
   }
 
-  async function loadMessages(cid, beforeId) {
+  async function loadMessages(cid, beforeId, extra) {
     loadingMore = !!beforeId;
     let url = "/api/chats/" + cid + "/messages?limit=50";
-    if (beforeId) url += "&before_id=" + beforeId;
+    if (extra && extra.aroundMessageId && !beforeId) {
+      url = "/api/chats/" + cid + "/messages?limit=80&around_message_id=" + encodeURIComponent(extra.aroundMessageId);
+    } else if (beforeId) url += "&before_id=" + beforeId;
     const r = await api(url);
     const d = await r.json();
     if (!r.ok) return;
@@ -300,6 +435,11 @@
   function renderMessages() {
     el.scroll.innerHTML = "";
     let lastDay = "";
+    const reactionsOff =
+      currentMeta &&
+      currentMeta.type === "group" &&
+      currentMeta.group_settings &&
+      currentMeta.group_settings.reactions_mode === "none";
     messages.forEach((m, i) => {
       const day = m.created_at ? fmtDay(m.created_at) : "";
       if (day && day !== lastDay) {
@@ -317,7 +457,9 @@
       const actions = document.createElement("div");
       actions.className = "chats-msg-actions";
       actions.innerHTML =
-        '<button type="button" data-a="react" title="Реакция">😊</button>' +
+        (reactionsOff
+          ? ""
+          : '<button type="button" data-a="react" title="Реакция">😊</button>') +
         '<button type="button" data-a="reply" title="Ответить">↩️</button>' +
         (mine ? '<button type="button" data-a="del" title="Удалить">🗑️</button>' : "");
       actions.querySelectorAll("button").forEach((b) => {
@@ -383,12 +525,19 @@
       reactRow.className = "chats-reactions";
       const counts = m.reactions || {};
       Object.keys(counts).forEach((em) => {
-        const pill = document.createElement("button");
-        pill.type = "button";
-        pill.className = "chats-react-pill" + ((m.my_reactions || []).includes(em) ? " active" : "");
-        pill.textContent = em + " " + counts[em];
-        pill.onclick = () => toggleReact(m.id, em);
-        reactRow.appendChild(pill);
+        if (reactionsOff) {
+          const span = document.createElement("span");
+          span.className = "chats-react-pill";
+          span.textContent = em + " " + counts[em];
+          reactRow.appendChild(span);
+        } else {
+          const pill = document.createElement("button");
+          pill.type = "button";
+          pill.className = "chats-react-pill" + ((m.my_reactions || []).includes(em) ? " active" : "");
+          pill.textContent = em + " " + counts[em];
+          pill.onclick = () => toggleReact(m.id, em);
+          reactRow.appendChild(pill);
+        }
       });
       col.appendChild(reactRow);
 
@@ -443,6 +592,436 @@
     renderMessages();
   }
 
+  function chShowView(name) {
+    if (!el.groupShell) return;
+    el.groupShell.querySelectorAll(".ch-view").forEach(function (v) {
+      v.hidden = v.getAttribute("data-ch-view") !== name;
+    });
+  }
+
+  function closeGroupShell() {
+    if (!el.groupShell) return;
+    el.groupShell.hidden = true;
+    document.body.style.overflow = "";
+  }
+
+  function openGroupShell(tab) {
+    if (!el.groupShell || !activeChatId || !currentMeta || currentMeta.type !== "group") return;
+    el.groupShell.hidden = false;
+    document.body.style.overflow = "hidden";
+    chShowView("hub");
+    switchGroupTab(tab || "participants");
+    refreshParticipantsList();
+    loadGroupMedia();
+    syncMuteBtn();
+    if (el.shellHubTitle) el.shellHubTitle.textContent = currentMeta.name || "Группа";
+  }
+
+  function switchGroupTab(tab) {
+    const p = tab === "participants";
+    if (el.tabParticipants) el.tabParticipants.classList.toggle("on", p);
+    if (el.tabMedia) el.tabMedia.classList.toggle("on", !p);
+    if (el.tabBodyParticipants) el.tabBodyParticipants.hidden = !p;
+    if (el.tabBodyMedia) el.tabBodyMedia.hidden = p;
+    if (p) refreshParticipantsList();
+    else loadGroupMedia();
+  }
+
+  function syncMuteBtn() {
+    if (!el.quickMuteIc || !el.quickMuteLbl || !currentMeta) return;
+    const m = !!currentMeta.mute_notifications;
+    el.quickMuteIc.textContent = m ? "🔕" : "🔔";
+    el.quickMuteLbl.textContent = m ? "без звука" : "звук";
+  }
+
+  async function patchGroup(body) {
+    const r = await api("/api/chats/" + activeChatId + "/group", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const d = await r.json().catch(function () {
+      return {};
+    });
+    if (!r.ok) return false;
+    if (d.group_settings) currentMeta.group_settings = d.group_settings;
+    if (d.name) currentMeta.name = d.name;
+    if (d.description !== undefined) currentMeta.description = d.description;
+    if (d.avatar_url !== undefined) currentMeta.avatar_url = d.avatar_url;
+    await loadMeta(activeChatId);
+    renderMessages();
+    return true;
+  }
+
+  function appearanceLabel(code) {
+    if (code === "gold") return "Золото";
+    if (code === "violet") return "Фиолет";
+    return "Бирюза";
+  }
+
+  function fillSettingsRows() {
+    if (!currentMeta || currentMeta.type !== "group") return;
+    const st = currentMeta.group_settings || {};
+    const perms = st.permissions || {};
+    if (el.setName) el.setName.value = currentMeta.name || "";
+    if (el.setDesc) el.setDesc.value = currentMeta.description || "";
+    if (el.setPublicVal) el.setPublicVal.textContent = st.is_public ? "Публичная" : "Приватная";
+    if (el.setReactVal) el.setReactVal.textContent = st.reactions_mode === "none" ? "Выкл." : "Все реакции";
+    if (el.setAppearVal) el.setAppearVal.textContent = appearanceLabel(st.appearance || "cyan");
+    if (el.setTopicsVal) el.setTopicsVal.textContent = st.topics_enabled ? "Включены" : "Отключены";
+    if (el.setMembersCount) el.setMembersCount.textContent = String(currentMeta.member_count || 0);
+    if (el.setAdminCount) el.setAdminCount.textContent = String(currentMeta.admin_count || 0);
+    if (el.setBanCount) el.setBanCount.textContent = String(currentMeta.ban_count || 0);
+    if (el.setPermsScore) {
+      el.setPermsScore.textContent = currentMeta.permissions_score || "14/14";
+    }
+  }
+
+  function openSettingsDeep() {
+    chShowView("settings");
+    fillSettingsRows();
+  }
+
+  async function refreshParticipantsList() {
+    if (!activeChatId || !el.partList) return;
+    const r = await api("/api/chats/" + activeChatId + "/members");
+    const d = await r.json();
+    if (!r.ok) return;
+    membersCache = d.members || [];
+    renderParticipantsFiltered();
+  }
+
+  function renderParticipantsFiltered() {
+    if (!el.partList) return;
+    const qraw = (el.partSearch && el.partSearch.value) || "";
+    let q = qraw.trim();
+    while (q.charAt(0) === "@") q = q.slice(1).trim();
+    const ql = q.toLowerCase();
+    const can = currentMeta && currentMeta.can_manage_members;
+    const myRole = (currentMeta && currentMeta.my_role) || "member";
+    el.partList.innerHTML = "";
+    membersCache.forEach(function (m) {
+      const nm = (m.name || "User " + m.user_id).toLowerCase();
+      const idstr = String(m.user_id);
+      if (ql && nm.indexOf(ql) < 0 && idstr.indexOf(ql) < 0) return;
+      const row = document.createElement("div");
+      row.className = "ch-part-row";
+      const av = m.avatar || "/static/favicon.svg";
+      const showDel =
+        can &&
+        m.user_id !== uid &&
+        m.role !== "owner" &&
+        (myRole === "owner" || (myRole === "admin" && m.role !== "admin"));
+      const showBan = showDel;
+      row.innerHTML =
+        '<img src="' +
+        esc(av) +
+        '" alt="" onerror="this.src=\'/static/favicon.svg\'">' +
+        '<div class="ch-part-meta"><strong>' +
+        esc(m.name || "User " + m.user_id) +
+        "</strong><span>id " +
+        m.user_id +
+        " · " +
+        esc(m.role) +
+        "</span></div>";
+      const actions = document.createElement("div");
+      actions.style.cssText = "display:flex;flex-direction:column;gap:6px;align-items:flex-end;";
+      if (showDel) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "ch-part-del";
+        b.textContent = "Удалить";
+        b.onclick = async function () {
+          if (!confirm("Удалить из группы?")) return;
+          const rr = await api("/api/chats/" + activeChatId + "/members/" + m.user_id, { method: "DELETE" });
+          if (rr.ok) {
+            refreshParticipantsList();
+            loadMeta(activeChatId);
+          } else alert("Не удалось");
+        };
+        actions.appendChild(b);
+      }
+      if (showBan) {
+        const bb = document.createElement("button");
+        bb.type = "button";
+        bb.className = "ch-part-del";
+        bb.style.borderColor = "#444";
+        bb.style.color = "#ccc";
+        bb.textContent = "В бан";
+        bb.onclick = async function () {
+          if (!confirm("Заблокировать и удалить из группы?")) return;
+          const rr = await api("/api/chats/" + activeChatId + "/bans", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_id: m.user_id }),
+          });
+          if (rr.ok) {
+            refreshParticipantsList();
+            loadMeta(activeChatId);
+          } else alert("Не удалось");
+        };
+        actions.appendChild(bb);
+      }
+      if (actions.children.length) row.appendChild(actions);
+      el.partList.appendChild(row);
+    });
+    if (!el.partList.children.length) {
+      el.partList.innerHTML = '<p style="color:#888;font-size:13px;padding:12px">Никого не найдено.</p>';
+    }
+  }
+
+  async function loadGroupMedia() {
+    if (!el.mediaGrid || !activeChatId) return;
+    const r = await api("/api/chats/" + activeChatId + "/media");
+    const d = await r.json();
+    if (!r.ok) return;
+    const items = d.items || [];
+    el.mediaGrid.innerHTML = "";
+    const byDay = {};
+    items.forEach(function (it) {
+      const day = it.created_at ? fmtDay(it.created_at) : "—";
+      if (!byDay[day]) byDay[day] = [];
+      byDay[day].push(it);
+    });
+    Object.keys(byDay).forEach(function (day) {
+      const h = document.createElement("div");
+      h.className = "ch-media-date";
+      h.textContent = day;
+      el.mediaGrid.appendChild(h);
+      const tiles = document.createElement("div");
+      tiles.className = "ch-media-tiles";
+      byDay[day].forEach(function (it) {
+        const img = document.createElement("img");
+        img.src = it.media_url;
+        img.alt = "";
+        img.onclick = function () {
+          closeGroupShell();
+          openChat(activeChatId, { focusMessageId: it.message_id });
+        };
+        tiles.appendChild(img);
+      });
+      el.mediaGrid.appendChild(tiles);
+    });
+    if (!items.length) {
+      el.mediaGrid.innerHTML = '<p style="color:#888;font-size:13px;padding:16px">Пока нет фото в чате.</p>';
+    }
+  }
+
+  function openAddMemberModal() {
+    if (!el.addMemberBack) return;
+    el.addMemberBack.hidden = false;
+    if (el.addMemberSearch) {
+      el.addMemberSearch.value = "";
+      el.addMemberSearch.focus();
+    }
+    if (el.addMemberResults) el.addMemberResults.innerHTML = "";
+  }
+
+  function closeAddMemberModal() {
+    if (el.addMemberBack) el.addMemberBack.hidden = true;
+  }
+
+  async function runAddMemberSearch() {
+    if (!el.addMemberSearch || !el.addMemberResults || !activeChatId) return;
+    let q = (el.addMemberSearch.value || "").trim();
+    if (q.length < 1) {
+      el.addMemberResults.innerHTML = "";
+      return;
+    }
+    const r = await api("/api/chats/search-users?q=" + encodeURIComponent(q));
+    const d = await r.json();
+    el.addMemberResults.innerHTML = "";
+    (d.users || []).forEach(function (u) {
+      const row = document.createElement("div");
+      row.className = "ch-add-pick";
+      row.innerHTML =
+        '<img class="chats-row-av" style="width:40px;height:40px" src="' +
+        esc(u.avatar || "/static/favicon.svg") +
+        '" alt="">' +
+        "<div><strong>" +
+        esc(u.name || "User " + u.id) +
+        "</strong><br><span style=\"font-size:12px;color:#888\">id " +
+        u.id +
+        "</span></div>";
+      row.onclick = async function () {
+        const rr = await api("/api/chats/" + activeChatId + "/members", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: u.id }),
+        });
+        const x = await rr.json().catch(function () {
+          return {};
+        });
+        if (rr.ok) {
+          closeAddMemberModal();
+          loadMeta(activeChatId);
+          refreshParticipantsList();
+        } else alert(x.error || "Ошибка");
+      };
+      el.addMemberResults.appendChild(row);
+    });
+    if (!el.addMemberResults.children.length) {
+      el.addMemberResults.innerHTML = '<p style="color:#888;font-size:13px;padding:8px">Никого не найдено.</p>';
+    }
+  }
+
+  async function renderPermsEditor() {
+    if (!el.permsList || !currentMeta) return;
+    const st = currentMeta.group_settings || {};
+    const perms = Object.assign({}, st.permissions || {});
+    el.permsList.innerHTML = "";
+    PERM_KEYS.forEach(function (k) {
+      const row = document.createElement("div");
+      row.className = "ch-perm-row";
+      const lab = PERM_LABELS[k] || k;
+      const span = document.createElement("span");
+      span.textContent = lab;
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = !!perms[k];
+      cb.dataset.key = k;
+      row.appendChild(span);
+      row.appendChild(cb);
+      el.permsList.appendChild(row);
+    });
+  }
+
+  async function loadBansView() {
+    if (!el.bansList || !activeChatId) return;
+    const r = await api("/api/chats/" + activeChatId + "/bans");
+    const d = await r.json();
+    if (!r.ok) return;
+    el.bansList.innerHTML = "";
+    (d.bans || []).forEach(function (b) {
+      const row = document.createElement("div");
+      row.className = "ch-part-row";
+      row.innerHTML =
+        '<img src="' +
+        esc(b.avatar || "/static/favicon.svg") +
+        '" alt="">' +
+        '<div class="ch-part-meta"><strong>' +
+        esc(b.name || "User " + b.user_id) +
+        "</strong><span>id " +
+        b.user_id +
+        "</span></div>";
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "ch-part-del";
+      btn.textContent = "Снять";
+      btn.onclick = async function () {
+        await api("/api/chats/" + activeChatId + "/bans/" + b.user_id, { method: "DELETE" });
+        loadBansView();
+        loadMeta(activeChatId);
+      };
+      row.appendChild(btn);
+      el.bansList.appendChild(row);
+    });
+    if (!el.bansList.children.length) {
+      el.bansList.innerHTML = '<p style="color:#888;font-size:13px">Пусто.</p>';
+    }
+  }
+
+  async function loadAuditView() {
+    if (!el.auditList || !activeChatId) return;
+    const r = await api("/api/chats/" + activeChatId + "/audit");
+    const d = await r.json();
+    if (!r.ok) return;
+    el.auditList.innerHTML = "";
+    (d.events || []).forEach(function (ev) {
+      const div = document.createElement("div");
+      div.className = "ch-audit-item";
+      div.textContent =
+        (ev.created_at || "") +
+        " · " +
+        (ev.actor_name || ev.actor_id || "—") +
+        " · " +
+        (ev.action || "") +
+        (ev.detail ? " " + ev.detail : "");
+      el.auditList.appendChild(div);
+    });
+  }
+
+  async function loadAdminsView() {
+    if (!el.adminsList || !activeChatId) return;
+    const r = await api("/api/chats/" + activeChatId + "/members");
+    const d = await r.json();
+    if (!r.ok) return;
+    const mems = d.members || [];
+    el.adminsList.innerHTML = "";
+    const isOwner = currentMeta && currentMeta.my_role === "owner";
+    const hTop = document.createElement("div");
+    hTop.className = "ch-media-date";
+    hTop.textContent = "Администраторы";
+    el.adminsList.appendChild(hTop);
+    mems.forEach(function (m) {
+      if (m.role !== "admin" && m.role !== "owner") return;
+      const row = document.createElement("div");
+      row.className = "ch-part-row";
+      row.innerHTML =
+        '<img src="' +
+        esc(m.avatar || "/static/favicon.svg") +
+        '" alt="">' +
+        '<div class="ch-part-meta"><strong>' +
+        esc(m.name || "") +
+        "</strong><span>" +
+        esc(m.role) +
+        "</span></div>";
+      if (isOwner && m.role === "admin") {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "ch-part-del";
+        b.textContent = "Снять";
+        b.onclick = async function () {
+          await api("/api/chats/" + activeChatId + "/members/" + m.user_id + "/role", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ role: "member" }),
+          });
+          loadAdminsView();
+          loadMeta(activeChatId);
+        };
+        row.appendChild(b);
+      }
+      el.adminsList.appendChild(row);
+    });
+    if (isOwner) {
+      const h2 = document.createElement("div");
+      h2.className = "ch-media-date";
+      h2.textContent = "Участники → админ";
+      h2.style.marginTop = "12px";
+      el.adminsList.appendChild(h2);
+      mems.forEach(function (m) {
+        if (m.role !== "member") return;
+        const row = document.createElement("div");
+        row.className = "ch-part-row";
+        row.innerHTML =
+          '<img src="' +
+          esc(m.avatar || "/static/favicon.svg") +
+          '" alt="">' +
+          '<div class="ch-part-meta"><strong>' +
+          esc(m.name || "") +
+          '</strong><span>id ' +
+          m.user_id +
+          "</span></div>";
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "ch-part-del";
+        b.textContent = "Админ";
+        b.onclick = async function () {
+          await api("/api/chats/" + activeChatId + "/members/" + m.user_id + "/role", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ role: "admin" }),
+          });
+          loadAdminsView();
+          loadMeta(activeChatId);
+        };
+        row.appendChild(b);
+        el.adminsList.appendChild(row);
+      });
+    }
+  }
+
   function connectWs(cid) {
     if (ws) {
       try {
@@ -472,6 +1051,10 @@
             m.reactions = Object.assign({}, d.payload.counts);
             renderMessages();
           }
+        }
+        if (d.type === "members_changed") {
+          if (activeChatId) loadMeta(activeChatId);
+          if (el.groupShell && !el.groupShell.hidden && el.partList) refreshParticipantsList();
         }
       } catch (e) {}
     };
@@ -601,28 +1184,15 @@
   }
 
   document.getElementById("chatsMenuMembers") &&
-    (document.getElementById("chatsMenuMembers").onclick = async () => {
+    (document.getElementById("chatsMenuMembers").onclick = function () {
       el.drop.classList.remove("open");
-      const r = await api("/api/chats/" + activeChatId + "/members");
-      const d = await r.json();
-      const lines = (d.members || []).map((m) => m.name + " (" + m.user_id + ") — " + m.role);
-      alert(lines.join("\n") || "Нет данных");
+      openGroupShell("participants");
     });
 
   document.getElementById("chatsMenuAdd") &&
-    (document.getElementById("chatsMenuAdd").onclick = () => {
+    (document.getElementById("chatsMenuAdd").onclick = function () {
       el.drop.classList.remove("open");
-      const idStr = prompt("ID пользователя для приглашения:");
-      const id = parseInt(idStr, 10);
-      if (!id) return;
-      api("/api/chats/" + activeChatId + "/members", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: id }),
-      }).then((r) => {
-        if (r.ok) alert("Участник добавлен");
-        else r.json().then((x) => alert(x.error || "Ошибка"));
-      });
+      openAddMemberModal();
     });
 
   document.getElementById("chatsMenuLeave") &&
@@ -767,11 +1337,227 @@
     };
   }
 
+  if (el.headHit) {
+    el.headHit.addEventListener("click", function () {
+      if (!currentMeta || currentMeta.type !== "group") return;
+      openGroupShell("participants");
+    });
+  }
+
+  if (el.addMemberBack) {
+    el.addMemberBack.addEventListener("click", function (e) {
+      if (e.target === el.addMemberBack) closeAddMemberModal();
+    });
+  }
+  if (el.addMemberClose) el.addMemberClose.addEventListener("click", closeAddMemberModal);
+  if (el.addMemberSearch) {
+    el.addMemberSearch.addEventListener("input", function () {
+      clearTimeout(addMemberSearchT);
+      addMemberSearchT = setTimeout(runAddMemberSearch, 280);
+    });
+  }
+
+  if (el.shellClose) el.shellClose.addEventListener("click", closeGroupShell);
+  if (el.tabParticipants)
+    el.tabParticipants.addEventListener("click", function () {
+      switchGroupTab("participants");
+    });
+  if (el.tabMedia)
+    el.tabMedia.addEventListener("click", function () {
+      switchGroupTab("media");
+    });
+  if (el.partSearch) {
+    el.partSearch.addEventListener("input", function () {
+      clearTimeout(partSearchT);
+      partSearchT = setTimeout(renderParticipantsFiltered, 200);
+    });
+  }
+
+  if (el.openDeepSettings) {
+    el.openDeepSettings.addEventListener("click", function () {
+      openSettingsDeep();
+    });
+  }
+
+  if (el.quickVideo) {
+    el.quickVideo.addEventListener("click", function () {
+      if (!activeChatId) return;
+      window.open("https://meet.jit.si/NeuroFungiChat-" + activeChatId, "_blank", "noopener,noreferrer");
+    });
+  }
+  if (el.quickMute) {
+    el.quickMute.addEventListener("click", async function () {
+      if (!activeChatId || !currentMeta) return;
+      const next = !currentMeta.mute_notifications;
+      const r = await api("/api/chats/" + activeChatId + "/members/me/mute", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ muted: next }),
+      });
+      if (r.ok) {
+        await loadMeta(activeChatId);
+        syncMuteBtn();
+      }
+    });
+  }
+  if (el.quickSearch) {
+    el.quickSearch.addEventListener("click", function () {
+      chShowView("chatSearch");
+      if (el.chatSearchInput) el.chatSearchInput.focus();
+    });
+  }
+  if (el.quickMore) {
+    el.quickMore.addEventListener("click", function () {
+      openSettingsDeep();
+    });
+  }
+
+  if (el.chatSearchInput) {
+    el.chatSearchInput.addEventListener("input", function () {
+      clearTimeout(chatSearchT);
+      chatSearchT = setTimeout(async function () {
+        if (!el.chatSearchResults || !activeChatId) return;
+        const q = (el.chatSearchInput.value || "").trim();
+        el.chatSearchResults.innerHTML = "";
+        if (q.length < 1) return;
+        const r = await api("/api/chats/" + activeChatId + "/messages/search?q=" + encodeURIComponent(q));
+        const d = await r.json();
+        (d.results || []).forEach(function (hit) {
+          const div = document.createElement("div");
+          div.className = "ch-search-hit";
+          div.innerHTML =
+            "<strong>#" +
+            hit.id +
+            "</strong> · " +
+            esc(hit.sender_name || "") +
+            "<br><span style=\"font-size:12px;color:#888\">" +
+            esc(hit.text || "") +
+            "</span>";
+          div.onclick = function () {
+            closeGroupShell();
+            openChat(activeChatId, { focusMessageId: hit.id });
+          };
+          el.chatSearchResults.appendChild(div);
+        });
+      }, 320);
+    });
+  }
+
+  if (el.togglePublic) {
+    el.togglePublic.addEventListener("click", async function () {
+      const st = (currentMeta && currentMeta.group_settings) || {};
+      await patchGroup({ is_public: !st.is_public });
+      fillSettingsRows();
+    });
+  }
+  if (el.toggleReactions) {
+    el.toggleReactions.addEventListener("click", async function () {
+      const st = (currentMeta && currentMeta.group_settings) || {};
+      const next = st.reactions_mode === "none" ? "all" : "none";
+      await patchGroup({ reactions_mode: next });
+      fillSettingsRows();
+    });
+  }
+  if (el.cycleAppearance) {
+    el.cycleAppearance.addEventListener("click", async function () {
+      const st = (currentMeta && currentMeta.group_settings) || {};
+      const order = ["cyan", "gold", "violet"];
+      const cur = st.appearance || "cyan";
+      const i = order.indexOf(cur);
+      const next = order[(i + 1) % order.length];
+      await patchGroup({ appearance: next });
+      fillSettingsRows();
+    });
+  }
+  if (el.toggleTopics) {
+    el.toggleTopics.addEventListener("click", async function () {
+      const st = (currentMeta && currentMeta.group_settings) || {};
+      await patchGroup({ topics_enabled: !st.topics_enabled });
+      fillSettingsRows();
+    });
+  }
+
+  if (el.settingsSave) {
+    el.settingsSave.addEventListener("click", async function () {
+      const name = el.setName ? el.setName.value.trim() : "";
+      const description = el.setDesc ? el.setDesc.value.trim() : "";
+      if (!name) {
+        alert("Укажите название");
+        return;
+      }
+      await patchGroup({ name: name, description: description });
+      fillSettingsRows();
+      chShowView("hub");
+    });
+  }
+
+  if (el.permsSave) {
+    el.permsSave.addEventListener("click", async function () {
+      if (!el.permsList) return;
+      const permissions = {};
+      el.permsList.querySelectorAll("input[type=checkbox]").forEach(function (cb) {
+        permissions[cb.dataset.key] = cb.checked;
+      });
+      await patchGroup({ permissions: permissions });
+      chShowView("settings");
+      fillSettingsRows();
+    });
+  }
+
+  if (el.deleteGroup) {
+    el.deleteGroup.addEventListener("click", async function () {
+      if (!activeChatId) return;
+      if (!confirm("Удалить группу безвозвратно?")) return;
+      const r = await api("/api/chats/" + activeChatId, { method: "DELETE" });
+      if (r.ok) {
+        closeGroupShell();
+        location.reload();
+      } else alert("Не удалось удалить");
+    });
+  }
+
+  if (el.groupShell) {
+    el.groupShell.addEventListener("click", function (ev) {
+      const back = ev.target.closest("[data-ch-back]");
+      if (back) {
+        const v = back.getAttribute("data-ch-back");
+        if (v) chShowView(v);
+        return;
+      }
+      const nav = ev.target.closest(".ch-set-row[data-nav]");
+      if (nav && nav.dataset.nav && nav.dataset.nav !== "noop") {
+        const n = nav.dataset.nav;
+        if (n === "participants") {
+          chShowView("hub");
+          switchGroupTab("participants");
+        } else if (n === "perms") {
+          renderPermsEditor();
+          chShowView("perms");
+        } else if (n === "admins") {
+          loadAdminsView();
+          chShowView("admins");
+        } else if (n === "bans") {
+          loadBansView();
+          chShowView("bans");
+        } else if (n === "audit") {
+          loadAuditView();
+          chShowView("audit");
+        }
+      }
+    });
+  }
+
   bindChatsViewport();
 
   loadChats().then(() => {
     syncChatsViewport();
-    if (openUserParam) {
+    if (openChatParam) {
+      const cid = parseInt(openChatParam, 10);
+      if (cid) {
+        const fm = focusMsgParam ? parseInt(focusMsgParam, 10) : NaN;
+        openChat(cid, Number.isFinite(fm) ? { focusMessageId: fm } : {});
+      }
+    } else if (openUserParam) {
       const oid = parseInt(openUserParam, 10);
       if (oid)
         api("/api/chats/personal/" + oid, { method: "POST" }).then((r) =>

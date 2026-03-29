@@ -120,6 +120,134 @@ class AddMemberBody(BaseModel):
     user_id: int
 
 
+class GroupPatchBody(BaseModel):
+    name: str | None = Field(None, min_length=1, max_length=255)
+    description: str | None = Field(None, max_length=4000)
+    avatar_url: str | None = None
+    is_public: bool | None = None
+    reactions_mode: str | None = None
+    appearance: str | None = None
+    topics_enabled: bool | None = None
+    linked_channel_label: str | None = Field(None, max_length=255)
+    permissions: dict[str, bool] | None = None
+
+
+class MuteBody(BaseModel):
+    muted: bool
+
+
+class BanBody(BaseModel):
+    user_id: int
+
+
+class SetRoleBody(BaseModel):
+    role: str = Field(..., pattern="^(admin|member)$")
+
+
+PERMISSION_KEYS: tuple[str, ...] = (
+    "send_messages",
+    "send_media",
+    "invite_members",
+    "pin_messages",
+    "edit_group_info",
+    "delete_others_messages",
+    "add_admins",
+    "ban_members",
+    "send_stickers",
+    "send_voice",
+    "send_links",
+    "mention_everyone",
+    "slow_mode_bypass",
+    "manage_topics",
+)
+
+
+def _default_permissions() -> dict[str, bool]:
+    return {k: True for k in PERMISSION_KEYS}
+
+
+def _default_group_settings() -> dict[str, Any]:
+    return {
+        "is_public": True,
+        "reactions_mode": "all",
+        "appearance": "cyan",
+        "topics_enabled": False,
+        "linked_channel_label": "",
+        "permissions": _default_permissions(),
+    }
+
+
+def _parse_group_settings(raw: str | None) -> dict[str, Any]:
+    base = _default_group_settings()
+    if not raw:
+        return base
+    try:
+        data = json.loads(raw)
+        if not isinstance(data, dict):
+            return base
+        if "is_public" in data:
+            base["is_public"] = bool(data["is_public"])
+        if data.get("reactions_mode") in ("all", "none"):
+            base["reactions_mode"] = data["reactions_mode"]
+        if data.get("appearance") in ("cyan", "gold", "violet"):
+            base["appearance"] = data["appearance"]
+        if "topics_enabled" in data:
+            base["topics_enabled"] = bool(data["topics_enabled"])
+        if isinstance(data.get("linked_channel_label"), str):
+            base["linked_channel_label"] = data["linked_channel_label"][:255]
+        perms_in = data.get("permissions")
+        if isinstance(perms_in, dict):
+            merged = dict(base["permissions"])
+            for k in PERMISSION_KEYS:
+                if k in perms_in:
+                    merged[k] = bool(perms_in[k])
+            base["permissions"] = merged
+        return base
+    except Exception:
+        return base
+
+
+def _settings_json_from_dict(d: dict[str, Any]) -> str:
+    return json.dumps(d, ensure_ascii=False)
+
+
+async def _audit(chat_id: int, actor_id: int | None, action: str, detail: dict | None = None) -> None:
+    try:
+        await database.execute(
+            sa.text(
+                """
+                INSERT INTO chat_group_audit (chat_id, actor_id, action, detail)
+                VALUES (:cid, :aid, :act, :det)
+                """
+            ),
+            {
+                "cid": chat_id,
+                "aid": actor_id,
+                "act": action[:64],
+                "det": json.dumps(detail, ensure_ascii=False) if detail else None,
+            },
+        )
+    except Exception as e:
+        logger.debug("chat audit skip: %s", e)
+
+
+async def _is_banned(chat_id: int, user_id: int) -> bool:
+    row = await database.fetch_one(
+        sa.text(
+            "SELECT 1 FROM chat_group_bans WHERE chat_id = :c AND user_id = :u LIMIT 1"
+        ),
+        {"c": chat_id, "u": user_id},
+    )
+    return bool(row)
+
+
+async def _save_group_settings_row(chat_id: int, settings: dict[str, Any]) -> None:
+    await database.execute(
+        sa.text("UPDATE chats SET group_settings_json = :js WHERE id = :id"),
+        {"js": _settings_json_from_dict(settings), "id": chat_id},
+    )
+
+
 @router.get("/chats", response_class=HTMLResponse)
 async def chats_page(request: Request):
     user = await _require_user(request)
@@ -156,19 +284,31 @@ async def api_search_users(request: Request, q: str = ""):
         return JSONResponse({"error": "auth"}, status_code=401)
     uid = _eff_uid(user)
     q = (q or "").strip()
+    while q.startswith("@"):
+        q = q[1:].strip()
     if len(q) < 1:
         return JSONResponse({"users": []})
-    like = f"%{q[:80]}%"
+    q = q[:80]
+    like = f"%{q}%"
+    pref = f"{q}%"
     rows = await database.fetch_all(
         sa.text(
             """
             SELECT id, name, avatar FROM users
-            WHERE id != :uid AND (LOWER(name) LIKE LOWER(:like) OR CAST(id AS TEXT) LIKE :pref)
-            ORDER BY name NULLS LAST
+            WHERE id != :uid
+              AND (
+                LOWER(COALESCE(name, '')) LIKE LOWER(:like)
+                OR CAST(id AS TEXT) LIKE :pref
+              )
+            ORDER BY
+              CASE WHEN LOWER(COALESCE(name, '')) = LOWER(:exact) THEN 0 ELSE 1 END,
+              CASE WHEN LOWER(COALESCE(name, '')) LIKE LOWER(:startpref) || '%' THEN 0 ELSE 1 END,
+              LENGTH(COALESCE(name, '')),
+              name NULLS LAST
             LIMIT 30
             """
         ),
-        {"uid": uid, "like": like, "pref": f"{q[:20]}%"},
+        {"uid": uid, "like": like, "pref": pref, "exact": q, "startpref": q},
     )
     return JSONResponse({"users": [dict(r) for r in rows]})
 
@@ -290,17 +430,46 @@ async def api_chat_meta(request: Request, chat_id: int):
             title = partner["name"]
             avatar = partner["avatar"]
     online = online_user_ids(chat_id)
-    return JSONResponse(
-        {
-            "id": chat_id,
-            "type": ctype,
-            "name": title or "Чат",
-            "avatar_url": avatar,
-            "member_count": int(member_count or 0),
-            "partner": partner,
-            "online_user_ids": online,
-        }
-    )
+    mem = await _member_row(chat_id, uid)
+    my_role = (mem.get("role") or "member") if mem else "member"
+    mute = bool(mem.get("mute_notifications")) if mem else False
+    payload: dict[str, Any] = {
+        "id": chat_id,
+        "type": ctype,
+        "name": title or "Чат",
+        "avatar_url": avatar,
+        "member_count": int(member_count or 0),
+        "partner": partner,
+        "online_user_ids": online,
+        "my_role": my_role,
+        "mute_notifications": mute,
+    }
+    if ctype == "group":
+        st = _parse_group_settings(crow.get("group_settings_json") if crow else None)
+        admin_n = await database.fetch_val(
+            sa.text(
+                "SELECT COUNT(*) FROM chat_members WHERE chat_id = :c AND role IN ('owner','admin')"
+            ),
+            {"c": chat_id},
+        )
+        ban_n = await database.fetch_val(
+            sa.text("SELECT COUNT(*) FROM chat_group_bans WHERE chat_id = :c"),
+            {"c": chat_id},
+        )
+        perms = st.get("permissions") or {}
+        perm_on = sum(1 for k in PERMISSION_KEYS if perms.get(k, True))
+        payload.update(
+            {
+                "description": ((crow.get("description") or "") if crow else "").strip(),
+                "group_settings": st,
+                "created_by": int(crow["created_by"] or 0) if crow else 0,
+                "admin_count": int(admin_n or 0),
+                "ban_count": int(ban_n or 0),
+                "permissions_score": f"{perm_on}/{len(PERMISSION_KEYS)}",
+                "can_manage_members": my_role in ("owner", "admin"),
+            }
+        )
+    return JSONResponse(payload)
 
 
 @router.get("/api/chats/{chat_id}/members")
@@ -345,6 +514,7 @@ async def api_chat_messages(
     chat_id: int,
     limit: int = Query(50, ge=1, le=100),
     before_id: int | None = Query(None),
+    around_message_id: int | None = Query(None),
 ):
     user = await _require_user(request)
     if not user:
@@ -353,29 +523,94 @@ async def api_chat_messages(
     if not await _member_row(chat_id, uid):
         return JSONResponse({"error": "forbidden"}, status_code=403)
 
-    params: dict[str, Any] = {"cid": chat_id, "lim": limit}
-    before_sql = ""
-    if before_id is not None:
-        before_sql = "AND m.id < :before_id"
-        params["before_id"] = before_id
+    half = max(1, min(limit // 2, 50))
+    rows: list[Any] = []
+    before_rows: list[Any] = []
+    after_rows: list[Any] = []
+    if around_message_id is not None:
+        anchor = await database.fetch_one(
+            sa.text(
+                """
+                SELECT id FROM chat_messages
+                WHERE id = :mid AND chat_id = :cid AND is_deleted = false
+                """
+            ),
+            {"mid": around_message_id, "cid": chat_id},
+        )
+        if not anchor:
+            return JSONResponse({"error": "not_found"}, status_code=404)
+        aid = int(anchor["id"])
+        before_rows = await database.fetch_all(
+            sa.text(
+                """
+                SELECT m.id, m.chat_id, m.user_id, m.text, m.media_url, m.reply_to_id,
+                       m.is_edited, m.is_deleted, m.created_at,
+                       u.name AS sender_name, u.avatar AS sender_avatar
+                FROM chat_messages m
+                JOIN users u ON u.id = m.user_id
+                WHERE m.chat_id = :cid AND m.is_deleted = false AND m.id < :aid
+                ORDER BY m.id DESC
+                LIMIT :lim
+                """
+            ),
+            {"cid": chat_id, "aid": aid, "lim": half},
+        )
+        after_rows = await database.fetch_all(
+            sa.text(
+                """
+                SELECT m.id, m.chat_id, m.user_id, m.text, m.media_url, m.reply_to_id,
+                       m.is_edited, m.is_deleted, m.created_at,
+                       u.name AS sender_name, u.avatar AS sender_avatar
+                FROM chat_messages m
+                JOIN users u ON u.id = m.user_id
+                WHERE m.chat_id = :cid AND m.is_deleted = false AND m.id > :aid
+                ORDER BY m.id ASC
+                LIMIT :lim2
+                """
+            ),
+            {"cid": chat_id, "aid": aid, "lim2": half},
+        )
+        center = await database.fetch_one(
+            sa.text(
+                """
+                SELECT m.id, m.chat_id, m.user_id, m.text, m.media_url, m.reply_to_id,
+                       m.is_edited, m.is_deleted, m.created_at,
+                       u.name AS sender_name, u.avatar AS sender_avatar
+                FROM chat_messages m
+                JOIN users u ON u.id = m.user_id
+                WHERE m.id = :aid AND m.chat_id = :cid AND m.is_deleted = false
+                """
+            ),
+            {"aid": aid, "cid": chat_id},
+        )
+        rows = list(reversed(before_rows))
+        if center:
+            rows.append(center)
+        rows.extend(after_rows)
+    else:
+        params: dict[str, Any] = {"cid": chat_id, "lim": limit}
+        before_sql = ""
+        if before_id is not None:
+            before_sql = "AND m.id < :before_id"
+            params["before_id"] = before_id
 
-    rows = await database.fetch_all(
-        sa.text(
-            f"""
-            SELECT m.id, m.chat_id, m.user_id, m.text, m.media_url, m.reply_to_id,
-                   m.is_edited, m.is_deleted, m.created_at,
-                   u.name AS sender_name, u.avatar AS sender_avatar
-            FROM chat_messages m
-            JOIN users u ON u.id = m.user_id
-            WHERE m.chat_id = :cid AND m.is_deleted = false
-            {before_sql}
-            ORDER BY m.id DESC
-            LIMIT :lim
-            """
-        ),
-        params,
-    )
-    rows = list(reversed(rows))
+        rows = await database.fetch_all(
+            sa.text(
+                f"""
+                SELECT m.id, m.chat_id, m.user_id, m.text, m.media_url, m.reply_to_id,
+                       m.is_edited, m.is_deleted, m.created_at,
+                       u.name AS sender_name, u.avatar AS sender_avatar
+                FROM chat_messages m
+                JOIN users u ON u.id = m.user_id
+                WHERE m.chat_id = :cid AND m.is_deleted = false
+                {before_sql}
+                ORDER BY m.id DESC
+                LIMIT :lim
+                """
+            ),
+            params,
+        )
+        rows = list(reversed(rows))
     reply_ids = [int(r["reply_to_id"]) for r in rows if r.get("reply_to_id")]
     reply_map: dict[int, dict] = {}
     if reply_ids:
@@ -437,7 +672,12 @@ async def api_chat_messages(
         if max_mid:
             await mark_chat_viewed(uid, chat_id, max_mid)
 
-    return JSONResponse({"messages": messages, "has_more": len(rows) >= limit})
+    if around_message_id is not None:
+        has_more = len(before_rows) >= half or len(after_rows) >= half
+    else:
+        has_more = len(rows) >= limit
+
+    return JSONResponse({"messages": messages, "has_more": has_more})
 
 
 @router.post("/api/chats/personal/{other_id}")
@@ -541,7 +781,8 @@ async def api_send_message(request: Request, chat_id: int, body: SendMessageBody
     if not user:
         return JSONResponse({"error": "auth"}, status_code=401)
     uid = _eff_uid(user)
-    if not await _member_row(chat_id, uid):
+    mem = await _member_row(chat_id, uid)
+    if not mem:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     text = (body.text or "").strip()
     media = (body.media_url or "").strip() or None
@@ -556,6 +797,17 @@ async def api_send_message(request: Request, chat_id: int, body: SendMessageBody
         )
         if not rp:
             return JSONResponse({"error": "bad_reply"}, status_code=400)
+
+    crow = await database.fetch_one(sa.text("SELECT * FROM chats WHERE id = :id"), {"id": chat_id})
+    if crow and (crow.get("type") or "") == "group":
+        role = mem.get("role") or "member"
+        if role not in ("owner", "admin"):
+            st = _parse_group_settings(crow.get("group_settings_json"))
+            perms = st.get("permissions") or {}
+            if not perms.get("send_messages", True):
+                return JSONResponse({"error": "forbidden"}, status_code=403)
+            if media and not perms.get("send_media", True):
+                return JSONResponse({"error": "forbidden"}, status_code=403)
 
     row = await database.fetch_one_write(
         sa.text(
@@ -685,6 +937,11 @@ async def api_react(request: Request, chat_id: int, msg_id: int, body: ReactBody
     uid = _eff_uid(user)
     if not await _member_row(chat_id, uid):
         return JSONResponse({"error": "forbidden"}, status_code=403)
+    crow = await database.fetch_one(sa.text("SELECT * FROM chats WHERE id = :id"), {"id": chat_id})
+    if crow and (crow.get("type") or "") == "group":
+        st = _parse_group_settings(crow.get("group_settings_json"))
+        if st.get("reactions_mode") == "none":
+            return JSONResponse({"error": "reactions_disabled"}, status_code=403)
     msg = await database.fetch_one(
         sa.text(
             "SELECT id FROM chat_messages WHERE id = :id AND chat_id = :cid AND is_deleted = false"
@@ -757,7 +1014,8 @@ async def api_delete_message(request: Request, chat_id: int, msg_id: int):
     if not user:
         return JSONResponse({"error": "auth"}, status_code=401)
     uid = _eff_uid(user)
-    if not await _member_row(chat_id, uid):
+    mem = await _member_row(chat_id, uid)
+    if not mem:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     row = await database.fetch_one(
         sa.text(
@@ -767,8 +1025,18 @@ async def api_delete_message(request: Request, chat_id: int, msg_id: int):
     )
     if not row:
         return JSONResponse({"error": "not_found"}, status_code=404)
-    if int(row["user_id"]) != uid:
-        return JSONResponse({"error": "forbidden"}, status_code=403)
+    author_id = int(row["user_id"])
+    if author_id != uid:
+        role = mem.get("role") or "member"
+        if role not in ("owner", "admin"):
+            return JSONResponse({"error": "forbidden"}, status_code=403)
+        crow = await database.fetch_one(sa.text("SELECT * FROM chats WHERE id = :id"), {"id": chat_id})
+        if not crow or (crow.get("type") or "") != "group":
+            return JSONResponse({"error": "forbidden"}, status_code=403)
+        st = _parse_group_settings(crow.get("group_settings_json"))
+        perms = st.get("permissions") or {}
+        if role == "admin" and not perms.get("delete_others_messages", False):
+            return JSONResponse({"error": "forbidden"}, status_code=403)
     await database.execute(
         sa.text("UPDATE chat_messages SET is_deleted = true WHERE id = :id"),
         {"id": msg_id},
@@ -786,12 +1054,17 @@ async def api_add_member(request: Request, chat_id: int, body: AddMemberBody):
     mem = await _member_row(chat_id, uid)
     if not mem or mem["role"] not in ("owner", "admin"):
         return JSONResponse({"error": "forbidden"}, status_code=403)
-    crow = await database.fetch_one(sa.text("SELECT type FROM chats WHERE id = :id"), {"id": chat_id})
+    crow = await database.fetch_one(sa.text("SELECT * FROM chats WHERE id = :id"), {"id": chat_id})
     if not crow or crow["type"] != "group":
         return JSONResponse({"error": "not_group"}, status_code=400)
     oid = int(body.user_id)
     if oid == uid:
         return JSONResponse({"error": "self"}, status_code=400)
+    if await _is_banned(chat_id, oid):
+        return JSONResponse({"error": "user_banned"}, status_code=403)
+    st = _parse_group_settings(crow.get("group_settings_json"))
+    if mem["role"] == "admin" and not st.get("permissions", {}).get("invite_members", True):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
     exists = await database.fetch_one(users.select().where(users.c.id == oid))
     if not exists:
         return JSONResponse({"error": "user_not_found"}, status_code=404)
@@ -805,6 +1078,7 @@ async def api_add_member(request: Request, chat_id: int, body: AddMemberBody):
     except Exception as e:
         logger.warning("add member: %s", e)
         return JSONResponse({"error": "failed"}, status_code=400)
+    await _audit(chat_id, uid, "member_add", {"user_id": oid})
     await room_broadcast(chat_id, {"type": "members_changed", "payload": {"action": "add", "user_id": oid}})
     return JSONResponse({"ok": True})
 
@@ -826,9 +1100,398 @@ async def api_leave_group(request: Request, chat_id: int):
         sa.text("DELETE FROM chat_members WHERE chat_id = :c AND user_id = :u"),
         {"c": chat_id, "u": uid},
     )
+    await _audit(chat_id, uid, "member_leave", {"user_id": uid})
     await room_broadcast(
         chat_id, {"type": "members_changed", "payload": {"action": "leave", "user_id": uid}}
     )
+    return JSONResponse({"ok": True})
+
+
+@router.get("/api/chats/{chat_id}/media")
+async def api_chat_media(request: Request, chat_id: int):
+    user = await _require_user(request)
+    if not user:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    uid = _eff_uid(user)
+    if not await _member_row(chat_id, uid):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    rows = await database.fetch_all(
+        sa.text(
+            """
+            SELECT m.id AS message_id, m.media_url, m.created_at, m.user_id, u.name AS sender_name
+            FROM chat_messages m
+            JOIN users u ON u.id = m.user_id
+            WHERE m.chat_id = :cid AND m.is_deleted = false
+              AND m.media_url IS NOT NULL AND TRIM(m.media_url) <> ''
+            ORDER BY m.id DESC
+            LIMIT 500
+            """
+        ),
+        {"cid": chat_id},
+    )
+    items = [
+        {
+            "message_id": int(r["message_id"]),
+            "media_url": r["media_url"],
+            "created_at": r["created_at"].isoformat() if r.get("created_at") else None,
+            "user_id": int(r["user_id"]),
+            "sender_name": r.get("sender_name"),
+        }
+        for r in rows
+    ]
+    return JSONResponse({"items": items})
+
+
+@router.get("/api/chats/{chat_id}/messages/search")
+async def api_messages_search(request: Request, chat_id: int, q: str = ""):
+    user = await _require_user(request)
+    if not user:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    uid = _eff_uid(user)
+    if not await _member_row(chat_id, uid):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    qn = (q or "").strip()[:200]
+    if len(qn) < 1:
+        return JSONResponse({"results": []})
+    like = f"%{qn}%"
+    rows = await database.fetch_all(
+        sa.text(
+            """
+            SELECT m.id, m.text, m.created_at, u.name AS sender_name
+            FROM chat_messages m
+            JOIN users u ON u.id = m.user_id
+            WHERE m.chat_id = :cid AND m.is_deleted = false
+              AND (
+                LOWER(COALESCE(m.text, '')) LIKE LOWER(:like)
+                OR CAST(m.id AS TEXT) LIKE :pref
+              )
+            ORDER BY m.id DESC
+            LIMIT 50
+            """
+        ),
+        {"cid": chat_id, "like": like, "pref": f"{qn}%"},
+    )
+    return JSONResponse(
+        {
+            "results": [
+                {
+                    "id": int(r["id"]),
+                    "text": (r.get("text") or "")[:240],
+                    "created_at": r["created_at"].isoformat() if r.get("created_at") else None,
+                    "sender_name": r.get("sender_name"),
+                }
+                for r in rows
+            ]
+        }
+    )
+
+
+@router.patch("/api/chats/{chat_id}/members/me/mute")
+async def api_chat_mute_me(request: Request, chat_id: int, body: MuteBody):
+    user = await _require_user(request)
+    if not user:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    uid = _eff_uid(user)
+    if not await _member_row(chat_id, uid):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    await database.execute(
+        sa.text(
+            """
+            UPDATE chat_members SET mute_notifications = :m
+            WHERE chat_id = :c AND user_id = :u
+            """
+        ),
+        {"m": bool(body.muted), "c": chat_id, "u": uid},
+    )
+    await _audit(chat_id, uid, "mute_toggle", {"muted": bool(body.muted)})
+    return JSONResponse({"ok": True, "mute_notifications": bool(body.muted)})
+
+
+@router.patch("/api/chats/{chat_id}/group")
+async def api_patch_group(request: Request, chat_id: int, body: GroupPatchBody):
+    user = await _require_user(request)
+    if not user:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    uid = _eff_uid(user)
+    mem = await _member_row(chat_id, uid)
+    if not mem:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    role = mem.get("role") or "member"
+    if role not in ("owner", "admin"):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    crow = await database.fetch_one(sa.text("SELECT * FROM chats WHERE id = :id"), {"id": chat_id})
+    if not crow or (crow.get("type") or "") != "group":
+        return JSONResponse({"error": "not_group"}, status_code=400)
+    st = _parse_group_settings(crow.get("group_settings_json"))
+    if role == "admin" and not st.get("permissions", {}).get("edit_group_info", False):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+
+    if body.name is not None:
+        await database.execute(
+            sa.text("UPDATE chats SET name = :n WHERE id = :id"),
+            {"n": body.name.strip(), "id": chat_id},
+        )
+    if body.description is not None:
+        await database.execute(
+            sa.text("UPDATE chats SET description = :d WHERE id = :id"),
+            {"d": body.description.strip(), "id": chat_id},
+        )
+    if body.avatar_url is not None:
+        av = (body.avatar_url or "").strip() or None
+        await database.execute(
+            sa.text("UPDATE chats SET avatar_url = :a WHERE id = :id"),
+            {"a": av, "id": chat_id},
+        )
+
+    settings_changed = False
+    if body.is_public is not None:
+        st["is_public"] = bool(body.is_public)
+        settings_changed = True
+    if body.reactions_mode is not None:
+        if body.reactions_mode not in ("all", "none"):
+            return JSONResponse({"error": "bad_reactions_mode"}, status_code=400)
+        st["reactions_mode"] = body.reactions_mode
+        settings_changed = True
+    if body.appearance is not None:
+        if body.appearance not in ("cyan", "gold", "violet"):
+            return JSONResponse({"error": "bad_appearance"}, status_code=400)
+        st["appearance"] = body.appearance
+        settings_changed = True
+    if body.topics_enabled is not None:
+        st["topics_enabled"] = bool(body.topics_enabled)
+        settings_changed = True
+    if body.linked_channel_label is not None:
+        st["linked_channel_label"] = body.linked_channel_label.strip()[:255]
+        settings_changed = True
+    if body.permissions is not None:
+        merged = dict(st.get("permissions") or _default_permissions())
+        for k, v in body.permissions.items():
+            if k in PERMISSION_KEYS:
+                merged[k] = bool(v)
+        st["permissions"] = merged
+        settings_changed = True
+    if settings_changed:
+        await _save_group_settings_row(chat_id, st)
+
+    await _audit(chat_id, uid, "group_patch", {"fields": [k for k, v in body.model_dump().items() if v is not None]})
+    crow2 = await database.fetch_one(sa.text("SELECT * FROM chats WHERE id = :id"), {"id": chat_id})
+    return JSONResponse(
+        {
+            "ok": True,
+            "name": crow2.get("name") if crow2 else None,
+            "description": (crow2.get("description") or "").strip() if crow2 else "",
+            "avatar_url": crow2.get("avatar_url") if crow2 else None,
+            "group_settings": _parse_group_settings(crow2.get("group_settings_json") if crow2 else None),
+        }
+    )
+
+
+@router.delete("/api/chats/{chat_id}/members/{target_user_id}")
+async def api_kick_member(request: Request, chat_id: int, target_user_id: int):
+    user = await _require_user(request)
+    if not user:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    uid = _eff_uid(user)
+    if target_user_id == uid:
+        return JSONResponse({"error": "use_leave"}, status_code=400)
+    req_mem = await _member_row(chat_id, uid)
+    if not req_mem or req_mem.get("role") not in ("owner", "admin"):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    tgt = await _member_row(chat_id, target_user_id)
+    if not tgt:
+        return JSONResponse({"error": "not_member"}, status_code=404)
+    if (tgt.get("role") or "") == "owner":
+        return JSONResponse({"error": "cannot_kick_owner"}, status_code=403)
+    if req_mem.get("role") == "admin" and (tgt.get("role") or "") == "admin":
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    await database.execute(
+        sa.text("DELETE FROM chat_members WHERE chat_id = :c AND user_id = :u"),
+        {"c": chat_id, "u": target_user_id},
+    )
+    await _audit(chat_id, uid, "member_kick", {"user_id": target_user_id})
+    await room_broadcast(
+        chat_id,
+        {"type": "members_changed", "payload": {"action": "kick", "user_id": target_user_id}},
+    )
+    return JSONResponse({"ok": True})
+
+
+@router.post("/api/chats/{chat_id}/members/{target_user_id}/role")
+async def api_set_member_role(request: Request, chat_id: int, target_user_id: int, body: SetRoleBody):
+    user = await _require_user(request)
+    if not user:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    uid = _eff_uid(user)
+    req_mem = await _member_row(chat_id, uid)
+    if not req_mem or req_mem.get("role") != "owner":
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    crow = await database.fetch_one(sa.text("SELECT * FROM chats WHERE id = :id"), {"id": chat_id})
+    if not crow or (crow.get("type") or "") != "group":
+        return JSONResponse({"error": "not_group"}, status_code=400)
+    tgt = await _member_row(chat_id, target_user_id)
+    if not tgt:
+        return JSONResponse({"error": "not_member"}, status_code=404)
+    if (tgt.get("role") or "") == "owner":
+        return JSONResponse({"error": "bad_target"}, status_code=400)
+    new_role = "admin" if body.role == "admin" else "member"
+    await database.execute(
+        sa.text(
+            "UPDATE chat_members SET role = :r WHERE chat_id = :c AND user_id = :u"
+        ),
+        {"r": new_role, "c": chat_id, "u": target_user_id},
+    )
+    await _audit(chat_id, uid, "role_change", {"user_id": target_user_id, "role": new_role})
+    await room_broadcast(chat_id, {"type": "members_changed", "payload": {"action": "role", "user_id": target_user_id}})
+    return JSONResponse({"ok": True, "role": new_role})
+
+
+@router.get("/api/chats/{chat_id}/bans")
+async def api_list_bans(request: Request, chat_id: int):
+    user = await _require_user(request)
+    if not user:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    uid = _eff_uid(user)
+    mem = await _member_row(chat_id, uid)
+    if not mem or mem.get("role") not in ("owner", "admin"):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    rows = await database.fetch_all(
+        sa.text(
+            """
+            SELECT b.user_id, b.created_at, u.name, u.avatar
+            FROM chat_group_bans b
+            JOIN users u ON u.id = b.user_id
+            WHERE b.chat_id = :c
+            ORDER BY b.created_at DESC
+            """
+        ),
+        {"c": chat_id},
+    )
+    return JSONResponse(
+        {
+            "bans": [
+                {
+                    "user_id": int(r["user_id"]),
+                    "name": r.get("name"),
+                    "avatar": r.get("avatar"),
+                    "created_at": r["created_at"].isoformat() if r.get("created_at") else None,
+                }
+                for r in rows
+            ]
+        }
+    )
+
+
+@router.post("/api/chats/{chat_id}/bans")
+async def api_ban_user(request: Request, chat_id: int, body: BanBody):
+    user = await _require_user(request)
+    if not user:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    uid = _eff_uid(user)
+    mem = await _member_row(chat_id, uid)
+    if not mem or mem.get("role") not in ("owner", "admin"):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    crow = await database.fetch_one(sa.text("SELECT * FROM chats WHERE id = :id"), {"id": chat_id})
+    if not crow or (crow.get("type") or "") != "group":
+        return JSONResponse({"error": "not_group"}, status_code=400)
+    st = _parse_group_settings(crow.get("group_settings_json"))
+    if mem.get("role") == "admin" and not st.get("permissions", {}).get("ban_members", True):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    tid = int(body.user_id)
+    if tid == uid:
+        return JSONResponse({"error": "self"}, status_code=400)
+    tgt = await _member_row(chat_id, tid)
+    if tgt and (tgt.get("role") or "") == "owner":
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    if mem.get("role") == "admin" and tgt and (tgt.get("role") or "") == "admin":
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    await database.execute(
+        sa.text(
+            """
+            INSERT INTO chat_group_bans (chat_id, user_id, banned_by)
+            VALUES (:c, :u, :by)
+            ON CONFLICT (chat_id, user_id) DO NOTHING
+            """
+        ),
+        {"c": chat_id, "u": tid, "by": uid},
+    )
+    await database.execute(
+        sa.text("DELETE FROM chat_members WHERE chat_id = :c AND user_id = :u"),
+        {"c": chat_id, "u": tid},
+    )
+    await _audit(chat_id, uid, "ban_add", {"user_id": tid})
+    await room_broadcast(chat_id, {"type": "members_changed", "payload": {"action": "ban", "user_id": tid}})
+    return JSONResponse({"ok": True})
+
+
+@router.delete("/api/chats/{chat_id}/bans/{ban_user_id}")
+async def api_unban_user(request: Request, chat_id: int, ban_user_id: int):
+    user = await _require_user(request)
+    if not user:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    uid = _eff_uid(user)
+    mem = await _member_row(chat_id, uid)
+    if not mem or mem.get("role") not in ("owner", "admin"):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    await database.execute(
+        sa.text("DELETE FROM chat_group_bans WHERE chat_id = :c AND user_id = :u"),
+        {"c": chat_id, "u": ban_user_id},
+    )
+    await _audit(chat_id, uid, "ban_remove", {"user_id": ban_user_id})
+    return JSONResponse({"ok": True})
+
+
+@router.get("/api/chats/{chat_id}/audit")
+async def api_chat_audit(request: Request, chat_id: int):
+    user = await _require_user(request)
+    if not user:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    uid = _eff_uid(user)
+    mem = await _member_row(chat_id, uid)
+    if not mem or mem.get("role") not in ("owner", "admin"):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    rows = await database.fetch_all(
+        sa.text(
+            """
+            SELECT a.id, a.actor_id, a.action, a.detail, a.created_at, u.name AS actor_name
+            FROM chat_group_audit a
+            LEFT JOIN users u ON u.id = a.actor_id
+            WHERE a.chat_id = :c
+            ORDER BY a.id DESC
+            LIMIT 120
+            """
+        ),
+        {"c": chat_id},
+    )
+    return JSONResponse(
+        {
+            "events": [
+                {
+                    "id": int(r["id"]),
+                    "actor_id": int(r["actor_id"]) if r.get("actor_id") is not None else None,
+                    "actor_name": r.get("actor_name"),
+                    "action": r.get("action"),
+                    "detail": r.get("detail"),
+                    "created_at": r["created_at"].isoformat() if r.get("created_at") else None,
+                }
+                for r in rows
+            ]
+        }
+    )
+
+
+@router.delete("/api/chats/{chat_id}")
+async def api_delete_group_chat(request: Request, chat_id: int):
+    user = await _require_user(request)
+    if not user:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    uid = _eff_uid(user)
+    mem = await _member_row(chat_id, uid)
+    if not mem or mem.get("role") != "owner":
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    crow = await database.fetch_one(sa.text("SELECT type FROM chats WHERE id = :id"), {"id": chat_id})
+    if not crow or (crow.get("type") or "") != "group":
+        return JSONResponse({"error": "not_group"}, status_code=400)
+    await database.execute(sa.text("DELETE FROM chats WHERE id = :id"), {"id": chat_id})
     return JSONResponse({"ok": True})
 
 
