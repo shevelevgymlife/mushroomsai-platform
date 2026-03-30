@@ -7,7 +7,8 @@ from db.database import database
 from db.models import users
 
 # Кнопки главного бота (должны совпадать с обработчиками в main_bot.py)
-TG_BTN_SHOP_MARKETPLACE = "🛍 Маркет плейс"
+# Одна подпись для всех: прямой вход, реферал админа, реферал участника.
+TG_BTN_SHOP_MARKETPLACE = "🛍 Магазин"
 TG_BTN_SHOP_SIMPLE = "🛍 Магазин"
 
 SHOP_RUS_URL = "https://t.me/neurotrops_rus_bot?start=rHQemtw"
@@ -101,7 +102,7 @@ async def external_buy_url_for_user(user: dict | None) -> Optional[str]:
 
 
 async def tg_shop_button_label(internal_user_id: int) -> str:
-    """Подпись кнопки в Telegram: «Маркет плейс» или «Магазин»."""
+    """Подпись клавиатуры «Магазин» (для всех сценариев входа)."""
     row = await database.fetch_one(users.select().where(users.c.id == int(internal_user_id)))
     if not row:
         return TG_BTN_SHOP_MARKETPLACE
@@ -116,8 +117,8 @@ async def tg_shop_button_label(internal_user_id: int) -> str:
 
 async def tg_shop_message_and_buttons(internal_user_id: int, site: str) -> tuple[str, list[list[Any]]]:
     """
-    Текст и строки inline-кнопок для ответа на «Магазин» / «Маркет плейс».
-    Для приглашённых по ссылке обычного пользователя — акцент на URL амбассадора, без блока про маркетплейс NF.
+    Текст и строки inline-кнопок для ответа на кнопку «Магазин».
+    Для приглашённых по ссылке обычного пользователя — акцент на URL амбассадора, без блока про маркетплейс NF (текст ответа; клавиатура у всех «Магазин»).
     """
     from telegram import InlineKeyboardButton, WebAppInfo
 
