@@ -11,7 +11,7 @@
 <div class="neo-app-surface min-h-screen bg-bg referral-page pt-6 pb-28 px-4 sm:px-6 lg:px-8">
   <div class="max-w-lg mx-auto">
     <div class="sect-title">🎁 Реферальная программа</div>
-    <p class="text-sm text-muted mb-6 leading-relaxed">Приглашайте друзей по персональной ссылке — бонусы начисляются на ваш баланс в приложении.</p>
+    <p class="text-sm text-muted mb-6 leading-relaxed">Приглашайте друзей по персональной ссылке — бонус на баланс начисляется после того, как приглашённый оформит платную подписку (Старт, Про или Макси). Пробный период 3 дня бонус не даёт.</p>
 
     <div class="card rounded-2xl border border-white/10 bg-white/[0.03] p-5 mb-4">
       <div style="font-size:15px;font-weight:600;color:#ddd;margin-bottom:10px">Ссылки для приглашений</div>
@@ -25,7 +25,7 @@
         <input type="text" value="{{ ref_link_site }}" readonly id="refInpSite" class="sinp" style="flex:1;min-width:0;font-size:13px;color:#888">
         <button type="button" class="btn-o" id="refCopySiteBtn" onclick="copyRefSite()" style="flex-shrink:0;font-size:12px;padding:8px 12px">Копировать</button>
       </div>
-      <div style="font-size:13px;color:#666">За каждого зарегистрировавшегося по ссылке на ваш баланс начисляется <strong class="text-gold">10%</strong> от цены тарифа Старт ({{ (990 * 0.1)|int }} ₽). Баллы можно использовать на продление подписки (по мере подключения оплаты).</div>
+      <div style="font-size:13px;color:#666">После первой платной подписки приглашённого на ваш баланс начисляется <strong class="text-gold">10%</strong> от цены тарифа Старт ({{ (990 * 0.1)|int }} ₽), один раз на человека. Баллы можно использовать на продление подписки (по мере подключения оплаты).</div>
     </div>
 
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px">
@@ -52,9 +52,9 @@
           {% endif %}
           <div class="min-w-0 flex-1">
             <div class="text-sm text-text font-medium truncate">{{ inv.name }}</div>
-            <div class="text-xs text-muted">{{ inv.subscription_plan }}{% if inv.trial_active %} · пробный{% endif %}</div>
+            <div class="text-xs text-muted">{{ inv.subscription_plan }}{% if inv.trial_active %} · пробный{% endif %}{% if not inv.bonus_credited %} · бонус после оплаты{% endif %}</div>
           </div>
-          <div class="text-sm font-semibold text-gold flex-shrink-0">+{{ '%.0f'|format(inv.bonus_rub) }} ₽</div>
+          <div class="text-sm font-semibold flex-shrink-0 {% if inv.bonus_credited %}text-gold{% else %}text-muted{% endif %}">{% if inv.bonus_credited %}+{% else %}до {% endif %}{{ '%.0f'|format(inv.bonus_rub) }} ₽</div>
         </a>
         {% endfor %}
       </div>
@@ -76,7 +76,7 @@
 
     <div class="card rounded-2xl border border-white/10 bg-white/[0.03] p-5 mb-8">
       <div style="font-size:14px;font-weight:600;color:#ddd;margin-bottom:12px">Как это работает</div>
-      {% for step in ['Отправьте другу ссылку (Telegram или сайт)','Друг регистрируется по ней впервые','На ваш счёт начисляется бонус','Бонус один раз на каждого приглашённого'] %}
+      {% for step in ['Отправьте другу ссылку (Telegram или сайт)','Друг регистрируется по ней впервые','Друг оформляет платную подписку (не пробный период)','На ваш счёт начисляется бонус один раз за этого человека'] %}
       <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px">
         <div style="width:24px;height:24px;border-radius:50%;background:rgba(61,212,224,.2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#3dd4e0;flex-shrink:0">{{ loop.index }}</div>
         <div style="font-size:13px;color:#aaa;padding-top:3px">{{ step }}</div>

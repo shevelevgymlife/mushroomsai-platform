@@ -25,7 +25,8 @@ async def generate_referral_code() -> str:
 async def process_referral(new_user_id: int, referral_code: str) -> bool:
     """
     Привязать приглашённого к рефереру. Один раз на пользователя.
-    Начислить рефереру referral_balance (+10% от цены Старт).
+    Баланс рефереру начисляется только после первой платной подписки приглашённого
+    (см. credit_referrer_bonus_for_paid_subscription), не за пробный 3 дня.
     """
     ref = (referral_code or "").strip().upper()
     if not ref or len(ref) > 20:
@@ -56,17 +57,47 @@ async def process_referral(new_user_id: int, referral_code: str) -> bool:
         referrals.insert().values(
             referrer_id=referrer["id"],
             referred_id=new_user_id,
-            bonus_applied=True,
+            bonus_applied=False,
             referral_bonus_amount=bonus,
         )
     )
+    return True
+
+
+async def credit_referrer_bonus_for_paid_subscription(referred_user_id: int) -> bool:
+    """
+    Однократно начислить рефереру баланс, когда приглашённый оформил платный тариф
+    (Старт / Про / Макси). Пробный период не вызывает эту функцию.
+    """
+    row = await database.fetch_one(users.select().where(users.c.id == int(referred_user_id)))
+    if not row:
+        return False
+    uid = int(row.get("primary_user_id") or row["id"])
+
+    ref_row = await database.fetch_one(
+        referrals.select()
+        .where(referrals.c.referred_id == uid)
+        .where(referrals.c.bonus_applied == False)  # noqa: E712
+    )
+    if not ref_row:
+        return False
+
+    bonus = float(ref_row.get("referral_bonus_amount") or referral_bonus_per_invite_rub())
+    if bonus <= 0:
+        return False
+
+    rid = int(ref_row["referrer_id"])
+    ref_id = int(ref_row["id"])
 
     await database.execute(
         sa.text(
             "UPDATE users SET referral_balance = COALESCE(referral_balance, 0) + :b "
-            "WHERE id = :rid"
+            "WHERE id = :uid"
         ),
-        {"b": bonus, "rid": referrer["id"]},
+        {"b": bonus, "uid": rid},
+    )
+    await database.execute(
+        referrals.update().where(referrals.c.id == ref_id).values(bonus_applied=True)
     )
     return True
 
@@ -102,7 +133,7 @@ async def finalize_web_referral(request, response, user_id: int) -> None:
 
 
 async def apply_referral_bonus(referral_id: int):
-    """Устарело: бонус начисляется в process_referral."""
+    """Устарело: бонус начисляется в credit_referrer_bonus_for_paid_subscription."""
     pass
 
 
@@ -214,6 +245,7 @@ async def get_referrer_invites_detailed(referrer_id: int) -> list[dict[str, Any]
                 "avatar": ud.get("avatar"),
                 "created_at": r.get("created_at"),
                 "bonus_rub": _bonus_from_row(dict(r)),
+                "bonus_credited": bool(r.get("bonus_applied")),
                 "tg_id": ud.get("tg_id") or ud.get("linked_tg_id"),
                 "google_id": ud.get("google_id") or ud.get("linked_google_id"),
                 "subscription_plan": plan,

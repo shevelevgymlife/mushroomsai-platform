@@ -63,7 +63,12 @@ async def record_subscription_event(
 
 
 async def activate_subscription(
-    user_id: int, plan: str, months: int = 1, *, skip_event_log: bool = False
+    user_id: int,
+    plan: str,
+    months: int = 1,
+    *,
+    skip_event_log: bool = False,
+    credit_referrer_bonus: bool = True,
 ):
     if plan not in PLANS:
         return False
@@ -100,6 +105,10 @@ async def activate_subscription(
             end_date,
             None,
         )
+    if credit_referrer_bonus and plan in ("start", "pro", "maxi"):
+        from services.referral_service import credit_referrer_bonus_for_paid_subscription
+
+        await credit_referrer_bonus_for_paid_subscription(int(user_id))
     return True
 
 
@@ -112,7 +121,9 @@ async def gift_subscription(giver_id: int, recipient_id: int, plan: str) -> tupl
     row = await database.fetch_one(users.select().where(users.c.id == int(recipient_id)))
     if not row:
         return False, "recipient_not_found"
-    ok = await activate_subscription(int(recipient_id), plan, 1, skip_event_log=True)
+    ok = await activate_subscription(
+        int(recipient_id), plan, 1, skip_event_log=True, credit_referrer_bonus=False
+    )
     if not ok:
         return False, "activate_failed"
     now = datetime.utcnow()
