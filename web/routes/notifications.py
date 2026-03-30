@@ -83,8 +83,6 @@ async def notifications_list_page(request: Request):
         return RedirectResponse("/login?next=/notifications", status_code=302)
     attach_screen_rim_prefs(user)
     uid = int(user.get("primary_user_id") or user["id"])
-    # Просмотр ленты событий = все непрочитанные (лайки, комментарии, подписки и т.д.) считаются прочитанными
-    await mark_events_notifications_read(uid)
     rows = await database.fetch_all(
         sa.select(
             in_app_notifications.c.id,
@@ -122,6 +120,9 @@ async def notifications_list_page(request: Request):
             "actor_avatar": r.get("actor_avatar"),
         })
     sections = _bucket_notifications_by_section(items)
+    # Счётчик в шапке/таббаре обнуляется, но строки выше уже отрендерены со снимком «непрочитано» —
+    # подсветка остаётся до обновления страницы или ухода на другую.
+    await mark_events_notifications_read(uid)
     return templates.TemplateResponse("notifications/list.html", {
         "request": request,
         "user": user,
