@@ -92,8 +92,10 @@ def main_keyboard(
     ai_active: bool = False,
     extra_rows: list | None = None,
     shop_button: str | None = None,
+    show_community_post: bool = False,
 ):
-    """Клавиатура главного бота. Режим AI — отдельная строка: вход или выход."""
+    """Клавиатура главного бота. Режим AI — отдельная строка: вход или выход.
+    «Пост в сообщество» — только при show_community_post (роль admin)."""
     shop_lbl = shop_button or TG_BTN_SHOP_MARKETPLACE
     if ai_active:
         top = [[KeyboardButton(BTN_AI_EXIT)]]
@@ -101,7 +103,10 @@ def main_keyboard(
         top = [[KeyboardButton(BTN_AI)]]
     keyboard = top + [
         [KeyboardButton(shop_lbl), KeyboardButton("🌐 Сообщество")],
-        [KeyboardButton(BTN_COMMUNITY_POST)],
+    ]
+    if show_community_post:
+        keyboard.append([KeyboardButton(BTN_COMMUNITY_POST)])
+    keyboard += [
         [KeyboardButton(BTN_CONNECT_CHANNEL)],
         [KeyboardButton("🌍 Веб версия"), KeyboardButton("🔒 Безопасность")],
         [KeyboardButton("🆘 Тех. поддержка")],

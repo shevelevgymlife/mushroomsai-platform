@@ -131,7 +131,7 @@ async def tg_shop_message_and_buttons(internal_user_id: int, site: str) -> tuple
         [InlineKeyboardButton(TG_BTN_SHOP_EU, url=eu)],
         [
             InlineKeyboardButton(
-                "🍄 Приложение: регистрация и маркетплейс",
+                "🍄 Приложение соц сети",
                 web_app=WebAppInfo(url=app_url),
             )
         ],

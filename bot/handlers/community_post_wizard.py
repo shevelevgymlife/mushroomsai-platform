@@ -20,6 +20,7 @@ from bot.handlers.channel_autopost import (
     BTN_AUTOPOST_ENABLE,
     BTN_CH_SOC_OFF,
     BTN_CH_SOC_ON,
+    main_keyboard_with_autopost,
 )
 from config import settings
 from services.channel_ingest_save_image import save_channel_ingest_image
@@ -138,6 +139,16 @@ async def start_wizard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     if not row:
         await update.message.reply_text(
             "🚫 Не удалось продолжить. Откройте приложение через /start или обратитесь в поддержку."
+        )
+        return ConversationHandler.END
+
+    site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
+    if (row.get("role") or "").lower() != "admin":
+        await update.message.reply_text(
+            "Публикация поста из бота доступна только администратору.",
+            reply_markup=await main_keyboard_with_autopost(
+                site, False, int(row.get("primary_user_id") or row["id"])
+            ),
         )
         return ConversationHandler.END
 
@@ -286,9 +297,14 @@ async def send_post_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         pass
 
     site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
-    kb_reply = main_keyboard(site, ai_active=bool(context.user_data.get("tg_ai_mode")))
-
+    tg_ai = bool(context.user_data.get("tg_ai_mode"))
     uid = context.user_data.get("cp_author_id")
+    kb_reply = (
+        await main_keyboard_with_autopost(site, tg_ai, int(uid))
+        if uid
+        else main_keyboard(site, ai_active=tg_ai)
+    )
+
     name = context.user_data.get("cp_author_name") or "Участник"
     title = context.user_data.get("cp_title")
     body = context.user_data.get("cp_body")
@@ -334,13 +350,21 @@ async def exit_to_main_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     except Exception:
         pass
     site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
+    uid_from_ctx = context.user_data.get("cp_author_id")
+    u = await ensure_user(q.from_user) if q.from_user else None
+    uid = int(u["id"]) if u else (int(uid_from_ctx) if uid_from_ctx else 0)
     context.user_data["tg_ai_mode"] = False
     _clear_draft(context)
     msg = q.message
     if msg:
+        kb = (
+            await main_keyboard_with_autopost(site, False, uid)
+            if uid
+            else main_keyboard(site, ai_active=False)
+        )
         await msg.reply_text(
             "Вы вышли из режима «Пост в сообщество». Снова работают кнопки главного меню; вопросы в AI — только после «🤖 Задать вопрос AI».",
-            reply_markup=main_keyboard(site, ai_active=False),
+            reply_markup=kb,
         )
     return ConversationHandler.END
 
@@ -370,9 +394,13 @@ async def cancel_post_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         msg = None
 
     site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
+    uid_from_ctx = context.user_data.get("cp_author_id")
+    tg_user = q.from_user if q else None
+    u = await ensure_user(tg_user) if tg_user else None
+    uid = int(u["id"]) if u else (int(uid_from_ctx) if uid_from_ctx else 0)
     context.user_data["tg_ai_mode"] = False
     _clear_draft(context)
-    kb = main_keyboard(site, ai_active=False)
+    kb = await main_keyboard_with_autopost(site, False, uid) if uid else main_keyboard(site, False)
     if msg:
         await msg.reply_text("Публикация отменена.", reply_markup=kb)
     return ConversationHandler.END
@@ -380,10 +408,14 @@ async def cancel_post_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 async def cancel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
+    uid_from_ctx = context.user_data.get("cp_author_id")
+    u = await ensure_user(update.effective_user) if update.effective_user else None
+    uid = int(u["id"]) if u else (int(uid_from_ctx) if uid_from_ctx else 0)
     context.user_data["tg_ai_mode"] = False
     _clear_draft(context)
     if update.message:
-        await update.message.reply_text("Отменено.", reply_markup=main_keyboard(site, ai_active=False))
+        kb = await main_keyboard_with_autopost(site, False, uid) if uid else main_keyboard(site, False)
+        await update.message.reply_text("Отменено.", reply_markup=kb)
     return ConversationHandler.END
 
 

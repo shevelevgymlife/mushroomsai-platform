@@ -201,9 +201,18 @@ async def autopost_extra_rows(internal_user_id: int) -> list[list[KeyboardButton
 async def main_keyboard_with_autopost(site_url: str, ai_active: bool, internal_user_id: int):
     from services.referral_shop_prefs import tg_shop_button_label
 
+    urow = await database.fetch_one(users.select().where(users.c.id == int(internal_user_id)))
+    show_cp = (urow.get("role") or "").lower() == "admin" if urow else False
+
     extras = await autopost_extra_rows(internal_user_id)
     shop_btn = await tg_shop_button_label(internal_user_id)
-    return main_keyboard(site_url, ai_active, extra_rows=extras, shop_button=shop_btn)
+    return main_keyboard(
+        site_url,
+        ai_active,
+        extra_rows=extras,
+        shop_button=shop_btn,
+        show_community_post=show_cp,
+    )
 
 
 async def _save_link(
