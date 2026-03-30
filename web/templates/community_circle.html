@@ -57,7 +57,7 @@
       {% if cimgs %}
       <div class="ai-ya-thumb" style="margin-bottom:8px"><img src="{{ cimgs[0] }}" loading="lazy" alt=""></div>
       {% endif %}
-      <p class="ai-ya-desc">{% if p.content %}{{ p.content | truncate(400, True, '…') }}{% else %}Без текста{% endif %}</p>
+      <p class="ai-ya-desc">{% if p.content %}{{ (p.content | truncate(400, True, '…')) | linkify_mentions | safe }}{% else %}Без текста{% endif %}</p>
       <div class="cc-card-metrics">
         <button type="button" class="cc-card-met cc-card-met-star" onclick="event.stopPropagation();ccLikePost({{ p.id }},this)"><span>{% if item.liked %}⭐{% else %}✩{% endif %}</span> <span id="cc-lkc-{{ p.id }}">{{ p.likes_count }}</span></button>
         <button type="button" class="cc-card-met cc-card-met-chat" onclick="event.stopPropagation();openCommunityPostDirect({{ p.id }})">💬 {{ p.comments_count }}</button>

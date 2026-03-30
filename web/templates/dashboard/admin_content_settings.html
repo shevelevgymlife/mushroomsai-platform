@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Настройки контента — Admin{% endblock %}
+{% block content %}
+<div class="pt-24 pb-16 neo-app-surface">
+  <div class="max-w-3xl mx-auto px-4">
+    {% include "components/admin_nav.html" %}
+
+    <h1 class="text-3xl font-light text-text mb-2">Настройки контента</h1>
+    <p class="text-sm text-muted mb-6 leading-relaxed">
+      Глобальная кликабельность ссылок: автоматическое превращение URL и доменов вида <span class="text-text">mushroomsai.ru</span> в ссылки
+      (в личных сообщениях, группах и в постах/уведомлениях, где используется безопасный рендер текста).
+    </p>
+
+    {% if request.query_params.get('saved') == '1' %}
+    <div class="mb-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-sm text-emerald-200">
+      Сохранено. Изменение подхватит сайт в течение ~30 секунд у уже открытых вкладок (кеш настроек); новые страницы — сразу.
+    </div>
+    {% endif %}
+
+    <form method="post" action="/admin/content-settings" class="p-6 rounded-2xl bg-surface border border-border space-y-6">
+      <div class="flex flex-wrap items-center gap-4">
+        <label class="inline-flex items-center gap-3 cursor-pointer select-none">
+          <input type="checkbox" name="enabled" value="1" class="w-5 h-5 rounded border-border"
+            {% if links_clickable_enabled %}checked{% endif %} />
+          <span class="text-text font-medium">Кликабельность ссылок включена</span>
+        </label>
+      </div>
+      <p class="text-xs text-muted leading-relaxed">
+        Если выключить: ссылки в чатах и постах перестанут быть кликабельными (текст останется как текст).
+      </p>
+      <button type="submit" class="px-6 py-2.5 rounded-xl text-sm font-semibold border-0 cursor-pointer"
+        style="background:linear-gradient(135deg,#3dd4e0,#2a9daa);color:#070708">
+        Сохранить
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

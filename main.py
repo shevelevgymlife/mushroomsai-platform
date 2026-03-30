@@ -388,6 +388,9 @@ async def lifespan(app: FastAPI):
         await database.execute(
             "INSERT INTO site_settings (key, value) VALUES ('video_calls_enabled', 'true') ON CONFLICT DO NOTHING"
         )
+        await database.execute(
+            "INSERT INTO site_settings (key, value) VALUES ('links_clickable_enabled', 'true') ON CONFLICT DO NOTHING"
+        )
         logger.info("DB migration: site_settings OK")
     except Exception as e:
         logger.warning("DB migration site_settings skipped: %s", e)
@@ -616,7 +619,12 @@ fastapi_app.add_middleware(StartupGateMiddleware)
 
 # Global settings cache (refreshed every 30s)
 import time as _time
-_gsettings_cache: dict = {"radio_enabled": True, "video_calls_enabled": True, "ts": 0.0}
+_gsettings_cache: dict = {
+    "radio_enabled": True,
+    "video_calls_enabled": True,
+    "links_clickable_enabled": True,
+    "ts": 0.0,
+}
 
 class GlobalSettingsMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -640,9 +648,19 @@ class GlobalSettingsMiddleware(BaseHTTPMiddleware):
             except Exception as e:
                 logger.warning("video_calls_enabled: read site_settings failed: %s", e)
                 _gsettings_cache["video_calls_enabled"] = True
+            try:
+                row_l = await database.fetch_one(
+                    "SELECT value FROM site_settings WHERE key='links_clickable_enabled'"
+                )
+                raw_l = str((row_l or {}).get("value") or "").strip().lower()
+                _gsettings_cache["links_clickable_enabled"] = raw_l not in ("false", "0", "no", "off")
+            except Exception as e:
+                logger.warning("links_clickable_enabled: read site_settings failed: %s", e)
+                _gsettings_cache["links_clickable_enabled"] = True
             _gsettings_cache["ts"] = now
         request.state.global_radio_enabled = _gsettings_cache["radio_enabled"]
         request.state.video_calls_enabled = _gsettings_cache["video_calls_enabled"]
+        request.state.links_clickable_enabled = _gsettings_cache["links_clickable_enabled"]
         return await call_next(request)
 
 fastapi_app.add_middleware(GlobalSettingsMiddleware)

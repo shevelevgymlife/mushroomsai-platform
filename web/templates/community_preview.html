@@ -70,7 +70,7 @@
                 <div class="h-2 bg-border rounded-full w-16"></div>
               </div>
             </div>
-            <p class="text-sm text-text leading-relaxed mb-4">{{ post.content }}</p>
+            <p class="text-sm text-text leading-relaxed mb-4">{{ post.content | linkify_mentions | safe }}</p>
             <div class="flex items-center justify-between pt-3 border-t border-border">
               <span class="text-xs text-muted">{{ post.created_at.strftime('%d.%m.%Y') if post.created_at else '' }}</span>
               <div class="flex items-center gap-1.5 text-xs text-muted">

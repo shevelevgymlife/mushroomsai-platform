@@ -1,8 +1,11 @@
 <!DOCTYPE html>
-<html lang="ru" class="scroll-smooth" data-ui-theme="editorial-grain" data-ui-asset-v="3" data-nf-video-calls="{{ 1 if video_calls_enabled|default(true) else 0 }}" style="background:#070708">
+<html lang="ru" class="scroll-smooth" data-ui-theme="editorial-grain" data-ui-asset-v="3" data-nf-video-calls="{{ 1 if video_calls_enabled|default(true) else 0 }}" data-nf-links="{{ 1 if links_clickable_enabled|default(true) else 0 }}" style="background:#070708">
 <head>
   <meta charset="UTF-8" />
-  <script>window.__NF_VIDEO_CALLS__={{ 'true' if video_calls_enabled|default(true) else 'false' }};</script>
+  <script>
+    window.__NF_VIDEO_CALLS__={{ 'true' if video_calls_enabled|default(true) else 'false' }};
+    window.__NF_LINKS__={{ 'true' if links_clickable_enabled|default(true) else 'false' }};
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
   <meta name="view-transition" content="same-origin" />
   <title>{% block title %}NEUROFUNGI AI{% endblock %}</title>
@@ -302,7 +305,7 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
 
   <script src="/static/js/screen-glow.js?v=1"></script>
   <script src="/static/js/app.js"></script>
-  <script src="/static/js/community-mentions.js?v=4"></script>
+  <script src="/static/js/community-mentions.js?v=5"></script>
   {% if user %}
   <script src="/static/js/mention-autocomplete.js?v=4"></script>
   {% endif %}

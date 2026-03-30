@@ -69,6 +69,9 @@ class Jinja2Templates(_Jinja2Templates):
             context.setdefault("shevelev_token", shevelev_token_address())
             context.setdefault("global_radio_enabled", getattr(request.state, "global_radio_enabled", True))
             context.setdefault("video_calls_enabled", getattr(request.state, "video_calls_enabled", True))
+            context.setdefault(
+                "links_clickable_enabled", getattr(request.state, "links_clickable_enabled", True)
+            )
             ujson = (user.get("notification_prefs_json") if user and isinstance(user, dict) else None)
             context.setdefault("notification_prefs", merge_prefs(ujson))
 

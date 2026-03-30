@@ -45,6 +45,7 @@ ADMIN_SECTIONS = [
     ("База знаний", "/admin/knowledge", "can_knowledge"),
     ("Сообщество", "/admin/community", "can_community"),
     ("Группы / Чаты", "/admin/groups-chats", "can_groups"),
+    ("Настройки контента", "/admin/content-settings", "can_groups"),
     ("Видеосвязь", "/admin/video-calls", "can_groups"),
     ("Главная сайта", "/admin/homepage", "can_homepage"),
     ("Блоки кабинета", "/admin/dashboard-blocks", "can_dashboard_blocks"),
@@ -2015,6 +2016,54 @@ async def search_users_api(request: Request, q: str = ""):
         .limit(10)
     )
     return JSONResponse({"users": [{"id": u["id"], "name": u["name"], "email": u["email"]} for u in results]})
+
+
+# ─── Настройки контента (кликабельность ссылок) ───────────────────────────────
+
+@router.get("/content-settings", response_class=HTMLResponse)
+async def admin_content_settings_page(request: Request):
+    admin = await require_permission(request, "can_groups")
+    if not admin:
+        return RedirectResponse("/login")
+    row = await database.fetch_one(
+        sqlalchemy.text("SELECT value FROM site_settings WHERE key = 'links_clickable_enabled'")
+    )
+    raw = str((row or {}).get("value") or "").strip().lower()
+    enabled = raw not in ("false", "0", "no", "off")
+    perms = await get_user_permissions(admin)
+    return templates.TemplateResponse(
+        "dashboard/admin_content_settings.html",
+        {
+            "request": request,
+            "user": admin,
+            "user_permissions": perms,
+            "links_clickable_enabled": enabled,
+        },
+    )
+
+
+@router.post("/content-settings")
+async def admin_content_settings_save(request: Request, enabled: Optional[str] = Form(None)):
+    admin = await require_permission(request, "can_groups")
+    if not admin:
+        return RedirectResponse("/login")
+    is_on = enabled in ("1", "on", "true", "yes")
+    val = "true" if is_on else "false"
+    await database.execute(
+        sqlalchemy.text(
+            """
+            INSERT INTO site_settings (key, value, updated_at)
+            VALUES ('links_clickable_enabled', :v, NOW())
+            ON CONFLICT (key) DO UPDATE SET value = :v, updated_at = NOW()
+            """
+        ),
+        {"v": val},
+    )
+    import main as _main
+
+    _main._gsettings_cache["ts"] = 0.0
+    _main._gsettings_cache["links_clickable_enabled"] = is_on
+    return RedirectResponse("/admin/content-settings?saved=1", status_code=302)
 
 
 # ─── Видеосвязь (глобальный переключатель) ───────────────────────────────────

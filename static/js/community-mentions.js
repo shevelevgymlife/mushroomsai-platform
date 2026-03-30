@@ -6,9 +6,9 @@
 (function () {
   var RE = /(?<![\w/])@(\d{1,12})\b/g;
   var CALL_PATH_RE = /\/call\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i;
-  /** http(s), www., относительный /call/uuid */
+  /** http(s), www., голый домен (mushroomsai.ru), относительный /call/uuid */
   var CHAT_URL_RE =
-    /(https?:\/\/[^\s<]+|www\.[^\s<]+|\/call\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})/gi;
+    /(https?:\/\/[^\s<]+|www\.[^\s<]+|\/call\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}|(?<!@)\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,24}(?:\/[^\s<]*)?)/gi;
 
   function mentionLink(id) {
     return (
@@ -35,6 +35,9 @@
 
   function linkifyChatLine(line) {
     var s = String(line);
+    if (window.__NF_LINKS__ === false) {
+      return window.linkifyMentionsInEscapedFragment(escHtml(s));
+    }
     var re = new RegExp(CHAT_URL_RE.source, "gi");
     var out = "";
     var last = 0;
@@ -43,7 +46,9 @@
       out += window.linkifyMentionsInEscapedFragment(escHtml(s.slice(last, m.index)));
       var url = m[1];
       var href = url;
-      if (/^www\./i.test(url)) href = "https://" + url;
+      if (/^www\./i.test(url) || (/^[a-z0-9]/i.test(url) && !/^https?:\/\//i.test(url) && url.indexOf("/") !== 0)) {
+        href = "https://" + url;
+      }
       if (url.indexOf("/") === 0) href = (window.location && window.location.origin ? window.location.origin : "") + url;
       out +=
         '<a class="ch-msg-link nf-chat-url" href="' +
@@ -57,14 +62,41 @@
     return out;
   }
 
-  /** Сырой текст → экранирование + ссылки @id */
+  function linkifyUrlsInEscapedLine(escapedLine) {
+    if (window.__NF_LINKS__ === false) {
+      return window.linkifyMentionsInEscapedFragment(escapedLine);
+    }
+    var s = String(escapedLine || "");
+    var re = new RegExp(CHAT_URL_RE.source, "gi");
+    var out = "";
+    var last = 0;
+    var m;
+    while ((m = re.exec(s)) !== null) {
+      out += window.linkifyMentionsInEscapedFragment(s.slice(last, m.index));
+      var url = m[1];
+      var href = url;
+      if (/^www\./i.test(url) || (/^[a-z0-9]/i.test(url) && !/^https?:\/\//i.test(url) && url.indexOf("/") !== 0)) {
+        href = "https://" + url;
+      }
+      if (url.indexOf("/") === 0) href = (window.location && window.location.origin ? window.location.origin : "") + url;
+      out +=
+        '<a class="ch-msg-link nf-chat-url" href="' +
+        escAttr(href) +
+        '" target="_blank" rel="noopener noreferrer">' +
+        escHtml(url) +
+        "</a>";
+      last = m.index + m[0].length;
+    }
+    out += window.linkifyMentionsInEscapedFragment(s.slice(last));
+    return out;
+  }
+
+  /** Сырой текст → экранирование + ссылки @id (+ URL, если включено) */
   window.linkifyCommunityMentionsPlain = function (raw) {
     var d = document.createElement("div");
     d.textContent = raw == null ? "" : String(raw);
     var h = d.innerHTML;
-    return h.replace(RE, function (_, id) {
-      return mentionLink(id);
-    });
+    return linkifyUrlsInEscapedLine(h);
   };
 
   /**
@@ -104,15 +136,17 @@
       .replace(/\n*\s*https?:\/\/[^\s]+\/call\/[0-9a-f-]{36}\s*$/gim, "")
       .trim();
     var bodyHtml = body ? window.linkifyChatPlain(body) : '<span class="nf-call-invite-fallback">Входящий видеозвонок</span>';
+    var acceptHtml =
+      window.__NF_LINKS__ === false
+        ? '<span class="nf-call-btn nf-call-btn--yes" style="opacity:.6;pointer-events:none">Принять звонок</span>'
+        : '<a class="nf-call-btn nf-call-btn--yes" href="' + escAttr(href) + '">Принять звонок</a>';
     return (
       '<div class="nf-call-invite-card">' +
       '<div class="nf-call-invite-text">' +
       bodyHtml +
       "</div>" +
       '<div class="nf-call-invite-actions">' +
-      '<a class="nf-call-btn nf-call-btn--yes" href="' +
-      escAttr(href) +
-      '">Принять звонок</a>' +
+      acceptHtml +
       '<button type="button" class="nf-call-btn nf-call-btn--no" data-nf-call-dismiss="1">Отклонить</button>' +
       "</div>" +
       "</div>"
