@@ -18,3 +18,4 @@ static/music/*.m4a
 static/music/*.ogg
 backup_*.zip
 backup_*/
+node_modules/

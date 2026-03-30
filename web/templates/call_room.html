@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Видеозвонок — NEUROFUNGI AI{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="/static/call/assets/index.css" />
+{% endblock %}
+{% block content %}
+<script>
+  window.__CALL_ROOM__ = {{ {"roomId": room_id, "isInitiator": is_initiator } | tojson | safe }};
+</script>
+<div id="root"></div>
+<script type="module" src="/static/call/assets/call.js"></script>
+{% endblock %}

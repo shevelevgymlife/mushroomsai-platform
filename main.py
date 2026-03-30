@@ -22,6 +22,7 @@ from web.routes.account import router as account_router
 from web.routes.language import router as language_router
 from web.routes.webhooks import router as webhooks_router
 from web.routes.chats import router as chats_router
+from web.routes.rtc import router as rtc_router
 from web.routes.seller import router as seller_router
 from web.routes.music import router as music_router
 from web.routes.notifications import router as notifications_router
@@ -108,6 +109,8 @@ class CommunitySubscriptionGateMiddleware(BaseHTTPMiddleware):
         # Лента и всё сообщество, кроме страниц профиля /community/profile/{id}
         if p.startswith("/community/profile"):
             return False
+        if p.startswith("/call"):
+            return False
         if p.startswith("/community"):
             return True
         return False
@@ -152,7 +155,12 @@ class StartupGateMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
 
-        if path in _STARTUP_SKIP_PATHS or path.startswith("/static") or path.startswith("/media"):
+        if (
+            path in _STARTUP_SKIP_PATHS
+            or path.startswith("/static")
+            or path.startswith("/media")
+            or path.startswith("/call")
+        ):
             return await call_next(request)
 
         if getattr(request.app.state, "startup_complete", False):
@@ -288,6 +296,7 @@ class LegalAcceptanceGateMiddleware(BaseHTTPMiddleware):
         "/media/",
         "/auth/",
         "/webhooks/",
+        "/call",
     )
 
     @staticmethod
@@ -570,7 +579,7 @@ async def lifespan(app: FastAPI):
 
 # -------------------- APP --------------------
 
-app = FastAPI(
+fastapi_app = FastAPI(
     title="NEUROFUNGI AI Platform",
     version="1.0.0",
     lifespan=lifespan,
@@ -579,7 +588,7 @@ app = FastAPI(
 templates = Jinja2Templates(directory="web/templates")
 
 # Middleware
-app.add_middleware(
+fastapi_app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
@@ -587,7 +596,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.add_middleware(
+fastapi_app.add_middleware(
     SessionMiddleware,
     secret_key=settings.JWT_SECRET,
     max_age=3600,
@@ -595,12 +604,12 @@ app.add_middleware(
     same_site="lax",
 )
 
-app.add_middleware(LanguageMiddleware)
-app.add_middleware(AuthUserPrimeMiddleware)
-app.add_middleware(CommunitySubscriptionGateMiddleware)
-app.add_middleware(ProbeBlockMiddleware)
-app.add_middleware(LegalAcceptanceGateMiddleware)
-app.add_middleware(StartupGateMiddleware)
+fastapi_app.add_middleware(LanguageMiddleware)
+fastapi_app.add_middleware(AuthUserPrimeMiddleware)
+fastapi_app.add_middleware(CommunitySubscriptionGateMiddleware)
+fastapi_app.add_middleware(ProbeBlockMiddleware)
+fastapi_app.add_middleware(LegalAcceptanceGateMiddleware)
+fastapi_app.add_middleware(StartupGateMiddleware)
 
 # Global settings cache (refreshed every 30s)
 import time as _time
@@ -623,34 +632,34 @@ class GlobalSettingsMiddleware(BaseHTTPMiddleware):
         request.state.global_radio_enabled = _gsettings_cache["radio_enabled"]
         return await call_next(request)
 
-app.add_middleware(GlobalSettingsMiddleware)
+fastapi_app.add_middleware(GlobalSettingsMiddleware)
 
 # Static
-app.mount("/static", StaticFiles(directory="static"), name="static")
+fastapi_app.mount("/static", StaticFiles(directory="static"), name="static")
 
 if os.path.exists("/data"):
-    app.mount("/media", StaticFiles(directory="/data"), name="media")
+    fastapi_app.mount("/media", StaticFiles(directory="/data"), name="media")
 else:
     os.makedirs("./media", exist_ok=True)
-    app.mount("/media", StaticFiles(directory="./media"), name="media")
+    fastapi_app.mount("/media", StaticFiles(directory="./media"), name="media")
 
 
 # -------------------- ROUTES --------------------
 
-@app.get("/favicon.ico", include_in_schema=False)
+@fastapi_app.get("/favicon.ico", include_in_schema=False)
 async def favicon_ico():
     """Browsers request /favicon.ico by default; redirect to SVG in static."""
     # В static должен лежать favicon.svg (в проекте он есть).
     return Response(status_code=302, headers={"Location": "/static/favicon.svg?v=1"})
 
 
-@app.get("/robots.txt", include_in_schema=False)
+@fastapi_app.get("/robots.txt", include_in_schema=False)
 async def robots_txt():
     """Минимальный robots.txt — убирает 404 в логах у поисковых ботов."""
     return Response("User-agent: *\nDisallow:\n", media_type="text/plain")
 
 
-@app.get("/sitemap.xml", include_in_schema=False)
+@fastapi_app.get("/sitemap.xml", include_in_schema=False)
 async def sitemap_xml():
     """Простой sitemap для роботов. При необходимости можно расширить страницами сайта."""
     host = (os.getenv("SITE_URL") or "https://mushroomsai.ru").rstrip("/")
@@ -664,7 +673,7 @@ async def sitemap_xml():
     return Response(xml, media_type="application/xml")
 
 
-@app.get("/health")
+@fastapi_app.get("/health")
 async def health(request: Request):
     return {
         "status": "ok",
@@ -675,15 +684,22 @@ async def health(request: Request):
 
 
 # Routers
-app.include_router(chats_router)
-app.include_router(public_router)
-app.include_router(auth_router)
-app.include_router(legal_router)
-app.include_router(user_router)
-app.include_router(seller_router)
-app.include_router(admin_router)
-app.include_router(account_router)
-app.include_router(language_router)
-app.include_router(webhooks_router)
-app.include_router(music_router)
-app.include_router(notifications_router)
+fastapi_app.include_router(chats_router)
+fastapi_app.include_router(rtc_router)
+fastapi_app.include_router(public_router)
+fastapi_app.include_router(auth_router)
+fastapi_app.include_router(legal_router)
+fastapi_app.include_router(user_router)
+fastapi_app.include_router(seller_router)
+fastapi_app.include_router(admin_router)
+fastapi_app.include_router(account_router)
+fastapi_app.include_router(language_router)
+fastapi_app.include_router(webhooks_router)
+fastapi_app.include_router(music_router)
+fastapi_app.include_router(notifications_router)
+
+import socketio
+
+from services.rtc_socketio import sio
+
+app = socketio.ASGIApp(sio, other_asgi_app=fastapi_app)

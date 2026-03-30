@@ -1,0 +1,102 @@
+.nf-call-wrap {
+  min-height: min(100vh, 100dvh);
+  background: radial-gradient(ellipse at 20% 0%, rgba(61, 212, 224, 0.12), transparent 50%), #070708;
+  color: #eaeaec;
+  display: flex;
+  flex-direction: column;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 12px calc(16px + env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+}
+
+.nf-call-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.nf-call-status {
+  font-size: 14px;
+  color: #9ca3af;
+}
+
+.nf-call-status.ok {
+  color: #5eead4;
+}
+
+.nf-call-videos {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  min-height: 0;
+}
+
+@media (min-width: 700px) {
+  .nf-call-videos {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.nf-call-video-box {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #111;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  aspect-ratio: 16/10;
+}
+
+.nf-call-video-box video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.nf-call-video-box.nf-local video {
+  transform: scaleX(-1);
+}
+
+.nf-call-label {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #e5e7eb;
+}
+
+.nf-call-actions {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.nf-call-end {
+  padding: 14px 28px;
+  border-radius: 999px;
+  border: none;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  background: linear-gradient(135deg, #b91c1c, #7f1d1d);
+  color: #fff;
+}
+
+.nf-call-end:hover {
+  filter: brightness(1.08);
+}
+
+.nf-call-err {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(185, 28, 28, 0.2);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  color: #fecaca;
+  font-size: 14px;
+  line-height: 1.45;
+}

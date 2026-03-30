@@ -359,6 +359,9 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
                 <span id="followBtnText">{% if is_following %}Подписан{% else %}Подписаться{% endif %}</span>
               </button>
               <button type="button" class="btn-message-hero" onclick="openDM()">💬 Сообщение</button>
+              {% if not dm_blocked_by_profile %}
+              <button type="button" class="btn-message-hero" id="cpVideoCallBtn" onclick="startProfileVideoCall()" title="Видеозвонок">📹 Видеозвонок</button>
+              {% endif %}
             </div>
             {% endif %}
           </div>
@@ -944,6 +947,22 @@ function openDM(){
   panel.setAttribute('aria-hidden','false');
   try{document.body.style.overflow='hidden';}catch(e){}
   loadThread();
+}
+async function startProfileVideoCall(){
+  const btn=document.getElementById('cpVideoCallBtn');
+  if(btn) btn.disabled=true;
+  try{
+    const r=await fetch('/api/rtc/start-call',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({target_user_id:PROFILE_ID}),credentials:'same-origin'});
+    const d=await r.json().catch(function(){return {};});
+    if(r.ok&&d.redirect){location.href=d.redirect;return;}
+    if(d.error==='blocked'){alert('Нельзя позвонить: блокировка или ограничение.');return;}
+    if(d.error==='auth'||r.status===401){location.href='/login?next='+encodeURIComponent(location.pathname);return;}
+    alert(d.error||'Не удалось начать звонок');
+  }catch(e){
+    alert('Ошибка сети');
+  }finally{
+    if(btn) btn.disabled=false;
+  }
 }
 function closeDM(){
   const panel=document.getElementById('dmPanel');
