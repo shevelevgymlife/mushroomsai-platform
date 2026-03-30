@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Чаты — NEUROFUNGI AI{% endblock %}
 {% block extra_head %}
-<link rel="stylesheet" href="/static/css/chats-messenger.css?v=12" />
+<link rel="stylesheet" href="/static/css/chats-messenger.css?v=13" />
 {% endblock %}
 {% block body_class %} chats-messenger-page{% endblock %}
 {% block content %}
@@ -99,6 +99,17 @@
       />
       <label style="display:block;font-size:13px;color:#aaa;margin-bottom:6px">Аватар (файл)</label>
       <input type="file" id="chatsGroupAvatar" accept="image/*" style="margin-bottom:12px;color:#ccc" />
+      <div style="margin-bottom:14px">
+        <div style="font-size:13px;color:#aaa;margin-bottom:8px">Видимость группы</div>
+        <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer;color:#ddd;font-size:14px">
+          <input type="radio" name="chatsGroupVisibility" value="public" checked />
+          Публичная — в списке групп у всех, любой может вступить
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:#ddd;font-size:14px">
+          <input type="radio" name="chatsGroupVisibility" value="private" />
+          Приватная — только участники и приглашённые
+        </label>
+      </div>
       <label style="display:block;font-size:13px;color:#aaa;margin-bottom:6px">Поиск участников</label>
       <input
         type="search"
@@ -182,6 +193,7 @@
       <button type="button" class="ch-dm-extra-btn" id="chDmExtraGift">Подарить подписку</button>
       <button type="button" class="ch-dm-extra-btn" id="chDmExtraAuto">Автоудаление сообщений…</button>
       <button type="button" class="ch-dm-extra-btn ch-dm-extra-warn" id="chDmExtraClear">Удалить всю переписку…</button>
+      <button type="button" class="ch-dm-extra-btn ch-dm-extra-warn" id="chDmExtraDeleteDialog">Удалить этот диалог…</button>
       <button type="button" class="ch-dm-extra-btn ch-dm-extra-warn" id="chDmExtraBlock">Заблокировать…</button>
     </div>
   </div>
@@ -280,11 +292,6 @@
           <span class="ch-q-ic"><svg class="ch-ic-svg" aria-hidden="true"><use href="#ch-ic-more"/></svg></span><span>ещё</span>
         </button>
       </div>
-      <button type="button" class="ch-settings-row" id="chOpenDeepSettings" data-ch-requires-manage="1">
-        <span class="ch-settings-ic"><svg class="ch-ic-svg" aria-hidden="true"><use href="#ch-ic-gear"/></svg></span>
-        <span class="ch-settings-txt">Настройки группы</span>
-        <span class="ch-settings-arr">›</span>
-      </button>
       <div class="ch-tabs" role="tablist">
         <button type="button" class="on" data-tab="participants" id="chTabParticipants">Участники</button>
         <button type="button" data-tab="media" id="chTabMedia">Медиа</button>
@@ -445,5 +452,5 @@
     avatar: {{ (user.avatar or '')|tojson }}
   };
 </script>
-<script src="/static/js/chats-messenger.js?v=12" defer></script>
+<script src="/static/js/chats-messenger.js?v=13" defer></script>
 {% endblock %}

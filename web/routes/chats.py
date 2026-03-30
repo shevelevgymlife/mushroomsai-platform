@@ -142,6 +142,8 @@ class GroupCreateBody(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     avatar_url: str | None = None
     member_ids: list[int] = Field(default_factory=list)
+    """Публичная — видна всем в списке групп, можно вступить. Приватная — только по приглашению."""
+    is_public: bool = True
 
 
 class SendMessageBody(BaseModel):
@@ -587,6 +589,58 @@ async def api_list_chats(request: Request):
                 "last_message": last_text,
                 "last_at": r["last_at"].isoformat() if r.get("last_at") else None,
                 "unread": int(unread or 0),
+                "needs_join": False,
+            }
+        )
+    member_chat_ids = {int(x["id"]) for x in out}
+    try:
+        discover = await database.fetch_all(
+            sa.text(
+                """
+                SELECT c.id, c.type, c.name, c.avatar_url, c.created_at,
+                       lm.id AS last_msg_id, lm.text AS last_text, lm.created_at AS last_at
+                FROM chats c
+                LEFT JOIN LATERAL (
+                  SELECT m.id, m.text, m.created_at
+                  FROM chat_messages m
+                  WHERE m.chat_id = c.id AND m.is_deleted = false
+                  ORDER BY m.id DESC
+                  LIMIT 1
+                ) lm ON true
+                WHERE c.type = 'group'
+                  AND NOT EXISTS (
+                    SELECT 1 FROM chat_members cm WHERE cm.chat_id = c.id AND cm.user_id = :uid
+                  )
+                  AND (
+                    c.group_settings_json IS NULL OR trim(c.group_settings_json) = ''
+                    OR COALESCE((c.group_settings_json::jsonb ->> 'is_public')::boolean, true) = true
+                  )
+                ORDER BY lm.created_at DESC NULLS LAST, c.id DESC
+                LIMIT 150
+                """
+            ),
+            {"uid": uid},
+        )
+    except Exception:
+        discover = []
+    for r in discover or []:
+        cid = int(r["id"])
+        if cid in member_chat_ids:
+            continue
+        last_text = (r["last_text"] or "").strip()
+        if len(last_text) > 120:
+            last_text = last_text[:117] + "…"
+        out.append(
+            {
+                "id": cid,
+                "type": "group",
+                "name": (r["name"] or "").strip() or "Группа",
+                "avatar_url": r["avatar_url"],
+                "partner_id": None,
+                "last_message": last_text or "Публичная группа — нажмите, чтобы вступить",
+                "last_at": r["last_at"].isoformat() if r.get("last_at") else None,
+                "unread": 0,
+                "needs_join": True,
             }
         )
     return JSONResponse({"chats": out})
@@ -974,7 +1028,48 @@ async def api_create_group(request: Request, body: GroupCreateBody):
                 )
             except Exception:
                 pass
+    st = _default_group_settings()
+    st["is_public"] = bool(body.is_public)
+    await _save_group_settings_row(cid, st)
     return JSONResponse({"chat_id": cid})
+
+
+@router.post("/api/chats/{chat_id}/join")
+async def api_join_public_group(request: Request, chat_id: int):
+    """Вступление в публичную группу (без приглашения). Приватные — только через добавление участника."""
+    user = await _require_user(request)
+    if not user:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    uid = _eff_uid(user)
+    if await _member_row(chat_id, uid):
+        return JSONResponse({"ok": True, "already_member": True})
+    crow = await database.fetch_one(sa.text("SELECT * FROM chats WHERE id = :id"), {"id": chat_id})
+    if not crow or (crow.get("type") or "") != "group":
+        return JSONResponse({"error": "not_group"}, status_code=400)
+    st = _parse_group_settings(crow.get("group_settings_json"))
+    if not st.get("is_public", True):
+        return JSONResponse({"error": "private_group"}, status_code=403)
+    ban = await database.fetch_one(
+        sa.text("SELECT 1 FROM chat_group_bans WHERE chat_id = :c AND user_id = :u"),
+        {"c": chat_id, "u": uid},
+    )
+    if ban:
+        return JSONResponse({"error": "banned"}, status_code=403)
+    try:
+        await database.execute(
+            sa.text(
+                "INSERT INTO chat_members (chat_id, user_id, role) VALUES (:c,:u,'member')"
+            ),
+            {"c": chat_id, "u": uid},
+        )
+    except Exception:
+        return JSONResponse({"error": "join_failed"}, status_code=400)
+    await _audit(chat_id, uid, "join_public", {})
+    await room_broadcast(
+        chat_id,
+        {"type": "members_changed", "payload": {"action": "join", "user_id": uid}},
+    )
+    return JSONResponse({"ok": True})
 
 
 @router.post("/api/chats/upload")
@@ -1661,6 +1756,26 @@ async def api_chat_clear_history(request: Request, chat_id: int):
     )
     await _audit(chat_id, uid, "clear_history", {})
     await room_broadcast(chat_id, {"type": "history_cleared", "payload": {}})
+    return JSONResponse({"ok": True})
+
+
+@router.delete("/api/chats/{chat_id}/personal-dialog")
+async def api_delete_personal_dialog(request: Request, chat_id: int):
+    """Удалить личный диалог для обоих участников: чат и все сообщения удаляются из БД."""
+    user = await _require_user(request)
+    if not user:
+        return JSONResponse({"error": "auth"}, status_code=401)
+    uid = _eff_uid(user)
+    if not await _member_row(chat_id, uid):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    crow = await database.fetch_one(sa.text("SELECT type FROM chats WHERE id = :id"), {"id": chat_id})
+    if not crow or (crow.get("type") or "") != "personal":
+        return JSONResponse({"error": "not_personal"}, status_code=400)
+    await room_broadcast(
+        chat_id,
+        {"type": "chat_deleted", "payload": {"chat_id": chat_id}},
+    )
+    await database.execute(sa.text("DELETE FROM chats WHERE id = :id"), {"id": chat_id})
     return JSONResponse({"ok": True})
 
 

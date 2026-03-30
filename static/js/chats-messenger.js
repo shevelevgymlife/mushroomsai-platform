@@ -90,7 +90,6 @@
     partSearch: document.getElementById("chPartSearch"),
     partList: document.getElementById("chPartList"),
     mediaGrid: document.getElementById("chMediaGrid"),
-    openDeepSettings: document.getElementById("chOpenDeepSettings"),
     quickVideo: document.getElementById("chQuickVideo"),
     quickMute: document.getElementById("chQuickMute"),
     quickMuteIcWrap: document.getElementById("chQuickMuteIcWrap"),
@@ -336,6 +335,19 @@
     renderList();
   }
 
+  async function joinPublicGroupAndOpen(cid) {
+    const r = await api("/api/chats/" + cid + "/join", { method: "POST" });
+    const d = await r.json().catch(function () {
+      return {};
+    });
+    if (!r.ok) {
+      alert(d.error === "private_group" ? "Эта группа приватная. Вступить можно только по приглашению." : d.error || "Не удалось вступить");
+      return;
+    }
+    await loadChats();
+    await openChat(cid);
+  }
+
   function appendChatRow(c) {
     const row = document.createElement("div");
     row.className = "chats-row" + (c.id === activeChatId ? " active" : "");
@@ -343,7 +355,8 @@
     const av = c.avatar_url || "/static/favicon.svg";
     const badge = c.unread > 0 ? " on" : "";
     const isGroup = (c.type || "") === "group";
-    const kindLabel = isGroup ? "Группа" : "ЛС";
+    const needsJoin = !!c.needs_join;
+    const kindLabel = isGroup ? (needsJoin ? "Публичная группа" : "Группа") : "ЛС";
     row.innerHTML =
       '<img class="chats-row-av" src="' +
       esc(av) +
@@ -365,7 +378,10 @@
       '">' +
       (c.unread > 99 ? "99+" : c.unread) +
       "</span>";
-    row.onclick = () => openChat(c.id);
+    row.onclick = function () {
+      if (needsJoin) joinPublicGroupAndOpen(c.id);
+      else openChat(c.id);
+    };
     el.list.appendChild(row);
   }
 
@@ -505,8 +521,16 @@
   }
 
   async function loadMeta(cid) {
-    const r = await api("/api/chats/" + cid + "/meta");
-    currentMeta = await r.json();
+    let r = await api("/api/chats/" + cid + "/meta");
+    let meta = await r.json();
+    if (!r.ok && r.status === 403 && meta && meta.error === "forbidden") {
+      const jr = await api("/api/chats/" + cid + "/join", { method: "POST" });
+      if (jr.ok) {
+        r = await api("/api/chats/" + cid + "/meta");
+        meta = await r.json();
+      }
+    }
+    currentMeta = meta;
     if (!r.ok) return;
     el.headTitle.textContent = currentMeta.name || "Чат";
     el.headAv.src = currentMeta.avatar_url || "/static/favicon.svg";
@@ -1412,6 +1436,28 @@
           renderMessages();
           loadChats();
         }
+        if (d.type === "chat_deleted" && d.payload && d.payload.chat_id) {
+          const gone = parseInt(d.payload.chat_id, 10);
+          if (gone === activeChatId) {
+            activeChatId = null;
+            currentMeta = null;
+            messages = [];
+            if (el.thread) el.thread.style.display = "none";
+            if (el.placeholder) el.placeholder.style.display = "flex";
+            setMobileOpen(false);
+            if (ws) {
+              try {
+                ws.close();
+              } catch (e) {}
+              ws = null;
+            }
+          }
+          chats = (chats || []).filter(function (x) {
+            return x.id !== gone;
+          });
+          renderList();
+          loadChats();
+        }
         if (d.type === "reaction" && d.payload) {
           const mid = d.payload.message_id;
           const m = messages.find((x) => x.id === mid);
@@ -1697,10 +1743,12 @@
         avatar_url = uj.url || null;
       }
       const member_ids = Array.from(selectedGroupIds);
+      const visEl = document.querySelector('input[name="chatsGroupVisibility"]:checked');
+      const is_public = !visEl || visEl.value !== "private";
       const r = await api("/api/chats/group", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, avatar_url, member_ids }),
+        body: JSON.stringify({ name, avatar_url, member_ids, is_public }),
       });
       const d = await r.json();
       closeModal();
@@ -1933,6 +1981,43 @@
         if (chBlockConfirmBack) chBlockConfirmBack.hidden = false;
       });
     }
+    const chDmExtraDelete = document.getElementById("chDmExtraDeleteDialog");
+    if (chDmExtraDelete) {
+      chDmExtraDelete.addEventListener("click", async function () {
+        if (!activeChatId || !currentMeta || currentMeta.type !== "personal") return;
+        if (
+          !confirm(
+            "Удалить этот диалог для вас и собеседника? Чат и вся переписка будут удалены безвозвратно."
+          )
+        )
+          return;
+        closeDmExtraModal();
+        const r = await api("/api/chats/" + activeChatId + "/personal-dialog", { method: "DELETE" });
+        const j = await r.json().catch(function () {
+          return {};
+        });
+        if (r.ok) {
+          const gone = activeChatId;
+          activeChatId = null;
+          currentMeta = null;
+          messages = [];
+          if (el.thread) el.thread.style.display = "none";
+          if (el.placeholder) el.placeholder.style.display = "flex";
+          setMobileOpen(false);
+          if (ws) {
+            try {
+              ws.close();
+            } catch (e) {}
+            ws = null;
+          }
+          chats = (chats || []).filter(function (x) {
+            return x.id !== gone;
+          });
+          renderList();
+          await loadChats();
+        } else alert(j.error || "Не удалось удалить диалог");
+      });
+    }
     if (chBlockConfirmBack) {
       chBlockConfirmBack.addEventListener("click", function (e) {
         if (e.target === chBlockConfirmBack) closeBlockConfirmModal();
@@ -2013,12 +2098,6 @@
     el.partSearch.addEventListener("input", function () {
       clearTimeout(partSearchT);
       partSearchT = setTimeout(renderParticipantsFiltered, 200);
-    });
-  }
-
-  if (el.openDeepSettings) {
-    el.openDeepSettings.addEventListener("click", function () {
-      openSettingsDeep();
     });
   }
 
