@@ -199,9 +199,11 @@
     </div>
   </div>
 </div>
+{% endblock %}
 
+{% block body_modals %}
 <!-- Subscription Modal -->
-<div id="subModal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+<div id="subModal" class="hidden fixed inset-0 bg-black/70 z-[100500] flex items-center justify-center p-4" style="z-index:100500">
   <div class="bg-surface border border-border rounded-2xl w-full max-w-sm p-6">
     <div class="flex items-center justify-between mb-5">
       <h2 class="font-semibold text-text">Изменить подписку</h2>
@@ -247,7 +249,7 @@
 </div>
 
 <!-- Permissions Modal -->
-<div id="permModal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+<div id="permModal" class="hidden fixed inset-0 bg-black/70 z-[100500] flex items-center justify-center p-4" style="z-index:100500">
   <div class="bg-surface border border-border rounded-2xl w-full max-w-sm p-6">
     <div class="flex items-center justify-between mb-5">
       <h2 class="font-semibold text-text">Права доступа</h2>
@@ -288,7 +290,7 @@
   </div>
 </div>
 <!-- Role Modal -->
-<div id="roleModal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+<div id="roleModal" class="hidden fixed inset-0 bg-black/70 z-[100500] flex items-center justify-center p-4" style="z-index:100500">
   <div class="bg-surface border border-border rounded-2xl w-full max-w-xs p-6">
     <div class="flex items-center justify-between mb-4">
       <h2 class="font-semibold text-text">Изменить роль</h2>
@@ -312,7 +314,7 @@
 </div>
 
 <!-- Реферальная ссылка внешнего магазина (для приглашённых этим пользователем) -->
-<div id="refShopModal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+<div id="refShopModal" class="hidden fixed inset-0 bg-black/70 z-[100500] flex items-center justify-center p-4" style="z-index:100500">
   <div class="bg-surface border border-border rounded-2xl w-full max-w-md p-6">
     <div class="flex items-center justify-between mb-4">
       <div>
@@ -339,7 +341,7 @@
 </div>
 
 <!-- Message user (cabinet + TG if offline) -->
-<div id="msgModal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+<div id="msgModal" class="hidden fixed inset-0 bg-black/70 z-[100500] flex items-center justify-center p-4" style="z-index:100500">
   <div class="bg-surface border border-border rounded-2xl w-full max-w-sm p-6">
     <div class="flex items-center justify-between mb-4">
       <div>
@@ -466,14 +468,20 @@ async function saveRole() {
 
 // ── Delete forever ───────────────────────────────────────────────────────────
 function openReferralShopModal(userId, userName, currentUrl) {
+  var el = document.getElementById('refShopModal');
+  if (!el) return;
   document.getElementById('refShopUserId').value = String(userId);
   document.getElementById('refShopUserName').textContent = userName || ('ID ' + userId);
   document.getElementById('refShopUrl').value = currentUrl || '';
   document.getElementById('refShopError').classList.add('hidden');
-  document.getElementById('refShopModal').classList.remove('hidden');
+  el.classList.remove('hidden');
+  el.style.display = 'flex';
 }
 function closeReferralShopModal() {
-  document.getElementById('refShopModal').classList.add('hidden');
+  var el = document.getElementById('refShopModal');
+  if (!el) return;
+  el.classList.add('hidden');
+  el.style.display = 'none';
 }
 async function saveReferralShopUrl() {
   const uid = document.getElementById('refShopUserId').value;

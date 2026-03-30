@@ -292,6 +292,9 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
     {% block content %}{% endblock %}
   </main>
 
+  {# Модальные окна вне main: иначе position:fixed обрезается из-за overflow-x: clip на main (app-mobile-shell) #}
+  {% block body_modals %}{% endblock %}
+
   {% if user and request.query_params.get('trial_started') %}
   <div id="trialStartedBanner" role="status" style="position:fixed;left:12px;right:12px;bottom:calc(24px + env(safe-area-inset-bottom,0px));z-index:2000;padding:12px 14px;border-radius:16px;background:rgba(10,12,18,.94);border:1px solid rgba(61,212,224,.4);color:#e8e8e8;font-size:13px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.45)">
     <strong style="color:#3dd4e0">Пробный тариф «Старт» активирован</strong> на 3 дня. Лента и магазин открыты.
