@@ -311,6 +311,39 @@ async def merge_accounts(primary_id: int, secondary_id: int):
         if secondary.get("legal_docs_version"):
             updates["legal_docs_version"] = secondary.get("legal_docs_version")
 
+    # Рефералка / амбассадорский магазин: не терять при слиянии (часто primary=Google, secondary=Telegram).
+    if not primary.get("referred_by") and secondary.get("referred_by"):
+        updates["referred_by"] = int(secondary["referred_by"])
+    if not (primary.get("referral_shop_url") or "").strip() and (secondary.get("referral_shop_url") or "").strip():
+        updates["referral_shop_url"] = (secondary.get("referral_shop_url") or "").strip()
+    if not (primary.get("referral_code") or "").strip() and (secondary.get("referral_code") or "").strip():
+        updates["referral_code"] = (secondary.get("referral_code") or "").strip().upper()
+
+    try:
+        pb = float(primary.get("referral_balance") or 0)
+        sb = float(secondary.get("referral_balance") or 0)
+        if sb:
+            updates["referral_balance"] = pb + sb
+    except (TypeError, ValueError):
+        pass
+
+    # Пробный «Старт»: у Telegram часто plan=free, но есть start_trial_until — раньше терялось при merge.
+    p_claim = primary.get("start_trial_claimed_at")
+    s_claim = secondary.get("start_trial_claimed_at")
+    p_until = primary.get("start_trial_until")
+    s_until = secondary.get("start_trial_until")
+    if not p_claim and s_claim:
+        updates["start_trial_claimed_at"] = s_claim
+        updates["start_trial_until"] = s_until
+        updates["start_trial_end_notified"] = bool(secondary.get("start_trial_end_notified"))
+    elif p_claim and s_claim and s_until and (not p_until or s_until > p_until):
+        updates["start_trial_until"] = s_until
+    elif p_claim and not p_until and s_until:
+        updates["start_trial_until"] = s_until
+
+    if not primary.get("needs_tariff_choice") and secondary.get("needs_tariff_choice"):
+        updates["needs_tariff_choice"] = True
+
     # Mark secondary as merged and remove direct login identifiers.
     await database.execute(
         users.update().where(users.c.id == secondary_id).values(
@@ -321,6 +354,7 @@ async def merge_accounts(primary_id: int, secondary_id: int):
             linked_google_id=None,
             email=None,
             password_hash=None,
+            referral_balance=0,
         )
     )
 
