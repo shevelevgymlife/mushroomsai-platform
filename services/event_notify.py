@@ -44,17 +44,15 @@ async def send_event_telegram_html(
     body_plain: str,
     link_path: str | None = None,
 ) -> bool:
+    """Дублирует событие в ЛС мессенджера (всегда) и в Telegram (по настройкам пользователя)."""
     from services.in_app_notifications import should_send_telegram_for_event
-    from services.notify_user_stub import notify_user
+    from services.system_support_delivery import deliver_system_support_notification
 
-    if not await should_send_telegram_for_event(recipient_user_id, ntype):
-        return False
+    tg_allowed = await should_send_telegram_for_event(recipient_user_id, ntype)
     row = await database.fetch_one(users.select().where(users.c.id == recipient_user_id))
     if not row:
         return False
-    tg_id = row.get("tg_id") or row.get("linked_tg_id")
-    if not tg_id:
-        return False
+
     base = (getattr(settings, "SITE_URL", None) or "").rstrip("/")
     full_link = None
     if link_path and link_path.startswith("/") and base:
@@ -69,4 +67,20 @@ async def send_event_telegram_html(
     msg = "\n".join(parts) if parts else "NEUROFUNGI AI"
     if full_link:
         msg += f'\n\n<a href="{html.escape(full_link)}">Открыть</a>'
-    return await notify_user(int(tg_id), msg)
+
+    plain_lines = []
+    if (title or "").strip():
+        plain_lines.append((title or "").strip())
+    if (body_plain or "").strip():
+        plain_lines.append((body_plain or "").strip())
+    if full_link:
+        plain_lines.append(f"Открыть: {full_link}")
+    plain = "\n\n".join(plain_lines) if plain_lines else "Событие NEUROFUNGI AI"
+
+    r = await deliver_system_support_notification(
+        recipient_user_id=recipient_user_id,
+        body_plain=plain,
+        telegram_html=msg,
+        send_telegram=tg_allowed,
+    )
+    return bool(r.get("dm_sent") or r.get("telegram_sent"))

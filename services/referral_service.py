@@ -295,19 +295,26 @@ async def admin_clear_referral_balance(user_id: int, admin_note: str = "") -> tu
             admin_note=(admin_note or "")[:2000],
         )
     )
-    tg = row.get("tg_id") or row.get("linked_tg_id")
-    if tg:
-        from services.notify_user_stub import notify_user
+    plain = (
+        f"Баланс реферальной программы обнулён после подтверждённого вывода.\n"
+        f"Выведено: {prev:.2f} ₽\n"
+        f"{(admin_note or '').strip()}"
+    ).strip()
+    tg_html = (
+        f"✅ <b>Баланс реферальной программы обнулён</b>\n"
+        f"Выведено: <b>{prev:.2f} ₽</b>\n"
+        f"{admin_note or ''}"
+    )[:3900]
+    try:
+        from services.system_support_delivery import deliver_system_support_notification
 
-        msg = (
-            f"✅ <b>Баланс реферальной программы обнулён</b>\n"
-            f"Выведено: <b>{prev:.2f} ₽</b>\n"
-            f"{admin_note or ''}"
-        )[:3900]
-        try:
-            await notify_user(int(tg), msg)
-        except Exception:
-            pass
+        await deliver_system_support_notification(
+            recipient_user_id=int(user_id),
+            body_plain=plain,
+            telegram_html=tg_html,
+        )
+    except Exception:
+        pass
     return True, "ok"
 
 

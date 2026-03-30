@@ -199,41 +199,61 @@ async def _notify_subscription_gift_recipient(recipient_id: int, giver_id: int, 
 
 
 async def _notify_trial_started(user_id: int) -> None:
-    from services.tg_notify import notify_user_telegram
+    from services.system_support_delivery import deliver_system_support_notification
 
     row = await database.fetch_one(users.select().where(users.c.id == user_id))
     if not row:
         return
-    tg = row.get("tg_id") or row.get("linked_tg_id")
-    if not tg:
-        return
+    notify_uid = int(row.get("primary_user_id") or user_id)
     site = (settings.SITE_URL or "").rstrip("/")
     sub_url = f"{site}/subscriptions" if site else "/subscriptions"
-    text = (
+    plain = (
+        "Пробный доступ «Старт» на 3 дня активирован.\n"
+        "Открыты лента, магазин, сообщения и остальные возможности тарифа Старт.\n"
+        f"После окончания пробного периода можно оформить подписку: {sub_url}"
+    )
+    tg_html = (
         "🎁 <b>Пробный доступ «Старт» на 3 дня</b>\n"
         "Открыты лента, магазин, сообщения и остальные возможности тарифа Старт.\n"
-        f"<a href=\"{sub_url}\">Оформить подписку после окончания пробного периода</a>"
+        f"<a href=\"{html.escape(sub_url, quote=True)}\">Оформить подписку после окончания пробного периода</a>"
     )
-    await notify_user_telegram(int(tg), text)
+    try:
+        await deliver_system_support_notification(
+            recipient_user_id=notify_uid,
+            body_plain=plain,
+            telegram_html=tg_html,
+        )
+    except Exception:
+        pass
 
 
 async def _notify_trial_ended(user_id: int) -> None:
-    from services.tg_notify import notify_user_telegram
+    from services.system_support_delivery import deliver_system_support_notification
 
     row = await database.fetch_one(users.select().where(users.c.id == user_id))
     if not row:
         return
-    tg = row.get("tg_id") or row.get("linked_tg_id")
-    if not tg:
-        return
+    notify_uid = int(row.get("primary_user_id") or user_id)
     site = (settings.SITE_URL or "").rstrip("/")
     sub_url = f"{site}/subscriptions" if site else "/subscriptions"
-    text = (
+    plain = (
+        "Пробный период «Старт» завершён.\n"
+        "Доступ к ленте и функциям тарифа Старт приостановлен.\n"
+        f"Выберите подписку: {sub_url}"
+    )
+    tg_html = (
         "⏳ <b>Пробный период «Старт» завершён</b>\n"
         "Доступ к ленте и функциям тарифа Старт приостановлен.\n"
-        f"<a href=\"{sub_url}\">Выбрать подписку Старт, Про или Макси</a>"
+        f"<a href=\"{html.escape(sub_url, quote=True)}\">Выбрать подписку Старт, Про или Макси</a>"
     )
-    await notify_user_telegram(int(tg), text)
+    try:
+        await deliver_system_support_notification(
+            recipient_user_id=notify_uid,
+            body_plain=plain,
+            telegram_html=tg_html,
+        )
+    except Exception:
+        pass
 
 
 async def claim_start_trial(user_id: int) -> dict:
