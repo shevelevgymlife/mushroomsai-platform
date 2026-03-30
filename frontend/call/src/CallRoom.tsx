@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
 
-type IceServer = { urls: string | string[] };
+type IceServer = { urls: string | string[]; username?: string; credential?: string };
 
-const DEFAULT_ICE: IceServer[] = [{ urls: "stun:stun.l.google.com:19302" }];
+const DEFAULT_ICE: IceServer[] = [
+  { urls: "stun:stun.l.google.com:19302" },
+  { urls: "stun:stun1.l.google.com:19302" },
+  { urls: "stun:stun2.l.google.com:19302" },
+];
 
 function getConfig(): { roomId: string } {
   const w = typeof window !== "undefined" ? (window as Window & { __CALL_ROOM__?: { roomId: string; isInitiator: boolean } }) : undefined;
@@ -23,7 +27,8 @@ export function CallRoom() {
   const streamRef = useRef<MediaStream | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const makingOfferRef = useRef(false);
-  const iceQueueRef = useRef<RTCIceCandidateInit[]>([]);
+  const iceQueueRef = useRef<(RTCIceCandidateInit | null)[]>([]);
+  const iceServersRef = useRef<IceServer[]>(DEFAULT_ICE);
 
   const hangUp = useCallback(() => {
     try {
@@ -66,7 +71,7 @@ export function CallRoom() {
       const q = iceQueueRef.current.splice(0, iceQueueRef.current.length);
       for (const c of q) {
         try {
-          await pc.addIceCandidate(new RTCIceCandidate(c));
+          await pc.addIceCandidate(c === null ? null : new RTCIceCandidate(c));
         } catch {
           /* ignore */
         }
@@ -74,20 +79,30 @@ export function CallRoom() {
     };
 
     const setupPeer = (iceServers: IceServer[]) => {
-      const pc = new RTCPeerConnection({ iceServers: iceServers.length ? iceServers : DEFAULT_ICE });
+      try {
+        pcRef.current?.close();
+      } catch {
+        /* ignore */
+      }
+      iceServersRef.current = iceServers.length ? iceServers : DEFAULT_ICE;
+      const pc = new RTCPeerConnection({
+        iceServers: iceServersRef.current,
+        iceCandidatePoolSize: 10,
+      });
       pcRef.current = pc;
 
       pc.onicecandidate = (ev) => {
-        if (ev.candidate && socket.connected) {
-          socket.emit("ice-candidate", {
-            roomId,
-            candidate: ev.candidate.toJSON ? ev.candidate.toJSON() : ev.candidate,
-          });
-        }
+        if (!socket.connected) return;
+        const cand = ev.candidate ? (ev.candidate.toJSON ? ev.candidate.toJSON() : ev.candidate) : null;
+        socket.emit("ice-candidate", { roomId, candidate: cand });
       };
 
       pc.ontrack = (ev) => {
-        const [stream] = ev.streams;
+        const stream = ev.streams[0] ?? (() => {
+          const ms = new MediaStream();
+          ms.addTrack(ev.track);
+          return ms;
+        })();
         if (remoteRef.current && stream) {
           remoteRef.current.srcObject = stream;
           setRemoteOnline(true);
@@ -124,7 +139,12 @@ export function CallRoom() {
 
     socket.on("peer_ready", async (payload: { isInitiator?: boolean }) => {
       if (cancelled) return;
-      const pc = pcRef.current;
+      let pc = pcRef.current;
+      const stream = streamRef.current;
+      if (!pc && stream) {
+        pc = setupPeer(iceServersRef.current);
+        stream.getTracks().forEach((tr) => pc!.addTrack(tr, stream));
+      }
       if (!pc) return;
       const iAmCaller = !!payload?.isInitiator;
       if (!iAmCaller) {
@@ -179,18 +199,20 @@ export function CallRoom() {
       }
     });
 
-    socket.on("ice-candidate", async (data: { candidate?: RTCIceCandidateInit }) => {
-      if (cancelled || !data?.candidate) return;
+    socket.on("ice-candidate", async (data: { candidate?: RTCIceCandidateInit | null }) => {
+      if (cancelled) return;
+      const raw = data?.candidate;
+      if (raw === undefined) return;
       const pc = pcRef.current;
       if (!pc) return;
       try {
         if (!pc.remoteDescription) {
-          iceQueueRef.current.push(data.candidate);
+          if (raw !== null) iceQueueRef.current.push(raw);
           return;
         }
-        await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+        await pc.addIceCandidate(raw === null ? null : new RTCIceCandidate(raw));
       } catch {
-        iceQueueRef.current.push(data.candidate);
+        if (raw !== null) iceQueueRef.current.push(raw);
       }
     });
 
@@ -202,6 +224,12 @@ export function CallRoom() {
     socket.on("disconnect", () => {
       if (!cancelled) setStatus("Отключено");
     });
+
+    const safeJoin = () => {
+      if (cancelled || !streamRef.current) return;
+      socket.emit("join_room", { roomId });
+    };
+    socket.on("connect", safeJoin);
 
     (async () => {
       try {
@@ -234,15 +262,12 @@ export function CallRoom() {
         return;
       }
 
-      const join = () => {
-        if (!cancelled) socket.emit("join_room", { roomId });
-      };
-      if (socket.connected) join();
-      else socket.once("connect", join);
+      safeJoin();
     })();
 
     return () => {
       cancelled = true;
+      socket.off("connect", safeJoin);
       try {
         socket.disconnect();
       } catch {

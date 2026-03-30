@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import os
 
 import socketio
 from auth.session import get_current_user
@@ -19,7 +20,29 @@ _sid_uid: dict[str, int] = {}
 _call_registry: dict[str, dict[str, int]] = {}
 _room_sids: dict[str, set[str]] = {}
 
-ICE_SERVERS = [{"urls": "stun:stun.l.google.com:19302"}]
+
+def build_ice_servers() -> list[dict]:
+    """Несколько STUN + опциональный TURN из env (симметричный NAT без TURN часто даёт failed)."""
+    servers: list[dict] = [
+        {"urls": "stun:stun.l.google.com:19302"},
+        {"urls": "stun:stun1.l.google.com:19302"},
+        {"urls": "stun:stun2.l.google.com:19302"},
+    ]
+    turn_url = (os.environ.get("RTC_TURN_URL") or "").strip()
+    turn_user = (os.environ.get("RTC_TURN_USERNAME") or "").strip()
+    turn_cred = (os.environ.get("RTC_TURN_CREDENTIAL") or "").strip()
+    if turn_url and turn_user and turn_cred:
+        servers.append(
+            {
+                "urls": turn_url,
+                "username": turn_user,
+                "credential": turn_cred,
+            }
+        )
+    return servers
+
+
+ICE_SERVERS = build_ice_servers()
 
 
 def register_call_room(room_id: str, caller_id: int, callee_id: int) -> None:

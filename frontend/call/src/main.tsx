@@ -5,9 +5,6 @@ import "./call.css";
 
 const rootEl = document.getElementById("root");
 if (rootEl) {
-  createRoot(rootEl).render(
-    <React.StrictMode>
-      <CallRoom />
-    </React.StrictMode>
-  );
+  // Без StrictMode: двойной mount в dev рвёт Socket.IO и RTCPeerConnection.
+  createRoot(rootEl).render(<CallRoom />);
 }
