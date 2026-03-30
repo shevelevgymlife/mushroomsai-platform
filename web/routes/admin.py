@@ -10,7 +10,8 @@ from fastapi import APIRouter, Request, Form, UploadFile, File, Query
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from web.templates_utils import Jinja2Templates
 from config import settings
-from services.subscription_service import PLANS, record_subscription_event
+from services.subscription_service import PLANS, record_subscription_event, format_admin_subscription_assigned_message
+from services.system_support_delivery import deliver_system_support_notification
 from services.shop_catalog import extra_image_lines_from_json, extra_image_urls_from_text
 from auth.session import get_user_from_request
 from auth.blocked_identities import block_identities_for_user, unblock_identities_for_user
@@ -21,7 +22,6 @@ from db.models import (
     users, messages, leads, products, orders, posts,
     page_views, ai_settings, subscriptions, knowledge_base,
     shop_products, feedback, admin_permissions, product_reviews,
-    direct_messages,
     community_posts, community_comments, community_likes, community_saved, community_folders,
     homepage_blocks, dashboard_blocks, user_block_overrides,
     ai_training_posts, ai_training_folders,
@@ -581,63 +581,18 @@ async def set_user_role(request: Request, user_id: int = Form(...), role: str = 
 
     await database.execute(users.update().where(users.c.id == user_id).values(role=role))
 
-    # Уведомление пользователю о смене роли: в ЛС соцсети + в Telegram
     notify_uid = int(target.get("primary_user_id") or user_id)
-    notify_tg_id = None
-    try:
-        notify_user_row = await database.fetch_one(users.select().where(users.c.id == notify_uid))
-        if notify_user_row:
-            notify_tg_id = notify_user_row.get("tg_id") or notify_user_row.get("linked_tg_id")
-        if not notify_tg_id:
-            fam = await database.fetch_one(
-                users.select()
-                .where(users.c.primary_user_id == notify_uid)
-                .where(
-                    sqlalchemy.or_(
-                        users.c.tg_id.is_not(None),
-                        users.c.linked_tg_id.is_not(None),
-                    )
-                )
-                .order_by(users.c.id.asc())
-            )
-            if fam:
-                notify_tg_id = fam.get("tg_id") or fam.get("linked_tg_id")
-    except Exception:
-        logger.exception("Failed to resolve telegram recipient for role change user_id=%s", user_id)
-
     role_label = "Администратор" if role == "admin" else ("Модератор" if role == "moderator" else "Пользователь")
     site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
-    dm_text = (
-        "Системные оповещения\n\n"
-        f"Вам назначена роль: {role_label}.\n"
-        "Доступ в админке/модерации обновлен.\n\n"
-        f"Открыть приложение в Telegram: {site}"
-    )
-    tg_text = (
-        "Системные оповещения\n\n"
+    role_body = (
         f"Вам назначена роль: {role_label}.\n"
         "Доступ в админке/модерации обновлен.\n\n"
         f"Открыть приложение: {site}"
     )
-    sender_id = admin.get("primary_user_id") or admin.get("id")
     try:
-        await database.execute(
-            direct_messages.insert().values(
-                sender_id=sender_id,
-                recipient_id=notify_uid,
-                text=dm_text,
-                is_read=False,
-                is_system=True,
-            )
-        )
+        await deliver_system_support_notification(recipient_user_id=notify_uid, body_plain=role_body)
     except Exception:
-        logger.exception("Failed to store role change notification for user_id=%s", user_id)
-    try:
-        if notify_tg_id:
-            from services.notify_user_stub import notify_user
-            await notify_user(int(notify_tg_id), tg_text)
-    except Exception:
-        logger.exception("Failed to send role change telegram notification for user_id=%s", user_id)
+        logger.exception("Failed to deliver role change notification for user_id=%s", user_id)
 
     return JSONResponse({"ok": True, "user_id": user_id, "role": role})
 
@@ -724,27 +679,6 @@ async def set_user_permissions(request: Request, user_id: int):
         )
 
     notify_uid = int(target.get("primary_user_id") or user_id)
-    notify_tg_id = None
-    try:
-        notify_user_row = await database.fetch_one(users.select().where(users.c.id == notify_uid))
-        if notify_user_row:
-            notify_tg_id = notify_user_row.get("tg_id") or notify_user_row.get("linked_tg_id")
-        if not notify_tg_id:
-            fam = await database.fetch_one(
-                users.select()
-                .where(users.c.primary_user_id == notify_uid)
-                .where(
-                    sqlalchemy.or_(
-                        users.c.tg_id.is_not(None),
-                        users.c.linked_tg_id.is_not(None),
-                    )
-                )
-                .order_by(users.c.id.asc())
-            )
-            if fam:
-                notify_tg_id = fam.get("tg_id") or fam.get("linked_tg_id")
-    except Exception:
-        logger.exception("Failed to resolve telegram recipient for user_id=%s", user_id)
 
     added = [k for k in PERM_KEYS if perms.get(k) and not prev_perms.get(k)]
     removed = [k for k in PERM_KEYS if prev_perms.get(k) and not perms.get(k)]
@@ -762,41 +696,17 @@ async def set_user_permissions(request: Request, user_id: int):
 
         added_text = ", ".join(_label(k) for k in added) if added else "—"
         removed_text = ", ".join(_label(k) for k in removed) if removed else "—"
-        dm_text = (
-            "Системные оповещения\n\n"
-            "Ваши права доступа обновлены.\n"
-            f"Добавлено: {added_text}\n"
-            f"Удалено: {removed_text}\n"
-            f"Роль в приложении: {role_label}.\n\n"
-            f"Открыть приложение в Telegram: {site}"
-        )
-        tg_text = (
-            "Системные оповещения\n\n"
+        perm_body = (
             "Ваши права доступа обновлены.\n"
             f"Добавлено: {added_text}\n"
             f"Удалено: {removed_text}\n"
             f"Роль в приложении: {role_label}.\n\n"
             f"Открыть приложение: {site}"
         )
-        sender_id = admin.get("primary_user_id") or admin.get("id")
         try:
-            await database.execute(
-                direct_messages.insert().values(
-                    sender_id=sender_id,
-                    recipient_id=notify_uid,
-                    text=dm_text,
-                    is_read=False,
-                    is_system=True,
-                )
-            )
+            await deliver_system_support_notification(recipient_user_id=notify_uid, body_plain=perm_body)
         except Exception:
-            logger.exception("Failed to store permissions change notification for user_id=%s", user_id)
-        try:
-            if notify_tg_id:
-                from services.notify_user_stub import notify_user
-                await notify_user(int(notify_tg_id), tg_text)
-        except Exception:
-            logger.exception("Failed to send permissions change telegram notification for user_id=%s", user_id)
+            logger.exception("Failed to deliver permissions change notification for user_id=%s", user_id)
 
     return JSONResponse({"ok": True, "permissions": perms})
 
@@ -843,18 +753,22 @@ async def change_subscription(request: Request, user_id: int, plan: str = Form(.
     if plan not in ("free", "start", "pro", "maxi"):
         return JSONResponse({"error": "invalid plan"}, status_code=400)
 
-    sub_end_str: str = None
+    sub_end_str = None
+    sub_unlimited = False
     try:
         form = await request.form()
         sub_end_str = form.get("subscription_end")
+        sub_unlimited = str(form.get("subscription_unlimited") or "").strip().lower() in ("1", "true", "on", "yes")
     except Exception:
         pass
 
     if plan == "free":
         end_date = None
+    elif sub_unlimited:
+        end_date = None
     elif sub_end_str:
         try:
-            end_date = datetime.strptime(sub_end_str, "%Y-%m-%d")
+            end_date = datetime.strptime(str(sub_end_str), "%Y-%m-%d")
         except ValueError:
             end_date = datetime.utcnow() + timedelta(days=30)
     else:
@@ -881,6 +795,17 @@ async def change_subscription(request: Request, user_id: int, plan: str = Form(.
             end_date,
             None,
         )
+    try:
+        tgt = await database.fetch_one(users.select().where(users.c.id == user_id))
+        notify_uid = int(tgt.get("primary_user_id") or user_id) if tgt else user_id
+        notice = format_admin_subscription_assigned_message(
+            plan,
+            end_date,
+            unlimited=bool(granted and sub_unlimited and plan != "free"),
+        )
+        await deliver_system_support_notification(recipient_user_id=notify_uid, body_plain=notice)
+    except Exception:
+        logger.exception("subscription admin notify failed user_id=%s", user_id)
     return JSONResponse({"ok": True, "plan": plan})
 
 
@@ -895,13 +820,16 @@ async def patch_user_plan(request: Request, user_id: int):
         return JSONResponse({"error": "invalid json"}, status_code=400)
     plan = body.get("plan")
     plan_expires_at = body.get("plan_expires_at")
+    sub_unlimited = bool(body.get("subscription_unlimited"))
     if plan not in ("free", "start", "pro", "maxi"):
         return JSONResponse({"error": "invalid plan"}, status_code=400)
     if plan == "free":
         end_date = None
+    elif sub_unlimited:
+        end_date = None
     elif plan_expires_at:
         try:
-            end_date = datetime.strptime(plan_expires_at, "%Y-%m-%d")
+            end_date = datetime.strptime(str(plan_expires_at), "%Y-%m-%d")
         except ValueError:
             end_date = datetime.utcnow() + timedelta(days=30)
     else:
@@ -927,6 +855,17 @@ async def patch_user_plan(request: Request, user_id: int):
             end_date,
             None,
         )
+    try:
+        tgt = await database.fetch_one(users.select().where(users.c.id == user_id))
+        notify_uid = int(tgt.get("primary_user_id") or user_id) if tgt else user_id
+        notice = format_admin_subscription_assigned_message(
+            plan,
+            end_date,
+            unlimited=bool(granted and sub_unlimited and plan != "free"),
+        )
+        await deliver_system_support_notification(recipient_user_id=notify_uid, body_plain=notice)
+    except Exception:
+        logger.exception("subscription admin notify (patch) failed user_id=%s", user_id)
     return JSONResponse({"ok": True, "plan": plan})
 
 

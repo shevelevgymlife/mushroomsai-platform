@@ -218,11 +218,17 @@
       </label>
       {% endfor %}
     </div>
+    <div class="mb-3">
+      <label class="flex items-center gap-2.5 p-3 rounded-xl border border-border cursor-pointer hover:border-gold/40">
+        <input type="checkbox" id="subUnlimited" class="accent-gold w-4 h-4" />
+        <span class="text-sm text-text">Бессрочная подписка (без даты окончания)</span>
+      </label>
+    </div>
     <div class="mb-4">
       <label class="block text-xs text-muted mb-1.5">Дата окончания подписки</label>
       <input type="date" id="subEndDate"
         class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60 transition-colors" />
-      <p class="text-xs text-muted mt-1">Оставьте пустым — автоматически 30 дней</p>
+      <p class="text-xs text-muted mt-1">Если не бессрочно: укажите дату или оставьте пустым — будет назначено <strong>30 дней</strong> с момента выдачи (UTC).</p>
     </div>
     <div id="subError" class="hidden mb-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs"></div>
     <div class="flex gap-3">
@@ -367,10 +373,21 @@ function openSubModal(userId, userName, currentPlan) {
   currentUserId = userId;
   document.getElementById('subUserName').textContent = userName || 'ID ' + userId;
   document.querySelectorAll('input[name="plan"]').forEach(r => { r.checked = r.value === currentPlan; });
-  document.getElementById('subEndDate').value = '';
+  var su = document.getElementById('subUnlimited');
+  var sd = document.getElementById('subEndDate');
+  if (su) su.checked = false;
+  if (sd) { sd.value = ''; sd.disabled = false; }
   document.getElementById('subError').classList.add('hidden');
   document.getElementById('subModal').classList.remove('hidden');
 }
+(function bindSubUnlimited(){
+  var su = document.getElementById('subUnlimited');
+  var sd = document.getElementById('subEndDate');
+  if (su && sd) su.addEventListener('change', function(){
+    sd.disabled = su.checked;
+    if (su.checked) sd.value = '';
+  });
+})();
 
 async function saveSubscription() {
   const plan = document.querySelector('input[name="plan"]:checked')?.value;
@@ -380,8 +397,12 @@ async function saveSubscription() {
   try {
     const fd = new FormData();
     fd.append('plan', plan);
-    const endDate = document.getElementById('subEndDate').value;
-    if (endDate) fd.append('subscription_end', endDate);
+    const unf = document.getElementById('subUnlimited') && document.getElementById('subUnlimited').checked;
+    if (unf) fd.append('subscription_unlimited', '1');
+    else {
+      const endDate = document.getElementById('subEndDate').value;
+      if (endDate) fd.append('subscription_end', endDate);
+    }
     const resp = await fetch('/admin/users/' + currentUserId + '/subscription', {method: 'POST', body: fd});
     const data = await resp.json();
     if (data.ok) { document.getElementById('subModal').classList.add('hidden'); window.location.reload(); }

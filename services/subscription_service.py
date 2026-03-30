@@ -16,6 +16,25 @@ PLANS = {
 START_TRIAL_DAYS = 3
 
 
+def format_admin_subscription_assigned_message(
+    plan_key: str, end_date: datetime | None, *, unlimited: bool
+) -> str:
+    """Текст уведомления пользователю о назначении/смене тарифа из админки."""
+    pk = (plan_key or "free").lower()
+    if pk == "free":
+        return (
+            "Ваш тариф изменён на «Бесплатный». Расширенные функции недоступны до оформления подписки."
+        )
+    meta = PLANS.get(pk) or PLANS["start"]
+    pname = meta["name"]
+    if unlimited:
+        return f"Вам назначен тариф «{pname}» без срока окончания (бессрочно)."
+    if end_date:
+        d = end_date.strftime("%d.%m.%Y")
+        return f"Вам назначен тариф «{pname}». Действует до {d} (дата окончания, UTC)."
+    return f"Вам назначен тариф «{pname}»."
+
+
 async def record_subscription_event(
     subject_user_id: int,
     kind: str,
@@ -261,23 +280,28 @@ async def check_subscription(user_id: int) -> str:
     now = datetime.utcnow()
     sub_end = row.get("subscription_end")
     stored_plan = (row.get("subscription_plan") or "free").lower()
+    admin_granted = bool(row.get("subscription_admin_granted"))
 
-    # Активная оплата
-    if sub_end and sub_end > now and stored_plan in ("start", "pro", "maxi"):
-        return stored_plan
+    # Активная оплата / назначение админом
+    if stored_plan in ("start", "pro", "maxi"):
+        if sub_end and sub_end > now:
+            return stored_plan
+        if admin_granted and sub_end is None:
+            return stored_plan
 
-    # Просроченная оплата → free в БД
+    # Просроченная оплата → free в БД (бессрочная выдача админом: subscription_end IS NULL)
     if stored_plan != "free" and (not sub_end or sub_end <= now):
-        await database.execute(
-            users.update()
-            .where(users.c.id == user_id)
-            .values(
-                subscription_plan="free",
-                subscription_end=None,
-                subscription_admin_granted=False,
+        if not (admin_granted and sub_end is None):
+            await database.execute(
+                users.update()
+                .where(users.c.id == user_id)
+                .values(
+                    subscription_plan="free",
+                    subscription_end=None,
+                    subscription_admin_granted=False,
+                )
             )
-        )
-        row = await database.fetch_one(users.select().where(users.c.id == user_id)) or row
+            row = await database.fetch_one(users.select().where(users.c.id == user_id)) or row
 
     # Пробный «Старт»
     trial_until = row.get("start_trial_until")

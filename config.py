@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     TRAINING_BOT_APPROVER_TG_IDS: str = ""
     # Email владельца (полный доступ в админку + sync role=admin). В Render можно переопределить env.
     ADMIN_EMAIL: str = "shevelevgymlife@gmail.com"
+    # users.id аккаунта «техподдержка» для системных ЛС; 0 — взять по ADMIN_EMAIL или первого admin
+    TECH_SUPPORT_USER_ID: int = 0
     DEPLOY_NOTIFY_EMAIL_TO: str = ""  # куда слать уведомление о деплое
     DEPLOY_NOTIFY_EMAIL_FROM: str = ""  # от кого слать (если пусто, используем SMTP_USER)
     DEPLOY_NOTIFY_TASK_EMAIL_TO: str = ""  # email для статусов задач (если пусто = DEPLOY_NOTIFY_EMAIL_TO)

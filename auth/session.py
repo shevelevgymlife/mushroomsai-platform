@@ -73,12 +73,13 @@ async def attach_subscription_effective(u: dict) -> None:
     u["start_trial_active"] = bool(tu and tu > now)
     claimed = row.get("start_trial_claimed_at")
     sp = (row.get("subscription_plan") or "free").lower()
-    paid_active = bool(
-        row.get("subscription_end") and row["subscription_end"] > now and sp in ("start", "pro", "maxi")
+    admin_granted = bool(row.get("subscription_admin_granted"))
+    sub_end = row.get("subscription_end")
+    paid_active = sp in ("start", "pro", "maxi") and (
+        (sub_end and sub_end > now) or (admin_granted and sub_end is None)
     )
     u["can_claim_start_trial"] = role not in ("admin", "moderator") and not claimed and not paid_active
 
-    admin_granted = bool(row.get("subscription_admin_granted"))
     trial_active = bool(tu and tu > now and not paid_active)
 
     # Единая карточка тарифа в бургере (пробный 3 дня не трогаем в БД — только отображение)
@@ -97,7 +98,15 @@ async def attach_subscription_effective(u: dict) -> None:
         kind = "staff"
     elif paid_active and admin_granted:
         head = f"Подписка «{_plan_display_name(sp)}»"
-        sub = "Назначена администратором · срок в меню не отображается"
+        if sub_end is None:
+            sub = "Бессрочно · назначено администратором"
+            show_cd = False
+            until_iso = None
+        else:
+            sub = "Назначено администратором · остаток до окончания периода"
+            se_utc = sub_end.replace(tzinfo=timezone.utc) if sub_end.tzinfo is None else sub_end.astimezone(timezone.utc)
+            until_iso = se_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
+            show_cd = bool(until_iso)
         kind = "paid_admin"
     elif paid_active:
         head = f"Подписка «{_plan_display_name(sp)}»"
