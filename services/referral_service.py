@@ -119,6 +119,43 @@ async def ensure_user_referral_code(user_id: int) -> str:
     return code.upper()
 
 
+def default_social_app_entry_url() -> str:
+    """Общая ссылка входа (бот или /app) без реферального кода."""
+    from config import settings
+
+    bot_u = (settings.TELEGRAM_BOT_USERNAME or "").strip().lstrip("@")
+    site = (settings.SITE_URL or "https://mushroomsai.ru").rstrip("/")
+    if bot_u:
+        return f"https://t.me/{bot_u}"
+    return f"{site}/app"
+
+
+async def social_app_entry_url_for_channel_owner(user_id: int) -> str:
+    """
+    URL кнопки «войти в соцсеть» под постами канала владельца user_id.
+    Если у владельца задана реферальная ссылка магазина (referral_shop_url), в ссылку
+    добавляется его referral_code — как на странице /referral (бот ?start= или /login?ref=).
+    """
+    from config import settings
+
+    row = await database.fetch_one(users.select().where(users.c.id == int(user_id)))
+    if not row:
+        return default_social_app_entry_url()
+
+    if not (row.get("referral_shop_url") or "").strip():
+        return default_social_app_entry_url()
+
+    code = await ensure_user_referral_code(int(user_id))
+    if not code:
+        return default_social_app_entry_url()
+
+    bot_u = (settings.TELEGRAM_BOT_USERNAME or "").strip().lstrip("@")
+    site = (settings.SITE_URL or "").strip().rstrip("/") or "https://mushroomsai.ru"
+    if bot_u:
+        return f"https://t.me/{bot_u}?start={code}"
+    return f"{site}/login?ref={code}"
+
+
 async def get_referral_stats(user_id: int) -> dict:
     refs = await database.fetch_all(
         referrals.select().where(referrals.c.referrer_id == user_id)

@@ -18,6 +18,7 @@ from db.database import database
 from db.models import users
 from services.channel_ingest_save_image import save_channel_ingest_image
 from services.community_post_publish import publish_community_post
+from services.referral_service import social_app_entry_url_for_channel_owner
 from services.telegram_file_download import download_telegram_file_bytes
 
 logger = logging.getLogger(__name__)
@@ -82,8 +83,8 @@ def _social_button_choice_markup() -> InlineKeyboardMarkup:
     )
 
 
-async def _attach_social_button_to_post(bot, channel_chat_id: int, message_id: int) -> None:
-    url = _social_network_entry_url()
+async def _attach_social_button_to_post(bot, channel_chat_id: int, message_id: int, channel_owner_id: int) -> None:
+    url = await social_app_entry_url_for_channel_owner(int(channel_owner_id))
     try:
         await bot.edit_message_reply_markup(
             chat_id=channel_chat_id,
@@ -134,14 +135,6 @@ def _set_pending(
 
 def _pop_pending(context: ContextTypes.DEFAULT_TYPE, tg_uid: int) -> dict | None:
     return _pending_map(context).pop(int(tg_uid), None)
-
-
-def _social_network_entry_url() -> str:
-    bot_u = (settings.TELEGRAM_BOT_USERNAME or "").strip().lstrip("@")
-    site = (settings.SITE_URL or "https://mushroomsai.ru").rstrip("/")
-    if bot_u:
-        return f"https://t.me/{bot_u}"
-    return f"{site}/app"
 
 
 async def _verify_bot_can_edit_channel_messages(bot, channel_chat_id: int) -> bool:
@@ -628,7 +621,9 @@ async def on_channel_post(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         return
 
     if link.get("channel_social_button_enabled"):
-        await _attach_social_button_to_post(context.bot, chat_id, int(post.message_id))
+        await _attach_social_button_to_post(
+            context.bot, chat_id, int(post.message_id), int(link["user_id"])
+        )
 
     if not link.get("autopost_enabled"):
         return
