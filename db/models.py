@@ -42,6 +42,7 @@ users = sqlalchemy.Table(
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
     sqlalchemy.Column("needs_tariff_choice", sqlalchemy.Boolean, default=False, server_default="false"),
     sqlalchemy.Column("marketplace_seller", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column("referral_shop_url", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("referral_balance", sqlalchemy.Numeric(12, 2), default=0, server_default="0"),
     sqlalchemy.Column("last_seen_at", sqlalchemy.DateTime, nullable=True),
     sqlalchemy.Column("decimal_del_balance", sqlalchemy.Text, nullable=True),

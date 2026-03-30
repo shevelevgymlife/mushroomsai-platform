@@ -6,6 +6,9 @@ import sqlalchemy as sa
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
 from telegram.ext import ContextTypes
 
+from bot.handlers.start import main_keyboard as _main_kb
+from bot.handlers.channel_autopost import main_keyboard_with_autopost as _main_kb_autopost
+
 from config import settings
 from db.database import database
 from db.models import admin_permissions, messages, users
@@ -29,6 +32,16 @@ async def _get_user_by_tg_id(tg_id: int):
     return await database.fetch_one(
         users.select().where(sa.or_(users.c.tg_id == tg_id, users.c.linked_tg_id == tg_id))
     )
+
+
+async def _standard_reply_kb(update: Update, site: str, ai_active: bool):
+    tg_user = update.effective_user
+    if not tg_user:
+        return _main_kb(site, ai_active=ai_active)
+    row = await _get_user_by_tg_id(tg_user.id)
+    if row:
+        return await _main_kb_autopost(site, ai_active, int(row["id"]))
+    return _main_kb(site, ai_active=ai_active)
 
 
 async def _has_unlimited_flag(user_id: int) -> bool:
@@ -75,8 +88,8 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         BTN_AI_EXIT,
         BTN_COMMUNITY_POST,
         BTN_CONNECT_CHANNEL,
-        main_keyboard,
     )
+    from services.referral_shop_prefs import TG_BTN_SHOP_MARKETPLACE, TG_BTN_SHOP_SIMPLE
     from bot.handlers.channel_autopost import (
         BTN_AUTOPOST_DISABLE,
         BTN_AUTOPOST_ENABLE,
@@ -96,6 +109,8 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         BTN_AUTOPOST_ENABLE,
         BTN_CH_SOC_ON,
         BTN_CH_SOC_OFF,
+        TG_BTN_SHOP_MARKETPLACE,
+        TG_BTN_SHOP_SIMPLE,
     ):
         return
 
@@ -104,12 +119,13 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     if not context.user_data.get("tg_ai_mode"):
+        kb = await _standard_reply_kb(update, site, False)
         await update.message.reply_text(
             "💬 <b>Нейросеть не подключена.</b>\n\n"
             "Чтобы задать вопрос AI, нажмите кнопку «🤖 Задать вопрос AI» внизу экрана.\n\n"
             "Обычные сообщения в этот чат не отправляются в нейросеть.",
             parse_mode="HTML",
-            reply_markup=main_keyboard(site, ai_active=False),
+            reply_markup=kb,
         )
         return
 
@@ -156,7 +172,7 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         logger.warning("AI chat error: %s", e)
         await update.message.reply_text(
             "Произошла ошибка. Попробуйте позже.",
-            reply_markup=main_keyboard(site, ai_active=True),
+            reply_markup=await _standard_reply_kb(update, site, True),
         )
         return
 
@@ -186,7 +202,7 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             await update.message.reply_text(
                 "⏳ Суточный лимит исчерпан. Режим AI отключён — кнопки бота снова только меню.\n\n"
                 "Безлимит — подписка «Старт» в приложении.",
-                reply_markup=main_keyboard(site, ai_active=False),
+                reply_markup=await _standard_reply_kb(update, site, False),
                 parse_mode="HTML",
             )
             await update.message.reply_text(
@@ -224,24 +240,22 @@ async def tg_ai_exit_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
     context.user_data["tg_ai_mode"] = False
     await q.answer("Вы вышли из режима AI.")
-    from bot.handlers.start import main_keyboard
 
     site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
     await q.message.reply_text(
         "Вы вышли из режима AI. Обычные кнопки бота снова активны.",
-        reply_markup=main_keyboard(site, ai_active=False),
+        reply_markup=await _standard_reply_kb(update, site, False),
     )
 
 
 async def _send_limit_reached(update: Update, context: ContextTypes.DEFAULT_TYPE, site: str) -> None:
     context.user_data["tg_ai_mode"] = False
-    from bot.handlers.start import main_keyboard
 
     await update.message.reply_text(
         "💬 Вы использовали все 5 бесплатных вопросов на сегодня.\n\n"
         "Режим AI отключён. Кнопки бота работают как обычно.\n\n"
         "Безлимит — подписка «Старт» в приложении.",
-        reply_markup=main_keyboard(site, ai_active=False),
+        reply_markup=await _standard_reply_kb(update, site, False),
         parse_mode="HTML",
     )
     await update.message.reply_text(

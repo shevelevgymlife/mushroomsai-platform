@@ -45,6 +45,9 @@ async def get_current_user(token: str) -> Optional[dict]:
     await sync_owner_admin_role(u)
     attach_screen_rim_prefs(u)
     await attach_subscription_effective(u)
+    from services.referral_shop_prefs import attach_referral_shop_context
+
+    await attach_referral_shop_context(u)
     return u
 
 

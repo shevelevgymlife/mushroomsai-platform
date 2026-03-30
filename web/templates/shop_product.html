@@ -122,8 +122,8 @@
           {% elif user and product.in_stock != false %}
           <p class="text-xs text-muted text-center">Цена по запросу — оформите через менеджера или внешнюю ссылку.</p>
           {% endif %}
-          {% if product.url %}
-          <a href="{{ product.url }}" target="_blank" rel="noopener"
+          {% if product_buy_url %}
+          <a href="{{ product_buy_url }}" target="_blank" rel="noopener"
              class="flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gold text-bg font-semibold hover:bg-gold-light transition-all duration-300">
             Купить (внешняя ссылка)
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

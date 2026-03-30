@@ -49,6 +49,7 @@ from services.referral_service import (
     get_referrer_invites_detailed,
     request_referral_withdrawal,
 )
+from services.referral_shop_prefs import external_buy_url_for_user
 from services.ops_alerts import (
     notify_new_feedback,
     notify_new_order,
@@ -468,6 +469,11 @@ async def product_page(request: Request, product_id: int):
 
     gallery_images = product_gallery_urls(dict(product))
 
+    ext_buy = await external_buy_url_for_user(current_user)
+    pd = dict(product)
+    default_pu = (pd.get("url") or "").strip() or None
+    product_buy_url = ext_buy or default_pu
+
     return templates.TemplateResponse(
         "shop_product.html",
         {
@@ -485,6 +491,7 @@ async def product_page(request: Request, product_id: int):
             "product_user_liked": user_liked,
             "shop_comments": shop_comments,
             "shevelev_token": shevelev_token_address(),
+            "product_buy_url": product_buy_url,
         },
     )
 

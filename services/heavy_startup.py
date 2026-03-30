@@ -542,6 +542,15 @@ async def run_heavy_startup(app: FastAPI) -> None:
         except Exception as e:
             logger.warning("migrate_v19 dm blocks: %s", e)
 
+        try:
+            import migrate_v21_referral_shop_url as migrate_v21
+
+            for s in migrate_v21.STEPS:
+                await database.execute(sa.text(s))
+            logger.info("referral_shop_url column (migrate_v21) OK")
+        except Exception as e:
+            logger.warning("migrate_v21 referral_shop_url: %s", e)
+
         start_scheduler()
         app.state.startup_complete = True
         logger.info("Heavy startup complete; full traffic enabled")

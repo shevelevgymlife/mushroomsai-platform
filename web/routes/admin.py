@@ -87,6 +87,19 @@ PERM_LABELS = {
 PERMISSION_ITEMS = [(k, PERM_LABELS.get(k, k)) for k in PERM_KEYS]
 
 
+def _normalize_referral_shop_url(raw: Optional[str]) -> Optional[str]:
+    """Пустая строка → None; иначе только http(s), разумная длина."""
+    s = (raw or "").strip()
+    if not s:
+        return None
+    if len(s) > 2048:
+        raise ValueError("Слишком длинная ссылка")
+    low = s.lower()
+    if not (low.startswith("http://") or low.startswith("https://")):
+        raise ValueError("Укажите ссылку с http:// или https://")
+    return s
+
+
 def _parse_form_price(raw: Optional[str]) -> Optional[int]:
     """Пустое поле цены и нечисловой ввод не должны ломать сохранение товара (422)."""
     if raw is None:
@@ -610,6 +623,24 @@ async def set_marketplace_seller_flag(request: Request, user_id: int, enabled: s
         users.update().where(users.c.id == user_id).values(marketplace_seller=flag)
     )
     return JSONResponse({"ok": True, "user_id": user_id, "marketplace_seller": flag})
+
+
+@router.post("/users/{user_id}/referral-shop-url")
+async def set_user_referral_shop_url(request: Request, user_id: int, url: str = Form("")):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return JSONResponse({"ok": False, "error": "forbidden"}, status_code=403)
+    target = await database.fetch_one(users.select().where(users.c.id == user_id))
+    if not target:
+        return JSONResponse({"ok": False, "error": "not found"}, status_code=404)
+    try:
+        normalized = _normalize_referral_shop_url(url)
+    except ValueError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+    await database.execute(
+        users.update().where(users.c.id == user_id).values(referral_shop_url=normalized)
+    )
+    return JSONResponse({"ok": True, "user_id": user_id, "referral_shop_url": normalized})
 
 
 @router.get("/users/{user_id}/permissions")

@@ -60,6 +60,7 @@
           <button type="button" onclick="closeAllActs();openMsgModal({{ u.id }}, '{{ u.name | e }}', '{{ u.display_tg_id or '' }}', {{ 'true' if u.is_online else 'false' }})" class="w-full text-left px-3 py-2.5 text-sm text-text hover:bg-border/20">✉️ Сообщение пользователю</button>
           <button type="button" onclick="closeAllActs();openSubModal({{ u.id }}, '{{ u.name | e }}', '{{ u.subscription_plan }}')" class="w-full text-left px-3 py-2.5 text-sm text-text hover:bg-border/20">⭐ Подписка</button>
           <button type="button" onclick="closeAllActs();toggleMarketplaceSeller({{ u.id }}, {{ 'true' if u.marketplace_seller else 'false' }})" class="w-full text-left px-3 py-2.5 text-sm text-text hover:bg-border/20">🏪 Продавец маркетплейса</button>
+          <button type="button" onclick="closeAllActs();openReferralShopModal({{ u.id }}, {{ (u.name or '')|tojson }}, {{ (u.referral_shop_url or '')|tojson }})" class="w-full text-left px-3 py-2.5 text-sm text-text hover:bg-border/20">🔗 Реферальная ссылка магазина</button>
           {% if viewer_is_platform_owner %}
           <button type="button" onclick="closeAllActs();openPermModal({{ u.id }}, '{{ u.name | e }}')" class="w-full text-left px-3 py-2.5 text-sm text-gold hover:bg-border/20">🔑 Права доступа</button>
           <button type="button" onclick="closeAllActs();openRoleModal({{ u.id }}, '{{ u.name | e }}', '{{ u.role }}')" class="w-full text-left px-3 py-2.5 text-sm text-text hover:bg-border/20">👤 Роль</button>
@@ -167,6 +168,7 @@
                     <button onclick="closeAllActs();openMsgModal({{ u.id }}, '{{ u.name | e }}', '{{ u.display_tg_id or '' }}', {{ 'true' if u.is_online else 'false' }})" style="display:block;width:100%;text-align:left;padding:10px 16px;font-size:13px;color:#aaa;background:none;border:none;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='none'">✉️ Сообщение пользователю</button>
                     <button onclick="closeAllActs();openSubModal({{ u.id }}, '{{ u.name | e }}', '{{ u.subscription_plan }}')" style="display:block;width:100%;text-align:left;padding:10px 16px;font-size:13px;color:#aaa;background:none;border:none;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='none'">⭐ Управление подпиской</button>
                     <button onclick="closeAllActs();toggleMarketplaceSeller({{ u.id }}, {{ 'true' if u.marketplace_seller else 'false' }})" style="display:block;width:100%;text-align:left;padding:10px 16px;font-size:13px;color:#aaa;background:none;border:none;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='none'">🏪 Продавец маркетплейса (Макси)</button>
+                    <button onclick="closeAllActs();openReferralShopModal({{ u.id }}, {{ (u.name or '')|tojson }}, {{ (u.referral_shop_url or '')|tojson }})" style="display:block;width:100%;text-align:left;padding:10px 16px;font-size:13px;color:#aaa;background:none;border:none;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='none'">🔗 Реферальная ссылка магазина</button>
                     {% if viewer_is_platform_owner %}
                     <button onclick="closeAllActs();openPermModal({{ u.id }}, '{{ u.name | e }}')" style="display:block;width:100%;text-align:left;padding:10px 16px;font-size:13px;color:#3dd4e0;background:none;border:none;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='none'">🔑 Права доступа</button>
                     <button onclick="closeAllActs();openRoleModal({{ u.id }}, '{{ u.name | e }}', '{{ u.role }}')" style="display:block;width:100%;text-align:left;padding:10px 16px;font-size:13px;color:#aaa;background:none;border:none;cursor:pointer;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='none'">👤 Изменить роль</button>
@@ -309,6 +311,33 @@
   </div>
 </div>
 
+<!-- Реферальная ссылка внешнего магазина (для приглашённых этим пользователем) -->
+<div id="refShopModal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+  <div class="bg-surface border border-border rounded-2xl w-full max-w-md p-6">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h2 class="font-semibold text-text">Реферальная ссылка магазина</h2>
+        <p class="text-xs text-muted mt-1">Пользователь: <span id="refShopUserName" class="text-text"></span></p>
+        <p class="text-[11px] text-muted mt-2 leading-relaxed">Все, кто зарегистрируется по реферальному коду этого участника, увидят эту ссылку в кнопке «Купить» в каталоге и в боте под «Магазин» (без акцента «маркетплейс» в подписи кнопки).</p>
+      </div>
+      <button type="button" onclick="closeReferralShopModal()" class="text-muted hover:text-text text-xl leading-none">×</button>
+    </div>
+    <input type="hidden" id="refShopUserId" value="" />
+    <label class="block text-xs text-muted mb-1">URL стороннего магазина (https://…)</label>
+    <input type="url" id="refShopUrl" placeholder="https://…" inputmode="url"
+      class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-sm text-text placeholder-muted focus:outline-none focus:border-gold mb-3" />
+    <div id="refShopError" class="hidden mb-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs"></div>
+    <div class="flex flex-wrap gap-2">
+      <button type="button" onclick="saveReferralShopUrl()"
+        class="flex-1 min-w-[120px] px-4 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:opacity-95">Сохранить</button>
+      <button type="button" onclick="clearReferralShopUrl()"
+        class="px-4 py-2.5 rounded-xl border border-border text-muted text-sm hover:border-gold hover:text-gold">Очистить</button>
+      <button type="button" onclick="closeReferralShopModal()"
+        class="px-4 py-2.5 rounded-xl border border-border text-muted text-sm hover:border-gold hover:text-gold">Отмена</button>
+    </div>
+  </div>
+</div>
+
 <!-- Message user (cabinet + TG if offline) -->
 <div id="msgModal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
   <div class="bg-surface border border-border rounded-2xl w-full max-w-sm p-6">
@@ -436,6 +465,35 @@ async function saveRole() {
 }
 
 // ── Delete forever ───────────────────────────────────────────────────────────
+function openReferralShopModal(userId, userName, currentUrl) {
+  document.getElementById('refShopUserId').value = String(userId);
+  document.getElementById('refShopUserName').textContent = userName || ('ID ' + userId);
+  document.getElementById('refShopUrl').value = currentUrl || '';
+  document.getElementById('refShopError').classList.add('hidden');
+  document.getElementById('refShopModal').classList.remove('hidden');
+}
+function closeReferralShopModal() {
+  document.getElementById('refShopModal').classList.add('hidden');
+}
+async function saveReferralShopUrl() {
+  const uid = document.getElementById('refShopUserId').value;
+  const url = document.getElementById('refShopUrl').value.trim();
+  const errEl = document.getElementById('refShopError');
+  errEl.classList.add('hidden');
+  try {
+    const fd = new FormData();
+    fd.append('url', url);
+    const resp = await fetch('/admin/users/' + uid + '/referral-shop-url', { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (data.ok) window.location.reload();
+    else { errEl.textContent = data.error || 'Ошибка'; errEl.classList.remove('hidden'); }
+  } catch (e) { errEl.textContent = e.message; errEl.classList.remove('hidden'); }
+}
+async function clearReferralShopUrl() {
+  document.getElementById('refShopUrl').value = '';
+  await saveReferralShopUrl();
+}
+
 async function toggleMarketplaceSeller(userId, currentlyOn) {
   const next = !currentlyOn;
   const msg = next

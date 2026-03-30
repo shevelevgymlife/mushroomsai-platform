@@ -199,8 +199,11 @@ async def autopost_extra_rows(internal_user_id: int) -> list[list[KeyboardButton
 
 
 async def main_keyboard_with_autopost(site_url: str, ai_active: bool, internal_user_id: int):
+    from services.referral_shop_prefs import tg_shop_button_label
+
     extras = await autopost_extra_rows(internal_user_id)
-    return main_keyboard(site_url, ai_active, extra_rows=extras)
+    shop_btn = await tg_shop_button_label(internal_user_id)
+    return main_keyboard(site_url, ai_active, extra_rows=extras, shop_button=shop_btn)
 
 
 async def _save_link(

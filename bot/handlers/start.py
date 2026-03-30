@@ -7,6 +7,7 @@ from telegram.ext import ContextTypes
 from db.database import database
 from db.models import users
 from config import settings
+from services.referral_shop_prefs import TG_BTN_SHOP_MARKETPLACE
 
 BLOCKED_BOT_MSG = (
     "🚫 Доступ к аккаунту ограничен администратором. "
@@ -86,14 +87,20 @@ async def ensure_user_or_blocked_reply(update: Update) -> dict | None:
     return None
 
 
-def main_keyboard(site_url: str, ai_active: bool = False, extra_rows: list | None = None):
+def main_keyboard(
+    site_url: str,
+    ai_active: bool = False,
+    extra_rows: list | None = None,
+    shop_button: str | None = None,
+):
     """Клавиатура главного бота. Режим AI — отдельная строка: вход или выход."""
+    shop_lbl = shop_button or TG_BTN_SHOP_MARKETPLACE
     if ai_active:
         top = [[KeyboardButton(BTN_AI_EXIT)]]
     else:
         top = [[KeyboardButton(BTN_AI)]]
     keyboard = top + [
-        [KeyboardButton("🛍 Маркет плейс"), KeyboardButton("🌐 Сообщество")],
+        [KeyboardButton(shop_lbl), KeyboardButton("🌐 Сообщество")],
         [KeyboardButton(BTN_COMMUNITY_POST)],
         [KeyboardButton(BTN_CONNECT_CHANNEL)],
         [KeyboardButton("🌍 Веб версия"), KeyboardButton("🔒 Безопасность")],

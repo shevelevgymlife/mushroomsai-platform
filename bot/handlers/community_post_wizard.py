@@ -25,6 +25,7 @@ from config import settings
 from services.channel_ingest_save_image import save_channel_ingest_image
 from services.community_post_publish import publish_community_post
 from services.telegram_file_download import download_telegram_file_bytes
+from services.referral_shop_prefs import TG_BTN_SHOP_MARKETPLACE, TG_BTN_SHOP_SIMPLE
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +45,8 @@ _WIZARD_BLOCK_TEXTS = frozenset(
         BTN_AUTOPOST_ENABLE,
         BTN_CH_SOC_ON,
         BTN_CH_SOC_OFF,
-        "🛍 Маркет плейс",
+        TG_BTN_SHOP_MARKETPLACE,
+        TG_BTN_SHOP_SIMPLE,
         "🌐 Сообщество",
         "🌍 Веб версия",
         "🔒 Безопасность",

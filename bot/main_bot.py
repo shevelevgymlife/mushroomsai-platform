@@ -39,28 +39,15 @@ async def _reply_kb(update, context, ai_active: bool):
         return main_keyboard(site, ai_active)
     return await main_keyboard_with_autopost(site, ai_active, int(u["id"]))
 
-# Тексты кнопок клавиатуры
-BTN_SHOP = "🛍 Маркет плейс"
+# Тексты кнопок клавиатуры (два варианта — см. services/referral_shop_prefs)
+from services.referral_shop_prefs import TG_BTN_SHOP_MARKETPLACE, TG_BTN_SHOP_SIMPLE
+
+BTN_SHOP = TG_BTN_SHOP_MARKETPLACE  # обратная совместимость имён
+_SHOP_BUTTONS_RX = "^(" + re.escape(TG_BTN_SHOP_MARKETPLACE) + "|" + re.escape(TG_BTN_SHOP_SIMPLE) + ")$"
 BTN_COMMUNITY = "🌐 Сообщество"
 BTN_WEB = "🌍 Веб версия"
 BTN_SECURITY = "🔒 Безопасность"
 BTN_SUPPORT = "🆘 Тех. поддержка"
-
-
-SHOP_RUS_URL = "https://t.me/neurotrops_rus_bot?start=rHQemtw"
-SHOP_EU_US_URL = "https://grimmurk.com/?aff=Shevelev"
-
-SHOP_MESSAGE_HTML = (
-    "Вот ссылки на магазины, где можно заказать нужные грибы:\n\n"
-    "• Для России и Белоруссии: магазин Сдэк/Почта РФ — "
-    f'<a href="{SHOP_RUS_URL}">открыть в Telegram</a>\n\n'
-    "• Для Европы и Америки: магазин — "
-    f'<a href="{SHOP_EU_US_URL}">Grimmurk</a>\n\n'
-    "🛍 <b>Маркет плейс NEUROFUNGI</b>\n\n"
-    "Доступен только внутри приложения после регистрации и подписки <b>Старт</b>.\n\n"
-    "В маркет плейсе у каждого товара есть описание, комментарии, отзывы и рейтинг.\n\n"
-    "Если будут вопросы по выбору или приёму — нажмите кнопку «Задать вопрос AI» ниже."
-)
 
 
 async def _enable_ai_mode_and_notify(update, context) -> None:
@@ -86,22 +73,19 @@ async def _shop_ask_ai_callback(update, context):
 
 
 async def _shop_handler(update, context):
+    from services.referral_shop_prefs import tg_shop_message_and_buttons
+
     context.user_data["tg_ai_mode"] = False
     site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
-    app_url = site.rstrip("/") + "/app"
+    from bot.handlers.start import ensure_user
+
+    u = await ensure_user(update.effective_user) if update.effective_user else None
+    uid = int(u["id"]) if u else 0
+    text, rows = await tg_shop_message_and_buttons(uid, site)
+    rows = list(rows) + [[InlineKeyboardButton(BTN_AI, callback_data="tg_shop_ask_ai")]]
     await update.message.reply_text(
-        SHOP_MESSAGE_HTML,
-        reply_markup=InlineKeyboardMarkup(
-            [
-                [
-                    InlineKeyboardButton(
-                        "🍄 Приложение: регистрация и маркетплейс",
-                        web_app=WebAppInfo(url=app_url),
-                    )
-                ],
-                [InlineKeyboardButton(BTN_AI, callback_data="tg_shop_ask_ai")],
-            ]
-        ),
+        text,
+        reply_markup=InlineKeyboardMarkup(rows),
         parse_mode="HTML",
         disable_web_page_preview=True,
     )
@@ -210,7 +194,7 @@ def create_bot() -> Application:
     application.add_handler(MessageHandler(filters.Regex(f"^{BTN_AI}$"), _ai_enter_handler))
 
     # Кнопки клавиатуры (сбрасывают режим AI)
-    application.add_handler(MessageHandler(filters.Regex(f"^{BTN_SHOP}$"), _shop_handler))
+    application.add_handler(MessageHandler(filters.Regex(_SHOP_BUTTONS_RX), _shop_handler))
     application.add_handler(MessageHandler(filters.Regex(f"^{BTN_COMMUNITY}$"), _community_handler))
     application.add_handler(MessageHandler(filters.Regex(f"^{BTN_WEB}$"), _web_handler))
     application.add_handler(MessageHandler(filters.Regex(f"^{BTN_SECURITY}$"), _security_handler))
