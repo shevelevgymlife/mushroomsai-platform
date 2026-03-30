@@ -6,6 +6,7 @@ import os
 
 import socketio
 from auth.session import get_current_user
+from db.database import database
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,17 @@ def get_call_room_meta(room_id: str) -> dict[str, int] | None:
     return _call_registry.get(room_id)
 
 
+async def _video_calls_enabled_db() -> bool:
+    try:
+        row = await database.fetch_one(
+            "SELECT value FROM site_settings WHERE key='video_calls_enabled'"
+        )
+        raw = str((row or {}).get("value") or "").strip().lower()
+        return raw not in ("false", "0", "no", "off")
+    except Exception:
+        return True
+
+
 def _parse_cookie_access_token(environ: dict) -> str | None:
     cookie = environ.get("HTTP_COOKIE", "") or ""
     for part in cookie.split(";"):
@@ -91,6 +103,9 @@ async def on_join_room(sid, data):
     room_id = data.get("roomId") or data.get("room_id")
     if not room_id or not isinstance(room_id, str):
         await sio.emit("call_error", {"message": "bad_room"}, to=sid)
+        return
+    if not await _video_calls_enabled_db():
+        await sio.emit("call_error", {"message": "disabled"}, to=sid)
         return
     meta = _call_registry.get(room_id)
     if not meta:

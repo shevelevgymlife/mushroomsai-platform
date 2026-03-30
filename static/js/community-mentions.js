@@ -92,6 +92,7 @@
   };
 
   window.renderCallInviteMessageHtml = function (raw) {
+    if (window.__NF_VIDEO_CALLS__ === false) return null;
     if (!window.isCallInviteMessageText(raw)) return null;
     var s = String(raw || "");
     var hm = s.match(/(https?:\/\/[^\s]+\/call\/[0-9a-f-]{36}|\/call\/[0-9a-f-]{36})/i);

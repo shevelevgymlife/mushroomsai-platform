@@ -45,6 +45,7 @@ ADMIN_SECTIONS = [
     ("База знаний", "/admin/knowledge", "can_knowledge"),
     ("Сообщество", "/admin/community", "can_community"),
     ("Группы / Чаты", "/admin/groups-chats", "can_groups"),
+    ("Видеосвязь", "/admin/video-calls", "can_groups"),
     ("Главная сайта", "/admin/homepage", "can_homepage"),
     ("Блоки кабинета", "/admin/dashboard-blocks", "can_dashboard_blocks"),
     ("Радио Down Tempo", "/admin/radio-downtempo", "can_radio_downtempo"),
@@ -2014,6 +2015,54 @@ async def search_users_api(request: Request, q: str = ""):
         .limit(10)
     )
     return JSONResponse({"users": [{"id": u["id"], "name": u["name"], "email": u["email"]} for u in results]})
+
+
+# ─── Видеосвязь (глобальный переключатель) ───────────────────────────────────
+
+@router.get("/video-calls", response_class=HTMLResponse)
+async def admin_video_calls_page(request: Request):
+    admin = await require_permission(request, "can_groups")
+    if not admin:
+        return RedirectResponse("/login")
+    row = await database.fetch_one(
+        sqlalchemy.text("SELECT value FROM site_settings WHERE key = 'video_calls_enabled'")
+    )
+    raw = str((row or {}).get("value") or "").strip().lower()
+    enabled = raw not in ("false", "0", "no", "off")
+    perms = await get_user_permissions(admin)
+    return templates.TemplateResponse(
+        "dashboard/admin_video_calls.html",
+        {
+            "request": request,
+            "user": admin,
+            "user_permissions": perms,
+            "video_calls_enabled": enabled,
+        },
+    )
+
+
+@router.post("/video-calls")
+async def admin_video_calls_save(request: Request, enabled: Optional[str] = Form(None)):
+    admin = await require_permission(request, "can_groups")
+    if not admin:
+        return RedirectResponse("/login")
+    is_on = enabled in ("1", "on", "true", "yes")
+    val = "true" if is_on else "false"
+    await database.execute(
+        sqlalchemy.text(
+            """
+            INSERT INTO site_settings (key, value, updated_at)
+            VALUES ('video_calls_enabled', :v, NOW())
+            ON CONFLICT (key) DO UPDATE SET value = :v, updated_at = NOW()
+            """
+        ),
+        {"v": val},
+    )
+    import main as _main
+
+    _main._gsettings_cache["ts"] = 0.0
+    _main._gsettings_cache["video_calls_enabled"] = is_on
+    return RedirectResponse("/admin/video-calls?saved=1", status_code=302)
 
 
 # ─── Radio Down Tempo ─────────────────────────────────────────────────────────

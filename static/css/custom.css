@@ -226,3 +226,10 @@ select {
 .nf-call-invite-fallback {
   color: #d1d5db;
 }
+
+/* Глобальное отключение видеосвязи (админка): скрыть кнопки звонка/видео в чатах */
+html[data-nf-video-calls="0"] #chPerCall,
+html[data-nf-video-calls="0"] #chPerVideo,
+html[data-nf-video-calls="0"] #chQuickVideo {
+  display: none !important;
+}

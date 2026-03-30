@@ -33,6 +33,10 @@ def _eff_uid(user: dict) -> int:
     return int(user.get("primary_user_id") or user["id"])
 
 
+def _video_calls_enabled(request: Request) -> bool:
+    return bool(getattr(request.state, "video_calls_enabled", True))
+
+
 class StartCallBody(BaseModel):
     target_user_id: int = Field(..., ge=1)
 
@@ -66,6 +70,8 @@ async def _create_personal_chat_if_needed(uid: int, other_id: int) -> int:
 
 @router.post("/api/rtc/start-call")
 async def api_rtc_start_call(request: Request, body: StartCallBody):
+    if not _video_calls_enabled(request):
+        return JSONResponse({"error": "disabled", "message": "Видеосвязь отключена"}, status_code=403)
     user = await get_user_from_request(request)
     if not user:
         return JSONResponse({"error": "auth"}, status_code=401)
@@ -144,6 +150,8 @@ async def call_room_page(request: Request, room_id: str):
     user = await get_user_from_request(request)
     if not user:
         return RedirectResponse(f"/login?next=/call/{room_id}", status_code=302)
+    if not _video_calls_enabled(request):
+        return Response("Видеосвязь временно отключена администратором.", status_code=403)
     if not _UUID_RE.match(room_id or ""):
         return Response("Некорректная ссылка", status_code=400)
 

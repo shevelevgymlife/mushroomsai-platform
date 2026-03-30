@@ -359,7 +359,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
                 <span id="followBtnText">{% if is_following %}Подписан{% else %}Подписаться{% endif %}</span>
               </button>
               <button type="button" class="btn-message-hero" onclick="openDM()">💬 Сообщение</button>
-              {% if not dm_blocked_by_profile %}
+              {% if video_calls_enabled and not dm_blocked_by_profile %}
               <button type="button" class="btn-message-hero" id="cpVideoCallBtn" onclick="startProfileVideoCall()" title="Видеозвонок">📹 Видеозвонок</button>
               {% endif %}
             </div>

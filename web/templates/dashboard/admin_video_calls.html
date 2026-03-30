@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Видеосвязь — Admin{% endblock %}
+{% block content %}
+<div class="pt-24 pb-16 neo-app-surface">
+  <div class="max-w-3xl mx-auto px-4">
+    {% include "components/admin_nav.html" %}
+
+    <h1 class="text-3xl font-light text-text mb-2">Видеосвязь у пользователей</h1>
+    <p class="text-sm text-muted mb-6 leading-relaxed">
+      Когда выключено: скрываются кнопки «звонок», «видео», «видеочат» в личных чатах и группах, кнопка видеозвонка на страницах профилей в сообществе, карточки приглашений на звонок в переписках.
+      API старта звонка и страница комнаты недоступны. Настройка хранится в базе; код функции не удаляется.
+    </p>
+
+    {% if request.query_params.get('saved') == '1' %}
+    <div class="mb-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-sm text-emerald-200">
+      Сохранено. Изменение подхватит сайт в течение ~30 секунд у уже открытых вкладок (кеш настроек); новые страницы — сразу.
+    </div>
+    {% endif %}
+
+    <form method="post" action="/admin/video-calls" class="p-6 rounded-2xl bg-surface border border-border space-y-6">
+      <div class="flex flex-wrap items-center gap-4">
+        <label class="inline-flex items-center gap-3 cursor-pointer select-none">
+          <input type="checkbox" name="enabled" value="1" class="w-5 h-5 rounded border-border"
+            {% if video_calls_enabled %}checked{% endif %} />
+          <span class="text-text font-medium">Видеосвязь включена</span>
+        </label>
+      </div>
+      <p class="text-xs text-muted leading-relaxed">
+        Снимите галочку и сохраните, чтобы отключить видеозвонки и связанные кнопки для всех пользователей.
+      </p>
+      <button type="submit" class="px-6 py-2.5 rounded-xl text-sm font-semibold border-0 cursor-pointer"
+        style="background:linear-gradient(135deg,#3dd4e0,#2a9daa);color:#070708">
+        Сохранить
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}
