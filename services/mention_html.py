@@ -30,7 +30,8 @@ def _linkify_mentions_escaped(escaped_text: str) -> str:
 
 def _linkify_urls_and_mentions_html(escaped_text: str, links_enabled: bool) -> str:
     if not links_enabled:
-        return _linkify_mentions_escaped(escaped_text)
+        # Полностью отключаем кликабельность: ни URL, ни @mentions.
+        return str(escaped_text)
 
     out: list[str] = []
     last = 0

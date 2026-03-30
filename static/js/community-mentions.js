@@ -36,7 +36,7 @@
   function linkifyChatLine(line) {
     var s = String(line);
     if (window.__NF_LINKS__ === false) {
-      return window.linkifyMentionsInEscapedFragment(escHtml(s));
+      return escHtml(s);
     }
     var re = new RegExp(CHAT_URL_RE.source, "gi");
     var out = "";
@@ -64,7 +64,7 @@
 
   function linkifyUrlsInEscapedLine(escapedLine) {
     if (window.__NF_LINKS__ === false) {
-      return window.linkifyMentionsInEscapedFragment(escapedLine);
+      return String(escapedLine || "");
     }
     var s = String(escapedLine || "");
     var re = new RegExp(CHAT_URL_RE.source, "gi");
@@ -104,6 +104,9 @@
    * только подстановка @123 → ссылка на профиль.
    */
   window.linkifyMentionsInEscapedFragment = function (escapedHtml) {
+    if (window.__NF_LINKS__ === false) {
+      return String(escapedHtml || "");
+    }
     return String(escapedHtml || "").replace(RE, function (_, id) {
       return mentionLink(id);
     });
