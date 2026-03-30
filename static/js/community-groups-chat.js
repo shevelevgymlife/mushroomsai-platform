@@ -1,4 +1,81 @@
 // Extracted from dashboard/user.html — community group chats
+    const el=document.getElementById('shevelevBal');
+    const dock=document.getElementById('shevelevBalMe');
+    const num=String(txt).replace(/\s*SHEVELEV\s*$/i,'').trim();
+    if(el)el.textContent=txt;
+    if(dock)dock.textContent=num;
+  };
+  setErr('',true);
+  setBal('…');
+  try{
+    const dec=await erc20Decimals(SHEVELEV_TOKEN);
+    const pad=addr.replace(/^0x/i,'').toLowerCase().padStart(64,'0');
+    const data='0x70a08231'+pad;
+    const res=await window.ethereum.request({method:'eth_call',params:[{to:SHEVELEV_TOKEN,data},'latest']});
+    const wei=BigInt(!res||res==='0x'?'0':res);
+    const human=Number(wei)/Math.pow(10,dec);
+    const txt=(Number.isFinite(human)?human.toLocaleString('ru-RU',{maximumFractionDigits:8}):'0')+' SHEVELEV';
+    setBal(txt);
+
+  const data=_shevEncodeTransfer(to,wei);
+  if(!data){if(st){st.style.color='#f87171';st.textContent='Слишком большая сумма';}return;}
+  try{
+    const accs=await window.ethereum.request({method:'eth_requestAccounts'});
+    const from=accs[0];
+    try{
+      await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:DSC_CHAIN_ID}]});
+    }catch(se){
+      if(se&&se.code===4902){
+        await window.ethereum.request({method:'wallet_addEthereumChain',params:[DSC_PARAMS]});
+      }else if(se&&se.code!==4001)throw se;
+    }
+    if(st)st.textContent='Подтвердите транзакцию в MetaMask…';
+    const txh=await window.ethereum.request({method:'eth_sendTransaction',params:[{from,to:SHEVELEV_TOKEN,data}]});
+    if(st){st.style.color='#4ade80';st.textContent='Отправлено: '+String(txh).slice(0,18)+'…';}
+    try{
+      await fetch('/profile/shevelev-transfer-notify',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        credentials:'same-origin',
+        body:JSON.stringify({to:to,tx_hash:String(txh),amount:rawAmt})
+      });
+    }catch(_){}
+    syncBalancesServerSilent({silent:true});
+    setTimeout(()=>syncBalancesServerSilent({silent:true}),4000);
+  }catch(e){
+    if(e&&e.code===4001){if(st){st.style.color='#888';st.textContent='Отменено';}return;}
+    if(st){st.style.color='#f87171';st.textContent=e.message||String(e);}
+  }
+}
+
+// ── Save profile (кабинет + экран «я») ──
+async function saveMeProfile(){
+  const fd=new FormData();
+  fd.append('name',(document.getElementById('meName')?.value||'').trim());
+  fd.append('bio',(document.getElementById('meBio')?.value||'').trim());
+  fd.append('link_label',(document.getElementById('meLinkLabel')?.value||'').trim());
+  fd.append('link_url',(document.getElementById('meLinkUrl')?.value||'').trim());
+  const ok=document.getElementById('meProfOk');
+  try{
+    const r=await fetch('/profile/me',{method:'POST',body:fd});
+    if(r.ok){if(ok){ok.style.display='block';setTimeout(()=>location.reload(),800)}}
+  }catch(e){}
+}
+async function saveProfile(){
+  const ok=document.getElementById('profOk');
+  if(ok)ok.style.display='none';
+  const fd=new FormData();
+  fd.append('name',(document.getElementById('profName')?.value||'').trim());
+  fd.append('bio',(document.getElementById('profBio')?.value||'').trim());
+  fd.append('link_label',(document.getElementById('profLinkLabel')?.value||'').trim());
+  fd.append('link_url',(document.getElementById('profLinkUrl')?.value||'').trim());
+  try{
+    const r=await fetch('/profile/me',{method:'POST',body:fd});
+    if(r.ok&&ok){ok.style.display='block';setTimeout(()=>ok.style.display='none',3000)}
+  }catch(e){}
+}
+
+// ── Список диалогов: время как «сегодня / вчера / день недели» ──
 function formatMsgListTime(iso){
   if(!iso) return '';
   const d=new Date(iso);
@@ -17,11 +94,174 @@ function formatMsgListTime(iso){
   return pad(d.getDate())+'.'+pad(d.getMonth()+1);
 }
 
-/** Текст сообщения / превью: безопасный HTML + ссылки @user_id */
-function _nfLm(t){
-  if(typeof linkifyCommunityMentionsPlain==='function') return linkifyCommunityMentionsPlain(t);
-  if(typeof esc==='function') return esc(t);
-  var d=document.createElement('div'); d.textContent=t==null?'':String(t); return d.innerHTML;
+// ── DM Preview ──
+async function loadDMPreview(){
+  const list=document.getElementById('dmList');if(!list)return;
+  try{
+    const r=await fetch('/messages/conversations',{credentials:'same-origin'});
+    const d=await r.json();
+    if(!d.conversations||!d.conversations.length){
+      list.innerHTML='<div style="text-align:center;padding:40px;color:#444"><div style="font-size:36px;margin-bottom:8px">💬</div>Нет сообщений</div>';
+      return;
+    }
+    list.innerHTML='<div class="dm-ios-list">'+d.conversations.map(c=>{
+      const ur=parseInt(c.unread,10)||0;
+      const av=c.avatar?`<img src="${escAttr(c.avatar)}" alt="">`:'🍄';
+      const bd=ur>0?`<span class="dm-ios-badge">${ur}</span>`:'';
+      const t=formatMsgListTime(c.last_time||'');
+      return `<a href="/chats?open_user=${c.other_id}" class="dm-ios-row">
+        <div class="dm-ios-av" style="border-color:${ur>0?'rgba(10,132,255,.6)':'rgba(255,255,255,.1)'}">${av}</div>
+        <div class="dm-ios-mid">
+          <div class="dm-ios-title-row"><span class="dm-ios-name">${esc(c.name||'Участник')}</span><span class="dm-ios-time">${esc(t)}</span></div>
+          <div class="dm-ios-preview-row"><span class="dm-ios-preview">${esc((c.last_text||'').substring(0,120))}</span>${bd}</div>
+        </div></a>`;
+    }).join('')+'</div>';
+  }catch(e){list.innerHTML='<div style="text-align:center;padding:40px;color:#444">Ошибка загрузки</div>';}
+}
+
+// ── Feed tabs + pagination (20 posts per page) ──
+const FEED_PAGE_SIZE = 20;
+let currentFeedTab = 'all';
+let currentFeedPage = 1;
+
+function _isVisibleForTab(el, tab){
+  const mine = el.dataset.mine === 'true';
+  const following = el.dataset.following === 'true' || mine;
+  if(tab === 'following') return following;
+  return true;
+}
+
+function renderFeedPage(){
+  const allPosts = [...document.querySelectorAll('#feedPosts .fp')];
+  const filtered = allPosts.filter(el => _isVisibleForTab(el, currentFeedTab));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / FEED_PAGE_SIZE));
+  if(currentFeedPage > totalPages) currentFeedPage = totalPages;
+  if(currentFeedPage < 1) currentFeedPage = 1;
+  const start = (currentFeedPage - 1) * FEED_PAGE_SIZE;
+  const end = start + FEED_PAGE_SIZE;
+  const visibleSet = new Set(filtered.slice(start, end));
+
+  allPosts.forEach(el => {
+    el.style.display = visibleSet.has(el) ? '' : 'none';
+  });
+
+  let empty = document.getElementById('feedEmpty');
+  if(!filtered.length){
+    if(!empty){
+      empty = document.createElement('div');
+      empty.id = 'feedEmpty';
+      empty.style.cssText = 'text-align:center;padding:40px 0;color:#444';
+      empty.innerHTML = '<div style="font-size:36px;margin-bottom:8px">🍄</div><div>Нет постов</div>';
+      document.getElementById('feedPosts').appendChild(empty);
+    }
+  } else {
+    empty?.remove();
+  }
+
+  const pag = document.getElementById('feedPagination');
+  if(!pag) return;
+  pag.innerHTML = '';
+  if(filtered.length <= FEED_PAGE_SIZE) return;
+  for(let p = 1; p <= totalPages; p++){
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = String(p);
+    b.className = 'feed-tab' + (p === currentFeedPage ? ' feed-tab-active' : '');
+    b.style.minWidth = '42px';
+    b.onclick = function(){
+      currentFeedPage = p;
+      renderFeedPage();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    pag.appendChild(b);
+  }
+}
+
+function feedTab(tab, btn){
+  currentFeedTab = tab;
+  currentFeedPage = 1;
+  document.querySelectorAll('.feed-tab[data-tab]').forEach(b => b.classList.remove('feed-tab-active'));
+  if(btn) btn.classList.add('feed-tab-active');
+  renderFeedPage();
+}
+
+function refreshFeedEmptyState(){
+  renderFeedPage();
+}
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded', function(){ renderFeedPage(); });
+}else{
+  renderFeedPage();
+}
+
+// ── Like feed post ──
+function likeFeedPost(postId, btn){
+  if(typeof NF_communityStarLike!=='function') return;
+  const cnt=document.getElementById('like-count-'+postId);
+  const icon=btn?btn.querySelector('span'):null;
+  const wasLiked=icon && icon.textContent==='⭐';
+  NF_communityStarLike(postId,{
+    wasLiked:wasLiked,
+    backUrl:location.href,
+    onCounts:function(d){
+      if(cnt && typeof d.count==='number') cnt.textContent=String(Math.max(0,d.count));
+      if(d.liked && icon) icon.textContent='⭐';
+      if(btn && d.liked) btn.style.color='#ffd84f';
+    }
+  });
+}
+
+function likeProfilePost(postId, btn){
+  if(typeof NF_communityStarLike!=='function') return;
+  const cnt=document.getElementById('profile-like-count-'+postId);
+  const icon=btn?btn.querySelector('span'):null;
+  const wasLiked=icon && icon.textContent==='⭐';
+  NF_communityStarLike(postId,{
+    wasLiked:wasLiked,
+    backUrl:location.href,
+    onCounts:function(d){
+      if(cnt && typeof d.count==='number') cnt.textContent=String(Math.max(0,d.count));
+      const feedCnt=document.getElementById('like-count-'+postId);
+      if(feedCnt && typeof d.count==='number') feedCnt.textContent=String(Math.max(0,d.count));
+      if(d.liked && icon) icon.textContent='⭐';
+      if(btn && d.liked) btn.style.color='#ffd84f';
+    }
+  });
+}
+
+async function deleteFeedPost(postId){
+  if(!postId||!confirm('Удалить этот пост? Комментарии и лайки тоже будут удалены.')) return;
+  try{
+    const r=await fetch('/community/post/'+postId,{method:'DELETE',credentials:'same-origin'});
+    const d=await r.json().catch(()=>({}));
+    if(r.ok&&d.ok){
+      document.getElementById('fp-'+postId)?.remove();
+      refreshFeedEmptyState();
+      showNotification('Пост удалён','success');
+    }else showNotification(d.error||'Не удалось удалить','error');
+  }catch(e){showNotification('Ошибка сети','error');}
+}
+
+async function submitPlanUpgradeRequest(){
+  const st=document.getElementById('planReqSt');
+  const sel=document.getElementById('planReqSelect');
+  const note=document.getElementById('planReqNote');
+  if(st)st.textContent='';
+  const fd=new FormData();
+  fd.append('requested_plan',sel&&sel.value||'start');
+  fd.append('note',note&&note.value||'');
+  try{
+    const r=await fetch('/profile/plan-upgrade-request',{method:'POST',body:fd,credentials:'same-origin'});
+    const d=await r.json().catch(()=>({}));
+    if(r.ok&&d.ok){
+      if(st){st.style.color='#4ade80';st.textContent='Запрос отправлен администратору.';}
+      showNotification('Запрос отправлен','success');
+      setTimeout(()=>{const m=document.getElementById('planReqModal');if(m)m.style.display='none';},1200);
+    }else{
+      if(st){st.style.color='#f87171';st.textContent=d.error||'Ошибка';}
+      showNotification(d.error||'Ошибка','error');
+    }
+  }catch(e){if(st){st.style.color='#f87171';st.textContent='Сеть';}}
 }
 
 // ── Group chats ──
@@ -30,7 +270,8 @@ let groupPollTimer = null;
 let _lastGroupMsgSig = {};
 let _groupNotificationsEnabled = true;
 let _typingPingTimer = null;
-// window.__canCreateGroups / __canManageGroupSettings — задаются в шаблоне до подключения этого файла
+window.__canCreateGroups = {{ can_create_groups | tojson }};
+window.__canManageGroupSettings = {{ can_manage_group_settings | default(false) | tojson }};
 
 function stopGroupPoll(){
   if(groupPollTimer){ clearInterval(groupPollTimer); groupPollTimer=null; }
@@ -600,6 +841,15 @@ async function loadGroupMessages(gid, opts){
   const prev = box.scrollHeight - box.scrollTop;
   const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
   function escUrlAttr(s){ return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
+  function nfGroupMsgHtml(t){
+    if(typeof renderCallInviteMessageHtml==='function' && typeof isCallInviteMessageText==='function' && isCallInviteMessageText(t)){
+      var ch = renderCallInviteMessageHtml(t);
+      if(ch) return ch;
+    }
+    if(typeof linkifyChatPlain==='function') return linkifyChatPlain(t);
+    if(typeof linkifyCommunityMentionsPlain==='function') return linkifyCommunityMentionsPlain(t);
+    return esc(String(t||''));
+  }
   try{
     const r = await fetch('/community/groups/' + gid + '/messages', { credentials: 'same-origin' });
     let d = {};
@@ -643,7 +893,7 @@ async function loadGroupMessages(gid, opts){
         const txt = String(d.group.pinned_message_text||'').trim();
         if(txt){
           pin.style.display='block';
-          pin.innerHTML='📌 '+_nfLm(txt);
+          pin.innerHTML='📌 '+(typeof linkifyChatPlain==='function'?linkifyChatPlain(txt):(typeof linkifyCommunityMentionsPlain==='function'?linkifyCommunityMentionsPlain(txt):esc(txt)));
           pin.title='Нажмите, чтобы открыть';
           pin.onclick = function(){ alert(txt); };
         }
@@ -657,12 +907,12 @@ async function loadGroupMessages(gid, opts){
     box.innerHTML = msgs.map(function(m){
       var replyHtml = '';
       if(m.reply_to && m.reply_to.sender_name){
-        replyHtml = '<div class="ig-g-reply">↩ '+esc(m.reply_to.sender_name)+': '+_nfLm(m.reply_to.preview||'')+'</div>';
+        replyHtml = '<div class="ig-g-reply">↩ '+esc(m.reply_to.sender_name)+': '+nfGroupMsgHtml(m.reply_to.preview||'')+'</div>';
       }
       var addressedHtml = m.addressed_user_id ? '<div class="ig-g-reply" style="color:#8be9ff">→ адресно</div>' : '';
       var imgHtml = m.image_url ? '<img class="ig-g-img" src="'+escUrlAttr(m.image_url)+'" alt="">' : '';
       var audHtml = m.audio_url ? '<audio class="ig-g-audio" controls playsinline preload="metadata" src="'+escUrlAttr(m.audio_url)+'">Ваш браузер не воспроизводит аудио</audio>' : '';
-      var txtHtml = (m.text && String(m.text).trim()) ? '<div class="ig-g-text">'+_nfLm(m.text)+'</div>' : '';
+      var txtHtml = (m.text && String(m.text).trim()) ? '<div class="ig-g-text">'+nfGroupMsgHtml(m.text)+'</div>' : '';
       var likeN = Number(m.likes_count||0);
       var liked = !!m.liked;
       var likedUsers = Array.isArray(m.liked_users) ? m.liked_users : [];
@@ -689,7 +939,10 @@ async function loadGroupMessages(gid, opts){
     initGroupSwipe(box);
     if(forceBottom || atBottom) box.scrollTop = box.scrollHeight;
     else box.scrollTop = Math.max(0, box.scrollHeight - prev);
-    if(!silent) fetch('/community/groups/'+gid+'/mark-read',{method:'POST',credentials:'same-origin'}).catch(function(){});
+    if(!silent) fetch('/community/groups/'+gid+'/mark-read',{method:'POST',credentials:'same-origin'}).then(function(){
+      try{ if(typeof updateUnreadCount==='function') updateUnreadCount(); }catch(e){}
+      try{ if(typeof refreshAppHeaderBadges==='function') refreshAppHeaderBadges(); }catch(e){}
+    }).catch(function(){});
   }catch(e){ if(!silent) box.innerHTML = '<div style="color:#f87171;text-align:center">Ошибка загрузки</div>'; }
 }
 
@@ -701,262 +954,3 @@ async function toggleGroupLike(mid, btn){
     if(r.ok && d.ok){
       var row = btn && btn.closest('.ig-g-like-row');
       var sp = row && row.querySelector('.ig-g-lc');
-      if(sp) sp.textContent = String(d.likes_count||0);
-      btn.textContent = d.liked ? '⭐' : '✩';
-      await loadGroupMessages(selectedGroupId, { silent: true });
-    }
-  }catch(e){}
-}
-
-async function deleteGroupMessage(mid){
-  if(!selectedGroupId || !mid) return;
-  if(!confirm('Удалить это сообщение?')) return;
-  try{
-    const r = await fetch('/community/groups/' + selectedGroupId + '/messages/' + mid, { method: 'DELETE', credentials: 'same-origin' });
-    const d = await r.json().catch(()=>({}));
-    if(r.ok && d.ok) await loadGroupMessages(selectedGroupId);
-    else showNotification(d.error || 'Не удалось удалить', 'error');
-  }catch(e){ showNotification('Ошибка сети', 'error'); }
-}
-
-function onGroupChatPickImage(){
-  const inp = document.getElementById('groupChatImgInp');
-  const file = inp && inp.files && inp.files[0];
-  if(!file){
-    window.__groupChatImageFile = null;
-    return;
-  }
-  const done = function(f){
-    window.__groupChatImageFile = f || file;
-    const h = document.getElementById('groupVoiceHint');
-    if(h){ h.style.display='inline'; h.textContent='✓ Фото'; h.style.color='#4ade80'; }
-  };
-  if(window.MAIImageCropper && /^image\//i.test(file.type||'')){
-    window.MAIImageCropper.open(file,{aspectRatio:1}).then(function(blob){
-      const cropped = new File([blob], 'chat.jpg', {type:'image/jpeg'});
-      done(cropped);
-    }).catch(function(){
-      if(inp) inp.value='';
-      window.__groupChatImageFile = null;
-    });
-    return;
-  }
-  done(file);
-}
-
-function pickGroupVoiceMime(){
-  if(typeof MediaRecorder === 'undefined' || !MediaRecorder.isTypeSupported) return '';
-  var c = ['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/mp4;codecs=mp4a.40.2','audio/aac','audio/ogg;codecs=opus','audio/ogg'];
-  for(var i=0;i<c.length;i++){ if(MediaRecorder.isTypeSupported(c[i])) return c[i]; }
-  return '';
-}
-
-function _groupVoiceFmtSec(sec){
-  var s = Math.max(0, Math.floor(sec || 0));
-  return String(s).padStart(2, '0');
-}
-
-function _groupVoiceHintTextRecording(leftSec){
-  return '● Запись… осталось: 00:' + _groupVoiceFmtSec(leftSec);
-}
-
-function _groupVoiceSetHint(text, color){
-  var h = document.getElementById('groupVoiceHint');
-  if(!h) return;
-  if(!text){
-    h.style.display='none';
-    return;
-  }
-  h.style.display='inline';
-  h.textContent=text;
-  if(color) h.style.color=color;
-}
-
-async function stopGroupVoiceRecordAndWait(){
-  var g = window.__groupVoiceRec;
-  if(!g || !g.mr || g.mr.state !== 'recording') return;
-  await new Promise(function(resolve){
-    g._resolveStop = resolve;
-    try{ g.mr.stop(); }catch(_){ resolve(); }
-  });
-}
-
-async function toggleGroupVoiceRecord(){
-  var g = window.__groupVoiceRec;
-  if(g && g.mr && g.mr.state === 'recording'){
-    await stopGroupVoiceRecordAndWait();
-    return;
-  }
-  window.__groupChatAudioBlob = null;
-  var mime = pickGroupVoiceMime();
-  try{
-    var stream = await navigator.mediaDevices.getUserMedia({
-      audio:{echoCancellation:true,noiseSuppression:true,channelCount:1}
-    });
-    var mr;
-    try{
-      mr = mime ? new MediaRecorder(stream,{mimeType:mime}) : new MediaRecorder(stream);
-    }catch(_e){
-      mr = new MediaRecorder(stream);
-      mime = '';
-    }
-    var chunks = [];
-    mr.ondataavailable = function(e){ if(e.data && e.data.size>0) chunks.push(e.data); };
-    var rec = {mr:mr, stream:stream, maxTimer:null, tickTimer:null, startedAt:Date.now(), maxMs:30000, _resolveStop:null};
-    var maxMs = rec.maxMs;
-    var updateRemain = function(){
-      var left = Math.max(0, Math.ceil((rec.maxMs - (Date.now() - rec.startedAt)) / 1000));
-      _groupVoiceSetHint(_groupVoiceHintTextRecording(left), '#f87171');
-    };
-    updateRemain();
-    rec.tickTimer = setInterval(updateRemain, 250);
-    rec.maxTimer = setTimeout(function(){
-      if(rec.mr && rec.mr.state === 'recording'){
-        _groupVoiceSetHint('✓ 30 секунд записано — нажмите →', '#4ade80');
-        showNotification('Максимум 30 секунд','success');
-        rec.mr.stop();
-      }
-    }, maxMs);
-    mr.onstop = function(){
-      if(rec.maxTimer){ clearTimeout(rec.maxTimer); rec.maxTimer=null; }
-      if(rec.tickTimer){ clearInterval(rec.tickTimer); rec.tickTimer=null; }
-      try{ stream.getTracks().forEach(function(t){ t.stop(); }); }catch(_){}
-      window.__groupVoiceRec = null;
-      var outType = (chunks[0] && chunks[0].type) ? chunks[0].type : (mime || 'audio/webm');
-      var blob = new Blob(chunks, {type: outType});
-      if(!blob.size){
-        window.__groupChatAudioBlob = null;
-        showNotification('Пустая запись — проверьте микрофон','error');
-      }else{
-        window.__groupChatAudioBlob = blob;
-      }
-      var h = document.getElementById('groupVoiceHint');
-      if(h){
-        if(window.__groupChatAudioBlob){
-          _groupVoiceSetHint('✓ Голосовое готово — нажмите →', '#4ade80');
-        }else{
-          _groupVoiceSetHint('', '');
-        }
-      }
-      if(typeof rec._resolveStop === 'function'){
-        var fn = rec._resolveStop;
-        rec._resolveStop = null;
-        try{ fn(); }catch(_){}
-      }
-    };
-    window.__groupVoiceRec = rec;
-    try{
-      mr.start(250);
-    }catch(_){
-      mr.start();
-    }
-    _groupVoiceSetHint(_groupVoiceHintTextRecording(30), '#f87171');
-  }catch(e){
-    showNotification('Нет доступа к микрофону','error');
-  }
-}
-
-async function sendGroupChatMessage(){
-  if(window.__groupVoiceRec && window.__groupVoiceRec.mr && window.__groupVoiceRec.mr.state === 'recording'){
-    await stopGroupVoiceRecordAndWait();
-  }
-  const inp = document.getElementById('groupMsgInput');
-  const t = inp && inp.value.trim();
-  const imgInp = document.getElementById('groupChatImgInp');
-  const file = window.__groupChatImageFile || (imgInp && imgInp.files && imgInp.files[0]);
-  const blob = window.__groupChatAudioBlob;
-  if(!selectedGroupId) return;
-  if(!t && !file && !blob) return;
-  const replyId = window.__groupReplyToId || null;
-  const addressedSel = document.getElementById('groupAddressedSelect');
-  const addressedUserId = addressedSel && addressedSel.value ? parseInt(addressedSel.value, 10) : null;
-  const fd = new FormData();
-  if(t) fd.append('text', t);
-  if(replyId) fd.append('reply_to_id', String(replyId));
-  if(addressedUserId) fd.append('addressed_user_id', String(addressedUserId));
-  if(file) fd.append('image', file);
-  if(blob){
-    var mt = blob.type || 'audio/webm';
-    var ext = 'webm';
-    if(mt.indexOf('mp4')>=0 || mt.indexOf('m4a')>=0 || mt.indexOf('aac')>=0 || mt.indexOf('mp4a')>=0) ext = 'mp4';
-    else if(mt.indexOf('ogg')>=0) ext = 'ogg';
-    fd.append('audio', new File([blob], 'voice.'+ext, {type: mt}));
-  }
-  if(inp) inp.value = '';
-  if(imgInp) imgInp.value = '';
-  window.__groupChatImageFile = null;
-  window.__groupChatAudioBlob = null;
-  var vh = document.getElementById('groupVoiceHint');
-  if(vh) vh.style.display = 'none';
-  clearGroupReply();
-  if(_typingPingTimer){ clearTimeout(_typingPingTimer); _typingPingTimer = null; }
-  const useMultipart = !!(file || blob);
-  try{
-    const r = await fetch('/community/groups/' + selectedGroupId + '/message', {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: useMultipart ? {} : { 'Content-Type': 'application/json' },
-      body: useMultipart ? fd : JSON.stringify({ text: t || '', reply_to_id: replyId || undefined, addressed_user_id: addressedUserId || undefined })
-    });
-    if(r.ok){
-      await loadGroupMessages(selectedGroupId, { forceBottom: true });
-    }else if(r.status===429){
-      const d = await r.json().catch(()=>({}));
-      showNotification('Подождите '+ (d.wait_sec||'') +' сек. (медленный режим)','error');
-    }else{
-      const d = await r.json().catch(()=>({}));
-      showNotification(d.error || d.detail || ('Ошибка '+r.status),'error');
-    }
-  }catch(e){
-    showNotification('Ошибка сети','error');
-  }
-}
-
-async function createGroupSubmit(){
-  const n = document.getElementById('grpNameInp') && document.getElementById('grpNameInp').value.trim();
-  if(!n || n.length < 2){ showNotification('Введите название группы (от 2 символов)','error'); return; }
-  const desc = (document.getElementById('grpDescInp') && document.getElementById('grpDescInp').value) || '';
-  try{
-    const r = await fetch('/community/groups/create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      credentials: 'same-origin',
-      body: JSON.stringify({ name: n, description: desc })
-    });
-    const d = await r.json().catch(()=>({}));
-    const gidRaw = d.id != null ? d.id : d.group_id;
-    const gid = Number(gidRaw);
-    const okCreated = r.ok && d.ok !== false && Number.isFinite(gid) && gid > 0;
-    if(okCreated){
-      document.getElementById('grpCreateModal').style.display = 'none';
-      showNotification('Группа создана','success');
-      window.__groupsJustCreated = true;
-      
-      await refreshGroupListFromApi();
-      window.__groupsJustCreated = false;
-      const row = document.querySelector('.ig-g-item[data-gid="'+gid+'"]');
-      if(row) selectGroupChat(gid, row);
-      return;
-    }
-    let hint403 = 'Создание группы недоступно: политика в админке «Группы» или тариф (проверьте ADMIN_TG_ID / ADMIN_EMAIL для операторов)';
-    if(d.plan){ hint403 += ' · ваш тариф: '+d.plan; }
-    const msg = d.error || d.detail || (r.status===403 ? hint403 : r.status===401 ? 'Войдите в аккаунт' : (r.status===500 ? (d.error||'Ошибка сервера при сохранении') : 'Не удалось создать группу'));
-    showNotification(msg,'error');
-  }catch(e){ showNotification('Ошибка сети','error'); }
-}
-
-(function initGroupInputTyping(){
-  function wire(){
-    const inp = document.getElementById('groupMsgInput');
-    if(!inp || inp._typingWired) return;
-    inp._typingWired = true;
-    inp.addEventListener('input', function(){
-      if(!selectedGroupId) return;
-      pingGroupTyping();
-      if(_typingPingTimer) clearTimeout(_typingPingTimer);
-      _typingPingTimer = setTimeout(pingGroupTyping, 2200);
-    });
-  }
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire);
-  else wire();
-})();

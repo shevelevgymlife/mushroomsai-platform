@@ -75,9 +75,16 @@ function escapeHtml(text) {
     .replace(/"/g, '&quot;');
 }
 
-/** Текст в пузырьке: переносы строк + кликабельные @id и ссылки на профиль */
+/** Текст в пузырьке: переносы строк + @id + URL + приглашение на звонок */
 function formatChatBubbleHtml(text) {
   const raw = String(text == null ? '' : text);
+  if (typeof renderCallInviteMessageHtml === 'function') {
+    const callHtml = renderCallInviteMessageHtml(raw);
+    if (callHtml) return callHtml;
+  }
+  if (typeof linkifyChatPlain === 'function') {
+    return linkifyChatPlain(raw);
+  }
   const lines = raw.split('\n');
   const fmtLine = (line) => {
     if (typeof linkifyCommunityMentionsPlain === 'function') {

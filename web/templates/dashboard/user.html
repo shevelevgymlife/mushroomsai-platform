@@ -3787,6 +3787,15 @@ async function loadGroupMessages(gid, opts){
   const prev = box.scrollHeight - box.scrollTop;
   const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
   function escUrlAttr(s){ return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
+  function nfGroupMsgHtml(t){
+    if(typeof renderCallInviteMessageHtml==='function' && typeof isCallInviteMessageText==='function' && isCallInviteMessageText(t)){
+      var ch = renderCallInviteMessageHtml(t);
+      if(ch) return ch;
+    }
+    if(typeof linkifyChatPlain==='function') return linkifyChatPlain(t);
+    if(typeof linkifyCommunityMentionsPlain==='function') return linkifyCommunityMentionsPlain(t);
+    return esc(String(t||''));
+  }
   try{
     const r = await fetch('/community/groups/' + gid + '/messages', { credentials: 'same-origin' });
     let d = {};
@@ -3830,7 +3839,7 @@ async function loadGroupMessages(gid, opts){
         const txt = String(d.group.pinned_message_text||'').trim();
         if(txt){
           pin.style.display='block';
-          pin.innerHTML='📌 '+(typeof linkifyCommunityMentionsPlain==='function'?linkifyCommunityMentionsPlain(txt):esc(txt));
+          pin.innerHTML='📌 '+(typeof linkifyChatPlain==='function'?linkifyChatPlain(txt):(typeof linkifyCommunityMentionsPlain==='function'?linkifyCommunityMentionsPlain(txt):esc(txt)));
           pin.title='Нажмите, чтобы открыть';
           pin.onclick = function(){ alert(txt); };
         }
@@ -3844,12 +3853,12 @@ async function loadGroupMessages(gid, opts){
     box.innerHTML = msgs.map(function(m){
       var replyHtml = '';
       if(m.reply_to && m.reply_to.sender_name){
-        replyHtml = '<div class="ig-g-reply">↩ '+esc(m.reply_to.sender_name)+': '+(typeof linkifyCommunityMentionsPlain==='function'?linkifyCommunityMentionsPlain(m.reply_to.preview||''):esc(m.reply_to.preview||''))+'</div>';
+        replyHtml = '<div class="ig-g-reply">↩ '+esc(m.reply_to.sender_name)+': '+nfGroupMsgHtml(m.reply_to.preview||'')+'</div>';
       }
       var addressedHtml = m.addressed_user_id ? '<div class="ig-g-reply" style="color:#8be9ff">→ адресно</div>' : '';
       var imgHtml = m.image_url ? '<img class="ig-g-img" src="'+escUrlAttr(m.image_url)+'" alt="">' : '';
       var audHtml = m.audio_url ? '<audio class="ig-g-audio" controls playsinline preload="metadata" src="'+escUrlAttr(m.audio_url)+'">Ваш браузер не воспроизводит аудио</audio>' : '';
-      var txtHtml = (m.text && String(m.text).trim()) ? '<div class="ig-g-text">'+(typeof linkifyCommunityMentionsPlain==='function'?linkifyCommunityMentionsPlain(m.text):esc(m.text))+'</div>' : '';
+      var txtHtml = (m.text && String(m.text).trim()) ? '<div class="ig-g-text">'+nfGroupMsgHtml(m.text)+'</div>' : '';
       var likeN = Number(m.likes_count||0);
       var liked = !!m.liked;
       var likedUsers = Array.isArray(m.liked_users) ? m.liked_users : [];

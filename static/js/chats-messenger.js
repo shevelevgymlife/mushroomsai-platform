@@ -293,6 +293,13 @@
 
   function bubbleMsgHtml(text) {
     const raw = String(text == null ? "" : text);
+    if (typeof window.renderCallInviteMessageHtml === "function") {
+      const callHtml = window.renderCallInviteMessageHtml(raw);
+      if (callHtml) return callHtml;
+    }
+    if (typeof window.linkifyChatPlain === "function") {
+      return window.linkifyChatPlain(raw);
+    }
     const lines = raw.split("\n");
     const fmt = (line) =>
       typeof window.linkifyCommunityMentionsPlain === "function"
