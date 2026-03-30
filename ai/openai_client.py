@@ -235,6 +235,23 @@ async def get_system_prompt(user_message: str = "") -> str:
 
     return base_prompt
 
+
+async def _shop_links_system_extra(user_id: int) -> str:
+    """Те же URL магазинов, что у кнопки «Магазин» и веб (реферал амбассадора / стандарт)."""
+    from services.referral_shop_prefs import shop_urls_for_user
+
+    try:
+        ru, eu = await shop_urls_for_user(user_id)
+        return (
+            "\n\nСсылки на магазины для этого пользователя (используй только их при вопросах куда купить, "
+            "не подставляй другие URL):\n"
+            f"Россия и Беларусь (СДЭК/Почта РФ, Telegram): {ru}\n"
+            f"Европа и Америка (Grimmurk): {eu}\n"
+        )
+    except Exception:
+        return ""
+
+
 async def chat_with_ai(
     user_message: str,
     user_id: Optional[int] = None,
@@ -242,6 +259,8 @@ async def chat_with_ai(
     history_limit: int = 20,
 ) -> str:
     system_prompt = await get_system_prompt(user_message=user_message)
+    if user_id:
+        system_prompt += await _shop_links_system_extra(user_id)
 
     history = []
     try:

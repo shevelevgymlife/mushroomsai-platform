@@ -132,7 +132,7 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     user_row = await _get_user_by_tg_id(tg_user.id)
 
     if user_row:
-        user_id = user_row["id"]
+        user_id = int(user_row.get("primary_user_id") or user_row["id"])
         unlimited = await _is_unlimited_ai(user_id)
     else:
         user_id = None

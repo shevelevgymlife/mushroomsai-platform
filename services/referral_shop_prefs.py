@@ -14,46 +14,47 @@ TG_BTN_SHOP_SIMPLE = "🛍 Магазин"
 SHOP_RUS_URL = "https://t.me/neurotrops_rus_bot?start=rHQemtw"
 SHOP_EU_US_URL = "https://grimmurk.com/?aff=Shevelev"
 
-SHOP_MESSAGE_HTML = (
-    "Вот ссылки на магазины, где можно заказать нужные грибы:\n\n"
-    "• Для России и Белоруссии: магазин Сдэк/Почта РФ — "
-    f'<a href="{SHOP_RUS_URL}">открыть в Telegram</a>\n\n'
-    "• Для Европы и Америки: магазин — "
-    f'<a href="{SHOP_EU_US_URL}">Grimmurk</a>\n\n'
-    "🛍 <b>Маркет плейс NEUROFUNGI</b>\n\n"
-    "Доступен только внутри приложения после регистрации и подписки <b>Старт</b>.\n\n"
-    "В маркет плейсе у каждого товара есть описание, комментарии, отзывы и рейтинг.\n\n"
+# Inline-кнопки под сообщением «Магазин» (лимит Telegram 64 символа)
+TG_BTN_SHOP_RU = "Магазин РФ и РБ СДЭК / ПОЧТА РФ"
+TG_BTN_SHOP_EU = "Магазин Европа / Америка"
+
+# Текст под кнопками (без ссылок — они в кнопках выше)
+SHOP_FOOTER_HTML = (
+    "🛍 Отзывы, рейтинги и комментарии о товарах в магазине также доступны внутри приложения "
+    "после регистрации и подписки <b>Старт</b>.\n\n"
     "Если будут вопросы по выбору или приёму — нажмите кнопку «Задать вопрос AI» ниже."
 )
-
-SHOP_MESSAGE_NO_MP_HTML = (
-    "Вот ссылки на магазины, где можно заказать нужные грибы:\n\n"
-    "• Для России и Белоруссии: магазин Сдэк/Почта РФ — "
-    f'<a href="{SHOP_RUS_URL}">открыть в Telegram</a>\n\n'
-    "• Для Европы и Америки: магазин — "
-    f'<a href="{SHOP_EU_US_URL}">Grimmurk</a>\n\n'
-    "Приложение NEUROFUNGI AI — сообщество и AI-консультации (кнопка ниже).\n\n"
-    "Если будут вопросы по выбору или приёму — нажмите «Задать вопрос AI» ниже."
-)
-
-
-def shop_message_referral_html(ambassador_shop_url: str) -> str:
-    """РФ/РБ — ссылка амбассадора; Европа и Америка — общая Grimmurk для всех."""
-    u = ambassador_shop_url.strip()
-    return (
-        "🛒 <b>Магазин по вашей реферальной ссылке</b>\n\n"
-        "Вот ссылки, где можно заказать нужные грибы:\n\n"
-        "• Для России и Белоруссии: магазин партнёра (по вашей реферальной ссылке) — "
-        f'<a href="{u}">перейти</a>\n\n'
-        "• Для Европы и Америки: магазин — "
-        f'<a href="{SHOP_EU_US_URL}">Grimmurk</a>\n\n'
-        "В приложении NEUROFUNGI AI — лента сообщества, карточки товаров с отзывами и AI-консультант.\n\n"
-        "Если будут вопросы по выбору или приёму — нажмите «Задать вопрос AI» ниже."
-    )
 
 
 def _staff_role(role: str | None) -> bool:
     return (role or "user").lower() in ("admin", "moderator")
+
+
+async def shop_urls_for_user(internal_user_id: int) -> tuple[str, str]:
+    """
+    Ссылки магазинов для пользователя: (РФ/РБ Telegram, Европа/Америка Grimmurk).
+    Реферал от обычного пользователя с referral_shop_url → РФ — URL амбассадора; иначе стандартные.
+    Учитывается primary_user_id (как в веб-сессии).
+    """
+    eu = SHOP_EU_US_URL
+    row = await database.fetch_one(users.select().where(users.c.id == int(internal_user_id)))
+    if not row:
+        return SHOP_RUS_URL, eu
+    uid = int(row.get("primary_user_id") or row["id"])
+    if uid != int(internal_user_id):
+        row = await database.fetch_one(users.select().where(users.c.id == uid))
+    if not row:
+        return SHOP_RUS_URL, eu
+    rb = row.get("referred_by")
+    if not rb:
+        return SHOP_RUS_URL, eu
+    ref = await database.fetch_one(users.select().where(users.c.id == int(rb)))
+    if not ref or _staff_role(ref.get("role")):
+        return SHOP_RUS_URL, eu
+    u = (ref.get("referral_shop_url") or "").strip()
+    if u:
+        return u, eu
+    return SHOP_RUS_URL, eu
 
 
 async def attach_referral_shop_context(u: dict) -> None:
@@ -118,23 +119,16 @@ async def tg_shop_button_label(internal_user_id: int) -> str:
 async def tg_shop_message_and_buttons(internal_user_id: int, site: str) -> tuple[str, list[list[Any]]]:
     """
     Текст и строки inline-кнопок для ответа на кнопку «Магазин».
-    Для приглашённых по ссылке обычного пользователя — акцент на URL амбассадора, без блока про маркетплейс NF (текст ответа; клавиатура у всех «Магазин»).
+    Сначала две ссылки (РФ/РБ и Европа/Америка), затем Web App; логика URL — как в shop_urls_for_user.
     """
     from telegram import InlineKeyboardButton, WebAppInfo
 
-    row = await database.fetch_one(users.select().where(users.c.id == int(internal_user_id)))
-    ext: Optional[str] = None
-    show_mp = True
-    if row and row.get("referred_by"):
-        ref = await database.fetch_one(users.select().where(users.c.id == int(row["referred_by"])))
-        if ref and not _staff_role(ref.get("role")):
-            show_mp = False
-            u = (ref.get("referral_shop_url") or "").strip()
-            if u:
-                ext = u
+    ru, eu = await shop_urls_for_user(internal_user_id)
 
     app_url = site.rstrip("/") + "/app"
-    base_rows = [
+    rows: list[list[Any]] = [
+        [InlineKeyboardButton(TG_BTN_SHOP_RU, url=ru)],
+        [InlineKeyboardButton(TG_BTN_SHOP_EU, url=eu)],
         [
             InlineKeyboardButton(
                 "🍄 Приложение: регистрация и маркетплейс",
@@ -142,12 +136,4 @@ async def tg_shop_message_and_buttons(internal_user_id: int, site: str) -> tuple
             )
         ],
     ]
-
-    if ext:
-        rows = [[InlineKeyboardButton("🛒 Открыть магазин амбассадора", url=ext)]] + base_rows
-        return shop_message_referral_html(ext), rows
-
-    if not show_mp:
-        return SHOP_MESSAGE_NO_MP_HTML, base_rows
-
-    return SHOP_MESSAGE_HTML, base_rows
+    return SHOP_FOOTER_HTML, rows
