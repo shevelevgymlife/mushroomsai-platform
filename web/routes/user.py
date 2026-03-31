@@ -209,6 +209,21 @@ async def subscriptions_connect(request: Request, plan: str = Form(...)):
         await database.execute(
             users.update().where(users.c.id == uid).values(needs_tariff_choice=False)
         )
+        # Самостоятельное подключение тарифа: короткое уведомление в Telegram о доступе к партнёрке.
+        if plan_key == "start":
+            try:
+                row = await database.fetch_one(users.select().where(users.c.id == uid))
+                tg = int(row.get("tg_id") or row.get("linked_tg_id") or 0) if row else 0
+                if tg:
+                    from services.notify_user_stub import notify_user
+
+                    await notify_user(
+                        tg,
+                        "✅ <b>Подписка «Старт» подключена.</b>\n"
+                        "Теперь вы можете стать партнёром в боте: кнопка «🤝 Стать партнёром».",
+                    )
+            except Exception:
+                pass
     return RedirectResponse("/subscriptions?connected=1", status_code=302)
 
 
