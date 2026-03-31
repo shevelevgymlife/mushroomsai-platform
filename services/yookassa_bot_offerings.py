@@ -1,5 +1,5 @@
 """
-Предложения подписки для ЮKassa-бота: цена, срок (минуты), уровень (start/pro/maxi), показ на сайте.
+Предложения ЮKassa для бота, сайта и Mini App: одна таблица (цена, минуты, уровень, show_on_site).
 Хранятся в platform_settings payment_provider:yookassa_bot → ключ offerings (JSON-массив).
 """
 from __future__ import annotations

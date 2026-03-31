@@ -60,11 +60,17 @@
         </div>
       </div>
       {% elif provider.id == 'yookassa' %}
-      <div class="p-6 rounded-2xl border border-border bg-surface space-y-4">
-        <h2 class="text-lg font-medium text-text">ЮKassa (сайт)</h2>
+      <div class="p-6 rounded-2xl border border-amber-500/25 bg-amber-500/5 space-y-4">
+        <h2 class="text-lg font-medium text-text">ЮKassa — отдельная карточка не используется</h2>
+        <p class="text-sm text-muted leading-relaxed">
+          Подписки на <b>сайте</b>, в <b>Mini App</b> и в <b>Telegram-боте</b> используют <b>одни и те же</b> настройки: откройте
+          <a href="/admin/payment/yookassa-bot" class="text-gold hover:underline">ЮKassa (бот и сайт)</a>
+          — там <b>shopId</b>, секрет API и таблица предложений (цена ₽, минуты, уровень). Рассинхрона между «ботом» и «сайтом» в коде нет: это одна таблица; колонка «Показ на сайте» только включает карточку на странице подписок.
+        </p>
+        <p class="text-xs text-muted">Поля ниже — для совместимости со старыми сохранениями; менять их не обязательно.</p>
         <label class="flex items-center gap-2 text-sm text-text cursor-pointer">
           <input type="checkbox" name="enabled" value="1" class="rounded border-border" {% if provider_cfg.get('enabled') %}checked{% endif %} />
-          Включить (после реализации на бэкенде)
+          Включено (не влияет на текущую оплату подписок)
         </label>
         <div>
           <label class="block text-xs text-muted mb-1">shopId</label>
@@ -77,11 +83,12 @@
       </div>
       {% elif provider.id == 'yookassa_bot' %}
       <div class="p-6 rounded-2xl border border-gold/25 bg-surface space-y-4">
-        <h2 class="text-xl font-medium text-text">ЮKassa Бот — автономная схема</h2>
+        <h2 class="text-xl font-medium text-text">ЮKassa — бот, сайт и Mini App (одни настройки)</h2>
         <div class="text-xs text-muted space-y-2 leading-relaxed">
-          <p><b>Срок окончания:</b> раз в ~30 минут фоновая задача проверяет истёкшие подписки и переводит пользователя на «Бесплатный», как при входе на сайт. В личку в Telegram и в чат поддержки приходит то же уведомление, что и при «подписка истекла».</p>
-          <p><b>Оплата в боте:</b> пользователь нажимает «💳 Подписка» или команду <code>/subscribe</code>, выбирает предложение — открывается счёт ЮKassa. Срок доступа задаётся в таблице ниже (в минутах).</p>
-          <p><b>HTTP-вебхук ЮKassa:</b> нужен для платежей, где в metadata у платежа есть <code>user_id</code> и <code>plan</code> (например, ссылки из личного кабинета). Оплаты внутри Telegram через бота чаще обрабатываются без metadata — тогда достаточно успешного сообщения в боте.</p>
+          <p><b>Одна таблица предложений</b> ниже задаёт для каждой строки: <b>цену в ₽</b>, <b>срок в минутах</b> и <b>уровень</b> (Старт / Про / Макси). Эти значения одинаково применяются при оплате <b>в боте</b> (счёт Telegram), <b>на сайте</b> и <b>в Telegram WebApp</b> по ссылке «Оплатить на сайте» — отдельных «минут для сайта» в админке нет и не нужно.</p>
+          <p><b>Колонка «Сайт»:</b> только показывать ли карточку этого предложения на странице «Подписки»; на цену и срок после оплаты не влияет.</p>
+          <p><b>Срок окончания подписки:</b> фоновая задача (~30 мин) сбрасывает истёкший тариф на «Бесплатный»; уведомления как при «подписка истекла».</p>
+          <p><b>HTTP-вебхук ЮKassa:</b> для оплаты <b>с сайта / Mini App</b> в metadata передаются <code>user_id</code> и <code>offering_id</code> — укажите URL ниже в личном кабинете магазина. Оплата <b>внутри чата бота</b> чаще приходит без этих полей — активация через сообщение <code>successful_payment</code> в боте.</p>
         </div>
         {% if yookassa_http_webhook_url %}
         <div class="p-3 rounded-xl bg-bg border border-border text-xs">
@@ -91,7 +98,7 @@
         {% endif %}
         <label class="flex items-center gap-2 text-sm text-text cursor-pointer">
           <input type="checkbox" name="enabled" value="1" class="rounded border-border" {% if provider_cfg.get('enabled') %}checked{% endif %} />
-          Включить оплату в боте (кнопка «Подписка» и /subscribe)
+          Включить ЮKassa (бот: «Подписка» и /subscribe; сайт и Mini App: редирект на оплату при заданных shopId и секрете)
         </label>
         <div>
           <label class="block text-xs text-muted mb-1">Provider token (BotFather → ваш бот → Payments → подключить ЮKassa)</label>
@@ -121,15 +128,15 @@
             <li>ЮKassa: shopId и секретный ключ (уже есть личный кабинет).</li>
             <li>BotFather: подключить к этому же боту платежи ЮKassa и скопировать <b>provider token</b> сюда.</li>
             <li>В ЮKassa в HTTP-уведомлениях указать URL выше (после деплоя с HTTPS).</li>
-            <li>Ниже — <b>предложения для бота</b>: цена, срок (минуты), уровень доступа. Блок «Тарифы» ниже задаёт названия и описания уровней на сайте.</li>
+            <li>Ниже — <b>предложения для бота и сайта</b>: цена, срок (минуты), уровень. Блок «Тарифы» на этой странице — названия и описания планов на лендинге; не путать с ценой списания (она в таблице предложений).</li>
           </ol>
         </div>
 
         <div class="p-4 rounded-xl border border-cyan-500/25 bg-cyan-500/5 space-y-3">
-          <h3 class="text-base font-semibold text-text">Предложения в Telegram-боте (ЮKassa)</h3>
+          <h3 class="text-base font-semibold text-text">Предложения ЮKassa (бот + сайт + Mini App)</h3>
           <p class="text-xs text-muted leading-relaxed">
-            Каждая строка — отдельная кнопка в боте. <b>ID</b> (латиница, цифры, _) попадает в счёт; для новых предложений задайте уникальный id, например <code class="text-gold">week_trial</code>.
-            <b>Уровень</b> — какой пакет прав выдать: Старт / Про / Макси. <b>Срок</b> — в минутах (43200 = 30 дней). Включённые строки с «Показ на сайте» дублируются на странице подписок с подсказкой оплатить в боте.
+            Каждая строка — отдельная кнопка в боте и (если «Сайт» = Да) карточка на <code class="text-gold">/subscriptions</code>. <b>Цена</b> и <b>минуты</b> одинаковы при оплате из бота и при «Оплатить на сайте».
+            <b>ID</b> (латиница, цифры, _) — в счёте и в ссылке оплаты. <b>Уровень</b> — Старт / Про / Макси. <b>Срок</b> — минуты доступа (43200 ≈ 30 дней).
           </p>
           <div class="overflow-x-auto">
             <table class="w-full text-sm border-collapse min-w-[720px]">
@@ -138,10 +145,10 @@
                   <th class="py-2 pr-2">ID</th>
                   <th class="py-2 pr-2">Вкл</th>
                   <th class="py-2 pr-2">Цена ₽</th>
-                  <th class="py-2 pr-2">Минут</th>
+                  <th class="py-2 pr-2" title="Для бота и для сайта">Минут</th>
                   <th class="py-2 pr-2">Уровень</th>
-                  <th class="py-2 pr-2">Название кнопки</th>
-                  <th class="py-2 pr-2">Сайт</th>
+                  <th class="py-2 pr-2">Название</th>
+                  <th class="py-2 pr-2" title="Показать карточку на /subscriptions">Сайт</th>
                   <th class="py-2"></th>
                 </tr>
               </thead>

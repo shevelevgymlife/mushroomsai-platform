@@ -25,13 +25,13 @@ PAYMENT_PROVIDERS: list[dict[str, str]] = [
     },
     {
         "id": "yookassa",
-        "title": "ЮKassa (сайт)",
-        "subtitle": "Оплата на сайте через YooKassa",
+        "title": "ЮKassa (резерв)",
+        "subtitle": "Не используется для подписок: сайт и бот берут ключи и цены из «ЮKassa (бот и сайт)»",
     },
     {
         "id": "yookassa_bot",
-        "title": "ЮKassa Бот",
-        "subtitle": "Оплата в Telegram, вебхук ЮKassa, автосброс подписки и ЛС при окончании",
+        "title": "ЮKassa (бот и сайт)",
+        "subtitle": "Один магазин: счёт в Telegram, оплата на сайте и в Mini App; таблица ниже задаёт цену и срок для всех каналов",
         "admin_path": "/admin/payment/yookassa-bot",
     },
     {

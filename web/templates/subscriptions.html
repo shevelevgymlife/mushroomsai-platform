@@ -65,8 +65,8 @@
     {% endif %}
     {% if yookassa_site_offerings is defined and yookassa_site_offerings|length > 0 %}
     <div class="max-w-7xl mx-auto mb-10 p-5 rounded-2xl border border-cyan-500/20 bg-surface/50">
-      <h2 class="text-lg font-semibold text-text mb-2">Дополнительные предложения (ЮKassa)</h2>
-      <p class="text-sm text-muted mb-4">Настраиваются в админке → Оплата → ЮKassa Бот (флажок «Показ на сайте»).</p>
+      <h2 class="text-lg font-semibold text-text mb-2">Предложения ЮKassa (как в боте)</h2>
+      <p class="text-sm text-muted mb-4">Цена и срок те же, что для кнопок «Подписка» в Telegram: админка → Оплата → <strong>ЮKassa (бот и сайт)</strong>, колонки «Минут» и «Цена». «Показ на сайте» только включает карточку здесь.</p>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {% for o in yookassa_site_offerings %}
         <div class="p-4 rounded-xl border border-border bg-bg/40 flex flex-col gap-2">
