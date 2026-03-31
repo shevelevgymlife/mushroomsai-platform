@@ -63,7 +63,7 @@
           {% endfor %}
         </ul>
         {% if _pl %}
-          {% if _plan == 'start' %}
+          {% if _plan == 'start' and not (user and user.start_trial_active) %}
           <div class="block text-center px-4 py-3 rounded-xl text-sm border border-gold/35 text-gold/90 bg-gold/[0.06]">Текущий план</div>
           {% else %}
           <form method="post" action="/subscriptions/connect" class="mt-auto">
