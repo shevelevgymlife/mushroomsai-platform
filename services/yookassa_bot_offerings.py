@@ -152,7 +152,8 @@ def find_offering_id_for_plan(offerings: list[dict[str, Any]], plan_key: str) ->
 def offering_by_id(offerings: list[dict[str, Any]], oid: str) -> dict[str, Any] | None:
     key = (oid or "").strip().lower()
     for r in offerings:
-        if r.get("id") == key:
+        rid = str(r.get("id") or "").strip().lower()
+        if rid == key:
             return r
     return None
 

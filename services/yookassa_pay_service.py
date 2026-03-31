@@ -12,7 +12,11 @@ from db.models import payment_webhook_dedup
 from services.payment_plans_catalog import get_effective_plans
 from services.payment_provider_settings import get_provider_settings
 from services.subscription_service import activate_subscription
-from services.yookassa_bot_offerings import get_merged_bot_offerings, offering_by_id
+from services.yookassa_bot_offerings import (
+    DEFAULT_DURATION_MINUTES,
+    get_merged_bot_offerings,
+    offering_by_id,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +113,7 @@ async def apply_yookassa_payment_succeeded(payment: dict[str, Any]) -> tuple[boo
         except (TypeError, ValueError):
             dm = 0
         if dm <= 0:
-            return False, "bad_duration"
+            dm = DEFAULT_DURATION_MINUTES
         expected = float(off.get("price_rub") or 0)
         if expected <= 0:
             return False, "bad_price_config"

@@ -12,6 +12,8 @@ from typing import Any
 
 import httpx
 
+from config import settings
+
 logger = logging.getLogger(__name__)
 
 YOOKASSA_API = "https://api.yookassa.ru/v3/payments"
@@ -25,6 +27,7 @@ async def create_yookassa_redirect_payment(
     description: str,
     return_url: str,
     metadata: dict[str, str],
+    customer_email: str | None = None,
 ) -> tuple[str | None, str | None]:
     """
     Создаёт платёж с confirmation.type=redirect.
@@ -52,6 +55,28 @@ async def create_yookassa_redirect_payment(
         "description": (description or "Подписка")[:128],
         "metadata": {str(k)[:50]: str(v)[:512] for k, v in metadata.items()},
     }
+
+    vat = int(getattr(settings, "YOOKASSA_RECEIPT_VAT_CODE", 0) or 0)
+    em = (customer_email or "").strip()
+    if vat > 0 and em and "@" in em:
+        body["receipt"] = {
+            "customer": {"email": em[:256]},
+            "items": [
+                {
+                    "description": (description or "Подписка")[:128],
+                    "quantity": "1",
+                    "amount": {"value": value_str, "currency": "RUB"},
+                    "vat_code": vat,
+                    "payment_mode": "full_payment",
+                    "payment_subject": "service",
+                }
+            ],
+        }
+    elif vat > 0 and not em:
+        logger.warning(
+            "yookassa: YOOKASSA_RECEIPT_VAT_CODE=%s but user has no email — чек не отправлен в create payment",
+            vat,
+        )
 
     try:
         async with httpx.AsyncClient(timeout=45.0) as client:

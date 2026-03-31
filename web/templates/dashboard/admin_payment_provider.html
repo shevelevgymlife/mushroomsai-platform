@@ -96,6 +96,7 @@
         <div>
           <label class="block text-xs text-muted mb-1">Provider token (BotFather → ваш бот → Payments → подключить ЮKassa)</label>
           <input type="password" name="provider_token" value="" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" placeholder="{% if provider_cfg.get('provider_token') %}•••• оставьте пустым, чтобы не менять{% else %}Вставьте токен из BotFather{% endif %}" />
+          <p class="text-[11px] text-muted mt-1">Должен быть от <b>того же</b> бота, что и <code class="text-gold">TELEGRAM_TOKEN</code> на Render. Иначе оплата в боте не пройдёт — можно задать токен в Environment как <code class="text-gold">TELEGRAM_PAYMENT_PROVIDER_TOKEN</code> (приоритет над полем здесь).</p>
         </div>
         <div>
           <label class="block text-xs text-muted mb-1">shopId (идентификатор магазина ЮKassa)</label>

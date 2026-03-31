@@ -248,6 +248,7 @@ async def pay_subscription_yookassa(request: Request, offering_id: str = ""):
     disp = (off.get("display_name") or oid)[:80]
     dur = (off.get("duration_label") or "")[:40]
     desc = f"Подписка «{disp}» {dur}".strip()[:128]
+    cust_email = (user.get("email") or "").strip() or None
     url, err = await create_yookassa_redirect_payment(
         shop_id=(yb.get("shop_id") or "").strip(),
         secret_key=(yb.get("secret_key") or "").strip(),
@@ -258,6 +259,7 @@ async def pay_subscription_yookassa(request: Request, offering_id: str = ""):
             "user_id": str(uid),
             "offering_id": oid,
         },
+        customer_email=cust_email,
     )
     if not url:
         _logger.warning("yookassa create redirect failed: %s", err)

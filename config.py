@@ -70,6 +70,10 @@ class Settings(BaseSettings):
     TELEGRAM_WEBAPP_STARTAPP: str = "webapp"  # startapp payload для deep-link
     # Доп. токены ботов (через запятую), если Mini App открывают с другого бота — иначе initData hash не сойдётся
     TELEGRAM_WEBAPP_EXTRA_BOT_TOKENS: str = ""
+    # Provider token ЮKassa из @BotFather (тот же бот, что и TELEGRAM_TOKEN). Если задан — имеет приоритет над полем в админке.
+    TELEGRAM_PAYMENT_PROVIDER_TOKEN: str = ""
+    # Чек 54-ФЗ в теле create payment (1 = без НДС). 0 — не добавлять. Если в ЮKassa включена обязательная фискализация — задайте 1 и email в профиле.
+    YOOKASSA_RECEIPT_VAT_CODE: int = 0
 
     model_config = SettingsConfigDict(env_file=_env_file_for_settings(), extra="ignore")
 

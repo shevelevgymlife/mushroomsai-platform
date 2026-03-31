@@ -56,12 +56,16 @@ class _SubscribeButtonFilter(filters.MessageFilter):
 SUBSCRIBE_BUTTON_TEXT = _SubscribeButtonFilter()
 
 
+def _payment_provider_token(st: dict) -> str:
+    """Токен из Render (TELEGRAM_PAYMENT_PROVIDER_TOKEN) надёжнее, чем только БД — должен быть от того же бота, что TELEGRAM_TOKEN."""
+    return (getattr(settings, "TELEGRAM_PAYMENT_PROVIDER_TOKEN", "") or "").strip() or (st.get("provider_token") or "").strip()
+
+
 async def _provider_ready() -> tuple[bool, dict]:
     st = await get_provider_settings("yookassa_bot")
     if not st.get("enabled"):
         return False, st
-    pt = (st.get("provider_token") or "").strip()
-    if not pt:
+    if not _payment_provider_token(st):
         return False, st
     return True, st
 
@@ -147,7 +151,7 @@ async def tgpay_plan_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     payload = f"nf|{uid}|{offering_id}|{amount_kop}"
-    provider_token = (st.get("provider_token") or "").strip()
+    provider_token = _payment_provider_token(st)
     title = (off.get("display_name") or offering_id)[:32]
     dur_h = off.get("duration_label") or ""
     desc = f"NEUROFUNGI AI — {dur_h}"[:255]
