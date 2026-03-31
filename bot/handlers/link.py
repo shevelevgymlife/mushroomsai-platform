@@ -11,8 +11,22 @@ from telegram.ext import ContextTypes
 
 from db.database import database
 from db.models import users
+from bot.handlers.channel_autopost import main_keyboard_with_autopost
+from config import settings
 
 logger = logging.getLogger(__name__)
+
+
+async def _send_main_reply_keyboard(context: ContextTypes.DEFAULT_TYPE, chat_id: int, internal_user_id: int) -> None:
+    """После правок сообщения с inline-кнопками клиент часто не показывает reply-меню — принудительно открываем."""
+    site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
+    kb = await main_keyboard_with_autopost(site, False, int(internal_user_id))
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text="⌨️",
+        reply_markup=kb,
+        disable_notification=True,
+    )
 
 
 async def link_confirm_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -105,7 +119,7 @@ async def link_confirm_callback(update: Update, context: ContextTypes.DEFAULT_TY
             )
             return
 
-        await _do_link(query, tg_id, row["id"], token)
+        await _do_link(query, tg_id, row["id"], token, context)
     except Exception as e:
         logger.exception("link_confirm: %s", e)
         try:
@@ -178,6 +192,8 @@ async def link_merge_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
             "вы будете попадать в свой основной профиль.",
             parse_mode="HTML",
         )
+        if query.message:
+            await _send_main_reply_keyboard(context, query.message.chat_id, web_user_id)
     except Exception as e:
         logger.exception("link_merge_ok: %s", e)
         try:
@@ -186,7 +202,7 @@ async def link_merge_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
             pass
 
 
-async def _do_link(query, tg_id: int, user_id: int, token: str) -> None:
+async def _do_link(query, tg_id: int, user_id: int, token: str, context: ContextTypes.DEFAULT_TYPE | None = None) -> None:
     await database.execute(
         users.update()
         .where(users.c.id == user_id)
@@ -203,3 +219,5 @@ async def _do_link(query, tg_id: int, user_id: int, token: str) -> None:
         "Теперь вы можете входить на сайт через Telegram.",
         parse_mode="HTML",
     )
+    if context and query.message:
+        await _send_main_reply_keyboard(context, query.message.chat_id, int(user_id))
