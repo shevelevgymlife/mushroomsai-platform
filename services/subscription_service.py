@@ -73,9 +73,16 @@ async def activate_subscription(
     if plan not in PLANS:
         return False
 
-    end_date = datetime.utcnow() + timedelta(days=30 * months)
-    price = PLANS[plan]["price"] * months
     now = datetime.utcnow()
+    end_date = now + timedelta(days=30 * months)
+    price = PLANS[plan]["price"] * months
+    row = await database.fetch_one(users.select().where(users.c.id == int(user_id)))
+    if row:
+        cur_plan = (row.get("subscription_plan") or "free").lower()
+        cur_end = row.get("subscription_end")
+        # Если пользователь продлевает тот же активный тариф, добавляем месяц к текущему остатку.
+        if cur_plan == plan and cur_end and cur_end > now:
+            end_date = cur_end + timedelta(days=30 * months)
 
     await database.execute(
         subscriptions.insert().values(

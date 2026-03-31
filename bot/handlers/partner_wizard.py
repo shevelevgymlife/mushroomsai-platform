@@ -167,30 +167,63 @@ async def _send_final_links_block(
         "Магазин: до ~10% по правилам Neurotrops. Учёт — в кабинете магазина."
     )
     inline = InlineKeyboardMarkup(
-        [[InlineKeyboardButton("📋 Копировать ссылки", callback_data="ref_copy_links")]]
+        [
+            [InlineKeyboardButton("📋 Скопировать Telegram", callback_data="ref_copy_tg")],
+            [InlineKeyboardButton("📋 Скопировать веб-ссылку", callback_data="ref_copy_site")],
+            [InlineKeyboardButton("ℹ️ Как копировать", callback_data="ref_copy_help")],
+        ]
     )
     msg = await update.message.reply_html(text, reply_markup=inline, disable_web_page_preview=True)
     await _pin_safe(context, update.effective_chat.id, msg.message_id)
 
 
-async def ref_copy_links_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    q = update.callback_query
-    if not q or not q.message:
-        return
-    await q.answer("Отправляю ссылки для копирования")
+async def _ref_links_for_user(update: Update) -> tuple[str, str] | None:
     u = await ensure_user_or_blocked_reply(update)
     if not u:
-        return
+        return None
     uid = int(u.get("primary_user_id") or u["id"])
     code = await invite_referral_code_for_sharing(uid)
     bot = (settings.TELEGRAM_BOT_USERNAME or "").strip().lstrip("@") or "mushrooms_ai_bot"
     base = (settings.SITE_URL or "").strip().rstrip("/")
     ref_tg = f"https://t.me/{bot}?start={code}" if code else "—"
     ref_site = f"{base}/login?ref={code}" if code and base else "—"
+    return ref_tg, ref_site
+
+
+async def ref_copy_tg_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    q = update.callback_query
+    if not q or not q.message:
+        return
+    await q.answer("Отправляю Telegram-ссылку")
+    links = await _ref_links_for_user(update)
+    if not links:
+        return
+    ref_tg, _ = links
+    await q.message.reply_text(f"📋 Telegram ссылка:\n{ref_tg}")
+
+
+async def ref_copy_site_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    q = update.callback_query
+    if not q or not q.message:
+        return
+    await q.answer("Отправляю веб-ссылку")
+    links = await _ref_links_for_user(update)
+    if not links:
+        return
+    _, ref_site = links
+    await q.message.reply_text(f"📋 Веб-ссылка:\n{ref_site}")
+
+
+async def ref_copy_help_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    q = update.callback_query
+    if not q or not q.message:
+        return
+    await q.answer()
     await q.message.reply_text(
-        "📋 Скопируйте и отправляйте:\n\n"
-        f"Telegram:\n{ref_tg}\n\n"
-        f"Сайт:\n{ref_site}"
+        "ℹ️ Как копировать:\n"
+        "1) Нажмите кнопку «Скопировать …».\n"
+        "2) Удерживайте ссылку в сообщении.\n"
+        "3) Нажмите «Копировать» и отправляйте."
     )
 
 

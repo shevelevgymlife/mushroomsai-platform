@@ -16,7 +16,12 @@ from bot.handlers.start import BTN_AI, BTN_AI_EXIT, BTN_CONNECT_CHANNEL, main_ke
 from bot.handlers.link import link_confirm_callback, link_merge_callback
 from bot.handlers.support import get_support_conversation
 from bot.handlers.community_post_wizard import get_community_post_conversation
-from bot.handlers.partner_wizard import get_partner_conversation, ref_copy_links_callback
+from bot.handlers.partner_wizard import (
+    get_partner_conversation,
+    ref_copy_help_callback,
+    ref_copy_site_callback,
+    ref_copy_tg_callback,
+)
 from bot.handlers.chat import (
     handle_chat_message,
     tg_ai_continue_callback,
@@ -208,7 +213,9 @@ def create_bot() -> Application:
     application.add_handler(CallbackQueryHandler(tg_ai_continue_callback, pattern=r"^tg_ai_continue$"))
     application.add_handler(CallbackQueryHandler(tg_ai_exit_callback, pattern=r"^tg_ai_exit$"))
     application.add_handler(CallbackQueryHandler(_shop_ask_ai_callback, pattern=r"^tg_shop_ask_ai$"))
-    application.add_handler(CallbackQueryHandler(ref_copy_links_callback, pattern=r"^ref_copy_links$"))
+    application.add_handler(CallbackQueryHandler(ref_copy_tg_callback, pattern=r"^ref_copy_tg$"))
+    application.add_handler(CallbackQueryHandler(ref_copy_site_callback, pattern=r"^ref_copy_site$"))
+    application.add_handler(CallbackQueryHandler(ref_copy_help_callback, pattern=r"^ref_copy_help$"))
 
     # Текст: в AI только если включён режим (см. handle_chat_message)
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_chat_message))

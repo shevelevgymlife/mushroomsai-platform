@@ -65,6 +65,10 @@
         {% if _pl %}
           {% if _plan == 'start' and not (user and user.start_trial_active and (user.subscription_plan or 'free') == 'free') %}
           <div class="block text-center px-4 py-3 rounded-xl text-sm border border-gold/35 text-gold/90 bg-gold/[0.06]">Текущий план</div>
+          <form method="post" action="/subscriptions/connect" class="mt-2">
+            <input type="hidden" name="plan" value="start" />
+            <button type="submit" class="block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-gold/35 text-gold/90 hover:bg-gold/[0.10]">Оплатить следующий месяц</button>
+          </form>
           {% else %}
           <form method="post" action="/subscriptions/connect" class="mt-auto">
             <input type="hidden" name="plan" value="start" />
@@ -90,6 +94,10 @@
         {% if _pl %}
           {% if _plan == 'pro' %}
           <div class="block text-center px-4 py-3 rounded-xl text-sm border border-gold/35 text-gold/90 bg-gold/[0.06]">Текущий план</div>
+          <form method="post" action="/subscriptions/connect" class="mt-2">
+            <input type="hidden" name="plan" value="pro" />
+            <button type="submit" class="block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-gold/35 text-gold/90 hover:bg-gold/[0.10]">Оплатить следующий месяц</button>
+          </form>
           {% else %}
           <form method="post" action="/subscriptions/connect" class="mt-auto">
             <input type="hidden" name="plan" value="pro" />
@@ -115,6 +123,10 @@
         {% if _pl %}
           {% if _plan == 'maxi' %}
           <div class="block text-center px-4 py-3 rounded-xl text-sm border border-gold/35 text-gold/90 bg-gold/[0.06]">Текущий план</div>
+          <form method="post" action="/subscriptions/connect" class="mt-2">
+            <input type="hidden" name="plan" value="maxi" />
+            <button type="submit" class="block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-gold/35 text-gold/90 hover:bg-gold/[0.10]">Оплатить следующий месяц</button>
+          </form>
           {% else %}
           <form method="post" action="/subscriptions/connect" class="mt-auto">
             <input type="hidden" name="plan" value="maxi" />
