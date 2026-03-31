@@ -28,12 +28,14 @@ from web.routes.music import router as music_router
 from web.routes.notifications import router as notifications_router
 from web.translations import TRANSLATIONS, parse_accept_language, SUPPORTED_LANGS
 from services.heavy_startup import run_heavy_startup
+from services.logging_redact import install_telegram_token_redact_filter
 from web.templates_utils import Jinja2Templates
 from auth.session import get_user_from_request
 from services.legal import legal_acceptance_redirect
 from services.subscription_service import check_subscription
 
 logging.basicConfig(level=logging.INFO)
+install_telegram_token_redact_filter()
 logger = logging.getLogger(__name__)
 
 
