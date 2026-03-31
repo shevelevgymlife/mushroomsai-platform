@@ -156,16 +156,42 @@ async def _send_final_links_block(
         f"{plat_note}"
         f"{shop_note}"
         f"<b>Telegram:</b>\n"
+        f"<a href=\"{html.escape(ref_tg, quote=True)}\">Открыть ссылку</a>\n"
         f"<code>{html.escape(ref_tg)}</code>\n\n"
         f"<b>Сайт:</b>\n"
+        f"<a href=\"{html.escape(ref_site, quote=True)}\">Открыть ссылку</a>\n"
         f"<code>{html.escape(ref_site)}</code>\n\n"
         f"Раздавайте эти ссылки везде.\n"
         f"Подписки в приложении: до <b>10%</b> (~{bonus} ₽ со Старт), 1 раз после <b>платной</b> оплаты.\n"
         "Пробные 3 дня не считаются.\n\n"
         "Магазин: до ~10% по правилам Neurotrops. Учёт — в кабинете магазина."
     )
-    msg = await update.message.reply_html(text, reply_markup=kb, disable_web_page_preview=True)
+    inline = InlineKeyboardMarkup(
+        [[InlineKeyboardButton("📋 Копировать ссылки", callback_data="ref_copy_links")]]
+    )
+    msg = await update.message.reply_html(text, reply_markup=inline, disable_web_page_preview=True)
     await _pin_safe(context, update.effective_chat.id, msg.message_id)
+
+
+async def ref_copy_links_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    q = update.callback_query
+    if not q or not q.message:
+        return
+    await q.answer("Отправляю ссылки для копирования")
+    u = await ensure_user_or_blocked_reply(update)
+    if not u:
+        return
+    uid = int(u.get("primary_user_id") or u["id"])
+    code = await invite_referral_code_for_sharing(uid)
+    bot = (settings.TELEGRAM_BOT_USERNAME or "").strip().lstrip("@") or "mushrooms_ai_bot"
+    base = (settings.SITE_URL or "").strip().rstrip("/")
+    ref_tg = f"https://t.me/{bot}?start={code}" if code else "—"
+    ref_site = f"{base}/login?ref={code}" if code and base else "—"
+    await q.message.reply_text(
+        "📋 Скопируйте и отправляйте:\n\n"
+        f"Telegram:\n{ref_tg}\n\n"
+        f"Сайт:\n{ref_site}"
+    )
 
 
 async def partner_receive_shop_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
