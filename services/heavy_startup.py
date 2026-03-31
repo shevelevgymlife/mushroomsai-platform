@@ -597,6 +597,15 @@ async def run_heavy_startup(app: FastAPI) -> None:
             logger.warning("migrate_v26 ai_telegram_channel: %s", e)
 
         try:
+            import migrate_v27_referral_shop_partner_self as migrate_v27
+
+            for s in migrate_v27.STEPS:
+                await database.execute(sa.text(s))
+            logger.info("referral_shop_partner_self (migrate_v27) OK")
+        except Exception as e:
+            logger.warning("migrate_v27 referral_shop_partner_self: %s", e)
+
+        try:
             from services.merge_neurofungi_ai_chats import merge_all_neurofungi_ai_personal_chats
 
             await merge_all_neurofungi_ai_personal_chats()

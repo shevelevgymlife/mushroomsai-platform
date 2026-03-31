@@ -13,6 +13,32 @@
     <div class="sect-title">🎁 Реферальная программа</div>
     <p class="text-sm text-muted mb-6 leading-relaxed">Приглашайте друзей по персональной ссылке — бонус на баланс начисляется после того, как приглашённый оформит платную подписку (Старт, Про или Макси). Пробный период 3 дня бонус не даёт.</p>
 
+    {% if request.query_params.get('partner_saved') %}
+    <div class="mb-4 p-3 rounded-xl border border-gold/30 text-gold text-sm">Ссылка магазина сохранена. Приглашённые по вашей ссылке приложения будут видеть ваш магазин там же, где и раньше — по той же логике, что при настройке администратором.</div>
+    {% endif %}
+    {% if request.query_params.get('partner_err') == 'plan' %}
+    <div class="mb-4 p-3 rounded-xl border border-red-400/40 text-red-300 text-sm">Партнёрство магазина доступно при подписке <strong>Старт</strong> и выше.</div>
+    {% elif request.query_params.get('partner_err') == 'bad' %}
+    <div class="mb-4 p-3 rounded-xl border border-red-400/40 text-red-300 text-sm">{{ request.query_params.get('detail') or 'Проверьте формат ссылки (https://…).' }}</div>
+    {% endif %}
+
+    {% if show_partner_shop %}
+    <div class="card rounded-2xl border border-white/10 bg-white/[0.03] p-5 mb-4">
+      <div style="font-size:16px;font-weight:600;color:#e8e8e8;margin-bottom:8px">Стать партнёром магазина</div>
+      <p class="text-sm text-muted mb-4 leading-relaxed">Укажите <strong>вашу персональную ссылку</strong> из бота Neurotrops — тогда приглашённые по ссылке приложения ниже будут видеть в кнопке «Магазин» и в карточках <strong>вашу</strong> реферальную ссылку (как если бы ссылку прописал администратор). Отслеживание продаж и вознаграждение — в <strong>личном кабинете магазина</strong> Neurotrops (обычно до 10% по правилам площадки).</p>
+      <a href="{{ neurotrops_shop_entry_url }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-medium border border-gold/40 text-gold hover:bg-gold/10 mb-4">Взять ссылку в магазине</a>
+      <p class="text-xs text-muted mb-3 leading-relaxed">Кратко: зайдите в магазин через кнопку выше → <strong>Меню</strong> → <strong>Личный кабинет</strong> → найдите блок <strong>«Моя ссылка»</strong> → <strong>Скопировать</strong> → вставьте сюда и нажмите «Сохранить».</p>
+      <form method="post" action="/referral/partner-shop-url" class="space-y-3">
+        <label class="block text-xs text-muted">Ваша реферальная ссылка магазина (самоприсвоение)</label>
+        <input type="url" name="shop_url" value="{{ ref_shop_url_current }}" placeholder="https://…" class="sinp w-full text-sm" autocomplete="off" />
+        <button type="submit" class="btn-g px-5 py-2.5 rounded-xl text-sm font-medium">Сохранить</button>
+      </form>
+      {% if partner_self_registered and ref_shop_url_current %}
+      <p class="text-xs text-gold mt-3">✓ Вы оформили партнёрство: ссылка сохранена. В списке пользователей в админке отображается метка «Партнёр».</p>
+      {% endif %}
+    </div>
+    {% endif %}
+
     <div class="card rounded-2xl border border-white/10 bg-white/[0.03] p-5 mb-4">
       <div style="font-size:15px;font-weight:600;color:#ddd;margin-bottom:10px">Ссылки для приглашений</div>
       <p class="muted" style="font-size:12px;margin-bottom:8px">Telegram</p>

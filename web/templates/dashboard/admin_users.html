@@ -37,6 +37,7 @@
               <div class="flex items-center gap-1.5">
                 <span class="inline-block w-2 h-2 rounded-full shrink-0 {{ 'bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.5)]' if u.is_online else 'bg-zinc-600' }}" title="{% if u.is_online %}Онлайн{% else %}Не в сети{% endif %}"></span>
                 <a href="/community/profile/{{ u.id }}" target="_blank" class="font-medium text-text text-sm truncate block hover:text-gold" style="text-decoration:none">{{ u.name or '—' }}</a>
+                {% if u.get('referral_shop_partner_self') %}<span class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 shrink-0">Партнёр</span>{% endif %}
               </div>
               <p class="text-xs text-muted font-mono">{{ u.display_tg_id or '—' }}</p>
             </div>
@@ -106,6 +107,7 @@
                   {% endif %}
                   <span class="inline-block w-2 h-2 rounded-full shrink-0 {{ 'bg-green-400' if u.is_online else 'bg-zinc-600' }}" title="{% if u.is_online %}Онлайн{% else %}Не в сети{% endif %}"></span>
                   <a href="/community/profile/{{ u.id }}" target="_blank" class="text-sm text-text hover:text-gold transition-colors" style="text-decoration:none">{{ u.name or '—' }}</a>
+                  {% if u.get('referral_shop_partner_self') %}<span class="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 whitespace-nowrap">Партнёр</span>{% endif %}
                 </div>
               </td>
               <td class="px-4 py-3">

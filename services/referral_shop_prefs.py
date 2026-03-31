@@ -3,6 +3,19 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+
+def normalize_referral_shop_url(raw: Optional[str]) -> Optional[str]:
+    """Пустая строка → None; иначе только http(s), разумная длина (как в админке)."""
+    s = (raw or "").strip()
+    if not s:
+        return None
+    if len(s) > 2048:
+        raise ValueError("Слишком длинная ссылка")
+    low = s.lower()
+    if not (low.startswith("http://") or low.startswith("https://")):
+        raise ValueError("Укажите ссылку с http:// или https://")
+    return s
+
 from db.database import database
 from db.models import users
 

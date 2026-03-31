@@ -1,6 +1,7 @@
 import logging
 import os
 import uuid
+from urllib.parse import quote
 import sqlalchemy as sa
 from fastapi import APIRouter, Request, Depends, UploadFile, File, Form
 from web.templates_utils import Jinja2Templates
@@ -49,7 +50,11 @@ from services.referral_service import (
     get_referrer_invites_detailed,
     request_referral_withdrawal,
 )
-from services.referral_shop_prefs import external_buy_url_for_user
+from services.referral_shop_prefs import (
+    SHOP_RUS_URL,
+    external_buy_url_for_user,
+    normalize_referral_shop_url,
+)
 from services.ops_alerts import (
     notify_new_feedback,
     notify_new_order,
@@ -1006,6 +1011,7 @@ async def referral_program_page(request: Request):
         return leg
     uid = user.get("primary_user_id") or user["id"]
     plan = await check_subscription(uid)
+    show_partner_shop = plan in ("start", "pro", "maxi")
     code = await ensure_user_referral_code(uid)
     bot = (settings.TELEGRAM_BOT_USERNAME or "").strip().lstrip("@") or "mushrooms_ai_bot"
     base = (settings.SITE_URL or "").strip().rstrip("/")
@@ -1023,6 +1029,8 @@ async def referral_program_page(request: Request):
     from web.routes.user import compute_visible_blocks
 
     visible_block_keys = await compute_visible_blocks(uid, plan)
+    ref_shop_url_current = (display_user.get("referral_shop_url") or "").strip()
+    partner_self = bool(display_user.get("referral_shop_partner_self"))
     return templates.TemplateResponse(
         "referral_program.html",
         {
@@ -1033,8 +1041,37 @@ async def referral_program_page(request: Request):
             "ref_stats": ref_stats,
             "ref_invites": ref_invites,
             "visible_block_keys": visible_block_keys,
+            "show_partner_shop": show_partner_shop,
+            "ref_shop_url_current": ref_shop_url_current,
+            "partner_self_registered": partner_self,
+            "neurotrops_shop_entry_url": SHOP_RUS_URL,
         },
     )
+
+
+@router.post("/referral/partner-shop-url")
+async def referral_partner_shop_url_save(request: Request, shop_url: str = Form("")):
+    """Самоприсвоение реферальной ссылки внешнего магазина (тариф Старт+)."""
+    user = await get_user_from_request(request)
+    if not user:
+        return RedirectResponse("/login?next=/referral", status_code=302)
+    uid = int(user.get("primary_user_id") or user["id"])
+    plan = await check_subscription(uid)
+    if plan not in ("start", "pro", "maxi"):
+        return RedirectResponse("/referral?partner_err=plan", status_code=303)
+    try:
+        normalized = normalize_referral_shop_url(shop_url)
+    except ValueError as e:
+        return RedirectResponse("/referral?partner_err=bad&detail=" + quote(str(e), safe=""), status_code=303)
+    await database.execute(
+        users.update()
+        .where(users.c.id == uid)
+        .values(
+            referral_shop_url=normalized,
+            referral_shop_partner_self=bool(normalized),
+        )
+    )
+    return RedirectResponse("/referral?partner_saved=1", status_code=303)
 
 
 @router.post("/referral/withdraw")

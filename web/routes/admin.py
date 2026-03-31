@@ -98,17 +98,7 @@ PERM_LABELS = {
 PERMISSION_ITEMS = [(k, PERM_LABELS.get(k, k)) for k in PERM_KEYS]
 
 
-def _normalize_referral_shop_url(raw: Optional[str]) -> Optional[str]:
-    """Пустая строка → None; иначе только http(s), разумная длина."""
-    s = (raw or "").strip()
-    if not s:
-        return None
-    if len(s) > 2048:
-        raise ValueError("Слишком длинная ссылка")
-    low = s.lower()
-    if not (low.startswith("http://") or low.startswith("https://")):
-        raise ValueError("Укажите ссылку с http:// или https://")
-    return s
+from services.referral_shop_prefs import normalize_referral_shop_url as _normalize_referral_shop_url
 
 
 def _parse_form_price(raw: Optional[str]) -> Optional[int]:
@@ -658,7 +648,9 @@ async def set_user_referral_shop_url(request: Request, user_id: int, url: str = 
     except ValueError as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
     await database.execute(
-        users.update().where(users.c.id == user_id).values(referral_shop_url=normalized)
+        users.update()
+        .where(users.c.id == user_id)
+        .values(referral_shop_url=normalized, referral_shop_partner_self=False)
     )
     return JSONResponse({"ok": True, "user_id": user_id, "referral_shop_url": normalized})
 

@@ -318,6 +318,8 @@ async def merge_accounts(primary_id: int, secondary_id: int):
         updates["referred_by"] = int(secondary["referred_by"])
     if not (primary.get("referral_shop_url") or "").strip() and (secondary.get("referral_shop_url") or "").strip():
         updates["referral_shop_url"] = (secondary.get("referral_shop_url") or "").strip()
+        if secondary.get("referral_shop_partner_self"):
+            updates["referral_shop_partner_self"] = True
     if not (primary.get("referral_code") or "").strip() and (secondary.get("referral_code") or "").strip():
         updates["referral_code"] = (secondary.get("referral_code") or "").strip().upper()
 
