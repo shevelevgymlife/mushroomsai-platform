@@ -5,7 +5,7 @@ from urllib.parse import quote
 import sqlalchemy as sa
 from fastapi import APIRouter, Request, Depends, UploadFile, File, Form
 from web.templates_utils import Jinja2Templates
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from db.database import database
 from db.models import (
     products,
@@ -188,6 +188,12 @@ async def app_entry(request: Request):
         "telegram_redirect_preserve.html",
         {"request": request, "redirect_dest": "/"},
     )
+
+
+@router.head("/")
+async def index_head():
+    """Uptime/пробы часто шлют HEAD на `/`; без этого маршрута — 405 Method Not Allowed."""
+    return Response(status_code=200)
 
 
 @router.get("/", response_class=HTMLResponse)
