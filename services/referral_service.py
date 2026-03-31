@@ -198,6 +198,21 @@ def clear_invite_cookie(response) -> None:
     response.delete_cookie("invite_ref", path="/")
 
 
+def parse_invite_ref_code(request) -> Optional[str]:
+    """Код приглашения из ?ref= или cookie invite_ref (та же валидация, что в attach_invite_ref_from_query)."""
+
+    def _ok(code: str) -> bool:
+        return bool(code) and 2 <= len(code) <= 20 and all(c.isalnum() for c in code)
+
+    q = (request.query_params.get("ref") or "").strip().upper()
+    if _ok(q):
+        return q
+    c = (request.cookies.get("invite_ref") or "").strip().upper()
+    if _ok(c):
+        return c
+    return None
+
+
 def attach_invite_ref_from_query(request, response) -> None:
     ref = (request.query_params.get("ref") or "").strip().upper()
     if ref and 2 <= len(ref) <= 20 and all(c.isalnum() for c in ref):

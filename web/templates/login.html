@@ -37,7 +37,7 @@
     <div id="web-auth-block" style="display:none;flex-direction:column;gap:12px">
 
       <!-- Telegram: открывает приложение Telegram -->
-      <a href="https://t.me/{{ tg_bot_username or 'mushrooms_ai_bot' }}"
+      <a href="https://t.me/{{ tg_bot_username or 'mushrooms_ai_bot' }}{% if invite_ref_code %}?start={{ invite_ref_code | urlencode }}{% endif %}"
         target="_blank" rel="noopener"
         style="display:flex;align-items:center;justify-content:center;gap:12px;width:100%;min-height:52px;padding:0 20px;border-radius:14px;text-decoration:none;background:#229ED9;color:#fff;font-size:15px;font-weight:600;transition:opacity .2s"
         onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
