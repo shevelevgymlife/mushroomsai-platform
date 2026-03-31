@@ -7,12 +7,8 @@ from db.models import users, sessions
 from auth.blocked_identities import login_denied_for_user_row_sync
 from auth.owner import sync_owner_admin_role
 from auth.ui_prefs import attach_screen_rim_prefs
-from services.subscription_service import PLANS, check_subscription, paid_subscription_for_referral_program
-
-
-def _plan_display_name(plan_key: str | None) -> str:
-    k = (plan_key or "free").lower()
-    return (PLANS.get(k) or PLANS["free"])["name"]
+from services.payment_plans_catalog import plan_display_name
+from services.subscription_service import check_subscription, paid_subscription_for_referral_program
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
@@ -79,7 +75,7 @@ async def attach_subscription_effective(u: dict) -> None:
         u["can_claim_start_trial"] = False
         u["drawer_trial_countdown"] = False
         u["start_trial_until_iso"] = None
-        u["drawer_sub_head"] = _plan_display_name("free")
+        u["drawer_sub_head"] = await plan_display_name("free")
         u["drawer_sub_sub"] = "Без ограничения по времени"
         u["drawer_sub_show_countdown"] = False
         u["drawer_sub_until_iso"] = None
@@ -104,7 +100,7 @@ async def attach_subscription_effective(u: dict) -> None:
     u["drawer_trial_countdown"] = False
     u["start_trial_until_iso"] = None
 
-    head = _plan_display_name("free")
+    head = await plan_display_name("free")
     sub = "Без ограничения по времени"
     show_cd = False
     until_iso = None
@@ -115,7 +111,7 @@ async def attach_subscription_effective(u: dict) -> None:
         sub = "Служебный доступ"
         kind = "staff"
     elif paid_active and admin_granted:
-        head = f"Подписка «{_plan_display_name(sp)}»"
+        head = f"Подписка «{await plan_display_name(sp)}»"
         if sub_end is None:
             sub = "Бессрочно · назначено администратором"
             show_cd = False
@@ -127,7 +123,7 @@ async def attach_subscription_effective(u: dict) -> None:
             show_cd = bool(until_iso)
         kind = "paid_admin"
     elif paid_active:
-        head = f"Подписка «{_plan_display_name(sp)}»"
+        head = f"Подписка «{await plan_display_name(sp)}»"
         sub = "Осталось до окончания оплаченного периода"
         se = row.get("subscription_end")
         if se:

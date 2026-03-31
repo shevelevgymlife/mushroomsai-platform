@@ -15,7 +15,8 @@ from services.ai_community_bot import (
     bind_ai_community_bot_to_user_id,
     load_bot_settings_row,
 )
-from services.subscription_service import PLANS, record_subscription_event, format_admin_subscription_assigned_message
+from services.payment_plans_catalog import get_effective_plans
+from services.subscription_service import record_subscription_event, format_admin_subscription_assigned_message
 from services.system_support_delivery import deliver_system_support_notification
 from services.shop_catalog import extra_image_lines_from_json, extra_image_urls_from_text
 from auth.session import get_user_from_request
@@ -47,6 +48,7 @@ ADMIN_SECTIONS = [
     ("AI", "/admin/ai", "can_ai"),
     ("Обучающие посты", "/admin/ai-posts", "can_ai_posts"),
     ("Магазин", "/admin/shop", "can_shop"),
+    ("Оплата", "/admin/payment", "can_payment"),
     ("Пользователи", "/admin/users", "can_users"),
     ("Обратная связь", "/admin/feedback", "can_feedback"),
     ("Рассылки", "/admin/broadcast", "can_broadcast"),
@@ -83,6 +85,7 @@ PERM_LABELS = {
     "can_ai": "AI управление",
     "can_ai_posts": "Обучающие посты",
     "can_shop": "Магазин",
+    "can_payment": "Оплата и тарифы",
     "can_users": "Пользователи",
     "can_feedback": "Обратная связь",
     "can_broadcast": "Рассылки",
@@ -569,6 +572,7 @@ async def users_list(request: Request, search: str = "", shop_partners: str = ""
         d["is_protected_row"] = (d.get("role") == "admin") or is_platform_owner(d)
         enriched_users.append(d)
 
+    plans_eff = await get_effective_plans()
     return templates.TemplateResponse(
         "dashboard/admin_users.html",
         {
@@ -581,12 +585,12 @@ async def users_list(request: Request, search: str = "", shop_partners: str = ""
             "shop_partners_filter": (shop_partners or "").strip().lower() in ("1", "true", "yes", "on"),
             "msg_counts": msg_counts,
             "now": datetime.utcnow(),
-            "plan_labels": {k: v["name"] for k, v in PLANS.items()},
+            "plan_labels": {k: v["name"] for k, v in plans_eff.items()},
             "plan_modal_rows": [
-                ("free", PLANS["free"]["name"], PLANS["free"]["price"]),
-                ("start", PLANS["start"]["name"], PLANS["start"]["price"]),
-                ("pro", PLANS["pro"]["name"], PLANS["pro"]["price"]),
-                ("maxi", PLANS["maxi"]["name"], PLANS["maxi"]["price"]),
+                ("free", plans_eff["free"]["name"], plans_eff["free"]["price"]),
+                ("start", plans_eff["start"]["name"], plans_eff["start"]["price"]),
+                ("pro", plans_eff["pro"]["name"], plans_eff["pro"]["price"]),
+                ("maxi", plans_eff["maxi"]["name"], plans_eff["maxi"]["price"]),
             ],
             "viewer_is_platform_owner": is_platform_owner(admin),
             "permission_items": PERMISSION_ITEMS,
@@ -820,6 +824,7 @@ async def change_subscription(request: Request, user_id: int, plan: str = Form(.
     if plan not in ("free", "start", "pro", "maxi"):
         return JSONResponse({"error": "invalid plan"}, status_code=400)
 
+    plans_eff = await get_effective_plans()
     sub_end_str = None
     sub_unlimited = False
     try:
@@ -857,7 +862,7 @@ async def change_subscription(request: Request, user_id: int, plan: str = Form(.
             int(user_id),
             "admin",
             plan,
-            float(PLANS[plan]["price"]),
+            float(plans_eff[plan]["price"]),
             now,
             end_date,
             None,
@@ -865,7 +870,7 @@ async def change_subscription(request: Request, user_id: int, plan: str = Form(.
     try:
         tgt = await database.fetch_one(users.select().where(users.c.id == user_id))
         notify_uid = int(tgt.get("primary_user_id") or user_id) if tgt else user_id
-        notice = format_admin_subscription_assigned_message(
+        notice = await format_admin_subscription_assigned_message(
             plan,
             end_date,
             unlimited=bool(granted and sub_unlimited and plan != "free"),
@@ -890,6 +895,7 @@ async def patch_user_plan(request: Request, user_id: int):
     sub_unlimited = bool(body.get("subscription_unlimited"))
     if plan not in ("free", "start", "pro", "maxi"):
         return JSONResponse({"error": "invalid plan"}, status_code=400)
+    plans_eff = await get_effective_plans()
     if plan == "free":
         end_date = None
     elif sub_unlimited:
@@ -917,7 +923,7 @@ async def patch_user_plan(request: Request, user_id: int):
             int(user_id),
             "admin",
             plan,
-            float(PLANS[plan]["price"]),
+            float(plans_eff[plan]["price"]),
             now,
             end_date,
             None,
@@ -925,7 +931,7 @@ async def patch_user_plan(request: Request, user_id: int):
     try:
         tgt = await database.fetch_one(users.select().where(users.c.id == user_id))
         notify_uid = int(tgt.get("primary_user_id") or user_id) if tgt else user_id
-        notice = format_admin_subscription_assigned_message(
+        notice = await format_admin_subscription_assigned_message(
             plan,
             end_date,
             unlimited=bool(granted and sub_unlimited and plan != "free"),
@@ -2295,6 +2301,7 @@ async def admin_referral_page(
     ref_tree = await ra.invites_for_referrer(int(ref_uid)) if ref_uid else []
 
     base = (settings.SITE_URL or "").rstrip("/") or ""
+    plans_eff = await get_effective_plans()
 
     return templates.TemplateResponse(
         "dashboard/admin_referral.html",
@@ -2322,7 +2329,7 @@ async def admin_referral_page(
             "segment_total": seg_total,
             "search_hits": search_hits,
             "ref_tree": ref_tree,
-            "plans": PLANS,
+            "plans": plans_eff,
             "site_base": base,
         },
     )
@@ -2777,3 +2784,8 @@ async def admin_ai_community_bot_bind_user(request: Request, bind_user_id: str =
         "/admin/ai-community-bot?bind_err=1&bind_msg=" + quote(err[:500], safe=""),
         status_code=303,
     )
+
+
+from web.routes import admin_payment as _admin_payment_router
+
+router.include_router(_admin_payment_router.router)

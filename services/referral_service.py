@@ -8,14 +8,14 @@ from typing import Any, Optional
 import sqlalchemy as sa
 from db.database import database
 from db.models import users, referrals, referral_withdrawals, referral_promo_links, subscriptions
-from services.subscription_service import PLANS
+from services.payment_plans_catalog import DEFAULT_PLANS, get_effective_plans
 
 logger = logging.getLogger(__name__)
 
 
 def referral_bonus_per_invite_rub() -> int:
     """10% от месячной цены тарифа Старт (баллы на продление)."""
-    return max(1, int(PLANS["start"]["price"] * 0.1))
+    return max(1, int(DEFAULT_PLANS["start"]["price"] * 0.1))
 
 
 async def _telegram_chat_id_for_user(user_id: int) -> Optional[int]:
@@ -653,11 +653,12 @@ async def apply_promo_token_from_cookie(request, response, user_id: int) -> None
         response.delete_cookie("promo_token", path="/")
         return
     plan = (r.get("plan_key") or "start").lower()
-    if plan not in PLANS:
+    if plan not in DEFAULT_PLANS:
         plan = "start"
     days = max(1, int(r.get("period_days") or 30))
     end = datetime.utcnow() + timedelta(days=days)
-    price = float(PLANS[plan]["price"]) * (days / 30.0)
+    eff = await get_effective_plans()
+    price = float(eff[plan]["price"]) * (days / 30.0)
     await database.execute(
         subscriptions.insert().values(
             user_id=user_id,
@@ -698,7 +699,7 @@ async def create_referral_promo_link(
 ) -> dict | None:
     """Создать промо-ссылку (токен для cookie promo_token)."""
     pk = (plan_key or "start").lower()
-    if pk not in PLANS or pk == "free":
+    if pk not in DEFAULT_PLANS or pk == "free":
         pk = "start"
     days = max(1, int(period_days or 30))
     token = secrets.token_urlsafe(48)[:64]

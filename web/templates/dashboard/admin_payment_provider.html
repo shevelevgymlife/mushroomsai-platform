@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}{{ provider.title }} — Оплата — Admin{% endblock %}
+{% block content %}
+<div class="pt-24 pb-16 neo-app-surface">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+    {% include "components/admin_nav.html" %}
+
+    <div class="mb-6">
+      <a href="/admin/payment" class="text-sm text-gold hover:text-gold-light">← Все способы оплаты</a>
+    </div>
+
+    {% if request.query_params.get('saved') %}
+    <div class="mb-6 p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 text-sm">Сохранено.</div>
+    {% endif %}
+
+    <h1 class="text-2xl font-light text-text mb-1">{{ provider.title }}</h1>
+    <p class="text-sm text-muted mb-8">{{ provider.subtitle }}</p>
+
+    <form method="post" action="/admin/payment/{{ provider.id }}" class="space-y-10">
+      {% if provider.id == 'cloudpayments' %}
+      <div class="p-6 rounded-2xl border border-border bg-surface space-y-4">
+        <h2 class="text-lg font-medium text-text">Реквизиты CloudPayments</h2>
+        <label class="flex items-center gap-2 text-sm text-text cursor-pointer">
+          <input type="checkbox" name="enabled" value="1" class="rounded border-border" {% if provider_cfg.get('enabled') %}checked{% endif %} />
+          Включить оплату на сайте (виджет на странице подписок)
+        </label>
+        <div>
+          <label class="block text-xs text-muted mb-1">Public ID (идентификатор из кабинета)</label>
+          <input type="text" name="public_id" value="{{ provider_cfg.get('public_id', '') }}" autocomplete="off" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-text text-sm" placeholder="pk_..." />
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1">API Secret (пароль API)</label>
+          <input type="password" name="api_secret" value="" autocomplete="new-password" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-text text-sm" placeholder="{% if provider_cfg.get('api_secret') %}•••• оставьте пустым, чтобы не менять{% else %}Введите секрет{% endif %}" />
+        </div>
+        {% if cloudpayments_webhook_url %}
+        <div class="text-xs text-muted">
+          URL для уведомлений: <code class="text-gold break-all">{{ cloudpayments_webhook_url }}</code>
+        </div>
+        {% endif %}
+      </div>
+      {% elif provider.id == 'tinkoff' %}
+      <div class="p-6 rounded-2xl border border-border bg-surface space-y-4">
+        <h2 class="text-lg font-medium text-text">Тинькофф Касса</h2>
+        <p class="text-xs text-muted">Интеграция на стороне сайта подключается отдельно; здесь хранятся реквизиты для будущей привязки.</p>
+        <label class="flex items-center gap-2 text-sm text-text cursor-pointer">
+          <input type="checkbox" name="enabled" value="1" class="rounded border-border" {% if provider_cfg.get('enabled') %}checked{% endif %} />
+          Отметить как настроенное
+        </label>
+        <div>
+          <label class="block text-xs text-muted mb-1">Terminal Key</label>
+          <input type="text" name="terminal_key" value="{{ provider_cfg.get('terminal_key', '') }}" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1">Пароль терминала</label>
+          <input type="password" name="password" value="" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" placeholder="{% if provider_cfg.get('password') %}••••{% endif %}" />
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1">Заметка</label>
+          <textarea name="note" rows="2" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm">{{ provider_cfg.get('note', '') }}</textarea>
+        </div>
+      </div>
+      {% elif provider.id == 'yookassa' %}
+      <div class="p-6 rounded-2xl border border-border bg-surface space-y-4">
+        <h2 class="text-lg font-medium text-text">ЮKassa (сайт)</h2>
+        <label class="flex items-center gap-2 text-sm text-text cursor-pointer">
+          <input type="checkbox" name="enabled" value="1" class="rounded border-border" {% if provider_cfg.get('enabled') %}checked{% endif %} />
+          Включить (после реализации на бэкенде)
+        </label>
+        <div>
+          <label class="block text-xs text-muted mb-1">shopId</label>
+          <input type="text" name="shop_id" value="{{ provider_cfg.get('shop_id', '') }}" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1">Секретный ключ</label>
+          <input type="password" name="secret_key" value="" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" placeholder="{% if provider_cfg.get('secret_key') %}••••{% endif %}" />
+        </div>
+      </div>
+      {% elif provider.id == 'yookassa_bot' %}
+      <div class="p-6 rounded-2xl border border-border bg-surface space-y-4">
+        <h2 class="text-lg font-medium text-text">ЮKassa в Telegram</h2>
+        <p class="text-xs text-muted">В BotFather создайте платежи для бота, получите provider token. Секрет ЮKassa нужен для серверной проверки.</p>
+        <label class="flex items-center gap-2 text-sm text-text cursor-pointer">
+          <input type="checkbox" name="enabled" value="1" class="rounded border-border" {% if provider_cfg.get('enabled') %}checked{% endif %} />
+          Готово к тестам
+        </label>
+        <div>
+          <label class="block text-xs text-muted mb-1">Токен бота (BotFather)</label>
+          <input type="password" name="bot_token" value="" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" placeholder="{% if provider_cfg.get('bot_token') %}••••{% endif %}" />
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1">Provider token (платежи в боте)</label>
+          <input type="password" name="provider_token" value="" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" placeholder="{% if provider_cfg.get('provider_token') %}••••{% endif %}" />
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1">shopId ЮKassa</label>
+          <input type="text" name="shop_id" value="{{ provider_cfg.get('shop_id', '') }}" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1">Секретный ключ API</label>
+          <input type="password" name="secret_key" value="" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" placeholder="{% if provider_cfg.get('secret_key') %}••••{% endif %}" />
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1">Инструкция для себя</label>
+          <textarea name="instructions" rows="3" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm">{{ provider_cfg.get('instructions', '') }}</textarea>
+        </div>
+      </div>
+      {% elif provider.id == 'telegram_stars' %}
+      <div class="p-6 rounded-2xl border border-border bg-surface space-y-4">
+        <h2 class="text-lg font-medium text-text">Telegram Stars</h2>
+        <p class="text-xs text-muted">Настройка приёма Stars выполняется в BotFather / платформе Telegram; здесь — учётные пометки.</p>
+        <label class="flex items-center gap-2 text-sm text-text cursor-pointer">
+          <input type="checkbox" name="enabled" value="1" class="rounded border-border" {% if provider_cfg.get('enabled') %}checked{% endif %} />
+          Использовать Stars для подписок (после реализации)
+        </label>
+        <div>
+          <label class="block text-xs text-muted mb-1">Заметки</label>
+          <textarea name="note" rows="3" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm">{{ provider_cfg.get('note', '') }}</textarea>
+        </div>
+      </div>
+      {% elif provider.id == 'crypto' %}
+      <div class="p-6 rounded-2xl border border-border bg-surface space-y-4">
+        <h2 class="text-lg font-medium text-text">Криптовалюта (NOWPayments и др.)</h2>
+        <label class="flex items-center gap-2 text-sm text-text cursor-pointer">
+          <input type="checkbox" name="enabled" value="1" class="rounded border-border" {% if provider_cfg.get('enabled') %}checked{% endif %} />
+          Включить после настройки API
+        </label>
+        <div>
+          <label class="block text-xs text-muted mb-1">API ключ</label>
+          <input type="password" name="api_key" value="" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" placeholder="{% if provider_cfg.get('api_key') %}••••{% endif %}" />
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1">Валюта выплат (опционально)</label>
+          <input type="text" name="payout_currency" value="{{ provider_cfg.get('payout_currency', '') }}" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" placeholder="USDT" />
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1">Заметка</label>
+          <textarea name="note" rows="2" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm">{{ provider_cfg.get('note', '') }}</textarea>
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="p-6 rounded-2xl border border-gold/25 bg-surface/80 space-y-6">
+        <h2 class="text-lg font-medium text-text">Тарифы подписки (общие для всех способов оплаты)</h2>
+        <p class="text-xs text-muted">Изменения отображаются на странице оплаты подписок и учитываются в расчётах (в т.ч. CloudPayments).</p>
+
+        {% for pk in ['free', 'start', 'pro', 'maxi'] %}
+        {% set p = plans[pk] %}
+        {% set d = defaults[pk] %}
+        <div class="p-4 rounded-xl border border-border/80 bg-bg/40 space-y-3">
+          <p class="text-sm font-semibold text-gold uppercase tracking-wide">{{ pk }}</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs text-muted mb-1">Название</label>
+              <input type="text" name="plan_{{ pk }}_name" value="{{ p.name }}" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" />
+            </div>
+            {% if pk != 'free' %}
+            <div>
+              <label class="block text-xs text-muted mb-1">Цена ₽ / мес</label>
+              <input type="number" name="plan_{{ pk }}_price" min="0" step="1" value="{{ p.price }}" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" />
+            </div>
+            {% else %}
+            <div>
+              <label class="block text-xs text-muted mb-1">Цена</label>
+              <input type="text" readonly value="0" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm text-muted" />
+            </div>
+            {% endif %}
+          </div>
+          <div>
+            <label class="block text-xs text-muted mb-1">Краткое описание (под названием, необязательно)</label>
+            <input type="text" name="plan_{{ pk }}_description" value="{{ p.description or '' }}" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" placeholder="Пусто — только список преимуществ ниже" />
+          </div>
+          <div>
+            <label class="block text-xs text-muted mb-1">Преимущества (одна строка — один пункт)</label>
+            <textarea name="plan_{{ pk }}_features" rows="{% if pk == 'start' %}8{% elif pk == 'free' %}4{% else %}6{% endif %}" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono leading-relaxed">{% for line in p.features %}{{ line }}
+{% endfor %}</textarea>
+            <p class="text-[11px] text-muted mt-1">По умолчанию из кода: {{ d.features|length }} строк.</p>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="flex flex-wrap gap-3">
+        <button type="submit" class="px-6 py-3 rounded-xl bg-gold text-bg font-semibold text-sm">Сохранить</button>
+        <a href="/admin/payment" class="px-6 py-3 rounded-xl border border-border text-text text-sm">Отмена</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

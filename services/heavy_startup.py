@@ -606,6 +606,15 @@ async def run_heavy_startup(app: FastAPI) -> None:
             logger.warning("migrate_v27 referral_shop_partner_self: %s", e)
 
         try:
+            import migrate_v28_payment_admin as migrate_v28
+
+            for s in migrate_v28.STEPS:
+                await database.execute(sa.text(s))
+            logger.info("Payment admin / webhook dedup (migrate_v28) OK")
+        except Exception as e:
+            logger.warning("migrate_v28 payment admin: %s", e)
+
+        try:
             from services.merge_neurofungi_ai_chats import merge_all_neurofungi_ai_personal_chats
 
             await merge_all_neurofungi_ai_personal_chats()

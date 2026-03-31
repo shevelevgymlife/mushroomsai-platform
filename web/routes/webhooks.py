@@ -14,6 +14,7 @@ from services.tg_notify import (
     notify_github_pr,
     notify_render_webhook,
 )
+from services.cloudpayments_service import handle_cloudpayments_notification
 
 router = APIRouter(prefix="/webhooks")
 logger = logging.getLogger(__name__)
@@ -91,3 +92,18 @@ async def render_webhook(request: Request):
         commit=str(commit),
     )
     return JSONResponse({"ok": True})
+
+
+@router.post("/cloudpayments")
+async def cloudpayments_webhook(
+    request: Request,
+    content_hmac: str | None = Header(None, alias="Content-HMAC"),
+):
+    """Уведомления CloudPayments: проверка HMAC, активация подписки."""
+    body = await request.body()
+    ok, msg = await handle_cloudpayments_notification(body, content_hmac)
+    if not ok:
+        if msg in ("bad_hmac", "cloudpayments_disabled", "no_api_secret", "bad_json", "bad_user", "bad_plan", "bad_price_config", "amount_mismatch", "user_not_found", "activate_failed"):
+            return JSONResponse({"code": 0}, status_code=403 if msg == "bad_hmac" else 400)
+        return JSONResponse({"code": 0}, status_code=400)
+    return JSONResponse({"code": 0})

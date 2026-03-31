@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Оплата — Admin{% endblock %}
+{% block content %}
+<div class="pt-24 pb-16 neo-app-surface">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    {% include "components/admin_nav.html" %}
+
+    <h1 class="text-3xl font-light text-text mb-2">Оплата</h1>
+    <p class="text-sm text-muted mb-6 max-w-3xl">
+      Подключение эквайринга и редактирование тарифов для подписок. Выберите провайдера — на отдельной странице задаются реквизиты и (общие для всех) названия, цены и описания планов.
+    </p>
+
+    <div class="mb-6 p-4 rounded-2xl border border-cyan-500/20 bg-cyan-500/5 text-sm text-muted max-w-3xl">
+      <p class="font-medium text-text mb-1">CloudPayments — вебхук для автоматической активации</p>
+      <p>Укажите в личном кабинете CloudPayments URL уведомлений:</p>
+      <code class="block mt-2 px-3 py-2 rounded-lg bg-bg border border-border text-gold text-xs break-all">{{ cloudpayments_webhook_url }}</code>
+      <p class="mt-2 text-xs">Проверка подписи: заголовок <code>Content-HMAC</code> (секрет — API Secret из настроек).</p>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% for p in providers %}
+      <a href="/admin/payment/{{ p.id }}" class="p-5 rounded-2xl bg-surface border border-border hover:border-gold/40 transition-colors group block">
+        <p class="font-semibold text-text group-hover:text-gold transition-colors mb-1">{{ p.title }}</p>
+        <p class="text-xs text-muted leading-relaxed">{{ p.subtitle }}</p>
+        <span class="inline-block mt-3 text-xs text-gold/80">Настройки →</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

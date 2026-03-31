@@ -8,18 +8,15 @@ from config import settings
 logger = logging.getLogger(__name__)
 from db.database import database
 from db.models import users, subscriptions, subscription_events, direct_messages
+from services.payment_plans_catalog import DEFAULT_PLANS, get_effective_plans, plan_display_name
 
-PLANS = {
-    "free":  {"name": "Бесплатный", "price": 0,    "questions_per_day": 5,  "recipes_per_day": 1},
-    "start": {"name": "Старт",      "price": 990,  "questions_per_day": -1, "recipes_per_day": -1},
-    "pro":   {"name": "Про",        "price": 1990, "questions_per_day": -1, "recipes_per_day": -1},
-    "maxi":  {"name": "Макси",      "price": 4999, "questions_per_day": -1, "recipes_per_day": -1},
-}
+# Статические значения по умолчанию (для обратной совместимости импортов).
+PLANS = DEFAULT_PLANS
 
 START_TRIAL_DAYS = 3
 
 
-def format_admin_subscription_assigned_message(
+async def format_admin_subscription_assigned_message(
     plan_key: str, end_date: datetime | None, *, unlimited: bool
 ) -> str:
     """Текст уведомления пользователю о назначении/смене тарифа из админки."""
@@ -28,7 +25,8 @@ def format_admin_subscription_assigned_message(
         return (
             "Ваш тариф изменён на «Бесплатный». Расширенные функции недоступны до оформления подписки."
         )
-    meta = PLANS.get(pk) or PLANS["start"]
+    plans = await get_effective_plans()
+    meta = plans.get(pk) or plans["start"]
     pname = meta["name"]
     if unlimited:
         return f"Вам назначен тариф «{pname}» без срока окончания (бессрочно)."
@@ -65,11 +63,6 @@ async def record_subscription_event(
         pass
 
 
-def _plan_display_name(plan_key: str) -> str:
-    pk = (plan_key or "free").lower()
-    return PLANS.get(pk, PLANS["free"])["name"]
-
-
 async def _notify_paid_subscription_activated(user_id: int, plan_key: str, end_date: datetime) -> None:
     """ЛС (чат) + Telegram + колокольчик: оформлена или продлена платная подписка."""
     from services.system_support_delivery import deliver_system_support_notification
@@ -77,7 +70,7 @@ async def _notify_paid_subscription_activated(user_id: int, plan_key: str, end_d
 
     row = await database.fetch_one(users.select().where(users.c.id == int(user_id)))
     notify_uid = int(row.get("primary_user_id") or user_id) if row else int(user_id)
-    pname = _plan_display_name(plan_key)
+    pname = await plan_display_name(plan_key)
     site = (settings.SITE_URL or "").rstrip("/")
     sub_url = f"{site}/subscriptions" if site else "/subscriptions"
     d = end_date.strftime("%d.%m.%Y") if end_date else "—"
@@ -142,7 +135,7 @@ async def _notify_subscription_became_free(
     from services.system_support_delivery import deliver_system_support_notification
     from services.in_app_notifications import create_notification
 
-    pp = _plan_display_name(previous_plan)
+    pp = await plan_display_name(previous_plan)
     site = (settings.SITE_URL or "").rstrip("/")
     sub_url = f"{site}/subscriptions" if site else "/subscriptions"
     if reason == "manual":
@@ -212,9 +205,10 @@ async def activate_subscription(
     if plan not in PLANS:
         return False
 
+    eff = await get_effective_plans()
     now = datetime.utcnow()
     end_date = now + timedelta(days=30 * months)
-    price = PLANS[plan]["price"] * months
+    price = float(eff[plan]["price"]) * months
     row = await database.fetch_one(users.select().where(users.c.id == int(user_id)))
     if row:
         cur_plan = (row.get("subscription_plan") or "free").lower()
@@ -261,7 +255,7 @@ async def activate_subscription(
         try:
             from services.referral_service import notify_referrer_about_referred_subscription
 
-            pname = PLANS.get(plan, PLANS["start"])["name"]
+            pname = (eff.get(plan) or eff["start"])["name"]
             await notify_referrer_about_referred_subscription(
                 int(user_id),
                 plan_label=f"подписку «{pname}»",
@@ -305,7 +299,8 @@ async def gift_subscription(giver_id: int, recipient_id: int, plan: str) -> tupl
     now = datetime.utcnow()
     refreshed = await database.fetch_one(users.select().where(users.c.id == int(recipient_id)))
     end_date = refreshed.get("subscription_end") if refreshed else None
-    p = float(PLANS[plan]["price"])
+    eff = await get_effective_plans()
+    p = float(eff[plan]["price"])
     await record_subscription_event(
         int(recipient_id), "gift_in", plan, p, now, end_date, int(giver_id)
     )
@@ -323,7 +318,7 @@ async def _notify_subscription_gift_recipient(recipient_id: int, giver_id: int, 
     if not recipient:
         return
     gname = ((giver.get("name") or "").strip() or "Участник") if giver else "Участник"
-    pname = PLANS.get((plan_key or "start").lower(), PLANS["start"])["name"]
+    pname = await plan_display_name((plan_key or "start").lower())
     site = (settings.SITE_URL or "").rstrip("/")
 
     dm_text = (
@@ -610,7 +605,8 @@ async def can_ask_question(user_id: int) -> bool:
     if plan in ("start", "pro", "maxi"):
         return True
 
-    daily_cap = int(PLANS.get("free", {}).get("questions_per_day") or 5)
+    eff = await get_effective_plans()
+    daily_cap = int(eff.get("free", {}).get("questions_per_day") or 5)
     if daily_cap < 0:
         return True
 
@@ -731,9 +727,10 @@ async def fetch_subscription_history_display(user_id: int) -> list[dict]:
             return dt.strftime("%d.%m.%Y %H:%M")
         return str(dt)
 
+    eff = await get_effective_plans()
     for i in items:
         pk = (i.get("plan") or "free").lower()
-        i["plan_name"] = PLANS.get(pk, PLANS["free"])["name"]
+        i["plan_name"] = (eff.get(pk) or eff["free"])["name"]
         i["valid_from_s"] = _fmt(i.get("valid_from"))
         i["valid_to_s"] = _fmt(i.get("valid_to"))
         i["created_s"] = _fmt(i.get("created_at"))

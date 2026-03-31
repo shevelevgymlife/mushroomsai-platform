@@ -23,10 +23,11 @@ from db.models import (
     homepage_blocks,
 )
 from services.referral_service import get_referral_stats
+from services.payment_plans_catalog import get_effective_plans
+from services.payment_provider_settings import get_provider_settings
 from services.subscription_service import (
     activate_subscription,
     check_subscription,
-    PLANS,
     web_default_home_path,
     can_ask_question,
     increment_question_count,
@@ -171,9 +172,23 @@ async def subscriptions_page(request: Request):
     if leg:
         return leg
     blocks = await _fetch_homepage_blocks_for_pricing()
+    plans_eff = await get_effective_plans()
+    cp = await get_provider_settings("cloudpayments")
+    cp_public = (cp.get("public_id") or "").strip()
+    cp_enabled = bool(cp.get("enabled") and cp_public)
+    uid = int(user.get("primary_user_id") or user["id"])
     return templates.TemplateResponse(
         "subscriptions.html",
-        {"request": request, "user": user, "blocks": blocks, "error": None},
+        {
+            "request": request,
+            "user": user,
+            "blocks": blocks,
+            "error": None,
+            "plans": plans_eff,
+            "cloudpayments_enabled": cp_enabled,
+            "cloudpayments_public_id": cp_public,
+            "payment_user_id": uid,
+        },
     )
 
 
@@ -190,6 +205,10 @@ async def subscriptions_connect(request: Request, plan: str = Form(...)):
     plan_key = (plan or "").strip().lower()
     if plan_key not in ("free", "start", "pro", "maxi"):
         return RedirectResponse("/subscriptions", status_code=302)
+    if plan_key in ("start", "pro", "maxi"):
+        cp = await get_provider_settings("cloudpayments")
+        if cp.get("enabled") and (cp.get("public_id") or "").strip():
+            return RedirectResponse("/subscriptions?need_payment=1", status_code=302)
     if plan_key == "free":
         urow = await database.fetch_one(users.select().where(users.c.id == uid))
         prev = (urow.get("subscription_plan") or "free").lower() if urow else "free"
@@ -427,7 +446,8 @@ async def community_ai_free_status(request: Request):
     u = dict(row)
 
     plan = await check_subscription(uid)
-    free_limit = int((PLANS.get("free") or {}).get("questions_per_day") or 5)
+    eff = await get_effective_plans()
+    free_limit = int((eff.get("free") or {}).get("questions_per_day") or 5)
     today = date.today()
     used = int(u.get("daily_questions") or 0)
 

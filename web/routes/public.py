@@ -35,7 +35,8 @@ from db.models import (
 from auth.session import get_user_from_request, attach_subscription_effective
 from auth.ui_prefs import attach_screen_rim_prefs
 from config import settings, shevelev_token_address
-from services.subscription_service import check_subscription, PLANS, web_default_home_path
+from services.payment_plans_catalog import get_effective_plans
+from services.subscription_service import check_subscription, web_default_home_path
 from services.shop_catalog import product_gallery_urls
 from services.legal import legal_acceptance_redirect
 from services.dm_blocks import is_dm_blocked
@@ -280,6 +281,7 @@ async def index(request: Request):
             path="/", user_id=current_user["id"] if current_user else None
         )
     )
+    plans_eff = await get_effective_plans()
     response = templates.TemplateResponse(
         "index.html",
         {
@@ -293,6 +295,7 @@ async def index(request: Request):
             "last_community_posts": last_community_posts,
             "blocks": blocks,
             "block_order": block_order,
+            "plans": plans_eff,
         },
     )
     # Главная страница с live-метриками: без кэша, чтобы блок всегда обновлялся.
@@ -1573,7 +1576,8 @@ async def community_profile(request: Request, user_id: int):
     shevelev_auto_sync = _vwa.startswith("0x")
 
     profile_plan = await check_subscription(profile_id)
-    profile_plan_info = PLANS.get(profile_plan, PLANS["free"])
+    _pe = await get_effective_plans()
+    profile_plan_info = _pe.get(profile_plan, _pe["free"])
 
     raw_d = dict(raw)
     profile_ui_theme = (raw_d.get("profile_ui_theme") or "default").strip() or "default"

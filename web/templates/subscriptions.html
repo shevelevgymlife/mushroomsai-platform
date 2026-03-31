@@ -13,6 +13,16 @@
       Не удалось подарить подписку{% if request.query_params.get('gift_error') not in ('1', 'invalid', '') %}: {{ request.query_params.get('gift_error') }}{% endif %}. Проверьте выбор пользователя и тарифа.
     </div>
     {% endif %}
+    {% if request.query_params.get('need_payment') %}
+    <div class="max-w-3xl mx-auto mb-6 p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-100 text-sm leading-relaxed text-center">
+      Оплата через CloudPayments включена. Выберите тариф и нажмите «Подключиться» — откроется окно оплаты. Прямое подключение без оплаты отключено.
+    </div>
+    {% endif %}
+    {% if request.query_params.get('paid') %}
+    <div class="max-w-3xl mx-auto mb-6 p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 text-sm leading-relaxed text-center">
+      Оплата принята. Подписка активируется в течение минуты после подтверждения банка. Обновите страницу, если статус не обновился.
+    </div>
+    {% endif %}
     {% if request.query_params.get('connected') %}
     <div class="max-w-3xl mx-auto mb-6 p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 text-sm leading-relaxed text-center">
       Тариф подключён. Срок отображается в меню (бургер) внизу.
@@ -60,9 +70,9 @@
       <div>
         <label class="block text-xs text-muted mb-2">Тариф</label>
         <select name="plan" required class="w-full px-3 py-2.5 rounded-xl bg-surface border border-border text-text text-sm">
-          <option value="start">Старт — 990 ₽/мес</option>
-          <option value="pro">Про — 1 990 ₽/мес</option>
-          <option value="maxi">Макси — 4 999 ₽/мес</option>
+          <option value="start">{{ plans.start.name if plans is defined else 'Старт' }} — {{ plans.start.price if plans is defined else 990 }} ₽/мес</option>
+          <option value="pro">{{ plans.pro.name if plans is defined else 'Про' }} — {{ plans.pro.price if plans is defined else 1990 }} ₽/мес</option>
+          <option value="maxi">{{ plans.maxi.name if plans is defined else 'Макси' }} — {{ plans.maxi.price if plans is defined else 4999 }} ₽/мес</option>
         </select>
       </div>
       <div>

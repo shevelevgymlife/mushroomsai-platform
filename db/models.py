@@ -497,6 +497,7 @@ admin_permissions = sqlalchemy.Table(
     sqlalchemy.Column("can_ai", sqlalchemy.Boolean, default=False, server_default="false"),
     sqlalchemy.Column("can_ai_posts", sqlalchemy.Boolean, default=False, server_default="false"),
     sqlalchemy.Column("can_shop", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column("can_payment", sqlalchemy.Boolean, default=False, server_default="false"),
     sqlalchemy.Column("can_users", sqlalchemy.Boolean, default=False, server_default="false"),
     sqlalchemy.Column("can_feedback", sqlalchemy.Boolean, default=False, server_default="false"),
     sqlalchemy.Column("can_broadcast", sqlalchemy.Boolean, default=False, server_default="false"),
@@ -528,6 +529,17 @@ platform_settings = sqlalchemy.Table(
     metadata,
     sqlalchemy.Column("key", sqlalchemy.String(128), primary_key=True),
     sqlalchemy.Column("value", sqlalchemy.Text, nullable=False, server_default=""),
+)
+
+# Идемпотентность вебхуков оплаты (provider + external_id транзакции)
+payment_webhook_dedup = sqlalchemy.Table(
+    "payment_webhook_dedup",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("provider", sqlalchemy.String(32), nullable=False),
+    sqlalchemy.Column("external_id", sqlalchemy.String(128), nullable=False),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+    sqlalchemy.UniqueConstraint("provider", "external_id", name="uq_payment_webhook_dedup"),
 )
 
 community_follows = sqlalchemy.Table(
