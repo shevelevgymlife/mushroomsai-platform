@@ -261,6 +261,8 @@ ai_settings = sqlalchemy.Table(
     metadata,
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
     sqlalchemy.Column("system_prompt", sqlalchemy.Text, nullable=False),
+    sqlalchemy.Column("retrieval_mode", sqlalchemy.String(64), nullable=False, server_default="title_first"),
+    sqlalchemy.Column("retrieval_top_k", sqlalchemy.Integer, nullable=False, server_default="24"),
     sqlalchemy.Column("updated_by", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=True),
     sqlalchemy.Column("updated_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )

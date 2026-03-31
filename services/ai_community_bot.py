@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import logging
 import random
+import re
 import secrets
 import string
 from datetime import datetime
@@ -210,7 +211,39 @@ async def _platform_stats() -> dict[str, Any]:
     }
 
 
-async def _openai_text(system: str, user: str, max_tokens: int = 900) -> Optional[str]:
+def _strip_urls_and_md_links(text: str) -> str:
+    """Лента: без URL и markdown-ссылок в тексте поста/комментария."""
+    t = (text or "").strip()
+    if not t:
+        return t
+    t = re.sub(r"https?://\S+", "", t, flags=re.IGNORECASE)
+    t = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", t)
+    t = re.sub(r"\s+\n", "\n", t)
+    t = re.sub(r"[ \t]{2,}", " ", t)
+    return t.strip()
+
+
+async def _community_system_prompt(user_message: str, task_suffix: str) -> str:
+    """Тот же базовый промт + обучающие посты, что и в чате (`get_system_prompt`)."""
+    from ai.openai_client import get_system_prompt
+
+    base = await get_system_prompt(user_message=user_message)
+    return (
+        base
+        + "\n\n[Режим ленты сообщества NEUROFUNGI] Соблюдай системный промт и блоки знаний выше строго. "
+        "Пиши только связным текстом на русском: без URL, без http/https, без markdown-ссылок, без списков ссылок.\n"
+        + task_suffix
+    )
+
+
+async def _openai_text(
+    system: str,
+    user: str,
+    max_tokens: int = 900,
+    *,
+    temperature: float = 0.85,
+    strip_links: bool = False,
+) -> Optional[str]:
     if not getattr(settings, "OPENAI_API_KEY", None):
         return None
     try:
@@ -223,11 +256,16 @@ async def _openai_text(system: str, user: str, max_tokens: int = 900) -> Optiona
                 {"role": "system", "content": system},
                 {"role": "user", "content": user[:12000]},
             ],
-            temperature=0.85,
+            temperature=temperature,
             max_tokens=max_tokens,
         )
         out = (resp.choices[0].message.content or "").strip()
-        return out[:12000] if out else None
+        if not out:
+            return None
+        out = out[:12000]
+        if strip_links:
+            out = _strip_urls_and_md_links(out)
+        return out or None
     except Exception:
         logger.exception("ai_community_bot: openai failed")
         return None
@@ -489,12 +527,21 @@ async def run_ai_community_bot_job() -> None:
         if int(rep_today) < limits["replies"]:
             pick = await _pick_comment_to_reply(bot_uid)
             if pick:
-                sys = (
-                    "Ты — NeuroFungi AI. Короткий уважительный ответ на комментарий к твоему посту. "
-                    "Без медицинских назначений; можно КПТ/психологию/образование про грибы. До 900 символов, по-русски."
+                um = (
+                    "Задача: короткий уважительный ответ на комментарий к твоему посту в ленте.\n"
+                    f"Комментарий пользователя:\n{pick['ctext'][:2000]}"
                 )
-                usr = f"Комментарий пользователя:\n{pick['ctext'][:2000]}"
-                reply = await _openai_text(sys, usr, max_tokens=500)
+                sys = await _community_system_prompt(
+                    um,
+                    "Без медицинских назначений; можно КПТ/психологию/образование про грибы. До 900 символов, по-русски.",
+                )
+                reply = await _openai_text(
+                    sys,
+                    "Сгенерируй ответ.",
+                    max_tokens=500,
+                    temperature=0.45,
+                    strip_links=True,
+                )
                 if reply:
                     await bot_add_comment(
                         post_id=int(pick["post_id"]),
@@ -509,20 +556,28 @@ async def run_ai_community_bot_job() -> None:
                     )
                     return
 
-    # 2) New post
+    # 2) New post (системный промт и обучающие посты — как в чате, через get_system_prompt)
     if st.get("allow_posts") and await used("posts") < limits["posts"]:
-        sys = """Ты — NeuroFungi AI в ленте NEUROFUNGI. Напиши один пост на русском: темы — грибы (образовательно),
-психология, КПТ, провокативная терапия, биохимия грибов только в общенаучном ключе (не назначения).
-Включи 1–2 предложения с мягкой «статистикой» о платформе, используя только эти числа из запроса (не выдумывай другие).
-Без хэштегов-спама. До 2200 символов."""
+        um = (
+            "Задача: написать один пост в ленту сообщества NEUROFUNGI от имени NeuroFungi AI. "
+            "Темы: грибы (образовательно), психология, КПТ, провокативная терапия, биохимия грибов только в общенаучном ключе (не назначения). "
+            "Включи 1–2 предложения с мягкой статистикой о платформе, используя только эти числа (не выдумывай другие): "
+            + json.dumps(stats, ensure_ascii=False)
+        )
+        task_suffix = "Объём до 2200 символов. Без хэштегов-спама."
         if st.get("allow_telegram_channel", True) and telegram_channel_configured():
-            sys += (
-                " Пост может дублироваться в Telegram-канал о проекте: мотивируй присоединиться к соцсети NEUROFUNGI, "
-                "что грибовая и психотерапевтическая тема собрана в одном месте; можно упомянуть, что AI ведёт ленту и канал. "
-                "Не указывай цены, тарифы и подписки. Без финансовых обещаний."
+            task_suffix += (
+                " Пост может дублироваться в Telegram-канал: мотивируй присоединиться к соцсети NEUROFUNGI; "
+                "не указывай цены и тарифы; без финансовых обещаний."
             )
-        usr = json.dumps(stats, ensure_ascii=False)
-        body = await _openai_text(sys, f"Агрегаты платформы (JSON): {usr}", max_tokens=1200)
+        sys = await _community_system_prompt(um, task_suffix)
+        body = await _openai_text(
+            sys,
+            "Сгенерируй текст поста для публикации в ленте.",
+            max_tokens=1200,
+            temperature=0.45,
+            strip_links=True,
+        )
         if body:
             title = None
             if st.get("allow_story_posts") and random.random() < 0.35:
@@ -565,8 +620,15 @@ async def run_ai_community_bot_job() -> None:
         )
         if prow:
             excerpt = ((prow.get("title") or "") + "\n" + (prow.get("content") or ""))[:3000]
-            sys = "Ты — NeuroFungi AI. Один дружелюбный комментарий к чужому посту в сообществе. По-русски, до 500 символов."
-            ctext = await _openai_text(sys, excerpt, max_tokens=400)
+            um = "Задача: один дружелюбный комментарий к чужому посту в сообществе.\n" + excerpt
+            sys = await _community_system_prompt(um, "По-русски, до 500 символов.")
+            ctext = await _openai_text(
+                sys,
+                "Сгенерируй комментарий.",
+                max_tokens=400,
+                temperature=0.45,
+                strip_links=True,
+            )
             if ctext:
                 await bot_add_comment(
                     post_id=int(prow["id"]),
@@ -644,10 +706,16 @@ async def run_ai_community_bot_job() -> None:
         if tdate != today_d:
             tcount = 0
         if tcount < limits["thoughts"]:
+            um = (
+                "Задача: одна короткая строка для блока «мысли» в профиле — настроение и работа с сообществом."
+            )
+            sys = await _community_system_prompt(um, "До 200 символов, русский.")
             thought = await _openai_text(
-                "Ты — NeuroFungi AI. Одна короткая строка-статус о настроении и работе с сообществом. До 200 символов, русский.",
-                "Новый статус для блока «мысли» в профиле.",
+                sys,
+                "Сгенерируй статус.",
                 max_tokens=120,
+                temperature=0.45,
+                strip_links=True,
             )
             if thought:
                 await database.execute(
