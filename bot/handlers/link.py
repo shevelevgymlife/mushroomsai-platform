@@ -90,9 +90,15 @@ async def link_confirm_callback(update: Update, context: ContextTypes.DEFAULT_TY
             await query.edit_message_text("Срок действия ссылки истёк. Сгенерируйте новую на сайте.")
             return
 
-        from web.routes.account import find_user_by_telegram_id
+        from web.routes.account import _resolve_primary_row, find_user_by_telegram_id_excluding
 
-        existing = await find_user_by_telegram_id(tg_id)
+        row_primary = await _resolve_primary_row(int(row["id"]))
+        if not row_primary:
+            await query.edit_message_text("Ссылка недействительна или уже использована.")
+            return
+        row = row_primary
+
+        existing = await find_user_by_telegram_id_excluding(tg_id, int(row["id"]))
 
         if existing and existing["id"] != row["id"]:
             created_str = ""
@@ -168,6 +174,14 @@ async def link_merge_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         if not row or not row.get("link_merge_secondary_id"):
             await query.edit_message_text("Ссылка недействительна или устарела. Создайте новую на сайте.")
             return
+
+        from web.routes.account import _resolve_primary_row
+
+        row_primary = await _resolve_primary_row(int(row["id"]))
+        if not row_primary:
+            await query.edit_message_text("Ссылка недействительна или устарела. Создайте новую на сайте.")
+            return
+        row = row_primary
 
         secondary_id = int(row["link_merge_secondary_id"])
         secondary = await database.fetch_one(users.select().where(users.c.id == secondary_id))

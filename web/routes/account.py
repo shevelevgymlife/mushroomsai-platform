@@ -86,23 +86,49 @@ async def _resolve_primary_row(user_id: int) -> Optional[dict]:
     return resolved
 
 
+def _choose_telegram_user_row(rows: list, tg_id: int) -> Optional[dict]:
+    """Если несколько строк совпадают по tg_id/linked_tg_id — выбрать каноническую.
+
+    Сначала строка, где колонка tg_id == tg_id (реальный владелец чата), затем без
+    primary_user_id. Иначе Google-строка с только linked_tg_id может «перебить» TG-аккаунт.
+    """
+    if not rows:
+        return None
+    tid = int(tg_id)
+    rows_d = [dict(r) for r in rows]
+    exact_tg = [r for r in rows_d if r.get("tg_id") is not None and int(r["tg_id"]) == tid]
+    pool = exact_tg if exact_tg else rows_d
+    for r in pool:
+        if not r.get("primary_user_id"):
+            return r
+    return pool[0]
+
+
 async def find_user_by_telegram_id(tg_id: int) -> Optional[dict]:
     rows = await database.fetch_all(
         users.select().where(
             sa.or_(users.c.tg_id == tg_id, users.c.linked_tg_id == tg_id)
         )
     )
-    if not rows:
+    chosen = _choose_telegram_user_row(rows, tg_id)
+    if not chosen:
         return None
-    # Prefer already-primary rows if multiple matches exist.
-    chosen = None
-    for row in rows:
-        r = dict(row)
-        if not r.get("primary_user_id"):
-            chosen = r
-            break
-    if chosen is None:
-        chosen = dict(rows[0])
+    return await _resolve_primary_row(int(chosen["id"]))
+
+
+async def find_user_by_telegram_id_excluding(tg_id: int, exclude_user_id: int) -> Optional[dict]:
+    """Как find_user_by_telegram_id, но игнорирует строку exclude_user_id (например веб-primary с токеном)."""
+    rows = await database.fetch_all(
+        users.select().where(
+            sa.and_(
+                sa.or_(users.c.tg_id == tg_id, users.c.linked_tg_id == tg_id),
+                users.c.id != int(exclude_user_id),
+            )
+        )
+    )
+    chosen = _choose_telegram_user_row(rows, tg_id)
+    if not chosen:
+        return None
     return await _resolve_primary_row(int(chosen["id"]))
 
 
