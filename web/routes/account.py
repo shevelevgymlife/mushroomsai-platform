@@ -805,14 +805,19 @@ async def link_telegram_start(request: Request):
 
 @router.get("/check-link-status")
 async def check_link_status(request: Request):
+    """Polling: не кэшировать — иначе Safari/iOS отдаёт старый linked:false при опросе."""
+    no_cache = {
+        "Cache-Control": "no-store, no-cache, must-revalidate",
+        "Pragma": "no-cache",
+    }
     user = await get_user_from_request(request)
     if not user:
-        return JSONResponse({"linked": False}, status_code=401)
+        return JSONResponse({"linked": False}, status_code=401, headers=no_cache)
     primary = await _resolve_primary_row(int(user["id"]))
     if not primary:
-        return JSONResponse({"linked": False}, status_code=404)
+        return JSONResponse({"linked": False}, status_code=404, headers=no_cache)
     linked = bool(primary.get("tg_id") or primary.get("linked_tg_id"))
-    return JSONResponse({"linked": linked})
+    return JSONResponse({"linked": linked}, headers=no_cache)
 
 
 @router.get("/link-telegram-callback")
@@ -921,13 +926,17 @@ async def link_google_url(request: Request):
 @router.get("/check-google-link-status")
 async def check_google_link_status(request: Request):
     """Polling: привязан ли Google к текущему аккаунту."""
+    no_cache = {
+        "Cache-Control": "no-store, no-cache, must-revalidate",
+        "Pragma": "no-cache",
+    }
     user = await get_user_from_request(request)
     if not user:
-        return JSONResponse({"error": "unauthorized"}, status_code=401)
+        return JSONResponse({"error": "unauthorized"}, status_code=401, headers=no_cache)
     row = await database.fetch_one(users.select().where(users.c.id == user["id"]))
     if row and (row["google_id"] or row["linked_google_id"]):
-        return JSONResponse({"linked": True, "email": row.get("email") or ""})
-    return JSONResponse({"linked": False})
+        return JSONResponse({"linked": True, "email": row.get("email") or ""}, headers=no_cache)
+    return JSONResponse({"linked": False}, headers=no_cache)
 
 
 @router.get("/glow", response_class=HTMLResponse)

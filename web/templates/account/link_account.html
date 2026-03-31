@@ -161,7 +161,11 @@ async function startTgLink() {
   btn.disabled = true;
   btn.textContent = 'Генерируем ссылку…';
   try {
-    const r = await fetch('/account/link-telegram-start', {method:'POST'});
+    const r = await fetch('/account/link-telegram-start', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+    });
     const data = await r.json();
     if (!data.ok) { btn.disabled=false; btn.textContent='Привязать Telegram'; return; }
     document.getElementById('tgDeeplink').href = data.deeplink;
@@ -176,9 +180,12 @@ async function startTgLink() {
 
 function startTgPolling() {
   pollTimer = setInterval(async () => {
-    try {
-      const r = await fetch('/account/check-link-status');
-      const data = await r.json();
+  try {
+    const r = await fetch(`/account/check-link-status?t=${Date.now()}`, {
+      cache: 'no-store',
+      credentials: 'same-origin',
+    });
+    const data = await r.json();
       if (data.linked) {
         clearInterval(pollTimer);
         document.getElementById('tgLinkStatus').style.display = 'none';
@@ -237,7 +244,10 @@ async function startGoogleLink() {
     /* Polling пока Google не привяжется */
     googlePollTimer = setInterval(async () => {
       try {
-        const rs = await fetch('/account/check-google-link-status');
+        const rs = await fetch(`/account/check-google-link-status?t=${Date.now()}`, {
+          cache: 'no-store',
+          credentials: 'same-origin',
+        });
         const ds = await rs.json();
         if (ds.linked) {
           clearInterval(googlePollTimer);
