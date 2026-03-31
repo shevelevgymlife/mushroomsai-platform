@@ -96,17 +96,15 @@ async def partner_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         pay_kb = InlineKeyboardMarkup(
             [
                 [InlineKeyboardButton("💳 Оплатить Старт+ здесь", web_app=WebAppInfo(url=f"{site}/subscriptions"))],
-                [InlineKeyboardButton("🛍 Открыть магазин Neurotrops", url=SHOP_RUS_URL)],
             ]
         )
         await update.message.reply_html(
             "⚠️ Нужен <b>оплаченный Старт+</b> (не пробные 3 дня).\n"
             "Оплатить можно кнопкой ниже.\n"
             "После оплаты снова нажмите «🤝 Стать партнёром» — пришлёте свою ссылку магазина.\n\n"
-            "Ниже — ссылки приглашения (пока без оплаты: ссылки платформы).",
+            "Пока без оплаты этап партнёрства недоступен.",
             reply_markup=pay_kb,
         )
-        await _send_final_links_block(update, context, uid, kb, shop_saved=False)
         return ConversationHandler.END
 
     row = await database.fetch_one(users.select().where(users.c.id == uid))
@@ -166,13 +164,7 @@ async def _send_final_links_block(
         "Пробные 3 дня не считаются.\n\n"
         "Магазин: до ~10% по правилам Neurotrops. Учёт — в кабинете магазина."
     )
-    inline_rows = []
-    if base:
-        inline_rows.append(
-            [InlineKeyboardButton("📊 Реферальная программа (баланс и бонусы)", url=f"{base}/referral")]
-        )
-    reply_markup = InlineKeyboardMarkup(inline_rows) if inline_rows else kb
-    msg = await update.message.reply_html(text, reply_markup=reply_markup, disable_web_page_preview=True)
+    msg = await update.message.reply_html(text, reply_markup=kb, disable_web_page_preview=True)
     await _pin_safe(context, update.effective_chat.id, msg.message_id)
 
 
