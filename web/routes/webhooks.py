@@ -15,6 +15,7 @@ from services.tg_notify import (
     notify_render_webhook,
 )
 from services.cloudpayments_service import handle_cloudpayments_notification
+from services.yookassa_pay_service import handle_yookassa_http_notification
 
 router = APIRouter(prefix="/webhooks")
 logger = logging.getLogger(__name__)
@@ -107,3 +108,16 @@ async def cloudpayments_webhook(
             return JSONResponse({"code": 0}, status_code=403 if msg == "bad_hmac" else 400)
         return JSONResponse({"code": 0}, status_code=400)
     return JSONResponse({"code": 0})
+
+
+@router.post("/yookassa")
+async def yookassa_webhook(request: Request):
+    """HTTP-уведомления ЮKassa (payment.succeeded с metadata user_id/plan — см. личный кабинет)."""
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "bad json"}, status_code=400)
+    ok, msg = await handle_yookassa_http_notification(body)
+    if not ok:
+        logger.warning("yookassa webhook: %s", msg)
+    return JSONResponse({"status": "ok"})

@@ -13,6 +13,7 @@ from services.wellness_journal_service import (
     run_wellness_weekly_digests_job,
     run_wellness_subscription_renewal_nudges_job,
 )
+from services.subscription_expiry_job import run_subscription_expiry_sweep_job
 
 scheduler = AsyncIOScheduler()
 _logger = logging.getLogger(__name__)
@@ -91,6 +92,13 @@ def start_scheduler() -> None:
         "interval",
         minutes=15,
         id="ai_community_bot",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        run_subscription_expiry_sweep_job,
+        "interval",
+        minutes=30,
+        id="subscription_expiry_sweep",
         replace_existing=True,
     )
     scheduler.start()

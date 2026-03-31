@@ -8,11 +8,12 @@ from telegram.ext import (
     ChatMemberHandler,
     CommandHandler,
     MessageHandler,
+    PreCheckoutQueryHandler,
     filters,
 )
 
 from config import settings
-from bot.handlers.start import BTN_AI, BTN_AI_EXIT, BTN_CONNECT_CHANNEL, main_keyboard, start
+from bot.handlers.start import BTN_AI, BTN_AI_EXIT, BTN_CONNECT_CHANNEL, BTN_SUBSCRIBE, main_keyboard, start
 from bot.handlers.link import link_confirm_callback, link_merge_callback
 from bot.handlers.support import get_support_conversation
 from bot.handlers.community_post_wizard import get_community_post_conversation
@@ -26,6 +27,14 @@ from bot.handlers.chat import (
     handle_chat_message,
     tg_ai_continue_callback,
     tg_ai_exit_callback,
+)
+from bot.handlers.yookassa_subscribe import (
+    SUCCESSFUL_PAYMENT as TG_PAYMENT_FILTER,
+    pre_checkout_handler,
+    subscribe_command,
+    subscribe_menu_handler,
+    successful_payment_handler,
+    tgpay_plan_callback,
 )
 
 logger = logging.getLogger(__name__)
@@ -173,6 +182,19 @@ def create_bot() -> Application:
     )
 
     application.add_handler(CommandHandler("start", start))
+    # Подписка ЮKassa в Telegram (до общих текстовых хендлеров)
+    pay_group = -3
+    application.add_handler(CommandHandler("subscribe", subscribe_command), group=pay_group)
+    application.add_handler(PreCheckoutQueryHandler(pre_checkout_handler), group=pay_group)
+    application.add_handler(
+        CallbackQueryHandler(tgpay_plan_callback, pattern=r"^tgpay_(start|pro|maxi)$"),
+        group=pay_group,
+    )
+    application.add_handler(MessageHandler(TG_PAYMENT_FILTER, successful_payment_handler), group=pay_group)
+    application.add_handler(
+        MessageHandler(filters.Regex(f"^{re.escape(BTN_SUBSCRIBE)}$"), subscribe_menu_handler),
+        group=pay_group,
+    )
     application.add_handler(get_partner_conversation(), group=-1)
     application.add_handler(get_community_post_conversation(), group=-1)
     application.add_handler(get_support_conversation())

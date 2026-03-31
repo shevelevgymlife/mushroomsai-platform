@@ -16,7 +16,7 @@
     <h1 class="text-2xl font-light text-text mb-1">{{ provider.title }}</h1>
     <p class="text-sm text-muted mb-8">{{ provider.subtitle }}</p>
 
-    <form method="post" action="/admin/payment/{{ provider.id }}" class="space-y-10">
+    <form method="post" action="{{ form_action }}" class="space-y-10">
       {% if provider.id == 'cloudpayments' %}
       <div class="p-6 rounded-2xl border border-border bg-surface space-y-4">
         <h2 class="text-lg font-medium text-text">Реквизиты CloudPayments</h2>
@@ -76,32 +76,51 @@
         </div>
       </div>
       {% elif provider.id == 'yookassa_bot' %}
-      <div class="p-6 rounded-2xl border border-border bg-surface space-y-4">
-        <h2 class="text-lg font-medium text-text">ЮKassa в Telegram</h2>
-        <p class="text-xs text-muted">В BotFather создайте платежи для бота, получите provider token. Секрет ЮKassa нужен для серверной проверки.</p>
+      <div class="p-6 rounded-2xl border border-gold/25 bg-surface space-y-4">
+        <h2 class="text-xl font-medium text-text">ЮKassa Бот — автономная схема</h2>
+        <div class="text-xs text-muted space-y-2 leading-relaxed">
+          <p><b>Срок окончания:</b> раз в ~30 минут фоновая задача проверяет истёкшие подписки и переводит пользователя на «Бесплатный», как при входе на сайт. В личку в Telegram и в чат поддержки приходит то же уведомление, что и при «подписка истекла».</p>
+          <p><b>Оплата в боте:</b> пользователь нажимает «💳 Подписка» или команду <code>/subscribe</code>, выбирает тариф — открывается счёт ЮKassa. После успешной оплаты подписка продлевается на месяц автоматически.</p>
+          <p><b>HTTP-вебхук ЮKassa:</b> нужен для платежей, где в metadata у платежа есть <code>user_id</code> и <code>plan</code> (например, ссылки из личного кабинета). Оплаты внутри Telegram через бота чаще обрабатываются без metadata — тогда достаточно успешного сообщения в боте.</p>
+        </div>
+        {% if yookassa_http_webhook_url %}
+        <div class="p-3 rounded-xl bg-bg border border-border text-xs">
+          <p class="text-muted mb-1">URL для уведомлений в личном кабинете ЮKassa (Интеграция → HTTP-уведомления):</p>
+          <code class="text-gold break-all">{{ yookassa_http_webhook_url }}</code>
+        </div>
+        {% endif %}
         <label class="flex items-center gap-2 text-sm text-text cursor-pointer">
           <input type="checkbox" name="enabled" value="1" class="rounded border-border" {% if provider_cfg.get('enabled') %}checked{% endif %} />
-          Готово к тестам
+          Включить оплату в боте (кнопка «Подписка» и /subscribe)
         </label>
         <div>
-          <label class="block text-xs text-muted mb-1">Токен бота (BotFather)</label>
-          <input type="password" name="bot_token" value="" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" placeholder="{% if provider_cfg.get('bot_token') %}••••{% endif %}" />
+          <label class="block text-xs text-muted mb-1">Provider token (BotFather → ваш бот → Payments → подключить ЮKassa)</label>
+          <input type="password" name="provider_token" value="" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" placeholder="{% if provider_cfg.get('provider_token') %}•••• оставьте пустым, чтобы не менять{% else %}Вставьте токен из BotFather{% endif %}" />
         </div>
         <div>
-          <label class="block text-xs text-muted mb-1">Provider token (платежи в боте)</label>
-          <input type="password" name="provider_token" value="" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" placeholder="{% if provider_cfg.get('provider_token') %}••••{% endif %}" />
-        </div>
-        <div>
-          <label class="block text-xs text-muted mb-1">shopId ЮKassa</label>
+          <label class="block text-xs text-muted mb-1">shopId (идентификатор магазина ЮKassa)</label>
           <input type="text" name="shop_id" value="{{ provider_cfg.get('shop_id', '') }}" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" />
         </div>
         <div>
-          <label class="block text-xs text-muted mb-1">Секретный ключ API</label>
+          <label class="block text-xs text-muted mb-1">Секретный ключ API (для проверки платежа по API и вебхука)</label>
           <input type="password" name="secret_key" value="" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" placeholder="{% if provider_cfg.get('secret_key') %}••••{% endif %}" />
         </div>
         <div>
-          <label class="block text-xs text-muted mb-1">Инструкция для себя</label>
+          <label class="block text-xs text-muted mb-1">Токен бота (только если платежи через другой бот; иначе пусто — используется основной TELEGRAM_TOKEN)</label>
+          <input type="password" name="bot_token" value="" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" placeholder="{% if provider_cfg.get('bot_token') %}••••{% endif %}" />
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1">Заметки</label>
           <textarea name="instructions" rows="3" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm">{{ provider_cfg.get('instructions', '') }}</textarea>
+        </div>
+        <div class="p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 text-xs text-muted">
+          <p class="font-medium text-text mb-2">Что от вас нужно</p>
+          <ol class="list-decimal list-inside space-y-1">
+            <li>ЮKassa: shopId и секретный ключ (уже есть личный кабинет).</li>
+            <li>BotFather: подключить к этому же боту платежи ЮKassa и скопировать <b>provider token</b> сюда.</li>
+            <li>В ЮKassa в HTTP-уведомлениях указать URL выше (после деплоя с HTTPS).</li>
+            <li>Цены тарифов — в блоке ниже на этой странице; они совпадают с сайтом и с суммой в счёте бота.</li>
+          </ol>
         </div>
       </div>
       {% elif provider.id == 'telegram_stars' %}

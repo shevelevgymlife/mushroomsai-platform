@@ -22,6 +22,7 @@ BTN_COMMUNITY_POST = "📤 Пост в сообщество"
 # Автопост из личного Telegram-канала в ленту сообщества
 BTN_CONNECT_CHANNEL = "📢 Подключить свой канал"
 BTN_PARTNER = "🤝 Стать партнёром"
+BTN_SUBSCRIBE = "💳 Подписка"
 
 
 async def ensure_user(tg_user) -> dict | None:
@@ -114,6 +115,7 @@ def main_keyboard(
     keyboard += [
         [KeyboardButton(BTN_CONNECT_CHANNEL)],
         [KeyboardButton(BTN_PARTNER)],
+        [KeyboardButton(BTN_SUBSCRIBE)],
         [KeyboardButton("🌍 Веб версия"), KeyboardButton("🔒 Безопасность")],
         [KeyboardButton("🆘 Тех. поддержка")],
     ]

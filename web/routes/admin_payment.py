@@ -35,9 +35,14 @@ def _lazy_admin():
     return require_permission, get_user_permissions
 
 
+def _normalize_provider_key(raw: str) -> str:
+    return raw.strip().lower().replace("-", "_")
+
+
 def _provider_meta(pid: str) -> dict[str, str] | None:
+    key = _normalize_provider_key(pid)
     for p in PAYMENT_PROVIDERS:
-        if p["id"] == pid:
+        if p["id"] == key:
             return p
     return None
 
@@ -81,13 +86,18 @@ async def admin_payment_hub(request: Request):
     perms = await get_user_permissions(admin)
     site = (settings.SITE_URL or "").rstrip("/")
     webhook_url = f"{site}/webhooks/cloudpayments" if site else "/webhooks/cloudpayments"
+    hub_providers = []
+    for p in PAYMENT_PROVIDERS:
+        d = dict(p)
+        d["href"] = p.get("admin_path") or f"/admin/payment/{p['id']}"
+        hub_providers.append(d)
     return templates.TemplateResponse(
         "dashboard/admin_payment_hub.html",
         {
             "request": request,
             "user": admin,
             "user_permissions": perms,
-            "providers": PAYMENT_PROVIDERS,
+            "providers": hub_providers,
             "cloudpayments_webhook_url": webhook_url,
         },
     )
@@ -99,7 +109,7 @@ async def admin_payment_provider_page(request: Request, provider_id: str):
     admin = await require_permission(request, "can_payment")
     if not admin:
         return RedirectResponse("/login")
-    meta = _provider_meta(provider_id.strip().lower())
+    meta = _provider_meta(provider_id)
     if not meta:
         return RedirectResponse("/admin/payment", status_code=303)
     perms = await get_user_permissions(admin)
@@ -108,6 +118,12 @@ async def admin_payment_provider_page(request: Request, provider_id: str):
     raw_over = await load_subscription_overrides_raw()
     site = (settings.SITE_URL or "").rstrip("/")
     webhook_url = f"{site}/webhooks/cloudpayments" if site else "/webhooks/cloudpayments"
+    yk_wh = f"{site}/webhooks/yookassa" if site else "/webhooks/yookassa"
+    form_action = (
+        "/admin/payment/yookassa-bot"
+        if meta["id"] == "yookassa_bot"
+        else f"/admin/payment/{provider_id.strip().replace(' ', '')}"
+    )
     return templates.TemplateResponse(
         "dashboard/admin_payment_provider.html",
         {
@@ -120,6 +136,8 @@ async def admin_payment_provider_page(request: Request, provider_id: str):
             "defaults": DEFAULT_PLANS,
             "raw_overrides": raw_over,
             "cloudpayments_webhook_url": webhook_url if meta["id"] == "cloudpayments" else "",
+            "yookassa_http_webhook_url": yk_wh if meta["id"] == "yookassa_bot" else "",
+            "form_action": form_action,
         },
     )
 
@@ -130,7 +148,7 @@ async def admin_payment_provider_save(request: Request, provider_id: str):
     admin = await require_permission(request, "can_payment")
     if not admin:
         return RedirectResponse("/login")
-    meta = _provider_meta(provider_id.strip().lower())
+    meta = _provider_meta(provider_id)
     if not meta:
         return RedirectResponse("/admin/payment", status_code=303)
     pid = meta["id"]
@@ -196,7 +214,9 @@ async def admin_payment_provider_save(request: Request, provider_id: str):
     except Exception:
         logger.exception("save_subscription_overrides_raw failed")
 
-    return RedirectResponse(
-        f"/admin/payment/{quote(pid)}?saved=1",
-        status_code=303,
+    redir = (
+        "/admin/payment/yookassa-bot?saved=1"
+        if pid == "yookassa_bot"
+        else f"/admin/payment/{quote(pid)}?saved=1"
     )
+    return RedirectResponse(redir, status_code=303)

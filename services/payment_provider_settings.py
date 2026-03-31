@@ -30,8 +30,9 @@ PAYMENT_PROVIDERS: list[dict[str, str]] = [
     },
     {
         "id": "yookassa_bot",
-        "title": "ЮKassa + Telegram",
-        "subtitle": "Платежи в Telegram-боте (provider token, привязка к боту)",
+        "title": "ЮKassa Бот",
+        "subtitle": "Оплата в Telegram, вебхук ЮKassa, автосброс подписки и ЛС при окончании",
+        "admin_path": "/admin/payment/yookassa-bot",
     },
     {
         "id": "telegram_stars",

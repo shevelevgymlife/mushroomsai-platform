@@ -19,7 +19,7 @@
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {% for p in providers %}
-      <a href="/admin/payment/{{ p.id }}" class="p-5 rounded-2xl bg-surface border border-border hover:border-gold/40 transition-colors group block">
+      <a href="{{ p.href }}" class="p-5 rounded-2xl bg-surface border border-border hover:border-gold/40 transition-colors group block">
         <p class="font-semibold text-text group-hover:text-gold transition-colors mb-1">{{ p.title }}</p>
         <p class="text-xs text-muted leading-relaxed">{{ p.subtitle }}</p>
         <span class="inline-block mt-3 text-xs text-gold/80">Настройки →</span>

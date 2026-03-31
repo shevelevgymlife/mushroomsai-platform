@@ -1,0 +1,141 @@
+"""ЮKassa: проверка платежа по API и активация подписки (вебхук + дублирование с Telegram)."""
+from __future__ import annotations
+
+import base64
+import logging
+from typing import Any
+
+import httpx
+
+from db.database import database
+from db.models import payment_webhook_dedup
+from services.payment_plans_catalog import get_effective_plans
+from services.payment_provider_settings import get_provider_settings
+from services.subscription_service import activate_subscription
+
+logger = logging.getLogger(__name__)
+
+
+async def _dedup_exists(provider: str, external_id: str) -> bool:
+    row = await database.fetch_one(
+        payment_webhook_dedup.select()
+        .where(payment_webhook_dedup.c.provider == provider)
+        .where(payment_webhook_dedup.c.external_id == external_id[:128])
+    )
+    return row is not None
+
+
+async def _mark(provider: str, external_id: str) -> None:
+    try:
+        await database.execute(
+            payment_webhook_dedup.insert().values(provider=provider, external_id=external_id[:128])
+        )
+    except Exception:
+        logger.debug("yookassa dedup insert failed", exc_info=True)
+
+
+async def fetch_yookassa_payment(shop_id: str, secret_key: str, payment_id: str) -> dict[str, Any] | None:
+    auth = base64.b64encode(f"{shop_id}:{secret_key}".encode()).decode("ascii")
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            r = await client.get(
+                f"https://api.yookassa.ru/v3/payments/{payment_id}",
+                headers={"Authorization": f"Basic {auth}", "Content-Type": "application/json"},
+            )
+        if r.status_code != 200:
+            logger.warning("yookassa GET payment %s -> %s", payment_id, r.status_code)
+            return None
+        return r.json()
+    except Exception:
+        logger.exception("yookassa fetch payment failed id=%s", payment_id)
+        return None
+
+
+async def apply_yookassa_payment_succeeded(payment: dict[str, Any]) -> tuple[bool, str]:
+    """
+    Обрабатывает объект payment из API/вебхука (status=succeeded).
+    Ожидает metadata: user_id, plan (start|pro|maxi).
+    """
+    pid = (payment.get("id") or "").strip()
+    if not pid:
+        return False, "no_payment_id"
+    if await _dedup_exists("yookassa", pid):
+        return True, "duplicate"
+
+    status = (payment.get("status") or "").strip()
+    if status != "succeeded":
+        return True, f"not_succeeded:{status}"
+
+    meta = payment.get("metadata") or {}
+    if isinstance(meta, str):
+        try:
+            import json
+
+            meta = json.loads(meta)
+        except Exception:
+            meta = {}
+
+    uid_raw = meta.get("user_id") or meta.get("userId")
+    plan = (meta.get("plan") or "").strip().lower()
+    if uid_raw is None or uid_raw == "":
+        # Платёж из Telegram часто без metadata в ЛК ЮKassa — активация идёт через successful_payment в боте.
+        return True, "ignored_no_metadata"
+    try:
+        uid = int(uid_raw)
+    except (TypeError, ValueError):
+        return False, "bad_user_in_metadata"
+
+    if plan not in ("start", "pro", "maxi"):
+        return False, "bad_plan_metadata"
+
+    amount_obj = payment.get("amount") or {}
+    val = amount_obj.get("value")
+    try:
+        from decimal import Decimal
+
+        paid = float(Decimal(str(val)))
+    except Exception:
+        paid = 0.0
+
+    plans = await get_effective_plans()
+    expected = float((plans.get(plan) or {}).get("price") or 0)
+    if expected <= 0:
+        return False, "bad_price_config"
+    if abs(paid - expected) > 0.02 and abs(paid - expected) > expected * 0.005:
+        logger.warning("yookassa amount mismatch uid=%s plan=%s paid=%s expected=%s", uid, plan, paid, expected)
+        return False, "amount_mismatch"
+
+    ok = await activate_subscription(uid, plan, months=1)
+    if not ok:
+        return False, "activate_failed"
+    await _mark("yookassa", pid)
+    return True, "ok"
+
+
+async def handle_yookassa_http_notification(body: dict[str, Any]) -> tuple[bool, str]:
+    """
+    Тело уведомления ЮKassa: { "type": "notification", "event": "payment.succeeded", "object": { ... } }
+    """
+    event = (body.get("event") or body.get("type") or "").strip()
+    obj = body.get("object")
+    if not isinstance(obj, dict):
+        return True, "ignored_no_object"
+
+    if event != "payment.succeeded":
+        return True, f"ignored_event:{event}"
+
+    st = await get_provider_settings("yookassa_bot")
+    shop_id = (st.get("shop_id") or "").strip()
+    secret_key = (st.get("secret_key") or "").strip()
+    if not shop_id or not secret_key:
+        return True, "ignored_no_credentials"
+
+    payment_id = (obj.get("id") or "").strip()
+    if not payment_id:
+        return False, "no_id"
+
+    verified = await fetch_yookassa_payment(shop_id, secret_key, payment_id)
+    if not verified:
+        return False, "verify_failed"
+
+    return await apply_yookassa_payment_succeeded(verified)
