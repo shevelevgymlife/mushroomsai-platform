@@ -100,6 +100,7 @@
         <div>
           <label class="block text-xs text-muted mb-1">shopId (идентификатор магазина ЮKassa)</label>
           <input type="text" name="shop_id" value="{{ provider_cfg.get('shop_id', '') }}" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" />
+          <p class="text-[11px] text-muted mt-1">Вместе с секретом ниже включает <b>оплату на сайте и в Telegram Mini App</b> (переход на страницу ЮKassa).</p>
         </div>
         <div>
           <label class="block text-xs text-muted mb-1">Секретный ключ API (для проверки платежа по API и вебхука)</label>

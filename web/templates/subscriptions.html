@@ -13,13 +13,26 @@
       Не удалось подарить подписку{% if request.query_params.get('gift_error') not in ('1', 'invalid', '') %}: {{ request.query_params.get('gift_error') }}{% endif %}. Проверьте выбор пользователя и тарифа.
     </div>
     {% endif %}
-    {% if request.query_params.get('need_payment') == 'bot' %}
+    {% if request.query_params.get('need_payment') %}
     <div class="max-w-3xl mx-auto mb-6 p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-100 text-sm leading-relaxed text-center">
-      Платные тарифы на сайте и в приложении Telegram без оплаты не активируются: оплата настроена через бота. Откройте бота в Telegram и оформите подписку там (счёт ЮKassa). Прямое подключение без оплаты отключено.
-    </div>
-    {% elif request.query_params.get('need_payment') %}
-    <div class="max-w-3xl mx-auto mb-6 p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-100 text-sm leading-relaxed text-center">
+      {% if cloudpayments_enabled and cloudpayments_public_id %}
       Оплата через CloudPayments включена. Выберите тариф и нажмите «Подключиться» — откроется окно оплаты. Прямое подключение без оплаты отключено.
+      {% elif yookassa_web_pay_enabled is defined and yookassa_web_pay_enabled %}
+      Платные тарифы без оплаты не активируются. Нажмите «Подключиться» у нужного тарифа — откроется оплата ЮKassa (в браузере и в приложении Telegram). Либо оформите подписку в боте. Прямое подключение без оплаты отключено.
+      {% else %}
+      Платные тарифы на сайте и в приложении Telegram без оплаты не активируются: оформите подписку в боте Telegram (счёт ЮKassa). Прямое подключение без оплаты отключено.
+      {% endif %}
+    </div>
+    {% endif %}
+    {% if request.query_params.get('pay_error') %}
+    <div class="max-w-3xl mx-auto mb-6 p-4 rounded-2xl border border-red-500/35 bg-red-500/10 text-red-100 text-sm leading-relaxed text-center">
+      {% set pe = request.query_params.get('pay_error') %}
+      {% if pe == 'create' %}Не удалось создать платёж ЮKassa. Попробуйте позже или оплатите в боте.
+      {% elif pe == 'bad_offering' %}Предложение недоступно или отключено в админке.
+      {% elif pe == 'web_disabled' %}Оплата на сайте не настроена (нужны shopId и секрет ЮKassa в разделе Оплата → ЮKassa Бот).
+      {% elif pe == 'no_site_url' %}На сервере не задан корректный SITE_URL (нужен https для возврата после оплаты).
+      {% elif pe == 'price' %}Неверная цена предложения.
+      {% else %}Не удалось начать оплату. Попробуйте снова или откройте бота.{% endif %}
     </div>
     {% endif %}
     {% if request.query_params.get('paid') %}
@@ -52,15 +65,20 @@
     {% endif %}
     {% if yookassa_site_offerings is defined and yookassa_site_offerings|length > 0 %}
     <div class="max-w-7xl mx-auto mb-10 p-5 rounded-2xl border border-cyan-500/20 bg-surface/50">
-      <h2 class="text-lg font-semibold text-text mb-2">Предложения в Telegram-боте</h2>
-      <p class="text-sm text-muted mb-4">Настраиваются в админке → Оплата → ЮKassa Бот. Оплата — в боте (кнопка «Подписка» или /subscribe).</p>
+      <h2 class="text-lg font-semibold text-text mb-2">Дополнительные предложения (ЮKassa)</h2>
+      <p class="text-sm text-muted mb-4">Настраиваются в админке → Оплата → ЮKassa Бот (флажок «Показ на сайте»).</p>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {% for o in yookassa_site_offerings %}
         <div class="p-4 rounded-xl border border-border bg-bg/40 flex flex-col gap-2">
           <div class="text-sm font-semibold text-gold">{{ o.display_name }}</div>
           <div class="text-xs text-muted">Уровень: {{ o.effective_plan }} · {{ o.duration_label }}</div>
           <div class="text-lg text-text font-light">{{ o.price_rub }} <span class="text-sm text-muted">₽</span></div>
-          <a href="https://t.me/neuro_fungi_bot" target="_blank" rel="noopener noreferrer" class="mt-auto inline-flex justify-center px-3 py-2 rounded-xl text-xs font-semibold bg-gold/15 border border-gold/30 text-gold hover:bg-gold/25 no-underline">Открыть бота</a>
+          <div class="mt-auto flex flex-col gap-2">
+            {% if yookassa_web_pay_enabled is defined and yookassa_web_pay_enabled %}
+            <a href="/pay/subscription?offering_id={{ o.id }}" class="inline-flex justify-center px-3 py-2 rounded-xl text-xs font-semibold bg-gold text-[#0a0c12] hover:opacity-95 no-underline">Оплатить на сайте</a>
+            {% endif %}
+            <a href="https://t.me/neuro_fungi_bot" target="_blank" rel="noopener noreferrer" class="inline-flex justify-center px-3 py-2 rounded-xl text-xs font-semibold bg-gold/15 border border-gold/30 text-gold hover:bg-gold/25 no-underline">Открыть бота</a>
+          </div>
         </div>
         {% endfor %}
       </div>

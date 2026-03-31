@@ -124,6 +124,29 @@ async def get_merged_bot_offerings() -> list[dict[str, Any]]:
     return out
 
 
+def yookassa_web_pay_ready(provider_cfg: dict[str, Any] | None) -> bool:
+    """Оплата на сайте через API ЮKassa (без BotFather provider token)."""
+    if not provider_cfg or not provider_cfg.get("enabled"):
+        return False
+    return bool((provider_cfg.get("shop_id") or "").strip() and (provider_cfg.get("secret_key") or "").strip())
+
+
+def find_offering_id_for_plan(offerings: list[dict[str, Any]], plan_key: str) -> str | None:
+    """Первая включённая строка с id==plan, иначе первая с effective_plan==plan."""
+    pk = (plan_key or "").strip().lower()
+    for o in offerings:
+        if not o.get("enabled"):
+            continue
+        if (o.get("id") or "").lower() == pk:
+            return str(o["id"])
+    for o in offerings:
+        if not o.get("enabled"):
+            continue
+        if (o.get("effective_plan") or "").lower() == pk:
+            return str(o["id"])
+    return None
+
+
 def offering_by_id(offerings: list[dict[str, Any]], oid: str) -> dict[str, Any] | None:
     key = (oid or "").strip().lower()
     for r in offerings:

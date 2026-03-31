@@ -3,6 +3,7 @@ import os
 import uuid
 from datetime import date, datetime, timedelta
 from typing import Optional
+from urllib.parse import quote
 from fastapi import APIRouter, Request, Form, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from web.templates_utils import Jinja2Templates
@@ -25,7 +26,13 @@ from db.models import (
 from services.referral_service import get_referral_stats
 from services.payment_plans_catalog import get_effective_plans
 from services.payment_provider_settings import get_provider_settings
-from services.yookassa_bot_offerings import get_merged_bot_offerings
+from services.yookassa_bot_offerings import (
+    find_offering_id_for_plan,
+    get_merged_bot_offerings,
+    offering_by_id,
+    yookassa_web_pay_ready,
+)
+from services.yookassa_hosted_payment import create_yookassa_redirect_payment
 from services.subscription_service import (
     activate_subscription,
     check_subscription,
@@ -178,11 +185,17 @@ async def subscriptions_page(request: Request):
     cp_public = (cp.get("public_id") or "").strip()
     cp_enabled = bool(cp.get("enabled") and cp_public)
     uid = int(user.get("primary_user_id") or user["id"])
+    yb_st = await get_provider_settings("yookassa_bot")
+    yk_web = yookassa_web_pay_ready(yb_st)
     try:
         _all_off = await get_merged_bot_offerings()
         yookassa_site_offerings = [o for o in _all_off if o.get("enabled") and o.get("show_on_site")]
+        offering_id_by_plan = {
+            pk: find_offering_id_for_plan(_all_off, pk) for pk in ("start", "pro", "maxi")
+        }
     except Exception:
         yookassa_site_offerings = []
+        offering_id_by_plan = {"start": None, "pro": None, "maxi": None}
     return templates.TemplateResponse(
         "subscriptions.html",
         {
@@ -195,8 +208,61 @@ async def subscriptions_page(request: Request):
             "cloudpayments_public_id": cp_public,
             "payment_user_id": uid,
             "yookassa_site_offerings": yookassa_site_offerings,
+            "yookassa_web_pay_enabled": yk_web,
+            "offering_id_by_plan": offering_id_by_plan,
         },
     )
+
+
+@router.get("/pay/subscription")
+async def pay_subscription_yookassa(request: Request, offering_id: str = ""):
+    """Перенаправление на оплату ЮKassa (сайт и Telegram Mini App)."""
+    user = await require_auth(request)
+    oid = (offering_id or "").strip().lower()
+    if not user:
+        nxt = "/pay/subscription?offering_id=" + quote(oid, safe="")
+        return RedirectResponse("/login?next=" + quote(nxt, safe=""), status_code=302)
+    leg = await legal_acceptance_redirect(request, user)
+    if leg:
+        return leg
+    if not oid:
+        return RedirectResponse("/subscriptions?pay_error=no_offering", status_code=302)
+    yb = await get_provider_settings("yookassa_bot")
+    if not yookassa_web_pay_ready(yb):
+        return RedirectResponse("/subscriptions?pay_error=web_disabled", status_code=302)
+    offerings = await get_merged_bot_offerings()
+    off = offering_by_id(offerings, oid)
+    if not off or not off.get("enabled"):
+        return RedirectResponse("/subscriptions?pay_error=bad_offering", status_code=302)
+    try:
+        price = float(off.get("price_rub") or 0)
+    except (TypeError, ValueError):
+        price = 0.0
+    if price <= 0:
+        return RedirectResponse("/subscriptions?pay_error=price", status_code=302)
+    uid = int(user.get("primary_user_id") or user["id"])
+    site = (settings.SITE_URL or "").rstrip("/")
+    if not site.startswith("http"):
+        return RedirectResponse("/subscriptions?pay_error=no_site_url", status_code=302)
+    return_url = f"{site}/subscriptions?paid=1"
+    disp = (off.get("display_name") or oid)[:80]
+    dur = (off.get("duration_label") or "")[:40]
+    desc = f"Подписка «{disp}» {dur}".strip()[:128]
+    url, err = await create_yookassa_redirect_payment(
+        shop_id=(yb.get("shop_id") or "").strip(),
+        secret_key=(yb.get("secret_key") or "").strip(),
+        amount_rub=price,
+        description=desc,
+        return_url=return_url,
+        metadata={
+            "user_id": str(uid),
+            "offering_id": oid,
+        },
+    )
+    if not url:
+        _logger.warning("yookassa create redirect failed: %s", err)
+        return RedirectResponse("/subscriptions?pay_error=create", status_code=302)
+    return RedirectResponse(url, status_code=302)
 
 
 @router.post("/subscriptions/connect")
@@ -216,14 +282,15 @@ async def subscriptions_connect(request: Request, plan: str = Form(...)):
         cp = await get_provider_settings("cloudpayments")
         cp_ok = bool(cp.get("enabled") and (cp.get("public_id") or "").strip())
         yb = await get_provider_settings("yookassa_bot")
-        yb_ok = bool(
+        yb_web_ok = yookassa_web_pay_ready(yb)
+        yb_bot_ok = bool(
             yb.get("enabled")
             and (yb.get("provider_token") or "").strip()
         )
         if cp_ok:
             return RedirectResponse("/subscriptions?need_payment=1", status_code=302)
-        if yb_ok:
-            return RedirectResponse("/subscriptions?need_payment=bot", status_code=302)
+        if yb_web_ok or yb_bot_ok:
+            return RedirectResponse("/subscriptions?need_payment=1", status_code=302)
     if plan_key == "free":
         urow = await database.fetch_one(users.select().where(users.c.id == uid))
         prev = (urow.get("subscription_plan") or "free").lower() if urow else "free"
