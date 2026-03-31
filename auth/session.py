@@ -24,6 +24,25 @@ def create_access_token(user_id: int) -> str:
     return jwt.encode(data, settings.JWT_SECRET, algorithm=ALGORITHM)
 
 
+async def _resolve_primary_user_row(user_id: int) -> Optional[dict]:
+    """Дойти до корня цепочки primary_user_id (как web.routes.account._resolve_primary_row)."""
+    row = await database.fetch_one(users.select().where(users.c.id == int(user_id)))
+    if not row:
+        return None
+    resolved = dict(row)
+    seen: set[int] = set()
+    while resolved.get("primary_user_id"):
+        pid = int(resolved["primary_user_id"])
+        if pid in seen:
+            break
+        seen.add(pid)
+        p = await database.fetch_one(users.select().where(users.c.id == pid))
+        if not p:
+            break
+        resolved = dict(p)
+    return resolved
+
+
 async def get_current_user(token: str) -> Optional[dict]:
     try:
         payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[ALGORITHM])
@@ -31,14 +50,9 @@ async def get_current_user(token: str) -> Optional[dict]:
     except (JWTError, TypeError, ValueError):
         return None
 
-    row = await database.fetch_one(users.select().where(users.c.id == user_id))
+    row = await _resolve_primary_user_row(user_id)
     if not row:
         return None
-    # Always resolve to the primary account
-    if row["primary_user_id"]:
-        primary = await database.fetch_one(users.select().where(users.c.id == row["primary_user_id"]))
-        if primary:
-            row = primary
     u = dict(row)
     if login_denied_for_user_row_sync(u):
         return None

@@ -197,6 +197,49 @@ async def link_merge_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         from services.user_permanent_delete import permanently_delete_user
 
         await merge_accounts(primary_id=web_user_id, secondary_id=secondary_id)
+        sec_after = await database.fetch_one(users.select().where(users.c.id == secondary_id))
+        if not sec_after:
+            logger.error("link_merge_ok: secondary %s missing after merge_accounts pri=%s", secondary_id, web_user_id)
+            await query.edit_message_text(
+                "Не удалось завершить привязку. Создайте новую ссылку на сайте (аккаунт → привязка входа)."
+            )
+            return
+
+        pu = sec_after.get("primary_user_id")
+        merged_into_us = pu is not None and int(pu) == int(web_user_id)
+        still_tg = sec_after.get("tg_id") is not None
+
+        if merged_into_us and still_tg:
+            await database.execute(
+                users.update()
+                .where(users.c.id == secondary_id)
+                .values(tg_id=None, linked_tg_id=None)
+            )
+        elif not merged_into_us and still_tg:
+            logger.error(
+                "link_merge_ok: merge_accounts no-op pri=%s sec=%s tg=%s pu=%s",
+                web_user_id,
+                secondary_id,
+                sec_after.get("tg_id"),
+                pu,
+            )
+            await query.edit_message_text(
+                "Не удалось объединить аккаунты (слияние не применилось). "
+                "Откройте на сайте привязку входа и сгенерируйте новую ссылку для Telegram."
+            )
+            return
+        elif not merged_into_us and not still_tg:
+            logger.warning(
+                "link_merge_ok: unexpected secondary state pri=%s sec=%s pu=%s",
+                web_user_id,
+                secondary_id,
+                pu,
+            )
+            await query.edit_message_text(
+                "Не удалось завершить привязку. Создайте новую ссылку на сайте (аккаунт → привязка входа)."
+            )
+            return
+
         await database.execute(
             users.update()
             .where(users.c.id == web_user_id)
@@ -208,6 +251,8 @@ async def link_merge_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
                 link_merge_secondary_id=None,
             )
         )
+        logger.info("link_merge_ok: success pri=%s sec=%s tg=%s", web_user_id, secondary_id, tg_id)
+
         ok, err = await permanently_delete_user(secondary_id)
         if not ok:
             logger.warning("link_merge_ok: permanently_delete_user(%s) failed: %s", secondary_id, err)
