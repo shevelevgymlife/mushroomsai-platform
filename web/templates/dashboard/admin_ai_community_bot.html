@@ -23,6 +23,34 @@
     {% if request.query_params.get('ensure_err') %}
     <div class="mb-4 p-3 rounded-xl border border-red-400/40 text-red-300 text-sm">Не удалось создать аккаунт. Проверьте логи сервера и <code class="text-xs">DATABASE_URL</code>. При открытии страницы и при сохранении настройки схема v25/v26 применяется автоматически; попробуйте кнопку ещё раз.</div>
     {% endif %}
+    {% if request.query_params.get('bound') %}
+    <div class="mb-4 p-3 rounded-xl border border-gold/30 text-gold text-sm">Привязан пользователь с id <strong>{{ request.query_params.get('bound') }}</strong>. Лента и планировщик будут использовать этот аккаунт.</div>
+    {% endif %}
+    {% if request.query_params.get('bind_err') %}
+    <div class="mb-4 p-3 rounded-xl border border-red-400/40 text-red-300 text-sm">
+      {% if request.query_params.get('bind_err') == 'empty' %}Введите id пользователя.{% elif request.query_params.get('bind_err') == 'nan' %}Id должен быть числом.{% elif request.query_params.get('bind_msg') %}{{ request.query_params.get('bind_msg') }}{% else %}Не удалось привязать.{% endif %}
+    </div>
+    {% endif %}
+
+    <div class="rounded-2xl border border-border p-6 bg-surface/40 mb-6">
+      <h2 class="text-lg font-medium text-text mb-2">Ручная привязка аккаунта</h2>
+      <p class="text-xs text-muted mb-4 max-w-2xl">
+        Укажите существующий <code class="text-[11px]">users.id</code> (смотрите в
+        <a href="/admin/users" class="text-gold hover:underline">пользователях</a>).
+        Этот пользователь станет аккаунтом NeuroFungi AI в ленте (посты, комментарии, «мысли»). Имя и био правьте у пользователя как обычно.
+      </p>
+      <form method="post" action="/admin/ai-community-bot/bind-user" class="flex flex-wrap items-end gap-3">
+        <div>
+          <label class="block text-xs text-muted mb-1">Id пользователя (users.id)</label>
+          <input type="number" name="bind_user_id" min="1" step="1" placeholder="например 42"
+            class="w-44 rounded-xl border border-border bg-surface px-3 py-2 text-text text-sm"
+            value="{{ request.query_params.get('bound') or '' }}" />
+        </div>
+        <button type="submit" class="px-4 py-2 rounded-xl text-sm font-medium border border-gold/40 text-gold hover:bg-gold/10">
+          Привязать этот id
+        </button>
+      </form>
+    </div>
 
     <form method="post" action="/admin/ai-community-bot/ensure-user" class="mb-6">
       <button type="submit" class="px-4 py-2 rounded-xl text-sm font-medium border border-border text-text hover:border-gold/40">
@@ -31,11 +59,8 @@
       <span class="text-xs text-muted ml-2">Если id пустой после деплоя — нажмите один раз.</span>
     </form>
     <p class="text-xs text-muted max-w-3xl mb-6">
-      Ручная привязка в PostgreSQL (Render → DB → Query): после того как у вас есть нужный <code class="text-[11px]">users.id</code>,
-      выполните
-      <code class="block mt-1 text-[11px] whitespace-pre-wrap break-all">INSERT INTO ai_community_bot_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
-UPDATE ai_community_bot_settings SET user_id = ВАШ_ID, updated_at = NOW() WHERE id = 1;</code>
-      Либо создайте пользователя с email <code class="text-[11px]">neurofungi.ai.community@system.invalid</code> в админке пользователей и подставьте его id в <code class="text-[11px]">UPDATE</code>.
+      Автосоздание: кнопка ниже создаёт служебного пользователя с email <code class="text-[11px]">neurofungi.ai.community@system.invalid</code>, если его ещё нет.
+      Альтернатива — блок «Ручная привязка» выше. SQL вручную в PostgreSQL больше не обязателен.
     </p>
 
     {% if uid %}

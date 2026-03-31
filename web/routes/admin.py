@@ -10,7 +10,11 @@ from fastapi import APIRouter, Request, Form, UploadFile, File, Query
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, StreamingResponse
 from web.templates_utils import Jinja2Templates
 from config import settings
-from services.ai_community_bot import apply_ai_community_bot_schema_if_needed, load_bot_settings_row
+from services.ai_community_bot import (
+    apply_ai_community_bot_schema_if_needed,
+    bind_ai_community_bot_to_user_id,
+    load_bot_settings_row,
+)
 from services.subscription_service import PLANS, record_subscription_event, format_admin_subscription_assigned_message
 from services.system_support_delivery import deliver_system_support_notification
 from services.shop_catalog import extra_image_lines_from_json, extra_image_urls_from_text
@@ -2733,3 +2737,27 @@ async def admin_ai_community_bot_ensure_user(request: Request):
     except Exception as e:
         logger.warning("admin_ai_community_bot_ensure_user: %s", e, exc_info=True)
     return RedirectResponse("/admin/ai-community-bot?ensure_err=1", status_code=303)
+
+
+@router.post("/ai-community-bot/bind-user")
+async def admin_ai_community_bot_bind_user(request: Request, bind_user_id: str = Form("")):
+    """Ручная привязка: существующий users.id записывается в ai_community_bot_settings."""
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    raw = (bind_user_id or "").strip()
+    if not raw:
+        return RedirectResponse("/admin/ai-community-bot?bind_err=empty", status_code=303)
+    try:
+        uid = int(raw)
+    except ValueError:
+        return RedirectResponse("/admin/ai-community-bot?bind_err=nan", status_code=303)
+    ok, err = await bind_ai_community_bot_to_user_id(uid)
+    if ok:
+        return RedirectResponse(f"/admin/ai-community-bot?bound={uid}", status_code=303)
+    from urllib.parse import quote
+
+    return RedirectResponse(
+        "/admin/ai-community-bot?bind_err=1&bind_msg=" + quote(err[:500], safe=""),
+        status_code=303,
+    )

@@ -108,6 +108,24 @@ async def _persist_ai_community_bot_user_id(uid: int) -> None:
     )
 
 
+async def bind_ai_community_bot_to_user_id(uid: int) -> tuple[bool, str]:
+    """
+    Привязка существующего users.id к NeuroFungi AI в сообществе (из админки).
+    Возвращает (успех, текст ошибки для отображения или пустая строка).
+    """
+    if uid < 1:
+        return False, "Укажите положительный числовой id пользователя."
+    u = await database.fetch_one(users.select().where(users.c.id == uid))
+    if not u:
+        return False, f"Пользователь с id={uid} не найден в базе."
+    try:
+        await _persist_ai_community_bot_user_id(uid)
+    except Exception as e:
+        logger.warning("bind_ai_community_bot_to_user_id: %s", e, exc_info=True)
+        return False, "Не удалось записать настройки. См. логи сервера."
+    return True, ""
+
+
 async def ensure_ai_community_bot_user() -> Optional[int]:
     """Создаёт или привязывает пользователя NeuroFungi AI для сообщества."""
     await apply_ai_community_bot_schema_if_needed()
