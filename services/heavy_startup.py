@@ -579,11 +579,27 @@ async def run_heavy_startup(app: FastAPI) -> None:
             logger.warning("migrate_v24 platform_ai_feedback: %s", e)
 
         try:
+            import migrate_v25_ai_community_bot as migrate_v25
+
+            for s in migrate_v25.STEPS:
+                await database.execute(sa.text(s))
+            logger.info("AI community bot settings (migrate_v25) OK")
+        except Exception as e:
+            logger.warning("migrate_v25 ai_community_bot: %s", e)
+
+        try:
             from services.merge_neurofungi_ai_chats import merge_all_neurofungi_ai_personal_chats
 
             await merge_all_neurofungi_ai_personal_chats()
         except Exception as e:
             logger.warning("merge_neurofungi_ai_chats: %s", e)
+
+        try:
+            from services.ai_community_bot import ensure_ai_community_bot_user
+
+            await ensure_ai_community_bot_user()
+        except Exception as e:
+            logger.warning("ensure_ai_community_bot_user: %s", e)
 
         start_scheduler()
         app.state.startup_complete = True

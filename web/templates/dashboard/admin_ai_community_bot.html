@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}AI в сообществе — Admin{% endblock %}
+{% block content %}
+<div class="pt-24 pb-16 neo-app-surface">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    {% include "components/admin_nav.html" %}
+
+    <h1 class="text-3xl font-light text-text mb-2">Управление аккаунтом NeuroFungi AI в сообществе</h1>
+    <p class="text-sm text-muted mb-6 max-w-3xl">
+      Автоматические посты, комментарии, подписки и статусы в профиле. Полностью остановите работу или разрешите отдельные действия и задайте суточные лимиты.
+      Аккаунт создаётся при деплое (или берётся из <code class="text-xs">NEUROFUNGI_AI_USER_ID</code>). Имя и био можно править как у обычного пользователя в
+      <a href="/admin/users" class="text-gold hover:underline">пользователях</a> или открыть
+      {% if uid %}<a href="/community/profile/{{ uid }}" class="text-gold hover:underline">профиль в ленте</a>{% else %}профиль{% endif %}.
+      Фото в постах отключены, пока не включите «Разрешить фото» (зарезервировано под следующую версию).
+    </p>
+
+    {% if request.query_params.get('saved') %}
+    <div class="mb-4 p-3 rounded-xl border border-gold/30 text-gold text-sm">Сохранено.</div>
+    {% endif %}
+
+    {% if uid %}
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8 text-sm">
+      <div class="rounded-xl border border-border p-3 bg-surface/40">
+        <div class="text-xs text-muted">Постов сегодня</div>
+        <div class="text-xl font-semibold text-gold">{{ counts.get('posts', 0) }} / {{ cfg.get('limit_posts_per_day', 5) }}</div>
+      </div>
+      <div class="rounded-xl border border-border p-3 bg-surface/40">
+        <div class="text-xs text-muted">Комментариев сегодня</div>
+        <div class="text-xl font-semibold text-text">{{ counts.get('comments', 0) }} / {{ cfg.get('limit_comments_per_day', 30) }}</div>
+      </div>
+      <div class="rounded-xl border border-border p-3 bg-surface/40">
+        <div class="text-xs text-muted">Подписок сегодня</div>
+        <div class="text-xl font-semibold text-text">{{ counts.get('follows', 0) }} / {{ cfg.get('limit_follows_per_day', 15) }}</div>
+      </div>
+      <div class="rounded-xl border border-border p-3 bg-surface/40">
+        <div class="text-xs text-muted">Ответов на свои посты (сегодня)</div>
+        <div class="text-xl font-semibold text-text">{{ counts.get('replies_own', 0) }} / {{ cfg.limit_reply_comments_per_day or 25 }}</div>
+      </div>
+      <div class="rounded-xl border border-border p-3 bg-surface/40">
+        <div class="text-xs text-muted">Последний тик</div>
+        <div class="text-sm text-muted mt-1">{{ cfg.get('last_tick_at') or '—' }}</div>
+      </div>
+    </div>
+    {% else %}
+    <p class="text-amber-400 text-sm mb-6">Аккаунт ещё не привязан. После следующего деплоя или перезапуска сервиса будет создан пользователь NeuroFungi AI.</p>
+    {% endif %}
+
+    <form method="post" action="/admin/ai-community-bot" class="space-y-6 rounded-2xl border border-border p-6 bg-surface/40">
+      <div class="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-border">
+        <div>
+          <label class="text-sm font-medium text-text">Главный выключатель</label>
+          <p class="text-xs text-muted">Полностью останавливает все действия бота в ленте.</p>
+        </div>
+        <label class="inline-flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" name="master_enabled" value="1" class="rounded border-border w-5 h-5" {% if cfg.get('master_enabled') %}checked{% endif %} />
+          <span class="text-sm text-text">Включено</span>
+        </label>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {% set items = [
+          ('allow_posts', 'Публиковать посты', cfg.get('allow_posts', true)),
+          ('allow_comments', 'Комментировать чужие посты', cfg.get('allow_comments', true)),
+          ('allow_follow', 'Подписываться на авторов', cfg.get('allow_follow', true)),
+          ('allow_unfollow', 'Отписываться (редко, случайно)', cfg.get('allow_unfollow', true)),
+          ('allow_reply_to_comments', 'Отвечать на комментарии к своим постам', cfg.get('allow_reply_to_comments', true)),
+          ('allow_profile_thoughts', 'Обновлять блок «мысли» в профиле', cfg.get('allow_profile_thoughts', true)),
+          ('allow_story_posts', 'Помечать часть постов как «Сторис»', cfg.get('allow_story_posts', true)),
+          ('allow_bug_reports', 'Сообщать вам в уведомлениях отметки (напоминания)', cfg.get('allow_bug_reports', true)),
+          ('allow_photos', 'Фото в постах (пока не используется кодом)', cfg.get('allow_photos', false)),
+        ] %}
+        {% for name, label, on in items %}
+        <label class="flex items-start gap-3 p-3 rounded-xl border border-border/80 cursor-pointer hover:border-gold/30">
+          <input type="checkbox" name="{{ name }}" value="1" class="mt-1 rounded border-border" {% if on %}checked{% endif %} />
+          <span class="text-sm text-text">{{ label }}</span>
+        </label>
+        {% endfor %}
+      </div>
+
+      <div>
+        <h2 class="text-lg font-medium text-text mb-3">Лимиты в день (штук)</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+          {% for field, lab, default_lim in [
+            ('limit_posts_per_day', 'Посты', 5),
+            ('limit_comments_per_day', 'Комментарии', 30),
+            ('limit_follows_per_day', 'Подписки', 15),
+            ('limit_unfollows_per_day', 'Отписки (резерв)', 10),
+            ('limit_thoughts_per_day', 'Обновления «мыслей»', 15),
+            ('limit_reply_comments_per_day', 'Ответы на комментарии', 25),
+          ] %}
+          <div>
+            <label class="block text-xs text-muted mb-1">{{ lab }}</label>
+            <input type="number" min="0" max="200" name="{{ field }}" value="{{ cfg.get(field, default_lim) }}"
+              class="w-full rounded-xl border border-border bg-surface px-3 py-2 text-text" />
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <button type="submit" class="px-6 py-3 rounded-xl text-sm font-medium border border-gold/40 text-gold hover:bg-gold/10">Сохранить</button>
+    </form>
+
+    <p class="text-xs text-muted mt-8">
+      Планировщик запускается каждые ~15 минут. Нужен <code>OPENAI_API_KEY</code> для текстов постов и комментариев; без ключа возможны только подписки/отписки.
+      Уведомления о «багах» приходят в колокольчик админам (раздел уведомлений в приложении).
+    </p>
+  </div>
+</div>
+{% endblock %}

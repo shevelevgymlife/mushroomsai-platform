@@ -733,6 +733,33 @@ platform_ai_feedback = sqlalchemy.Table(
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
 
+ai_community_bot_settings = sqlalchemy.Table(
+    "ai_community_bot_settings",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
+    sqlalchemy.Column("master_enabled", sqlalchemy.Boolean, nullable=False, server_default="true"),
+    sqlalchemy.Column("allow_posts", sqlalchemy.Boolean, nullable=False, server_default="true"),
+    sqlalchemy.Column("allow_comments", sqlalchemy.Boolean, nullable=False, server_default="true"),
+    sqlalchemy.Column("allow_follow", sqlalchemy.Boolean, nullable=False, server_default="true"),
+    sqlalchemy.Column("allow_unfollow", sqlalchemy.Boolean, nullable=False, server_default="true"),
+    sqlalchemy.Column("allow_reply_to_comments", sqlalchemy.Boolean, nullable=False, server_default="true"),
+    sqlalchemy.Column("allow_profile_thoughts", sqlalchemy.Boolean, nullable=False, server_default="true"),
+    sqlalchemy.Column("allow_photos", sqlalchemy.Boolean, nullable=False, server_default="false"),
+    sqlalchemy.Column("allow_story_posts", sqlalchemy.Boolean, nullable=False, server_default="true"),
+    sqlalchemy.Column("allow_bug_reports", sqlalchemy.Boolean, nullable=False, server_default="true"),
+    sqlalchemy.Column("limit_posts_per_day", sqlalchemy.Integer, nullable=False, server_default="5"),
+    sqlalchemy.Column("limit_comments_per_day", sqlalchemy.Integer, nullable=False, server_default="30"),
+    sqlalchemy.Column("limit_follows_per_day", sqlalchemy.Integer, nullable=False, server_default="15"),
+    sqlalchemy.Column("limit_unfollows_per_day", sqlalchemy.Integer, nullable=False, server_default="10"),
+    sqlalchemy.Column("limit_thoughts_per_day", sqlalchemy.Integer, nullable=False, server_default="15"),
+    sqlalchemy.Column("limit_reply_comments_per_day", sqlalchemy.Integer, nullable=False, server_default="25"),
+    sqlalchemy.Column("thoughts_count_date", sqlalchemy.Date, nullable=True),
+    sqlalchemy.Column("thoughts_count_today", sqlalchemy.Integer, nullable=True),
+    sqlalchemy.Column("last_tick_at", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("updated_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
 moderation_log = sqlalchemy.Table(
     "moderation_log",
     metadata,

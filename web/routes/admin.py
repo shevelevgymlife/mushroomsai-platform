@@ -29,6 +29,7 @@ from db.models import (
     platform_settings,
     wellness_journal_entries,
     platform_ai_feedback,
+    ai_community_bot_settings,
 )
 import sqlalchemy
 from datetime import datetime, timedelta, date
@@ -55,6 +56,7 @@ ADMIN_SECTIONS = [
     ("Реферальная программа", "/admin/referral", "can_users"),
     ("Дневник терапии", "/admin/wellness-journal", "can_users"),
     ("NeuroFungi AI: пожелания", "/admin/platform-ai-feedback", "can_users"),
+    ("AI в сообществе", "/admin/ai-community-bot", "can_users"),
 ]
 ADMIN_NAV = [(label, href) for (label, href, _perm) in ADMIN_SECTIONS]
 AI_RETRIEVAL_MODES = [
@@ -220,6 +222,16 @@ async def admin_dashboard(request: Request):
                     u = await database.fetch_one(users.select().where(users.c.id == fb_row["user_id"]))
                 fb_with_users.append({"fb": fb_row, "fb_user": u})
 
+    ai_community_bot = None
+    if perms.get("can_dashboard") or perms.get("can_users"):
+        try:
+            _ab = await database.fetch_one(
+                sqlalchemy.select(ai_community_bot_settings).where(ai_community_bot_settings.c.id == 1)
+            )
+            ai_community_bot = dict(_ab) if _ab else None
+        except Exception:
+            ai_community_bot = None
+
     return templates.TemplateResponse(
         "dashboard/admin.html",
         {
@@ -233,6 +245,7 @@ async def admin_dashboard(request: Request):
             "active_subs": active_subs,
             "recent_msgs": msgs_with_users,
             "recent_feedback": fb_with_users,
+            "ai_community_bot": ai_community_bot,
         },
     )
 
@@ -2580,3 +2593,125 @@ async def admin_platform_ai_feedback_reply(
     if (send_dm or "").strip().lower() in ("1", "true", "on", "yes"):
         await deliver_admin_reply_as_neurofungi_dm(int(row["user_id"]), reply_text)
     return RedirectResponse("/admin/platform-ai-feedback?saved=1", status_code=303)
+
+
+# ─── AI в сообществе (посты, комментарии, подписки) ───────────────────────────
+
+
+def _truthy_form(v: Optional[str]) -> bool:
+    return (v or "").strip().lower() in ("1", "true", "on", "yes")
+
+
+@router.get("/ai-community-bot", response_class=HTMLResponse)
+async def admin_ai_community_bot_page(request: Request):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    row = await database.fetch_one(
+        sqlalchemy.select(ai_community_bot_settings).where(ai_community_bot_settings.c.id == 1)
+    )
+    cfg = dict(row) if row else {}
+    uid = int(cfg["user_id"]) if cfg.get("user_id") else None
+    start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    counts: dict[str, int] = {}
+    if uid:
+        counts["posts"] = int(
+            await database.fetch_val(
+                sqlalchemy.text(
+                    "SELECT COUNT(*) FROM community_posts WHERE user_id = :u AND created_at >= :s"
+                ),
+                {"u": uid, "s": start},
+            )
+            or 0
+        )
+        counts["comments"] = int(
+            await database.fetch_val(
+                sqlalchemy.text(
+                    "SELECT COUNT(*) FROM community_comments WHERE user_id = :u AND created_at >= :s"
+                ),
+                {"u": uid, "s": start},
+            )
+            or 0
+        )
+        counts["follows"] = int(
+            await database.fetch_val(
+                sqlalchemy.text(
+                    "SELECT COUNT(*) FROM community_follows WHERE follower_id = :u AND created_at >= :s"
+                ),
+                {"u": uid, "s": start},
+            )
+            or 0
+        )
+        counts["replies_own"] = int(
+            await database.fetch_val(
+                sqlalchemy.text(
+                    """
+                    SELECT COUNT(*) FROM community_comments c
+                    JOIN community_posts p ON p.id = c.post_id
+                    WHERE c.user_id = :u AND p.user_id = :u AND c.created_at >= :s
+                    """
+                ),
+                {"u": uid, "s": start},
+            )
+            or 0
+        )
+    urow = await database.fetch_one(users.select().where(users.c.id == uid)) if uid else None
+    return templates.TemplateResponse(
+        "dashboard/admin_ai_community_bot.html",
+        {
+            "request": request,
+            "cfg": cfg,
+            "counts": counts,
+            "uid": uid,
+            "urow": urow,
+        },
+    )
+
+
+@router.post("/ai-community-bot")
+async def admin_ai_community_bot_save(
+    request: Request,
+    master_enabled: str = Form("0"),
+    allow_posts: str = Form("0"),
+    allow_comments: str = Form("0"),
+    allow_follow: str = Form("0"),
+    allow_unfollow: str = Form("0"),
+    allow_reply_to_comments: str = Form("0"),
+    allow_profile_thoughts: str = Form("0"),
+    allow_photos: str = Form("0"),
+    allow_story_posts: str = Form("0"),
+    allow_bug_reports: str = Form("0"),
+    limit_posts_per_day: int = Form(5),
+    limit_comments_per_day: int = Form(30),
+    limit_follows_per_day: int = Form(15),
+    limit_unfollows_per_day: int = Form(10),
+    limit_thoughts_per_day: int = Form(15),
+    limit_reply_comments_per_day: int = Form(25),
+):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    await database.execute(
+        ai_community_bot_settings.update()
+        .where(ai_community_bot_settings.c.id == 1)
+        .values(
+            master_enabled=_truthy_form(master_enabled),
+            allow_posts=_truthy_form(allow_posts),
+            allow_comments=_truthy_form(allow_comments),
+            allow_follow=_truthy_form(allow_follow),
+            allow_unfollow=_truthy_form(allow_unfollow),
+            allow_reply_to_comments=_truthy_form(allow_reply_to_comments),
+            allow_profile_thoughts=_truthy_form(allow_profile_thoughts),
+            allow_photos=_truthy_form(allow_photos),
+            allow_story_posts=_truthy_form(allow_story_posts),
+            allow_bug_reports=_truthy_form(allow_bug_reports),
+            limit_posts_per_day=max(0, min(50, int(limit_posts_per_day or 0))),
+            limit_comments_per_day=max(0, min(200, int(limit_comments_per_day or 0))),
+            limit_follows_per_day=max(0, min(100, int(limit_follows_per_day or 0))),
+            limit_unfollows_per_day=max(0, min(100, int(limit_unfollows_per_day or 0))),
+            limit_thoughts_per_day=max(0, min(100, int(limit_thoughts_per_day or 0))),
+            limit_reply_comments_per_day=max(0, min(200, int(limit_reply_comments_per_day or 0))),
+            updated_at=datetime.utcnow(),
+        )
+    )
+    return RedirectResponse("/admin/ai-community-bot?saved=1", status_code=303)

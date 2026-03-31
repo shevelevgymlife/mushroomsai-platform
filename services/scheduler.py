@@ -7,6 +7,7 @@ import sqlalchemy as sa
 from db.database import database
 from config import settings
 from services.ops_alerts import maybe_notify_billing, send_daily_summary
+from services.ai_community_bot import run_ai_community_bot_job
 from services.wellness_journal_service import (
     run_wellness_prompts_due_job,
     run_wellness_weekly_digests_job,
@@ -83,6 +84,13 @@ def start_scheduler() -> None:
         "interval",
         hours=12,
         id="wellness_subscription_renewal_nudge",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        run_ai_community_bot_job,
+        "interval",
+        minutes=15,
+        id="ai_community_bot",
         replace_existing=True,
     )
     scheduler.start()
