@@ -17,6 +17,15 @@ from config import settings
 logger = logging.getLogger(__name__)
 
 
+def _user_row_matches_telegram_id(row: dict, tg_id: int) -> bool:
+    """Как find_user_by_telegram_id: совпадение по tg_id или linked_tg_id."""
+    for key in ("tg_id", "linked_tg_id"):
+        v = row.get(key)
+        if v is not None and int(v) == int(tg_id):
+            return True
+    return False
+
+
 async def _send_main_reply_keyboard(context: ContextTypes.DEFAULT_TYPE, chat_id: int, internal_user_id: int) -> None:
     """После правок сообщения с inline-кнопками клиент часто не показывает reply-меню — принудительно открываем."""
     site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
@@ -81,7 +90,9 @@ async def link_confirm_callback(update: Update, context: ContextTypes.DEFAULT_TY
             await query.edit_message_text("Срок действия ссылки истёк. Сгенерируйте новую на сайте.")
             return
 
-        existing = await database.fetch_one(users.select().where(users.c.tg_id == tg_id))
+        from web.routes.account import find_user_by_telegram_id
+
+        existing = await find_user_by_telegram_id(tg_id)
 
         if existing and existing["id"] != row["id"]:
             created_str = ""
@@ -160,7 +171,8 @@ async def link_merge_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
 
         secondary_id = int(row["link_merge_secondary_id"])
         secondary = await database.fetch_one(users.select().where(users.c.id == secondary_id))
-        if not secondary or secondary.get("tg_id") != tg_id:
+        sec = dict(secondary) if secondary is not None else {}
+        if not secondary or not _user_row_matches_telegram_id(sec, tg_id):
             await query.edit_message_text(
                 "Подтверждение недоступно: откройте бот с того же Telegram-аккаунта, что и раньше."
             )
