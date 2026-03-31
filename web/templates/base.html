@@ -334,7 +334,7 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
     var box = document.getElementById("tgLinkHintToast");
     var closeBtn = document.getElementById("tgLinkHintClose");
     var stopBtn = document.getElementById("tgLinkHintStop");
-    if (!box || !closeBtn || !stopBtn) return;
+    if (!box || !closeBtn) return;
 
     function loadState(){
       try{
@@ -353,30 +353,37 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
     function saveState(s){
       try{ localStorage.setItem(key, JSON.stringify(s)); }catch(e){}
     }
-    function renderVariant(s){
-      stopBtn.style.display = s.dismissCount >= 2 ? "inline-flex" : "none";
+    function renderVariant(){
+      if (stopBtn) stopBtn.style.display = "none";
     }
     function showNow(s){
-      renderVariant(s);
+      renderVariant();
       box.style.display = "block";
     }
     function hide(){
       box.style.display = "none";
     }
     function scheduleNext(s){
+      if (Number(s.dismissCount || 0) >= 2) {
+        s.stop = true;
+        s.nextAt = 0;
+        saveState(s);
+        return;
+      }
       var idx = Math.min(Math.max(s.dismissCount - 1, 0), delays.length - 1);
       s.nextAt = Date.now() + delays[idx];
       saveState(s);
     }
 
     var state = loadState();
-    if (state.stop) return;
+    if (state.stop || Number(state.dismissCount || 0) >= 2) return;
     if ((state.nextAt || 0) <= Date.now()) showNow(state);
 
     closeBtn.addEventListener("click", function(){
       hide();
       state.dismissCount = Number(state.dismissCount || 0) + 1;
       scheduleNext(state);
+      if (state.stop) return;
       var wait = Math.max(1000, (state.nextAt || 0) - Date.now());
       setTimeout(function(){
         var latest = loadState();
@@ -387,11 +394,13 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
       }, wait);
     });
 
-    stopBtn.addEventListener("click", function(){
-      state.stop = true;
-      saveState(state);
-      hide();
-    });
+    if (stopBtn) {
+      stopBtn.addEventListener("click", function(){
+        state.stop = true;
+        saveState(state);
+        hide();
+      });
+    }
   })();
   </script>
   {% endif %}
@@ -428,7 +437,7 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
     var box = document.getElementById("googleLinkHintToast");
     var closeBtn = document.getElementById("googleLinkHintClose");
     var stopBtn = document.getElementById("googleLinkHintStop");
-    if (!box || !closeBtn || !stopBtn) return;
+    if (!box || !closeBtn) return;
 
     function loadState(){
       try{
@@ -447,30 +456,37 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
     function saveState(s){
       try{ localStorage.setItem(key, JSON.stringify(s)); }catch(e){}
     }
-    function renderVariant(s){
-      stopBtn.style.display = s.dismissCount >= 2 ? "inline-flex" : "none";
+    function renderVariant(){
+      if (stopBtn) stopBtn.style.display = "none";
     }
     function showNow(s){
-      renderVariant(s);
+      renderVariant();
       box.style.display = "block";
     }
     function hide(){
       box.style.display = "none";
     }
     function scheduleNext(s){
+      if (Number(s.dismissCount || 0) >= 2) {
+        s.stop = true;
+        s.nextAt = 0;
+        saveState(s);
+        return;
+      }
       var idx = Math.min(Math.max(s.dismissCount - 1, 0), delays.length - 1);
       s.nextAt = Date.now() + delays[idx];
       saveState(s);
     }
 
     var state = loadState();
-    if (state.stop) return;
+    if (state.stop || Number(state.dismissCount || 0) >= 2) return;
     if ((state.nextAt || 0) <= Date.now()) showNow(state);
 
     closeBtn.addEventListener("click", function(){
       hide();
       state.dismissCount = Number(state.dismissCount || 0) + 1;
       scheduleNext(state);
+      if (state.stop) return;
       var wait = Math.max(1000, (state.nextAt || 0) - Date.now());
       setTimeout(function(){
         var latest = loadState();
@@ -481,11 +497,13 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
       }, wait);
     });
 
-    stopBtn.addEventListener("click", function(){
-      state.stop = true;
-      saveState(state);
-      hide();
-    });
+    if (stopBtn) {
+      stopBtn.addEventListener("click", function(){
+        state.stop = true;
+        saveState(state);
+        hide();
+      });
+    }
   })();
   </script>
   {% endif %}
@@ -514,7 +532,7 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
     var box = document.getElementById("refProgramHintToast");
     var closeBtn = document.getElementById("refProgramHintClose");
     var stopBtn = document.getElementById("refProgramHintStop");
-    if (!box || !closeBtn || !stopBtn) return;
+    if (!box || !closeBtn) return;
 
     function loadState(){
       try{
@@ -533,30 +551,37 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
     function saveState(s){
       try{ localStorage.setItem(key, JSON.stringify(s)); }catch(e){}
     }
-    function renderVariant(s){
-      stopBtn.style.display = s.dismissCount >= 2 ? "inline-flex" : "none";
+    function renderVariant(){
+      if (stopBtn) stopBtn.style.display = "none";
     }
     function showNow(s){
-      renderVariant(s);
+      renderVariant();
       box.style.display = "block";
     }
     function hide(){
       box.style.display = "none";
     }
     function scheduleNext(s){
+      if (Number(s.dismissCount || 0) >= 2) {
+        s.stop = true;
+        s.nextAt = 0;
+        saveState(s);
+        return;
+      }
       var idx = Math.min(Math.max(s.dismissCount - 1, 0), delays.length - 1);
       s.nextAt = Date.now() + delays[idx];
       saveState(s);
     }
 
     var state = loadState();
-    if (state.stop) return;
+    if (state.stop || Number(state.dismissCount || 0) >= 2) return;
     if ((state.nextAt || 0) <= Date.now()) showNow(state);
 
     closeBtn.addEventListener("click", function(){
       hide();
       state.dismissCount = Number(state.dismissCount || 0) + 1;
       scheduleNext(state);
+      if (state.stop) return;
       var wait = Math.max(1000, (state.nextAt || 0) - Date.now());
       setTimeout(function(){
         var latest = loadState();
@@ -567,11 +592,13 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
       }, wait);
     });
 
-    stopBtn.addEventListener("click", function(){
-      state.stop = true;
-      saveState(state);
-      hide();
-    });
+    if (stopBtn) {
+      stopBtn.addEventListener("click", function(){
+        state.stop = true;
+        saveState(state);
+        hide();
+      });
+    }
   })();
   </script>
   {% endif %}
