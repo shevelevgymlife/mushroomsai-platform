@@ -140,6 +140,8 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     context.user_data["tg_ai_mode"] = False
+    # Однократная подсказка в chat.py при первом тексте без режима AI после /start
+    context.user_data["tg_ai_offline_hint_shown"] = False
 
     if context.args:
         ref_code = context.args[0]
