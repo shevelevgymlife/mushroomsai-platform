@@ -8,7 +8,7 @@ import html
 import logging
 import re
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
 from telegram.ext import (
     CommandHandler,
     ContextTypes,
@@ -71,17 +71,12 @@ async def _pin_safe(context: ContextTypes.DEFAULT_TYPE, chat_id: int, message_id
 
 def _intro_html() -> str:
     return (
-        "🤝 <b>Партнёр магазина и соцсети NEUROFUNGI</b>\n\n"
-        "<b>Где что смотреть</b>\n"
-        "• Подписки и бонусы в приложении — в разделе «Реферальная программа» на сайте.\n"
-        "• Продажи и % по магазину Neurotrops — в <b>личном кабинете магазина</b> (туда ведёт кнопка ниже).\n\n"
-        "<b>Шаг 1.</b> Нужна <b>оплаченная</b> подписка «Старт» и выше (не пробный 3 дня).\n"
-        "<b>Шаг 2.</b> Откройте магазин кнопкой «Взять ссылку в магазине» → в Neurotrops: "
-        "<b>меню → личный кабинет → «Моя ссылка»</b> → скопируйте ссылку.\n"
-        "<b>Шаг 3.</b> Пришлите эту ссылку <b>одним сообщением</b> сюда — я сохраню её для ваших приглашённых.\n"
-        "<b>Шаг 4.</b> Раздавайте <b>ссылки приглашения</b> в приложение (Telegram и сайт) — до <b>10%</b> с подписок; "
-        "по магазину — до <b>10%</b> по правилам Neurotrops, учёт в кабинете магазина.\n\n"
-        "<i>Если ссылку магазина уже сохраняли на сайте, напишите «дальше» — перейдём к шагу 4.</i>"
+        "🤝 <b>Партнёр: коротко</b>\n\n"
+        "1) Нужен <b>оплаченный Старт+</b> (пробные 3 дня не считаются).\n"
+        "2) Магазин: Neurotrops → меню → кабинет → <b>Моя ссылка</b>.\n"
+        "3) Пришлите ссылку сюда — я сохраню.\n"
+        "4) Раздавайте ссылки Telegram и сайта.\n\n"
+        "<i>Уже сохраняли ссылку? Напишите «дальше».</i>"
     )
 
 
@@ -97,11 +92,19 @@ async def partner_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     await _pin_safe(context, update.effective_chat.id, intro.message_id)
 
     if not await paid_subscription_for_referral_program(uid):
+        site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
+        pay_kb = InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("💳 Оплатить Старт+ здесь", web_app=WebAppInfo(url=f"{site}/subscriptions"))],
+                [InlineKeyboardButton("🛍 Открыть магазин Neurotrops", url=SHOP_RUS_URL)],
+            ]
+        )
         await update.message.reply_html(
-            "⚠️ Для привязки <b>реферальной ссылки магазина</b> нужна <b>оплаченная</b> подписка «Старт» и выше (не пробный период). "
-            "Оформите подписку в приложении, затем снова нажмите «🤝 Стать партнёром».\n\n"
-            "Ниже — ссылки приглашения (при отсутствии оплаты — как у платформы).",
-            reply_markup=kb,
+            "⚠️ Нужен <b>оплаченный Старт+</b> (не пробные 3 дня).\n"
+            "Оплатить можно кнопкой ниже.\n"
+            "После оплаты снова нажмите «🤝 Стать партнёром» — пришлёте свою ссылку магазина.\n\n"
+            "Ниже — ссылки приглашения (пока без оплаты: ссылки платформы).",
+            reply_markup=pay_kb,
         )
         await _send_final_links_block(update, context, uid, kb, shop_saved=False)
         return ConversationHandler.END
@@ -121,9 +124,8 @@ async def partner_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         [InlineKeyboardButton("🛍 Взять ссылку в магазине (Neurotrops)", url=SHOP_RUS_URL)],
     ]
     await update.message.reply_html(
-        "<b>Шаги 2–3: ссылка из магазина</b>\n"
-        "Нажмите кнопку ниже, откройте личный кабинет Neurotrops и скопируйте «Мою ссылку». "
-        "Затем вставьте её сюда в чат." + hint,
+        "<b>Шаг 2–3: ссылка магазина</b>\n"
+        "Откройте Neurotrops, скопируйте «Моя ссылка» и отправьте сюда." + hint,
         reply_markup=InlineKeyboardMarkup(rows),
         disable_web_page_preview=True,
     )
@@ -150,21 +152,19 @@ async def _send_final_links_block(
         shop_note = "✅ Ссылка магазина сохранена. Приглашённые по приложению увидят ваш магазин.\n\n"
     plat_note = ""
     if plat:
-        plat_note = "ℹ️ Сейчас без активной оплаты тарифа показаны <b>ссылки платформы</b> (как у администратора). После оплаты «Старт+» снова будут ваши персональные ссылки.\n\n"
+        plat_note = "ℹ️ Сейчас показаны <b>ссылки платформы</b>. После оплаты «Старт+» будут ваши ссылки.\n\n"
     text = (
-        f"📣 <b>Шаг 4: приглашения в приложение</b>\n\n"
+        f"📣 <b>Шаг 4: приглашения</b>\n\n"
         f"{plat_note}"
         f"{shop_note}"
-        f"<b>Telegram (копируйте и рассылайте везде):</b>\n"
+        f"<b>Telegram:</b>\n"
         f"<code>{html.escape(ref_tg)}</code>\n\n"
-        f"<b>Сайт (вход и регистрация):</b>\n"
+        f"<b>Сайт:</b>\n"
         f"<code>{html.escape(ref_site)}</code>\n\n"
-        f"Ставьте эти ссылки везде: друзьям, соцсети, канал. "
-        f"По подпискам в приложении — до <b>10%</b> (например ~{bonus} ₽ с тарифа Старт), "
-        "один раз с человека после <b>платной</b> оплаты (не пробные 3 дня). "
-        "Баланс и бонусы — в разделе «Реферальная программа» (кнопка ниже, если открываете с телефона).\n\n"
-        "По <b>магазину</b> — до ~10% по правилам Neurotrops; выручку и начисления смотрите в "
-        "<b>кабинете магазина</b> (кнопка «Взять ссылку в магазине» в шаге 2–3)."
+        f"Раздавайте эти ссылки везде.\n"
+        f"Подписки в приложении: до <b>10%</b> (~{bonus} ₽ со Старт), 1 раз после <b>платной</b> оплаты.\n"
+        "Пробные 3 дня не считаются.\n\n"
+        "Магазин: до ~10% по правилам Neurotrops. Учёт — в кабинете магазина."
     )
     inline_rows = []
     if base:
@@ -203,7 +203,7 @@ async def partner_receive_shop_url(update: Update, context: ContextTypes.DEFAULT
     if low in ("дальше", "далее", "next", "skip", "готово"):
         if not cur:
             await update.message.reply_text(
-                "Пока нет сохранённой ссылки магазина. Пришлите ссылку https://… или откройте магазин кнопкой в прошлом сообщении.",
+                "Ссылка магазина ещё не сохранена. Пришлите https://… или откройте магазин кнопкой выше.",
                 reply_markup=kb,
             )
             return WAITING_SHOP_URL
@@ -215,7 +215,7 @@ async def partner_receive_shop_url(update: Update, context: ContextTypes.DEFAULT
     except ValueError as e:
         await update.message.reply_text(
             f"Не получилось принять ссылку: {e}\n"
-            "Нужна строка с https://… Скопируйте «Мою ссылку» из кабинета Neurotrops.",
+            "Нужна ссылка с https://… Скопируйте «Моя ссылка» из кабинета Neurotrops.",
             reply_markup=kb,
         )
         return WAITING_SHOP_URL
@@ -231,7 +231,7 @@ async def partner_receive_shop_url(update: Update, context: ContextTypes.DEFAULT
     )
 
     conf = await update.message.reply_html(
-        "✅ <b>Сохранено</b> — реферальная ссылка магазина записана на ваш аккаунт.\n\n"
+        "✅ <b>Сохранено</b> — ссылка магазина привязана.\n\n"
         f"<code>{html.escape(normalized[:900])}</code>",
         reply_markup=kb,
         disable_web_page_preview=True,
