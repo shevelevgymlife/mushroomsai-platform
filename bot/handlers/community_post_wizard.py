@@ -14,7 +14,7 @@ from telegram.ext import (
     filters,
 )
 
-from bot.handlers.start import BTN_COMMUNITY_POST, BTN_CONNECT_CHANNEL, ensure_user, main_keyboard
+from bot.handlers.start import BTN_COMMUNITY_POST, BTN_CONNECT_CHANNEL, BTN_PARTNER, ensure_user, main_keyboard
 from bot.handlers.channel_autopost import (
     BTN_AUTOPOST_DISABLE,
     BTN_AUTOPOST_ENABLE,
@@ -52,6 +52,7 @@ _WIZARD_BLOCK_TEXTS = frozenset(
         "🌍 Веб версия",
         "🔒 Безопасность",
         "🆘 Тех. поддержка",
+        BTN_PARTNER,
     }
 )
 

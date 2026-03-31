@@ -1,0 +1,264 @@
+"""
+Мастер «Стать партнёром магазина и соцсети»: те же шаги и регламент, что на /referral.
+Сохранение реферальной ссылки магазина в БД, закрепления ключевых сообщений, выдача ссылок приглашений.
+"""
+from __future__ import annotations
+
+import html
+import logging
+import re
+
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import (
+    CommandHandler,
+    ContextTypes,
+    ConversationHandler,
+    MessageHandler,
+    filters,
+)
+
+from bot.handlers.start import (
+    BTN_AI,
+    BTN_AI_EXIT,
+    BTN_COMMUNITY_POST,
+    BTN_CONNECT_CHANNEL,
+    BTN_PARTNER,
+    ensure_user_or_blocked_reply,
+)
+from bot.handlers.channel_autopost import main_keyboard_with_autopost
+from config import settings
+from db.database import database
+from db.models import users
+from services.referral_service import ensure_user_referral_code, referral_bonus_per_invite_rub
+from services.referral_shop_prefs import SHOP_RUS_URL, normalize_referral_shop_url
+from services.subscription_service import check_subscription
+
+logger = logging.getLogger(__name__)
+
+WAITING_SHOP_URL = 1
+
+from services.referral_shop_prefs import TG_BTN_SHOP_MARKETPLACE, TG_BTN_SHOP_SIMPLE
+
+_MENU_INTERRUPTS = frozenset(
+    {
+        BTN_AI,
+        BTN_AI_EXIT,
+        BTN_COMMUNITY_POST,
+        BTN_CONNECT_CHANNEL,
+        TG_BTN_SHOP_MARKETPLACE,
+        TG_BTN_SHOP_SIMPLE,
+        "🌐 Сообщество",
+        "🌍 Веб версия",
+        "🔒 Безопасность",
+        "🆘 Тех. поддержка",
+    }
+)
+
+
+async def _reply_kb(update: Update, internal_uid: int, ai_active: bool = False):
+    site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
+    return await main_keyboard_with_autopost(site, ai_active, int(internal_uid))
+
+
+async def _pin_safe(context: ContextTypes.DEFAULT_TYPE, chat_id: int, message_id: int) -> None:
+    try:
+        await context.bot.pin_chat_message(
+            chat_id=chat_id, message_id=message_id, disable_notification=True
+        )
+    except Exception:
+        logger.debug("pin skipped chat=%s msg=%s", chat_id, message_id, exc_info=True)
+
+
+def _intro_html() -> str:
+    return (
+        "🤝 <b>Партнёр магазина и соцсети NEUROFUNGI</b>\n\n"
+        "<b>Где что смотреть</b>\n"
+        "• Подписки и бонусы в приложении — в разделе «Реферальная программа» на сайте.\n"
+        "• Продажи и % по магазину Neurotrops — в <b>личном кабинете магазина</b> (туда ведёт кнопка ниже).\n\n"
+        "<b>Шаг 1.</b> Нужен тариф <b>Старт</b> и выше (включая пробный «Старт» по правилам приложения).\n"
+        "<b>Шаг 2.</b> Откройте магазин кнопкой «Взять ссылку в магазине» → в Neurotrops: "
+        "<b>меню → личный кабинет → «Моя ссылка»</b> → скопируйте ссылку.\n"
+        "<b>Шаг 3.</b> Пришлите эту ссылку <b>одним сообщением</b> сюда — я сохраню её для ваших приглашённых.\n"
+        "<b>Шаг 4.</b> Раздавайте <b>ссылки приглашения</b> в приложение (Telegram и сайт) — до <b>10%</b> с подписок; "
+        "по магазину — до <b>10%</b> по правилам Neurotrops, учёт в кабинете магазина.\n\n"
+        "<i>Если ссылку магазина уже сохраняли на сайте, напишите «дальше» — перейдём к шагу 4.</i>"
+    )
+
+
+async def partner_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data["tg_ai_mode"] = False
+    u = await ensure_user_or_blocked_reply(update)
+    if not u or not update.effective_chat:
+        return ConversationHandler.END
+    uid = int(u.get("primary_user_id") or u["id"])
+    kb = await _reply_kb(update, uid, ai_active=False)
+
+    intro = await update.message.reply_html(_intro_html(), disable_web_page_preview=True)
+    await _pin_safe(context, update.effective_chat.id, intro.message_id)
+
+    plan = await check_subscription(uid)
+    if plan not in ("start", "pro", "maxi"):
+        await update.message.reply_html(
+            "⚠️ Для привязки <b>реферальной ссылки магазина</b> нужен тариф <b>Старт</b> и выше. "
+            "Оформите подписку в приложении, затем снова нажмите «🤝 Стать партнёром».\n\n"
+            "Ниже — ваши ссылки приглашения в соцсеть (шаг 4) — ими можно пользоваться уже сейчас.",
+            reply_markup=kb,
+        )
+        await _send_final_links_block(update, context, uid, kb, shop_saved=False)
+        return ConversationHandler.END
+
+    row = await database.fetch_one(users.select().where(users.c.id == uid))
+    cur = ((row or {}).get("referral_shop_url") or "").strip()
+    hint = ""
+    if cur:
+        hint = (
+            f"\n\nСейчас сохранено:\n<code>{html.escape(cur[:900])}</code>\n\n"
+            "Пришлите <b>новую</b> ссылку или напишите «<b>дальше</b>», чтобы перейти к пригласительным ссылкам."
+        )
+    else:
+        hint = "\n\nПришлите ссылку вида <code>https://…</code> одним сообщением."
+
+    rows = [
+        [InlineKeyboardButton("🛍 Взять ссылку в магазине (Neurotrops)", url=SHOP_RUS_URL)],
+    ]
+    await update.message.reply_html(
+        "<b>Шаги 2–3: ссылка из магазина</b>\n"
+        "Нажмите кнопку ниже, откройте личный кабинет Neurotrops и скопируйте «Мою ссылку». "
+        "Затем вставьте её сюда в чат." + hint,
+        reply_markup=InlineKeyboardMarkup(rows),
+        disable_web_page_preview=True,
+    )
+    return WAITING_SHOP_URL
+
+
+async def _send_final_links_block(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    uid: int,
+    kb,
+    *,
+    shop_saved: bool,
+) -> None:
+    code = await ensure_user_referral_code(uid)
+    bot = (settings.TELEGRAM_BOT_USERNAME or "").strip().lstrip("@") or "mushrooms_ai_bot"
+    base = (settings.SITE_URL or "").strip().rstrip("/")
+    ref_tg = f"https://t.me/{bot}?start={code}" if code else "—"
+    ref_site = f"{base}/login?ref={code}" if code and base else "—"
+    bonus = referral_bonus_per_invite_rub()
+    shop_note = ""
+    if shop_saved:
+        shop_note = "✅ Ссылка магазина сохранена. Приглашённые по приложению увидят ваш магазин.\n\n"
+    text = (
+        f"📣 <b>Шаг 4: приглашения в приложение</b>\n\n"
+        f"{shop_note}"
+        f"<b>Telegram (копируйте и рассылайте везде):</b>\n"
+        f"<code>{html.escape(ref_tg)}</code>\n\n"
+        f"<b>Сайт (вход и регистрация):</b>\n"
+        f"<code>{html.escape(ref_site)}</code>\n\n"
+        f"Ставьте эти ссылки везде: друзьям, соцсети, канал. "
+        f"По подпискам в приложении — до <b>10%</b> (например ~{bonus} ₽ с тарифа Старт), "
+        "один раз с человека после <b>платной</b> оплаты (не пробные 3 дня). "
+        "Баланс и бонусы — в разделе «Реферальная программа» (кнопка ниже, если открываете с телефона).\n\n"
+        "По <b>магазину</b> — до ~10% по правилам Neurotrops; выручку и начисления смотрите в "
+        "<b>кабинете магазина</b> (кнопка «Взять ссылку в магазине» в шаге 2–3)."
+    )
+    inline_rows = []
+    if base:
+        inline_rows.append(
+            [InlineKeyboardButton("📊 Реферальная программа (баланс и бонусы)", url=f"{base}/referral")]
+        )
+    reply_markup = InlineKeyboardMarkup(inline_rows) if inline_rows else kb
+    msg = await update.message.reply_html(text, reply_markup=reply_markup, disable_web_page_preview=True)
+    await _pin_safe(context, update.effective_chat.id, msg.message_id)
+
+
+async def partner_receive_shop_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not update.message or not update.effective_chat:
+        return ConversationHandler.END
+    u = await ensure_user_or_blocked_reply(update)
+    if not u:
+        return ConversationHandler.END
+    uid = int(u.get("primary_user_id") or u["id"])
+    kb = await _reply_kb(update, uid, ai_active=False)
+
+    raw = (update.message.text or "").strip()
+    if raw == BTN_PARTNER:
+        return await partner_start(update, context)
+
+    if raw in _MENU_INTERRUPTS:
+        await update.message.reply_text(
+            "Ввод ссылки прерван. Нажмите «🤝 Стать партнёром» снова, если нужно продолжить.",
+            reply_markup=kb,
+        )
+        return ConversationHandler.END
+
+    low = raw.lower()
+    row = await database.fetch_one(users.select().where(users.c.id == uid))
+    cur = ((row or {}).get("referral_shop_url") or "").strip()
+
+    if low in ("дальше", "далее", "next", "skip", "готово"):
+        if not cur:
+            await update.message.reply_text(
+                "Пока нет сохранённой ссылки магазина. Пришлите ссылку https://… или откройте магазин кнопкой в прошлом сообщении.",
+                reply_markup=kb,
+            )
+            return WAITING_SHOP_URL
+        await _send_final_links_block(update, context, uid, kb, shop_saved=False)
+        return ConversationHandler.END
+
+    try:
+        normalized = normalize_referral_shop_url(raw)
+    except ValueError as e:
+        await update.message.reply_text(
+            f"Не получилось принять ссылку: {e}\n"
+            "Нужна строка с https://… Скопируйте «Мою ссылку» из кабинета Neurotrops.",
+            reply_markup=kb,
+        )
+        return WAITING_SHOP_URL
+
+    if not normalized:
+        await update.message.reply_text("Пустая ссылка. Пришлите полный адрес https://…", reply_markup=kb)
+        return WAITING_SHOP_URL
+
+    await database.execute(
+        users.update()
+        .where(users.c.id == uid)
+        .values(referral_shop_url=normalized, referral_shop_partner_self=True)
+    )
+
+    conf = await update.message.reply_html(
+        "✅ <b>Сохранено</b> — реферальная ссылка магазина записана на ваш аккаунт.\n\n"
+        f"<code>{html.escape(normalized[:900])}</code>",
+        reply_markup=kb,
+        disable_web_page_preview=True,
+    )
+    await _pin_safe(context, update.effective_chat.id, conf.message_id)
+
+    await _send_final_links_block(update, context, uid, kb, shop_saved=True)
+    return ConversationHandler.END
+
+
+async def partner_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    u = await ensure_user_or_blocked_reply(update)
+    uid = int(u.get("primary_user_id") or u["id"]) if u else 0
+    kb = await _reply_kb(update, uid, ai_active=False) if u else None
+    if update.message:
+        await update.message.reply_text("Оформление партнёрства отменено.", reply_markup=kb)
+    return ConversationHandler.END
+
+
+def get_partner_conversation() -> ConversationHandler:
+    return ConversationHandler(
+        entry_points=[
+            MessageHandler(filters.Regex("^" + re.escape(BTN_PARTNER) + "$"), partner_start),
+        ],
+        states={
+            WAITING_SHOP_URL: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, partner_receive_shop_url),
+            ],
+        },
+        fallbacks=[CommandHandler("cancel", partner_cancel)],
+        name="partner_wizard",
+        allow_reentry=True,
+        per_message=False,
+    )
