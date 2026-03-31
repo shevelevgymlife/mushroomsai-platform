@@ -69,8 +69,25 @@ async def create_yookassa_redirect_payment(
         return None, "request_failed"
 
     if r.status_code not in (200, 201):
-        logger.warning("yookassa create payment HTTP %s: %s", r.status_code, r.text[:800])
-        return None, f"http_{r.status_code}"
+        err_tag = f"http_{r.status_code}"
+        try:
+            err_body = r.json()
+            if isinstance(err_body, dict):
+                code = err_body.get("code") or err_body.get("type") or ""
+                desc = (err_body.get("description") or err_body.get("message") or "")[:400]
+                err_tag = f"{err_tag}:{code}:{desc}" if (code or desc) else err_tag
+                logger.warning(
+                    "yookassa create payment HTTP %s code=%s desc=%s full=%s",
+                    r.status_code,
+                    code,
+                    desc,
+                    err_body,
+                )
+            else:
+                logger.warning("yookassa create payment HTTP %s: %s", r.status_code, r.text[:800])
+        except Exception:
+            logger.warning("yookassa create payment HTTP %s: %s", r.status_code, r.text[:800])
+        return None, err_tag
 
     try:
         data = r.json()

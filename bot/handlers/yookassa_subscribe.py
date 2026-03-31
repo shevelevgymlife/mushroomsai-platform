@@ -1,6 +1,7 @@
 """Оплата подписки через ЮKassa в Telegram (счёт + successful_payment)."""
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 import unicodedata
@@ -13,7 +14,12 @@ from config import settings
 from services.payment_plans_catalog import get_effective_plans
 from services.payment_provider_settings import get_provider_settings
 from services.subscription_service import activate_subscription
-from services.yookassa_bot_offerings import DEFAULT_DURATION_MINUTES, get_merged_bot_offerings, offering_by_id
+from services.yookassa_bot_offerings import (
+    DEFAULT_DURATION_MINUTES,
+    get_merged_bot_offerings,
+    load_raw_offerings,
+    offering_by_id,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -189,7 +195,7 @@ async def pre_checkout_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     if not tg:
         await q.answer(ok=False, error_message="Нет пользователя.")
         return
-    user = await ensure_user(tg)
+    user, plans = await asyncio.gather(ensure_user(tg), get_effective_plans())
     if not user:
         await q.answer(ok=False, error_message="Аккаунт недоступен.")
         return
@@ -198,7 +204,8 @@ async def pre_checkout_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         await q.answer(ok=False, error_message="Счёт выписан на другой аккаунт.")
         return
 
-    offerings = await get_merged_bot_offerings()
+    # Без merge display_name — быстрее (у Telegram ~10 с на ответ pre_checkout)
+    offerings = await load_raw_offerings(plans)
     off = offering_by_id(offerings, offering_id)
     if not off or not off.get("enabled"):
         logger.warning("pre_checkout offering disabled or missing id=%s", offering_id)

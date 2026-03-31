@@ -91,7 +91,8 @@ def normalize_offerings_list(raw: Any, plans: dict[str, dict[str, Any]]) -> list
     return out
 
 
-async def load_raw_offerings() -> list[dict[str, Any]]:
+async def load_raw_offerings(plans: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    """Список предложений из настроек; `plans` передайте из `get_effective_plans()`, чтобы не дергать БД дважды."""
     st = await get_provider_settings("yookassa_bot")
     raw = st.get("offerings")
     if isinstance(raw, str) and raw.strip():
@@ -101,14 +102,15 @@ async def load_raw_offerings() -> list[dict[str, Any]]:
             raw = []
     if not isinstance(raw, list):
         raw = []
-    plans = await get_effective_plans()
+    if plans is None:
+        plans = await get_effective_plans()
     return normalize_offerings_list(raw, plans)
 
 
 async def get_merged_bot_offerings() -> list[dict[str, Any]]:
     """Список предложений с подставленными названиями для кнопок (label пустой → имя тарифа из каталога)."""
     plans = await get_effective_plans()
-    rows = await load_raw_offerings()
+    rows = await load_raw_offerings(plans)
     out = []
     for r in rows:
         eff = r["effective_plan"]
