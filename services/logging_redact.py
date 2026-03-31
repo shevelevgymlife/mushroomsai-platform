@@ -23,26 +23,32 @@ def redact_telegram_bot_urls(text: str) -> str:
 
 
 class RedactTelegramBotTokenFilter(logging.Filter):
-    """Снимает токен из строк лога (в т.ч. %s в message args у httpx)."""
+    """
+    Подменяет готовую строку лога после %/format — покрывает httpx и все httpx.* без отдельной регистрации.
+    Вешается на root logger; для остальных имён — no-op.
+    """
+
+    _PREFIXES = ("httpx", "httpcore")
+
+    @classmethod
+    def _is_http_client_log(cls, name: str) -> bool:
+        n = (name or "").lower()
+        return any(n == p or n.startswith(p + ".") for p in cls._PREFIXES)
 
     def filter(self, record: logging.LogRecord) -> bool:
-        if record.args:
-            new_args: list[object] = []
-            changed = False
-            for a in record.args:
-                if isinstance(a, str):
-                    na = redact_telegram_bot_urls(a)
-                    if na != a:
-                        changed = True
-                    new_args.append(na)
-                else:
-                    new_args.append(a)
-            if changed:
-                record.args = tuple(new_args)
-        elif isinstance(record.msg, str):
-            nm = redact_telegram_bot_urls(record.msg)
-            if nm != record.msg:
-                record.msg = nm
+        if not self._is_http_client_log(record.name):
+            return True
+        try:
+            full = record.getMessage()
+        except Exception:
+            return True
+        redacted = redact_telegram_bot_urls(full)
+        if redacted == full:
+            return True
+        record.msg = redacted
+        record.args = ()
+        if hasattr(record, "message"):
+            delattr(record, "message")
         return True
 
 
@@ -50,11 +56,18 @@ _installed = False
 
 
 def install_telegram_token_redact_filter() -> None:
-    """Вешает фильтр на логгеры HTTP-клиентов (один раз на процесс)."""
+    """
+    Фильтр на handler'ах root: записи от дочерних логгеров (httpx) не проходят через Logger root,
+    но доходят до StreamHandler — там маскируем готовую строку.
+    """
     global _installed
     if _installed:
         return
     _installed = True
     f = RedactTelegramBotTokenFilter()
-    for name in ("httpx", "httpcore"):
-        logging.getLogger(name).addFilter(f)
+    root = logging.getLogger()
+    if root.handlers:
+        for h in root.handlers:
+            h.addFilter(f)
+    else:
+        root.addFilter(f)
