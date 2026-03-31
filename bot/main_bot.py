@@ -13,7 +13,7 @@ from telegram.ext import (
 )
 
 from config import settings
-from bot.handlers.start import BTN_AI, BTN_AI_EXIT, BTN_CONNECT_CHANNEL, BTN_SUBSCRIBE, main_keyboard, start
+from bot.handlers.start import BTN_AI, BTN_AI_EXIT, BTN_CONNECT_CHANNEL, main_keyboard, start
 from bot.handlers.link import link_confirm_callback, link_merge_callback
 from bot.handlers.support import get_support_conversation
 from bot.handlers.community_post_wizard import get_community_post_conversation
@@ -30,6 +30,7 @@ from bot.handlers.chat import (
 )
 from bot.handlers.yookassa_subscribe import (
     SUCCESSFUL_PAYMENT as TG_PAYMENT_FILTER,
+    SUBSCRIBE_BUTTON_TEXT,
     pre_checkout_handler,
     subscribe_command,
     subscribe_menu_handler,
@@ -192,7 +193,7 @@ def create_bot() -> Application:
     )
     application.add_handler(MessageHandler(TG_PAYMENT_FILTER, successful_payment_handler), group=pay_group)
     application.add_handler(
-        MessageHandler(filters.Regex(f"^{re.escape(BTN_SUBSCRIBE)}$"), subscribe_menu_handler),
+        MessageHandler(SUBSCRIBE_BUTTON_TEXT, subscribe_menu_handler),
         group=pay_group,
     )
     application.add_handler(get_partner_conversation(), group=-1)

@@ -12,10 +12,21 @@
       <div class="em">{{ user.email or ('Telegram: ' + (user.tg_id|string) if user.tg_id else '') }}</div>
     </div>
   </div>
-{% if user.get('can_claim_start_trial') and not (suppress_start_trial_prompt|default(false)) %}
+  {% if user.get('can_claim_start_trial') and not (suppress_start_trial_prompt|default(false)) %}
   <button type="button" class="ig-drawer-trial-cta" id="drawerTrialCta" onclick="confirmStartTrial()" style="display:block;width:calc(100% - 20px);margin:10px 10px 8px;padding:12px 14px;border:none;border-radius:14px;cursor:pointer;text-align:center;font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#0a0c12;background:linear-gradient(120deg,#3dd4e0 0%,#c8a84b 50%,#ff66d0 100%);box-shadow:0 6px 24px rgba(61,212,224,.25),inset 0 1px 0 rgba(255,255,255,.35)">
     Попробовать бесплатно 3 дня
   </button>
+  {% endif %}
+  {% if is_locked_free %}
+  <div class="mx-2 mb-2 mt-1 p-3 rounded-2xl border border-gold/30 bg-gold/[0.07]">
+    <div class="text-[11px] font-extrabold uppercase tracking-wider text-gold mb-2">Подписка</div>
+    <a href="/subscriptions" class="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-gold/15 text-text text-sm font-semibold no-underline border border-gold/25" onclick="closeAppGlobalDrawer()" style="text-decoration:none">
+      <span>{{ ico('spark') }}</span><span>Тарифы и оплата на сайте</span>
+    </a>
+    <p class="text-[11px] text-muted leading-relaxed mt-2.5 mb-0 px-0.5">
+      В боте: внизу чата кнопка «💳 Подписка» или команда <span class="text-text/90 font-mono text-[10px]">/subscribe</span> — выберите тариф, откроется оплата.
+    </p>
+  </div>
   {% endif %}
   <div id="drawerFreeAiLimit" style="display:none;padding:10px 12px;margin:10px 10px 6px;border:1px solid rgba(61,212,224,.22);border-radius:14px;background:rgba(61,212,224,.07)">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">

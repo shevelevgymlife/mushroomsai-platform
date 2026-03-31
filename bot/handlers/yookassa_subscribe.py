@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import re
+import unicodedata
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice, Update
 from telegram.ext import ContextTypes, filters
@@ -18,12 +19,33 @@ logger = logging.getLogger(__name__)
 _PAYLOAD_RX = re.compile(r"^nf\|(\d+)\|(start|pro|maxi)$")
 
 
-class _SuccessfulPaymentFilter(filters.BaseFilter):
+class _SuccessfulPaymentFilter(filters.MessageFilter):
     def filter(self, message):
         return bool(message and message.successful_payment)
 
 
 SUCCESSFUL_PAYMENT = _SuccessfulPaymentFilter()
+
+
+class _SubscribeButtonFilter(filters.MessageFilter):
+    """Кнопка «💳 Подписка»: Telegram может слать другой вариант эмодзи — сравниваем по NFC и по ключевым словам."""
+
+    def filter(self, message):
+        if not message or not message.text:
+            return False
+        t = unicodedata.normalize("NFC", message.text.strip())
+        from bot.handlers.start import BTN_SUBSCRIBE
+
+        ref = unicodedata.normalize("NFC", BTN_SUBSCRIBE.strip())
+        if t == ref:
+            return True
+        tl = t.lower()
+        if "подписка" in tl and ("💳" in t or "\U0001f4b3" in message.text):
+            return True
+        return False
+
+
+SUBSCRIBE_BUTTON_TEXT = _SubscribeButtonFilter()
 
 
 async def _provider_ready() -> tuple[bool, dict]:
