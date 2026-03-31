@@ -40,8 +40,33 @@ def _utc_day_start() -> datetime:
     return datetime(now.year, now.month, now.day)
 
 
+async def apply_ai_community_bot_schema_if_needed() -> None:
+    """Идемпотентно применяет DDL v25/v26 (если heavy_startup не успел или в БД не хватает колонок)."""
+    try:
+        import migrate_v25_ai_community_bot as m25
+
+        for step in m25.STEPS:
+            await database.execute(sa.text(step))
+    except Exception as e:
+        logger.warning("apply_ai_community_bot_schema v25: %s", e)
+    try:
+        import migrate_v26_ai_telegram_channel as m26
+
+        for step in m26.STEPS:
+            await database.execute(sa.text(step))
+    except Exception as e:
+        logger.warning("apply_ai_community_bot_schema v26: %s", e)
+
+
 async def load_bot_settings_row() -> Optional[dict[str, Any]]:
-    return await database.fetch_one(sa.select(ai_community_bot_settings).where(ai_community_bot_settings.c.id == 1))
+    """SELECT * — не ломается, если в БД ещё нет колонок из новых миграций (ORM перечислил бы все поля модели)."""
+    try:
+        return await database.fetch_one(
+            sa.text("SELECT * FROM ai_community_bot_settings WHERE id = 1")
+        )
+    except Exception as e:
+        logger.warning("load_bot_settings_row: %s", e)
+        return None
 
 
 async def count_today(uid: int, table: str, col_user: str = "user_id") -> int:
@@ -69,6 +94,7 @@ async def _ensure_bot_settings_row_exists() -> None:
 
 async def ensure_ai_community_bot_user() -> Optional[int]:
     """Создаёт или привязывает пользователя NeuroFungi AI для сообщества."""
+    await apply_ai_community_bot_schema_if_needed()
     await _ensure_bot_settings_row_exists()
     row = await load_bot_settings_row()
     if row and row.get("user_id"):
@@ -97,25 +123,43 @@ async def ensure_ai_community_bot_user() -> Optional[int]:
         )
         return uid
 
-    referral_code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
-    pw = secrets.token_urlsafe(24)
-    ins = await database.fetch_one_write(
-        users.insert()
-        .values(
-            email=_BOT_EMAIL,
-            password_hash=hash_password(pw),
-            name="NeuroFungi AI",
-            bio="Официальный AI-профиль NEUROFUNGI: фунготерапия, психология, КПТ и живая лента сообщества.",
-            referral_code=referral_code,
-            role="user",
-            subscription_plan="free",
-            needs_tariff_choice=False,
-        )
-        .returning(users.c.id)
-    )
-    uid = int(ins["id"]) if ins and ins.get("id") is not None else None
+    uid: Optional[int] = None
+    for attempt in range(8):
+        referral_code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
+        pw = secrets.token_urlsafe(24)
+        try:
+            new_id = await database.execute(
+                users.insert().values(
+                    email=_BOT_EMAIL,
+                    password_hash=hash_password(pw),
+                    name="NeuroFungi AI",
+                    bio="Официальный AI-профиль NEUROFUNGI: фунготерапия, психология, КПТ и живая лента сообщества.",
+                    referral_code=referral_code,
+                    role="user",
+                    subscription_plan="free",
+                    needs_tariff_choice=False,
+                )
+            )
+            if new_id is not None:
+                uid = int(new_id)
+                break
+            row_ins = await database.fetch_one(users.select().where(users.c.email == _BOT_EMAIL))
+            if row_ins:
+                uid = int(row_ins["id"])
+                break
+        except Exception as e:
+            err = str(e).lower()
+            logger.warning("ai_community_bot: INSERT users attempt %s: %s", attempt, e)
+            if "unique" in err or "duplicate" in err:
+                row_ins = await database.fetch_one(users.select().where(users.c.email == _BOT_EMAIL))
+                if row_ins:
+                    uid = int(row_ins["id"])
+                    break
+                continue
+            logger.error("ai_community_bot: INSERT users failed: %s", e)
+            return None
     if not uid:
-        logger.error("ai_community_bot: INSERT users RETURNING failed")
+        logger.error("ai_community_bot: INSERT users could not get new id after retries")
         return None
     await database.execute(
         ai_community_bot_settings.update()
@@ -367,6 +411,7 @@ async def _pick_comment_to_reply(bot_uid: int) -> Optional[dict[str, Any]]:
 
 
 async def run_ai_community_bot_job() -> None:
+    await apply_ai_community_bot_schema_if_needed()
     st_row = await load_bot_settings_row()
     if not st_row:
         return

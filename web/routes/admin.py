@@ -10,6 +10,7 @@ from fastapi import APIRouter, Request, Form, UploadFile, File, Query
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, StreamingResponse
 from web.templates_utils import Jinja2Templates
 from config import settings
+from services.ai_community_bot import apply_ai_community_bot_schema_if_needed, load_bot_settings_row
 from services.subscription_service import PLANS, record_subscription_event, format_admin_subscription_assigned_message
 from services.system_support_delivery import deliver_system_support_notification
 from services.shop_catalog import extra_image_lines_from_json, extra_image_urls_from_text
@@ -225,9 +226,7 @@ async def admin_dashboard(request: Request):
     ai_community_bot = None
     if perms.get("can_dashboard") or perms.get("can_users"):
         try:
-            _ab = await database.fetch_one(
-                sqlalchemy.select(ai_community_bot_settings).where(ai_community_bot_settings.c.id == 1)
-            )
+            _ab = await load_bot_settings_row()
             ai_community_bot = dict(_ab) if _ab else None
         except Exception:
             ai_community_bot = None
@@ -2607,9 +2606,8 @@ async def admin_ai_community_bot_page(request: Request):
     admin = await require_permission(request, "can_users")
     if not admin:
         return RedirectResponse("/login")
-    row = await database.fetch_one(
-        sqlalchemy.select(ai_community_bot_settings).where(ai_community_bot_settings.c.id == 1)
-    )
+    await apply_ai_community_bot_schema_if_needed()
+    row = await load_bot_settings_row()
     cfg = dict(row) if row else {}
     uid = int(cfg["user_id"]) if cfg.get("user_id") else None
     start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -2692,6 +2690,7 @@ async def admin_ai_community_bot_save(
     admin = await require_permission(request, "can_users")
     if not admin:
         return RedirectResponse("/login")
+    await apply_ai_community_bot_schema_if_needed()
     await database.execute(
         ai_community_bot_settings.update()
         .where(ai_community_bot_settings.c.id == 1)
