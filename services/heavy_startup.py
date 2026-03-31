@@ -560,6 +560,15 @@ async def run_heavy_startup(app: FastAPI) -> None:
         except Exception as e:
             logger.warning("migrate_v22 wellness_journal: %s", e)
 
+        try:
+            import migrate_v23_wellness_coach_pdf as migrate_v23
+
+            for s in migrate_v23.STEPS:
+                await database.execute(sa.text(s))
+            logger.info("Wellness coach PDF / pause / renewal (migrate_v23) OK")
+        except Exception as e:
+            logger.warning("migrate_v23 wellness_coach_pdf: %s", e)
+
         start_scheduler()
         app.state.startup_complete = True
         logger.info("Heavy startup complete; full traffic enabled")

@@ -6,9 +6,12 @@
     {% include "components/admin_nav.html" %}
 
     <h1 class="text-3xl font-light text-text mb-2">Дневник терапии / статистика ответов</h1>
-    <p class="text-sm text-muted mb-6 max-w-3xl">
+    <p class="text-sm text-muted mb-4 max-w-3xl">
       Глобальный переключатель останавливает автоматические напоминания AI всем пользователям (данные в БД сохраняются).
-      По пользователю можно отключить только сбор с его аккаунта. Топ — по числу ответов в дневник за 30 дней.
+      По пользователю — пауза сбора и разрешение скачивать PDF со страницы «Мои результаты». Топ — по числу ответов за 30 дней.
+    </p>
+    <p class="mb-6">
+      <a href="/admin/wellness-journal/overview" class="inline-flex items-center px-4 py-2 rounded-xl text-sm font-medium border border-gold/40 text-gold hover:bg-gold/10">Сводка по платформе (цифры и графики)</a>
     </p>
 
     {% if request.query_params.get('saved') %}
@@ -33,6 +36,7 @@
             <th class="px-3 py-2">Пользователь</th>
             <th class="px-3 py-2">Ответов</th>
             <th class="px-3 py-2">Пауза (админ)</th>
+            <th class="px-3 py-2">PDF у пользователя</th>
             <th class="px-3 py-2"></th>
           </tr>
         </thead>
@@ -54,10 +58,19 @@
                 </button>
               </form>
             </td>
+            <td class="px-3 py-2">
+              {% set pdf_ok = r.wellness_journal_pdf_allowed != false %}
+              <span class="text-xs {% if pdf_ok %}text-emerald-400{% else %}text-red-300{% endif %}">{% if pdf_ok %}разрешён{% else %}запрещён{% endif %}</span>
+              <form method="post" action="/admin/wellness-journal/user-pdf" class="inline ml-1">
+                <input type="hidden" name="user_id" value="{{ r.id }}" />
+                <input type="hidden" name="allow_pdf" value="{{ 0 if pdf_ok else 1 }}" />
+                <button type="submit" class="text-xs px-2 py-1 rounded-lg border border-border hover:border-gold/40">{% if pdf_ok %}Запретить{% else %}Разрешить{% endif %}</button>
+              </form>
+            </td>
             <td class="px-3 py-2"><a href="/community/profile/{{ r.id }}" target="_blank" class="text-muted hover:text-gold text-xs">Профиль</a></td>
           </tr>
           {% else %}
-          <tr><td colspan="5" class="px-3 py-6 text-center text-muted">Пока нет ответов за период.</td></tr>
+          <tr><td colspan="6" class="px-3 py-6 text-center text-muted">Пока нет ответов за период.</td></tr>
           {% endfor %}
         </tbody>
       </table>

@@ -74,6 +74,9 @@ users = sqlalchemy.Table(
     sqlalchemy.Column("wellness_next_prompt_at", sqlalchemy.DateTime, nullable=True),
     sqlalchemy.Column("wellness_baseline_json", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("wellness_weekly_digest_last_at", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("wellness_journal_pdf_allowed", sqlalchemy.Boolean, default=True, server_default="true"),
+    sqlalchemy.Column("wellness_renewal_nudge_for_end", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("wellness_coach_pause_until", sqlalchemy.DateTime, nullable=True),
 )
 
 sessions = sqlalchemy.Table(

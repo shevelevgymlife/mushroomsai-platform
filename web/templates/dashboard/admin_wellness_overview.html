@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Сводка дневника — платформа — Admin{% endblock %}
+{% block content %}
+<div class="pt-24 pb-16 neo-app-surface">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    {% include "components/admin_nav.html" %}
+    <p class="mb-4"><a href="/admin/wellness-journal" class="text-gold text-sm hover:underline">← Дневник терапии</a></p>
+    <h1 class="text-3xl font-light text-text mb-2">Сводка по дневнику (вся платформа)</h1>
+    <p class="text-sm text-muted mb-6 max-w-3xl">
+      Агрегаты по ответам пользователей и напоминаниям NeuroFungi AI. Помогает оценить вовлечённость и тематику (грибы, настроение по выборке с разобранным JSON).
+      Не медицинская аналитика — только данные самонаблюдения в приложении.
+    </p>
+    <div class="flex flex-wrap gap-3 mb-8">
+      <a href="/admin/wellness-journal/overview/pdf" class="px-4 py-2 rounded-xl text-sm font-medium border border-gold/40 text-gold hover:bg-gold/10">Скачать PDF</a>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+      <div class="rounded-2xl border border-border p-4 bg-surface/40">
+        <div class="text-xs text-muted uppercase">Пользователей с ответами (всё время)</div>
+        <div class="text-2xl font-semibold text-gold mt-1">{{ summary.users_with_replies_ever }}</div>
+      </div>
+      <div class="rounded-2xl border border-border p-4 bg-surface/40">
+        <div class="text-xs text-muted uppercase">Активных 30 дней</div>
+        <div class="text-2xl font-semibold text-gold mt-1">{{ summary.users_with_replies_30d }}</div>
+      </div>
+      <div class="rounded-2xl border border-border p-4 bg-surface/40">
+        <div class="text-xs text-muted uppercase">Ответов за 30 дней</div>
+        <div class="text-2xl font-semibold text-text mt-1">{{ summary.replies_30d }}</div>
+      </div>
+      <div class="rounded-2xl border border-border p-4 bg-surface/40">
+        <div class="text-xs text-muted uppercase">Напоминаний AI за 30 дней</div>
+        <div class="text-2xl font-semibold text-text mt-1">{{ summary.prompts_30d }}</div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+      <div class="rounded-2xl border border-border p-4 bg-surface/30">
+        <h2 class="text-lg font-medium text-text mb-3">Настроение / энергия (выборка)</h2>
+        <p class="text-sm text-muted mb-2">По последним ~900 ответам с заполненным JSON (gpt-4o-mini). n = {{ summary.sample_moods_n }}</p>
+        <div class="flex gap-8 text-text">
+          <div>
+            <div class="text-xs text-muted">Настроение Ø 0–10</div>
+            <div class="text-3xl font-bold text-gold">{{ summary.mood_avg_sample or '—' }}</div>
+          </div>
+          <div>
+            <div class="text-xs text-muted">Энергия Ø 0–10</div>
+            <div class="text-3xl font-bold text-gold">{{ summary.energy_avg_sample or '—' }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="rounded-2xl border border-border p-4 bg-surface/30">
+        <h2 class="text-lg font-medium text-text mb-3">Вовлечённость</h2>
+        <p class="text-sm text-muted">Ответов всего в дневнике: <strong class="text-text">{{ summary.replies_ever }}</strong></p>
+        <div class="mt-4 h-4 rounded-full bg-border/40 overflow-hidden flex">
+          {% set den = [1, summary.replies_ever]|max %}
+          <div class="h-full bg-gradient-to-r from-cyan-500/80 to-fuchsia-500/80" style="width: {{ [100, ((summary.replies_30d * 100) // den)]|min }}%"></div>
+        </div>
+        <p class="text-xs text-muted mt-2">Доля ответов за 30 дней от всех ответов в дневнике (оценочно).</p>
+      </div>
+    </div>
+
+    <h2 class="text-xl font-medium text-text mb-3">Топ упоминаний грибов (по разобранным ответам)</h2>
+    {% set mt = summary.mushroom_top or [] %}
+    {% set max_cnt = mt[0][1] if mt else 1 %}
+    <div class="rounded-2xl border border-border overflow-hidden mb-8">
+      {% for name, cnt in mt %}
+      <div class="flex items-center gap-3 px-4 py-2 border-b border-border/40 text-sm">
+        <div class="flex-1 min-w-0 text-text truncate">{{ name }}</div>
+        <div class="w-32 h-2 rounded-full bg-border/50 overflow-hidden flex-shrink-0">
+          <div class="h-full bg-gold/70 rounded-full" style="width: {{ [100, ((cnt * 100) // max_cnt)]|min }}%"></div>
+        </div>
+        <span class="text-muted w-8 text-right">{{ cnt }}</span>
+      </div>
+      {% else %}
+      <div class="px-4 py-8 text-center text-muted text-sm">Нет данных по грибам (нужны ответы с разбором JSON).</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

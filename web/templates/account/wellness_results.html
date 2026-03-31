@@ -11,6 +11,11 @@
   {% if request.query_params.get('saved') %}
   <div class="mb-4 p-3 rounded-xl border border-gold/30 bg-gold/10 text-sm text-gold">Настройки сохранены.</div>
   {% endif %}
+  {% if request.query_params.get('pdf') == '0' %}
+  <div class="mb-4 p-3 rounded-xl border border-amber-500/40 bg-amber-500/10 text-sm text-amber-100">
+    Скачивание PDF отключено администратором. Если это ошибка — напишите в поддержку.
+  </div>
+  {% endif %}
 
   {% if not coach_ok %}
   <div class="mb-4 p-3 rounded-xl border border-amber-500/40 bg-amber-500/10 text-sm text-amber-200">

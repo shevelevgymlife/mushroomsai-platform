@@ -93,6 +93,7 @@ async def activate_subscription(
             subscription_plan=plan,
             subscription_end=end_date,
             subscription_admin_granted=False,
+            wellness_renewal_nudge_for_end=None,
         )
     )
     if not skip_event_log:
@@ -296,6 +297,7 @@ async def claim_start_trial(user_id: int) -> dict:
             start_trial_claimed_at=now,
             start_trial_until=until,
             start_trial_end_notified=False,
+            wellness_renewal_nudge_for_end=None,
         )
     )
     await _notify_trial_started(user_id)

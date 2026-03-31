@@ -10,6 +10,15 @@ async def notify_user(tg_id: int, text: str) -> bool:
         return False
 
 
+async def notify_wellness_coach_telegram(tg_id: int, *, open_path: str, coach_user_id: int) -> bool:
+    try:
+        from services.tg_notify import notify_wellness_coach_dm
+
+        return await notify_wellness_coach_dm(int(tg_id), open_path=open_path, coach_user_id=int(coach_user_id))
+    except Exception:
+        return False
+
+
 async def notify_user_dm_with_read_button(
     tg_id: int, sender_name: str, text_preview: str, read_path: str
 ) -> bool:

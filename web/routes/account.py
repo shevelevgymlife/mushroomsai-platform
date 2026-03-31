@@ -1037,6 +1037,9 @@ async def wellness_results_pdf(request: Request):
     plan = await check_subscription(uid)
     if plan == "free":
         return RedirectResponse("/subscriptions", status_code=302)
+    urow = await database.fetch_one(users.select().where(users.c.id == uid))
+    if urow and urow.get("wellness_journal_pdf_allowed") is False:
+        return RedirectResponse("/account/wellness-results?pdf=0", status_code=302)
     from services.wellness_journal_service import aggregate_entries_for_display
     from services.pdf_service import generate_wellness_journal_pdf
 

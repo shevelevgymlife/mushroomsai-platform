@@ -91,6 +91,46 @@ async def notify_dm_read_button(
     return False
 
 
+async def notify_wellness_coach_dm(tg_chat_id: int, *, open_path: str, coach_user_id: int) -> bool:
+    """Telegram: NeuroFungi AI написал в приложении — открыть чат с коучем."""
+    if not tg_chat_id:
+        return False
+    tokens = _user_tokens()
+    if not tokens:
+        return False
+    path = (open_path or "").strip() or f"/chats?open_user={int(coach_user_id)}"
+    if not path.startswith("http"):
+        base = (getattr(settings, "SITE_URL", None) or "").rstrip("/")
+        url = f"{base}{path}" if path.startswith("/") else f"{base}/{path}"
+    msg_text = (
+        "🍄 <b>NeuroFungi AI написал вам в приложении</b>\n"
+        "Хочет задать пару вопросов по дневнику терапии и самочувствию.\n"
+        "<i>Откройте чаты в приложении — это то же сообщение, что в ЛС на сайте.</i>"
+    )
+    payload = {
+        "chat_id": int(tg_chat_id),
+        "text": msg_text[:_MAX_LEN],
+        "parse_mode": "HTML",
+        "disable_web_page_preview": True,
+        "reply_markup": {
+            "inline_keyboard": [[{"text": "📩 Открыть чат", "url": url}]]
+        },
+    }
+    for token in tokens:
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                r = await client.post(
+                    f"https://api.telegram.org/bot{token}/sendMessage",
+                    json=payload,
+                )
+                if r.status_code == 200:
+                    return True
+                logger.warning("notify_wellness_coach_dm failed: %s %s", r.status_code, r.text[:200])
+        except Exception as e:
+            logger.warning("notify_wellness_coach_dm exception: %s", e)
+    return False
+
+
 async def notify_group_chat_button(
     tg_chat_id: int,
     *,

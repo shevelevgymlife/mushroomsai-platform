@@ -7,7 +7,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Request, Form, UploadFile, File, Query
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, StreamingResponse
 from web.templates_utils import Jinja2Templates
 from config import settings
 from services.subscription_service import PLANS, record_subscription_event, format_admin_subscription_assigned_message
@@ -2467,3 +2467,72 @@ async def admin_wellness_journal_user(request: Request, user_id: int):
             "agg": agg,
         },
     )
+
+
+@router.get("/wellness-journal/overview", response_class=HTMLResponse)
+async def admin_wellness_overview_page(request: Request):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    perms = await get_user_permissions(admin)
+    from services.wellness_journal_service import admin_global_wellness_summary
+
+    summary = await admin_global_wellness_summary()
+    return templates.TemplateResponse(
+        "dashboard/admin_wellness_overview.html",
+        {
+            "request": request,
+            "user": admin,
+            "user_permissions": perms,
+            "summary": summary,
+        },
+    )
+
+
+@router.get("/wellness-journal/overview/pdf")
+async def admin_wellness_overview_pdf(request: Request):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    from services.wellness_journal_service import admin_global_wellness_summary
+    from services.pdf_service import generate_wellness_admin_overview_pdf
+
+    s = await admin_global_wellness_summary()
+    mush = s.get("mushroom_top") or []
+    mush_txt = "\n".join(f"• {m[0]}: {m[1]}" for m in mush) or "—"
+    sections = [
+        (
+            "Охват",
+            f"Пользователей с ответами в дневнике (всего): {s.get('users_with_replies_ever', 0)}\n"
+            f"Активных за 30 дней (хотя бы один ответ): {s.get('users_with_replies_30d', 0)}\n"
+            f"Ответов всего: {s.get('replies_ever', 0)}\n"
+            f"Ответов за 30 дней: {s.get('replies_30d', 0)}\n"
+            f"Сообщений AI (напоминаний) за 30 дней: {s.get('prompts_30d', 0)}",
+        ),
+        (
+            "Выборка настроения/энергии (из записей с JSON, последние ~900)",
+            f"Среднее настроение 0–10: {s.get('mood_avg_sample') or '—'} (n={s.get('sample_moods_n', 0)})\n"
+            f"Средняя энергия 0–10: {s.get('energy_avg_sample') or '—'}",
+        ),
+        ("Топ упоминаний грибов (по разобранным ответам)", mush_txt),
+    ]
+    pdf_bytes = generate_wellness_admin_overview_pdf(sections)
+    return StreamingResponse(
+        iter([pdf_bytes]),
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="wellness-platform-summary.pdf"'},
+    )
+
+
+@router.post("/wellness-journal/user-pdf")
+async def admin_wellness_journal_user_pdf(
+    request: Request, user_id: int = Form(...), allow_pdf: str = Form(...)
+):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    from services.wellness_journal_service import set_user_wellness_pdf_allowed
+
+    ok = (allow_pdf or "").strip().lower() in ("1", "true", "on", "yes")
+    await set_user_wellness_pdf_allowed(int(user_id), ok)
+    return RedirectResponse("/admin/wellness-journal?saved=1", status_code=303)

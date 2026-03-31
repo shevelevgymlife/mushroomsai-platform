@@ -144,3 +144,8 @@ def generate_wellness_journal_pdf(user_name: str, sections: list[tuple[str, str]
     story.append(Paragraph("mushroomsai.ru | Не медицинское заключение; самонаблюдение.", small_style))
     doc.build(story)
     return buffer.getvalue()
+
+
+def generate_wellness_admin_overview_pdf(sections: list[tuple[str, str]]) -> bytes:
+    """Сводка дневника по платформе для администратора (тот же PDF-движок)."""
+    return generate_wellness_journal_pdf("Сводка платформы (админ)", sections)
