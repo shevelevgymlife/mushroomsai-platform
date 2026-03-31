@@ -88,6 +88,14 @@ async def partner_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     uid = int(u.get("primary_user_id") or u["id"])
     kb = await _reply_kb(update, uid, ai_active=False)
 
+    row = await database.fetch_one(users.select().where(users.c.id == uid))
+    shop_url = ((row or {}).get("referral_shop_url") or "").strip()
+    if await paid_subscription_for_referral_program(uid) and shop_url:
+        await _send_final_links_block(
+            update, context, uid, kb, shop_saved=True, already_partner=True
+        )
+        return ConversationHandler.END
+
     intro = await update.message.reply_html(_intro_html(), disable_web_page_preview=True)
     await _pin_safe(context, update.effective_chat.id, intro.message_id)
 
@@ -137,6 +145,7 @@ async def _send_final_links_block(
     kb,
     *,
     shop_saved: bool,
+    already_partner: bool = False,
 ) -> None:
     code = await invite_referral_code_for_sharing(uid)
     plat = not await paid_subscription_for_referral_program(uid)
@@ -151,8 +160,12 @@ async def _send_final_links_block(
     plat_note = ""
     if plat:
         plat_note = "ℹ️ Сейчас показаны <b>ссылки платформы</b>. После оплаты «Старт+» будут ваши ссылки.\n\n"
+    if already_partner:
+        title = "✅ <b>Вы уже партнёр</b> — магазин привязан.\n\nВот ваши ссылки:\n\n"
+    else:
+        title = f"📣 <b>Шаг 4: приглашения</b>\n\n"
     text = (
-        f"📣 <b>Шаг 4: приглашения</b>\n\n"
+        f"{title}"
         f"{plat_note}"
         f"{shop_note}"
         f"<b>Telegram:</b>\n"
