@@ -244,7 +244,8 @@ async def telegram_auth(request: Request):
         if await login_denied_for_user_row(dict(row)):
             return await _login_blocked_response(request)
         user_id = row["primary_user_id"] or row["id"]
-        vals = {"name": name}
+        # Имя не перезаписываем при каждом входе — остаётся то, что пользователь задал в профиле.
+        vals = {}
         if not is_server_uploaded_avatar(row.get("avatar")) and photo:
             vals["avatar"] = photo
         existing_tg = row.get("tg_id")
@@ -311,7 +312,7 @@ async def telegram_miniapp_auth(request: Request):
             if await login_denied_for_user_row(dict(row)):
                 return JSONResponse({"error": "Аккаунт заблокирован"}, status_code=403)
             user_id = row["primary_user_id"] or row["id"]
-            vals = {"name": name}
+            vals = {}
             if not is_server_uploaded_avatar(row.get("avatar")) and avatar:
                 vals["avatar"] = avatar
             existing_tg = row.get("tg_id")
@@ -444,7 +445,7 @@ async def google_callback(request: Request):
             if await login_denied_for_user_row(dict(row)):
                 return await _login_blocked_response(request)
             user_id = row["primary_user_id"] or row["id"]
-            vals = {"name": name}
+            vals = {}
             if not is_server_uploaded_avatar(row.get("avatar")) and avatar:
                 vals["avatar"] = avatar
             existing_google = (row.get("google_id") or "").strip()

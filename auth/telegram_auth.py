@@ -283,9 +283,7 @@ async def telegram_webapp_login(
             raise PermissionError("User login is denied")
 
         user_id = row["primary_user_id"] or row["id"]
-        # Best-effort: update name if we have something new.
-        if full_name:
-            await database.execute(users.update().where(users.c.id == row["id"]).values(name=full_name))
+        # Имя при повторном входе не трогаем — пользователь задаёт его в профиле.
     else:
         ref_code = await generate_referral_code()
         display_name = full_name or username or "Пользователь"
