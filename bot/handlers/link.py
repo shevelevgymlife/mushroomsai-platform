@@ -171,7 +171,23 @@ async def link_merge_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     try:
         row = await database.fetch_one(users.select().where(users.c.link_token == token))
-        if not row or not row.get("link_merge_secondary_id"):
+        if not row:
+            # Повторное нажатие после успеха: токен уже сброшен, кнопка ещё на экране
+            from web.routes.account import find_user_by_telegram_id
+
+            holder = await find_user_by_telegram_id(tg_id)
+            if holder and _user_row_matches_telegram_id(dict(holder), tg_id):
+                await query.edit_message_text(
+                    "✅ <b>Готово!</b> Привязка уже выполнена — можно пользоваться аккаунтом.",
+                    parse_mode="HTML",
+                )
+                if query.message:
+                    await _send_main_reply_keyboard(context, query.message.chat_id, int(holder["id"]))
+                return
+            await query.edit_message_text("Ссылка недействительна или устарела. Создайте новую на сайте.")
+            return
+
+        if not row.get("link_merge_secondary_id"):
             await query.edit_message_text("Ссылка недействительна или устарела. Создайте новую на сайте.")
             return
 
