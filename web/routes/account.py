@@ -173,6 +173,29 @@ async def _dedupe_user_scope(table_name: str, scope_col: str, primary_id: int, s
     )
 
 
+async def _merge_referrals_referred_id(primary_id: int, secondary_id: int) -> None:
+    """Строка referrals: один referred_id на пользователя (idx_referrals_referred_unique).
+
+    При merge нельзя UPDATE referred_id secondary→primary, если уже есть запись с referred_id=primary_id.
+    """
+    has_primary_invitee = await database.fetch_one(
+        referrals.select().where(referrals.c.referred_id == primary_id).limit(1)
+    )
+    sec_invitee_rows = await database.fetch_all(
+        referrals.select().where(referrals.c.referred_id == secondary_id)
+    )
+    if not sec_invitee_rows:
+        return
+    if has_primary_invitee:
+        await database.execute(referrals.delete().where(referrals.c.referred_id == secondary_id))
+        return
+    await database.execute(
+        referrals.update()
+        .where(referrals.c.referred_id == secondary_id)
+        .values(referred_id=primary_id)
+    )
+
+
 async def _merge_shop_cart(primary_id: int, secondary_id: int) -> None:
     sec_rows = await database.fetch_all(
         shop_cart_items.select().where(shop_cart_items.c.user_id == secondary_id)
@@ -217,6 +240,8 @@ async def merge_accounts(primary_id: int, secondary_id: int):
     if primary_id == secondary_id:
         return
 
+    await _merge_referrals_referred_id(primary_id, secondary_id)
+
     # Repoint common user references.
     for table, col in (
         (messages, messages.c.user_id),
@@ -225,7 +250,6 @@ async def merge_accounts(primary_id: int, secondary_id: int):
         (orders, orders.c.user_id),
         (subscriptions, subscriptions.c.user_id),
         (referrals, referrals.c.referrer_id),
-        (referrals, referrals.c.referred_id),
         (referral_withdrawals, referral_withdrawals.c.user_id),
         (followups, followups.c.user_id),
         (page_views, page_views.c.user_id),
