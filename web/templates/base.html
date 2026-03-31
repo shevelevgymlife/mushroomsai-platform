@@ -489,6 +489,92 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
   })();
   </script>
   {% endif %}
+  {% if user %}
+  <div id="refProgramHintToast" style="display:none;position:fixed;right:12px;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:2050;max-width:min(92vw,360px);border:1px solid rgba(61,212,224,.35);background:rgba(10,12,18,.94);backdrop-filter:blur(12px);color:#e8e8e8;border-radius:14px;padding:12px;box-shadow:0 12px 40px rgba(0,0,0,.45)">
+    <button id="refProgramHintClose" type="button" aria-label="Закрыть" style="position:absolute;top:8px;right:8px;border:none;background:transparent;color:#8aa0a8;font-size:16px;cursor:pointer;line-height:1">×</button>
+    <div style="font-size:13px;font-weight:700;color:#3dd4e0;padding-right:18px">Станьте партнёром. Зарабатывайте с рефералов.</div>
+    <div style="margin-top:6px;font-size:12px;line-height:1.45;color:#c8d3d8">
+      В бургере откройте <b>«Реферальная программа»</b> и активируйте партнёрку.
+    </div>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+      <a href="/referral" style="display:inline-flex;align-items:center;justify-content:center;padding:8px 10px;border-radius:10px;background:linear-gradient(120deg,#3dd4e0,#c8a84b,#ff66d0);color:#0a0c12;font-size:12px;font-weight:800;text-decoration:none">Открыть реферальную</a>
+      <button id="refProgramHintStop" type="button" style="display:none;padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.16);background:transparent;color:#b6c2c7;font-size:12px;cursor:pointer">Я не хочу участвовать в реферальной программе</button>
+    </div>
+  </div>
+  <script>
+  (function(){
+    var role = {{ (user.role or 'user')|tojson }};
+    if (role === "admin" || role === "moderator") return;
+    var hasPartnerSetup = {{ (((user.referral_shop_partner_self) and (user.referral_shop_url)) and true or false)|tojson }};
+    if (hasPartnerSetup) return;
+
+    var uid = {{ (user.primary_user_id or user.id)|int }};
+    var key = "nf_ref_program_hint_v1_" + String(uid);
+    var delays = [4 * 60 * 1000, 9 * 60 * 1000, 16 * 60 * 1000];
+    var box = document.getElementById("refProgramHintToast");
+    var closeBtn = document.getElementById("refProgramHintClose");
+    var stopBtn = document.getElementById("refProgramHintStop");
+    if (!box || !closeBtn || !stopBtn) return;
+
+    function loadState(){
+      try{
+        var raw = localStorage.getItem(key);
+        if(!raw) return { dismissCount: 0, nextAt: 0, stop: false };
+        var s = JSON.parse(raw);
+        return {
+          dismissCount: Number(s.dismissCount || 0),
+          nextAt: Number(s.nextAt || 0),
+          stop: !!s.stop
+        };
+      }catch(e){
+        return { dismissCount: 0, nextAt: 0, stop: false };
+      }
+    }
+    function saveState(s){
+      try{ localStorage.setItem(key, JSON.stringify(s)); }catch(e){}
+    }
+    function renderVariant(s){
+      stopBtn.style.display = s.dismissCount >= 2 ? "inline-flex" : "none";
+    }
+    function showNow(s){
+      renderVariant(s);
+      box.style.display = "block";
+    }
+    function hide(){
+      box.style.display = "none";
+    }
+    function scheduleNext(s){
+      var idx = Math.min(Math.max(s.dismissCount - 1, 0), delays.length - 1);
+      s.nextAt = Date.now() + delays[idx];
+      saveState(s);
+    }
+
+    var state = loadState();
+    if (state.stop) return;
+    if ((state.nextAt || 0) <= Date.now()) showNow(state);
+
+    closeBtn.addEventListener("click", function(){
+      hide();
+      state.dismissCount = Number(state.dismissCount || 0) + 1;
+      scheduleNext(state);
+      var wait = Math.max(1000, (state.nextAt || 0) - Date.now());
+      setTimeout(function(){
+        var latest = loadState();
+        if (!latest.stop && (latest.nextAt || 0) <= Date.now()) {
+          showNow(latest);
+          state = latest;
+        }
+      }, wait);
+    });
+
+    stopBtn.addEventListener("click", function(){
+      state.stop = true;
+      saveState(state);
+      hide();
+    });
+  })();
+  </script>
+  {% endif %}
 
   {% block site_footer %}{% endblock %}
 
