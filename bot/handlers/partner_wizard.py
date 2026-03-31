@@ -29,9 +29,9 @@ from bot.handlers.channel_autopost import main_keyboard_with_autopost
 from config import settings
 from db.database import database
 from db.models import users
-from services.referral_service import ensure_user_referral_code, referral_bonus_per_invite_rub
+from services.referral_service import invite_referral_code_for_sharing, referral_bonus_per_invite_rub
 from services.referral_shop_prefs import SHOP_RUS_URL, normalize_referral_shop_url
-from services.subscription_service import check_subscription
+from services.subscription_service import paid_subscription_for_referral_program
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +75,7 @@ def _intro_html() -> str:
         "<b>Где что смотреть</b>\n"
         "• Подписки и бонусы в приложении — в разделе «Реферальная программа» на сайте.\n"
         "• Продажи и % по магазину Neurotrops — в <b>личном кабинете магазина</b> (туда ведёт кнопка ниже).\n\n"
-        "<b>Шаг 1.</b> Нужен тариф <b>Старт</b> и выше (включая пробный «Старт» по правилам приложения).\n"
+        "<b>Шаг 1.</b> Нужна <b>оплаченная</b> подписка «Старт» и выше (не пробный 3 дня).\n"
         "<b>Шаг 2.</b> Откройте магазин кнопкой «Взять ссылку в магазине» → в Neurotrops: "
         "<b>меню → личный кабинет → «Моя ссылка»</b> → скопируйте ссылку.\n"
         "<b>Шаг 3.</b> Пришлите эту ссылку <b>одним сообщением</b> сюда — я сохраню её для ваших приглашённых.\n"
@@ -96,12 +96,11 @@ async def partner_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     intro = await update.message.reply_html(_intro_html(), disable_web_page_preview=True)
     await _pin_safe(context, update.effective_chat.id, intro.message_id)
 
-    plan = await check_subscription(uid)
-    if plan not in ("start", "pro", "maxi"):
+    if not await paid_subscription_for_referral_program(uid):
         await update.message.reply_html(
-            "⚠️ Для привязки <b>реферальной ссылки магазина</b> нужен тариф <b>Старт</b> и выше. "
+            "⚠️ Для привязки <b>реферальной ссылки магазина</b> нужна <b>оплаченная</b> подписка «Старт» и выше (не пробный период). "
             "Оформите подписку в приложении, затем снова нажмите «🤝 Стать партнёром».\n\n"
-            "Ниже — ваши ссылки приглашения в соцсеть (шаг 4) — ими можно пользоваться уже сейчас.",
+            "Ниже — ссылки приглашения (при отсутствии оплаты — как у платформы).",
             reply_markup=kb,
         )
         await _send_final_links_block(update, context, uid, kb, shop_saved=False)
@@ -139,7 +138,8 @@ async def _send_final_links_block(
     *,
     shop_saved: bool,
 ) -> None:
-    code = await ensure_user_referral_code(uid)
+    code = await invite_referral_code_for_sharing(uid)
+    plat = not await paid_subscription_for_referral_program(uid)
     bot = (settings.TELEGRAM_BOT_USERNAME or "").strip().lstrip("@") or "mushrooms_ai_bot"
     base = (settings.SITE_URL or "").strip().rstrip("/")
     ref_tg = f"https://t.me/{bot}?start={code}" if code else "—"
@@ -148,8 +148,12 @@ async def _send_final_links_block(
     shop_note = ""
     if shop_saved:
         shop_note = "✅ Ссылка магазина сохранена. Приглашённые по приложению увидят ваш магазин.\n\n"
+    plat_note = ""
+    if plat:
+        plat_note = "ℹ️ Сейчас без активной оплаты тарифа показаны <b>ссылки платформы</b> (как у администратора). После оплаты «Старт+» снова будут ваши персональные ссылки.\n\n"
     text = (
         f"📣 <b>Шаг 4: приглашения в приложение</b>\n\n"
+        f"{plat_note}"
         f"{shop_note}"
         f"<b>Telegram (копируйте и рассылайте везде):</b>\n"
         f"<code>{html.escape(ref_tg)}</code>\n\n"

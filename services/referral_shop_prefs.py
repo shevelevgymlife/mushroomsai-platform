@@ -66,7 +66,10 @@ async def shop_urls_for_user(internal_user_id: int) -> tuple[str, str]:
         return SHOP_RUS_URL, eu
     u = (ref.get("referral_shop_url") or "").strip()
     if u:
-        return u, eu
+        from services.subscription_service import paid_subscription_for_referral_program
+
+        if await paid_subscription_for_referral_program(int(ref["id"])):
+            return u, eu
     return SHOP_RUS_URL, eu
 
 
@@ -92,9 +95,16 @@ async def attach_referral_shop_context(u: dict) -> None:
         u["show_marketplace_nav"] = True
         u["referrer_external_shop_url"] = None
         return
-    u["show_marketplace_nav"] = False
     url = (ref.get("referral_shop_url") or "").strip()
-    u["referrer_external_shop_url"] = url if url else None
+    if url:
+        from services.subscription_service import paid_subscription_for_referral_program
+
+        if await paid_subscription_for_referral_program(int(ref["id"])):
+            u["show_marketplace_nav"] = False
+            u["referrer_external_shop_url"] = url
+            return
+    u["show_marketplace_nav"] = True
+    u["referrer_external_shop_url"] = None
 
 
 async def external_buy_url_for_user(user: dict | None) -> Optional[str]:
@@ -112,7 +122,13 @@ async def external_buy_url_for_user(user: dict | None) -> Optional[str]:
     if not ref or _staff_role(ref.get("role")):
         return None
     url = (ref.get("referral_shop_url") or "").strip()
-    return url if url else None
+    if not url:
+        return None
+    from services.subscription_service import paid_subscription_for_referral_program
+
+    if not await paid_subscription_for_referral_program(int(ref["id"])):
+        return None
+    return url
 
 
 async def tg_shop_button_label(internal_user_id: int) -> str:
@@ -125,6 +141,13 @@ async def tg_shop_button_label(internal_user_id: int) -> str:
         return TG_BTN_SHOP_MARKETPLACE
     ref = await database.fetch_one(users.select().where(users.c.id == int(rb)))
     if not ref or _staff_role(ref.get("role")):
+        return TG_BTN_SHOP_MARKETPLACE
+    url = (ref.get("referral_shop_url") or "").strip()
+    if not url:
+        return TG_BTN_SHOP_MARKETPLACE
+    from services.subscription_service import paid_subscription_for_referral_program
+
+    if not await paid_subscription_for_referral_program(int(ref["id"])):
         return TG_BTN_SHOP_MARKETPLACE
     return TG_BTN_SHOP_SIMPLE
 

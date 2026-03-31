@@ -7,7 +7,7 @@ from db.models import users, sessions
 from auth.blocked_identities import login_denied_for_user_row_sync
 from auth.owner import sync_owner_admin_role
 from auth.ui_prefs import attach_screen_rim_prefs
-from services.subscription_service import PLANS, check_subscription
+from services.subscription_service import PLANS, check_subscription, paid_subscription_for_referral_program
 
 
 def _plan_display_name(plan_key: str | None) -> str:
@@ -70,6 +70,7 @@ async def attach_subscription_effective(u: dict) -> None:
         u["drawer_sub_show_countdown"] = False
         u["drawer_sub_until_iso"] = None
         u["drawer_sub_kind"] = "free"
+        u["referral_program_unlocked"] = False
         return
     now = datetime.utcnow()
     tu = row.get("start_trial_until")
@@ -135,6 +136,10 @@ async def attach_subscription_effective(u: dict) -> None:
     u["drawer_sub_show_countdown"] = show_cd
     u["drawer_sub_until_iso"] = until_iso
     u["drawer_sub_kind"] = kind
+    try:
+        u["referral_program_unlocked"] = await paid_subscription_for_referral_program(int(uid))
+    except Exception:
+        u["referral_program_unlocked"] = False
 
 
 async def get_user_from_request(request) -> Optional[dict]:

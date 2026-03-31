@@ -235,6 +235,39 @@ async def ensure_user_referral_code(user_id: int) -> str:
     return code.upper()
 
 
+async def resolve_default_admin_referral_user_id() -> Optional[int]:
+    """Аккаунт платформы для «дефолтных» ссылок (как у администратора), если у пользователя нет оплаты."""
+    from services.system_support_delivery import resolve_neurofungi_ai_user_id
+
+    nid = await resolve_neurofungi_ai_user_id()
+    if nid:
+        return int(nid)
+    row = await database.fetch_one(
+        users.select().where(users.c.role == "admin").order_by(users.c.id.asc()).limit(1)
+    )
+    return int(row["id"]) if row else None
+
+
+async def default_admin_referral_code() -> str:
+    """Реферальный код для отображения при отсутствии платной подписки у участника."""
+    uid = await resolve_default_admin_referral_user_id()
+    if not uid:
+        return ""
+    return await ensure_user_referral_code(int(uid))
+
+
+async def invite_referral_code_for_sharing(user_id: int) -> str:
+    """
+    Код в ссылках приглашения (Telegram / сайт): свой при активной оплате Старт+,
+    иначе код платформенного аккаунта (как у администратора).
+    """
+    from services.subscription_service import paid_subscription_for_referral_program
+
+    if await paid_subscription_for_referral_program(user_id):
+        return await ensure_user_referral_code(user_id)
+    return await default_admin_referral_code()
+
+
 def default_social_app_entry_url() -> str:
     """Общая ссылка входа (бот или /app) без реферального кода."""
     from config import settings
@@ -261,7 +294,7 @@ async def social_app_entry_url_for_channel_owner(user_id: int) -> str:
     if not (row.get("referral_shop_url") or "").strip():
         return default_social_app_entry_url()
 
-    code = await ensure_user_referral_code(int(user_id))
+    code = await invite_referral_code_for_sharing(int(user_id))
     if not code:
         return default_social_app_entry_url()
 
@@ -395,6 +428,11 @@ async def _format_withdrawal_text(
 
 async def request_referral_withdrawal(user_id: int) -> tuple[bool, str]:
     """Создать заявку на вывод и уведомить админа в Telegram."""
+    from services.subscription_service import paid_subscription_for_referral_program
+
+    if not await paid_subscription_for_referral_program(int(user_id)):
+        return False, "Вывод доступен при активной подписке Старт и выше (не пробный период)."
+
     stats = await get_referral_stats(user_id)
     bal = float(stats.get("balance_rub") or 0)
     if bal < 1:

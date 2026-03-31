@@ -1011,8 +1011,12 @@ async def referral_program_page(request: Request):
         return leg
     uid = user.get("primary_user_id") or user["id"]
     plan = await check_subscription(uid)
-    show_partner_shop = plan in ("start", "pro", "maxi")
-    code = await ensure_user_referral_code(uid)
+    from services.subscription_service import paid_subscription_for_referral_program
+    from services.referral_service import invite_referral_code_for_sharing
+
+    show_partner_shop = await paid_subscription_for_referral_program(uid)
+    ref_links_use_platform_default = not await paid_subscription_for_referral_program(uid)
+    code = await invite_referral_code_for_sharing(uid)
     bot = (settings.TELEGRAM_BOT_USERNAME or "").strip().lstrip("@") or "mushrooms_ai_bot"
     base = (settings.SITE_URL or "").strip().rstrip("/")
     ref_link = f"https://t.me/{bot}?start={code}" if code else ""
@@ -1042,6 +1046,7 @@ async def referral_program_page(request: Request):
             "ref_invites": ref_invites,
             "visible_block_keys": visible_block_keys,
             "show_partner_shop": show_partner_shop,
+            "ref_links_use_platform_default": ref_links_use_platform_default,
             "ref_shop_url_current": ref_shop_url_current,
             "partner_self_registered": partner_self,
             "neurotrops_shop_entry_url": SHOP_RUS_URL,
@@ -1056,8 +1061,9 @@ async def referral_partner_shop_url_save(request: Request, shop_url: str = Form(
     if not user:
         return RedirectResponse("/login?next=/referral", status_code=302)
     uid = int(user.get("primary_user_id") or user["id"])
-    plan = await check_subscription(uid)
-    if plan not in ("start", "pro", "maxi"):
+    from services.subscription_service import paid_subscription_for_referral_program
+
+    if not await paid_subscription_for_referral_program(uid):
         return RedirectResponse("/referral?partner_err=plan", status_code=303)
     try:
         normalized = normalize_referral_shop_url(shop_url)

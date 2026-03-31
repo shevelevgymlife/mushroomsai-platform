@@ -370,6 +370,36 @@ async def check_subscription(user_id: int) -> str:
     return "free"
 
 
+async def paid_subscription_for_referral_program(user_id: int) -> bool:
+    """
+    Персональные реферальные ссылки и партнёрство магазина: только активная
+    оплаченная подписка Старт+ (не пробный 3-дневный «Старт»).
+    Администраторы и модераторы — всегда.
+    """
+    row = await database.fetch_one(users.select().where(users.c.id == int(user_id)))
+    if not row:
+        return False
+    uid = int(row.get("primary_user_id") or row["id"])
+    if uid != int(user_id):
+        row = await database.fetch_one(users.select().where(users.c.id == uid))
+    if not row:
+        return False
+    role = (row.get("role") or "user").lower()
+    if role in ("admin", "moderator"):
+        return True
+    now = datetime.utcnow()
+    sp = (row.get("subscription_plan") or "free").lower()
+    sub_end = row.get("subscription_end")
+    admin_granted = bool(row.get("subscription_admin_granted"))
+    if sp not in ("start", "pro", "maxi"):
+        return False
+    if admin_granted and sub_end is None:
+        return True
+    if sub_end and sub_end > now:
+        return True
+    return False
+
+
 async def web_default_home_path(user_id: int) -> str:
     """
     Куда вести с главной / после входа, если нет явного next:

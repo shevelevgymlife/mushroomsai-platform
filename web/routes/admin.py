@@ -527,12 +527,22 @@ async def upload_product_image(request: Request, file: UploadFile = File(...)):
 # ─── Users ────────────────────────────────────────────────────────────────────
 
 @router.get("/users", response_class=HTMLResponse)
-async def users_list(request: Request, search: str = ""):
+async def users_list(request: Request, search: str = "", shop_partners: str = ""):
     admin = await require_permission(request, "can_users")
     if not admin:
         return RedirectResponse("/login")
 
     query = users.select().where(users.c.primary_user_id == None).order_by(users.c.created_at.desc())
+    if (shop_partners or "").strip().lower() in ("1", "true", "yes", "on"):
+        query = query.where(
+            sqlalchemy.or_(
+                sqlalchemy.and_(
+                    users.c.referral_shop_url.isnot(None),
+                    users.c.referral_shop_url != "",
+                ),
+                users.c.referral_shop_partner_self == True,
+            )
+        )
     if search:
         query = query.where(
             (users.c.name.ilike(f"%{search}%"))
@@ -568,6 +578,7 @@ async def users_list(request: Request, search: str = ""):
             "user_permissions": await get_user_permissions(admin),
             "users": enriched_users,
             "search": search,
+            "shop_partners_filter": (shop_partners or "").strip().lower() in ("1", "true", "yes", "on"),
             "msg_counts": msg_counts,
             "now": datetime.utcnow(),
             "plan_labels": {k: v["name"] for k, v in PLANS.items()},
@@ -643,16 +654,29 @@ async def set_user_referral_shop_url(request: Request, user_id: int, url: str = 
     target = await database.fetch_one(users.select().where(users.c.id == user_id))
     if not target:
         return JSONResponse({"ok": False, "error": "not found"}, status_code=404)
+    form = await request.form()
+    keep_self = (form.get("keep_partner_self") or "").strip().lower() in ("1", "true", "yes", "on")
+    prev_self = bool(target.get("referral_shop_partner_self"))
     try:
         normalized = _normalize_referral_shop_url(url)
     except ValueError as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+    if not normalized:
+        await database.execute(
+            users.update()
+            .where(users.c.id == user_id)
+            .values(referral_shop_url=None, referral_shop_partner_self=False)
+        )
+        return JSONResponse({"ok": True, "user_id": user_id, "referral_shop_url": None})
+    new_self = bool(keep_self and prev_self)
     await database.execute(
         users.update()
         .where(users.c.id == user_id)
-        .values(referral_shop_url=normalized, referral_shop_partner_self=False)
+        .values(referral_shop_url=normalized, referral_shop_partner_self=new_self)
     )
-    return JSONResponse({"ok": True, "user_id": user_id, "referral_shop_url": normalized})
+    return JSONResponse(
+        {"ok": True, "user_id": user_id, "referral_shop_url": normalized, "referral_shop_partner_self": new_self}
+    )
 
 
 @router.get("/users/{user_id}/permissions")
