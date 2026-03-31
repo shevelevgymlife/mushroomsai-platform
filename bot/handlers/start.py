@@ -173,14 +173,14 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     site_url = settings.SITE_URL
 
     welcome_text = (
-        f"👋 Добро пожаловать в комьюнити NEUROFUNGI AI, {tg_user.first_name}!\n\n"
-        "Здесь вы найдёте:\n"
-        "• Персональные консультации по функциональным грибам (кнопка <b>«🤖 Задать вопрос AI»</b> — только после неё сообщения уходят в нейросеть)\n"
-        "• Сообщество единомышленников\n"
-        "• Маркет плейс и рецепты\n\n"
-        "Нажмите кнопку <b>«Вход»</b> внизу экрана, чтобы открыть приложение.\n\n"
-        "⚠️ <i>Если кнопка «Вход» не отображается — обновите Telegram до последней версии "
-        "или обратитесь в службу поддержки.</i>"
+        f"👋 Добро пожаловать в NEUROFUNGI AI, {tg_user.first_name}.\n\n"
+        "Здесь всё просто:\n"
+        "• Соцсеть: посты, люди, связи.\n"
+        "• Магазин: рейтинги, отзывы, карточки.\n"
+        "• AI: консультации, анализ, статистика.\n"
+        "• Партнёрка: магазин от 10%.\n"
+        "• Партнёрка: соцсеть от 10%+.\n\n"
+        "⚡ Нажмите <b>«Вход»</b> и заходите в приложение."
     )
 
     from bot.handlers.channel_autopost import main_keyboard_with_autopost
@@ -192,12 +192,12 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="HTML",
     )
     await update.message.reply_text(
-        "👇 Нажмите, чтобы открыть приложение:",
+        "👇 Открыть приложение:",
         reply_markup=main_inline_keyboard(site),
         parse_mode="HTML",
     )
     support_msg = await update.message.reply_text(
-        "🆘 <b>Служба поддержки</b>\nЕсли у вас возникли вопросы — напишите нам:",
+        "🆘 <b>Служба поддержки</b>\nЕсли есть вопрос — напишите нам:",
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("🆘 Написать в поддержку", callback_data="support")],
         ]),
