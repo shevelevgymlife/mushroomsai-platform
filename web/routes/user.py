@@ -33,6 +33,7 @@ from services.subscription_service import (
     record_subscription_event,
     gift_subscription,
     fetch_subscription_history_display,
+    notify_subscription_manual_free,
 )
 from ai.openai_client import chat_with_ai
 from services.plan_access import plan_allowed_block_keys, is_platform_operator, can_use_community_group_chats
@@ -190,6 +191,8 @@ async def subscriptions_connect(request: Request, plan: str = Form(...)):
     if plan_key not in ("free", "start", "pro", "maxi"):
         return RedirectResponse("/subscriptions", status_code=302)
     if plan_key == "free":
+        urow = await database.fetch_one(users.select().where(users.c.id == uid))
+        prev = (urow.get("subscription_plan") or "free").lower() if urow else "free"
         _now = datetime.utcnow()
         await database.execute(
             users.update()
@@ -202,6 +205,11 @@ async def subscriptions_connect(request: Request, plan: str = Form(...)):
             )
         )
         await record_subscription_event(uid, "free", "free", 0.0, _now, None, None)
+        if prev in ("start", "pro", "maxi"):
+            try:
+                await notify_subscription_manual_free(uid, prev)
+            except Exception:
+                pass
     else:
         ok = await activate_subscription(uid, plan_key, months=1)
         if not ok:
@@ -209,21 +217,6 @@ async def subscriptions_connect(request: Request, plan: str = Form(...)):
         await database.execute(
             users.update().where(users.c.id == uid).values(needs_tariff_choice=False)
         )
-        # Самостоятельное подключение тарифа: короткое уведомление в Telegram о доступе к партнёрке.
-        if plan_key == "start":
-            try:
-                row = await database.fetch_one(users.select().where(users.c.id == uid))
-                tg = int(row.get("tg_id") or row.get("linked_tg_id") or 0) if row else 0
-                if tg:
-                    from services.notify_user_stub import notify_user
-
-                    await notify_user(
-                        tg,
-                        "✅ <b>Подписка «Старт» подключена.</b>\n"
-                        "Теперь вы можете стать партнёром в боте: кнопка «🤝 Стать партнёром».",
-                    )
-            except Exception:
-                pass
     return RedirectResponse("/subscriptions?connected=1", status_code=302)
 
 
@@ -355,6 +348,8 @@ async def onboarding_tariff_submit(request: Request, choice: str = Form(...)):
     if choice not in ("free", "start", "pro", "maxi"):
         return RedirectResponse("/subscriptions")
     if choice == "free":
+        urow = await database.fetch_one(users.select().where(users.c.id == int(uid)))
+        prev = (urow.get("subscription_plan") or "free").lower() if urow else "free"
         _now = datetime.utcnow()
         await database.execute(
             users.update()
@@ -367,6 +362,11 @@ async def onboarding_tariff_submit(request: Request, choice: str = Form(...)):
             )
         )
         await record_subscription_event(int(uid), "free", "free", 0.0, _now, None, None)
+        if prev in ("start", "pro", "maxi"):
+            try:
+                await notify_subscription_manual_free(int(uid), prev)
+            except Exception:
+                pass
     else:
         ok = await activate_subscription(int(uid), choice, months=1)
         if not ok:

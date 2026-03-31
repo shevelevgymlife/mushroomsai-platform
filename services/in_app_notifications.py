@@ -20,6 +20,7 @@ NTYPE_PREF_KEY: dict[str, str] = {
     "subscription_post": "subscription_posts",
     "comment_reply": "comment_replies",
     "subscription_gift": "subscription_posts",
+    "subscription_update": "subscription_posts",
 }
 
 DEFAULT_PREFS: dict[str, bool] = {
@@ -46,6 +47,7 @@ TYPE_META: dict[str, tuple[str, str]] = {
     "subscription_post": ("📰", "Новый пост подписки"),
     "comment_reply": ("↩️", "Ответ на комментарий"),
     "subscription_gift": ("🎁", "Подарок подписки"),
+    "subscription_update": ("📋", "Подписка"),
 }
 
 

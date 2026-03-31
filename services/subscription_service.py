@@ -1,8 +1,11 @@
 import html
+import logging
 import time
 from datetime import datetime, timedelta, date
 
 from config import settings
+
+logger = logging.getLogger(__name__)
 from db.database import database
 from db.models import users, subscriptions, subscription_events, direct_messages
 
@@ -62,6 +65,141 @@ async def record_subscription_event(
         pass
 
 
+def _plan_display_name(plan_key: str) -> str:
+    pk = (plan_key or "free").lower()
+    return PLANS.get(pk, PLANS["free"])["name"]
+
+
+async def _notify_paid_subscription_activated(user_id: int, plan_key: str, end_date: datetime) -> None:
+    """ЛС (чат) + Telegram + колокольчик: оформлена или продлена платная подписка."""
+    from services.system_support_delivery import deliver_system_support_notification
+    from services.in_app_notifications import create_notification
+
+    row = await database.fetch_one(users.select().where(users.c.id == int(user_id)))
+    notify_uid = int(row.get("primary_user_id") or user_id) if row else int(user_id)
+    pname = _plan_display_name(plan_key)
+    site = (settings.SITE_URL or "").rstrip("/")
+    sub_url = f"{site}/subscriptions" if site else "/subscriptions"
+    d = end_date.strftime("%d.%m.%Y") if end_date else "—"
+    plain = (
+        f"Ваша подписка оформлена: тариф «{pname}».\n"
+        f"Действует до {d} (дата окончания, UTC).\n\n"
+        f"Управление и продление: {sub_url}"
+    )
+    if (plan_key or "").lower() == "start":
+        plain += (
+            "\n\nПри тарифе «Старт» в Telegram-боте доступна партнёрская программа "
+            "(кнопка «Стать партнёром»)."
+        )
+    tg_html = (
+        f"✅ <b>Подписка активирована</b>\n"
+        f"Тариф: <b>{html.escape(pname)}</b>\n"
+        f"До: <b>{html.escape(d)}</b> (UTC)\n\n"
+        f'<a href="{html.escape(sub_url, quote=True)}">Раздел подписок</a>'
+    )
+    if (plan_key or "").lower() == "start":
+        tg_html += (
+            "\n\n<i>Партнёрская программа: в боте — «Стать партнёром».</i>"
+        )
+    try:
+        await deliver_system_support_notification(
+            recipient_user_id=notify_uid,
+            body_plain=plain,
+            telegram_html=tg_html,
+        )
+    except Exception:
+        logger.exception("subscription activated notify (support) failed uid=%s", user_id)
+    try:
+        await create_notification(
+            recipient_id=notify_uid,
+            actor_id=None,
+            ntype="subscription_update",
+            title="Подписка активирована",
+            body=f"Тариф «{pname}» до {d} (UTC).",
+            link_url="/subscriptions",
+            source_kind="subscription_activate",
+            source_id=int(time.time() * 1000) % (2**31 - 1),
+            skip_prefs=True,
+        )
+    except Exception:
+        logger.debug("subscription activated in_app notify failed uid=%s", user_id, exc_info=True)
+
+
+async def notify_subscription_manual_free(user_id: int, previous_plan: str) -> None:
+    """Пользователь в кабинете перешёл на бесплатный тариф (был платный)."""
+    if (previous_plan or "free").lower() == "free":
+        return
+    await _notify_subscription_became_free(int(user_id), previous_plan, reason="manual")
+
+
+async def _notify_subscription_became_free(
+    user_id: int, previous_plan: str, *, reason: str
+) -> None:
+    """
+    ЛС + Telegram + колокольчик: больше нет платного тарифа.
+    reason: 'expired' — срок оплаты истёк; 'manual' — пользователь или система перешли на free.
+    """
+    from services.system_support_delivery import deliver_system_support_notification
+    from services.in_app_notifications import create_notification
+
+    pp = _plan_display_name(previous_plan)
+    site = (settings.SITE_URL or "").rstrip("/")
+    sub_url = f"{site}/subscriptions" if site else "/subscriptions"
+    if reason == "manual":
+        plain = (
+            f"Ваш тариф изменён на «Бесплатный» (ранее был «{pp}»).\n"
+            "Расширенные функции платных планов недоступны до оформления подписки.\n\n"
+            f"Тарифы: {sub_url}"
+        )
+        tg_html = (
+            "📋 <b>Тариф изменён</b>\n"
+            f"Сейчас: <b>Бесплатный</b> (ранее «{html.escape(pp)}»).\n"
+            "Расширенные функции доступны после оформления подписки.\n\n"
+            f'<a href="{html.escape(sub_url, quote=True)}">Выбрать подписку</a>'
+        )
+        title = "Тариф изменён"
+        body = f"Сейчас «Бесплатный» (ранее «{pp}»)."
+    else:
+        plain = (
+            f"Срок действия подписки «{pp}» истёк.\n"
+            "Сейчас у вас тариф «Бесплатный» — расширенные функции недоступны до продления.\n\n"
+            f"Продлить подписку: {sub_url}"
+        )
+        tg_html = (
+            "⏳ <b>Подписка завершилась</b>\n"
+            f"Истёк тариф «{html.escape(pp)}».\n"
+            "Сейчас: <b>Бесплатный</b>.\n\n"
+            f'<a href="{html.escape(sub_url, quote=True)}">Оформить подписку снова</a>'
+        )
+        title = "Подписка завершилась"
+        body = f"Тариф «{pp}» истёк. Сейчас «Бесплатный»."
+
+    row = await database.fetch_one(users.select().where(users.c.id == int(user_id)))
+    notify_uid = int(row.get("primary_user_id") or user_id) if row else int(user_id)
+    try:
+        await deliver_system_support_notification(
+            recipient_user_id=notify_uid,
+            body_plain=plain,
+            telegram_html=tg_html,
+        )
+    except Exception:
+        logger.exception("subscription became free notify (support) failed uid=%s", user_id)
+    try:
+        await create_notification(
+            recipient_id=notify_uid,
+            actor_id=None,
+            ntype="subscription_update",
+            title=title,
+            body=body,
+            link_url="/subscriptions",
+            source_kind=f"subscription_free_{reason}",
+            source_id=int(time.time() * 1000) % (2**31 - 1),
+            skip_prefs=True,
+        )
+    except Exception:
+        logger.debug("subscription became free in_app notify failed uid=%s", user_id, exc_info=True)
+
+
 async def activate_subscription(
     user_id: int,
     plan: str,
@@ -69,6 +207,7 @@ async def activate_subscription(
     *,
     skip_event_log: bool = False,
     credit_referrer_bonus: bool = True,
+    skip_user_notify: bool = False,
 ):
     if plan not in PLANS:
         return False
@@ -123,6 +262,11 @@ async def activate_subscription(
         await schedule_wellness_journal_if_paid(int(user_id))
     except Exception:
         pass
+    if not skip_user_notify:
+        try:
+            await _notify_paid_subscription_activated(user_id, plan, end_date)
+        except Exception:
+            logger.exception("subscription activated user notify failed uid=%s", user_id)
     return True
 
 
@@ -136,7 +280,12 @@ async def gift_subscription(giver_id: int, recipient_id: int, plan: str) -> tupl
     if not row:
         return False, "recipient_not_found"
     ok = await activate_subscription(
-        int(recipient_id), plan, 1, skip_event_log=True, credit_referrer_bonus=False
+        int(recipient_id),
+        plan,
+        1,
+        skip_event_log=True,
+        credit_referrer_bonus=False,
+        skip_user_notify=True,
     )
     if not ok:
         return False, "activate_failed"
@@ -344,6 +493,7 @@ async def check_subscription(user_id: int) -> str:
     # Просроченная оплата → free в БД (бессрочная выдача админом: subscription_end IS NULL)
     if stored_plan != "free" and (not sub_end or sub_end <= now):
         if not (admin_granted and sub_end is None):
+            prev_plan = stored_plan
             await database.execute(
                 users.update()
                 .where(users.c.id == user_id)
@@ -354,6 +504,10 @@ async def check_subscription(user_id: int) -> str:
                 )
             )
             row = await database.fetch_one(users.select().where(users.c.id == user_id)) or row
+            try:
+                await _notify_subscription_became_free(int(user_id), prev_plan, reason="expired")
+            except Exception:
+                logger.debug("subscription expired notify failed uid=%s", user_id, exc_info=True)
 
     # Пробный «Старт»
     trial_until = row.get("start_trial_until")
