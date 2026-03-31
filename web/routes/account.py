@@ -10,12 +10,12 @@ from typing import Optional
 
 import sqlalchemy as sa
 from fastapi import APIRouter, Request, Form
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from web.templates_utils import Jinja2Templates
 from starlette.responses import JSONResponse
 from auth.session import get_user_from_request, attach_subscription_effective
 from services.legal import legal_acceptance_redirect
-from services.subscription_service import claim_start_trial, web_default_home_path
+from services.subscription_service import claim_start_trial, web_default_home_path, check_subscription
 from auth.telegram_auth import verify_telegram_auth
 from auth.ui_prefs import DEFAULT_SCREEN_RIM, attach_screen_rim_prefs
 from db.database import database
@@ -59,6 +59,7 @@ from db.models import (
     community_group_typing_status,
     community_group_message_likes,
     community_group_messages,
+    wellness_journal_entries,
 )
 
 logger = logging.getLogger(__name__)
@@ -214,6 +215,7 @@ async def merge_accounts(primary_id: int, secondary_id: int):
         (profile_likes, profile_likes.c.liked_user_id),
         (direct_messages, direct_messages.c.sender_id),
         (direct_messages, direct_messages.c.recipient_id),
+        (wellness_journal_entries, wellness_journal_entries.c.user_id),
         (product_reviews, product_reviews.c.user_id),
         (shop_product_comments, shop_product_comments.c.user_id),
         (product_questions, product_questions.c.user_id),
@@ -955,6 +957,121 @@ async def account_start_trial(request: Request):
     if not r.get("ok"):
         return JSONResponse(r, status_code=400)
     return JSONResponse(r)
+
+
+@router.get("/wellness-results", response_class=HTMLResponse)
+async def wellness_results_page(request: Request):
+    user = await get_user_from_request(request)
+    if not user:
+        return RedirectResponse("/login?next=/account/wellness-results")
+    leg = await legal_acceptance_redirect(request, user)
+    if leg:
+        return leg
+    uid = int(user.get("primary_user_id") or user["id"])
+    plan = await check_subscription(uid)
+    if plan == "free":
+        return RedirectResponse("/subscriptions", status_code=302)
+    row = await database.fetch_one(users.select().where(users.c.id == uid))
+    if not row:
+        return RedirectResponse("/subscriptions", status_code=302)
+    from services.wellness_journal_service import aggregate_entries_for_display, wellness_journal_globally_enabled
+
+    entries_raw = await database.fetch_all(
+        wellness_journal_entries.select()
+        .where(wellness_journal_entries.c.user_id == uid)
+        .order_by(wellness_journal_entries.c.created_at.desc())
+        .limit(220)
+    )
+    entries = [dict(e) for e in entries_raw]
+    agg = aggregate_entries_for_display(entries)
+    coach_ok = await wellness_journal_globally_enabled()
+    return templates.TemplateResponse(
+        "account/wellness_results.html",
+        {
+            "request": request,
+            "user": user,
+            "wrow": dict(row),
+            "agg": agg,
+            "entries": entries[:40],
+            "coach_ok": coach_ok,
+        },
+    )
+
+
+@router.post("/wellness-results")
+async def wellness_results_save(
+    request: Request,
+    interval_days: int = Form(1),
+    opt_out: str = Form(""),
+):
+    user = await get_user_from_request(request)
+    if not user:
+        return RedirectResponse("/login?next=/account/wellness-results")
+    uid = int(user.get("primary_user_id") or user["id"])
+    plan = await check_subscription(uid)
+    if plan == "free":
+        return RedirectResponse("/subscriptions", status_code=302)
+    iv = int(interval_days) if str(interval_days).isdigit() else 1
+    if iv not in (1, 3, 5, 7):
+        iv = 1
+    opt = (opt_out or "").strip().lower() in ("1", "true", "on", "yes")
+
+    vals = {
+        "wellness_journal_interval_days": iv,
+        "wellness_journal_opt_out": opt,
+    }
+    if opt:
+        vals["wellness_next_prompt_at"] = None
+    else:
+        vals["wellness_next_prompt_at"] = datetime.utcnow() + timedelta(hours=1)
+    await database.execute(users.update().where(users.c.id == uid).values(**vals))
+    return RedirectResponse("/account/wellness-results?saved=1", status_code=303)
+
+
+@router.get("/wellness-results/pdf")
+async def wellness_results_pdf(request: Request):
+    user = await get_user_from_request(request)
+    if not user:
+        return RedirectResponse("/login?next=/account/wellness-results")
+    uid = int(user.get("primary_user_id") or user["id"])
+    plan = await check_subscription(uid)
+    if plan == "free":
+        return RedirectResponse("/subscriptions", status_code=302)
+    from services.wellness_journal_service import aggregate_entries_for_display
+    from services.pdf_service import generate_wellness_journal_pdf
+
+    entries_raw = await database.fetch_all(
+        wellness_journal_entries.select()
+        .where(wellness_journal_entries.c.user_id == uid)
+        .order_by(wellness_journal_entries.c.created_at.desc())
+        .limit(200)
+    )
+    entries = [dict(e) for e in entries_raw]
+    agg = aggregate_entries_for_display(entries)
+    nm = (user.get("name") or "").strip() or f"id {uid}"
+    lines = [
+        (
+            "Сводка",
+            f"Ответов в дневнике: {agg.get('reply_count', 0)}\n"
+            f"Напоминаний AI: {agg.get('prompt_count', 0)}\n"
+            f"Среднее настроение (0–10): {agg.get('mood_avg') or '—'}\n"
+            f"Средняя энергия (0–10): {agg.get('energy_avg') or '—'}",
+        )
+    ]
+    mush = agg.get("mushroom_counts") or []
+    if mush:
+        lines.append(("Упоминания грибов (по числу ответов)", "\n".join(f"• {m[0]}: {m[1]}" for m in mush[:20])))
+    for t in agg.get("timeline", [])[:25]:
+        at = t.get("at")
+        ds = at.strftime("%d.%m.%Y %H:%M") if hasattr(at, "strftime") else str(at)
+        raw = (t.get("raw") or "")[:600]
+        lines.append((f"Запись {ds}", raw))
+    pdf_bytes = generate_wellness_journal_pdf(nm, lines)
+    return StreamingResponse(
+        iter([pdf_bytes]),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="wellness-{uid}.pdf"'},
+    )
 
 
 @router.post("/merge")

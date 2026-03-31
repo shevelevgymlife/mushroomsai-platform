@@ -109,6 +109,12 @@ async def activate_subscription(
         from services.referral_service import credit_referrer_bonus_for_paid_subscription
 
         await credit_referrer_bonus_for_paid_subscription(int(user_id))
+    try:
+        from services.wellness_journal_service import schedule_wellness_journal_if_paid
+
+        await schedule_wellness_journal_if_paid(int(user_id))
+    except Exception:
+        pass
     return True
 
 
@@ -296,6 +302,12 @@ async def claim_start_trial(user_id: int) -> dict:
     await record_subscription_event(
         int(user_id), "trial_start", "start", 0.0, now, until, None
     )
+    try:
+        from services.wellness_journal_service import schedule_wellness_journal_if_paid
+
+        await schedule_wellness_journal_if_paid(int(user_id))
+    except Exception:
+        pass
     return {"ok": True, "until": until.isoformat() + "Z"}
 
 

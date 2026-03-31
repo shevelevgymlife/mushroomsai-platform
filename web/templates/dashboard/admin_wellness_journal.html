@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Дневник терапии — Admin{% endblock %}
+{% block content %}
+<div class="pt-24 pb-16 neo-app-surface">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    {% include "components/admin_nav.html" %}
+
+    <h1 class="text-3xl font-light text-text mb-2">Дневник терапии / статистика ответов</h1>
+    <p class="text-sm text-muted mb-6 max-w-3xl">
+      Глобальный переключатель останавливает автоматические напоминания AI всем пользователям (данные в БД сохраняются).
+      По пользователю можно отключить только сбор с его аккаунта. Топ — по числу ответов в дневник за 30 дней.
+    </p>
+
+    {% if request.query_params.get('saved') %}
+    <div class="mb-4 p-3 rounded-xl border border-gold/30 text-gold text-sm">Сохранено.</div>
+    {% endif %}
+
+    <div class="rounded-2xl border border-border p-4 mb-8 bg-surface/40">
+      <h2 class="text-lg font-medium text-text mb-3">Платформа</h2>
+      <p class="text-sm text-muted mb-3">Сейчас: <strong class="text-text">{% if global_on %}включено{% else %}выключено{% endif %}</strong></p>
+      <form method="post" action="/admin/wellness-journal/global" class="flex flex-wrap gap-3">
+        <button type="submit" name="enabled" value="1" class="px-4 py-2 rounded-xl text-sm font-medium border border-gold/40 text-gold hover:bg-gold/10">Включить для всех</button>
+        <button type="submit" name="enabled" value="0" class="px-4 py-2 rounded-xl text-sm font-medium border border-border hover:border-red-400/50 text-red-300">Выключить для всех</button>
+      </form>
+    </div>
+
+    <h2 class="text-xl font-medium text-text mb-3">Топ отвечающих (30 дней)</h2>
+    <div class="overflow-x-auto rounded-2xl border border-border mb-10">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-border text-left text-muted">
+            <th class="px-3 py-2">#</th>
+            <th class="px-3 py-2">Пользователь</th>
+            <th class="px-3 py-2">Ответов</th>
+            <th class="px-3 py-2">Пауза (админ)</th>
+            <th class="px-3 py-2"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in top_users %}
+          <tr class="border-b border-border/50 hover:bg-border/10">
+            <td class="px-3 py-2 text-muted">{{ loop.index }}</td>
+            <td class="px-3 py-2">
+              <a href="/admin/wellness-journal/user/{{ r.id }}" class="text-gold hover:underline">{{ r.name or ('id ' ~ r.id) }}</a>
+              {% if r.email %}<span class="text-muted text-xs block">{{ r.email }}</span>{% endif %}
+            </td>
+            <td class="px-3 py-2 font-semibold">{{ r.cnt }}</td>
+            <td class="px-3 py-2">
+              <form method="post" action="/admin/wellness-journal/user-pause" class="inline">
+                <input type="hidden" name="user_id" value="{{ r.id }}" />
+                <input type="hidden" name="paused" value="{{ 0 if user_pause_map.get(r.id) else 1 }}" />
+                <button type="submit" class="text-xs px-2 py-1 rounded-lg border border-border hover:border-gold/40">
+                  {% if user_pause_map.get(r.id) %}Снять паузу{% else %}Пауза{% endif %}
+                </button>
+              </form>
+            </td>
+            <td class="px-3 py-2"><a href="/community/profile/{{ r.id }}" target="_blank" class="text-muted hover:text-gold text-xs">Профиль</a></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="px-3 py-6 text-center text-muted">Пока нет ответов за период.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

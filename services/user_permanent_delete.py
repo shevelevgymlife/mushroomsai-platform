@@ -202,6 +202,7 @@ _CLEANUP_SQL = [
     "DELETE FROM leads WHERE user_id=:uid",
     "DELETE FROM followups WHERE user_id=:uid",
     "DELETE FROM page_views WHERE user_id=:uid",
+    "DELETE FROM wellness_journal_entries WHERE user_id=:uid",
     "DELETE FROM direct_messages WHERE sender_id=:uid OR recipient_id=:uid",
     "DELETE FROM moderation_log WHERE user_id=:uid",
     "DELETE FROM community_likes WHERE user_id=:uid",

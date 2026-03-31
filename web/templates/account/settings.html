@@ -5,6 +5,10 @@
   <h1 class="accneo-title">Настройки</h1>
 
   <div class="accneo-stack">
+    {% set _acc_p = (user.get('effective_subscription_plan') or user.subscription_plan or 'free')|lower %}
+    {% if _acc_p != 'free' %}
+    <a href="/account/wellness-results" class="accneo-btn">Мои результаты (дневник терапии)</a>
+    {% endif %}
     <a href="/account/profile-edit" class="accneo-btn">Редактировать профиль</a>
     <a href="/account/style" class="accneo-btn">Настройка стиля</a>
     <a href="/account/settings/sound-notifications" class="accneo-btn">Звук и уведомления</a>

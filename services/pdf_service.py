@@ -1,4 +1,6 @@
 import io
+from xml.sax.saxutils import escape
+
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.colors import HexColor, white, black
@@ -77,5 +79,68 @@ def generate_recipe_pdf(title: str, content: str, user_name: str = "Пользо
     story.append(Spacer(1, 1 * cm))
     story.append(Paragraph("mushroomsai.ru | Евгений Шевелев, эксперт по фунготерапии", small_style))
 
+    doc.build(story)
+    return buffer.getvalue()
+
+
+def generate_wellness_journal_pdf(user_name: str, sections: list[tuple[str, str]]) -> bytes:
+    """Экспорт сводки дневника фунготерапии (структура как у рецепта; кириллица — через стандартные стили)."""
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=2 * cm,
+        leftMargin=2 * cm,
+        topMargin=2 * cm,
+        bottomMargin=2 * cm,
+    )
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        "WjTitle",
+        parent=styles["Title"],
+        fontSize=22,
+        textColor=GOLD,
+        spaceAfter=16,
+        alignment=TA_CENTER,
+        fontName="Helvetica-Bold",
+    )
+    heading_style = ParagraphStyle(
+        "WjHead",
+        parent=styles["Heading2"],
+        fontSize=13,
+        textColor=GOLD,
+        spaceBefore=12,
+        spaceAfter=6,
+        fontName="Helvetica-Bold",
+    )
+    body_style = ParagraphStyle(
+        "WjBody",
+        parent=styles["Normal"],
+        fontSize=10,
+        textColor=black,
+        spaceAfter=6,
+        leading=14,
+    )
+    small_style = ParagraphStyle(
+        "WjSmall",
+        parent=styles["Normal"],
+        fontSize=9,
+        textColor=HexColor("#666666"),
+        alignment=TA_CENTER,
+    )
+    story = []
+    story.append(Paragraph("NEUROFUNGI — дневник терапии", title_style))
+    story.append(Paragraph(f"Пользователь: {escape(user_name)}", small_style))
+    story.append(Spacer(1, 0.4 * cm))
+    for title, body in sections:
+        story.append(Paragraph(title, heading_style))
+        for line in (body or "").split("\n"):
+            line = line.strip()
+            if line:
+                story.append(Paragraph(escape(line), body_style))
+            else:
+                story.append(Spacer(1, 0.12 * cm))
+    story.append(Spacer(1, 0.8 * cm))
+    story.append(Paragraph("mushroomsai.ru | Не медицинское заключение; самонаблюдение.", small_style))
     doc.build(story)
     return buffer.getvalue()

@@ -7,6 +7,7 @@ import sqlalchemy as sa
 from db.database import database
 from config import settings
 from services.ops_alerts import maybe_notify_billing, send_daily_summary
+from services.wellness_journal_service import run_wellness_prompts_due_job, run_wellness_weekly_digests_job
 
 scheduler = AsyncIOScheduler()
 _logger = logging.getLogger(__name__)
@@ -56,6 +57,21 @@ def start_scheduler() -> None:
         hour=int(getattr(settings, "OPS_NOTIFY_DAILY_SUMMARY_HOUR_UTC", 9) or 9),
         minute=0,
         id="send_daily_summary",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        run_wellness_prompts_due_job,
+        "interval",
+        hours=6,
+        id="wellness_journal_prompts",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        run_wellness_weekly_digests_job,
+        "cron",
+        hour=10,
+        minute=30,
+        id="wellness_weekly_digest",
         replace_existing=True,
     )
     scheduler.start()

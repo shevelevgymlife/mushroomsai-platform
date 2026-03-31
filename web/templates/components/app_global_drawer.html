@@ -56,6 +56,10 @@
     {% endif %}
     {% if 'referral' in vbk %}
     <a href="/referral" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('gift') }}</span><span class="lbl">Реферальная программа</span></a>
+    {% set _draw_w = (user.get('effective_subscription_plan') or user.subscription_plan or 'free')|lower %}
+    {% if _draw_w != 'free' %}
+    <a href="/account/wellness-results" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">📊</span><span class="lbl">Мои результаты</span></a>
+    {% endif %}
     {% endif %}
     {% if not is_locked_free %}
     <div class="ig-drawer-sep"></div>

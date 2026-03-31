@@ -67,6 +67,13 @@ users = sqlalchemy.Table(
     sqlalchemy.Column("music_player_position", sqlalchemy.String(50), default="bottom-right", server_default="bottom-right"),
     sqlalchemy.Column("music_player_volume", sqlalchemy.Float, default=0.5, server_default="0.5"),
     sqlalchemy.Column("notification_prefs_json", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("wellness_journal_interval_days", sqlalchemy.Integer, default=1, server_default="1"),
+    sqlalchemy.Column("wellness_journal_opt_out", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column("wellness_journal_admin_paused", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column("wellness_last_prompt_at", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("wellness_next_prompt_at", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("wellness_baseline_json", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("wellness_weekly_digest_last_at", sqlalchemy.DateTime, nullable=True),
 )
 
 sessions = sqlalchemy.Table(
@@ -695,6 +702,18 @@ direct_messages = sqlalchemy.Table(
     sqlalchemy.Column("text", sqlalchemy.Text, nullable=False),
     sqlalchemy.Column("is_read", sqlalchemy.Boolean, default=False, server_default="false"),
     sqlalchemy.Column("is_system", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+wellness_journal_entries = sqlalchemy.Table(
+    "wellness_journal_entries",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("role", sqlalchemy.String(24), nullable=False),
+    sqlalchemy.Column("raw_text", sqlalchemy.Text, nullable=False),
+    sqlalchemy.Column("extracted_json", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("direct_message_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("direct_messages.id", ondelete="SET NULL"), nullable=True),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
 

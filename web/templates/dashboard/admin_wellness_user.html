@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Дневник пользователя — Admin{% endblock %}
+{% block content %}
+<div class="pt-24 pb-16 neo-app-surface">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    {% include "components/admin_nav.html" %}
+    <p class="mb-4"><a href="/admin/wellness-journal" class="text-gold text-sm hover:underline">← К списку</a></p>
+    <h1 class="text-2xl font-light text-text mb-2">Дневник: {{ target.name or ('id ' ~ target.id) }}</h1>
+    <p class="text-sm text-muted mb-6">Ответов: {{ agg.reply_count }} · Напоминаний: {{ agg.prompt_count }} · Настроение Ø: {{ agg.mood_avg or '—' }} · Энергия Ø: {{ agg.energy_avg or '—' }}</p>
+
+    {% if agg.mushroom_counts %}
+    <h2 class="text-lg font-medium text-text mb-2">Грибы (упоминания)</h2>
+    <ul class="text-sm text-text mb-6 list-disc pl-5">
+      {% for name, cnt in agg.mushroom_counts %}
+      <li>{{ name }} — {{ cnt }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    <h2 class="text-lg font-medium text-text mb-2">Записи</h2>
+    <div class="space-y-2 text-sm">
+      {% for e in entries %}
+      <div class="p-3 rounded-xl border border-border bg-surface/30">
+        <div class="text-xs text-muted">{{ e.created_at }} · {{ e.role }}</div>
+        <pre class="whitespace-pre-wrap text-text mt-1 font-sans" style="word-break:break-word">{{ (e.raw_text or '')[:1200] }}</pre>
+        {% if e.extracted_json %}
+        <details class="mt-2 text-xs text-muted"><summary>JSON</summary><pre class="mt-1 overflow-x-auto">{{ e.extracted_json[:2000] }}</pre></details>
+        {% endif %}
+      </div>
+      {% else %}
+      <p class="text-muted">Нет записей.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

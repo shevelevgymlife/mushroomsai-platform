@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Мои результаты — NEUROFUNGI AI{% endblock %}
+{% block content %}
+<div class="accneo-wrap" style="max-width:720px">
+  <h1 class="accneo-title">Мои результаты</h1>
+  <p class="text-sm text-muted mb-4" style="color:#8e8e96;line-height:1.5">
+    Здесь собирается статистика из ваших ответов AI в личных сообщениях (чат с аккаунтом поддержки платформы).
+    Доступно на тарифах Старт, Про и Макси (включая пробный Старт). Это не медицинское заключение — только самонаблюдение.
+  </p>
+
+  {% if request.query_params.get('saved') %}
+  <div class="mb-4 p-3 rounded-xl border border-gold/30 bg-gold/10 text-sm text-gold">Настройки сохранены.</div>
+  {% endif %}
+
+  {% if not coach_ok %}
+  <div class="mb-4 p-3 rounded-xl border border-amber-500/40 bg-amber-500/10 text-sm text-amber-200">
+    Сбор дневника временно отключён на уровне платформы. Ваши сохранённые данные остаются доступны.
+  </div>
+  {% endif %}
+
+  <div class="grid gap-3 mb-6" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px">
+    <div class="p-4 rounded-2xl border border-white/10 bg-white/5">
+      <div class="text-xs text-muted uppercase">Ответов</div>
+      <div class="text-2xl font-bold text-gold mt-1">{{ agg.reply_count }}</div>
+    </div>
+    <div class="p-4 rounded-2xl border border-white/10 bg-white/5">
+      <div class="text-xs text-muted uppercase">Настроение Ø</div>
+      <div class="text-2xl font-bold text-gold mt-1">{{ agg.mood_avg if agg.mood_avg is not none else '—' }}</div>
+    </div>
+    <div class="p-4 rounded-2xl border border-white/10 bg-white/5">
+      <div class="text-xs text-muted uppercase">Энергия Ø</div>
+      <div class="text-2xl font-bold text-gold mt-1">{{ agg.energy_avg if agg.energy_avg is not none else '—' }}</div>
+    </div>
+  </div>
+
+  {% if agg.mushroom_counts and agg.mushroom_counts|length > 0 %}
+  <h2 class="text-lg font-semibold text-text mb-2">Грибы в ответах</h2>
+  <div class="mb-6 space-y-2">
+    {% for name, cnt in agg.mushroom_counts %}
+    <div class="flex items-center gap-3">
+      <div class="flex-1 h-2 rounded-full bg-white/10 overflow-hidden">
+        <div class="h-full rounded-full bg-gradient-to-r from-cyan-400 to-fuchsia-400" style="width: {{ [100, cnt * 25] | min }}%"></div>
+      </div>
+      <span class="text-sm text-text w-40 text-right">{{ name }} · {{ cnt }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="flex flex-wrap gap-3 mb-8">
+    <a href="/account/wellness-results/pdf" class="accneo-btn" style="text-decoration:none;display:inline-block">Скачать PDF</a>
+    <a href="/chats" class="accneo-btn" style="text-decoration:none;display:inline-block;opacity:.85">Открыть чаты</a>
+  </div>
+
+  <h2 class="text-lg font-semibold text-text mb-3">Настройки напоминаний</h2>
+  <form method="post" action="/account/wellness-results" class="mb-8 p-4 rounded-2xl border border-white/10 bg-white/5 space-y-4">
+    <div>
+      <label class="block text-sm text-muted mb-2">Как часто присылать опрос</label>
+      <select name="interval_days" class="w-full rounded-xl bg-bg border border-border px-3 py-2 text-text">
+        <option value="1" {% if (wrow.wellness_journal_interval_days or 1)|int == 1 %}selected{% endif %}>Каждый день</option>
+        <option value="3" {% if (wrow.wellness_journal_interval_days or 1)|int == 3 %}selected{% endif %}>Раз в 3 дня</option>
+        <option value="5" {% if (wrow.wellness_journal_interval_days or 1)|int == 5 %}selected{% endif %}>Раз в 5 дней</option>
+        <option value="7" {% if (wrow.wellness_journal_interval_days or 1)|int == 7 %}selected{% endif %}>Раз в неделю</option>
+      </select>
+    </div>
+    <label class="flex items-center gap-2 text-sm text-text cursor-pointer">
+      <input type="checkbox" name="opt_out" value="1" {% if wrow.wellness_journal_opt_out %}checked{% endif %} />
+      Полностью отключить дневник и напоминания AI
+    </label>
+    <button type="submit" class="accneo-btn" style="border:none;cursor:pointer">Сохранить</button>
+  </form>
+
+  <h2 class="text-lg font-semibold text-text mb-3">Последние записи</h2>
+  <div class="space-y-3">
+    {% for e in entries %}
+    <div class="p-3 rounded-xl border border-white/10 bg-white/5 text-sm">
+      <div class="text-xs text-muted mb-1">{{ e.created_at.strftime('%d.%m.%Y %H:%M') if e.created_at else '' }} · {{ e.role }}</div>
+      <div class="text-text whitespace-pre-wrap" style="word-break:break-word">{{ (e.raw_text or '')[:900] }}{% if (e.raw_text or '')|length > 900 %}…{% endif %}</div>
+    </div>
+    {% else %}
+    <p class="text-muted text-sm">Пока нет записей. После первого напоминания в чате ответьте на вопросы — данные появятся здесь.</p>
+    {% endfor %}
+  </div>
+
+  <p class="accneo-back" style="margin-top:28px"><a href="/account/settings">← Настройки</a></p>
+</div>
+{% endblock %}

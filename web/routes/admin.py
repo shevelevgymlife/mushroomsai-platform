@@ -27,6 +27,7 @@ from db.models import (
     ai_training_posts, ai_training_folders,
     radio_downtempo_tracks,
     platform_settings,
+    wellness_journal_entries,
 )
 import sqlalchemy
 from datetime import datetime, timedelta, date
@@ -51,6 +52,7 @@ ADMIN_SECTIONS = [
     ("Блоки кабинета", "/admin/dashboard-blocks", "can_dashboard_blocks"),
     ("Радио Down Tempo", "/admin/radio-downtempo", "can_radio_downtempo"),
     ("Реферальная программа", "/admin/referral", "can_users"),
+    ("Дневник терапии", "/admin/wellness-journal", "can_users"),
 ]
 ADMIN_NAV = [(label, href) for (label, href, _perm) in ADMIN_SECTIONS]
 AI_RETRIEVAL_MODES = [
@@ -2369,3 +2371,99 @@ async def admin_referral_bulk_message(
         if r.get("ok"):
             sent += 1
     return RedirectResponse(f"/admin/referral?bulk_sent={sent}", status_code=303)
+
+
+# ─── Дневник терапии (wellness journal) ─────────────────────────────────────
+
+
+@router.get("/wellness-journal", response_class=HTMLResponse)
+async def admin_wellness_journal_page(request: Request):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    perms = await get_user_permissions(admin)
+    from services.wellness_journal_service import top_wellness_responders, wellness_journal_globally_enabled
+
+    global_on = await wellness_journal_globally_enabled()
+    top = await top_wellness_responders(10, 30)
+    ids = [int(t["id"]) for t in top]
+    user_pause_map: dict[int, bool] = {}
+    if ids:
+        rows = await database.fetch_all(users.select().where(users.c.id.in_(ids)))
+        for r in rows:
+            user_pause_map[int(r["id"])] = bool(r.get("wellness_journal_admin_paused"))
+    return templates.TemplateResponse(
+        "dashboard/admin_wellness_journal.html",
+        {
+            "request": request,
+            "user": admin,
+            "user_permissions": perms,
+            "global_on": global_on,
+            "top_users": top,
+            "user_pause_map": user_pause_map,
+        },
+    )
+
+
+@router.post("/wellness-journal/global")
+async def admin_wellness_journal_global(request: Request, enabled: str = Form(...)):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    from services.wellness_journal_service import set_wellness_journal_globally_enabled
+
+    on = (enabled or "").strip() in ("1", "true", "on", "yes")
+    await set_wellness_journal_globally_enabled(on)
+    return RedirectResponse("/admin/wellness-journal?saved=1", status_code=303)
+
+
+@router.post("/wellness-journal/user-pause")
+async def admin_wellness_journal_user_pause(request: Request, user_id: int = Form(...), paused: str = Form(...)):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    pause = (paused or "").strip() in ("1", "true", "on", "yes")
+    await database.execute(
+        users.update()
+        .where(users.c.id == int(user_id))
+        .values(wellness_journal_admin_paused=pause)
+    )
+    return RedirectResponse("/admin/wellness-journal?saved=1", status_code=303)
+
+
+@router.get("/wellness-journal/user/{user_id}", response_class=HTMLResponse)
+async def admin_wellness_journal_user(request: Request, user_id: int):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    perms = await get_user_permissions(admin)
+    from services.wellness_journal_service import aggregate_entries_for_display
+
+    target = await database.fetch_one(users.select().where(users.c.id == int(user_id)))
+    if not target:
+        return RedirectResponse("/admin/wellness-journal", status_code=302)
+    entries_raw = await database.fetch_all(
+        wellness_journal_entries.select()
+        .where(wellness_journal_entries.c.user_id == int(user_id))
+        .order_by(wellness_journal_entries.c.created_at.desc())
+        .limit(120)
+    )
+    raw_dicts = [dict(e) for e in entries_raw]
+    agg = aggregate_entries_for_display(raw_dicts)
+    entries = []
+    for d in raw_dicts:
+        ca = d.get("created_at")
+        d2 = dict(d)
+        d2["created_at"] = ca.strftime("%d.%m.%Y %H:%M") if ca else ""
+        entries.append(d2)
+    return templates.TemplateResponse(
+        "dashboard/admin_wellness_user.html",
+        {
+            "request": request,
+            "user": admin,
+            "user_permissions": perms,
+            "target": dict(target),
+            "entries": entries,
+            "agg": agg,
+        },
+    )

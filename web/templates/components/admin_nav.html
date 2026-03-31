@@ -32,6 +32,7 @@
     ('Блоки кабинета', '/admin/dashboard-blocks', 'can_dashboard_blocks', 'grid'),
     ('🎵 Музыка', '/admin/music', 'can_dashboard', 'cpu'),
     ('Реферальная программа', '/admin/referral', 'can_users', 'users'),
+    ('Дневник терапии', '/admin/wellness-journal', 'can_users', 'heart'),
   ] %}
   {% for label, href, perm_key, iname in nav_items %}
   {% if user_permissions is not defined or user_permissions.get(perm_key, True) %}

@@ -1266,6 +1266,30 @@ async def api_send_message(request: Request, chat_id: int, body: SendMessageBody
     except Exception as e:
         logger.warning("chat notify: %s", e)
 
+    if text:
+        try:
+            import asyncio
+
+            from services.wellness_journal_service import extract_wellness_json_async, on_user_message_to_coach
+
+            pcrow = await database.fetch_one(
+                sa.text("SELECT type FROM chats WHERE id = :id"), {"id": chat_id}
+            )
+            if pcrow and (pcrow.get("type") or "") == "personal":
+                pr = await database.fetch_one(
+                    sa.text(
+                        "SELECT user_id FROM chat_members WHERE chat_id = :cid AND user_id <> :uid LIMIT 1"
+                    ),
+                    {"cid": chat_id, "uid": uid},
+                )
+                if pr:
+                    oid = int(pr["user_id"] or 0)
+                    eid = await on_user_message_to_coach(uid, oid, text, direct_message_id=None)
+                    if eid:
+                        asyncio.create_task(extract_wellness_json_async(int(eid), text))
+        except Exception:
+            logger.debug("wellness journal chat hook failed", exc_info=True)
+
     await room_broadcast(chat_id, {"type": "message", "payload": payload})
     return JSONResponse({"ok": True, "message": payload})
 
