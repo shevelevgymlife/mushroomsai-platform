@@ -17,6 +17,19 @@
     {% if request.query_params.get('saved') %}
     <div class="mb-4 p-3 rounded-xl border border-gold/30 text-gold text-sm">Сохранено.</div>
     {% endif %}
+    {% if request.query_params.get('ensured') %}
+    <div class="mb-4 p-3 rounded-xl border border-gold/30 text-gold text-sm">Аккаунт привязан или создан. id пользователя: {{ request.query_params.get('ensured') }}.</div>
+    {% endif %}
+    {% if request.query_params.get('ensure_err') %}
+    <div class="mb-4 p-3 rounded-xl border border-red-400/40 text-red-300 text-sm">Не удалось создать аккаунт. Проверьте логи сервера и что миграция v25 применилась к базе.</div>
+    {% endif %}
+
+    <form method="post" action="/admin/ai-community-bot/ensure-user" class="mb-6">
+      <button type="submit" class="px-4 py-2 rounded-xl text-sm font-medium border border-border text-text hover:border-gold/40">
+        Создать / привязать аккаунт сейчас
+      </button>
+      <span class="text-xs text-muted ml-2">Если id пустой после деплоя — нажмите один раз.</span>
+    </form>
 
     {% if uid %}
     <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8 text-sm">

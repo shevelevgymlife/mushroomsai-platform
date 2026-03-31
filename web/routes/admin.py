@@ -2715,3 +2715,20 @@ async def admin_ai_community_bot_save(
         )
     )
     return RedirectResponse("/admin/ai-community-bot?saved=1", status_code=303)
+
+
+@router.post("/ai-community-bot/ensure-user")
+async def admin_ai_community_bot_ensure_user(request: Request):
+    """Принудительно создать или привязать пользователя NeuroFungi AI (если не сработал старт)."""
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    try:
+        from services.ai_community_bot import ensure_ai_community_bot_user
+
+        uid = await ensure_ai_community_bot_user()
+        if uid:
+            return RedirectResponse(f"/admin/ai-community-bot?ensured={int(uid)}", status_code=303)
+    except Exception as e:
+        logger.warning("admin_ai_community_bot_ensure_user: %s", e, exc_info=True)
+    return RedirectResponse("/admin/ai-community-bot?ensure_err=1", status_code=303)

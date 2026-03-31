@@ -50,8 +50,21 @@ async def count_today(uid: int, table: str, col_user: str = "user_id") -> int:
     return int(await database.fetch_val(q, {"uid": uid, "start": start}) or 0)
 
 
+async def _ensure_bot_settings_row_exists() -> None:
+    """Если миграция не отработала, строка id=1 может отсутствовать — создаём."""
+    try:
+        await database.execute(
+            sa.text(
+                "INSERT INTO ai_community_bot_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING"
+            )
+        )
+    except Exception as e:
+        logger.warning("ai_community_bot: cannot ensure settings row: %s", e)
+
+
 async def ensure_ai_community_bot_user() -> Optional[int]:
     """Создаёт или привязывает пользователя NeuroFungi AI для сообщества."""
+    await _ensure_bot_settings_row_exists()
     row = await load_bot_settings_row()
     if row and row.get("user_id"):
         u = await database.fetch_one(users.select().where(users.c.id == int(row["user_id"])))
@@ -81,8 +94,9 @@ async def ensure_ai_community_bot_user() -> Optional[int]:
 
     referral_code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
     pw = secrets.token_urlsafe(24)
-    uid = await database.execute(
-        users.insert().values(
+    ins = await database.fetch_one_write(
+        users.insert()
+        .values(
             email=_BOT_EMAIL,
             password_hash=hash_password(pw),
             name="NeuroFungi AI",
@@ -92,9 +106,11 @@ async def ensure_ai_community_bot_user() -> Optional[int]:
             subscription_plan="free",
             needs_tariff_choice=False,
         )
+        .returning(users.c.id)
     )
-    uid = int(uid) if uid else None
+    uid = int(ins["id"]) if ins and ins.get("id") is not None else None
     if not uid:
+        logger.error("ai_community_bot: INSERT users RETURNING failed")
         return None
     await database.execute(
         ai_community_bot_settings.update()
