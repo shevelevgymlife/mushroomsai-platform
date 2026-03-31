@@ -252,10 +252,23 @@ async def activate_subscription(
             end_date,
             None,
         )
+    bonus_rub = 0.0
     if credit_referrer_bonus and plan in ("start", "pro", "maxi"):
         from services.referral_service import credit_referrer_bonus_for_paid_subscription
 
-        await credit_referrer_bonus_for_paid_subscription(int(user_id))
+        bonus_rub = await credit_referrer_bonus_for_paid_subscription(int(user_id))
+    if plan in ("start", "pro", "maxi"):
+        try:
+            from services.referral_service import notify_referrer_about_referred_subscription
+
+            pname = PLANS.get(plan, PLANS["start"])["name"]
+            await notify_referrer_about_referred_subscription(
+                int(user_id),
+                plan_label=f"подписку «{pname}»",
+                bonus_rub=bonus_rub if bonus_rub > 0 else None,
+            )
+        except Exception:
+            logger.debug("notify referrer about referred subscription failed uid=%s", user_id, exc_info=True)
     try:
         from services.wellness_journal_service import schedule_wellness_journal_if_paid
 
@@ -457,6 +470,16 @@ async def claim_start_trial(user_id: int) -> dict:
         )
     )
     await _notify_trial_started(user_id)
+    try:
+        from services.referral_service import notify_referrer_about_referred_subscription
+
+        await notify_referrer_about_referred_subscription(
+            int(user_id),
+            plan_label="пробный доступ «Старт» на 3 дня",
+            bonus_rub=None,
+        )
+    except Exception:
+        logger.debug("notify referrer trial failed uid=%s", user_id, exc_info=True)
     await record_subscription_event(
         int(user_id), "trial_start", "start", 0.0, now, until, None
     )
