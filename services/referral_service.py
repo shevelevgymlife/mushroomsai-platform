@@ -104,6 +104,8 @@ async def process_referral(new_user_id: int, referral_code: str) -> bool:
     Привязать приглашённого к рефереру. Один раз на пользователя.
     Баланс рефереру начисляется только после первой платной подписки приглашённого
     (см. credit_referrer_bonus_for_paid_subscription), не за пробный 3 дня.
+    Если владелец кода без активной Старт+ (не админ/модератор), закрепление идёт
+    за платформенным аккаунтом (код default_admin_referral_code), как по ссылке админа.
     """
     ref = (referral_code or "").strip().upper()
     if not ref or len(ref) > 20:
@@ -116,6 +118,17 @@ async def process_referral(new_user_id: int, referral_code: str) -> bool:
     referrer = await database.fetch_one(users.select().where(users.c.referral_code == ref))
     if not referrer or referrer["id"] == new_user_id:
         return False
+
+    # Без активной Старт+ владелец кода не получает закреплений — как ссылки платформы (админ)
+    role = (referrer.get("role") or "user").lower()
+    if role not in ("admin", "moderator"):
+        from services.subscription_service import paid_subscription_for_referral_program
+
+        if not await paid_subscription_for_referral_program(int(referrer["id"])):
+            admin_code = await default_admin_referral_code()
+            if not admin_code:
+                return False
+            return await process_referral(new_user_id, admin_code)
 
     dup = await database.fetch_one(
         referrals.select().where(referrals.c.referred_id == new_user_id)
