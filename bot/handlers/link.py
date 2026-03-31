@@ -87,7 +87,7 @@ async def link_confirm_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 [
                     [
                         InlineKeyboardButton(
-                            "✅ Да, привязать и удалить TG-аккаунт",
+                            "✅ Да, привязать и совместить аккаунт",
                             callback_data=f"link_merge_ok:{token}",
                         )
                     ],
@@ -97,7 +97,7 @@ async def link_confirm_callback(update: Update, context: ContextTypes.DEFAULT_TY
             await query.edit_message_text(
                 f"⚠️ <b>Этот Telegram уже зарегистрирован в системе</b> как отдельный аккаунт"
                 f"{created_str}.\n\n"
-                "После привязки тот аккаунт будет <b>удалён</b>, данные и история перенесутся "
+                "После привязки тот аккаунт будет <b>совмещён</b>, данные и история перенесутся "
                 "в ваш основной аккаунт. Войдя через Telegram в будущем, вы попадёте в этот профиль.\n\n"
                 "Подтвердите действие:",
                 parse_mode="HTML",
@@ -174,7 +174,7 @@ async def link_merge_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
 
         await query.edit_message_text(
             "✅ <b>Готово!</b> Аккаунты объединены.\n\n"
-            "Прежний Telegram-аккаунт удалён. Теперь при входе через Telegram "
+            "Прежний Telegram-аккаунт совмещён с основным профилем. Теперь при входе через Telegram "
             "вы будете попадать в свой основной профиль.",
             parse_mode="HTML",
         )
