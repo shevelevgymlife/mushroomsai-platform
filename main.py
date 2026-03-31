@@ -492,6 +492,29 @@ async def lifespan(app: FastAPI):
                 allowed_updates=TgUpdate.ALL_TYPES,
             )
             await setup_bot_menu(bot_app)
+            # Deeplink t.me/<TELEGRAM_BOT_USERNAME>?start=link_* обрабатывает только этот бот (link.py).
+            try:
+                me = await bot_app.bot.get_me()
+                expected = (settings.TELEGRAM_BOT_USERNAME or "").strip().lstrip("@").lower()
+                actual = (me.username or "").strip().lower()
+                if expected and actual and expected != actual:
+                    logger.error(
+                        "TELEGRAM_BOT_USERNAME env=%r не совпадает с основным ботом @%s — "
+                        "ссылки «Привязать Telegram» с сайта открывают не того бота; привязка не сработает. "
+                        "Выставьте TELEGRAM_BOT_USERNAME=%s в Environment.",
+                        settings.TELEGRAM_BOT_USERNAME,
+                        actual,
+                        actual,
+                    )
+                elif not expected and actual:
+                    logger.warning(
+                        "TELEGRAM_BOT_USERNAME пуст — задайте TELEGRAM_BOT_USERNAME=%s для корректных deeplink.",
+                        actual,
+                    )
+                else:
+                    logger.info("Main bot @%s — deeplink username совпадает с настройками", actual)
+            except Exception as ex:
+                logger.warning("Не удалось проверить username основного бота: %s", ex)
             logger.info("Main bot started")
         except Exception as e:
             logger.error("Primary bot startup error: %s", e)
