@@ -1,17 +1,94 @@
+import html
+import logging
 import secrets
 import string
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, Optional
 
 import sqlalchemy as sa
 from db.database import database
 from db.models import users, referrals, referral_withdrawals, referral_promo_links, subscriptions
 from services.subscription_service import PLANS
 
+logger = logging.getLogger(__name__)
+
 
 def referral_bonus_per_invite_rub() -> int:
     """10% от месячной цены тарифа Старт (баллы на продление)."""
     return max(1, int(PLANS["start"]["price"] * 0.1))
+
+
+async def _telegram_chat_id_for_user(user_id: int) -> Optional[int]:
+    """Chat id для уведомлений: свой tg_id или у primary при связке аккаунтов."""
+    row = await database.fetch_one(users.select().where(users.c.id == int(user_id)))
+    if not row:
+        return None
+    tg = row.get("tg_id") or row.get("linked_tg_id")
+    if tg:
+        try:
+            return int(tg)
+        except (TypeError, ValueError):
+            pass
+    pid = row.get("primary_user_id")
+    if pid:
+        prow = await database.fetch_one(users.select().where(users.c.id == int(pid)))
+        if prow:
+            tg = prow.get("tg_id") or prow.get("linked_tg_id")
+            if tg:
+                try:
+                    return int(tg)
+                except (TypeError, ValueError):
+                    pass
+    return None
+
+
+async def _notify_referrer_telegram_new_referral(referrer_id: int, referred_user_id: int) -> None:
+    """Сообщение в бот рефереру: новый реферал по ссылке."""
+    chat_id = await _telegram_chat_id_for_user(referrer_id)
+    if not chat_id:
+        return
+    ref_row = await database.fetch_one(users.select().where(users.c.id == int(referred_user_id)))
+    name = (ref_row.get("name") if ref_row else None) or "Новый участник"
+    name_esc = html.escape((name or "")[:120])
+    text = (
+        f"🎉 <b>У тебя новый реферал</b>\n"
+        f"{name_esc}\n\n"
+        "Когда приглашённый оформит <b>платную</b> подписку «Старт» или выше "
+        "(не пробный период), придёт ещё одно сообщение о бонусе."
+    )
+    try:
+        from services.notify_user_stub import notify_user
+
+        await notify_user(int(chat_id), text)
+    except Exception:
+        logger.debug("referrer new-ref telegram notify failed", exc_info=True)
+
+
+async def _notify_referrer_telegram_bonus_credited(referrer_id: int, bonus_rub: float) -> None:
+    """Сообщение в бот рефереру: бонус за платную подписку приглашённого."""
+    chat_id = await _telegram_chat_id_for_user(referrer_id)
+    if not chat_id:
+        return
+    from config import settings
+
+    site = (settings.SITE_URL or "").strip().rstrip("/")
+    if site:
+        ref_href = html.escape(f"{site}/referral", quote=True)
+        where = f'<a href="{ref_href}">Реферальная программа</a> — баланс и бонусы'
+    else:
+        where = "страница «Реферальная программа» в приложении — баланс и бонусы"
+    amt = max(0.0, float(bonus_rub))
+    text = (
+        f"💰 <b>Приглашённый оформил платную подписку</b> (не пробный период).\n\n"
+        f"Твоё вознаграждение <b>{amt:.0f} ₽</b> уже на балансе в приложении.\n"
+        f"Смотри: {where}."
+    )
+    try:
+        from services.notify_user_stub import notify_user
+
+        await notify_user(int(chat_id), text)
+    except Exception:
+        logger.debug("referrer bonus telegram notify failed", exc_info=True)
 
 
 async def generate_referral_code() -> str:
@@ -61,6 +138,10 @@ async def process_referral(new_user_id: int, referral_code: str) -> bool:
             referral_bonus_amount=bonus,
         )
     )
+    try:
+        await _notify_referrer_telegram_new_referral(int(referrer["id"]), int(new_user_id))
+    except Exception:
+        logger.debug("notify new referral after process_referral", exc_info=True)
     return True
 
 
@@ -99,6 +180,10 @@ async def credit_referrer_bonus_for_paid_subscription(referred_user_id: int) -> 
     await database.execute(
         referrals.update().where(referrals.c.id == ref_id).values(bonus_applied=True)
     )
+    try:
+        await _notify_referrer_telegram_bonus_credited(rid, bonus)
+    except Exception:
+        logger.debug("notify bonus after credit_referrer", exc_info=True)
     return True
 
 
