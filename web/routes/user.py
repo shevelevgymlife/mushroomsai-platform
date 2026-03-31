@@ -207,8 +207,16 @@ async def subscriptions_connect(request: Request, plan: str = Form(...)):
         return RedirectResponse("/subscriptions", status_code=302)
     if plan_key in ("start", "pro", "maxi"):
         cp = await get_provider_settings("cloudpayments")
-        if cp.get("enabled") and (cp.get("public_id") or "").strip():
+        cp_ok = bool(cp.get("enabled") and (cp.get("public_id") or "").strip())
+        yb = await get_provider_settings("yookassa_bot")
+        yb_ok = bool(
+            yb.get("enabled")
+            and (yb.get("provider_token") or "").strip()
+        )
+        if cp_ok:
             return RedirectResponse("/subscriptions?need_payment=1", status_code=302)
+        if yb_ok:
+            return RedirectResponse("/subscriptions?need_payment=bot", status_code=302)
     if plan_key == "free":
         urow = await database.fetch_one(users.select().where(users.c.id == uid))
         prev = (urow.get("subscription_plan") or "free").lower() if urow else "free"

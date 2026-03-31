@@ -13,7 +13,11 @@
       Не удалось подарить подписку{% if request.query_params.get('gift_error') not in ('1', 'invalid', '') %}: {{ request.query_params.get('gift_error') }}{% endif %}. Проверьте выбор пользователя и тарифа.
     </div>
     {% endif %}
-    {% if request.query_params.get('need_payment') %}
+    {% if request.query_params.get('need_payment') == 'bot' %}
+    <div class="max-w-3xl mx-auto mb-6 p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-100 text-sm leading-relaxed text-center">
+      Платные тарифы на сайте и в приложении Telegram без оплаты не активируются: оплата настроена через бота. Откройте бота в Telegram и оформите подписку там (счёт ЮKassa). Прямое подключение без оплаты отключено.
+    </div>
+    {% elif request.query_params.get('need_payment') %}
     <div class="max-w-3xl mx-auto mb-6 p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-100 text-sm leading-relaxed text-center">
       Оплата через CloudPayments включена. Выберите тариф и нажмите «Подключиться» — откроется окно оплаты. Прямое подключение без оплаты отключено.
     </div>
