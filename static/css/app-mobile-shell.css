@@ -735,6 +735,19 @@ body.app-mobile-layout main .grid.grid-cols-2 {
   grid-template-columns: repeat(2, 1fr) !important;
 }
 
+/* Лента /community: двухколоночная сетка постов — на телефоне одна колонка */
+@media (max-width: 768px) {
+  body.app-mobile-layout main #commFeedMain {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: clip;
+    box-sizing: border-box;
+  }
+  body.app-mobile-layout main .comm-feed-shell {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 /* ===== Screen Glow controls in burger drawer ===== */
 .glow-sw {
   position: relative;
