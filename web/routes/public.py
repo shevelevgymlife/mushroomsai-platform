@@ -2626,6 +2626,15 @@ async def send_message(request: Request, other_id: int):
             await sync_direct_messages_pair(uid, other_id, broadcast_legacy_dm_id=int(msg_id))
     except Exception:
         pass
+    try:
+        from services.neurofungi_ai_busy_dm_reply import maybe_send_neurofungi_ai_busy_dm_reply
+
+        await maybe_send_neurofungi_ai_busy_dm_reply(
+            human_sender_id=int(uid),
+            bot_recipient_id=int(other_id),
+        )
+    except Exception:
+        pass
     if other_id and other_id != 0:
         try:
             recipient = await database.fetch_one(users.select().where(users.c.id == other_id))

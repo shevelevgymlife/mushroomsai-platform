@@ -850,6 +850,15 @@ async def share_community_post_dm(request: Request, post_id: int):
                 f"/chats?open_user={uid}",
             )
             await sync_direct_messages_pair(uid, recipient_id, broadcast_legacy_dm_id=mid)
+            try:
+                from services.neurofungi_ai_busy_dm_reply import maybe_send_neurofungi_ai_busy_dm_reply
+
+                await maybe_send_neurofungi_ai_busy_dm_reply(
+                    human_sender_id=int(uid),
+                    bot_recipient_id=int(recipient_id),
+                )
+            except Exception:
+                pass
     except Exception:
         pass
     rc = await _current_reposts_count()
@@ -2057,6 +2066,15 @@ async def send_dm(request: Request, recipient_id: int):
     try:
         if msg_id:
             await sync_direct_messages_pair(uid, recipient_id, broadcast_legacy_dm_id=int(msg_id))
+    except Exception:
+        pass
+    try:
+        from services.neurofungi_ai_busy_dm_reply import maybe_send_neurofungi_ai_busy_dm_reply
+
+        await maybe_send_neurofungi_ai_busy_dm_reply(
+            human_sender_id=int(uid),
+            bot_recipient_id=int(recipient_id),
+        )
     except Exception:
         pass
     return JSONResponse({"ok": True, "id": msg_id})
