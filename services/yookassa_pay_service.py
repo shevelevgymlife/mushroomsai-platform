@@ -12,6 +12,7 @@ from db.models import payment_webhook_dedup
 from services.payment_plans_catalog import get_effective_plans
 from services.payment_provider_settings import get_provider_settings
 from services.subscription_service import activate_subscription
+from services.yookassa_bot_offerings import get_merged_bot_offerings, offering_by_id
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +78,7 @@ async def apply_yookassa_payment_succeeded(payment: dict[str, Any]) -> tuple[boo
 
     uid_raw = meta.get("user_id") or meta.get("userId")
     plan = (meta.get("plan") or "").strip().lower()
+    offering_id = (meta.get("offering_id") or meta.get("offeringId") or "").strip().lower()
     if uid_raw is None or uid_raw == "":
         # Платёж из Telegram часто без metadata в ЛК ЮKassa — активация идёт через successful_payment в боте.
         return True, "ignored_no_metadata"
@@ -84,9 +86,6 @@ async def apply_yookassa_payment_succeeded(payment: dict[str, Any]) -> tuple[boo
         uid = int(uid_raw)
     except (TypeError, ValueError):
         return False, "bad_user_in_metadata"
-
-    if plan not in ("start", "pro", "maxi"):
-        return False, "bad_plan_metadata"
 
     amount_obj = payment.get("amount") or {}
     val = amount_obj.get("value")
@@ -97,15 +96,52 @@ async def apply_yookassa_payment_succeeded(payment: dict[str, Any]) -> tuple[boo
     except Exception:
         paid = 0.0
 
-    plans = await get_effective_plans()
-    expected = float((plans.get(plan) or {}).get("price") or 0)
-    if expected <= 0:
-        return False, "bad_price_config"
-    if abs(paid - expected) > 0.02 and abs(paid - expected) > expected * 0.005:
-        logger.warning("yookassa amount mismatch uid=%s plan=%s paid=%s expected=%s", uid, plan, paid, expected)
-        return False, "amount_mismatch"
+    if offering_id:
+        offerings = await get_merged_bot_offerings()
+        off = offering_by_id(offerings, offering_id)
+        if not off or not off.get("enabled"):
+            return False, "bad_offering_metadata"
+        eff = str(off.get("effective_plan") or "start").lower()
+        if eff not in ("start", "pro", "maxi"):
+            return False, "bad_effective_plan"
+        try:
+            dm = int(off.get("duration_minutes") or 0)
+        except (TypeError, ValueError):
+            dm = 0
+        if dm <= 0:
+            return False, "bad_duration"
+        expected = float(off.get("price_rub") or 0)
+        if expected <= 0:
+            return False, "bad_price_config"
+        if abs(paid - expected) > 0.02 and abs(paid - expected) > expected * 0.005:
+            logger.warning(
+                "yookassa amount mismatch uid=%s offering=%s paid=%s expected=%s",
+                uid,
+                offering_id,
+                paid,
+                expected,
+            )
+            return False, "amount_mismatch"
+        ok = await activate_subscription(
+            uid,
+            eff,
+            months=1,
+            duration_minutes=dm,
+            paid_price_rub=expected,
+        )
+    else:
+        if plan not in ("start", "pro", "maxi"):
+            return False, "bad_plan_metadata"
 
-    ok = await activate_subscription(uid, plan, months=1)
+        plans = await get_effective_plans()
+        expected = float((plans.get(plan) or {}).get("price") or 0)
+        if expected <= 0:
+            return False, "bad_price_config"
+        if abs(paid - expected) > 0.02 and abs(paid - expected) > expected * 0.005:
+            logger.warning("yookassa amount mismatch uid=%s plan=%s paid=%s expected=%s", uid, plan, paid, expected)
+            return False, "amount_mismatch"
+
+        ok = await activate_subscription(uid, plan, months=1)
     if not ok:
         return False, "activate_failed"
     await _mark("yookassa", pid)

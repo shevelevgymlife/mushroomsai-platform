@@ -25,6 +25,7 @@ from db.models import (
 from services.referral_service import get_referral_stats
 from services.payment_plans_catalog import get_effective_plans
 from services.payment_provider_settings import get_provider_settings
+from services.yookassa_bot_offerings import get_merged_bot_offerings
 from services.subscription_service import (
     activate_subscription,
     check_subscription,
@@ -177,6 +178,11 @@ async def subscriptions_page(request: Request):
     cp_public = (cp.get("public_id") or "").strip()
     cp_enabled = bool(cp.get("enabled") and cp_public)
     uid = int(user.get("primary_user_id") or user["id"])
+    try:
+        _all_off = await get_merged_bot_offerings()
+        yookassa_site_offerings = [o for o in _all_off if o.get("enabled") and o.get("show_on_site")]
+    except Exception:
+        yookassa_site_offerings = []
     return templates.TemplateResponse(
         "subscriptions.html",
         {
@@ -188,6 +194,7 @@ async def subscriptions_page(request: Request):
             "cloudpayments_enabled": cp_enabled,
             "cloudpayments_public_id": cp_public,
             "payment_user_id": uid,
+            "yookassa_site_offerings": yookassa_site_offerings,
         },
     )
 

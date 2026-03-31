@@ -188,7 +188,7 @@ def create_bot() -> Application:
     application.add_handler(CommandHandler("subscribe", subscribe_command), group=pay_group)
     application.add_handler(PreCheckoutQueryHandler(pre_checkout_handler), group=pay_group)
     application.add_handler(
-        CallbackQueryHandler(tgpay_plan_callback, pattern=r"^tgpay_(start|pro|maxi)$"),
+        CallbackQueryHandler(tgpay_plan_callback, pattern=r"^tgpay_[a-zA-Z0-9_]+$"),
         group=pay_group,
     )
     application.add_handler(MessageHandler(TG_PAYMENT_FILTER, successful_payment_handler), group=pay_group)

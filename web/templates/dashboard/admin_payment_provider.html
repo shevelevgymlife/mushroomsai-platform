@@ -80,7 +80,7 @@
         <h2 class="text-xl font-medium text-text">ЮKassa Бот — автономная схема</h2>
         <div class="text-xs text-muted space-y-2 leading-relaxed">
           <p><b>Срок окончания:</b> раз в ~30 минут фоновая задача проверяет истёкшие подписки и переводит пользователя на «Бесплатный», как при входе на сайт. В личку в Telegram и в чат поддержки приходит то же уведомление, что и при «подписка истекла».</p>
-          <p><b>Оплата в боте:</b> пользователь нажимает «💳 Подписка» или команду <code>/subscribe</code>, выбирает тариф — открывается счёт ЮKassa. После успешной оплаты подписка продлевается на месяц автоматически.</p>
+          <p><b>Оплата в боте:</b> пользователь нажимает «💳 Подписка» или команду <code>/subscribe</code>, выбирает предложение — открывается счёт ЮKassa. Срок доступа задаётся в таблице ниже (в минутах).</p>
           <p><b>HTTP-вебхук ЮKassa:</b> нужен для платежей, где в metadata у платежа есть <code>user_id</code> и <code>plan</code> (например, ссылки из личного кабинета). Оплаты внутри Telegram через бота чаще обрабатываются без metadata — тогда достаточно успешного сообщения в боте.</p>
         </div>
         {% if yookassa_http_webhook_url %}
@@ -119,9 +119,112 @@
             <li>ЮKassa: shopId и секретный ключ (уже есть личный кабинет).</li>
             <li>BotFather: подключить к этому же боту платежи ЮKassa и скопировать <b>provider token</b> сюда.</li>
             <li>В ЮKassa в HTTP-уведомлениях указать URL выше (после деплоя с HTTPS).</li>
-            <li>Цены тарифов — в блоке ниже на этой странице; они совпадают с сайтом и с суммой в счёте бота.</li>
+            <li>Ниже — <b>предложения для бота</b>: цена, срок (минуты), уровень доступа. Блок «Тарифы» ниже задаёт названия и описания уровней на сайте.</li>
           </ol>
         </div>
+
+        <div class="p-4 rounded-xl border border-cyan-500/25 bg-cyan-500/5 space-y-3">
+          <h3 class="text-base font-semibold text-text">Предложения в Telegram-боте (ЮKassa)</h3>
+          <p class="text-xs text-muted leading-relaxed">
+            Каждая строка — отдельная кнопка в боте. <b>ID</b> (латиница, цифры, _) попадает в счёт; для новых предложений задайте уникальный id, например <code class="text-gold">week_trial</code>.
+            <b>Уровень</b> — какой пакет прав выдать: Старт / Про / Макси. <b>Срок</b> — в минутах (43200 = 30 дней). Включённые строки с «Показ на сайте» дублируются на странице подписок с подсказкой оплатить в боте.
+          </p>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse min-w-[720px]">
+              <thead>
+                <tr class="text-left text-xs text-muted border-b border-border">
+                  <th class="py-2 pr-2">ID</th>
+                  <th class="py-2 pr-2">Вкл</th>
+                  <th class="py-2 pr-2">Цена ₽</th>
+                  <th class="py-2 pr-2">Минут</th>
+                  <th class="py-2 pr-2">Уровень</th>
+                  <th class="py-2 pr-2">Название кнопки</th>
+                  <th class="py-2 pr-2">Сайт</th>
+                  <th class="py-2"></th>
+                </tr>
+              </thead>
+              <tbody id="yookassaOfferRows">
+                {% for row in bot_offerings %}
+                {% set rid = row.id %}
+                <tr class="yookassa-offer-row border-b border-border/40 align-top">
+                  <td class="py-2 pr-2">
+                    <input type="text" name="offer_id" value="{{ rid }}" required
+                      class="w-[140px] px-2 py-1.5 rounded-lg bg-bg border border-border text-xs font-mono"
+                      {% if rid in ['start','pro','maxi'] %}readonly title="Системные id"{% endif %} />
+                  </td>
+                  <td class="py-2 pr-2">
+                    <select name="offer_enabled" class="px-2 py-1.5 rounded-lg bg-bg border border-border text-xs">
+                      <option value="0" {% if not row.enabled %}selected{% endif %}>Нет</option>
+                      <option value="1" {% if row.enabled %}selected{% endif %}>Да</option>
+                    </select>
+                  </td>
+                  <td class="py-2 pr-2">
+                    <input type="number" name="offer_price_rub" min="0" step="1" value="{{ row.price_rub }}"
+                      class="w-24 px-2 py-1.5 rounded-lg bg-bg border border-border text-xs" />
+                  </td>
+                  <td class="py-2 pr-2">
+                    <input type="number" name="offer_duration_minutes" min="1" step="1" value="{{ row.duration_minutes }}"
+                      class="w-28 px-2 py-1.5 rounded-lg bg-bg border border-border text-xs" title="Напр. 1440 = 1 день" />
+                  </td>
+                  <td class="py-2 pr-2">
+                    <select name="offer_effective_plan" class="px-2 py-1.5 rounded-lg bg-bg border border-border text-xs">
+                      {% for ep in ['start','pro','maxi'] %}
+                      <option value="{{ ep }}" {% if row.effective_plan == ep %}selected{% endif %}>{{ ep }}</option>
+                      {% endfor %}
+                    </select>
+                  </td>
+                  <td class="py-2 pr-2">
+                    <input type="text" name="offer_label" value="{{ row.label or '' }}" placeholder="Пусто = из тарифа"
+                      class="w-40 max-w-[200px] px-2 py-1.5 rounded-lg bg-bg border border-border text-xs" />
+                  </td>
+                  <td class="py-2 pr-2">
+                    <select name="offer_show_on_site" class="px-2 py-1.5 rounded-lg bg-bg border border-border text-xs">
+                      <option value="0" {% if not row.show_on_site %}selected{% endif %}>Нет</option>
+                      <option value="1" {% if row.show_on_site %}selected{% endif %}>Да</option>
+                    </select>
+                  </td>
+                  <td class="py-2 text-xs text-muted whitespace-nowrap">{{ row.duration_label }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <button type="button" onclick="addYookassaOfferRow()" class="px-4 py-2 rounded-xl border border-border text-text text-sm hover:bg-border/20">
+            + Добавить предложение
+          </button>
+        </div>
+        <template id="yookassaOfferRowTpl">
+          <tr class="yookassa-offer-row border-b border-border/40 align-top">
+            <td class="py-2 pr-2"><input type="text" name="offer_id" value="new_offer" required class="w-[140px] px-2 py-1.5 rounded-lg bg-bg border border-border text-xs font-mono" /></td>
+            <td class="py-2 pr-2">
+              <select name="offer_enabled" class="px-2 py-1.5 rounded-lg bg-bg border border-border text-xs"><option value="1" selected>Да</option><option value="0">Нет</option></select>
+            </td>
+            <td class="py-2 pr-2"><input type="number" name="offer_price_rub" min="0" step="1" value="990" class="w-24 px-2 py-1.5 rounded-lg bg-bg border border-border text-xs" /></td>
+            <td class="py-2 pr-2"><input type="number" name="offer_duration_minutes" min="1" step="1" value="43200" class="w-28 px-2 py-1.5 rounded-lg bg-bg border border-border text-xs" /></td>
+            <td class="py-2 pr-2">
+              <select name="offer_effective_plan" class="px-2 py-1.5 rounded-lg bg-bg border border-border text-xs">
+                <option value="start" selected>start</option><option value="pro">pro</option><option value="maxi">maxi</option>
+              </select>
+            </td>
+            <td class="py-2 pr-2"><input type="text" name="offer_label" value="" placeholder="Пусто = из тарифа" class="w-40 max-w-[200px] px-2 py-1.5 rounded-lg bg-bg border border-border text-xs" /></td>
+            <td class="py-2 pr-2">
+              <select name="offer_show_on_site" class="px-2 py-1.5 rounded-lg bg-bg border border-border text-xs"><option value="1" selected>Да</option><option value="0">Нет</option></select>
+            </td>
+            <td class="py-2 text-xs text-muted">—</td>
+          </tr>
+        </template>
+        <script>
+        function addYookassaOfferRow(){
+          var tpl = document.getElementById('yookassaOfferRowTpl');
+          var host = document.getElementById('yookassaOfferRows');
+          if (!tpl || !host) return;
+          var uid = 'offer_' + Date.now().toString(36);
+          var node = tpl.content.cloneNode(true);
+          var inp = node.querySelector('input[name="offer_id"]');
+          if (inp) { inp.value = uid; }
+          host.appendChild(node);
+        }
+        </script>
       </div>
       {% elif provider.id == 'telegram_stars' %}
       <div class="p-6 rounded-2xl border border-border bg-surface space-y-4">

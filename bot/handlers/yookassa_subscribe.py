@@ -13,10 +13,11 @@ from config import settings
 from services.payment_plans_catalog import get_effective_plans
 from services.payment_provider_settings import get_provider_settings
 from services.subscription_service import activate_subscription
+from services.yookassa_bot_offerings import get_merged_bot_offerings, offering_by_id
 
 logger = logging.getLogger(__name__)
 
-_PAYLOAD_RX = re.compile(r"^nf\|(\d+)\|(start|pro|maxi)$")
+_PAYLOAD_RX = re.compile(r"^nf\|(\d+)\|([a-z0-9_]+)$")
 
 
 class _SuccessfulPaymentFilter(filters.MessageFilter):
@@ -75,20 +76,26 @@ async def subscribe_menu_handler(update: Update, context: ContextTypes.DEFAULT_T
         )
         return
 
-    plans = await get_effective_plans()
+    offerings = await get_merged_bot_offerings()
     rows = []
-    for key in ("start", "pro", "maxi"):
-        p = plans[key]
-        rows.append(
-            [
-                InlineKeyboardButton(
-                    f"{p['name']} — {p['price']} ₽/мес",
-                    callback_data=f"tgpay_{key}",
-                )
-            ]
+    for o in offerings:
+        if not o.get("enabled"):
+            continue
+        oid = o["id"]
+        price = int(o.get("price_rub") or 0)
+        label = f"{o.get('display_name') or oid} — {price} ₽ ({o.get('duration_label') or ''})"
+        rows.append([InlineKeyboardButton(label[:200], callback_data=f"tgpay_{oid}")])
+
+    if not rows:
+        await update.message.reply_text(
+            "💳 <b>Подписка</b>\n\n"
+            "Нет доступных предложений. Администратор может включить их в разделе Оплата → ЮKassa Бот.",
+            parse_mode="HTML",
         )
+        return
+
     await update.message.reply_text(
-        "💳 <b>Подписка на 1 месяц</b>\n\nВыберите тариф — откроется оплата через ЮKassa.",
+        "💳 <b>Подписка</b>\n\nВыберите предложение — откроется счёт ЮKassa.",
         reply_markup=InlineKeyboardMarkup(rows),
         parse_mode="HTML",
     )
@@ -99,10 +106,10 @@ async def tgpay_plan_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     if not q:
         return
     await q.answer()
-    m = re.match(r"^tgpay_(start|pro|maxi)$", q.data or "")
+    m = re.match(r"^tgpay_([a-z0-9_]+)$", q.data or "", re.I)
     if not m:
         return
-    plan = m.group(1)
+    offering_id = m.group(1).lower()
     tg = update.effective_user
     if not tg:
         return
@@ -119,32 +126,38 @@ async def tgpay_plan_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         await q.message.reply_text("Оплата в боте не настроена. Откройте сайт в разделе подписок.")
         return
 
-    plans = await get_effective_plans()
-    meta = plans[plan]
-    price_rub = float(meta["price"])
-    uid = int(user.get("primary_user_id") or user["id"])
-    # Telegram для RUB: сумма в копейках (см. currencies.json)
-    amount_kop = int(round(price_rub * 100))
-    if amount_kop <= 0:
-        await q.message.reply_text("Цена тарифа не настроена.")
+    offerings = await get_merged_bot_offerings()
+    off = offering_by_id(offerings, offering_id)
+    if not off or not off.get("enabled"):
+        await q.message.reply_text("Это предложение недоступно. Запросите меню снова.")
         return
 
-    payload = f"nf|{uid}|{plan}"
+    price_rub = float(off.get("price_rub") or 0)
+    uid = int(user.get("primary_user_id") or user["id"])
+    amount_kop = int(round(price_rub * 100))
+    if amount_kop <= 0:
+        await q.message.reply_text("Цена не настроена для этого предложения.")
+        return
+
+    payload = f"nf|{uid}|{offering_id}"
     provider_token = (st.get("provider_token") or "").strip()
+    title = (off.get("display_name") or offering_id)[:32]
+    dur_h = off.get("duration_label") or ""
+    desc = f"NEUROFUNGI AI — {dur_h}"[:255]
 
     try:
         await context.bot.send_invoice(
             chat_id=update.effective_chat.id,
-            title=f"«{meta['name']}» — 1 мес.",
-            description="Подписка NEUROFUNGI AI на 1 месяц",
+            title=title[:128],
+            description=desc,
             payload=payload,
             provider_token=provider_token,
             currency="RUB",
-            prices=[LabeledPrice(f"Тариф {plan}", amount_kop)],
-            start_parameter=f"sub_{plan}_{uid}",
+            prices=[LabeledPrice(title[:64], amount_kop)],
+            start_parameter=f"sub_{offering_id}_{uid}"[:32],
         )
     except Exception:
-        logger.exception("send_invoice failed uid=%s plan=%s", uid, plan)
+        logger.exception("send_invoice failed uid=%s offering=%s", uid, offering_id)
         await q.message.reply_text("Не удалось выставить счёт. Попробуйте позже или оплатите на сайте.")
 
 
@@ -158,7 +171,7 @@ async def pre_checkout_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         await q.answer(ok=False, error_message="Некорректный счёт.")
         return
     uid_payload = int(mm.group(1))
-    plan = mm.group(2)
+    offering_id = mm.group(2).lower()
     tg = update.effective_user
     if not tg:
         await q.answer(ok=False, error_message="Нет пользователя.")
@@ -172,8 +185,13 @@ async def pre_checkout_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         await q.answer(ok=False, error_message="Счёт выписан на другой аккаунт.")
         return
 
-    plans = await get_effective_plans()
-    price_rub = float((plans.get(plan) or {}).get("price") or 0)
+    offerings = await get_merged_bot_offerings()
+    off = offering_by_id(offerings, offering_id)
+    if not off or not off.get("enabled"):
+        await q.answer(ok=False, error_message="Предложение недоступно. Запросите счёт снова.")
+        return
+
+    price_rub = float(off.get("price_rub") or 0)
     expected_kop = int(round(price_rub * 100))
     if expected_kop <= 0 or q.total_amount != expected_kop:
         await q.answer(ok=False, error_message="Сумма не совпадает с тарифом. Запросите счёт снова.")
@@ -193,27 +211,45 @@ async def successful_payment_handler(update: Update, context: ContextTypes.DEFAU
         await msg.reply_text("Не удалось распознать оплату. Напишите в поддержку.")
         return
     uid = int(mm.group(1))
-    plan = mm.group(2)
+    offering_id = mm.group(2).lower()
 
-    plans = await get_effective_plans()
-    price_rub = float((plans.get(plan) or {}).get("price") or 0)
-    expected_kop = int(round(price_rub * 100))
-    if expected_kop <= 0 or sp.total_amount != expected_kop:
-        logger.warning(
-            "successful_payment amount mismatch uid=%s plan=%s got=%s want=%s",
-            uid,
-            plan,
-            sp.total_amount,
-            expected_kop,
-        )
-        await msg.reply_text("Сумма платежа не совпала с тарифом. Обратитесь в поддержку.")
+    offerings = await get_merged_bot_offerings()
+    off = offering_by_id(offerings, offering_id)
+    if not off or not off.get("enabled"):
+        await msg.reply_text("Предложение устарело. Обратитесь в поддержку.")
         return
 
-    ok = await activate_subscription(uid, plan, months=1)
+    eff = str(off.get("effective_plan") or "start").lower()
+    price_rub = float(off.get("price_rub") or 0)
+    expected_kop = int(round(price_rub * 100))
+    try:
+        dm = int(off.get("duration_minutes") or 0)
+    except (TypeError, ValueError):
+        dm = 0
+
+    if expected_kop <= 0 or sp.total_amount != expected_kop or dm <= 0:
+        logger.warning(
+            "successful_payment mismatch uid=%s off=%s got=%s want=%s dm=%s",
+            uid,
+            offering_id,
+            sp.total_amount,
+            expected_kop,
+            dm,
+        )
+        await msg.reply_text("Сумма или срок не совпали с предложением. Обратитесь в поддержку.")
+        return
+
+    ok = await activate_subscription(
+        uid,
+        eff,
+        months=1,
+        duration_minutes=dm,
+        paid_price_rub=price_rub,
+    )
     if ok:
-        pname = (plans.get(plan) or {}).get("name") or plan
+        pname = off.get("display_name") or eff
         await msg.reply_text(
-            f"✅ Оплата получена.\n\nТариф «{pname}» активен на 1 месяц. "
+            f"✅ Оплата получена.\n\n«{pname}» активно ({off.get('duration_label') or ''}). "
             f"Управление: {(settings.SITE_URL or '').rstrip('/')}/subscriptions"
         )
     else:

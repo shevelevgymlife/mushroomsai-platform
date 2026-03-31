@@ -23,6 +23,11 @@ from services.payment_provider_settings import (
     merge_secrets,
     save_provider_settings,
 )
+from services.yookassa_bot_offerings import (
+    get_merged_bot_offerings,
+    normalize_offerings_list,
+    parse_offerings_post,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -124,6 +129,14 @@ async def admin_payment_provider_page(request: Request, provider_id: str):
         if meta["id"] == "yookassa_bot"
         else f"/admin/payment/{provider_id.strip().replace(' ', '')}"
     )
+    bot_offerings: list = []
+    if meta["id"] == "yookassa_bot":
+        try:
+            bot_offerings = await get_merged_bot_offerings()
+        except Exception:
+            logger.exception("get_merged_bot_offerings failed")
+            bot_offerings = []
+
     return templates.TemplateResponse(
         "dashboard/admin_payment_provider.html",
         {
@@ -138,6 +151,7 @@ async def admin_payment_provider_page(request: Request, provider_id: str):
             "cloudpayments_webhook_url": webhook_url if meta["id"] == "cloudpayments" else "",
             "yookassa_http_webhook_url": yk_wh if meta["id"] == "yookassa_bot" else "",
             "form_action": form_action,
+            "bot_offerings": bot_offerings if meta["id"] == "yookassa_bot" else [],
         },
     )
 
@@ -179,6 +193,12 @@ async def admin_payment_provider_save(request: Request, provider_id: str):
         new_st["shop_id"] = (form.get("shop_id") or "").strip()
         new_st["secret_key"] = (form.get("secret_key") or "").strip()
         new_st["instructions"] = (form.get("instructions") or "").strip()
+        try:
+            post_rows = parse_offerings_post(form)
+            plans_eff = await get_effective_plans()
+            new_st["offerings"] = normalize_offerings_list(post_rows, plans_eff)
+        except Exception:
+            logger.exception("yookassa_bot offerings parse failed")
         secrets = ("bot_token", "provider_token", "secret_key")
     elif pid == "telegram_stars":
         new_st["enabled"] = str(form.get("enabled") or "").strip().lower() in ("1", "true", "on", "yes")

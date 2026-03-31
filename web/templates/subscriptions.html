@@ -50,6 +50,22 @@
       <span class="text-muted text-sm text-center max-w-md">Пробный доступ как у подписки «Старт» — один раз на аккаунт.</span>
     </div>
     {% endif %}
+    {% if yookassa_site_offerings is defined and yookassa_site_offerings|length > 0 %}
+    <div class="max-w-7xl mx-auto mb-10 p-5 rounded-2xl border border-cyan-500/20 bg-surface/50">
+      <h2 class="text-lg font-semibold text-text mb-2">Предложения в Telegram-боте</h2>
+      <p class="text-sm text-muted mb-4">Настраиваются в админке → Оплата → ЮKassa Бот. Оплата — в боте (кнопка «Подписка» или /subscribe).</p>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% for o in yookassa_site_offerings %}
+        <div class="p-4 rounded-xl border border-border bg-bg/40 flex flex-col gap-2">
+          <div class="text-sm font-semibold text-gold">{{ o.display_name }}</div>
+          <div class="text-xs text-muted">Уровень: {{ o.effective_plan }} · {{ o.duration_label }}</div>
+          <div class="text-lg text-text font-light">{{ o.price_rub }} <span class="text-sm text-muted">₽</span></div>
+          <a href="https://t.me/neuro_fungi_bot" target="_blank" rel="noopener noreferrer" class="mt-auto inline-flex justify-center px-3 py-2 rounded-xl text-xs font-semibold bg-gold/15 border border-gold/30 text-gold hover:bg-gold/25 no-underline">Открыть бота</a>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
     <div class="max-w-3xl mx-auto mb-10 p-5 rounded-2xl border border-gold/25 bg-surface/60">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

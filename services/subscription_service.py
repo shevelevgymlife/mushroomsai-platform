@@ -198,6 +198,8 @@ async def activate_subscription(
     plan: str,
     months: int = 1,
     *,
+    duration_minutes: int | None = None,
+    paid_price_rub: float | None = None,
     skip_event_log: bool = False,
     credit_referrer_bonus: bool = True,
     skip_user_notify: bool = False,
@@ -207,15 +209,36 @@ async def activate_subscription(
 
     eff = await get_effective_plans()
     now = datetime.utcnow()
-    end_date = now + timedelta(days=30 * months)
-    price = float(eff[plan]["price"]) * months
+    use_duration = False
+    delta_minutes: int | None = None
+    if duration_minutes is not None:
+        try:
+            delta_minutes = int(duration_minutes)
+        except (TypeError, ValueError):
+            delta_minutes = None
+        if delta_minutes is not None and delta_minutes > 0:
+            use_duration = True
+
+    if use_duration and delta_minutes is not None:
+        delta = timedelta(minutes=delta_minutes)
+        end_date = now + delta
+        base_price = float(eff[plan]["price"])
+        price = float(paid_price_rub) if paid_price_rub is not None else base_price
+    else:
+        end_date = now + timedelta(days=30 * months)
+        price = float(eff[plan]["price"]) * months
+
     row = await database.fetch_one(users.select().where(users.c.id == int(user_id)))
     if row:
         cur_plan = (row.get("subscription_plan") or "free").lower()
         cur_end = row.get("subscription_end")
-        # Если пользователь продлевает тот же активный тариф, добавляем месяц к текущему остатку.
-        if cur_plan == plan and cur_end and cur_end > now:
-            end_date = cur_end + timedelta(days=30 * months)
+        if use_duration and delta_minutes is not None:
+            if cur_plan == plan and cur_end and cur_end > now:
+                end_date = cur_end + timedelta(minutes=delta_minutes)
+        else:
+            # Если пользователь продлевает тот же активный тариф, добавляем месяц к текущему остатку.
+            if cur_plan == plan and cur_end and cur_end > now:
+                end_date = cur_end + timedelta(days=30 * months)
 
     await database.execute(
         subscriptions.insert().values(
