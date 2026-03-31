@@ -48,8 +48,8 @@ async def shop_urls_for_user(internal_user_id: int) -> tuple[str, str]:
     Ссылки магазинов для пользователя: (РФ/РБ Telegram, Европа/Америка Grimmurk).
     Реферал от обычного пользователя с referral_shop_url → РФ — URL амбассадора; иначе стандартные.
     Учитывается primary_user_id (как в веб-сессии).
-    Если у пользователя сохранён партнёрский магазин, но нет активной Старт+ — всегда
-    платформенные URL (как у админа): AI, кнопка «Магазин», до возобновления подписки.
+    Если у пользователя сохранена своя партнёрская ссылка (referral_shop_partner_self), но нет Старт+ —
+    платформенные URL до возобновления подписки. Приглашённые без своей ссылки смотрят referred_by.
     """
     eu = SHOP_EU_US_URL
     row = await database.fetch_one(users.select().where(users.c.id == int(internal_user_id)))
@@ -60,7 +60,8 @@ async def shop_urls_for_user(internal_user_id: int) -> tuple[str, str]:
         row = await database.fetch_one(users.select().where(users.c.id == uid))
     if not row:
         return SHOP_RUS_URL, eu
-    if (row.get("referral_shop_url") or "").strip():
+    # Только партнёры с сохранённой своей ссылкой; иначе смотрим referred_by (приглашённый по рефке амбассадора).
+    if (row.get("referral_shop_url") or "").strip() and bool(row.get("referral_shop_partner_self")):
         from services.subscription_service import paid_subscription_for_referral_program
 
         if not await paid_subscription_for_referral_program(uid):
@@ -88,7 +89,7 @@ async def attach_referral_shop_context(u: dict) -> None:
         u["show_marketplace_nav"] = True
         u["referrer_external_shop_url"] = None
         return
-    if (row.get("referral_shop_url") or "").strip():
+    if (row.get("referral_shop_url") or "").strip() and bool(row.get("referral_shop_partner_self")):
         from services.subscription_service import paid_subscription_for_referral_program
 
         if not await paid_subscription_for_referral_program(uid):
@@ -129,7 +130,7 @@ async def external_buy_url_for_user(user: dict | None) -> Optional[str]:
     row = await database.fetch_one(users.select().where(users.c.id == uid))
     if not row:
         return None
-    if (row.get("referral_shop_url") or "").strip():
+    if (row.get("referral_shop_url") or "").strip() and bool(row.get("referral_shop_partner_self")):
         from services.subscription_service import paid_subscription_for_referral_program
 
         if not await paid_subscription_for_referral_program(uid):
@@ -160,7 +161,7 @@ async def tg_shop_button_label(internal_user_id: int) -> str:
         row = await database.fetch_one(users.select().where(users.c.id == uid))
     if not row:
         return TG_BTN_SHOP_MARKETPLACE
-    if (row.get("referral_shop_url") or "").strip():
+    if (row.get("referral_shop_url") or "").strip() and bool(row.get("referral_shop_partner_self")):
         from services.subscription_service import paid_subscription_for_referral_program
 
         if not await paid_subscription_for_referral_program(uid):

@@ -64,6 +64,20 @@ from db.models import (
 
 logger = logging.getLogger(__name__)
 
+
+def _role_is_staff(role: str | None) -> bool:
+    return (role or "user").lower() in ("admin", "moderator")
+
+
+async def _referred_by_points_to_staff(referred_by_id: int | None) -> bool:
+    if referred_by_id is None:
+        return False
+    r = await database.fetch_one(users.select().where(users.c.id == int(referred_by_id)))
+    if not r:
+        return False
+    return _role_is_staff(r.get("role"))
+
+
 router = APIRouter(prefix="/account")
 templates = Jinja2Templates(directory="web/templates")
 
@@ -364,8 +378,14 @@ async def merge_accounts(primary_id: int, secondary_id: int):
             updates["legal_docs_version"] = secondary.get("legal_docs_version")
 
     # Рефералка / амбассадорский магазин: не терять при слиянии (часто primary=Google, secondary=Telegram).
-    if not primary.get("referred_by") and secondary.get("referred_by"):
-        updates["referred_by"] = int(secondary["referred_by"])
+    # Google-аккаунт мог получить referred_by на staff/платформу; Telegram — на амбассадора. Берём смысл с Telegram.
+    if secondary.get("referred_by"):
+        srb = int(secondary["referred_by"])
+        prb = primary.get("referred_by")
+        if not prb:
+            updates["referred_by"] = srb
+        elif await _referred_by_points_to_staff(int(prb)) and not await _referred_by_points_to_staff(srb):
+            updates["referred_by"] = srb
     if not (primary.get("referral_shop_url") or "").strip() and (secondary.get("referral_shop_url") or "").strip():
         updates["referral_shop_url"] = (secondary.get("referral_shop_url") or "").strip()
         if secondary.get("referral_shop_partner_self"):
