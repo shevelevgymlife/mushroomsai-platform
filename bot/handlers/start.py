@@ -170,6 +170,14 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             from services.referral_service import process_referral
             await process_referral(user["id"], ref_code)
 
+    # Прямой вход t.me/bot без ?start= — закрепление за платформенным аккаунтом (как стандартная реф. ссылка)
+    try:
+        from services.referral_service import apply_default_referrer_if_absent
+
+        await apply_default_referrer_if_absent(int(user["id"]))
+    except Exception:
+        pass
+
     site_url = settings.SITE_URL
 
     welcome_text = (

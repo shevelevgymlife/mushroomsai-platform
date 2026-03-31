@@ -304,6 +304,10 @@ async def finalize_web_referral(request, response, user_id: int) -> None:
     await apply_pending_web_invite(request, user_id)
     clear_invite_cookie(response)
     await apply_promo_token_from_cookie(request, response, user_id)
+    try:
+        await apply_default_referrer_if_absent(int(user_id))
+    except Exception:
+        logger.debug("apply_default_referrer_if_absent after web login failed", exc_info=True)
 
 
 async def apply_referral_bonus(referral_id: int):
@@ -343,6 +347,34 @@ async def default_admin_referral_code() -> str:
     if not uid:
         return ""
     return await ensure_user_referral_code(int(uid))
+
+
+async def apply_default_referrer_if_absent(user_id: int) -> bool:
+    """
+    Прямой вход без реферального кода (t.me/bot, сайт без ?ref=): закрепить за платформенным
+    аккаунтом — тот же код, что в default_admin_referral_code(). Тогда рефереру (админу)
+    приходят уведомления о регистрации, пробном и платных подписках.
+    """
+    row = await database.fetch_one(users.select().where(users.c.id == int(user_id)))
+    if not row:
+        return False
+    uid = int(row.get("primary_user_id") or row["id"])
+    if uid != int(user_id):
+        row = await database.fetch_one(users.select().where(users.c.id == uid))
+    if not row:
+        return False
+    role = (row.get("role") or "user").lower()
+    if role in ("admin", "moderator"):
+        return False
+    admin_uid = await resolve_default_admin_referral_user_id()
+    if not admin_uid or int(admin_uid) == uid:
+        return False
+    if row.get("referred_by"):
+        return False
+    code = await default_admin_referral_code()
+    if not code:
+        return False
+    return await process_referral(uid, code)
 
 
 async def invite_referral_code_for_sharing(user_id: int) -> str:
