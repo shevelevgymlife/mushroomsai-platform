@@ -119,19 +119,13 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     if not context.user_data.get("tg_ai_mode"):
-        if context.user_data.get("tg_ai_offline_hint_shown"):
-            return
-        # Только после /start (там сбрасывают в False); без ключа — не спамим после обновления бота
-        if "tg_ai_offline_hint_shown" not in context.user_data:
-            return
-        context.user_data["tg_ai_offline_hint_shown"] = True
-        kb = await _standard_reply_kb(update, site, False)
+        ask_ai_inline = InlineKeyboardMarkup(
+            [[InlineKeyboardButton("🤖 Задать вопрос AI", callback_data="tg_shop_ask_ai")]]
+        )
         await update.message.reply_text(
-            "💬 <b>Нейросеть не подключена.</b>\n\n"
-            "Чтобы задать вопрос AI, нажмите кнопку «🤖 Задать вопрос AI» внизу экрана.\n\n"
-            "Обычные сообщения в этот чат не отправляются в нейросеть.",
+            "Нажмите кнопку ниже и задайте вопрос AI.",
             parse_mode="HTML",
-            reply_markup=kb,
+            reply_markup=ask_ai_inline,
         )
         return
 
