@@ -3,7 +3,7 @@ import os
 import uuid
 from datetime import date, datetime, timedelta
 from typing import Optional
-from fastapi import APIRouter, Request, Form, UploadFile, File, Query
+from fastapi import APIRouter, Request, Form, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from web.templates_utils import Jinja2Templates
 from auth.session import get_user_from_request
@@ -2062,6 +2062,56 @@ async def send_dm(request: Request, recipient_id: int):
     return JSONResponse({"ok": True, "id": msg_id})
 
 
+def _parse_inbox_after_id(raw: Optional[str]) -> int:
+    try:
+        v = int((raw or "0").strip() or "0")
+        return max(0, v)
+    except (ValueError, TypeError):
+        return 0
+
+
+@router.get("/community/messages/inbox-toast")
+async def inbox_dm_toast(request: Request):
+    """Для онлайн-получателя: один «тост» о новом непрочитанном ЛС (клиент шлёт after_id из sessionStorage)."""
+    aid = _parse_inbox_after_id(request.query_params.get("after_id"))
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"toast": None})
+    uid = user.get("primary_user_id") or user["id"]
+    try:
+        row = await database.fetch_one(
+            sa.text(
+                """
+                SELECT dm.id, dm.sender_id, dm.text, u.name
+                FROM direct_messages dm
+                JOIN users u ON u.id = dm.sender_id
+                WHERE dm.recipient_id = :uid AND dm.is_system = false AND dm.is_read = false
+                ORDER BY dm.id DESC
+                LIMIT 1
+                """
+            ),
+            {"uid": uid},
+        )
+    except Exception:
+        return JSONResponse({"toast": None})
+    if not row:
+        return JSONResponse({"toast": None})
+    mid = int(row["id"] or 0)
+    if mid <= aid:
+        return JSONResponse({"toast": None})
+    return JSONResponse(
+        {
+            "toast": {
+                "id": mid,
+                "sender_id": int(row["sender_id"] or 0),
+                "name": (row.get("name") or "Участник"),
+                "snippet": ((row.get("text") or "")[:160]),
+                "url": f"/messages/{int(row['sender_id'] or 0)}",
+            }
+        }
+    )
+
+
 @router.get("/community/messages/{other_id}")
 async def get_dm_thread(request: Request, other_id: int):
     user = await require_auth(request)
@@ -2151,56 +2201,6 @@ async def get_conversations(request: Request):
             "last_at": last_at,
         })
     return JSONResponse({"conversations": convos})
-
-
-def _parse_inbox_after_id(raw: Optional[str]) -> int:
-    try:
-        v = int((raw or "0").strip() or "0")
-        return max(0, v)
-    except (ValueError, TypeError):
-        return 0
-
-
-@router.get("/community/messages/inbox-toast")
-async def inbox_dm_toast(request: Request, after_id: str = Query("0")):
-    """Для онлайн-получателя: один «тост» о новом непрочитанном ЛС (клиент шлёт after_id из sessionStorage)."""
-    aid = _parse_inbox_after_id(after_id)
-    user = await require_auth(request)
-    if not user:
-        return JSONResponse({"toast": None})
-    uid = user.get("primary_user_id") or user["id"]
-    try:
-        row = await database.fetch_one(
-            sa.text(
-                """
-                SELECT dm.id, dm.sender_id, dm.text, u.name
-                FROM direct_messages dm
-                JOIN users u ON u.id = dm.sender_id
-                WHERE dm.recipient_id = :uid AND dm.is_system = false AND dm.is_read = false
-                ORDER BY dm.id DESC
-                LIMIT 1
-                """
-            ),
-            {"uid": uid},
-        )
-    except Exception:
-        return JSONResponse({"toast": None})
-    if not row:
-        return JSONResponse({"toast": None})
-    mid = int(row["id"] or 0)
-    if mid <= aid:
-        return JSONResponse({"toast": None})
-    return JSONResponse(
-        {
-            "toast": {
-                "id": mid,
-                "sender_id": int(row["sender_id"] or 0),
-                "name": (row.get("name") or "Участник"),
-                "snippet": ((row.get("text") or "")[:160]),
-                "url": f"/messages/{int(row['sender_id'] or 0)}",
-            }
-        }
-    )
 
 
 @router.delete("/community/comment/{comment_id}")
