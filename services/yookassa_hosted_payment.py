@@ -28,23 +28,23 @@ async def create_yookassa_redirect_payment(
     return_url: str,
     metadata: dict[str, str],
     customer_email: str | None = None,
-) -> tuple[str | None, str | None]:
+) -> tuple[str | None, str | None, str | None]:
     """
     Создаёт платёж с confirmation.type=redirect.
-    Возвращает (confirmation_url, error_message).
+    Возвращает (confirmation_url, error_message, payment_id).
     """
     sid = (shop_id or "").strip()
     sec = (secret_key or "").strip()
     if not sid or not sec:
-        return None, "no_shop_credentials"
+        return None, "no_shop_credentials", None
 
     try:
         val = Decimal(str(amount_rub)).quantize(Decimal("0.01"))
         if val <= 0:
-            return None, "bad_amount"
+            return None, "bad_amount", None
         value_str = format(val, "f")
     except Exception:
-        return None, "bad_amount"
+        return None, "bad_amount", None
 
     auth = base64.b64encode(f"{sid}:{sec}".encode()).decode("ascii")
     idempotence_key = str(uuid.uuid4())
@@ -91,7 +91,7 @@ async def create_yookassa_redirect_payment(
             )
     except Exception as e:
         logger.exception("yookassa create payment request failed: %s", e)
-        return None, "request_failed"
+        return None, "request_failed", None
 
     if r.status_code not in (200, 201):
         err_tag = f"http_{r.status_code}"
@@ -112,17 +112,18 @@ async def create_yookassa_redirect_payment(
                 logger.warning("yookassa create payment HTTP %s: %s", r.status_code, r.text[:800])
         except Exception:
             logger.warning("yookassa create payment HTTP %s: %s", r.status_code, r.text[:800])
-        return None, err_tag
+        return None, err_tag, None
 
     try:
         data = r.json()
     except Exception:
-        return None, "bad_json"
+        return None, "bad_json", None
 
+    pay_id = (data.get("id") or "").strip() or None
     conf = data.get("confirmation") or {}
     url = (conf.get("confirmation_url") or "").strip()
     if not url:
         logger.warning("yookassa create payment no confirmation_url: %s", data)
-        return None, "no_confirmation_url"
+        return None, "no_confirmation_url", pay_id
 
-    return url, None
+    return url, None, pay_id

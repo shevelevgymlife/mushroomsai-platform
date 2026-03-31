@@ -34,6 +34,7 @@ from services.yookassa_bot_offerings import (
 )
 from services.yookassa_credentials import resolve_yookassa_shop_credentials
 from services.yookassa_hosted_payment import create_yookassa_redirect_payment
+from services.yookassa_pay_service import apply_yookassa_payment_succeeded, fetch_yookassa_payment
 from services.subscription_service import (
     activate_subscription,
     check_subscription,
@@ -76,6 +77,9 @@ from decimal import Decimal
 from config import settings
 
 _logger = logging.getLogger(__name__)
+
+# После оплаты на ЮKassa: если вебхук не пришёл, активируем подписку по возврату на сайт (см. subscriptions_page).
+_YK_PENDING_CHECKOUT_COOKIE = "yk_pending_checkout"
 
 router = APIRouter()
 templates = Jinja2Templates(directory="web/templates")
@@ -197,7 +201,8 @@ async def subscriptions_page(request: Request):
     except Exception:
         yookassa_site_offerings = []
         offering_id_by_plan = {"start": None, "pro": None, "maxi": None}
-    return templates.TemplateResponse(
+
+    response = templates.TemplateResponse(
         "subscriptions.html",
         {
             "request": request,
@@ -213,6 +218,30 @@ async def subscriptions_page(request: Request):
             "offering_id_by_plan": offering_id_by_plan,
         },
     )
+
+    # Возврат с ЮKassa: вебхук мог не дойти (новый магазин, URL в ЛК). Достаём payment_id из cookie и активируем по API.
+    if user and request.query_params.get("paid") == "1":
+        pid = (request.cookies.get(_YK_PENDING_CHECKOUT_COOKIE) or "").strip()
+        if pid:
+            yb = await get_provider_settings("yookassa_bot")
+            shop_id, sec_key = resolve_yookassa_shop_credentials(yb)
+            if shop_id and sec_key:
+                pay = await fetch_yookassa_payment(shop_id, sec_key, pid)
+                if pay:
+                    stp = (pay.get("status") or "").strip().lower()
+                    if stp == "succeeded":
+                        ok, msg = await apply_yookassa_payment_succeeded(pay)
+                        if ok or msg == "duplicate":
+                            _logger.info("yookassa paid=1 fallback ok payment_id=%s msg=%s", pid, msg)
+                        else:
+                            _logger.warning("yookassa paid=1 fallback payment_id=%s msg=%s", pid, msg)
+                        response.delete_cookie(_YK_PENDING_CHECKOUT_COOKIE, path="/")
+                    elif stp in ("canceled", "cancelled", "rejected"):
+                        response.delete_cookie(_YK_PENDING_CHECKOUT_COOKIE, path="/")
+                else:
+                    pass  # сеть/ключи — cookie оставляем, пользователь может обновить страницу
+
+    return response
 
 
 @router.get("/pay/subscription")
@@ -251,7 +280,7 @@ async def pay_subscription_yookassa(request: Request, offering_id: str = ""):
     desc = f"Подписка «{disp}» {dur}".strip()[:128]
     cust_email = (user.get("email") or "").strip() or None
     shop_id, sec_key = resolve_yookassa_shop_credentials(yb)
-    url, err = await create_yookassa_redirect_payment(
+    url, err, payment_id = await create_yookassa_redirect_payment(
         shop_id=shop_id,
         secret_key=sec_key,
         amount_rub=price,
@@ -266,7 +295,18 @@ async def pay_subscription_yookassa(request: Request, offering_id: str = ""):
     if not url:
         _logger.warning("yookassa create redirect failed: %s", err)
         return RedirectResponse("/subscriptions?pay_error=create", status_code=302)
-    return RedirectResponse(url, status_code=302)
+    out = RedirectResponse(url, status_code=302)
+    if payment_id:
+        out.set_cookie(
+            _YK_PENDING_CHECKOUT_COOKIE,
+            payment_id,
+            max_age=3600,
+            httponly=True,
+            samesite="lax",
+            secure=(settings.SITE_URL or "").lower().startswith("https"),
+            path="/",
+        )
+    return out
 
 
 @router.post("/subscriptions/connect")

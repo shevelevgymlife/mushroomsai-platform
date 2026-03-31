@@ -85,7 +85,12 @@ async def apply_yookassa_payment_succeeded(payment: dict[str, Any]) -> tuple[boo
     plan = (meta.get("plan") or "").strip().lower()
     offering_id = (meta.get("offering_id") or meta.get("offeringId") or "").strip().lower()
     if uid_raw is None or uid_raw == "":
-        # Платёж из Telegram часто без metadata в ЛК ЮKassa — активация идёт через successful_payment в боте.
+        # Платёж из Telegram часто без metadata — активация через successful_payment в боте.
+        # Оплата с сайта без user_id в metadata — проверьте create payment; вебхук не сможет выдать тариф.
+        logger.warning(
+            "yookassa payment %s succeeded but metadata has no user_id — activation skipped",
+            pid,
+        )
         return True, "ignored_no_metadata"
     try:
         uid = int(uid_raw)
