@@ -2,6 +2,7 @@ import asyncio
 from typing import Any, List, Optional
 import sqlalchemy
 from sqlalchemy import text
+from sqlalchemy.sql import dml
 from config import settings
 
 def _sync_url(url: str) -> str:
@@ -58,12 +59,16 @@ class AsyncDatabase:
         def _run():
             with get_engine().begin() as conn:
                 result = conn.execute(query, params) if params is not None else conn.execute(query)
+                is_insert = isinstance(query, dml.Insert)
                 try:
                     pk = result.inserted_primary_key
-                    if pk is not None:
-                        return pk[0] if pk else None
+                    if pk is not None and len(pk) > 0:
+                        return pk[0]
                 except Exception:
                     pass
+                # INSERT без PK: rowcount часто 1 — нельзя путать с id строки (ломало создание пользователей).
+                if is_insert:
+                    return None
                 return result.rowcount
         return await asyncio.to_thread(_run)
 

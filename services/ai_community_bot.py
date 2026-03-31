@@ -92,6 +92,22 @@ async def _ensure_bot_settings_row_exists() -> None:
         logger.warning("ai_community_bot: cannot ensure settings row: %s", e)
 
 
+async def _persist_ai_community_bot_user_id(uid: int) -> None:
+    """Надёжно пишет user_id в строку настроек (UPSERT), чтобы не зависеть от пустой строки после INSERT."""
+    await apply_ai_community_bot_schema_if_needed()
+    await _ensure_bot_settings_row_exists()
+    await database.execute(
+        sa.text(
+            """
+            INSERT INTO ai_community_bot_settings (id, user_id, updated_at)
+            VALUES (1, :uid, NOW())
+            ON CONFLICT (id) DO UPDATE SET user_id = EXCLUDED.user_id, updated_at = NOW()
+            """
+        ),
+        {"uid": uid},
+    )
+
+
 async def ensure_ai_community_bot_user() -> Optional[int]:
     """Создаёт или привязывает пользователя NeuroFungi AI для сообщества."""
     await apply_ai_community_bot_schema_if_needed()
@@ -101,26 +117,26 @@ async def ensure_ai_community_bot_user() -> Optional[int]:
         u = await database.fetch_one(users.select().where(users.c.id == int(row["user_id"])))
         if u:
             return int(u["id"])
+        try:
+            await database.execute(
+                sa.text(
+                    "UPDATE ai_community_bot_settings SET user_id = NULL, updated_at = NOW() WHERE id = 1"
+                )
+            )
+        except Exception as e:
+            logger.warning("ai_community_bot: clear stale user_id: %s", e)
 
     nid = int(getattr(settings, "NEUROFUNGI_AI_USER_ID", 0) or 0)
     if nid > 0:
         u = await database.fetch_one(users.select().where(users.c.id == nid))
         if u:
-            await database.execute(
-                ai_community_bot_settings.update()
-                .where(ai_community_bot_settings.c.id == 1)
-                .values(user_id=int(nid), updated_at=datetime.utcnow())
-            )
+            await _persist_ai_community_bot_user_id(int(nid))
             return int(nid)
 
     existing = await database.fetch_one(users.select().where(users.c.email == _BOT_EMAIL))
     if existing:
         uid = int(existing["id"])
-        await database.execute(
-            ai_community_bot_settings.update()
-            .where(ai_community_bot_settings.c.id == 1)
-            .values(user_id=uid, updated_at=datetime.utcnow())
-        )
+        await _persist_ai_community_bot_user_id(uid)
         return uid
 
     uid: Optional[int] = None
@@ -128,7 +144,7 @@ async def ensure_ai_community_bot_user() -> Optional[int]:
         referral_code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
         pw = secrets.token_urlsafe(24)
         try:
-            new_id = await database.execute(
+            await database.execute(
                 users.insert().values(
                     email=_BOT_EMAIL,
                     password_hash=hash_password(pw),
@@ -140,9 +156,6 @@ async def ensure_ai_community_bot_user() -> Optional[int]:
                     needs_tariff_choice=False,
                 )
             )
-            if new_id is not None:
-                uid = int(new_id)
-                break
             row_ins = await database.fetch_one(users.select().where(users.c.email == _BOT_EMAIL))
             if row_ins:
                 uid = int(row_ins["id"])
@@ -161,11 +174,7 @@ async def ensure_ai_community_bot_user() -> Optional[int]:
     if not uid:
         logger.error("ai_community_bot: INSERT users could not get new id after retries")
         return None
-    await database.execute(
-        ai_community_bot_settings.update()
-        .where(ai_community_bot_settings.c.id == 1)
-        .values(user_id=uid, updated_at=datetime.utcnow())
-    )
+    await _persist_ai_community_bot_user_id(uid)
     logger.info("ai_community_bot: created system user id=%s", uid)
     return uid
 

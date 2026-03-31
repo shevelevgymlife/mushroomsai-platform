@@ -254,7 +254,7 @@ async def telegram_auth(request: Request):
         await database.execute(users.update().where(users.c.id == user_id).values(**vals))
     else:
         ref_code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
-        user_id = await database.execute(
+        await database.execute(
             users.insert().values(
                 tg_id=tg_id,
                 linked_tg_id=tg_id,
@@ -263,6 +263,14 @@ async def telegram_auth(request: Request):
                 referral_code=ref_code,
             )
         )
+        row_new = await database.fetch_one(
+            users.select().where(
+                (users.c.tg_id == tg_id) | (users.c.linked_tg_id == tg_id)
+            )
+        )
+        if not row_new:
+            return RedirectResponse("/login?err=create", status_code=302)
+        user_id = row_new.get("primary_user_id") or row_new["id"]
 
     token = create_access_token(user_id)
     dest = await post_login_redirect_path(request, int(user_id))
@@ -313,7 +321,7 @@ async def telegram_miniapp_auth(request: Request):
             await database.execute(users.update().where(users.c.id == user_id).values(**vals))
         else:
             ref_code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
-            user_id = await database.execute(
+            await database.execute(
                 users.insert().values(
                     tg_id=tg_id,
                     linked_tg_id=tg_id,
@@ -322,6 +330,14 @@ async def telegram_miniapp_auth(request: Request):
                     referral_code=ref_code,
                 )
             )
+            row_new = await database.fetch_one(
+                users.select().where(
+                    (users.c.tg_id == tg_id) | (users.c.linked_tg_id == tg_id)
+                )
+            )
+            if not row_new:
+                return JSONResponse({"error": "Не удалось создать пользователя"}, status_code=500)
+            user_id = row_new.get("primary_user_id") or row_new["id"]
 
         token = create_access_token(user_id)
         request.session.pop("login_next", None)
@@ -440,7 +456,7 @@ async def google_callback(request: Request):
             await database.execute(users.update().where(users.c.id == user_id).values(**vals))
         else:
             ref_code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
-            user_id = await database.execute(
+            await database.execute(
                 users.insert().values(
                     google_id=google_id,
                     linked_google_id=google_id,
@@ -450,6 +466,14 @@ async def google_callback(request: Request):
                     referral_code=ref_code,
                 )
             )
+            row_new = await database.fetch_one(
+                users.select().where(
+                    (users.c.google_id == google_id) | (users.c.linked_google_id == google_id)
+                )
+            )
+            if not row_new:
+                return RedirectResponse("/login?err=google_create", status_code=302)
+            user_id = row_new.get("primary_user_id") or row_new["id"]
 
         token_str = create_access_token(user_id)
         dest = await post_login_redirect_path(request, int(user_id))

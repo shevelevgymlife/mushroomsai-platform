@@ -3,7 +3,7 @@ import os
 import uuid
 from datetime import date, datetime, timedelta
 from typing import Optional
-from fastapi import APIRouter, Request, Form, UploadFile, File
+from fastapi import APIRouter, Request, Form, UploadFile, File, Query
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from web.templates_utils import Jinja2Templates
 from auth.session import get_user_from_request
@@ -2153,9 +2153,18 @@ async def get_conversations(request: Request):
     return JSONResponse({"conversations": convos})
 
 
+def _parse_inbox_after_id(raw: Optional[str]) -> int:
+    try:
+        v = int((raw or "0").strip() or "0")
+        return max(0, v)
+    except (ValueError, TypeError):
+        return 0
+
+
 @router.get("/community/messages/inbox-toast")
-async def inbox_dm_toast(request: Request, after_id: int = 0):
+async def inbox_dm_toast(request: Request, after_id: str = Query("0")):
     """Для онлайн-получателя: один «тост» о новом непрочитанном ЛС (клиент шлёт after_id из sessionStorage)."""
+    aid = _parse_inbox_after_id(after_id)
     user = await require_auth(request)
     if not user:
         return JSONResponse({"toast": None})
@@ -2179,7 +2188,7 @@ async def inbox_dm_toast(request: Request, after_id: int = 0):
     if not row:
         return JSONResponse({"toast": None})
     mid = int(row["id"] or 0)
-    if mid <= after_id:
+    if mid <= aid:
         return JSONResponse({"toast": None})
     return JSONResponse(
         {

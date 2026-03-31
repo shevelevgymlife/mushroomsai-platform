@@ -37,7 +37,7 @@ async def ensure_user(tg_user) -> dict | None:
     )
     if not row:
         referral_code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
-        user_id = await database.execute(
+        await database.execute(
             users.insert().values(
                 tg_id=tg_user.id,
                 linked_tg_id=tg_user.id,
@@ -47,7 +47,11 @@ async def ensure_user(tg_user) -> dict | None:
                 role="user",
             )
         )
-        row = await database.fetch_one(users.select().where(users.c.id == user_id))
+        row = await database.fetch_one(
+            users.select().where(
+                sa.or_(users.c.tg_id == tg_user.id, users.c.linked_tg_id == tg_user.id)
+            )
+        )
     else:
         # Backfill canonical tg identifiers on resolved/legacy linked accounts.
         base_row = dict(row)

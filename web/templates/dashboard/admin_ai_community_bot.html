@@ -30,6 +30,13 @@
       </button>
       <span class="text-xs text-muted ml-2">Если id пустой после деплоя — нажмите один раз.</span>
     </form>
+    <p class="text-xs text-muted max-w-3xl mb-6">
+      Ручная привязка в PostgreSQL (Render → DB → Query): после того как у вас есть нужный <code class="text-[11px]">users.id</code>,
+      выполните
+      <code class="block mt-1 text-[11px] whitespace-pre-wrap break-all">INSERT INTO ai_community_bot_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+UPDATE ai_community_bot_settings SET user_id = ВАШ_ID, updated_at = NOW() WHERE id = 1;</code>
+      Либо создайте пользователя с email <code class="text-[11px]">neurofungi.ai.community@system.invalid</code> в админке пользователей и подставьте его id в <code class="text-[11px]">UPDATE</code>.
+    </p>
 
     {% if uid %}
     <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8 text-sm">

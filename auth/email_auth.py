@@ -44,7 +44,7 @@ async def register_user(email: str, password: str, name: str) -> Optional[dict]:
     referral_code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
     password_hash = hash_password(password)
 
-    user_id = await database.execute(
+    await database.execute(
         users.insert().values(
             email=email,
             password_hash=password_hash,
@@ -55,4 +55,4 @@ async def register_user(email: str, password: str, name: str) -> Optional[dict]:
             needs_tariff_choice=True,
         )
     )
-    return await database.fetch_one(users.select().where(users.c.id == user_id))
+    return await database.fetch_one(users.select().where(users.c.email == email))
