@@ -1,6 +1,6 @@
 """
 Создание платежа ЮKassa с перенаправлением на страницу оплаты (сайт и Telegram WebApp).
-Используются shopId и secret из настроек payment_provider:yookassa_bot.
+Используются shopId и secret из настроек payment_provider:yookassa_bot или override из Environment.
 """
 from __future__ import annotations
 

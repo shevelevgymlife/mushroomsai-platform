@@ -17,6 +17,7 @@ from services.yookassa_bot_offerings import (
     get_merged_bot_offerings,
     offering_by_id,
 )
+from services.yookassa_credentials import resolve_yookassa_shop_credentials
 
 logger = logging.getLogger(__name__)
 
@@ -165,8 +166,7 @@ async def handle_yookassa_http_notification(body: dict[str, Any]) -> tuple[bool,
         return True, f"ignored_event:{event}"
 
     st = await get_provider_settings("yookassa_bot")
-    shop_id = (st.get("shop_id") or "").strip()
-    secret_key = (st.get("secret_key") or "").strip()
+    shop_id, secret_key = resolve_yookassa_shop_credentials(st)
     if not shop_id or not secret_key:
         return True, "ignored_no_credentials"
 

@@ -32,6 +32,7 @@ from services.yookassa_bot_offerings import (
     offering_by_id,
     yookassa_web_pay_ready,
 )
+from services.yookassa_credentials import resolve_yookassa_shop_credentials
 from services.yookassa_hosted_payment import create_yookassa_redirect_payment
 from services.subscription_service import (
     activate_subscription,
@@ -249,9 +250,10 @@ async def pay_subscription_yookassa(request: Request, offering_id: str = ""):
     dur = (off.get("duration_label") or "")[:40]
     desc = f"Подписка «{disp}» {dur}".strip()[:128]
     cust_email = (user.get("email") or "").strip() or None
+    shop_id, sec_key = resolve_yookassa_shop_credentials(yb)
     url, err = await create_yookassa_redirect_payment(
-        shop_id=(yb.get("shop_id") or "").strip(),
-        secret_key=(yb.get("secret_key") or "").strip(),
+        shop_id=shop_id,
+        secret_key=sec_key,
         amount_rub=price,
         description=desc,
         return_url=return_url,

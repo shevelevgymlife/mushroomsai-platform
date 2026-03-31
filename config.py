@@ -74,6 +74,9 @@ class Settings(BaseSettings):
     TELEGRAM_PAYMENT_PROVIDER_TOKEN: str = ""
     # Чек 54-ФЗ в теле create payment (1 = без НДС). 0 — не добавлять. Если в ЮKassa включена обязательная фискализация — задайте 1 и email в профиле.
     YOOKASSA_RECEIPT_VAT_CODE: int = 0
+    # Временно: другой магазин ЮKassa (напр. тестовый) без смены ключей в админке. Оба поля обязательны; вебхук проверяется тем же секретом.
+    YOOKASSA_OVERRIDE_SHOP_ID: str = ""
+    YOOKASSA_OVERRIDE_SECRET_KEY: str = ""
 
     model_config = SettingsConfigDict(env_file=_env_file_for_settings(), extra="ignore")
 

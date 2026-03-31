@@ -130,6 +130,10 @@ def yookassa_web_pay_ready(provider_cfg: dict[str, Any] | None) -> bool:
     """Оплата на сайте через API ЮKassa (без BotFather provider token)."""
     if not provider_cfg or not provider_cfg.get("enabled"):
         return False
+    from services.yookassa_credentials import override_yookassa_shop_active
+
+    if override_yookassa_shop_active():
+        return True
     return bool((provider_cfg.get("shop_id") or "").strip() and (provider_cfg.get("secret_key") or "").strip())
 
 
