@@ -756,6 +756,12 @@ ai_community_bot_settings = sqlalchemy.Table(
     sqlalchemy.Column("limit_reply_comments_per_day", sqlalchemy.Integer, nullable=False, server_default="25"),
     sqlalchemy.Column("thoughts_count_date", sqlalchemy.Date, nullable=True),
     sqlalchemy.Column("thoughts_count_today", sqlalchemy.Integer, nullable=True),
+    sqlalchemy.Column(
+        "allow_telegram_channel",
+        sqlalchemy.Boolean,
+        nullable=False,
+        server_default="true",
+    ),
     sqlalchemy.Column("last_tick_at", sqlalchemy.DateTime, nullable=True),
     sqlalchemy.Column("updated_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )

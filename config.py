@@ -13,6 +13,8 @@ def _env_file_for_settings() -> str | None:
 
 class Settings(BaseSettings):
     TELEGRAM_TOKEN: str = ""
+    # Канал для дублей постов NeuroFungi AI (основной бот TELEGRAM_TOKEN должен быть админом). Пример: @ShevelevVlog или -100…
+    NEUROFUNGI_AI_TG_CHANNEL: str = ""
     # Отдельный бот для добавления обучающих постов (тот же DATABASE_URL). Пусто — бот не стартует.
     TRAINING_BOT_TOKEN: str = ""
     # Импорт канала → ai_training_posts. Пусто = тот же токен, что TRAINING_BOT_TOKEN (один бот, один polling).

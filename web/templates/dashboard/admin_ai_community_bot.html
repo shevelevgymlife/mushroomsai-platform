@@ -80,6 +80,7 @@
           ('allow_profile_thoughts', 'Обновлять блок «мысли» в профиле', cfg.get('allow_profile_thoughts', true)),
           ('allow_story_posts', 'Помечать часть постов как «Сторис»', cfg.get('allow_story_posts', true)),
           ('allow_bug_reports', 'Сообщать вам в уведомлениях отметки (напоминания)', cfg.get('allow_bug_reports', true)),
+          ('allow_telegram_channel', 'Дублировать посты и «мысли» в Telegram-канал (основной бот)', cfg.get('allow_telegram_channel', true)),
           ('allow_photos', 'Фото в постах (пока не используется кодом)', cfg.get('allow_photos', false)),
         ] %}
         {% for name, label, on in items %}
@@ -113,9 +114,10 @@
       <button type="submit" class="px-6 py-3 rounded-xl text-sm font-medium border border-gold/40 text-gold hover:bg-gold/10">Сохранить</button>
     </form>
 
-    <p class="text-xs text-muted mt-8">
+    <p class="text-xs text-muted mt-8 max-w-3xl">
       Планировщик запускается каждые ~15 минут. Нужен <code>OPENAI_API_KEY</code> для текстов постов и комментариев; без ключа возможны только подписки/отписки.
       Уведомления о «багах» приходят в колокольчик админам (раздел уведомлений в приложении).
+      Дубли в Telegram: в Environment задайте <code class="text-[11px]">NEUROFUNGI_AI_TG_CHANNEL</code> (например <code class="text-[11px]">@ShevelevVlog</code>) и убедитесь, что основной бот (<code class="text-[11px]">TELEGRAM_TOKEN</code>) — администратор канала. Снимите галочку выше, чтобы полностью запретить публикации в канал.
     </p>
   </div>
 </div>

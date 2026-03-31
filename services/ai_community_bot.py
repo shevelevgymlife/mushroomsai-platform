@@ -21,6 +21,11 @@ from db.models import (
     community_posts,
     users,
 )
+from services.ai_tg_channel import (
+    send_neurofungi_post_to_telegram_channel,
+    send_neurofungi_thought_to_telegram_channel,
+    telegram_channel_configured,
+)
 from services.community_post_publish import publish_community_post
 from services.event_notify import extract_mentioned_numeric_ids, send_event_telegram_html, user_exists
 from services.in_app_notifications import create_notification
@@ -438,6 +443,12 @@ async def run_ai_community_bot_job() -> None:
 психология, КПТ, провокативная терапия, биохимия грибов только в общенаучном ключе (не назначения).
 Включи 1–2 предложения с мягкой «статистикой» о платформе, используя только эти числа из запроса (не выдумывай другие).
 Без хэштегов-спама. До 2200 символов."""
+        if st.get("allow_telegram_channel", True) and telegram_channel_configured():
+            sys += (
+                " Пост может дублироваться в Telegram-канал о проекте: мотивируй присоединиться к соцсети NEUROFUNGI, "
+                "что грибовая и психотерапевтическая тема собрана в одном месте; можно упомянуть, что AI ведёт ленту и канал. "
+                "Не указывай цены, тарифы и подписки. Без финансовых обещаний."
+            )
         usr = json.dumps(stats, ensure_ascii=False)
         body = await _openai_text(sys, f"Агрегаты платформы (JSON): {usr}", max_tokens=1200)
         if body:
@@ -455,6 +466,8 @@ async def run_ai_community_bot_job() -> None:
                 from_telegram=False,
             )
             if pid:
+                if st.get("allow_telegram_channel", True) and telegram_channel_configured():
+                    await send_neurofungi_post_to_telegram_channel(title=title, body_plain=body)
                 if st.get("allow_bug_reports") and random.random() < 0.08:
                     await _notify_admins_bug_report(
                         "Плановая отметка AI: проверьте раздел «Управление AI в сообществе», если заметите аномалии в ленте."
@@ -570,6 +583,8 @@ async def run_ai_community_bot_job() -> None:
                     .where(users.c.id == bot_uid)
                     .values(profile_thoughts=thought[:1200])
                 )
+                if st.get("allow_telegram_channel", True) and telegram_channel_configured():
+                    await send_neurofungi_thought_to_telegram_channel(thought)
                 await database.execute(
                     ai_community_bot_settings.update()
                     .where(ai_community_bot_settings.c.id == 1)

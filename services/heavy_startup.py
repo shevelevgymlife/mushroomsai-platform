@@ -588,6 +588,15 @@ async def run_heavy_startup(app: FastAPI) -> None:
             logger.warning("migrate_v25 ai_community_bot: %s", e)
 
         try:
+            import migrate_v26_ai_telegram_channel as migrate_v26
+
+            for s in migrate_v26.STEPS:
+                await database.execute(sa.text(s))
+            logger.info("AI Telegram channel mirror (migrate_v26) OK")
+        except Exception as e:
+            logger.warning("migrate_v26 ai_telegram_channel: %s", e)
+
+        try:
             from services.merge_neurofungi_ai_chats import merge_all_neurofungi_ai_personal_chats
 
             await merge_all_neurofungi_ai_personal_chats()
