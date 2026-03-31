@@ -229,6 +229,10 @@
   let personalSearchT = null;
   let pendingFocusMessageId = null;
   let personalPartnerId = null;
+  let sidebarFilter = "all";
+  try {
+    sidebarFilter = localStorage.getItem("chats_sidebar_filter") || "all";
+  } catch (e) {}
 
   function esc(s) {
     if (!s) return "";
@@ -356,7 +360,9 @@
     const badge = c.unread > 0 ? " on" : "";
     const isGroup = (c.type || "") === "group";
     const needsJoin = !!c.needs_join;
-    const kindLabel = isGroup ? (needsJoin ? "Публичная группа" : "Группа") : "ЛС";
+    let kindLabel = "ЛС";
+    if (isGroup) kindLabel = needsJoin ? "Публичная группа" : "Группа";
+    else if (c.is_neurofungi_ai) kindLabel = "NeuroFungi AI";
     row.innerHTML =
       '<img class="chats-row-av" src="' +
       esc(av) +
@@ -392,8 +398,10 @@
     const filtered = chats.filter((c) => !ql || (c.name || "").toLowerCase().includes(ql));
     const groupChats = [];
     const personalChats = [];
+    const aiChats = [];
     filtered.forEach((c) => {
       if ((c.type || "") === "group") groupChats.push(c);
+      else if (c.is_neurofungi_ai) aiChats.push(c);
       else personalChats.push(c);
     });
     function appendSection(title, arr) {
@@ -405,8 +413,17 @@
       el.list.appendChild(h);
       arr.forEach(appendChatRow);
     }
-    appendSection("Группы", groupChats);
-    appendSection("Личные чаты (ЛС)", personalChats);
+    if (sidebarFilter === "groups") {
+      appendSection("Группы", groupChats);
+    } else if (sidebarFilter === "personal") {
+      appendSection("Личные чаты (ЛС)", personalChats);
+    } else if (sidebarFilter === "ai") {
+      appendSection("NeuroFungi AI", aiChats);
+    } else {
+      appendSection("Группы", groupChats);
+      appendSection("Личные чаты (ЛС)", personalChats);
+      appendSection("NeuroFungi AI", aiChats);
+    }
   }
 
   function setMobileOpen(on) {
@@ -1573,6 +1590,27 @@
     });
 
   if (el.search) el.search.oninput = () => renderList();
+
+  (function bindSidebarFilters() {
+    const filtRoot = document.getElementById("chatsSidebarFilters");
+    if (!filtRoot) return;
+    function syncFilterUi() {
+      filtRoot.querySelectorAll("[data-ch-filter]").forEach(function (btn) {
+        btn.classList.toggle("on", btn.getAttribute("data-ch-filter") === sidebarFilter);
+      });
+    }
+    syncFilterUi();
+    filtRoot.addEventListener("click", function (ev) {
+      const b = ev.target.closest("[data-ch-filter]");
+      if (!b) return;
+      sidebarFilter = b.getAttribute("data-ch-filter") || "all";
+      try {
+        localStorage.setItem("chats_sidebar_filter", sidebarFilter);
+      } catch (e) {}
+      syncFilterUi();
+      renderList();
+    });
+  })();
 
   if (el.mobileBack) {
     el.mobileBack.onclick = () => {

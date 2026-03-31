@@ -720,6 +720,19 @@ wellness_journal_entries = sqlalchemy.Table(
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
 
+platform_ai_feedback = sqlalchemy.Table(
+    "platform_ai_feedback",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("user_role", sqlalchemy.String(20), nullable=False, server_default="user"),
+    sqlalchemy.Column("raw_text", sqlalchemy.Text, nullable=False),
+    sqlalchemy.Column("source", sqlalchemy.String(48), nullable=True),
+    sqlalchemy.Column("admin_reply", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("admin_reply_at", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
 moderation_log = sqlalchemy.Table(
     "moderation_log",
     metadata,

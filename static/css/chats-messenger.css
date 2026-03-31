@@ -63,6 +63,30 @@ body:not(.app-has-mobile-footer) #chatsApp {
   letter-spacing: -0.02em;
 }
 
+.chats-sidebar-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 12px 10px;
+  border-bottom: 1px solid var(--ch-border);
+}
+
+.chats-filter-btn {
+  border: 1px solid var(--ch-border);
+  background: #141414;
+  color: #aaa;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.chats-filter-btn.on {
+  border-color: rgba(61, 212, 224, 0.45);
+  color: var(--ch-accent);
+  background: var(--ch-accent-active);
+}
+
 .chats-btn-new {
   border: 1px solid rgba(61, 212, 224, 0.35);
   background: var(--ch-accent-soft);

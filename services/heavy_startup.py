@@ -569,6 +569,22 @@ async def run_heavy_startup(app: FastAPI) -> None:
         except Exception as e:
             logger.warning("migrate_v23 wellness_coach_pdf: %s", e)
 
+        try:
+            import migrate_v24_platform_ai_feedback as migrate_v24
+
+            for s in migrate_v24.STEPS:
+                await database.execute(sa.text(s))
+            logger.info("Platform AI feedback (migrate_v24) OK")
+        except Exception as e:
+            logger.warning("migrate_v24 platform_ai_feedback: %s", e)
+
+        try:
+            from services.merge_neurofungi_ai_chats import merge_all_neurofungi_ai_personal_chats
+
+            await merge_all_neurofungi_ai_personal_chats()
+        except Exception as e:
+            logger.warning("merge_neurofungi_ai_chats: %s", e)
+
         start_scheduler()
         app.state.startup_complete = True
         logger.info("Heavy startup complete; full traffic enabled")

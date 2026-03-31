@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}NeuroFungi AI — пожелания{% endblock %}
+{% block content %}
+<div class="pt-24 pb-16 neo-app-surface">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+    {% include "components/admin_nav.html" %}
+
+    <h1 class="text-3xl font-light text-text mb-2">NeuroFungi AI — пожелания и вопросы к платформе</h1>
+    <p class="text-sm text-muted mb-6 max-w-3xl">
+      Сообщения попадают сюда, когда пользователь (включая админа в роли пользователя) пишет в чат с NeuroFungi AI с ключевыми формулировками про улучшения, функции или пожелания.
+      Ответ сохраняется в таблице; при включённой галочке тот же текст уходит пользователю в ЛС от имени NeuroFungi AI.
+    </p>
+
+    {% if request.query_params.get('saved') %}
+    <div class="mb-4 p-3 rounded-xl border border-gold/30 text-gold text-sm">Сохранено.</div>
+    {% endif %}
+    {% if request.query_params.get('err') %}
+    <div class="mb-4 p-3 rounded-xl border border-red-400/40 text-red-300 text-sm">Не удалось сохранить.</div>
+    {% endif %}
+
+    <div class="space-y-8">
+      {% for r in rows %}
+      <div class="rounded-2xl border border-border p-4 bg-surface/40">
+        <div class="flex flex-wrap gap-2 text-xs text-muted mb-2">
+          <span>#{{ r.id }}</span>
+          <span>{{ r.created_at }}</span>
+          <span class="text-text">{{ r.user_name or '—' }} &lt;{{ r.user_email or '' }}&gt;</span>
+          <span>роль в записи: {{ r.user_role }}</span>
+          {% if r.source %}<span>источник: {{ r.source }}</span>{% endif %}
+        </div>
+        <p class="text-sm text-text whitespace-pre-wrap mb-4">{{ r.raw_text }}</p>
+        {% if r.admin_reply %}
+        <div class="mb-4 p-3 rounded-xl border border-border/80 bg-black/20">
+          <div class="text-xs text-muted mb-1">Ответ админа{% if r.admin_reply_at %} · {{ r.admin_reply_at }}{% endif %}</div>
+          <p class="text-sm text-gold/90 whitespace-pre-wrap">{{ r.admin_reply }}</p>
+        </div>
+        {% endif %}
+        <form method="post" action="/admin/platform-ai-feedback/reply" class="space-y-2">
+          <input type="hidden" name="feedback_id" value="{{ r.id }}" />
+          <label class="block text-xs text-muted">Ответ пользователю (от лица NeuroFungi AI)</label>
+          <textarea name="reply_text" rows="4" class="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text" placeholder="Текст ответа…">{{ r.admin_reply or '' }}</textarea>
+          <label class="inline-flex items-center gap-2 text-sm text-muted cursor-pointer">
+            <input type="checkbox" name="send_dm" value="1" class="rounded border-border" />
+            Отправить копию в ЛС пользователю
+          </label>
+          <div>
+            <button type="submit" class="px-4 py-2 rounded-xl text-sm font-medium border border-gold/40 text-gold hover:bg-gold/10">Сохранить ответ</button>
+          </div>
+        </form>
+      </div>
+      {% else %}
+      <p class="text-muted text-sm">Пока нет записей.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

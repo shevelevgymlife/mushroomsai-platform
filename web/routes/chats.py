@@ -36,6 +36,11 @@ from services.chat_ws_manager import (
 )
 from services.legal import legal_acceptance_redirect
 from services.legacy_dm_chat_sync import sync_all_partners_for_user
+from services.system_support_delivery import (
+    NEUROFUNGI_AI_DISPLAY_NAME,
+    all_legacy_neurofungi_ai_peer_ids,
+    collapse_neurofungi_personal_chats_in_api_list,
+)
 from services.dm_blocks import dm_block_user, dm_unblock_user, is_dm_blocked
 from services.messenger_unread import count_chat_unread, mark_chat_viewed
 from web.templates_utils import Jinja2Templates
@@ -592,6 +597,7 @@ async def api_list_chats(request: Request):
                 "needs_join": False,
             }
         )
+    out = await collapse_neurofungi_personal_chats_in_api_list(out, uid)
     member_chat_ids = {int(x["id"]) for x in out}
     try:
         discover = await database.fetch_all(
@@ -681,6 +687,13 @@ async def api_chat_meta(request: Request, chat_id: int):
             partner = {"id": int(prow["id"]), "name": prow["name"], "avatar": prow["avatar"]}
             title = partner["name"]
             avatar = partner["avatar"]
+            try:
+                peer_ids = await all_legacy_neurofungi_ai_peer_ids()
+                if int(partner["id"]) in peer_ids:
+                    title = NEUROFUNGI_AI_DISPLAY_NAME
+                    partner["name"] = NEUROFUNGI_AI_DISPLAY_NAME
+            except Exception:
+                pass
     online = online_user_ids(chat_id)
     mem = await _member_row(chat_id, uid)
     my_role = (mem.get("role") or "member") if mem else "member"

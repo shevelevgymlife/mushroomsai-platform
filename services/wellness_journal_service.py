@@ -15,7 +15,7 @@ from config import settings
 from db.database import database
 from db.models import users, wellness_journal_entries, platform_settings, direct_messages
 from services.subscription_service import check_subscription
-from services.system_support_delivery import resolve_support_sender_id
+from services.system_support_delivery import all_legacy_neurofungi_ai_peer_ids, resolve_support_sender_id
 from services.legacy_dm_chat_sync import sync_direct_messages_pair
 
 logger = logging.getLogger(__name__)
@@ -25,25 +25,30 @@ ALLOWED_INTERVALS = (1, 3, 5, 7)
 MSG_PREFIX = "🍄 NeuroFungi AI · дневник\n\n"
 
 
-async def _fetch_dm_thread_snippets(coach_id: int, notify_uid: int, limit: int = 32) -> list[str]:
+async def _fetch_dm_thread_snippets(peer_ids: set[int], notify_uid: int, limit: int = 32) -> list[str]:
+    ids = sorted({int(x) for x in peer_ids if int(x) > 0})
+    if not ids:
+        return []
+    id_sql = ",".join(str(i) for i in ids)
     rows = await database.fetch_all(
         sa.text(
-            """
+            f"""
             SELECT sender_id, text FROM direct_messages
             WHERE (
-              (sender_id = :cid AND recipient_id = :uid) OR
-              (sender_id = :uid AND recipient_id = :cid AND is_system = false)
+              (sender_id IN ({id_sql}) AND recipient_id = :uid) OR
+              (sender_id = :uid AND recipient_id IN ({id_sql}) AND is_system = false)
             )
             ORDER BY id DESC
             LIMIT :lim
             """
         ),
-        {"cid": int(coach_id), "uid": int(notify_uid), "lim": int(limit)},
+        {"uid": int(notify_uid), "lim": int(limit)},
     )
+    idset = set(ids)
     out: list[str] = []
     for r in rows:
         sid = int(r["sender_id"] or 0)
-        who = "NeuroFungi AI" if sid == int(coach_id) else "Пользователь"
+        who = "NeuroFungi AI" if sid in idset else "Пользователь"
         out.append(f"{who}: {(r.get('text') or '')[:720]}")
     return list(reversed(out))
 
@@ -123,11 +128,17 @@ def _build_prompt_text(*, include_weekly_nudge: bool, prompt_index: int) -> str:
         f"📊 Сводка и графики: {results_url}\n"
         "Частота: «каждый день», «раз в 3 дня», «раз в 5 дней», «раз в неделю» или «отключить дневник».\n"
         "Если на сегодня достаточно диалога — напишите «хватит на сегодня».\n"
+        "\n💰 Реферальная программа: приглашайте пользователей и смотрите сотрудничество с магазином — всё в меню-бургере → «Реферальная программа».\n"
+        "Если что-то непонятно в интерфейсе — напишите, подскажу в рамках того, что доступно вам в приложении.\n"
     )
     if include_weekly_nudge:
         base += "\n📅 Раз в неделю пришлю короткую сводку здесь, в чате.\n"
     if prompt_index > 0 and prompt_index % 4 == 0:
         base += "\n💬 Удобна ли вам такая периодичность сообщений? Напишите одним предложением.\n"
+    if prompt_index > 0 and prompt_index % 3 == 0:
+        base += (
+            "\n✨ Что бы вы добавили или улучшили на платформе? Одним сообщением — идеи передаются команде.\n"
+        )
     return MSG_PREFIX + base
 
 
@@ -142,7 +153,8 @@ async def _compose_coach_message_body(
     from ai.openai_client import _fetch_relevant_training_posts
     from services.wellness_coach_ai import generate_wellness_coach_message
 
-    thread = await _fetch_dm_thread_snippets(coach_id, notify_uid)
+    peers = await all_legacy_neurofungi_ai_peer_ids()
+    thread = await _fetch_dm_thread_snippets(peers, notify_uid)
     entries_raw = await database.fetch_all(
         wellness_journal_entries.select()
         .where(wellness_journal_entries.c.user_id == notify_uid)
@@ -527,6 +539,7 @@ async def record_user_reply(
     row = await database.fetch_one_write(ins)
     eid = int(row["id"]) if row and row.get("id") is not None else None
     await parse_frequency_and_opt_out_from_text(uid, t)
+    await _maybe_record_platform_feedback_wish(uid, t)
     return eid
 
 
@@ -537,13 +550,44 @@ async def on_user_message_to_coach(
     *,
     direct_message_id: Optional[int] = None,
 ) -> Optional[int]:
-    coach = await resolve_support_sender_id()
-    if not coach or int(recipient_id) != int(coach):
+    peers = await all_legacy_neurofungi_ai_peer_ids()
+    if not peers or int(recipient_id) not in peers:
         return None
     plan = await check_subscription(int(sender_uid))
     if plan == "free":
         return None
     return await record_user_reply(sender_uid, text, direct_message_id=direct_message_id)
+
+
+async def _maybe_record_platform_feedback_wish(user_id: int, text: str) -> None:
+    t = (text or "").strip()
+    if len(t) < 10:
+        return
+    low = t.lower()
+    keys = (
+        "пожелан",
+        "добавьте",
+        "добавить ",
+        "предлож",
+        "не хватает",
+        "улучшить",
+        "нужно в прилож",
+        "хотел бы",
+        "хотела бы",
+        "функци",
+        "раздел",
+        "меню",
+    )
+    if not any(k in low for k in keys):
+        return
+    try:
+        from services.platform_ai_feedback import record_platform_ai_feedback
+
+        row = await database.fetch_one(users.select().where(users.c.id == int(user_id)))
+        ur = "admin" if row and (row.get("role") or "") == "admin" else "user"
+        await record_platform_ai_feedback(int(user_id), ur, t[:8000], source="user_reply_keywords")
+    except Exception:
+        logger.debug("platform feedback record skipped", exc_info=True)
 
 
 _EXTRACTION_SYSTEM = """Ты помощник для структурирования дневника фунготерапии. По сообщению пользователя верни ТОЛЬКО JSON без markdown со полями:

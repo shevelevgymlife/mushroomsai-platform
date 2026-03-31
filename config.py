@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     ADMIN_EMAIL: str = "shevelevgymlife@gmail.com"
     # users.id аккаунта «техподдержка» для системных ЛС; 0 — взять по ADMIN_EMAIL или первого admin
     TECH_SUPPORT_USER_ID: int = 0
+    # Единый аккаунт NeuroFungi AI (ЛС, дневник, системные оповещения). 0 — как TECH_SUPPORT_USER_ID / ADMIN_EMAIL / первый admin
+    NEUROFUNGI_AI_USER_ID: int = 0
     DEPLOY_NOTIFY_EMAIL_TO: str = ""  # куда слать уведомление о деплое
     DEPLOY_NOTIFY_EMAIL_FROM: str = ""  # от кого слать (если пусто, используем SMTP_USER)
     DEPLOY_NOTIFY_TASK_EMAIL_TO: str = ""  # email для статусов задач (если пусто = DEPLOY_NOTIFY_EMAIL_TO)

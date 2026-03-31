@@ -28,6 +28,7 @@ from db.models import (
     radio_downtempo_tracks,
     platform_settings,
     wellness_journal_entries,
+    platform_ai_feedback,
 )
 import sqlalchemy
 from datetime import datetime, timedelta, date
@@ -53,6 +54,7 @@ ADMIN_SECTIONS = [
     ("Радио Down Tempo", "/admin/radio-downtempo", "can_radio_downtempo"),
     ("Реферальная программа", "/admin/referral", "can_users"),
     ("Дневник терапии", "/admin/wellness-journal", "can_users"),
+    ("NeuroFungi AI: пожелания", "/admin/platform-ai-feedback", "can_users"),
 ]
 ADMIN_NAV = [(label, href) for (label, href, _perm) in ADMIN_SECTIONS]
 AI_RETRIEVAL_MODES = [
@@ -2536,3 +2538,45 @@ async def admin_wellness_journal_user_pdf(
     ok = (allow_pdf or "").strip().lower() in ("1", "true", "on", "yes")
     await set_user_wellness_pdf_allowed(int(user_id), ok)
     return RedirectResponse("/admin/wellness-journal?saved=1", status_code=303)
+
+
+# ─── NeuroFungi AI: пожелания к платформе ─────────────────────────────────────
+
+
+@router.get("/platform-ai-feedback", response_class=HTMLResponse)
+async def admin_platform_ai_feedback_page(request: Request):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    from services.platform_ai_feedback import list_platform_ai_feedback
+
+    rows = await list_platform_ai_feedback(400)
+    return templates.TemplateResponse(
+        "dashboard/admin_platform_ai_feedback.html",
+        {"request": request, "rows": rows},
+    )
+
+
+@router.post("/platform-ai-feedback/reply")
+async def admin_platform_ai_feedback_reply(
+    request: Request,
+    feedback_id: int = Form(...),
+    reply_text: str = Form(...),
+    send_dm: Optional[str] = Form(None),
+):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    from services.platform_ai_feedback import deliver_admin_reply_as_neurofungi_dm, set_admin_reply
+
+    row = await database.fetch_one(
+        platform_ai_feedback.select().where(platform_ai_feedback.c.id == int(feedback_id))
+    )
+    if not row:
+        return RedirectResponse("/admin/platform-ai-feedback?err=1", status_code=303)
+    ok = await set_admin_reply(int(feedback_id), reply_text)
+    if not ok:
+        return RedirectResponse("/admin/platform-ai-feedback?err=1", status_code=303)
+    if (send_dm or "").strip().lower() in ("1", "true", "on", "yes"):
+        await deliver_admin_reply_as_neurofungi_dm(int(row["user_id"]), reply_text)
+    return RedirectResponse("/admin/platform-ai-feedback?saved=1", status_code=303)

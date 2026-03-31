@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Чаты — NEUROFUNGI AI{% endblock %}
 {% block extra_head %}
-<link rel="stylesheet" href="/static/css/chats-messenger.css?v=13" />
+<link rel="stylesheet" href="/static/css/chats-messenger.css?v=14" />
 {% endblock %}
 {% block body_class %} chats-messenger-page{% endblock %}
 {% block content %}
@@ -34,6 +34,12 @@
     </div>
     <div class="chats-search">
       <input type="search" id="chatsSidebarSearch" placeholder="Поиск по чатам" autocomplete="off" />
+    </div>
+    <div class="chats-sidebar-filters" id="chatsSidebarFilters" role="tablist" aria-label="Фильтр чатов">
+      <button type="button" class="chats-filter-btn on" data-ch-filter="all">Все</button>
+      <button type="button" class="chats-filter-btn" data-ch-filter="groups">Группы</button>
+      <button type="button" class="chats-filter-btn" data-ch-filter="personal">Личные</button>
+      <button type="button" class="chats-filter-btn" data-ch-filter="ai">NeuroFungi AI</button>
     </div>
     <div class="chats-list" id="chatsList"></div>
   </aside>

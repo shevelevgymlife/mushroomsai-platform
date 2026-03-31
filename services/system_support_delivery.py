@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import html
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 import sqlalchemy as sa
 
@@ -13,12 +13,11 @@ from db.models import direct_messages, users
 
 logger = logging.getLogger(__name__)
 
+NEUROFUNGI_AI_DISPLAY_NAME = "NeuroFungi AI"
 
-async def resolve_support_sender_id() -> Optional[int]:
-    """
-    Аккаунт-отправитель системных сообщений в ЛС.
-    TECH_SUPPORT_USER_ID → пользователь с ADMIN_EMAIL → первый admin.
-    """
+
+async def _fallback_support_user_id() -> Optional[int]:
+    """TECH_SUPPORT_USER_ID → ADMIN_EMAIL → первый admin."""
     tid = int(getattr(settings, "TECH_SUPPORT_USER_ID", 0) or 0)
     if tid > 0:
         row = await database.fetch_one(sa.select(users.c.id).where(users.c.id == tid))
@@ -33,6 +32,81 @@ async def resolve_support_sender_id() -> Optional[int]:
         sa.select(users.c.id).where(users.c.role == "admin").order_by(users.c.id.asc()).limit(1)
     )
     return int(row["id"]) if row else None
+
+
+async def resolve_neurofungi_ai_user_id() -> Optional[int]:
+    """
+    Единый аккаунт NeuroFungi AI в ЛС (дневник, системные оповещения).
+    NEUROFUNGI_AI_USER_ID → иначе как техподдержка.
+    """
+    nid = int(getattr(settings, "NEUROFUNGI_AI_USER_ID", 0) or 0)
+    if nid > 0:
+        row = await database.fetch_one(sa.select(users.c.id).where(users.c.id == nid))
+        if row:
+            return int(row["id"])
+    return await _fallback_support_user_id()
+
+
+async def resolve_support_sender_id() -> Optional[int]:
+    """Совместимость: то же, что resolve_neurofungi_ai_user_id()."""
+    return await resolve_neurofungi_ai_user_id()
+
+
+async def all_legacy_neurofungi_ai_peer_ids() -> set[int]:
+    """Все id, которые могли быть «ботом» — для свёртки чатов и ответов дневнику."""
+    ids: set[int] = set()
+    n = int(getattr(settings, "NEUROFUNGI_AI_USER_ID", 0) or 0)
+    if n > 0:
+        ids.add(n)
+    t = int(getattr(settings, "TECH_SUPPORT_USER_ID", 0) or 0)
+    if t > 0:
+        ids.add(t)
+    em = (settings.ADMIN_EMAIL or "").strip()
+    if em:
+        row = await database.fetch_one(sa.select(users.c.id).where(users.c.email == em).limit(1))
+        if row:
+            ids.add(int(row["id"]))
+    row = await database.fetch_one(
+        sa.select(users.c.id).where(users.c.role == "admin").order_by(users.c.id.asc()).limit(1)
+    )
+    if row:
+        ids.add(int(row["id"]))
+    coach = await resolve_neurofungi_ai_user_id()
+    if coach:
+        ids.add(int(coach))
+    return {x for x in ids if x > 0}
+
+
+def _parse_last_at(item: dict[str, Any]) -> str:
+    return (item.get("last_at") or "") or ""
+
+
+async def collapse_neurofungi_personal_chats_in_api_list(items: list[dict], _viewer_uid: int) -> list[dict]:
+    """Один ряд NeuroFungi AI вместо нескольких ЛС с разными legacy-аккаунтами."""
+    peer_ids = await all_legacy_neurofungi_ai_peer_ids()
+    if not peer_ids:
+        return items
+    coach = await resolve_neurofungi_ai_user_id()
+    non_ai: list[dict] = []
+    ai_items: list[dict] = []
+    for item in items:
+        if (item.get("type") or "") == "personal" and item.get("partner_id") in peer_ids:
+            ai_items.append(item)
+        else:
+            non_ai.append(item)
+    if not ai_items:
+        return items
+    best = max(ai_items, key=_parse_last_at)
+    ur = sum(int(x.get("unread") or 0) for x in ai_items)
+    best = dict(best)
+    best["name"] = NEUROFUNGI_AI_DISPLAY_NAME
+    best["unread"] = ur
+    best["is_neurofungi_ai"] = True
+    if coach:
+        best["partner_id"] = int(coach)
+    merged = non_ai + [best]
+    merged.sort(key=_parse_last_at, reverse=True)
+    return merged
 
 
 async def deliver_system_support_notification(
@@ -56,7 +130,7 @@ async def deliver_system_support_notification(
         return {"ok": False, "error": "user not found"}
 
     notify_uid = int(target.get("primary_user_id") or recipient_user_id)
-    sid = await resolve_support_sender_id()
+    sid = await resolve_neurofungi_ai_user_id()
     dm_mid = None
     if not sid:
         logger.warning("system_support_delivery: no support sender id, skipping DM")
