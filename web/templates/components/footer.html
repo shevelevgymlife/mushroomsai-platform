@@ -19,7 +19,7 @@
       <!-- Middle: Platform links -->
       <div>
         <h4 class="section-eyebrow mb-5">Платформа</h4>
-        <ul class="flex flex-col gap-2">
+        <ul class="flex flex-col gap-2 items-start">
           <li><a href="/chat" onclick="return guestGuard(event)" class="nf-footer-btn">AI Консультант</a></li>
           <li><a href="/shop" class="nf-footer-btn">{% if user and user.get('show_marketplace_nav') == false %}Магазин{% else %}Магазин / Маркетплейс{% endif %}</a></li>
           <li><a href="/#community" class="nf-footer-btn">Сообщество</a></li>
@@ -32,7 +32,7 @@
       <!-- Right: Contacts -->
       <div>
         <h4 class="section-eyebrow mb-5">Контакты</h4>
-        <ul class="flex flex-col gap-2">
+        <ul class="flex flex-col gap-2 items-start">
           <li>
             <a href="https://t.me/neuro_fungi_bot" target="_blank" rel="noopener noreferrer" onclick="openBotLink(event)"
                class="nf-footer-btn">
