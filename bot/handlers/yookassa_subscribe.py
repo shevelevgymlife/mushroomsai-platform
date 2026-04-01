@@ -14,7 +14,7 @@ from bot.handlers.start import ensure_user, ensure_user_or_blocked_reply
 from config import settings
 from services.payment_plans_catalog import get_effective_plans
 from services.payment_provider_settings import get_provider_settings
-from services.subscription_service import activate_subscription
+from services.subscription_service import activate_subscription, check_subscription
 from services.subscription_checkout import (
     resolve_active_subscription_checkout,
     subscription_stars_amount,
@@ -39,9 +39,86 @@ _PAYLOAD_RX = re.compile(r"^nf\|(\d+)\|([a-z0-9_]+)(?:\|(\d+))?(?:\|([a-f0-9]+))
 _STARS_PAYLOAD_RX = re.compile(r"^nfs\|(\d+)\|([a-z0-9_]+)\|(\d+)(?:\|([a-f0-9]+))?$")
 
 
-def _unique_invoice_start_parameter() -> str:
-    """Telegram требует уникальный start_parameter для счёта; иначе повтор «тот же тариф» даёт ошибку API."""
-    return secrets.token_hex(8)[:32]
+def _invoice_payload_nf(uid: int, offering_id: str, amount_kop: int) -> str:
+    """Payload ≤ 128 байт (Telegram); короткий nonce — уникальность без переполнения."""
+    oid = (offering_id or "").lower()[:32]
+    nonce = secrets.token_hex(3)
+    raw = f"nf|{int(uid)}|{oid}|{int(amount_kop)}|{nonce}"
+    if len(raw.encode("utf-8")) > 127:
+        raw = f"nf|{int(uid)}|{oid}|{int(amount_kop)}|{secrets.token_hex(2)}"
+    return raw
+
+
+def _invoice_payload_nfs(uid: int, offering_id: str, n_stars: int) -> str:
+    oid = (offering_id or "").lower()[:32]
+    nonce = secrets.token_hex(3)
+    raw = f"nfs|{int(uid)}|{oid}|{int(n_stars)}|{nonce}"
+    if len(raw.encode("utf-8")) > 127:
+        raw = f"nfs|{int(uid)}|{oid}|{int(n_stars)}|{secrets.token_hex(2)}"
+    return raw
+
+
+def _offering_is_renewal(off: dict, user: dict, eff_plan: str) -> bool:
+    """Тот же тариф, что сейчас действует (оплата или пробный Старт) — показываем «Продлить»."""
+    from datetime import datetime
+
+    oid = str(off.get("id") or "").lower()
+    eff = str(off.get("effective_plan") or oid).lower()
+    now = datetime.utcnow()
+    sub_plan = (user.get("subscription_plan") or "free").lower()
+    sub_end = user.get("subscription_end")
+    trial_until = user.get("start_trial_until")
+    life = bool(user.get("subscription_paid_lifetime"))
+    admin_granted = bool(user.get("subscription_admin_granted"))
+    paid_active = sub_plan != "free" and (
+        life
+        or (sub_end and sub_end > now)
+        or (admin_granted and sub_end is None)
+    )
+    trial_on = bool(trial_until and trial_until > now)
+    if paid_active and sub_plan == eff:
+        return True
+    if trial_on and eff_plan == "start" and eff == "start":
+        return True
+    return False
+
+
+def _subscription_status_lines_html(user: dict, plans_eff: dict, eff_plan: str) -> str:
+    from datetime import datetime
+    from html import escape
+
+    def pname(k: str) -> str:
+        return str((plans_eff.get(k) or {}).get("name") or k)
+
+    now = datetime.utcnow()
+    sub_plan = (user.get("subscription_plan") or "free").lower()
+    sub_end = user.get("subscription_end")
+    trial_until = user.get("start_trial_until")
+    life = bool(user.get("subscription_paid_lifetime"))
+    admin_granted = bool(user.get("subscription_admin_granted"))
+    paid_active = sub_plan != "free" and (
+        life
+        or (sub_end and sub_end > now)
+        or (admin_granted and sub_end is None)
+    )
+    trial_on = bool(trial_until and trial_until > now)
+
+    if paid_active:
+        nm = escape(pname(sub_plan))
+        if life and not admin_granted:
+            return f"📌 <b>Сейчас у вас:</b> «{nm}» (без срока)."
+        if sub_end and sub_end > now:
+            d = sub_end.strftime("%d.%m.%Y")
+            days = max(0, (sub_end - now).days)
+            return f"📌 <b>Сейчас у вас:</b> «{nm}» до <b>{d}</b> UTC (~{days} дн.)."
+        if admin_granted:
+            return f"📌 <b>Сейчас у вас:</b> «{nm}» (назначено администратором)."
+        return f"📌 <b>Сейчас у вас:</b> «{nm}»."
+    if trial_on and eff_plan == "start":
+        d = trial_until.strftime("%d.%m.%Y")
+        days = max(0, (trial_until - now).days)
+        return f"🎁 <b>Пробный «{escape(pname('start'))}»</b> до <b>{d}</b> UTC (~{days} дн.)."
+    return "📌 <b>Сейчас:</b> бесплатный тариф — ниже можно оформить подписку."
 
 
 class _SuccessfulPaymentFilter(filters.MessageFilter):
@@ -110,6 +187,11 @@ async def subscribe_menu_handler(update: Update, context: ContextTypes.DEFAULT_T
         )
         return
 
+    uid = int(user.get("primary_user_id") or user["id"])
+    plans_eff = await get_effective_plans()
+    eff_plan = await check_subscription(uid)
+    status_html = _subscription_status_lines_html(user, plans_eff, eff_plan)
+
     offerings = await get_merged_bot_offerings()
     rows: list[list[InlineKeyboardButton]] = []
     for o in offerings:
@@ -120,20 +202,23 @@ async def subscribe_menu_handler(update: Update, context: ContextTypes.DEFAULT_T
         if price <= 0:
             continue
         disp = (o.get("display_name") or oid)[:20]
+        renew = _offering_is_renewal(o, user, eff_plan)
         btns: list[InlineKeyboardButton] = []
         if show_card:
+            card_lbl = f"💳 Продлить · {disp} {price}₽" if renew else f"💳 {disp} {price}₽"
             btns.append(
                 InlineKeyboardButton(
-                    f"💳 {disp} {price}₽",
+                    card_lbl[:64],
                     callback_data=f"tgpay_{oid}",
                 )
             )
         if show_stars:
             nst = subscription_stars_amount(float(price), stars_spr)
             if nst > 0:
+                star_lbl = f"⭐ Продлить {nst}" if renew else f"⭐ {nst}"
                 btns.append(
                     InlineKeyboardButton(
-                        f"⭐ {nst}",
+                        star_lbl[:64],
                         callback_data=f"tgstars_{oid}",
                     )
                 )
@@ -150,16 +235,19 @@ async def subscribe_menu_handler(update: Update, context: ContextTypes.DEFAULT_T
 
     if show_card and show_stars:
         intro = (
-            "Выберите способ: <b>💳</b> — карта (ЮKassa), <b>⭐</b> — Telegram Stars. "
-            "Срок и уровень тарифа — из «Тарифы подписок» в админке."
+            "Ниже все тарифы из каталога. <b>«Продлить»</b> — тот же уровень, что сейчас; срок после оплаты "
+            "<b>прибавится</b> к оставшемуся. <b>💳</b> — карта (ЮKassa), <b>⭐</b> — Stars."
         )
     elif show_card:
-        intro = "Выберите тариф — откроется счёт ЮKassa (цены и сроки из каталога тарифов)."
+        intro = (
+            "Выберите тариф — откроется счёт ЮKassa. Для текущего тарифа кнопка с пометкой "
+            "<b>«Продлить»</b>: оплаченный период удлинится."
+        )
     else:
-        intro = "Выберите тариф — оплата звёздами Telegram (XTR)."
+        intro = "Выберите тариф — оплата звёздами Telegram (XTR). Текущий тариф можно продлить — кнопка «Продлить»."
 
     await update.message.reply_text(
-        f"💳 <b>Подписка</b>\n\n{intro}\n\n"
+        f"💳 <b>Подписка</b>\n\n{status_html}\n\n{intro}\n\n"
         f"<i>{TG_SUBSCRIPTION_PAYMENT_NOTICE}</i>\n"
         f'<a href="{site}/legal/offer">Оферта</a> · <a href="{site}/legal/privacy">Конфиденциальность</a>',
         reply_markup=InlineKeyboardMarkup(rows),
@@ -217,9 +305,17 @@ async def tgpay_plan_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         await q.message.reply_text("Цена не настроена для этого предложения.")
         return
 
-    payload = f"nf|{uid}|{offering_id}|{amount_kop}|{secrets.token_hex(8)}"
+    eff_plan = await check_subscription(uid)
+    is_renew = _offering_is_renewal(off, user, eff_plan)
+    payload = _invoice_payload_nf(uid, offering_id, amount_kop)
     provider_token = _payment_provider_token(st)
-    title = (off.get("display_name") or offering_id)[:32]
+    base_title = (off.get("display_name") or offering_id)[:60]
+    inv_title = (f"Продление — {base_title}" if is_renew else base_title)[:128]
+    disp_short = (off.get("display_name") or offering_id)[:40]
+    pay_ref = secrets.randbelow(899_999) + 100_000
+    price_label = (
+        (f"Продление · {disp_short}" if is_renew else disp_short)
+    )[:52] + f" #{pay_ref}"
     dur_h = off.get("duration_label") or ""
     site = (settings.SITE_URL or "").rstrip("/")
     extra = f" {TG_SUBSCRIPTION_PAYMENT_NOTICE}"
@@ -230,16 +326,21 @@ async def tgpay_plan_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     try:
         await context.bot.send_invoice(
             chat_id=update.effective_chat.id,
-            title=title[:128],
+            title=inv_title,
             description=desc,
             payload=payload,
             provider_token=provider_token,
             currency="RUB",
-            prices=[LabeledPrice(title[:64], amount_kop)],
-            start_parameter=_unique_invoice_start_parameter(),
+            prices=[LabeledPrice(price_label[:64], amount_kop)],
+            start_parameter=None,
         )
     except Exception as e:
-        logger.exception("send_invoice failed uid=%s offering=%s", uid, offering_id)
+        logger.exception(
+            "send_invoice failed uid=%s offering=%s err=%s",
+            uid,
+            offering_id,
+            getattr(e, "message", None) or str(e),
+        )
         err = (str(e) or "").lower()
         hint = ""
         if any(x in err for x in ("token", "provider", "payment", "bot", "method")):
@@ -294,8 +395,14 @@ async def tgstars_plan_callback(update: Update, context: ContextTypes.DEFAULT_TY
         return
 
     uid = int(user.get("primary_user_id") or user["id"])
-    payload = f"nfs|{uid}|{offering_id}|{n_stars}|{secrets.token_hex(8)}"
-    title = (off.get("display_name") or offering_id)[:32]
+    eff_plan = await check_subscription(uid)
+    is_renew = _offering_is_renewal(off, user, eff_plan)
+    payload = _invoice_payload_nfs(uid, offering_id, n_stars)
+    base_title = (off.get("display_name") or offering_id)[:60]
+    inv_title = (f"Продление — {base_title}" if is_renew else base_title)[:128]
+    disp_short = (off.get("display_name") or offering_id)[:36]
+    pay_ref = secrets.randbelow(899_999) + 100_000
+    lp_lbl = ((f"Продление · {disp_short}" if is_renew else disp_short)[:48] + f" #{pay_ref}")[:64]
     dur_h = off.get("duration_label") or ""
     site = (settings.SITE_URL or "").rstrip("/")
     extra = f" {TG_SUBSCRIPTION_PAYMENT_NOTICE}"
@@ -306,13 +413,13 @@ async def tgstars_plan_callback(update: Update, context: ContextTypes.DEFAULT_TY
     try:
         await context.bot.send_invoice(
             chat_id=update.effective_chat.id,
-            title=title[:128],
+            title=inv_title,
             description=desc,
             payload=payload,
             provider_token="",
             currency="XTR",
-            prices=[LabeledPrice((title[:64] or "Подписка"), n_stars)],
-            start_parameter=_unique_invoice_start_parameter(),
+            prices=[LabeledPrice(lp_lbl or "Подписка", n_stars)],
+            start_parameter=None,
         )
     except Exception:
         logger.exception("send_invoice stars failed uid=%s offering=%s", uid, offering_id)

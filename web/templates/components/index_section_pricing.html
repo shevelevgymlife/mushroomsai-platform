@@ -23,11 +23,11 @@
 
 {% macro paid_renew_btn(pk) %}
   {% if _cp %}
-  <button type="button" data-cp-plan="{{ pk }}" class="cp-pay-btn block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-gold/35 text-gold/90 hover:bg-gold/[0.10] mt-2">Оплатить следующий период</button>
+  <button type="button" data-cp-plan="{{ pk }}" class="cp-pay-btn block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-gold/35 text-gold/90 hover:bg-gold/[0.10] mt-2">Продлить подписку</button>
   {% elif _yk_site %}
-  <a href="/pay/subscription?plan={{ pk }}" class="block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-gold/35 text-gold/90 hover:bg-gold/[0.10] mt-2 no-underline">Оплатить следующий период</a>
+  <a href="/pay/subscription?plan={{ pk }}" class="block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-gold/35 text-gold/90 hover:bg-gold/[0.10] mt-2 no-underline">Продлить подписку</a>
   {% elif _yk_bot_only %}
-  <a href="{{ _bot_url }}" target="_blank" rel="noopener noreferrer" class="block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-gold/35 text-gold/90 hover:bg-gold/[0.10] mt-2 no-underline">Оплатить в Telegram</a>
+  <a href="{{ _stars_url if _stars_url else _bot_url }}" target="_blank" rel="noopener noreferrer" class="block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-gold/35 text-gold/90 hover:bg-gold/[0.10] mt-2 no-underline">Продлить в Telegram</a>
   {% else %}
   <p class="text-xs text-center text-amber-200/80 mt-2 px-1">Настройте способ оплаты в админке (раздел Оплата).</p>
   {% endif %}
@@ -36,11 +36,11 @@
 
 {% macro paid_connect_btn(pk) %}
   {% if _cp %}
-  <button type="button" data-cp-plan="{{ pk }}" class="cp-pay-btn block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn mt-auto">Оплатить и подключить</button>
+  <button type="button" data-cp-plan="{{ pk }}" class="cp-pay-btn block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn mt-auto">Оформить и оплатить</button>
   {% elif _yk_site %}
-  <a href="/pay/subscription?plan={{ pk }}" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn mt-auto no-underline">Оплатить и подключить</a>
+  <a href="/pay/subscription?plan={{ pk }}" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn mt-auto no-underline">Оформить и оплатить</a>
   {% elif _yk_bot_only %}
-  <a href="{{ _bot_url }}" target="_blank" rel="noopener noreferrer" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn mt-auto no-underline">Оплатить в Telegram</a>
+  <a href="{{ _stars_url if _stars_url else _bot_url }}" target="_blank" rel="noopener noreferrer" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn mt-auto no-underline">Оформить в Telegram</a>
   {% else %}
   <div class="mt-auto text-center px-3 py-3 rounded-xl text-xs text-amber-200/90 border border-amber-500/25 bg-amber-500/5">Оплата не настроена. Включите CloudPayments или ЮKassa в админке.</div>
   {% endif %}
@@ -121,7 +121,14 @@
             {% if pk == 'start' and user and user.start_trial_active and (user.subscription_plan or 'free') == 'free' %}
             {{ paid_connect_btn(pk) }}
             {% else %}
-            <div class="block text-center px-4 py-3 rounded-xl text-sm border border-gold/35 text-gold/90 bg-gold/[0.06]">Текущий план</div>
+            <div class="block text-center px-4 py-3 rounded-xl text-sm border border-gold/35 text-gold/90 bg-gold/[0.06]">Ваш тариф</div>
+            {% if user.start_trial_active and pk == 'start' and (user.subscription_plan or 'free') == 'free' and user.start_trial_until %}
+            <p class="text-[11px] text-center text-muted leading-snug mt-1.5 mb-1 px-1">Пробный период до {{ user.start_trial_until.strftime('%d.%m.%Y') }} UTC</p>
+            {% elif user.subscription_end and (user.subscription_plan or 'free')|lower == pk|lower and not (user.subscription_paid_lifetime or false) %}
+            <p class="text-[11px] text-center text-cyan-200/85 leading-snug mt-1.5 mb-1 px-1">Оплаченный период до {{ user.subscription_end.strftime('%d.%m.%Y') }} UTC</p>
+            {% elif user.subscription_paid_lifetime and (user.subscription_plan or 'free')|lower == pk|lower %}
+            <p class="text-[11px] text-center text-cyan-200/85 leading-snug mt-1.5 mb-1 px-1">Тариф без ограничения срока</p>
+            {% endif %}
             {{ paid_renew_btn(pk) }}
             {% endif %}
           {% else %}
