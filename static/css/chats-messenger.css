@@ -702,6 +702,21 @@ body:not(.app-has-mobile-footer) #chatsApp {
     display: none;
   }
 
+  /* Список чатов: не оставлять пустую полосу справа (было width: 320px при скрытом main) */
+  #chatsApp:not(.mobile-chat-open) .chats-sidebar {
+    width: 100%;
+    max-width: 100%;
+    flex: 1 1 auto;
+    min-width: 0;
+    border-right: none;
+  }
+
+  #chatsApp.mobile-chat-open .chats-main {
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+  }
+
   .chats-mobile-back {
     display: inline-flex !important;
     margin-right: 4px;
