@@ -239,13 +239,13 @@ html[data-nf-video-calls="0"] #chQuickVideo {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 4px 0 8px;
+  padding: 2px 0 4px;
   pointer-events: none;
   user-select: none;
 }
 .index-scroll-beacon-track {
   position: relative;
-  height: 40px;
+  height: 72px;
   width: 10px;
 }
 .index-scroll-beacon-pill {
@@ -257,7 +257,7 @@ html[data-nf-video-calls="0"] #chQuickVideo {
   border-radius: 9999px;
   background: #3dd4e0;
   box-shadow: 0 0 14px rgba(61, 212, 224, 0.95);
-  animation: index-scroll-beacon-float 2.1s ease-in-out infinite;
+  animation: index-scroll-beacon-float 2.4s ease-in-out infinite;
 }
 @keyframes index-scroll-beacon-float {
   0%,
@@ -266,14 +266,14 @@ html[data-nf-video-calls="0"] #chQuickVideo {
     opacity: 0.85;
   }
   50% {
-    top: 24px;
+    top: 56px;
     opacity: 1;
   }
 }
 @media (prefers-reduced-motion: reduce) {
   .index-scroll-beacon-pill {
     animation: none;
-    top: 13px !important;
+    top: 29px !important;
     opacity: 0.9;
   }
 }
