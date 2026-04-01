@@ -21,10 +21,10 @@
         <h4 class="section-eyebrow mb-5">Платформа</h4>
         <ul class="flex flex-col gap-2">
           <li><a href="/chat" onclick="return guestGuard(event)" class="nf-footer-btn">AI Консультант</a></li>
-          <li><a href="/shop" onclick="return guestGuard(event)" class="nf-footer-btn">{% if user and user.get('show_marketplace_nav') == false %}Магазин{% else %}Магазин / Маркетплейс{% endif %}</a></li>
-          <li><a href="/community" class="nf-footer-btn">Сообщество</a></li>
+          <li><a href="/shop" class="nf-footer-btn">{% if user and user.get('show_marketplace_nav') == false %}Магазин{% else %}Магазин / Маркетплейс{% endif %}</a></li>
+          <li><a href="/#community" class="nf-footer-btn">Сообщество</a></li>
           {% if user %}
-          <li><a href="/community" class="nf-footer-btn">Соцсеть</a></li>
+          <li><a href="/#community" class="nf-footer-btn">Соцсеть</a></li>
           {% endif %}
         </ul>
       </div>
@@ -40,10 +40,10 @@
             </a>
           </li>
           <li>
-            <a href="https://mushroomsai.ru" onclick="openSiteLink(event)"
+            <button type="button" onclick="openSiteEmailModal()"
                class="nf-footer-btn">
               🌐 mushroomsai.ru
-            </a>
+            </button>
           </li>
           <li>
             <button type="button" onclick="openFeedbackModal()" class="nf-footer-btn">
@@ -67,6 +67,32 @@
     </div>
   </div>
 </footer>
+
+<!-- Email (mushroomsai.ru) — открывает почту пользователя -->
+<div id="email-site-modal" style="display:none;position:fixed;inset:0;z-index:9998;align-items:center;justify-content:center;background:rgba(0,0,0,.75);backdrop-filter:blur(6px)" onclick="if(event.target===this)closeSiteEmailModal()">
+  <div style="background:#0e0e0e;border:1px solid rgba(61,212,224,.4);border-radius:20px;padding:36px 32px;max-width:420px;width:90%;box-shadow:0 0 60px rgba(61,212,224,.1)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <h3 style="font-size:18px;font-weight:700;color:#e8e8e8">🌐 Написать на email</h3>
+      <button type="button" onclick="closeSiteEmailModal()" style="background:none;border:none;color:#555;font-size:22px;cursor:pointer;line-height:1">×</button>
+    </div>
+    <p style="font-size:13px;color:#888;margin-bottom:14px;line-height:1.45">Сообщение откроется в вашей почте — отправьте его с адреса, с которого удобно связаться.</p>
+    <p style="font-size:12px;color:#6b7280;margin-bottom:10px">Кому: <span style="color:#3dd4e0">shevelevgymlife@gmail.com</span></p>
+    <textarea id="email-site-body" rows="5" placeholder="Текст письма…"
+      style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:12px 14px;color:#e8e8e8;font-size:14px;outline:none;resize:vertical;font-family:inherit;box-sizing:border-box"
+      onfocus="this.style.borderColor='rgba(61,212,224,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.12)'"></textarea>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button type="button" onclick="launchSiteEmail()"
+        style="flex:1;padding:12px;background:#3dd4e0;color:#111;border:none;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;transition:background .2s"
+        onmouseover="this.style.background='#5eead4'" onmouseout="this.style.background='#3dd4e0'">
+        Открыть в почте
+      </button>
+      <button type="button" onclick="closeSiteEmailModal()"
+        style="padding:12px 18px;background:none;border:1px solid #333;color:#666;border-radius:12px;font-size:14px;cursor:pointer">
+        Отмена
+      </button>
+    </div>
+  </div>
+</div>
 
 <!-- Feedback modal -->
 <div id="feedback-modal" style="display:none;position:fixed;inset:0;z-index:9998;align-items:center;justify-content:center;background:rgba(0,0,0,.75);backdrop-filter:blur(6px)" onclick="if(event.target===this)closeFeedbackModal()">
@@ -101,8 +127,27 @@ function isTelegramMiniApp() {
 function openBotLink(e) {
   if (isTelegramMiniApp()) { e.preventDefault(); window.Telegram.WebApp.close(); }
 }
-function openSiteLink(e) {
-  if (isTelegramMiniApp()) { e.preventDefault(); window.Telegram.WebApp.openLink('https://mushroomsai.ru'); }
+function openSiteEmailModal() {
+  var m = document.getElementById('email-site-modal');
+  if (!m) return;
+  m.style.display = 'flex';
+  var ta = document.getElementById('email-site-body');
+  if (ta) { ta.value = ''; ta.focus(); }
+}
+function closeSiteEmailModal() {
+  var m = document.getElementById('email-site-modal');
+  if (m) m.style.display = 'none';
+}
+function launchSiteEmail() {
+  var body = (document.getElementById('email-site-body') && document.getElementById('email-site-body').value) ? document.getElementById('email-site-body').value.trim() : '';
+  var subj = 'NEUROFUNGI AI — сообщение с сайта mushroomsai.ru';
+  var href = 'mailto:shevelevgymlife@gmail.com?subject=' + encodeURIComponent(subj) + '&body=' + encodeURIComponent(body || ' ');
+  if (isTelegramMiniApp() && window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openLink) {
+    window.Telegram.WebApp.openLink(href);
+  } else {
+    window.location.href = href;
+  }
+  closeSiteEmailModal();
 }
 function openFeedbackModal() {
   document.getElementById('feedback-modal').style.display = 'flex';

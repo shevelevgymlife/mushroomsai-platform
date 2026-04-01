@@ -321,6 +321,26 @@ async def shop(
     search: str = "",
 ):
     current_user = await get_user_from_request(request)
+    # Гостям не отдаём каталог в разметке — только экран входа (товары после авторизации)
+    if not current_user:
+        return templates.TemplateResponse(
+            "shop.html",
+            {
+                "request": request,
+                "user": None,
+                "products": [],
+                "review_stats": {},
+                "mushroom_types": MUSHROOM_TYPES,
+                "categories": CATEGORIES,
+                "sel_mushroom": mushroom_type,
+                "sel_category": category,
+                "sort": sort,
+                "search": search,
+                "cart_qty": 0,
+                "cart_totals": {},
+            },
+        )
+
     query = shop_products.select()
 
     if mushroom_type:
@@ -394,6 +414,8 @@ async def shop(
 @router.get("/shop/{product_id}", response_class=HTMLResponse)
 async def product_page(request: Request, product_id: int):
     current_user = await get_user_from_request(request)
+    if not current_user:
+        return RedirectResponse(f"/login?next=/shop/{product_id}", status_code=302)
     product = await database.fetch_one(
         shop_products.select().where(shop_products.c.id == product_id)
     )
