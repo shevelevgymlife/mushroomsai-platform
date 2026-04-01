@@ -1,9 +1,11 @@
 """
 Дневник фунготерапии: напоминания AI в ЛС (аккаунт техподдержки), сбор ответов, статистика.
-Доступно при тарифе Старт / Про / Макси (включая пробный Старт), не на free.
+Доступно при тарифе Старт / Про / Макси (включая пробный Старт) и у пользователей с role=admin.
+Ответ в статистику попадает только после подтверждения «да» в чате с AI.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from datetime import datetime, timedelta
@@ -114,6 +116,67 @@ def _notify_uid(row: dict) -> int:
     return int(row.get("primary_user_id") or row["id"])
 
 
+async def user_has_wellness_journal_access(uid: int) -> bool:
+    """Платный тариф или роль admin — дневник и ЛС с NeuroFungi AI."""
+    plan = await check_subscription(int(uid))
+    if plan != "free":
+        return True
+    row = await database.fetch_one(users.select().where(users.c.id == int(uid)))
+    return bool(row and (row.get("role") or "").strip().lower() == "admin")
+
+
+def _parse_stats_confirmation_reply(text: str) -> Optional[str]:
+    """Ответ на «включить в статистику?»: 'yes', 'no' или None (не распознано)."""
+    t = (text or "").strip().lower()
+    if not t or len(t) > 240:
+        return None
+    for phrase in ("не надо", "не включай", "не нужно", "не сохраняй", "не записывай"):
+        if phrase in t:
+            return "no"
+    toks = t.split()
+    first = (toks[0] if toks else "").strip(".,!?")
+    if first in ("нет", "no", "n") or t in ("нет", "нет.", "no", "n"):
+        return "no"
+    yes_ok = frozenset(
+        {
+            "да",
+            "+",
+            "yes",
+            "y",
+            "ага",
+            "угу",
+            "ок",
+            "lf",
+            "конечно",
+            "подтверждаю",
+            "включай",
+            "давай",
+            "сохрани",
+            "запиши",
+        }
+    )
+    if first in yes_ok or t.strip(".,!?") in yes_ok:
+        return "yes"
+    return None
+
+
+async def _insert_coach_dm(coach_id: int, recipient_user_id: int, body: str) -> None:
+    dm_row = await database.fetch_one_write(
+        direct_messages.insert()
+        .values(
+            sender_id=int(coach_id),
+            recipient_id=int(recipient_user_id),
+            text=body,
+            is_read=False,
+            is_system=False,
+        )
+        .returning(direct_messages.c.id)
+    )
+    mid = int(dm_row["id"]) if dm_row and dm_row.get("id") else None
+    if mid:
+        await sync_direct_messages_pair(int(coach_id), int(recipient_user_id), broadcast_legacy_dm_id=mid)
+
+
 def _build_prompt_text(*, include_weekly_nudge: bool, prompt_index: int) -> str:
     site = (settings.SITE_URL or "").rstrip("/") or "https://mushroomsai.ru"
     results_url = f"{site}/account/wellness-results"
@@ -197,11 +260,13 @@ async def _compose_coach_message_body(
 
 
 async def schedule_wellness_journal_if_paid(user_id: int) -> None:
-    """Вызывать при активации платного тарифа или пробного Старт."""
+    """Вызывать при активации платного тарифа или пробного Старт; для admin — тоже."""
     uid = int(user_id)
     plan = await check_subscription(uid)
     if plan == "free":
-        return
+        row0 = await database.fetch_one(users.select().where(users.c.id == uid))
+        if not row0 or (row0.get("role") or "").strip().lower() != "admin":
+            return
     row = await database.fetch_one(users.select().where(users.c.id == uid))
     if not row or row.get("wellness_journal_opt_out"):
         return
@@ -312,8 +377,7 @@ async def send_wellness_prompt_for_user(user_id: int) -> bool:
     uid = int(user_id)
     if not await wellness_journal_globally_enabled():
         return False
-    plan = await check_subscription(uid)
-    if plan == "free":
+    if not await user_has_wellness_journal_access(uid):
         return False
     row = await database.fetch_one(users.select().where(users.c.id == uid))
     if not row or row.get("wellness_journal_opt_out") or row.get("wellness_journal_admin_paused"):
@@ -406,10 +470,11 @@ async def run_wellness_prompts_due_job() -> None:
             """
         )
     )
+    n_scanned = len(rows)
+    n_sent = 0
     for row in rows:
         uid = int(row["primary_user_id"] or row["id"])
-        plan = await check_subscription(uid)
-        if plan == "free":
+        if not await user_has_wellness_journal_access(uid):
             continue
         if row["wellness_next_prompt_at"] is None:
             await database.execute(
@@ -417,13 +482,18 @@ async def run_wellness_prompts_due_job() -> None:
                 .where(users.c.id == uid)
                 .values(wellness_next_prompt_at=datetime.utcnow())
             )
-        await send_wellness_prompt_for_user(uid)
+        if await send_wellness_prompt_for_user(uid):
+            n_sent += 1
+    logger.info(
+        "wellness_prompts_due_job: candidates=%s prompts_sent=%s",
+        n_scanned,
+        n_sent,
+    )
 
 
 async def _maybe_send_weekly_digest(user_id: int) -> None:
     uid = int(user_id)
-    plan = await check_subscription(uid)
-    if plan == "free" or not await wellness_journal_globally_enabled():
+    if not await user_has_wellness_journal_access(uid) or not await wellness_journal_globally_enabled():
         return
     row = await database.fetch_one(users.select().where(users.c.id == uid))
     if not row or row.get("wellness_journal_opt_out") or row.get("wellness_journal_admin_paused"):
@@ -449,6 +519,7 @@ async def _maybe_send_weekly_digest(user_id: int) -> None:
         .select_from(wellness_journal_entries)
         .where(wellness_journal_entries.c.user_id == uid)
         .where(wellness_journal_entries.c.role == "user_reply")
+        .where(wellness_journal_entries.c.statistics_excluded == False)
         .where(wellness_journal_entries.c.created_at >= now - timedelta(days=7)),
     ) or 0
     if int(replies) < 1:
@@ -533,6 +604,7 @@ async def record_user_reply(
             raw_text=t,
             extracted_json=None,
             direct_message_id=direct_message_id,
+            statistics_excluded=True,
         )
         .returning(wellness_journal_entries.c.id)
     )
@@ -550,13 +622,88 @@ async def on_user_message_to_coach(
     *,
     direct_message_id: Optional[int] = None,
 ) -> Optional[int]:
+    """Сообщение пользователя в ЛС NeuroFungi AI: запись ответа и запрос подтверждения для статистики."""
     peers = await all_legacy_neurofungi_ai_peer_ids()
     if not peers or int(recipient_id) not in peers:
         return None
-    plan = await check_subscription(int(sender_uid))
-    if plan == "free":
+    uid = int(sender_uid)
+    if not await user_has_wellness_journal_access(uid):
         return None
-    return await record_user_reply(sender_uid, text, direct_message_id=direct_message_id)
+    coach_id = await resolve_support_sender_id()
+    if not coach_id:
+        return None
+
+    urow = await database.fetch_one(users.select().where(users.c.id == uid))
+    if not urow:
+        return None
+    pending_raw = urow.get("wellness_pending_stats_entry_id")
+    if pending_raw is not None:
+        pending = int(pending_raw)
+        verdict = _parse_stats_confirmation_reply(text)
+        ent = await database.fetch_one(
+            wellness_journal_entries.select().where(wellness_journal_entries.c.id == pending)
+        )
+        if ent and int(ent["user_id"] or 0) == uid:
+            if verdict == "yes":
+                raw_prev = (ent.get("raw_text") or "").strip()
+                await database.execute(
+                    wellness_journal_entries.update()
+                    .where(wellness_journal_entries.c.id == pending)
+                    .values(statistics_excluded=False)
+                )
+                await database.execute(
+                    users.update().where(users.c.id == uid).values(wellness_pending_stats_entry_id=None)
+                )
+                asyncio.create_task(extract_wellness_json_async(pending, raw_prev))
+                await _insert_coach_dm(
+                    int(coach_id),
+                    uid,
+                    MSG_PREFIX + "Хорошо — включаю твой предыдущий ответ в статистику дневника.",
+                )
+                return None
+            if verdict == "no":
+                await database.execute(
+                    wellness_journal_entries.update()
+                    .where(wellness_journal_entries.c.id == pending)
+                    .values(statistics_excluded=True)
+                )
+                await database.execute(
+                    users.update().where(users.c.id == uid).values(wellness_pending_stats_entry_id=None)
+                )
+                await _insert_coach_dm(
+                    int(coach_id),
+                    uid,
+                    MSG_PREFIX + "Понял — не включаю это сообщение в статистику.",
+                )
+                return None
+        # Не распознали да/нет или запись чужая — снимаем ожидание со старой записи
+        if ent and int(ent["user_id"] or 0) == uid:
+            await database.execute(
+                wellness_journal_entries.update()
+                .where(wellness_journal_entries.c.id == pending)
+                .values(statistics_excluded=True)
+            )
+        await database.execute(
+            users.update().where(users.c.id == uid).values(wellness_pending_stats_entry_id=None)
+        )
+
+    eid = await record_user_reply(uid, text, direct_message_id=direct_message_id)
+    if not eid:
+        return None
+    await database.execute(
+        users.update().where(users.c.id == uid).values(wellness_pending_stats_entry_id=int(eid))
+    )
+    snippet = (text or "").strip()
+    if len(snippet) > 900:
+        snippet = snippet[:900] + "…"
+    body = (
+        MSG_PREFIX
+        + "Твой ответ (для статистики):\n\n«"
+        + snippet
+        + "»\n\nВключить это сообщение в статистику дневника? Напиши «да» или «нет»."
+    )
+    await _insert_coach_dm(int(coach_id), uid, body)
+    return int(eid)
 
 
 async def _maybe_record_platform_feedback_wish(user_id: int, text: str) -> None:
@@ -646,6 +793,8 @@ def aggregate_entries_for_display(rows: list[dict]) -> dict[str, Any]:
     for r in rows:
         if r.get("role") != "user_reply":
             continue
+        if r.get("statistics_excluded"):
+            continue
         ej = r.get("extracted_json")
         parsed = None
         if ej:
@@ -675,7 +824,13 @@ def aggregate_entries_for_display(rows: list[dict]) -> dict[str, Any]:
         "mushroom_counts": sorted(by_mushroom.items(), key=lambda x: -x[1])[:24],
         "mood_avg": round(sum(moods) / len(moods), 2) if moods else None,
         "energy_avg": round(sum(energies) / len(energies), 2) if energies else None,
-        "reply_count": len([x for x in rows if x.get("role") == "user_reply"]),
+        "reply_count": len(
+            [
+                x
+                for x in rows
+                if x.get("role") == "user_reply" and not x.get("statistics_excluded")
+            ]
+        ),
         "prompt_count": len([x for x in rows if x.get("role") == "ai_prompt"]),
     }
 
@@ -689,7 +844,7 @@ async def top_wellness_responders(limit: int = 10, days: int = 30) -> list[dict]
                COUNT(w.id) AS cnt
         FROM wellness_journal_entries w
         JOIN users u ON u.id = w.user_id
-        WHERE w.role = 'user_reply' AND w.created_at >= :since
+        WHERE w.role = 'user_reply' AND w.statistics_excluded = false AND w.created_at >= :since
         GROUP BY u.id
         ORDER BY cnt DESC
         LIMIT :lim
@@ -813,22 +968,26 @@ async def admin_global_wellness_summary() -> dict[str, Any]:
         sa.select(sa.func.count(sa.distinct(wellness_journal_entries.c.user_id)))
         .select_from(wellness_journal_entries)
         .where(wellness_journal_entries.c.role == "user_reply")
+        .where(wellness_journal_entries.c.statistics_excluded == False)
     )
     nu30 = await database.fetch_val(
         sa.select(sa.func.count(sa.distinct(wellness_journal_entries.c.user_id)))
         .select_from(wellness_journal_entries)
         .where(wellness_journal_entries.c.role == "user_reply")
+        .where(wellness_journal_entries.c.statistics_excluded == False)
         .where(wellness_journal_entries.c.created_at >= since30)
     )
     rep_all = await database.fetch_val(
         sa.select(sa.func.count())
         .select_from(wellness_journal_entries)
         .where(wellness_journal_entries.c.role == "user_reply")
+        .where(wellness_journal_entries.c.statistics_excluded == False)
     )
     rep30 = await database.fetch_val(
         sa.select(sa.func.count())
         .select_from(wellness_journal_entries)
         .where(wellness_journal_entries.c.role == "user_reply")
+        .where(wellness_journal_entries.c.statistics_excluded == False)
         .where(wellness_journal_entries.c.created_at >= since30)
     )
     pr30 = await database.fetch_val(
@@ -840,6 +999,7 @@ async def admin_global_wellness_summary() -> dict[str, Any]:
     rows = await database.fetch_all(
         wellness_journal_entries.select()
         .where(wellness_journal_entries.c.role == "user_reply")
+        .where(wellness_journal_entries.c.statistics_excluded == False)
         .where(wellness_journal_entries.c.extracted_json.isnot(None))
         .order_by(wellness_journal_entries.c.created_at.desc())
         .limit(900)

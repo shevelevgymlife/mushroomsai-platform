@@ -624,6 +624,15 @@ async def run_heavy_startup(app: FastAPI) -> None:
             logger.warning("migrate_v29 subscription_paid_lifetime: %s", e)
 
         try:
+            import migrate_v30_wellness_stats_confirm as migrate_v30
+
+            for s in migrate_v30.STEPS:
+                await database.execute(sa.text(s))
+            logger.info("wellness stats confirm (migrate_v30) OK")
+        except Exception as e:
+            logger.warning("migrate_v30 wellness_stats_confirm: %s", e)
+
+        try:
             from services.merge_neurofungi_ai_chats import merge_all_neurofungi_ai_personal_chats
 
             await merge_all_neurofungi_ai_personal_chats()

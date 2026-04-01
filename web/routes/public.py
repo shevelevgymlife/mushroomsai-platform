@@ -2699,15 +2699,11 @@ async def send_message(request: Request, other_id: int):
             pass
 
     try:
-        import asyncio
+        from services.wellness_journal_service import on_user_message_to_coach
 
-        from services.wellness_journal_service import extract_wellness_json_async, on_user_message_to_coach
-
-        eid = await on_user_message_to_coach(
+        await on_user_message_to_coach(
             int(uid), int(other_id), text, direct_message_id=int(msg_id) if msg_id else None
         )
-        if eid:
-            asyncio.create_task(extract_wellness_json_async(int(eid), text))
     except Exception:
         pass
 

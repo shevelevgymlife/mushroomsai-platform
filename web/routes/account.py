@@ -1110,13 +1110,17 @@ async def wellness_results_page(request: Request):
     if leg:
         return leg
     uid = int(user.get("primary_user_id") or user["id"])
-    plan = await check_subscription(uid)
-    if plan == "free":
+    from services.wellness_journal_service import (
+        aggregate_entries_for_display,
+        user_has_wellness_journal_access,
+        wellness_journal_globally_enabled,
+    )
+
+    if not await user_has_wellness_journal_access(uid):
         return RedirectResponse("/subscriptions", status_code=302)
     row = await database.fetch_one(users.select().where(users.c.id == uid))
     if not row:
         return RedirectResponse("/subscriptions", status_code=302)
-    from services.wellness_journal_service import aggregate_entries_for_display, wellness_journal_globally_enabled
 
     entries_raw = await database.fetch_all(
         wellness_journal_entries.select()
@@ -1150,8 +1154,9 @@ async def wellness_results_save(
     if not user:
         return RedirectResponse("/login?next=/account/wellness-results")
     uid = int(user.get("primary_user_id") or user["id"])
-    plan = await check_subscription(uid)
-    if plan == "free":
+    from services.wellness_journal_service import user_has_wellness_journal_access
+
+    if not await user_has_wellness_journal_access(uid):
         return RedirectResponse("/subscriptions", status_code=302)
     iv = int(interval_days) if str(interval_days).isdigit() else 1
     if iv not in (1, 3, 5, 7):
@@ -1176,13 +1181,13 @@ async def wellness_results_pdf(request: Request):
     if not user:
         return RedirectResponse("/login?next=/account/wellness-results")
     uid = int(user.get("primary_user_id") or user["id"])
-    plan = await check_subscription(uid)
-    if plan == "free":
+    from services.wellness_journal_service import aggregate_entries_for_display, user_has_wellness_journal_access
+
+    if not await user_has_wellness_journal_access(uid):
         return RedirectResponse("/subscriptions", status_code=302)
     urow = await database.fetch_one(users.select().where(users.c.id == uid))
     if urow and urow.get("wellness_journal_pdf_allowed") is False:
         return RedirectResponse("/account/wellness-results?pdf=0", status_code=302)
-    from services.wellness_journal_service import aggregate_entries_for_display
     from services.pdf_service import generate_wellness_journal_pdf
 
     entries_raw = await database.fetch_all(

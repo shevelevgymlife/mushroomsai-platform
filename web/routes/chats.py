@@ -1281,9 +1281,7 @@ async def api_send_message(request: Request, chat_id: int, body: SendMessageBody
 
     if text:
         try:
-            import asyncio
-
-            from services.wellness_journal_service import extract_wellness_json_async, on_user_message_to_coach
+            from services.wellness_journal_service import on_user_message_to_coach
 
             pcrow = await database.fetch_one(
                 sa.text("SELECT type FROM chats WHERE id = :id"), {"id": chat_id}
@@ -1297,9 +1295,7 @@ async def api_send_message(request: Request, chat_id: int, body: SendMessageBody
                 )
                 if pr:
                     oid = int(pr["user_id"] or 0)
-                    eid = await on_user_message_to_coach(uid, oid, text, direct_message_id=None)
-                    if eid:
-                        asyncio.create_task(extract_wellness_json_async(int(eid), text))
+                    await on_user_message_to_coach(uid, oid, text, direct_message_id=None)
         except Exception:
             logger.debug("wellness journal chat hook failed", exc_info=True)
 

@@ -84,6 +84,7 @@ users = sqlalchemy.Table(
     sqlalchemy.Column("wellness_journal_pdf_allowed", sqlalchemy.Boolean, default=True, server_default="true"),
     sqlalchemy.Column("wellness_renewal_nudge_for_end", sqlalchemy.DateTime, nullable=True),
     sqlalchemy.Column("wellness_coach_pause_until", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("wellness_pending_stats_entry_id", sqlalchemy.Integer, nullable=True),
 )
 
 sessions = sqlalchemy.Table(
@@ -738,6 +739,7 @@ wellness_journal_entries = sqlalchemy.Table(
     sqlalchemy.Column("raw_text", sqlalchemy.Text, nullable=False),
     sqlalchemy.Column("extracted_json", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("direct_message_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("direct_messages.id", ondelete="SET NULL"), nullable=True),
+    sqlalchemy.Column("statistics_excluded", sqlalchemy.Boolean, default=False, server_default="false"),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
 
