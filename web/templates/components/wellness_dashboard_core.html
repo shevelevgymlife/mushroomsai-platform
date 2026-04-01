@@ -1,0 +1,187 @@
+{% set iv = insights_view|default('user') %}
+{% if plat_activity_strip is defined and plat_activity_strip and iv == 'platform' %}
+  <div class="wd-cal" aria-label="Активность снимков по дням">
+    {% for day in plat_activity_strip %}
+    <div class="wd-cal-i{% if day.is_today %} wd-today{% endif %}{% if day.n and day.n > 0 %} wd-plat-hot{% endif %}">
+      <div class="wd-cal-l">{{ day.label }}</div>
+      <div class="wd-cal-n">{{ day.num }}</div>
+      <div class="wd-cal-plat-cnt">{{ day.n }}</div>
+    </div>
+    {% endfor %}
+  </div>
+{% elif wellness_week_strip is defined and wellness_week_strip and wellness_week_strip|length > 0 %}
+  <div class="wd-cal" aria-label="Неделя check-in">
+    {% for day in wellness_week_strip %}
+    <div class="wd-cal-i{% if day.is_today %} wd-today{% endif %}{% if day.has_data %} wd-has{% endif %}">
+      <div class="wd-cal-l">{{ day.label }}</div>
+      <div class="wd-cal-n">{{ day.num }}</div>
+      <div class="wd-cal-dot" title="{% if day.has_data %}Есть запись{% else %}Нет записи{% endif %}"></div>
+    </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<div class="wd-hero-grid">
+  <div class="wd-hero wd-hero-index">
+    <div class="wd-hero-lbl">{% if iv == 'platform' %}Индекс (ср.){% else %}Индекс дня{% endif %}</div>
+    <div class="wd-donut-ring" style="--p: {{ wellness_index_pct if wellness_index_pct is not none else 0 }}" role="img" aria-label="Сводный индекс">
+      <div class="wd-donut-hole">{% if wellness_index_pct is not none %}{{ wellness_index_pct }}{% else %}—{% endif %}</div>
+    </div>
+    {% if iv == 'platform' %}
+    <p class="wd-index-hint">По последнему дню средних на графике. Не диагноз.</p>
+    {% else %}
+    <p class="wd-index-hint">Сводно по шкалам: настроение и энергия ↑, тревога ↓ — кольцо шире. Не диагноз.</p>
+    {% endif %}
+  </div>
+  <div class="wd-hero wd-hero-mood">
+    <div class="wd-hero-lbl">Настроение{% if iv == 'platform' %} (ср.){% endif %}</div>
+    <div class="wd-hero-val">{% if today_mood is not none %}{{ (today_mood | float) | round(1) }}{% else %}—{% endif %}<span style="font-size:0.45em;opacity:0.6;font-weight:500">/10</span></div>
+    <div class="wd-hero-bar"><i style="width:{% if today_mood is not none %}{{ ((today_mood | float) / 10 * 100) | round }}{% else %}0{% endif %}%"></i></div>
+    {% if spark_mood_pts %}
+    <div class="wd-spark-wrap">
+      <svg class="wd-spark" viewBox="0 0 108 34" preserveAspectRatio="none" aria-hidden="true"><polyline fill="none" stroke="rgba(255,255,255,0.78)" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" points="{{ spark_mood_pts }}"/></svg>
+      <div class="wd-spark-cap">14 дн. мини-тренд</div>
+    </div>
+    {% endif %}
+  </div>
+  <div class="wd-hero wd-hero-energy">
+    <div class="wd-hero-lbl">Энергия{% if iv == 'platform' %} (ср.){% endif %}</div>
+    <div class="wd-hero-val">{% if today_energy is not none %}{{ (today_energy | float) | round(1) }}{% else %}—{% endif %}<span style="font-size:0.45em;opacity:0.6;font-weight:500">/10</span></div>
+    <div class="wd-hero-bar"><i style="width:{% if today_energy is not none %}{{ ((today_energy | float) / 10 * 100) | round }}{% else %}0{% endif %}%"></i></div>
+    {% if spark_energy_pts %}
+    <div class="wd-spark-wrap">
+      <svg class="wd-spark" viewBox="0 0 108 34" preserveAspectRatio="none" aria-hidden="true"><polyline fill="none" stroke="rgba(255,255,255,0.78)" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" points="{{ spark_energy_pts }}"/></svg>
+      <div class="wd-spark-cap">14 дн. мини-тренд</div>
+    </div>
+    {% endif %}
+  </div>
+  <div class="wd-hero wd-hero-anx">
+    <div class="wd-hero-lbl">Тревога{% if iv == 'platform' %} (ср.){% endif %}</div>
+    <div class="wd-hero-val">{% if today_anxiety is not none %}{{ (today_anxiety | float) | round(1) }}{% else %}—{% endif %}<span style="font-size:0.45em;opacity:0.6;font-weight:500">/10</span></div>
+    <div class="wd-hero-bar"><i style="width:{% if today_anxiety is not none %}{{ ((today_anxiety | float) / 10 * 100) | round }}{% else %}0{% endif %}%"></i></div>
+    {% if spark_anxiety_pts %}
+    <div class="wd-spark-wrap">
+      <svg class="wd-spark" viewBox="0 0 108 34" preserveAspectRatio="none" aria-hidden="true"><polyline fill="none" stroke="rgba(255,255,255,0.78)" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" points="{{ spark_anxiety_pts }}"/></svg>
+      <div class="wd-spark-cap">14 дн. мини-тренд</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="wd-stat-grid">
+  <div class="wd-stat">
+    <div class="wd-stat-k">{% if iv == 'platform' %}Снимков в окне{% else %}Серия дней{% endif %}</div>
+    <div class="wd-stat-v">{{ wellness_streak }}</div>
+  </div>
+  <div class="wd-stat"><div class="wd-stat-k">Δ настроения <span style="opacity:.65">({{ chart_range_label }})</span></div><div class="wd-stat-v">{% if wellness_mood_progress_pct is not none %}{{ wellness_mood_progress_pct }}%{% else %}—{% endif %}</div></div>
+  <div class="wd-stat"><div class="wd-stat-k">Стабильность σ <span style="opacity:.65">(окно)</span></div><div class="wd-stat-v">{% if wellness_stability is not none %}{{ wellness_stability }}{% else %}—{% endif %}</div></div>
+  <div class="wd-stat wd-stat-wide">
+    <div class="wd-stat-k">{% if iv == 'platform' %}Контекст{% else %}Профиль (эвристика){% endif %}</div>
+    <div style="font-size:0.78rem;color:#b4b4c0;margin-top:0.35rem;line-height:1.45">{{ wellness_segment }}</div>
+    <div class="wd-stat-note">
+      {% if iv == 'platform' %}
+      Δ — первый vs последний день средних в выбранном периоде ({{ chart_range_label }}, {{ wellness_series_n }} дней на графике). σ — разброс средних настроений по дням окна.
+      {% else %}
+      Δ — первый vs последний день в выбранном периоде ({{ chart_range_label }}, {{ wellness_series_n }} снимков). σ — разброс настроения по дням в этом же окне (до 7 точек).
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% if iv != 'platform' %}
+  {% if wellness_rec_text %}
+  <div class="wd-ai">
+    <div class="wd-ai-h">AI-разбор и идея на сегодня <span class="wd-ai-badge">информационно</span></div>
+    <div class="wd-ai-body">{{ wellness_rec_text }}</div>
+  </div>
+  {% elif wellness_series_long_n is defined and wellness_series_long_n < 2 %}
+  <div class="wd-ai" style="border-color:var(--wd-line);background:rgba(255,255,255,0.03)">
+    <div class="wd-ai-h" style="color:#9a9aa8">Пока мало структурных данных</div>
+    <div class="wd-ai-body" style="color:#8e8e96">Продолжайте отвечать на опрос в чате — появится ежедневный разбор и мягкие варианты по схеме (без медицинских назначений).</div>
+  </div>
+  {% endif %}
+{% endif %}
+
+<div class="mb-2">
+  <h2 class="wd-sec-title">Динамика</h2>
+  <p class="wd-sec-sub">
+    {% if iv == 'platform' %}
+    Средние по всем пользователям за день. Вкладки: 2 / 7 / 30 дней.
+    {% else %}
+    Графики и таблица переключаются: вчера–сегодня, 7 или 30 дней. Корреляция доза↔настроение — на «Неделя» и «30 дней».
+    {% endif %}
+  </p>
+  <nav class="wd-tabs" role="tablist" aria-label="Период графиков">
+    <a role="tab" href="{{ wd_tab_urls['d'] }}" class="{% if chart_range == 'day' %}wd-active{% endif %}">День</a>
+    <a role="tab" href="{{ wd_tab_urls['w'] }}" class="{% if chart_range == 'week' %}wd-active{% endif %}">Неделя</a>
+    <a role="tab" href="{{ wd_tab_urls['m'] }}" class="{% if chart_range == 'month' %}wd-active{% endif %}">30 дней</a>
+  </nav>
+</div>
+{% if user_charts is defined and user_charts and user_charts|length > 0 %}
+<div class="wd-chart-grid mb-8">
+  {% for c in user_charts %}
+  <div class="wd-chart-card"><canvas id="{{ c.canvas_id }}"></canvas></div>
+  {% endfor %}
+</div>
+{% else %}
+<p class="text-sm text-muted mb-8" style="color:#8e8e96;line-height:1.5">В этом периоде нет данных для графиков. Смените интервал{% if iv != 'platform' %} или отметьте день в чате{% endif %}.</p>
+{% endif %}
+
+{% macro hmcell(v, invert) %}
+  {% if v is none %}
+  <td class="p-2.5 text-center text-muted">—</td>
+  {% else %}
+    {% set p = ((v | float) / 10 * 100) | round %}
+    {% if invert %}
+      {% set alpha = 0.14 + (p / 100) * 0.5 %}
+      <td class="p-2.5 text-center rounded-lg" style="background:rgba(244,114,182,{{ alpha }});color:#fce7f3">{{ (v | float) | round(1) }}</td>
+    {% else %}
+      {% set alpha = 0.12 + (p / 100) * 0.48 %}
+      <td class="p-2.5 text-center rounded-lg" style="background:rgba(61,212,224,{{ alpha }});color:#ecfeff">{{ (v | float) | round(1) }}</td>
+    {% endif %}
+  {% endif %}
+{% endmacro %}
+
+{% set hm = heatmap_mode|default('user') %}
+{% if heatmap_rows is defined and heatmap_rows and heatmap_rows|length > 0 %}
+<h2 class="wd-sec-title">Сводка по дням <span style="font-size:0.65rem;font-weight:500;color:#6b6b78">{{ chart_range_label }}</span></h2>
+<p class="wd-sec-sub">{% if hm == 'platform' %}Число строк снимков за день и средние шкалы.{% else %}Те же даты, что на графиках.{% endif %}</p>
+<div class="wd-table-wrap mb-8 overflow-x-auto">
+  <table class="w-full text-xs text-left border-collapse min-w-[520px]">
+    <thead>
+      <tr style="border-bottom:1px solid rgba(255,255,255,0.08)" class="text-muted">
+        <th class="p-2.5 pl-3">Дата</th>
+        {% if hm == 'platform' %}
+        <th class="p-2.5">N</th>
+        {% else %}
+        <th class="p-2.5">Приём</th>
+        <th class="p-2.5">Доза</th>
+        {% endif %}
+        <th class="p-2.5">Трев.</th>
+        <th class="p-2.5">Настр.</th>
+        <th class="p-2.5">Энерг.</th>
+        <th class="p-2.5">Сон</th>
+        <th class="p-2.5 pr-3">Конц.</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in heatmap_rows %}
+      <tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
+        <td class="p-2.5 pl-3 text-text whitespace-nowrap">{% if row.d and row.d|length >= 10 %}{{ row.d[8:10] }}.{{ row.d[5:7] }}{% else %}{{ row.d }}{% endif %}</td>
+        {% if hm == 'platform' %}
+        <td class="p-2.5 text-muted">{{ row.n }}</td>
+        {% else %}
+        <td class="p-2.5 text-muted">{% if row.took is true %}да{% elif row.took is false %}нет{% else %}—{% endif %}</td>
+        <td class="p-2.5 text-muted max-w-[104px] truncate" title="{{ row.dose }}">{{ row.dose or '—' }}</td>
+        {% endif %}
+        {{ hmcell(row.anxiety, true) }}
+        {{ hmcell(row.mood, false) }}
+        {{ hmcell(row.energy, false) }}
+        {{ hmcell(row.sleep, false) }}
+        {{ hmcell(row.conc, false) }}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}

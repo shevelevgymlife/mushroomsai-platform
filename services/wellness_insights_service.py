@@ -674,6 +674,12 @@ async def admin_platform_series_for_charts(days: int = 30) -> list[dict[str, Any
               AVG((metrics_json::json->>'energy_0_10')::float)
                 FILTER (WHERE (metrics_json::json->>'energy_0_10') IS NOT NULL
                   AND (metrics_json::json->>'energy_0_10') ~ '^[0-9.]+$') AS energy,
+              AVG((metrics_json::json->>'sleep_quality_0_10')::float)
+                FILTER (WHERE (metrics_json::json->>'sleep_quality_0_10') IS NOT NULL
+                  AND (metrics_json::json->>'sleep_quality_0_10') ~ '^[0-9.]+$') AS sleep_q,
+              AVG((metrics_json::json->>'concentration_0_10')::float)
+                FILTER (WHERE (metrics_json::json->>'concentration_0_10') IS NOT NULL
+                  AND (metrics_json::json->>'concentration_0_10') ~ '^[0-9.]+$') AS conc,
               COUNT(*)::int AS n
             FROM wellness_daily_snapshots
             WHERE snapshot_date >= :since
@@ -763,6 +769,271 @@ async def refresh_scheme_effect_stats_simple() -> None:
                 avg_progress_score=round(statistics.mean(vals), 4),
             )
         )
+
+
+def _parse_float_row(val: Any) -> Optional[float]:
+    if val is None:
+        return None
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return None
+
+
+def slice_platform_series_rows(rows: list[dict[str, Any]], days_inclusive: int) -> list[dict[str, Any]]:
+    if days_inclusive < 1 or not rows:
+        return []
+    end = _utc_today()
+    start = end - timedelta(days=days_inclusive - 1)
+    start_iso = start.isoformat()
+    return [r for r in rows if str(r.get("d") or "") >= start_iso]
+
+
+def minimal_admin_user_insights_shell(range_raw: str) -> dict[str, Any]:
+    """Пустой контекст при mode=user без выбранного user_id (только вкладки периода)."""
+    chart_range, _ = parse_wellness_chart_range(range_raw)
+    range_labels = {"day": "2 дня", "week": "7 дней", "month": "30 дней"}
+    rl = {"day": "d", "week": "w", "month": "m"}.get(chart_range, "w")
+    return {
+        "chart_range": chart_range,
+        "chart_range_label": range_labels.get(chart_range, ""),
+        "chart_range_letter": rl,
+        "wd_tab_urls": _tab_urls_for_wellness("/admin/wellness-journal/insights", "mode=user"),
+        "insights_view": "user",
+        "user_charts": [],
+        "heatmap_rows": [],
+        "heatmap_mode": "user",
+    }
+
+
+def _tab_urls_for_wellness(base: str, extra: str) -> dict[str, str]:
+    q = (extra or "").strip().strip("&")
+    if q:
+        return {
+            "d": f"{base}?range=d&{q}",
+            "w": f"{base}?range=w&{q}",
+            "m": f"{base}?range=m&{q}",
+        }
+    return {"d": f"{base}?range=d", "w": f"{base}?range=w", "m": f"{base}?range=m"}
+
+
+async def build_user_insights_dashboard_context(
+    user_id: int,
+    range_raw: str,
+    *,
+    canvas_prefix: str = "wr",
+    tab_url_base: str = "/account/wellness-results",
+    tab_extra_query: str = "",
+) -> dict[str, Any]:
+    """Контекст дашборда снимков для страницы пользователя или админки (один user_id)."""
+    chart_range, range_days = parse_wellness_chart_range(range_raw)
+    uid = int(user_id)
+    series_long = await fetch_snapshots_series(uid, 40)
+    series_chart = slice_series_calendar_days(series_long, range_days)
+    wellness_week_strip = calendar_week_strip_for_user(series_long)
+
+    streak = await count_checkin_streak(uid)
+    rec_text = await latest_recommendation_text(uid)
+    segment = await compute_segment_for_user(uid)
+    mood_prog = quick_mood_progress_percent(series_chart)
+    today_mood = latest_metric_value(series_long, "mood_0_10")
+    today_energy = latest_metric_value(series_long, "energy_0_10")
+    today_anxiety = latest_metric_value(series_long, "anxiety_0_10")
+    wellness_index_pct = wellness_composite_index_percent(today_mood, today_energy, today_anxiety)
+
+    spark_src = series_long[-14:] if len(series_long) > 14 else series_long
+    _, sp_m = series_metric_arrays(spark_src, "mood_0_10")
+    _, sp_e = series_metric_arrays(spark_src, "energy_0_10")
+    _, sp_a = series_metric_arrays(spark_src, "anxiety_0_10")
+    spark_mood_pts = sparkline_polyline_points(sp_m)
+    spark_energy_pts = sparkline_polyline_points(sp_e)
+    spark_anxiety_pts = sparkline_polyline_points(sp_a)
+
+    pfx = (canvas_prefix or "wr").rstrip("-")
+    user_charts: list[dict[str, Any]] = []
+    for mk, ru, col in (
+        ("anxiety_0_10", "Тревога", "#f472b6"),
+        ("mood_0_10", "Настроение", "#3dd4e0"),
+        ("energy_0_10", "Энергия", "#a78bfa"),
+        ("sleep_quality_0_10", "Сон", "#34d399"),
+        ("concentration_0_10", "Концентрация", "#fbbf24"),
+    ):
+        lab, dat = series_metric_arrays(series_chart, mk)
+        if any(x is not None for x in dat):
+            user_charts.append(
+                {
+                    "canvas_id": f"{pfx}-" + mk.replace("_", "-") + "-" + chart_range,
+                    "config": chartjs_line_config_dict(
+                        short_chart_date_labels(lab),
+                        dat,
+                        dataset_label=ru,
+                        border_color=col,
+                    ),
+                }
+            )
+    if chart_range != "day":
+        sc_cfg = dosage_mood_scatter_chart_config(series_chart)
+        if sc_cfg:
+            user_charts.append({"canvas_id": f"{pfx}-dose-mood-" + chart_range, "config": sc_cfg})
+
+    heatmap_rows: list[dict[str, Any]] = []
+    for x in series_chart:
+        m = x.get("m") or {}
+        dose_raw = m.get("dosage_amount_text")
+        heatmap_rows.append(
+            {
+                "d": x.get("date"),
+                "anxiety": m.get("anxiety_0_10"),
+                "mood": m.get("mood_0_10"),
+                "energy": m.get("energy_0_10"),
+                "sleep": m.get("sleep_quality_0_10"),
+                "conc": m.get("concentration_0_10"),
+                "dose": (str(dose_raw).strip()[:32] if dose_raw else ""),
+                "took": m.get("took_mushrooms_today"),
+            }
+        )
+
+    stab = mood_stability_pstdev_last(
+        series_chart, max_days=min(7, max(2, len(series_chart)))
+    )
+    range_labels = {"day": "2 дня", "week": "7 дней", "month": "30 дней"}
+    range_letter = {"day": "d", "week": "w", "month": "m"}.get(chart_range, "w")
+    return {
+        "chart_range": chart_range,
+        "chart_range_days": range_days,
+        "chart_range_label": range_labels.get(chart_range, ""),
+        "chart_range_letter": range_letter,
+        "wellness_week_strip": wellness_week_strip,
+        "wellness_streak": streak,
+        "wellness_segment": segment,
+        "wellness_rec_text": rec_text,
+        "wellness_mood_progress_pct": mood_prog,
+        "today_mood": today_mood,
+        "today_energy": today_energy,
+        "today_anxiety": today_anxiety,
+        "wellness_index_pct": wellness_index_pct,
+        "spark_mood_pts": spark_mood_pts,
+        "spark_energy_pts": spark_energy_pts,
+        "spark_anxiety_pts": spark_anxiety_pts,
+        "user_charts": user_charts,
+        "heatmap_rows": heatmap_rows,
+        "heatmap_mode": "user",
+        "wellness_stability": stab,
+        "wellness_series_n": len(series_chart),
+        "wellness_series_long_n": len(series_long),
+        "wd_tab_urls": _tab_urls_for_wellness(tab_url_base, tab_extra_query),
+        "insights_view": "user",
+    }
+
+
+async def build_platform_insights_dashboard_context(
+    range_raw: str,
+    *,
+    canvas_prefix: str = "adm-plat",
+) -> dict[str, Any]:
+    """Агрегированный дашборд по всем снимкам (средние по дням)."""
+    chart_range, range_days = parse_wellness_chart_range(range_raw)
+    plat_full = await admin_platform_series_for_charts(40)
+    plat_slice = slice_platform_series_rows(plat_full, range_days)
+    labels = short_chart_date_labels([str(r.get("d") or "") for r in plat_slice])
+
+    pfx = (canvas_prefix or "adm-plat").rstrip("-")
+    charts: list[dict[str, Any]] = []
+    for key, ru, col in (
+        ("anx", "Тревога (ср.)", "#f472b6"),
+        ("mood", "Настроение (ср.)", "#3dd4e0"),
+        ("energy", "Энергия (ср.)", "#a78bfa"),
+        ("sleep_q", "Сон (ср.)", "#34d399"),
+        ("conc", "Концентрация (ср.)", "#fbbf24"),
+    ):
+        dat = [_parse_float_row(r.get(key)) for r in plat_slice]
+        if any(x is not None for x in dat):
+            charts.append(
+                {
+                    "canvas_id": f"{pfx}-{key}-{chart_range}",
+                    "config": chartjs_line_config_dict(
+                        labels, dat, dataset_label=ru, border_color=col
+                    ),
+                }
+            )
+
+    plat_means = await aggregate_platform_snapshot_means(range_days)
+    activity = await admin_snapshot_counts_rolling_days(max(range_days, 2))
+
+    tail = plat_full[-14:] if len(plat_full) > 14 else plat_full
+    sp_m = [_parse_float_row(r.get("mood")) for r in tail]
+    sp_e = [_parse_float_row(r.get("energy")) for r in tail]
+    sp_a = [_parse_float_row(r.get("anx")) for r in tail]
+    spark_mood_pts = sparkline_polyline_points(sp_m)
+    spark_energy_pts = sparkline_polyline_points(sp_e)
+    spark_anxiety_pts = sparkline_polyline_points(sp_a)
+
+    last = plat_slice[-1] if plat_slice else (plat_full[-1] if plat_full else {})
+    today_mood = _parse_float_row(last.get("mood"))
+    today_energy = _parse_float_row(last.get("energy"))
+    today_anxiety = _parse_float_row(last.get("anx"))
+    wellness_index_pct = wellness_composite_index_percent(today_mood, today_energy, today_anxiety)
+
+    mood_prog = None
+    if len(plat_slice) >= 2:
+        m0 = _parse_float_row(plat_slice[0].get("mood"))
+        m1 = _parse_float_row(plat_slice[-1].get("mood"))
+        if m0 is not None and m1 is not None:
+            mood_prog = round((m1 - m0) / 10.0 * 100.0, 1)
+
+    fake_series = [
+        {"m": {"mood_0_10": _parse_float_row(r.get("mood"))}} for r in plat_slice
+    ]
+    stab = mood_stability_pstdev_last(
+        fake_series, max_days=min(7, max(2, len(fake_series)))
+    )
+
+    heatmap_rows: list[dict[str, Any]] = []
+    for r in plat_slice:
+        heatmap_rows.append(
+            {
+                "d": str(r.get("d") or ""),
+                "n": int(r.get("n") or 0),
+                "anxiety": _parse_float_row(r.get("anx")),
+                "mood": _parse_float_row(r.get("mood")),
+                "energy": _parse_float_row(r.get("energy")),
+                "sleep": _parse_float_row(r.get("sleep_q")),
+                "conc": _parse_float_row(r.get("conc")),
+            }
+        )
+
+    range_labels = {"day": "2 дня", "week": "7 дней", "month": "30 дней"}
+    range_letter = {"day": "d", "week": "w", "month": "m"}.get(chart_range, "w")
+    base = "/admin/wellness-journal/insights"
+    extra = "mode=platform"
+    return {
+        "chart_range": chart_range,
+        "chart_range_days": range_days,
+        "chart_range_label": range_labels.get(chart_range, ""),
+        "chart_range_letter": range_letter,
+        "wellness_week_strip": [],
+        "plat_activity_strip": activity,
+        "wellness_streak": int(plat_means.get("snapshot_rows") or 0),
+        "wellness_segment": "Среднее по всем пользователям за выбранное окно (анонимно).",
+        "wellness_rec_text": None,
+        "wellness_mood_progress_pct": mood_prog,
+        "today_mood": today_mood,
+        "today_energy": today_energy,
+        "today_anxiety": today_anxiety,
+        "wellness_index_pct": wellness_index_pct,
+        "spark_mood_pts": spark_mood_pts,
+        "spark_energy_pts": spark_energy_pts,
+        "spark_anxiety_pts": spark_anxiety_pts,
+        "user_charts": charts,
+        "heatmap_rows": heatmap_rows,
+        "heatmap_mode": "platform",
+        "wellness_stability": stab,
+        "wellness_series_n": len(plat_slice),
+        "wellness_series_long_n": len(plat_full),
+        "platform_kpis": plat_means,
+        "wd_tab_urls": _tab_urls_for_wellness(base, extra),
+        "insights_view": "platform",
+    }
 
 
 async def run_daily_wellness_recommendations_job() -> None:

@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Статистика дневника — Admin{% endblock %}
+{% block extra_head %}
+{% include "components/wellness_dashboard_css.html" %}
+{% endblock %}
+{% block content %}
+<div class="pt-24 pb-16 neo-app-surface">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    {% include "components/admin_nav.html" %}
+
+    <div class="flex flex-wrap items-start justify-between gap-4 mb-4">
+      <div>
+        <h1 class="text-2xl sm:text-3xl font-semibold text-text tracking-tight">Статистика дневника</h1>
+        <p class="wd-sub mt-2 mb-0" style="max-width:40rem">Те же графики и таблицы, что у пользователя в «Моё состояние», плюс сводка по платформе. Не медицинская аналитика.</p>
+      </div>
+      <div class="flex flex-wrap gap-2 text-sm">
+        <a href="/admin/wellness-journal" class="text-gold hover:underline">← Дневник терапии</a>
+        <span class="text-border opacity-40">|</span>
+        <a href="/admin/wellness-journal/overview" class="text-gold hover:underline">Сводка цифр</a>
+      </div>
+    </div>
+
+    {% if refreshed %}
+    <div class="mb-4 p-3 rounded-xl border border-emerald-500/40 text-emerald-200 text-sm">Таблица эффективности схем пересчитана.</div>
+    {% endif %}
+
+    <div class="wd-mode-bar">
+      <span class="text-xs text-muted uppercase tracking-wider mr-1">Режим:</span>
+      <a href="/admin/wellness-journal/insights?mode=platform&range={{ chart_range_letter|default('w') }}" class="text-sm {% if insights_mode == 'platform' %}wd-mode-active text-gold{% else %}text-muted hover:text-text{% endif %}">Вся платформа</a>
+      <span class="text-muted opacity-40">·</span>
+      <a href="/admin/wellness-journal/insights?mode=user&range={{ chart_range_letter|default('w') }}" class="text-sm {% if insights_mode == 'user' %}wd-mode-active text-gold{% else %}text-muted hover:text-text{% endif %}">Один пользователь</a>
+    </div>
+
+    {% if insights_mode == 'user' %}
+    <form method="get" action="/admin/wellness-journal/insights" class="flex flex-wrap gap-2 items-end mb-6 p-4 rounded-2xl border border-border bg-surface/40">
+      <input type="hidden" name="mode" value="user" />
+      <input type="hidden" name="range" value="{{ chart_range_letter|default('w') }}" />
+      <div class="flex-1 min-w-[220px]">
+        <label class="block text-xs text-muted mb-1">Пользователь (primary)</label>
+        <select name="user_id" class="w-full rounded-xl bg-bg border border-border px-3 py-2 text-text text-sm" onchange="this.form.submit()">
+          <option value="">— выберите —</option>
+          {% for u in user_list %}
+          <option value="{{ u.id }}" {% if insights_user_id == (u.id|string) %}selected{% endif %}>
+            {{ u.name or ('id ' ~ u.id) }} · снимков {{ u.snap_n }}{% if u.email %} · {{ u.email }}{% endif %}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <a href="/admin/wellness-journal/user/{{ insights_user_id }}" class="text-sm text-gold hover:underline py-2 {% if not insights_user_id %}opacity-40 pointer-events-none{% endif %}">Записи в БД →</a>
+    </form>
+    {% endif %}
+
+    <div class="wd-root wd-admin-wide">
+      {% if insights_mode == 'platform' %}
+        {% include "components/wellness_dashboard_core.html" %}
+      {% elif insights_user_id %}
+        <p class="text-xs text-muted mb-3">Просмотр: <strong class="text-text">{{ insights_user_label }}</strong> (id {{ insights_user_id }})</p>
+        {% include "components/wellness_dashboard_core.html" %}
+      {% else %}
+        <div class="wd-disclaimer" style="margin-bottom:0">
+          Выберите пользователя в списке выше — загрузятся индекс, sparklines, графики по периоду и тепловая таблица, как в личном кабинете.
+        </div>
+      {% endif %}
+    </div>
+
+    <h2 class="wd-sec-title mt-10">Коллективный интеллект · схемы (эвристика)</h2>
+    <p class="wd-sec-sub">По дельте настроения/энергии между соседними днями. Пересчёт вручную.</p>
+    <form method="post" action="/admin/wellness-journal/insights/refresh-schemes" class="mb-4">
+      <button type="submit" class="px-4 py-2 rounded-xl text-sm border border-border text-text hover:border-gold/40 font-medium">Пересчитать таблицу</button>
+    </form>
+    <div class="wd-table-wrap mb-10">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-border text-left text-muted">
+            <th class="px-3 py-2.5">Гриб (ключ)</th>
+            <th class="px-3 py-2.5">Сегмент</th>
+            <th class="px-3 py-2.5">N</th>
+            <th class="px-3 py-2.5">Ср. дельта прогресса*</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in schemes %}
+          <tr class="border-b border-border/50 hover:bg-white/[0.02]">
+            <td class="px-3 py-2 text-text">{{ s.mushroom_key }}</td>
+            <td class="px-3 py-2 text-muted">{{ s.segment or '—' }}</td>
+            <td class="px-3 py-2">{{ s.sample_n }}</td>
+            <td class="px-3 py-2">{% if s.avg_progress_score is not none %}{{ (s.avg_progress_score | float) | round(3) }}{% else %}—{% endif %}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" class="px-3 py-8 text-center text-muted">Пока пусто — накопите снимки и нажмите «Пересчитать».</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="text-xs text-muted mb-8">* Не клинический исход.</p>
+  </div>
+</div>
+
+{% if user_charts is defined and user_charts and user_charts|length > 0 %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script type="application/json" id="wellness-dash-charts-json">{{ user_charts | tojson }}</script>
+<script>
+(function () {
+  function boot() {
+    var el = document.getElementById('wellness-dash-charts-json');
+    if (!el || !window.Chart) return;
+    var list = [];
+    try { list = JSON.parse(el.textContent || '[]'); } catch (e) { return; }
+    list.forEach(function (item) {
+      var c = document.getElementById(item.canvas_id);
+      if (c) new Chart(c, item.config);
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+{% endif %}
+{% endblock %}

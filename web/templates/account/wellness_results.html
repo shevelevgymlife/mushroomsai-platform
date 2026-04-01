@@ -1,118 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Мои результаты — NEUROFUNGI AI{% endblock %}
 {% block extra_head %}
-<style>
-  .wd-root { --wd-teal:#3dd4e0; --wd-violet:#a78bfa; --wd-rose:#f472b6; --wd-mint:#34d399; --wd-gold:#d4a853;
-    --wd-card: rgba(255,255,255,0.045); --wd-line: rgba(255,255,255,0.09); --wd-glow: rgba(61,212,224,0.12);
-    max-width: 920px; margin: 0 auto; padding-bottom: 2.5rem;
-  }
-  .wd-head { display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:1rem; margin-bottom:1.25rem; }
-  .wd-head h1 { font-size:1.65rem; font-weight:600; letter-spacing:-0.02em; margin:0; color:var(--text, #e8e8ee); }
-  .wd-sub { font-size:0.8125rem; color:#8e8e96; line-height:1.5; max-width:32rem; margin:0.35rem 0 0; }
-  .wd-disclaimer {
-    font-size:0.75rem; line-height:1.5; color:#b8a882; padding:0.75rem 1rem; border-radius:16px;
-    border:1px solid rgba(212,168,83,0.28); background: linear-gradient(135deg, rgba(212,168,83,0.08), transparent);
-    margin-bottom:1.25rem;
-  }
-  .wd-cal { display:flex; justify-content:space-between; gap:0.35rem; margin-bottom:1.5rem; padding:0.75rem 0.5rem;
-    background: var(--wd-card); border:1px solid var(--wd-line); border-radius:20px;
-  }
-  .wd-cal-i { flex:1; text-align:center; min-width:0; }
-  .wd-cal-l { font-size:0.58rem; letter-spacing:0.06em; color:#6b6b78; text-transform:uppercase; margin-bottom:0.35rem; }
-  .wd-cal-n {
-    width:2.35rem; height:2.35rem; margin:0 auto; border-radius:50%; display:flex; align-items:center; justify-content:center;
-    font-size:0.85rem; font-weight:600; color:#c8c8d2; border:2px solid transparent; background:rgba(0,0,0,0.2);
-  }
-  .wd-cal-i.wd-today .wd-cal-n { border-color: var(--wd-teal); color: #fff; box-shadow: 0 0 0 3px var(--wd-glow); }
-  .wd-cal-i.wd-has .wd-cal-n { background: rgba(61,212,224,0.15); color: var(--wd-teal); }
-  .wd-cal-i.wd-today.wd-has .wd-cal-n { background: linear-gradient(145deg, rgba(61,212,224,0.35), rgba(167,139,250,0.2)); }
-  .wd-cal-dot { width:4px; height:4px; border-radius:50%; margin:0.25rem auto 0; background:transparent; }
-  .wd-cal-i.wd-has .wd-cal-dot { background: var(--wd-mint); }
-  .wd-hero-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap:0.75rem; margin-bottom:1.25rem; }
-  .wd-hero {
-    border-radius:22px; padding:1.1rem 1rem 0.85rem; position:relative; overflow:hidden; min-height:132px;
-    border:1px solid rgba(255,255,255,0.08);
-  }
-  .wd-hero-index {
-    background: linear-gradient(155deg, rgba(52,211,153,0.22) 0%, rgba(61,212,224,0.14) 45%, rgba(0,0,0,0.14) 100%);
-    display:flex; flex-direction:column; align-items:center; justify-content:flex-start; text-align:center;
-    padding-top:1rem;
-  }
-  .wd-donut-ring {
-    width:4.35rem; height:4.35rem; border-radius:50%; position:relative;
-    background: conic-gradient(from -90deg, var(--wd-teal) calc(var(--p, 0) * 1%), rgba(255,255,255,0.12) 0);
-    box-shadow: 0 4px 24px rgba(61,212,224,0.15);
-  }
-  .wd-donut-hole {
-    position:absolute; inset:7px; border-radius:50%; background: rgba(12,12,18,0.94);
-    display:flex; align-items:center; justify-content:center; font-size:1.05rem; font-weight:800; color:#fff;
-  }
-  .wd-index-hint { font-size:0.58rem; line-height:1.35; color:rgba(255,255,255,0.45); margin-top:0.5rem; max-width:9rem; position:relative; z-index:1; }
-  .wd-spark-wrap { margin-top:0.4rem; position:relative; z-index:1; width:100%; }
-  .wd-spark { width:100%; height:36px; display:block; opacity:0.92; }
-  .wd-spark-cap { font-size:0.5rem; letter-spacing:0.06em; color:rgba(255,255,255,0.38); margin-top:0.12rem; text-transform:uppercase; text-align:right; }
-  .wd-hero::after { content:""; position:absolute; inset:0; pointer-events:none; opacity:0.5;
-    background: radial-gradient(120% 80% at 100% 0%, rgba(255,255,255,0.14), transparent 55%);
-  }
-  .wd-hero-mood { background: linear-gradient(155deg, rgba(61,212,224,0.35) 0%, rgba(61,212,224,0.06) 55%, rgba(0,0,0,0.15) 100%); }
-  .wd-hero-energy { background: linear-gradient(155deg, rgba(167,139,250,0.4) 0%, rgba(167,139,250,0.07) 55%, rgba(0,0,0,0.15) 100%); }
-  .wd-hero-anx { background: linear-gradient(155deg, rgba(244,114,182,0.38) 0%, rgba(244,114,182,0.06) 55%, rgba(0,0,0,0.15) 100%); }
-  .wd-hero-lbl { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.1em; color:rgba(255,255,255,0.55); position:relative; z-index:1; }
-  .wd-hero-val { font-size:2rem; font-weight:700; line-height:1.1; margin:0.2rem 0 0.5rem; color:#fff; position:relative; z-index:1;
-    text-shadow: 0 2px 24px rgba(0,0,0,0.35);
-  }
-  .wd-hero-bar { height:4px; border-radius:4px; background:rgba(0,0,0,0.35); overflow:hidden; position:relative; z-index:1; }
-  .wd-hero-bar > i { display:block; height:100%; border-radius:4px; background:linear-gradient(90deg, #fff, rgba(255,255,255,0.45)); }
-  .wd-stat-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap:0.65rem; margin-bottom:1.5rem; }
-  .wd-stat {
-    border-radius:18px; padding:0.85rem; background: var(--wd-card); border:1px solid var(--wd-line); text-align:center;
-  }
-  .wd-stat-k { font-size:0.58rem; text-transform:uppercase; letter-spacing:0.08em; color:#6b6b78; }
-  .wd-stat-v { font-size:1.35rem; font-weight:700; color:var(--wd-gold); margin-top:0.2rem; }
-  .wd-stat-wide { text-align:left; grid-column: span 2; }
-  @media (max-width: 520px) { .wd-stat-wide { grid-column: span 1; } }
-  .wd-stat-note { font-size:0.7rem; color:#9a9aa8; margin-top:0.35rem; line-height:1.4; }
-  .wd-sec-title { font-size:0.95rem; font-weight:600; color:#e4e4ec; margin:0 0 0.35rem; display:flex; align-items:center; gap:0.5rem; }
-  .wd-sec-sub { font-size:0.7rem; color:#6b6b78; margin-bottom:0.75rem; }
-  .wd-tabs { display:inline-flex; gap:0.2rem; padding:0.25rem; border-radius:999px; background:rgba(0,0,0,0.28); border:1px solid var(--wd-line); margin-bottom:1rem; flex-wrap:wrap; }
-  .wd-tabs a {
-    font-size:0.68rem; padding:0.4rem 0.85rem; border-radius:999px; color:#7a7a8a; text-decoration:none; font-weight:500;
-    transition: background .15s, color .15s;
-  }
-  .wd-tabs a:hover { color:#c8c8d4; background:rgba(255,255,255,0.05); }
-  .wd-tabs a.wd-active { background: rgba(61,212,224,0.22); color: var(--wd-teal); font-weight:700; }
-  .wd-chart-card {
-    border-radius:22px; border:1px solid var(--wd-line); background: linear-gradient(165deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
-    padding:0.65rem; height:228px;
-  }
-  .wd-chart-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:0.75rem; }
-  .wd-ai {
-    border-radius:22px; padding:1.1rem 1.15rem; margin-bottom:1.5rem;
-    border:1px solid rgba(61,212,224,0.28);
-    background: linear-gradient(120deg, rgba(61,212,224,0.12), rgba(167,139,250,0.06), transparent);
-    box-shadow: 0 12px 40px rgba(0,0,0,0.2);
-  }
-  .wd-ai-h { font-size:0.8rem; font-weight:600; color:var(--wd-teal); margin:0 0 0.5rem; display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap; }
-  .wd-ai-badge { font-size:0.58rem; font-weight:500; text-transform:uppercase; letter-spacing:0.08em; color:#6b6b78; border:1px solid var(--wd-line); padding:0.15rem 0.45rem; border-radius:999px; }
-  .wd-ai-body { font-size:0.8125rem; line-height:1.55; color:#d4d4de; white-space:pre-wrap; word-break:break-word; }
-  .wd-table-wrap { border-radius:20px; border:1px solid var(--wd-line); overflow:hidden; background:rgba(0,0,0,0.2); }
-  .wd-actions { display:flex; flex-wrap:wrap; gap:0.5rem; margin:1.25rem 0; }
-  .wd-btn {
-    display:inline-flex; align-items:center; justify-content:center; padding:0.55rem 1.1rem; border-radius:999px; font-size:0.8rem; font-weight:600;
-    text-decoration:none; border:none; cursor:pointer;
-    background: linear-gradient(135deg, rgba(61,212,224,0.35), rgba(167,139,250,0.25)); color:#fff; border:1px solid rgba(255,255,255,0.12);
-  }
-  .wd-btn.secondary { opacity:0.85; background: rgba(255,255,255,0.06); }
-  .wd-form-card { border-radius:20px; border:1px solid var(--wd-line); padding:1rem; background:var(--wd-card); margin-bottom:1.5rem; }
-  .wd-entry { border-radius:16px; border:1px solid var(--wd-line); padding:0.75rem 0.85rem; background:rgba(0,0,0,0.15); }
-</style>
+{% include "components/wellness_dashboard_css.html" %}
 {% endblock %}
 {% block content %}
-<div class="accneo-wrap wd-root">
+<div class="accneo-wrap wd-root wd-user-shell">
+  <span class="wd-personal-badge">Только ваши данные</span>
   <div class="wd-head">
     <div>
       <h1>Моё состояние</h1>
-      <p class="wd-sub">Данные из ответов в ЛС с NeuroFungi AI. Тарифы Старт / Про / Макси (включая пробный Старт).</p>
+      <p class="wd-sub">Личный дашборд по ответам в ЛС с NeuroFungi AI. Тарифы Старт / Про / Макси (включая пробный Старт). Здесь — отдельно от админки; никто кроме вас не видит эту страницу.</p>
     </div>
   </div>
 
@@ -134,152 +31,7 @@
   </div>
   {% endif %}
 
-  {% if wellness_week_strip and wellness_week_strip|length > 0 %}
-  <div class="wd-cal" aria-label="Неделя check-in">
-    {% for day in wellness_week_strip %}
-    <div class="wd-cal-i{% if day.is_today %} wd-today{% endif %}{% if day.has_data %} wd-has{% endif %}">
-      <div class="wd-cal-l">{{ day.label }}</div>
-      <div class="wd-cal-n">{{ day.num }}</div>
-      <div class="wd-cal-dot" title="{% if day.has_data %}Есть запись{% else %}Нет записи{% endif %}"></div>
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
-
-  <div class="wd-hero-grid">
-    <div class="wd-hero wd-hero-index">
-      <div class="wd-hero-lbl">Индекс дня</div>
-      <div class="wd-donut-ring" style="--p: {{ wellness_index_pct if wellness_index_pct is not none else 0 }}" role="img" aria-label="Сводный индекс">
-        <div class="wd-donut-hole">{% if wellness_index_pct is not none %}{{ wellness_index_pct }}{% else %}—{% endif %}</div>
-      </div>
-      <p class="wd-index-hint">Сводно по шкалам: настроение и энергия ↑, тревога ↓ — кольцо шире. Не диагноз.</p>
-    </div>
-    <div class="wd-hero wd-hero-mood">
-      <div class="wd-hero-lbl">Настроение</div>
-      <div class="wd-hero-val">{% if today_mood is not none %}{{ (today_mood | float) | round(1) }}{% else %}—{% endif %}<span style="font-size:0.45em;opacity:0.6;font-weight:500">/10</span></div>
-      <div class="wd-hero-bar"><i style="width:{% if today_mood is not none %}{{ ((today_mood | float) / 10 * 100) | round }}{% else %}0{% endif %}%"></i></div>
-      {% if spark_mood_pts %}
-      <div class="wd-spark-wrap">
-        <svg class="wd-spark" viewBox="0 0 108 34" preserveAspectRatio="none" aria-hidden="true"><polyline fill="none" stroke="rgba(255,255,255,0.78)" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" points="{{ spark_mood_pts }}"/></svg>
-        <div class="wd-spark-cap">14 дн. мини-тренд</div>
-      </div>
-      {% endif %}
-    </div>
-    <div class="wd-hero wd-hero-energy">
-      <div class="wd-hero-lbl">Энергия</div>
-      <div class="wd-hero-val">{% if today_energy is not none %}{{ (today_energy | float) | round(1) }}{% else %}—{% endif %}<span style="font-size:0.45em;opacity:0.6;font-weight:500">/10</span></div>
-      <div class="wd-hero-bar"><i style="width:{% if today_energy is not none %}{{ ((today_energy | float) / 10 * 100) | round }}{% else %}0{% endif %}%"></i></div>
-      {% if spark_energy_pts %}
-      <div class="wd-spark-wrap">
-        <svg class="wd-spark" viewBox="0 0 108 34" preserveAspectRatio="none" aria-hidden="true"><polyline fill="none" stroke="rgba(255,255,255,0.78)" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" points="{{ spark_energy_pts }}"/></svg>
-        <div class="wd-spark-cap">14 дн. мини-тренд</div>
-      </div>
-      {% endif %}
-    </div>
-    <div class="wd-hero wd-hero-anx">
-      <div class="wd-hero-lbl">Тревога</div>
-      <div class="wd-hero-val">{% if today_anxiety is not none %}{{ (today_anxiety | float) | round(1) }}{% else %}—{% endif %}<span style="font-size:0.45em;opacity:0.6;font-weight:500">/10</span></div>
-      <div class="wd-hero-bar"><i style="width:{% if today_anxiety is not none %}{{ ((today_anxiety | float) / 10 * 100) | round }}{% else %}0{% endif %}%"></i></div>
-      {% if spark_anxiety_pts %}
-      <div class="wd-spark-wrap">
-        <svg class="wd-spark" viewBox="0 0 108 34" preserveAspectRatio="none" aria-hidden="true"><polyline fill="none" stroke="rgba(255,255,255,0.78)" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" points="{{ spark_anxiety_pts }}"/></svg>
-        <div class="wd-spark-cap">14 дн. мини-тренд</div>
-      </div>
-      {% endif %}
-    </div>
-  </div>
-
-  <div class="wd-stat-grid">
-    <div class="wd-stat"><div class="wd-stat-k">Серия дней</div><div class="wd-stat-v">{{ wellness_streak }}</div></div>
-    <div class="wd-stat"><div class="wd-stat-k">Δ настроения <span style="opacity:.65">({{ chart_range_label }})</span></div><div class="wd-stat-v">{% if wellness_mood_progress_pct is not none %}{{ wellness_mood_progress_pct }}%{% else %}—{% endif %}</div></div>
-    <div class="wd-stat"><div class="wd-stat-k">Стабильность σ <span style="opacity:.65">(окно)</span></div><div class="wd-stat-v">{% if wellness_stability is not none %}{{ wellness_stability }}{% else %}—{% endif %}</div></div>
-    <div class="wd-stat wd-stat-wide">
-      <div class="wd-stat-k">Профиль (эвристика)</div>
-      <div style="font-size:0.78rem;color:#b4b4c0;margin-top:0.35rem;line-height:1.45">{{ wellness_segment }}</div>
-      <div class="wd-stat-note">Δ — первый vs последний день в выбранном периоде ({{ chart_range_label }}, {{ wellness_series_n }} снимков). σ — разброс настроения по дням в этом же окне (до 7 точек).</div>
-    </div>
-  </div>
-
-  {% if wellness_rec_text %}
-  <div class="wd-ai">
-    <div class="wd-ai-h">AI-разбор и идея на сегодня <span class="wd-ai-badge">информационно</span></div>
-    <div class="wd-ai-body">{{ wellness_rec_text }}</div>
-  </div>
-  {% elif wellness_series_long_n < 2 %}
-  <div class="wd-ai" style="border-color:var(--wd-line);background:rgba(255,255,255,0.03)">
-    <div class="wd-ai-h" style="color:#9a9aa8">Пока мало структурных данных</div>
-    <div class="wd-ai-body" style="color:#8e8e96">Продолжайте отвечать на опрос в чате — появится ежедневный разбор и мягкие варианты по схеме (без медицинских назначений).</div>
-  </div>
-  {% endif %}
-
-  <div class="mb-2">
-    <h2 class="wd-sec-title">Динамика</h2>
-    <p class="wd-sec-sub">Графики и таблица ниже переключаются: вчера–сегодня, 7 или 30 дней. Корреляция доза↔настроение — на «Неделя» и «30 дней».</p>
-    <nav class="wd-tabs" role="tablist" aria-label="Период графиков">
-      <a role="tab" href="/account/wellness-results?range=d" class="{% if chart_range == 'day' %}wd-active{% endif %}">День</a>
-      <a role="tab" href="/account/wellness-results?range=w" class="{% if chart_range == 'week' %}wd-active{% endif %}">Неделя</a>
-      <a role="tab" href="/account/wellness-results?range=m" class="{% if chart_range == 'month' %}wd-active{% endif %}">30 дней</a>
-    </nav>
-  </div>
-  {% if user_charts and user_charts|length > 0 %}
-  <div class="wd-chart-grid mb-8">
-    {% for c in user_charts %}
-    <div class="wd-chart-card"><canvas id="{{ c.canvas_id }}"></canvas></div>
-    {% endfor %}
-  </div>
-  {% else %}
-  <p class="text-sm text-muted mb-8" style="color:#8e8e96;line-height:1.5">В этом периоде нет снимков с числовыми полями. Выберите другой интервал или отметьте день в чате с AI.</p>
-  {% endif %}
-
-  {% macro hmcell(v, invert) %}
-    {% if v is none %}
-    <td class="p-2.5 text-center text-muted">—</td>
-    {% else %}
-      {% set p = ((v | float) / 10 * 100) | round %}
-      {% if invert %}
-        {% set alpha = 0.14 + (p / 100) * 0.5 %}
-        <td class="p-2.5 text-center rounded-lg" style="background:rgba(244,114,182,{{ alpha }});color:#fce7f3">{{ (v | float) | round(1) }}</td>
-      {% else %}
-        {% set alpha = 0.12 + (p / 100) * 0.48 %}
-        <td class="p-2.5 text-center rounded-lg" style="background:rgba(61,212,224,{{ alpha }});color:#ecfeff">{{ (v | float) | round(1) }}</td>
-      {% endif %}
-    {% endif %}
-  {% endmacro %}
-
-  {% if heatmap_rows and heatmap_rows|length > 0 %}
-  <h2 class="wd-sec-title">Сводка по дням <span style="font-size:0.65rem;font-weight:500;color:#6b6b78">{{ chart_range_label }}</span></h2>
-  <p class="wd-sec-sub">Те же даты, что и на графиках выше. У тревоги насыщеннее — выше уровень.</p>
-  <div class="wd-table-wrap mb-8 overflow-x-auto">
-    <table class="w-full text-xs text-left border-collapse min-w-[540px]">
-      <thead>
-        <tr style="border-bottom:1px solid rgba(255,255,255,0.08)" class="text-muted">
-          <th class="p-2.5 pl-3">Дата</th>
-          <th class="p-2.5">Приём</th>
-          <th class="p-2.5">Доза</th>
-          <th class="p-2.5">Трев.</th>
-          <th class="p-2.5">Настр.</th>
-          <th class="p-2.5">Энерг.</th>
-          <th class="p-2.5">Сон</th>
-          <th class="p-2.5 pr-3">Конц.</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in heatmap_rows %}
-        <tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
-          <td class="p-2.5 pl-3 text-text whitespace-nowrap">{% if row.d and row.d|length >= 10 %}{{ row.d[8:10] }}.{{ row.d[5:7] }}{% else %}{{ row.d }}{% endif %}</td>
-          <td class="p-2.5 text-muted">{% if row.took is true %}да{% elif row.took is false %}нет{% else %}—{% endif %}</td>
-          <td class="p-2.5 text-muted max-w-[104px] truncate" title="{{ row.dose }}">{{ row.dose or '—' }}</td>
-          {{ hmcell(row.anxiety, true) }}
-          {{ hmcell(row.mood, false) }}
-          {{ hmcell(row.energy, false) }}
-          {{ hmcell(row.sleep, false) }}
-          {{ hmcell(row.conc, false) }}
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% endif %}
+  {% include "components/wellness_dashboard_core.html" %}
 
   <h2 class="wd-sec-title">За всё время (по ответам)</h2>
   <div class="wd-stat-grid mb-6">
@@ -340,13 +92,13 @@
   <p class="accneo-back" style="margin-top:28px"><a href="/account/settings">← Настройки</a></p>
 </div>
 
-{% if user_charts and user_charts|length > 0 %}
+{% if user_charts is defined and user_charts and user_charts|length > 0 %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script type="application/json" id="wellness-user-charts">{{ user_charts | tojson }}</script>
+<script type="application/json" id="wellness-dash-charts-json">{{ user_charts | tojson }}</script>
 <script>
 (function () {
   function boot() {
-    var el = document.getElementById('wellness-user-charts');
+    var el = document.getElementById('wellness-dash-charts-json');
     if (!el || !window.Chart) return;
     var list = [];
     try { list = JSON.parse(el.textContent || '[]'); } catch (e) { return; }

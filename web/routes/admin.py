@@ -63,7 +63,7 @@ ADMIN_SECTIONS = [
     ("Радио Down Tempo", "/admin/radio-downtempo", "can_radio_downtempo"),
     ("Реферальная программа", "/admin/referral", "can_users"),
     ("Дневник терапии", "/admin/wellness-journal", "can_users"),
-    ("Аналитика дневника", "/admin/wellness-analytics", "can_users"),
+    ("Статистика дневника", "/admin/wellness-journal/insights", "can_users"),
     ("NeuroFungi AI: пожелания", "/admin/platform-ai-feedback", "can_users"),
     ("AI в сообществе", "/admin/ai-community-bot", "can_users"),
 ]
@@ -2601,121 +2601,106 @@ async def admin_wellness_journal_user_pdf(
     return RedirectResponse("/admin/wellness-journal?saved=1", status_code=303)
 
 
-@router.get("/wellness-analytics", response_class=HTMLResponse)
-async def admin_wellness_analytics(request: Request):
+@router.get("/wellness-journal/insights", response_class=HTMLResponse)
+async def admin_wellness_journal_insights(request: Request):
     admin = await require_permission(request, "can_users")
     if not admin:
         return RedirectResponse("/login")
     perms = await get_user_permissions(admin)
     from services.wellness_insights_service import (
-        admin_platform_series_for_charts,
-        admin_snapshot_counts_rolling_days,
         admin_user_ids_with_snapshots,
-        aggregate_platform_snapshot_means,
-        calendar_week_strip_for_user,
-        chartjs_line_config_dict,
-        fetch_snapshots_series,
-        series_metric_arrays,
+        build_platform_insights_dashboard_context,
+        build_user_insights_dashboard_context,
+        minimal_admin_user_insights_shell,
     )
 
-    def _nf(x):
-        if x is None:
-            return None
-        try:
-            return float(x)
-        except (TypeError, ValueError):
-            return None
-
-    platform_series = await admin_platform_series_for_charts(30)
-    plat_means_7 = await aggregate_platform_snapshot_means(7)
-    plat_activity_strip = await admin_snapshot_counts_rolling_days(7)
+    mode = (request.query_params.get("mode") or "platform").strip().lower()
+    if mode not in ("platform", "user"):
+        mode = "platform"
+    range_raw = (request.query_params.get("range") or "w").strip()
     user_list = await admin_user_ids_with_snapshots(200)
-    filter_uid_raw = (request.query_params.get("user_id") or "").strip()
-    user_charts: list[dict] = []
-    user_week_strip: list[dict] = []
-    series_f: list = []
-    if filter_uid_raw.isdigit():
-        uid_f = int(filter_uid_raw)
-        series_f = await fetch_snapshots_series(uid_f, 30)
-        user_week_strip = calendar_week_strip_for_user(series_f)
-        for mk, ru, col in (
-            ("anxiety_0_10", "Тревога", "#f472b6"),
-            ("mood_0_10", "Настроение", "#3dd4e0"),
-            ("energy_0_10", "Энергия", "#a78bfa"),
-            ("sleep_quality_0_10", "Сон", "#34d399"),
-            ("concentration_0_10", "Концентрация", "#fbbf24"),
-        ):
-            lab, dat = series_metric_arrays(series_f, mk)
-            if any(x is not None for x in dat):
-                user_charts.append(
-                    {
-                        "canvas_id": "uc-" + mk.replace("_", "-"),
-                        "config": chartjs_line_config_dict(
-                            lab, dat, dataset_label=ru, border_color=col
-                        ),
-                    }
-                )
+    uid_raw = (request.query_params.get("user_id") or "").strip()
 
-    pl_labels = [r["d"] for r in platform_series]
-    pl_anx = [_nf(r.get("anx")) for r in platform_series]
-    pl_mood = [_nf(r.get("mood")) for r in platform_series]
-    pl_en = [_nf(r.get("energy")) for r in platform_series]
+    ctx: dict = {
+        "request": request,
+        "user": admin,
+        "user_permissions": perms,
+        "insights_mode": mode,
+        "user_list": user_list,
+        "insights_user_id": "",
+        "insights_user_label": "",
+        "refreshed": request.query_params.get("refreshed"),
+    }
 
-    platform_charts = [
-        {
-            "canvas_id": "plat-anx",
-            "config": chartjs_line_config_dict(
-                pl_labels, pl_anx, dataset_label="Тревога (ср.)", border_color="#f472b6"
-            ),
-        },
-        {
-            "canvas_id": "plat-mood",
-            "config": chartjs_line_config_dict(
-                pl_labels, pl_mood, dataset_label="Настроение (ср.)", border_color="#3dd4e0"
-            ),
-        },
-        {
-            "canvas_id": "plat-energy",
-            "config": chartjs_line_config_dict(
-                pl_labels, pl_en, dataset_label="Энергия (ср.)", border_color="#a78bfa"
-            ),
-        },
-    ]
+    if mode == "user" and uid_raw.isdigit():
+        ctx["insights_user_id"] = uid_raw
+        uid_f = int(uid_raw)
+        urow = await database.fetch_one(users.select().where(users.c.id == uid_f))
+        ctx["insights_user_label"] = (
+            (urow.get("name") or "").strip() if urow else ""
+        ) or f"id {uid_f}"
+        dash = await build_user_insights_dashboard_context(
+            uid_f,
+            range_raw,
+            canvas_prefix=f"adm-u{uid_f}",
+            tab_url_base="/admin/wellness-journal/insights",
+            tab_extra_query=f"mode=user&user_id={uid_f}",
+        )
+        ctx.update(dash)
+    elif mode == "user":
+        ctx.update(minimal_admin_user_insights_shell(range_raw))
+    else:
+        ctx.update(await build_platform_insights_dashboard_context(range_raw))
 
     schemes = await database.fetch_all(
         wellness_scheme_effect_stats.select()
         .order_by(wellness_scheme_effect_stats.c.sample_n.desc())
         .limit(80)
     )
+    ctx["schemes"] = [dict(x) for x in schemes]
 
-    return templates.TemplateResponse(
-        "dashboard/admin_wellness_analytics.html",
-        {
-            "request": request,
-            "user": admin,
-            "user_permissions": perms,
-            "user_list": user_list,
-            "filter_user_id": filter_uid_raw,
-            "user_charts": user_charts,
-            "platform_charts": platform_charts,
-            "schemes": [dict(x) for x in schemes],
-            "refreshed": request.query_params.get("refreshed"),
-            "platform_kpis": plat_means_7,
-            "plat_activity_strip": plat_activity_strip,
-            "user_week_strip": user_week_strip,
-        },
-    )
+    return templates.TemplateResponse("dashboard/admin_wellness_insights.html", ctx)
 
 
-@router.post("/wellness-analytics/refresh-schemes")
-async def admin_wellness_analytics_refresh_schemes(request: Request):
+@router.post("/wellness-journal/insights/refresh-schemes")
+async def admin_wellness_journal_insights_refresh_schemes(request: Request):
     admin = await require_permission(request, "can_users")
     if not admin:
         return RedirectResponse("/login")
     from services.wellness_insights_service import refresh_scheme_effect_stats_simple
 
     await refresh_scheme_effect_stats_simple()
-    return RedirectResponse("/admin/wellness-analytics?refreshed=1", status_code=303)
+    return RedirectResponse(
+        "/admin/wellness-journal/insights?mode=platform&refreshed=1", status_code=303
+    )
+
+
+@router.get("/wellness-analytics", response_class=HTMLResponse)
+async def admin_wellness_analytics_legacy_redirect(request: Request):
+    """Старая ссылка: перенаправляем на единую страницу статистики."""
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    uid = (request.query_params.get("user_id") or "").strip()
+    r = (request.query_params.get("range") or "w").strip()
+    if uid.isdigit():
+        dest = f"/admin/wellness-journal/insights?mode=user&user_id={uid}&range={r}"
+    else:
+        dest = f"/admin/wellness-journal/insights?mode=platform&range={r}"
+    return RedirectResponse(dest, status_code=302)
+
+
+@router.post("/wellness-analytics/refresh-schemes")
+async def admin_wellness_analytics_refresh_schemes_legacy(request: Request):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    from services.wellness_insights_service import refresh_scheme_effect_stats_simple
+
+    await refresh_scheme_effect_stats_simple()
+    return RedirectResponse(
+        "/admin/wellness-journal/insights?mode=platform&refreshed=1", status_code=303
+    )
 
 
 # ─── NeuroFungi AI: пожелания к платформе ─────────────────────────────────────

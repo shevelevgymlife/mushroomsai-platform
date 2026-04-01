@@ -11,7 +11,8 @@
       По пользователю — пауза сбора и разрешение скачивать PDF со страницы «Мои результаты». Топ — по числу ответов за 30 дней.
     </p>
     <p class="mb-6 flex flex-wrap gap-3">
-      <a href="/admin/wellness-journal/overview" class="inline-flex items-center px-4 py-2 rounded-xl text-sm font-medium border border-gold/40 text-gold hover:bg-gold/10">Сводка по платформе (цифры и графики)</a>
+      <a href="/admin/wellness-journal/insights" class="inline-flex items-center px-4 py-2 rounded-xl text-sm font-medium border border-gold/40 text-gold hover:bg-gold/10">Статистика дневника — платформа и пользователи</a>
+      <a href="/admin/wellness-journal/overview" class="inline-flex items-center px-4 py-2 rounded-xl text-sm font-medium border border-border text-text hover:border-gold/40">Сводка цифр (кратко)</a>
       <a href="/admin/ai-community-bot" class="inline-flex items-center px-4 py-2 rounded-xl text-sm font-medium border border-border text-text hover:border-gold/40">Управление AI в сообществе</a>
     </p>
 
@@ -95,7 +96,10 @@
                 <button type="submit" class="text-xs px-2 py-1 rounded-lg border border-border hover:border-gold/40">{% if pdf_ok %}Запретить{% else %}Разрешить{% endif %}</button>
               </form>
             </td>
-            <td class="px-3 py-2"><a href="/community/profile/{{ r.id }}" target="_blank" class="text-muted hover:text-gold text-xs">Профиль</a></td>
+            <td class="px-3 py-2 whitespace-nowrap">
+              <a href="/admin/wellness-journal/insights?mode=user&user_id={{ r.id }}" class="text-gold hover:underline text-xs mr-2">Графики</a>
+              <a href="/community/profile/{{ r.id }}" target="_blank" class="text-muted hover:text-gold text-xs">Профиль</a>
+            </td>
           </tr>
           {% else %}
           <tr><td colspan="6" class="px-3 py-6 text-center text-muted">Пока нет ответов за период.</td></tr>
