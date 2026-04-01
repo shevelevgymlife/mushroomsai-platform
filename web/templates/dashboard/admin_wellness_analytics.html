@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Аналитика дневника — Admin{% endblock %}
+{% block content %}
+<div class="pt-24 pb-16 neo-app-surface">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    {% include "components/admin_nav.html" %}
+
+    <h1 class="text-3xl font-light text-text mb-2">Аналитика дневника / снимки по дням</h1>
+    <p class="text-sm text-muted mb-4 max-w-3xl">
+      Данные из подтверждённых ответов в ЛС (JSON после согласия «да»). Не медицинская аналитика.
+      Коллективные средние — анонимно. Схемы: эвристика по дельте настроения/энергии между днями.
+    </p>
+    {% if refreshed %}
+    <div class="mb-4 p-3 rounded-xl border border-emerald-500/40 text-emerald-200 text-sm">Таблица эффективности схем пересчитана.</div>
+    {% endif %}
+
+    <div class="flex flex-wrap gap-3 mb-8">
+      <a href="/admin/wellness-journal" class="text-sm text-gold hover:underline">← Дневник терапии</a>
+      <a href="/admin/wellness-journal/overview" class="text-sm text-gold hover:underline">Сводка (цифры)</a>
+    </div>
+
+    <h2 class="text-xl font-medium text-text mb-3">Платформа (средние по дням)</h2>
+    <div class="grid md:grid-cols-3 gap-4 mb-10">
+      {% for c in platform_charts %}
+      <div class="rounded-2xl border border-border p-3 bg-surface/40" style="height:220px">
+        <canvas id="{{ c.canvas_id }}"></canvas>
+      </div>
+      {% endfor %}
+    </div>
+
+    <h2 class="text-xl font-medium text-text mb-3">Фильтр пользователя</h2>
+    <form method="get" action="/admin/wellness-analytics" class="flex flex-wrap gap-2 items-end mb-6">
+      <div>
+        <label class="block text-xs text-muted mb-1">Пользователь (primary)</label>
+        <select name="user_id" class="rounded-xl bg-bg border border-border px-3 py-2 text-text text-sm min-w-[240px]">
+          <option value="">— не выбран —</option>
+          {% for u in user_list %}
+          <option value="{{ u.id }}" {% if filter_user_id == (u.id|string) %}selected{% endif %}>
+            {{ u.name or ('id ' ~ u.id) }} · снимков {{ u.snap_n }}{% if u.email %} · {{ u.email }}{% endif %}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="px-4 py-2 rounded-xl text-sm border border-gold/40 text-gold hover:bg-gold/10">Показать</button>
+    </form>
+
+    {% if user_charts and user_charts|length > 0 %}
+    <h2 class="text-xl font-medium text-text mb-3">Пользователь id {{ filter_user_id }}</h2>
+    <div class="grid md:grid-cols-2 gap-4 mb-10">
+      {% for c in user_charts %}
+      <div class="rounded-2xl border border-border p-3 bg-surface/40" style="height:240px">
+        <canvas id="{{ c.canvas_id }}"></canvas>
+      </div>
+      {% endfor %}
+    </div>
+    {% elif filter_user_id %}
+    <p class="text-muted text-sm mb-8">Нет снимков с числовыми полями за период или пользователь не найден.</p>
+    {% endif %}
+
+    <h2 class="text-xl font-medium text-text mb-3">Коллективный интеллект: схемы (эвристика)</h2>
+    <form method="post" action="/admin/wellness-analytics/refresh-schemes" class="mb-4">
+      <button type="submit" class="px-4 py-2 rounded-xl text-sm border border-border text-text hover:border-gold/40">Пересчитать таблицу</button>
+    </form>
+    <div class="overflow-x-auto rounded-2xl border border-border">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-border text-left text-muted">
+            <th class="px-3 py-2">Гриб (ключ)</th>
+            <th class="px-3 py-2">Сегмент</th>
+            <th class="px-3 py-2">N</th>
+            <th class="px-3 py-2">Ср. дельта прогресса*</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in schemes %}
+          <tr class="border-b border-border/50">
+            <td class="px-3 py-2 text-text">{{ s.mushroom_key }}</td>
+            <td class="px-3 py-2 text-muted">{{ s.segment or '—' }}</td>
+            <td class="px-3 py-2">{{ s.sample_n }}</td>
+            <td class="px-3 py-2">{% if s.avg_progress_score is not none %}{{ (s.avg_progress_score | float) | round(3) }}{% else %}—{% endif %}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" class="px-3 py-6 text-center text-muted">Пока пусто — накопите снимки и нажмите «Пересчитать».</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="text-xs text-muted mt-2">* Грубая оценка по изменению настроения/энергии между соседними днями у одного user_id, не клинический исход.</p>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script type="application/json" id="admin-wa-platform">{{ platform_charts | tojson }}</script>
+<script type="application/json" id="admin-wa-user">{{ user_charts | tojson }}</script>
+<script>
+(function () {
+  function boot(jsonId) {
+    var el = document.getElementById(jsonId);
+    if (!el || !window.Chart) return;
+    var list = [];
+    try { list = JSON.parse(el.textContent || '[]'); } catch (e) { return; }
+    list.forEach(function (item) {
+      var c = document.getElementById(item.canvas_id);
+      if (c) new Chart(c, item.config);
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () {
+      boot('admin-wa-platform');
+      boot('admin-wa-user');
+    });
+  } else {
+    boot('admin-wa-platform');
+    boot('admin-wa-user');
+  }
+})();
+</script>
+{% endblock %}

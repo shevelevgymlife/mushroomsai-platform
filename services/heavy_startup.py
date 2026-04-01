@@ -642,6 +642,15 @@ async def run_heavy_startup(app: FastAPI) -> None:
             logger.warning("migrate_v31 wellness_which_after_decline: %s", e)
 
         try:
+            import migrate_v32_wellness_analytics as migrate_v32
+
+            for s in migrate_v32.STEPS:
+                await database.execute(sa.text(s))
+            logger.info("wellness analytics (migrate_v32) OK")
+        except Exception as e:
+            logger.warning("migrate_v32 wellness_analytics: %s", e)
+
+        try:
             from services.merge_neurofungi_ai_chats import merge_all_neurofungi_ai_personal_chats
 
             await merge_all_neurofungi_ai_personal_chats()

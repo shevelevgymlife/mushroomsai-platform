@@ -749,6 +749,45 @@ wellness_journal_entries = sqlalchemy.Table(
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
 
+wellness_daily_snapshots = sqlalchemy.Table(
+    "wellness_daily_snapshots",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("snapshot_date", sqlalchemy.Date, nullable=False),
+    sqlalchemy.Column("metrics_json", sqlalchemy.Text, nullable=False, server_default="{}"),
+    sqlalchemy.Column(
+        "source_wellness_entry_id",
+        sqlalchemy.Integer,
+        sqlalchemy.ForeignKey("wellness_journal_entries.id", ondelete="SET NULL"),
+        nullable=True,
+    ),
+    sqlalchemy.Column("wellness_segment", sqlalchemy.String(80), nullable=True),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+    sqlalchemy.Column("updated_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+wellness_ai_recommendations = sqlalchemy.Table(
+    "wellness_ai_recommendations",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("rec_date", sqlalchemy.Date, nullable=False),
+    sqlalchemy.Column("body_text", sqlalchemy.Text, nullable=False),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+wellness_scheme_effect_stats = sqlalchemy.Table(
+    "wellness_scheme_effect_stats",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("mushroom_key", sqlalchemy.String(160), nullable=False),
+    sqlalchemy.Column("segment", sqlalchemy.String(80), nullable=False, server_default=""),
+    sqlalchemy.Column("sample_n", sqlalchemy.Integer, nullable=False, server_default="0"),
+    sqlalchemy.Column("avg_progress_score", sqlalchemy.Float, nullable=True),
+    sqlalchemy.Column("updated_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
 platform_ai_feedback = sqlalchemy.Table(
     "platform_ai_feedback",
     metadata,

@@ -15,6 +15,7 @@ from services.wellness_journal_service import (
     run_wellness_weekly_digests_job,
     run_wellness_subscription_renewal_nudges_job,
 )
+from services.wellness_insights_service import run_daily_wellness_recommendations_job
 from services.subscription_expiry_job import run_subscription_expiry_sweep_job
 
 scheduler = AsyncIOScheduler()
@@ -88,6 +89,14 @@ def start_scheduler() -> None:
         "interval",
         hours=12,
         id="wellness_subscription_renewal_nudge",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        run_daily_wellness_recommendations_job,
+        "cron",
+        hour=10,
+        minute=40,
+        id="wellness_ai_recommendations_daily",
         replace_existing=True,
     )
     scheduler.add_job(

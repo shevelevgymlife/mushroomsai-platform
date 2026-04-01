@@ -1,5 +1,6 @@
 import json
 import logging
+import statistics
 import secrets
 import urllib.parse
 from web.profile_ui_themes import PROFILE_UI_THEMES, PROFILE_UI_THEME_IDS, MAX_PROFILE_CIRCLES_ACCOUNT
@@ -1131,6 +1132,78 @@ async def wellness_results_page(request: Request):
     entries = [dict(e) for e in entries_raw]
     agg = aggregate_entries_for_display(entries)
     coach_ok = await wellness_journal_globally_enabled()
+    from services.wellness_insights_service import (
+        chartjs_line_config_dict,
+        compute_segment_for_user,
+        count_checkin_streak,
+        dosage_mood_scatter_chart_config,
+        fetch_snapshots_series,
+        latest_metric_value,
+        latest_recommendation_text,
+        quick_mood_progress_percent,
+        series_metric_arrays,
+    )
+
+    series = await fetch_snapshots_series(uid, 14)
+    streak = await count_checkin_streak(uid)
+    rec_text = await latest_recommendation_text(uid)
+    segment = await compute_segment_for_user(uid)
+    mood_prog = quick_mood_progress_percent(series)
+    today_mood = latest_metric_value(series, "mood_0_10")
+    today_energy = latest_metric_value(series, "energy_0_10")
+    today_anxiety = latest_metric_value(series, "anxiety_0_10")
+    user_charts: list[dict] = []
+    for mk, ru, col in (
+        ("anxiety_0_10", "Тревога", "#f472b6"),
+        ("mood_0_10", "Настроение", "#3dd4e0"),
+        ("energy_0_10", "Энергия", "#a78bfa"),
+        ("sleep_quality_0_10", "Сон", "#34d399"),
+        ("concentration_0_10", "Концентрация", "#fbbf24"),
+    ):
+        lab, dat = series_metric_arrays(series, mk)
+        if any(x is not None for x in dat):
+            user_charts.append(
+                {
+                    "canvas_id": "wr-" + mk.replace("_", "-"),
+                    "config": chartjs_line_config_dict(
+                        lab, dat, dataset_label=ru, border_color=col
+                    ),
+                }
+            )
+    sc_cfg = dosage_mood_scatter_chart_config(series)
+    if sc_cfg:
+        user_charts.append({"canvas_id": "wr-dose-mood", "config": sc_cfg})
+    heatmap_rows: list[dict] = []
+    for x in series[-10:]:
+        m = x.get("m") or {}
+        dose_raw = m.get("dosage_amount_text")
+        heatmap_rows.append(
+            {
+                "d": x.get("date"),
+                "anxiety": m.get("anxiety_0_10"),
+                "mood": m.get("mood_0_10"),
+                "energy": m.get("energy_0_10"),
+                "sleep": m.get("sleep_quality_0_10"),
+                "conc": m.get("concentration_0_10"),
+                "dose": (str(dose_raw).strip()[:32] if dose_raw else ""),
+                "took": m.get("took_mushrooms_today"),
+            }
+        )
+    stab = None
+    moods_s = []
+    for x in series[-7:]:
+        v = (x.get("m") or {}).get("mood_0_10")
+        if v is not None:
+            try:
+                moods_s.append(float(v))
+            except (TypeError, ValueError):
+                pass
+    if len(moods_s) >= 2:
+        try:
+            stab = round(statistics.pstdev(moods_s), 2)
+        except statistics.StatisticsError:
+            stab = None
+
     return templates.TemplateResponse(
         "account/wellness_results.html",
         {
@@ -1140,6 +1213,17 @@ async def wellness_results_page(request: Request):
             "agg": agg,
             "entries": entries[:40],
             "coach_ok": coach_ok,
+            "wellness_series_n": len(series),
+            "wellness_streak": streak,
+            "wellness_rec_text": rec_text,
+            "wellness_segment": segment,
+            "wellness_mood_progress_pct": mood_prog,
+            "today_mood": today_mood,
+            "today_energy": today_energy,
+            "today_anxiety": today_anxiety,
+            "user_charts": user_charts,
+            "heatmap_rows": heatmap_rows,
+            "wellness_stability": stab,
         },
     )
 
@@ -1189,6 +1273,13 @@ async def wellness_results_pdf(request: Request):
     if urow and urow.get("wellness_journal_pdf_allowed") is False:
         return RedirectResponse("/account/wellness-results?pdf=0", status_code=302)
     from services.pdf_service import generate_wellness_journal_pdf
+    from services.wellness_insights_service import (
+        compute_segment_for_user,
+        count_checkin_streak,
+        fetch_snapshots_series,
+        latest_recommendation_text,
+        quick_mood_progress_percent,
+    )
 
     entries_raw = await database.fetch_all(
         wellness_journal_entries.select()
@@ -1199,6 +1290,12 @@ async def wellness_results_pdf(request: Request):
     entries = [dict(e) for e in entries_raw]
     agg = aggregate_entries_for_display(entries)
     nm = (user.get("name") or "").strip() or f"id {uid}"
+    snap_series = await fetch_snapshots_series(uid, 14)
+    rec_body = await latest_recommendation_text(uid)
+    w_streak = await count_checkin_streak(uid)
+    w_seg = await compute_segment_for_user(uid)
+    w_prog = quick_mood_progress_percent(snap_series)
+    prog_line = f"{w_prog} %" if w_prog is not None else "—"
     lines = [
         (
             "Сводка",
@@ -1206,8 +1303,22 @@ async def wellness_results_pdf(request: Request):
             f"Напоминаний AI: {agg.get('prompt_count', 0)}\n"
             f"Среднее настроение (0–10): {agg.get('mood_avg') or '—'}\n"
             f"Средняя энергия (0–10): {agg.get('energy_avg') or '—'}",
-        )
+        ),
+        (
+            "Снимки и прогресс (не медицина)",
+            f"Дней со структурными данными: {len(snap_series)}\n"
+            f"Серия check-in подряд: {w_streak}\n"
+            f"Профиль (эвристика): {w_seg}\n"
+            f"Динамика настроения за период снимков: {prog_line}",
+        ),
     ]
+    if rec_body:
+        lines.append(
+            (
+                "Последняя рекомендация AI (информационный характер)",
+                (rec_body or "")[:4500],
+            )
+        )
     mush = agg.get("mushroom_counts") or []
     if mush:
         lines.append(("Упоминания грибов (по числу ответов)", "\n".join(f"• {m[0]}: {m[1]}" for m in mush[:20])))

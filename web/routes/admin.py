@@ -34,6 +34,7 @@ from db.models import (
     radio_downtempo_tracks,
     platform_settings,
     wellness_journal_entries,
+    wellness_scheme_effect_stats,
     platform_ai_feedback,
     ai_community_bot_settings,
 )
@@ -62,6 +63,7 @@ ADMIN_SECTIONS = [
     ("Радио Down Tempo", "/admin/radio-downtempo", "can_radio_downtempo"),
     ("Реферальная программа", "/admin/referral", "can_users"),
     ("Дневник терапии", "/admin/wellness-journal", "can_users"),
+    ("Аналитика дневника", "/admin/wellness-analytics", "can_users"),
     ("NeuroFungi AI: пожелания", "/admin/platform-ai-feedback", "can_users"),
     ("AI в сообществе", "/admin/ai-community-bot", "can_users"),
 ]
@@ -2597,6 +2599,112 @@ async def admin_wellness_journal_user_pdf(
     ok = (allow_pdf or "").strip().lower() in ("1", "true", "on", "yes")
     await set_user_wellness_pdf_allowed(int(user_id), ok)
     return RedirectResponse("/admin/wellness-journal?saved=1", status_code=303)
+
+
+@router.get("/wellness-analytics", response_class=HTMLResponse)
+async def admin_wellness_analytics(request: Request):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    perms = await get_user_permissions(admin)
+    from services.wellness_insights_service import (
+        admin_platform_series_for_charts,
+        admin_user_ids_with_snapshots,
+        chartjs_line_config_dict,
+        fetch_snapshots_series,
+        series_metric_arrays,
+    )
+
+    def _nf(x):
+        if x is None:
+            return None
+        try:
+            return float(x)
+        except (TypeError, ValueError):
+            return None
+
+    platform_series = await admin_platform_series_for_charts(30)
+    user_list = await admin_user_ids_with_snapshots(200)
+    filter_uid_raw = (request.query_params.get("user_id") or "").strip()
+    user_charts: list[dict] = []
+    if filter_uid_raw.isdigit():
+        uid_f = int(filter_uid_raw)
+        s = await fetch_snapshots_series(uid_f, 30)
+        for mk, ru, col in (
+            ("anxiety_0_10", "Тревога", "#f472b6"),
+            ("mood_0_10", "Настроение", "#3dd4e0"),
+            ("energy_0_10", "Энергия", "#a78bfa"),
+            ("sleep_quality_0_10", "Сон", "#34d399"),
+            ("concentration_0_10", "Концентрация", "#fbbf24"),
+        ):
+            lab, dat = series_metric_arrays(s, mk)
+            if any(x is not None for x in dat):
+                user_charts.append(
+                    {
+                        "canvas_id": "uc-" + mk.replace("_", "-"),
+                        "config": chartjs_line_config_dict(
+                            lab, dat, dataset_label=ru, border_color=col
+                        ),
+                    }
+                )
+
+    pl_labels = [r["d"] for r in platform_series]
+    pl_anx = [_nf(r.get("anx")) for r in platform_series]
+    pl_mood = [_nf(r.get("mood")) for r in platform_series]
+    pl_en = [_nf(r.get("energy")) for r in platform_series]
+
+    platform_charts = [
+        {
+            "canvas_id": "plat-anx",
+            "config": chartjs_line_config_dict(
+                pl_labels, pl_anx, dataset_label="Тревога (ср.)", border_color="#f472b6"
+            ),
+        },
+        {
+            "canvas_id": "plat-mood",
+            "config": chartjs_line_config_dict(
+                pl_labels, pl_mood, dataset_label="Настроение (ср.)", border_color="#3dd4e0"
+            ),
+        },
+        {
+            "canvas_id": "plat-energy",
+            "config": chartjs_line_config_dict(
+                pl_labels, pl_en, dataset_label="Энергия (ср.)", border_color="#a78bfa"
+            ),
+        },
+    ]
+
+    schemes = await database.fetch_all(
+        wellness_scheme_effect_stats.select()
+        .order_by(wellness_scheme_effect_stats.c.sample_n.desc())
+        .limit(80)
+    )
+
+    return templates.TemplateResponse(
+        "dashboard/admin_wellness_analytics.html",
+        {
+            "request": request,
+            "user": admin,
+            "user_permissions": perms,
+            "user_list": user_list,
+            "filter_user_id": filter_uid_raw,
+            "user_charts": user_charts,
+            "platform_charts": platform_charts,
+            "schemes": [dict(x) for x in schemes],
+            "refreshed": request.query_params.get("refreshed"),
+        },
+    )
+
+
+@router.post("/wellness-analytics/refresh-schemes")
+async def admin_wellness_analytics_refresh_schemes(request: Request):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    from services.wellness_insights_service import refresh_scheme_effect_stats_simple
+
+    await refresh_scheme_effect_stats_simple()
+    return RedirectResponse("/admin/wellness-analytics?refreshed=1", status_code=303)
 
 
 # ─── NeuroFungi AI: пожелания к платформе ─────────────────────────────────────

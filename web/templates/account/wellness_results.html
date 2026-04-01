@@ -1,12 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Мои результаты — NEUROFUNGI AI{% endblock %}
 {% block content %}
-<div class="accneo-wrap" style="max-width:720px">
+<div class="accneo-wrap" style="max-width:820px">
   <h1 class="accneo-title">Мои результаты</h1>
-  <p class="text-sm text-muted mb-4" style="color:#8e8e96;line-height:1.5">
-    Здесь собирается статистика из ваших ответов AI в личных сообщениях (чат с аккаунтом поддержки платформы).
-    Доступно на тарифах Старт, Про и Макси (включая пробный Старт). Это не медицинское заключение — только самонаблюдение.
+  <p class="text-sm text-muted mb-3" style="color:#8e8e96;line-height:1.55">
+    Статистика из ответов AI в личных сообщениях. Доступно на тарифах Старт, Про и Макси (включая пробный Старт).
   </p>
+  <div class="mb-6 p-4 rounded-2xl border border-amber-500/35 bg-amber-500/5 text-sm" style="color:#c4b998;line-height:1.55">
+    <strong class="text-amber-200/90">Важно:</strong> сервис не является медицинским. Рекомендации и графики носят
+    <strong>информационный</strong> характер, без диагнозов и назначений — только самонаблюдение и размышление вместе с AI.
+  </div>
 
   {% if request.query_params.get('saved') %}
   <div class="mb-4 p-3 rounded-xl border border-gold/30 bg-gold/10 text-sm text-gold">Настройки сохранены.</div>
@@ -21,6 +24,119 @@
   <div class="mb-4 p-3 rounded-xl border border-amber-500/40 bg-amber-500/10 text-sm text-amber-200">
     Сбор дневника временно отключён на уровне платформы. Ваши сохранённые данные остаются доступны.
   </div>
+  {% endif %}
+
+  <section class="mb-8 p-5 rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.07] to-transparent">
+    <h2 class="text-base font-semibold text-gold mb-4 tracking-wide uppercase text-xs" style="letter-spacing:0.08em">Сегодня (последний снимок)</h2>
+    <div class="grid gap-4" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">
+      {% macro bar_row(label, val, color) %}
+      <div>
+        <div class="flex justify-between text-xs text-muted mb-1"><span>{{ label }}</span><span class="text-text font-medium">{% if val is not none %}{{ (val | float) | round(1) }}{% else %}—{% endif %} / 10</span></div>
+        <div class="h-2.5 rounded-full bg-white/10 overflow-hidden">
+          <div class="h-full rounded-full transition-all" style="width:{% if val is not none %}{{ ((val | float) / 10 * 100) | round }}{% else %}0{% endif %}%;background:linear-gradient(90deg,{{ color }},transparent)"></div>
+        </div>
+      </div>
+      {% endmacro %}
+      {{ bar_row('Настроение', today_mood, '#3dd4e0') }}
+      {{ bar_row('Энергия', today_energy, '#a78bfa') }}
+      {{ bar_row('Тревога', today_anxiety, '#f472b6') }}
+    </div>
+    <div class="grid gap-3 mt-6" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px">
+      <div class="p-3 rounded-xl border border-white/10 bg-white/5 text-center">
+        <div class="text-[10px] uppercase text-muted tracking-wider">Серия дней</div>
+        <div class="text-2xl font-bold text-gold mt-1">{{ wellness_streak }}</div>
+      </div>
+      <div class="p-3 rounded-xl border border-white/10 bg-white/5 text-center">
+        <div class="text-[10px] uppercase text-muted tracking-wider">Динамика настроения*</div>
+        <div class="text-2xl font-bold text-gold mt-1">{% if wellness_mood_progress_pct is not none %}{{ wellness_mood_progress_pct }}%{% else %}—{% endif %}</div>
+      </div>
+      <div class="p-3 rounded-xl border border-white/10 bg-white/5 text-center">
+        <div class="text-[10px] uppercase text-muted tracking-wider">Стабильность настроения†</div>
+        <div class="text-2xl font-bold text-gold mt-1">{% if wellness_stability is not none %}σ {{ wellness_stability }}{% else %}—{% endif %}</div>
+      </div>
+      <div class="p-3 rounded-xl border border-white/10 bg-white/5 text-center md:col-span-1" style="min-width:0">
+        <div class="text-[10px] uppercase text-muted tracking-wider">Профиль (эвристика)</div>
+        <div class="text-xs text-text mt-2 leading-snug text-left">{{ wellness_segment }}</div>
+      </div>
+    </div>
+    <p class="text-[11px] text-muted mt-3 leading-relaxed">* Сравнение первого и последнего дня в окне снимков (до {{ wellness_series_n }} дней). † Ниже σ — ровнее настроение за последние 7 дней с данными.</p>
+  </section>
+
+  {% if wellness_rec_text %}
+  <section class="mb-8 p-5 rounded-2xl border border-cyan-500/25 bg-cyan-500/5">
+    <h2 class="text-sm font-semibold text-cyan-200/90 mb-2 flex items-center gap-2">🤖 Рекомендация AI <span class="text-[10px] font-normal text-muted uppercase tracking-wider">информационно</span></h2>
+    <div class="text-sm text-text/95 whitespace-pre-wrap leading-relaxed" style="word-break:break-word">{{ wellness_rec_text }}</div>
+  </section>
+  {% elif wellness_series_n < 2 %}
+  <section class="mb-8 p-4 rounded-2xl border border-white/10 bg-white/5 text-sm text-muted">
+    Как только накопится больше дней со структурными ответами, здесь появится ежедневный разбор и мягкие идеи по схеме — без медицинских назначений.
+  </section>
+  {% endif %}
+
+  {% if user_charts and user_charts|length > 0 %}
+  <section class="mb-8">
+    <h2 class="text-lg font-semibold text-text mb-3">Динамика и корреляция</h2>
+    <p class="text-xs text-muted mb-4">Линии — по дням из подтверждённых ответов. Точечный график — если в тексте дозы есть число.</p>
+    <div class="grid md:grid-cols-2 gap-4">
+      {% for c in user_charts %}
+      <div class="rounded-2xl border border-white/10 p-3 bg-white/5" style="height:220px">
+        <canvas id="{{ c.canvas_id }}"></canvas>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% macro hmcell(v, invert) %}
+    {% if v is none %}
+    <td class="p-2 text-center text-muted">—</td>
+    {% else %}
+      {% set p = ((v | float) / 10 * 100) | round %}
+      {% if invert %}
+        {% set alpha = 0.12 + (p / 100) * 0.55 %}
+        <td class="p-2 text-center rounded-md" style="background:rgba(244,114,182,{{ alpha }});color:#fce7f3">{{ (v | float) | round(1) }}</td>
+      {% else %}
+        {% set alpha = 0.1 + (p / 100) * 0.5 %}
+        <td class="p-2 text-center rounded-md" style="background:rgba(61,212,224,{{ alpha }});color:#ecfeff">{{ (v | float) | round(1) }}</td>
+      {% endif %}
+    {% endif %}
+  {% endmacro %}
+
+  {% if heatmap_rows and heatmap_rows|length > 0 %}
+  <section class="mb-8">
+    <h2 class="text-lg font-semibold text-text mb-2">Тепловая карта (дни × показатели)</h2>
+    <p class="text-xs text-muted mb-3">Интенсивность фона отражает величину 0–10 (для тревоги высокие значения темнее).</p>
+    <div class="overflow-x-auto rounded-xl border border-white/10">
+      <table class="w-full text-xs text-left border-collapse min-w-[520px]">
+        <thead>
+          <tr class="border-b border-white/10 text-muted">
+            <th class="p-2 pl-3">Дата</th>
+            <th class="p-2">Приём</th>
+            <th class="p-2">Доза (текст)</th>
+            <th class="p-2">Трев.</th>
+            <th class="p-2">Настр.</th>
+            <th class="p-2">Энерг.</th>
+            <th class="p-2">Сон</th>
+            <th class="p-2 pr-3">Конц.</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in heatmap_rows %}
+          <tr class="border-b border-white/5">
+            <td class="p-2 pl-3 text-text whitespace-nowrap">{% if row.d and row.d|length >= 10 %}{{ row.d[8:10] }}.{{ row.d[5:7] }}{% else %}{{ row.d }}{% endif %}</td>
+            <td class="p-2 text-muted">{% if row.took is true %}да{% elif row.took is false %}нет{% else %}—{% endif %}</td>
+            <td class="p-2 text-muted max-w-[100px] truncate" title="{{ row.dose }}">{{ row.dose or '—' }}</td>
+            {{ hmcell(row.anxiety, true) }}
+            {{ hmcell(row.mood, false) }}
+            {{ hmcell(row.energy, false) }}
+            {{ hmcell(row.sleep, false) }}
+            {{ hmcell(row.conc, false) }}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
   {% endif %}
 
   <div class="grid gap-3 mb-6" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px">
@@ -89,4 +205,25 @@
 
   <p class="accneo-back" style="margin-top:28px"><a href="/account/settings">← Настройки</a></p>
 </div>
+
+{% if user_charts and user_charts|length > 0 %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script type="application/json" id="wellness-user-charts">{{ user_charts | tojson }}</script>
+<script>
+(function () {
+  function boot() {
+    var el = document.getElementById('wellness-user-charts');
+    if (!el || !window.Chart) return;
+    var list = [];
+    try { list = JSON.parse(el.textContent || '[]'); } catch (e) { return; }
+    list.forEach(function (item) {
+      var c = document.getElementById(item.canvas_id);
+      if (c) new Chart(c, item.config);
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+{% endif %}
 {% endblock %}
