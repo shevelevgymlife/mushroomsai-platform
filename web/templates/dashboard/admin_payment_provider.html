@@ -154,11 +154,22 @@
       {% elif provider.id == 'telegram_stars' %}
       <div class="p-6 rounded-2xl border border-border bg-surface space-y-4">
         <h2 class="text-lg font-medium text-text">Telegram Stars</h2>
-        <p class="text-xs text-muted">Настройка приёма Stars выполняется в BotFather / платформе Telegram; здесь — учётные пометки.</p>
+        <p class="text-xs text-muted leading-relaxed">
+          Оплата подписки <b>звёздами</b> доступна <b>только в Telegram-боте</b> (счёт в валюте XTR). На сайте по-прежнему CloudPayments или ЮKassa. Включите бота в BotFather для приёма платежей при необходимости.
+        </p>
         <label class="flex items-center gap-2 text-sm text-text cursor-pointer">
           <input type="checkbox" name="enabled" value="1" class="rounded border-border" {% if provider_cfg.get('enabled') %}checked{% endif %} />
-          Использовать Stars для подписок (после реализации)
+          Включить приём Stars (общий переключатель)
         </label>
+        <label class="flex items-center gap-2 text-sm text-text cursor-pointer">
+          <input type="checkbox" name="offer_subscriptions" value="1" class="rounded border-border" {% if provider_cfg.get('offer_subscriptions') %}checked{% endif %} />
+          Показывать в боте кнопку оплаты подписки звёздами (рядом с оплатой картой, если она доступна)
+        </label>
+        <div>
+          <label class="block text-xs text-muted mb-1">Звёзд за 1 ₽ (каталог цен в рублях)</label>
+          <input type="text" name="stars_per_rub" inputmode="decimal" value="{{ provider_cfg.get('stars_per_rub', 0.55) }}" class="w-full max-w-xs px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono" placeholder="0.55" />
+          <p class="text-[11px] text-muted mt-1">Списание: ceil(цена_тарифа_₽ × этот коэффициент). Пример: тариф 990 ₽ и 0.55 → 545 ⭐. Подберите курс под свою экономику.</p>
+        </div>
         <div>
           <label class="block text-xs text-muted mb-1">Заметки</label>
           <textarea name="note" rows="3" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm">{{ provider_cfg.get('note', '') }}</textarea>

@@ -367,6 +367,20 @@ async def admin_payment_provider_save(request: Request, provider_id: str):
         secrets = ("bot_token", "provider_token", "secret_key")
     elif pid == "telegram_stars":
         new_st["enabled"] = str(form.get("enabled") or "").strip().lower() in ("1", "true", "on", "yes")
+        new_st["offer_subscriptions"] = str(form.get("offer_subscriptions") or "").strip().lower() in (
+            "1",
+            "true",
+            "on",
+            "yes",
+        )
+        raw_spr = (form.get("stars_per_rub") or "").strip().replace(",", ".")
+        try:
+            v = float(raw_spr) if raw_spr else 0.0
+        except ValueError:
+            v = 0.0
+        if v <= 0:
+            v = 0.55
+        new_st["stars_per_rub"] = max(0.01, min(5000.0, v))
         new_st["note"] = (form.get("note") or "").strip()
         secrets = ()
     elif pid == "crypto":

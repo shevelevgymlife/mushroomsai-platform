@@ -36,6 +36,7 @@ from bot.handlers.yookassa_subscribe import (
     subscribe_menu_handler,
     successful_payment_handler,
     tgpay_plan_callback,
+    tgstars_plan_callback,
 )
 from bot.handlers.legal_commands import privacy_command, terms_command
 
@@ -193,6 +194,10 @@ def create_bot() -> Application:
     application.add_handler(PreCheckoutQueryHandler(pre_checkout_handler), group=pay_group)
     application.add_handler(
         CallbackQueryHandler(tgpay_plan_callback, pattern=r"^tgpay_[a-zA-Z0-9_]+$"),
+        group=pay_group,
+    )
+    application.add_handler(
+        CallbackQueryHandler(tgstars_plan_callback, pattern=r"^tgstars_[a-zA-Z0-9_]+$"),
         group=pay_group,
     )
     application.add_handler(MessageHandler(TG_PAYMENT_FILTER, successful_payment_handler), group=pay_group)

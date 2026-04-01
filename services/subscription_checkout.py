@@ -1,12 +1,13 @@
 """
 Единая точка: какой способ оплаты подписок активен (сайт и бот).
 Приоритет задаётся в админке (Оплата) или «авто»: CloudPayments → ЮKassa.
-Тинькофф / Stars в коде подписок пока не подключены — остаются в настройках на будущее.
+Telegram Stars для подписок — только в боте (счёт XTR), включается в Оплата → Telegram Stars.
 """
 from __future__ import annotations
 
 import json
 import logging
+import math
 from typing import Any
 
 from db.database import database
@@ -24,6 +25,36 @@ logger = logging.getLogger(__name__)
 
 _CHECKOUT_KEY = "subscription_checkout"
 _VALID_PREFS = frozenset({"auto", "cloudpayments", "yookassa_bot"})
+
+
+def subscription_stars_amount(price_rub: float, stars_per_rub: float) -> int:
+    """Число Stars для счёта XTR: ceil(price_rub * stars_per_rub), минимум 1 при положительной цене."""
+    pr = float(price_rub or 0)
+    spr = float(stars_per_rub or 0)
+    if pr <= 0 or spr <= 0:
+        return 0
+    return max(1, math.ceil(pr * spr))
+
+
+async def telegram_stars_subscription_meta() -> dict[str, Any]:
+    """Настройки Stars для меню подписки в боте (payment_provider:telegram_stars)."""
+    st = await get_provider_settings("telegram_stars")
+    enabled = bool(st.get("enabled"))
+    offer = bool(st.get("offer_subscriptions"))
+    raw = str(st.get("stars_per_rub") or "").strip().replace(",", ".")
+    try:
+        spr = float(raw) if raw else 0.0
+    except ValueError:
+        spr = 0.0
+    if spr <= 0:
+        spr = 0.55
+    spr = max(0.01, min(5000.0, spr))
+    return {
+        "enabled": enabled,
+        "offer_subscriptions": offer,
+        "stars_per_rub": spr,
+        "available_for_subscriptions": enabled and offer,
+    }
 
 
 async def get_subscription_checkout_preference() -> str:
@@ -104,6 +135,7 @@ async def resolve_active_subscription_checkout() -> dict[str, Any]:
         return pick_auto()
 
     kind = kind_for_pref()
+    tsm = await telegram_stars_subscription_meta()
 
     return {
         "kind": kind,
@@ -116,4 +148,6 @@ async def resolve_active_subscription_checkout() -> dict[str, Any]:
         "yookassa_bot_only": kind == "yookassa" and not yk_web and yk_bot,
         "offering_id_by_plan": offering_id_by_plan,
         "offerings": offerings,
+        "telegram_stars_subscriptions_enabled": bool(tsm.get("available_for_subscriptions")),
+        "telegram_stars_per_rub": float(tsm.get("stars_per_rub") or 0.55),
     }
