@@ -51,8 +51,12 @@ class Settings(BaseSettings):
     TASK_AUTORUN_WEBHOOK_TOKEN: str = ""  # секрет для заголовков webhook (optional)
     TASK_AUTORUN_SECRET: str = ""  # альтернатива токену (optional)
     OPS_NOTIFY_DAILY_SUMMARY_HOUR_UTC: int = 9  # час UTC для ежедневной сводки (email)
-    # Час UTC для ежедневной рассылки промптов дневника NeuroFungi AI (не чаще 1×/сутки на пользователя по next_prompt_at)
+    # Устарело как единственный триггер: промпты дневника обрабатываются job с интервалом (см. scheduler).
     WELLNESS_PROMPTS_CRON_HOUR_UTC: int = 8
+    # Слоты UTC для 1–3 напоминаний в сутки: утро / день / вечер (настраиваются в Environment).
+    WELLNESS_SLOT_MORNING_HOUR_UTC: int = 8
+    WELLNESS_SLOT_MIDDAY_HOUR_UTC: int = 13
+    WELLNESS_SLOT_EVENING_HOUR_UTC: int = 19
     OPS_NOTIFY_BILLING_DUE_AT: str = ""  # дата платежа YYYY-MM-DD (optional)
     OPS_NOTIFY_BILLING_CURRENT_USD: float = 0.0  # текущие расходы (optional)
     OPS_NOTIFY_BILLING_LIMIT_USD: float = 0.0  # лимит расходов (optional)

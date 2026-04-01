@@ -75,6 +75,12 @@ users = sqlalchemy.Table(
     sqlalchemy.Column("music_player_volume", sqlalchemy.Float, default=0.5, server_default="0.5"),
     sqlalchemy.Column("notification_prefs_json", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("wellness_journal_interval_days", sqlalchemy.Integer, default=1, server_default="1"),
+    sqlalchemy.Column(
+        "wellness_journal_prompts_per_day",
+        sqlalchemy.Integer,
+        default=1,
+        server_default="1",
+    ),
     sqlalchemy.Column("wellness_journal_opt_out", sqlalchemy.Boolean, default=False, server_default="false"),
     sqlalchemy.Column("wellness_journal_admin_paused", sqlalchemy.Boolean, default=False, server_default="false"),
     sqlalchemy.Column("wellness_last_prompt_at", sqlalchemy.DateTime, nullable=True),

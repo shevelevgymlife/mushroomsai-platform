@@ -8,7 +8,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any, Optional
 
 import sqlalchemy as sa
@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 PLATFORM_KEY = "wellness_journal_globally_enabled"
 ALLOWED_INTERVALS = (1, 3, 5, 7)
+ALLOWED_PROMPTS_PER_DAY = (1, 2, 3)
 MSG_PREFIX = "🍄 NeuroFungi AI · дневник\n\n"
 
 
@@ -329,13 +330,15 @@ async def schedule_wellness_journal_if_paid(user_id: int) -> None:
         return
     if row.get("wellness_next_prompt_at") is not None:
         return
-    nxt = datetime.utcnow() + timedelta(hours=1)
+    ppp = _normalize_prompts_per_day(row.get("wellness_journal_prompts_per_day"))
+    nxt = wellness_bootstrap_next_prompt_at(datetime.utcnow(), prompts_per_day=ppp)
     await database.execute(
         users.update()
         .where(users.c.id == uid)
         .values(
             wellness_next_prompt_at=nxt,
             wellness_journal_interval_days=row.get("wellness_journal_interval_days") or 1,
+            wellness_journal_prompts_per_day=ppp,
         )
     )
 
@@ -348,9 +351,97 @@ def _normalize_interval(raw: Any) -> int:
     return n if n in ALLOWED_INTERVALS else 1
 
 
-def _next_prompt_after(interval_days: int) -> datetime:
-    d = _normalize_interval(interval_days)
-    return datetime.utcnow() + timedelta(days=d)
+def _normalize_prompts_per_day(raw: Any) -> int:
+    try:
+        n = int(raw)
+    except (TypeError, ValueError):
+        return 1
+    return n if n in ALLOWED_PROMPTS_PER_DAY else 1
+
+
+def _wellness_slot_hours(ppp: int) -> tuple[int, ...]:
+    p = _normalize_prompts_per_day(ppp)
+    m = int(getattr(settings, "WELLNESS_SLOT_MORNING_HOUR_UTC", 8) or 8)
+    mid = int(getattr(settings, "WELLNESS_SLOT_MIDDAY_HOUR_UTC", 13) or 13)
+    eve = int(getattr(settings, "WELLNESS_SLOT_EVENING_HOUR_UTC", 19) or 19)
+    m, mid, eve = max(0, min(23, m)), max(0, min(23, mid)), max(0, min(23, eve))
+    if p == 1:
+        return (m,)
+    if p == 2:
+        return (m, mid)
+    return (m, mid, eve)
+
+
+def _utc_slot_datetime(d: date, hour: int, minute: int = 5) -> datetime:
+    return datetime(d.year, d.month, d.day, max(0, min(23, hour)), minute, 0, 0)
+
+
+def _slots_on_day(d: date, ppp: int) -> list[datetime]:
+    return [_utc_slot_datetime(d, h, 5) for h in _wellness_slot_hours(ppp)]
+
+
+def _slot_index_from_scheduled(scheduled: datetime, ppp: int) -> int:
+    hours = _wellness_slot_hours(ppp)
+    sh = int(scheduled.hour)
+    for i, hh in enumerate(hours):
+        if sh == hh:
+            return i
+    if sh < hours[0]:
+        return 0
+    for i in range(len(hours) - 1):
+        if hours[i] <= sh < hours[i + 1]:
+            return i
+    return len(hours) - 1
+
+
+def _scheduled_fire_datetime(now: datetime, stored_next: Optional[datetime], ppp: int) -> datetime:
+    if stored_next is not None:
+        return stored_next
+    slots = _slots_on_day(now.date(), ppp)
+    chosen = slots[0]
+    for s in slots:
+        if s <= now:
+            chosen = s
+    return chosen
+
+
+def first_upcoming_wellness_prompt_at(now: datetime, *, prompts_per_day: int) -> datetime:
+    """Ближайший слот строго после текущего момента (сегодня или завтра)."""
+    ppp = _normalize_prompts_per_day(prompts_per_day)
+    today = now.date()
+    for dt in _slots_on_day(today, ppp):
+        if dt > now:
+            return dt
+    nxt = today + timedelta(days=1)
+    return _slots_on_day(nxt, ppp)[0]
+
+
+def wellness_bootstrap_next_prompt_at(now: datetime, *, prompts_per_day: int) -> datetime:
+    """Первое напоминание: не позже чем через час, либо ближайший слот — что наступит раньше."""
+    ppp = _normalize_prompts_per_day(prompts_per_day)
+    soon = now + timedelta(hours=1)
+    slot = first_upcoming_wellness_prompt_at(now, prompts_per_day=ppp)
+    return min(soon, slot)
+
+
+def next_wellness_prompt_after_send(
+    *,
+    send_time: datetime,
+    scheduled_fire: datetime,
+    interval_days: int,
+    prompts_per_day: int,
+) -> datetime:
+    """После отправки: следующий слот в этот же день или первый слот через interval_days после последнего слота дня."""
+    iv = _normalize_interval(interval_days)
+    ppp = _normalize_prompts_per_day(prompts_per_day)
+    hours = _wellness_slot_hours(ppp)
+    idx = _slot_index_from_scheduled(scheduled_fire, ppp)
+    day = send_time.date()
+    if idx < ppp - 1:
+        nh = hours[idx + 1]
+        return _utc_slot_datetime(day, nh, 5)
+    next_cycle = day + timedelta(days=iv)
+    return _utc_slot_datetime(next_cycle, hours[0], 5)
 
 
 async def parse_frequency_and_opt_out_from_text(user_id: int, text: str) -> None:
@@ -399,6 +490,36 @@ async def parse_frequency_and_opt_out_from_text(user_id: int, text: str) -> None
         )
         return
 
+    ppp_new: Optional[int] = None
+    if any(
+        x in t
+        for x in (
+            "три раза в день",
+            "три раза",
+            "3 раза в день",
+            "3 раза",
+            "трёх раз в день",
+            "трех раз в день",
+        )
+    ):
+        ppp_new = 3
+    elif any(
+        x in t
+        for x in (
+            "два раза в день",
+            "два раза",
+            "2 раза в день",
+            "2 раза",
+            "утром и вечером",
+            "утром и днём",
+            "утром и днем",
+            "дважды",
+        )
+    ):
+        ppp_new = 2
+    elif any(x in t for x in ("один раз в день", "только утром", "только раз в день")):
+        ppp_new = 1
+
     interval = None
     if "каждый день" in t or "раз в день" in t or "ежедневно" in t:
         interval = 1
@@ -409,15 +530,19 @@ async def parse_frequency_and_opt_out_from_text(user_id: int, text: str) -> None
     elif "недел" in t or "раз в 7" in t:
         interval = 7
 
-    if interval is not None:
-        await database.execute(
-            users.update()
-            .where(users.c.id == uid)
-            .values(
-                wellness_journal_interval_days=interval,
-                wellness_next_prompt_at=_next_prompt_after(interval),
-            )
+    if ppp_new is not None or interval is not None:
+        upd: dict[str, Any] = {}
+        if ppp_new is not None:
+            upd["wellness_journal_prompts_per_day"] = ppp_new
+        if interval is not None:
+            upd["wellness_journal_interval_days"] = interval
+        p_eff = upd.get("wellness_journal_prompts_per_day")
+        if p_eff is None:
+            p_eff = _normalize_prompts_per_day(row.get("wellness_journal_prompts_per_day"))
+        upd["wellness_next_prompt_at"] = wellness_bootstrap_next_prompt_at(
+            datetime.utcnow(), prompts_per_day=int(p_eff)
         )
+        await database.execute(users.update().where(users.c.id == uid).values(**upd))
 
 
 async def _count_ai_prompts(user_id: int) -> int:
@@ -444,6 +569,7 @@ async def send_wellness_prompt_for_user(user_id: int, *, admin_self_test: bool =
     if not admin_self_test and row.get("wellness_journal_admin_paused"):
         return False
     interval = _normalize_interval(row.get("wellness_journal_interval_days"))
+    ppp = _normalize_prompts_per_day(row.get("wellness_journal_prompts_per_day"))
     nxt = row.get("wellness_next_prompt_at")
     now = datetime.utcnow()
     if not admin_self_test:
@@ -498,12 +624,19 @@ async def send_wellness_prompt_for_user(user_id: int, *, admin_self_test: bool =
             )
         )
         if not admin_self_test:
+            fired = _scheduled_fire_datetime(now, nxt, ppp)
+            nxt_after = next_wellness_prompt_after_send(
+                send_time=now,
+                scheduled_fire=fired,
+                interval_days=interval,
+                prompts_per_day=ppp,
+            )
             await database.execute(
                 users.update()
                 .where(users.c.id == uid)
                 .values(
                     wellness_last_prompt_at=now,
-                    wellness_next_prompt_at=_next_prompt_after(interval),
+                    wellness_next_prompt_at=nxt_after,
                     wellness_coach_pause_until=None,
                 )
             )
@@ -520,8 +653,8 @@ async def run_wellness_prompts_due_job() -> None:
     rows = await database.fetch_all(
         sa.text(
             """
-            SELECT id, primary_user_id, wellness_journal_interval_days, wellness_next_prompt_at,
-                   wellness_journal_opt_out, wellness_journal_admin_paused
+            SELECT id, primary_user_id, wellness_journal_interval_days, wellness_journal_prompts_per_day,
+                   wellness_next_prompt_at, wellness_journal_opt_out, wellness_journal_admin_paused
             FROM users
             WHERE wellness_journal_opt_out = false
               AND wellness_journal_admin_paused = false
@@ -538,10 +671,10 @@ async def run_wellness_prompts_due_job() -> None:
         if not await user_has_wellness_journal_access(uid):
             continue
         if row["wellness_next_prompt_at"] is None:
+            ppp = _normalize_prompts_per_day(row.get("wellness_journal_prompts_per_day"))
+            nxt0 = wellness_bootstrap_next_prompt_at(datetime.utcnow(), prompts_per_day=ppp)
             await database.execute(
-                users.update()
-                .where(users.c.id == uid)
-                .values(wellness_next_prompt_at=datetime.utcnow())
+                users.update().where(users.c.id == uid).values(wellness_next_prompt_at=nxt0)
             )
         if await send_wellness_prompt_for_user(uid):
             n_sent += 1

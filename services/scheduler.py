@@ -7,7 +7,6 @@ import sqlalchemy as sa
 from db.database import database
 from config import settings
 
-_WELLNESS_CRON_HOUR = int(getattr(settings, "WELLNESS_PROMPTS_CRON_HOUR_UTC", 8) or 8)
 from services.ops_alerts import maybe_notify_billing, send_daily_summary
 from services.ai_community_bot import run_ai_community_bot_job
 from services.wellness_journal_service import (
@@ -70,9 +69,8 @@ def start_scheduler() -> None:
     )
     scheduler.add_job(
         run_wellness_prompts_due_job,
-        "cron",
-        hour=_WELLNESS_CRON_HOUR,
-        minute=5,
+        "interval",
+        minutes=15,
         id="wellness_journal_prompts",
         replace_existing=True,
     )

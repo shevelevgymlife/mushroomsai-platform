@@ -651,6 +651,15 @@ async def run_heavy_startup(app: FastAPI) -> None:
             logger.warning("migrate_v32 wellness_analytics: %s", e)
 
         try:
+            import migrate_v33_wellness_prompts_per_day as migrate_v33
+
+            for s in migrate_v33.STEPS:
+                await database.execute(sa.text(s))
+            logger.info("wellness prompts per day (migrate_v33) OK")
+        except Exception as e:
+            logger.warning("migrate_v33 wellness_prompts_per_day: %s", e)
+
+        try:
             from services.merge_neurofungi_ai_chats import merge_all_neurofungi_ai_personal_chats
 
             await merge_all_neurofungi_ai_personal_chats()

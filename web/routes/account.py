@@ -1158,6 +1158,7 @@ async def wellness_results_page(request: Request):
 async def wellness_results_save(
     request: Request,
     interval_days: int = Form(1),
+    prompts_per_day: int = Form(1),
     opt_out: str = Form(""),
 ):
     user = await get_user_from_request(request)
@@ -1171,16 +1172,24 @@ async def wellness_results_save(
     iv = int(interval_days) if str(interval_days).isdigit() else 1
     if iv not in (1, 3, 5, 7):
         iv = 1
+    ppp = int(prompts_per_day) if str(prompts_per_day).isdigit() else 1
+    if ppp not in (1, 2, 3):
+        ppp = 1
     opt = (opt_out or "").strip().lower() in ("1", "true", "on", "yes")
 
     vals = {
         "wellness_journal_interval_days": iv,
+        "wellness_journal_prompts_per_day": ppp,
         "wellness_journal_opt_out": opt,
     }
     if opt:
         vals["wellness_next_prompt_at"] = None
     else:
-        vals["wellness_next_prompt_at"] = datetime.utcnow() + timedelta(hours=1)
+        from services.wellness_journal_service import wellness_bootstrap_next_prompt_at
+
+        vals["wellness_next_prompt_at"] = wellness_bootstrap_next_prompt_at(
+            datetime.utcnow(), prompts_per_day=ppp
+        )
     await database.execute(users.update().where(users.c.id == uid).values(**vals))
     return RedirectResponse("/account/wellness-results?saved=1", status_code=303)
 
