@@ -52,6 +52,122 @@ def calendar_week_strip_for_user(
     return out
 
 
+def parse_wellness_chart_range(raw: Optional[str]) -> tuple[str, int]:
+    """Ключ периода и число календарных дней в окне (включая сегодня)."""
+    s = (raw or "").strip().lower()
+    if s in ("d", "day", "1"):
+        return ("day", 2)
+    if s in ("m", "month", "30"):
+        return ("month", 30)
+    if s in ("w", "week", "7"):
+        return ("week", 7)
+    return ("week", 7)
+
+
+def slice_series_calendar_days(series: list[dict[str, Any]], days_inclusive: int) -> list[dict[str, Any]]:
+    """Точки с датой >= (сегодня UTC − days_inclusive + 1). При days_inclusive=1 — только сегодня."""
+    if days_inclusive < 1 or not series:
+        return []
+    end = _utc_today()
+    start = end - timedelta(days=days_inclusive - 1)
+    start_iso = start.isoformat()
+    return [x for x in series if str(x.get("date") or "") >= start_iso]
+
+
+def short_chart_date_labels(labels: list[str]) -> list[str]:
+    out: list[str] = []
+    for lb in labels:
+        if isinstance(lb, str) and len(lb) >= 10:
+            out.append(lb[8:10] + "." + lb[5:7])
+        else:
+            out.append(str(lb))
+    return out
+
+
+def sparkline_polyline_points(
+    values: list[Optional[float]],
+    width: float = 108.0,
+    height: float = 34.0,
+    pad: float = 3.0,
+) -> Optional[str]:
+    """Координаты для SVG polyline points= (несколько точек по последним слотам)."""
+    if not values:
+        return None
+    pts_idx: list[tuple[int, float]] = []
+    for i, v in enumerate(values):
+        if v is None or str(v).strip() == "":
+            continue
+        try:
+            pts_idx.append((i, float(v)))
+        except (TypeError, ValueError):
+            continue
+    if len(pts_idx) == 0:
+        return None
+    if len(pts_idx) == 1:
+        i, val = pts_idx[0]
+        x = pad + (i / max(len(values) - 1, 1)) * (width - 2 * pad)
+        vmin = val - 0.5
+        vmax = val + 0.5
+        t = 0.5
+        y = pad + (1 - t) * (height - 2 * pad)
+        x2 = min(x + 8, width - pad)
+        return f"{x:.2f},{y:.2f} {x2:.2f},{y:.2f}"
+    nv = [p[1] for p in pts_idx]
+    vmin, vmax = min(nv), max(nv)
+    if abs(vmax - vmin) < 1e-6:
+        vmin -= 0.5
+        vmax += 0.5
+    out_coords: list[str] = []
+    for i, val in pts_idx:
+        x = pad + (i / max(len(values) - 1, 1)) * (width - 2 * pad)
+        t = (val - vmin) / (vmax - vmin)
+        y = pad + (1 - t) * (height - 2 * pad)
+        out_coords.append(f"{x:.2f},{y:.2f}")
+    return " ".join(out_coords)
+
+
+def wellness_composite_index_percent(
+    mood: Optional[float],
+    energy: Optional[float],
+    anxiety: Optional[float],
+) -> Optional[int]:
+    """0–100: среднее нормализованных настроение, энергия и (10 − тревога). Не медицинский скоринг."""
+    acc = 0.0
+    n = 0
+    if mood is not None:
+        acc += max(0.0, min(10.0, float(mood))) / 10.0
+        n += 1
+    if energy is not None:
+        acc += max(0.0, min(10.0, float(energy))) / 10.0
+        n += 1
+    if anxiety is not None:
+        acc += max(0.0, min(10.0, 10.0 - float(anxiety))) / 10.0
+        n += 1
+    if n == 0:
+        return None
+    return int(round(acc / n * 100.0))
+
+
+def mood_stability_pstdev_last(series: list[dict[str, Any]], max_days: int = 7) -> Optional[float]:
+    """σ настроения по последним дням окна (не больше max_days точек)."""
+    tail = series[-max_days:] if len(series) > max_days else series
+    moods: list[float] = []
+    for x in tail:
+        v = (x.get("m") or {}).get("mood_0_10")
+        if v is None:
+            continue
+        try:
+            moods.append(float(v))
+        except (TypeError, ValueError):
+            pass
+    if len(moods) < 2:
+        return None
+    try:
+        return round(statistics.pstdev(moods), 2)
+    except statistics.StatisticsError:
+        return None
+
+
 async def admin_snapshot_counts_rolling_days(days: int = 7) -> list[dict[str, Any]]:
     """Последние `days` дат UTC: сколько снимков (строк) в день по всей платформе."""
     end = _utc_today()
