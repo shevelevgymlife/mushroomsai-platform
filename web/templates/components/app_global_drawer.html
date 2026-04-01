@@ -22,17 +22,6 @@
     Попробовать бесплатно 3 дня
   </button>
   {% endif %}
-  {% if is_locked_free and drawer_on('locked_sub_promo') == '1' %}
-  <div class="mx-2 mb-2 mt-1 p-3 rounded-2xl border border-gold/30 bg-gold/[0.07]">
-    <div class="text-[11px] font-extrabold uppercase tracking-wider text-gold mb-2">Подписка</div>
-    <a href="/subscriptions" class="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-gold/15 text-text text-sm font-semibold no-underline border border-gold/25" onclick="closeAppGlobalDrawer()" style="text-decoration:none">
-      <span>{{ ico('spark') }}</span><span>Тарифы и оплата на сайте</span>
-    </a>
-    <p class="text-[11px] text-muted leading-relaxed mt-2.5 mb-0 px-0.5">
-      В боте: внизу чата кнопка «💳 Подписка» или команда <span class="text-text/90 font-mono text-[10px]">/subscribe</span> — выберите тариф, откроется оплата.
-    </p>
-  </div>
-  {% endif %}
   {% if drawer_on('free_ai_limit') == '1' %}
   <div id="drawerFreeAiLimit" style="display:none;padding:10px 12px;margin:10px 10px 6px;border:1px solid rgba(61,212,224,.22);border-radius:14px;background:rgba(61,212,224,.07)">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">

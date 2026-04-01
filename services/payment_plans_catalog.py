@@ -97,7 +97,6 @@ DEFAULT_PLANS: dict[str, dict[str, Any]] = {
 # id → подпись в админке (боковое меню / бургер)
 DRAWER_MENU_ITEM_SPECS: tuple[tuple[str, str], ...] = (
     ("trial_cta", "Кнопка «Попробовать бесплатно 3 дня»"),
-    ("locked_sub_promo", "Блок «Тарифы и оплата» (free без ленты)"),
     ("free_ai_limit", "Блок «Бесплатный AI-лимит»"),
     ("profile", "Мой профиль"),
     ("feed", "Лента"),
