@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import re
 import secrets
 import unicodedata
+from decimal import Decimal, ROUND_HALF_UP
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice, Update
 from telegram.ext import ContextTypes, filters
@@ -165,6 +167,50 @@ SUBSCRIBE_BUTTON_TEXT = _SubscribeButtonFilter()
 def _payment_provider_token(st: dict) -> str:
     """Токен из Render (TELEGRAM_PAYMENT_PROVIDER_TOKEN) надёжнее, чем только БД — должен быть от того же бота, что TELEGRAM_TOKEN."""
     return (getattr(settings, "TELEGRAM_PAYMENT_PROVIDER_TOKEN", "") or "").strip() or (st.get("provider_token") or "").strip()
+
+
+def _telegram_yookassa_receipt_vat_code() -> int:
+    o = getattr(settings, "YOOKASSA_TELEGRAM_RECEIPT_VAT_CODE", None)
+    if o is not None:
+        return int(o)
+    return int(getattr(settings, "YOOKASSA_RECEIPT_VAT_CODE", 0) or 0)
+
+
+def _yookassa_telegram_fiscal_invoice_kwargs(amount_kop: int, receipt_description: str) -> dict:
+    """
+    Если VAT для чека в боте >0 (YOOKASSA_RECEIPT_VAT_CODE или YOOKASSA_TELEGRAM_RECEIPT_VAT_CODE),
+    в sendInvoice передаём receipt в provider_data. Иначе ЮKassa при включённой фискализации
+    часто отклоняет счёт; оплата звёздами (XTR) провайдера не использует — поэтому «карта нет, звёзды да».
+    Email покупателя Telegram запросит при оплате (need_email + send_email_to_provider).
+    """
+    vat = _telegram_yookassa_receipt_vat_code()
+    if vat <= 0 or amount_kop <= 0:
+        return {}
+    try:
+        val = (Decimal(int(amount_kop)) / Decimal(100)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        value_str = format(val, "f")
+    except Exception:
+        return {}
+    desc = (receipt_description or "Подписка NEUROFUNGI AI").strip()[:128] or "Подписка"
+    payload = {
+        "receipt": {
+            "items": [
+                {
+                    "description": desc,
+                    "quantity": "1",
+                    "amount": {"value": value_str, "currency": "RUB"},
+                    "vat_code": vat,
+                    "payment_mode": "full_payment",
+                    "payment_subject": "service",
+                }
+            ]
+        }
+    }
+    return {
+        "provider_data": json.dumps(payload, ensure_ascii=False),
+        "need_email": True,
+        "send_email_to_provider": True,
+    }
 
 
 async def _provider_ready() -> tuple[bool, dict]:
@@ -335,6 +381,7 @@ async def tgpay_plan_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         extra += f" {site}/legal/offer"
     renew_note = f"Продление подписки «{disp_name}». " if is_renew and disp_name else ("Продление подписки. " if is_renew else "")
     desc = f"{renew_note}NEUROFUNGI AI — {dur_h}.{extra}"[:255]
+    fiscal_kw = _yookassa_telegram_fiscal_invoice_kwargs(amount_kop, desc)
 
     try:
         await context.bot.send_invoice(
@@ -346,6 +393,7 @@ async def tgpay_plan_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
             currency="RUB",
             prices=[LabeledPrice(price_label[:32], amount_kop)],
             start_parameter=None,
+            **fiscal_kw,
         )
     except Exception as e:
         logger.exception(
@@ -360,6 +408,11 @@ async def tgpay_plan_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
             hint = (
                 "\n\nПроверьте в @BotFather: этот бот → Bot Settings → Payments — "
                 "подключена ЮKassa и скопирован provider token в админку (тот же бот, что и TELEGRAM_TOKEN)."
+            )
+        elif any(x in err for x in ("receipt", "fiscal", "чек", "54")):
+            hint = (
+                "\n\nЕсли в ЮKassa включены чеки 54-ФЗ: в Render задайте YOOKASSA_RECEIPT_VAT_CODE=1 "
+                "или только для бота YOOKASSA_TELEGRAM_RECEIPT_VAT_CODE=1 — к оплате добавится запрос email для чека."
             )
         await q.message.reply_text(
             "Не удалось выставить счёт. Попробуйте позже или оплатите на сайте." + hint,

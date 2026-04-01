@@ -72,8 +72,11 @@ class Settings(BaseSettings):
     TELEGRAM_WEBAPP_EXTRA_BOT_TOKENS: str = ""
     # Provider token ЮKassa из @BotFather (тот же бот, что и TELEGRAM_TOKEN). Если задан — имеет приоритет над полем в админке.
     TELEGRAM_PAYMENT_PROVIDER_TOKEN: str = ""
-    # Чек 54-ФЗ в теле create payment (1 = без НДС). 0 — не добавлять. Если в ЮKassa включена обязательная фискализация — задайте 1 и email в профиле.
+    # Чек 54-ФЗ: в теле create payment (сайт) и по умолчанию для счёта в боте (1 = без НДС и т.п. по API ЮKassa). 0 — не добавлять.
+    # Если в кабинете ЮKassa включены чеки, счёт в боте без receipt часто не создаётся (звёзды XTR при этом работают).
     YOOKASSA_RECEIPT_VAT_CODE: int = 0
+    # None — как YOOKASSA_RECEIPT_VAT_CODE; 0 — явно без чека в sendInvoice бота; 1+ — только для бота (если на сайте чек не передаёте, а в боте провайдер требует).
+    YOOKASSA_TELEGRAM_RECEIPT_VAT_CODE: int | None = None
     # Временно: другой магазин ЮKassa (напр. тестовый) без смены ключей в админке. Оба поля обязательны; вебхук проверяется тем же секретом.
     YOOKASSA_OVERRIDE_SHOP_ID: str = ""
     YOOKASSA_OVERRIDE_SECRET_KEY: str = ""
