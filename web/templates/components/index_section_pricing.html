@@ -17,7 +17,7 @@
 
 {% macro stars_pay_link(extra_class='') %}
   {% if _stars_url %}
-  <a href="{{ _stars_url }}" rel="noopener noreferrer" class="nf-tg-bot-open block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-cyan-400/35 text-cyan-100/95 hover:bg-cyan-500/10 mt-2 no-underline {{ extra_class }}" data-tg-url="{{ _stars_url }}">⭐ Оплатить звёздами в Telegram</a>
+  <a href="{{ _stars_url }}" rel="noopener noreferrer" class="nf-tg-bot-open block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-cyan-400/35 text-cyan-100/95 hover:bg-cyan-500/10 mt-2 no-underline {{ extra_class }}" data-tg-url="{{ _stars_url }}" data-nf-pay-stars="1">⭐ Оплатить звёздами в Telegram</a>
   {% endif %}
 {% endmacro %}
 
@@ -27,7 +27,7 @@
   {% elif _yk_site %}
   <a href="/pay/subscription?plan={{ pk }}" class="block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-gold/35 text-gold/90 hover:bg-gold/[0.10] mt-2 no-underline">Продлить подписку</a>
   {% elif _yk_bot_only %}
-  <a href="{{ _stars_url if _stars_url else _bot_url }}" rel="noopener noreferrer" class="nf-tg-bot-open block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-gold/35 text-gold/90 hover:bg-gold/[0.10] mt-2 no-underline" data-tg-url="{{ _stars_url if _stars_url else _bot_url }}">Продлить в Telegram</a>
+  <a href="{{ _stars_url if _stars_url else _bot_url }}" rel="noopener noreferrer" class="nf-tg-bot-open block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-gold/35 text-gold/90 hover:bg-gold/[0.10] mt-2 no-underline" data-tg-url="{{ _stars_url if _stars_url else _bot_url }}" data-nf-pay-stars="0">Продлить в Telegram</a>
   {% else %}
   <p class="text-xs text-center text-amber-200/80 mt-2 px-1">Настройте способ оплаты в админке (раздел Оплата).</p>
   {% endif %}
@@ -40,7 +40,7 @@
   {% elif _yk_site %}
   <a href="/pay/subscription?plan={{ pk }}" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn mt-auto no-underline">Оформить и оплатить</a>
   {% elif _yk_bot_only %}
-  <a href="{{ _stars_url if _stars_url else _bot_url }}" rel="noopener noreferrer" class="nf-tg-bot-open block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn mt-auto no-underline" data-tg-url="{{ _stars_url if _stars_url else _bot_url }}">Оформить в Telegram</a>
+  <a href="{{ _stars_url if _stars_url else _bot_url }}" rel="noopener noreferrer" class="nf-tg-bot-open block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn mt-auto no-underline" data-tg-url="{{ _stars_url if _stars_url else _bot_url }}" data-nf-pay-stars="0">Оформить в Telegram</a>
   {% else %}
   <div class="mt-auto text-center px-3 py-3 rounded-xl text-xs text-amber-200/90 border border-amber-500/25 bg-amber-500/5">Оплата не настроена. Включите CloudPayments или ЮKassa в админке.</div>
   {% endif %}
@@ -145,14 +145,14 @@
   </div>
 </section>
 {% if _stars_url or _yk_bot_only %}
-{# Ссылка в основной бот: в Mini App — openTelegramLink; иначе новая вкладка или модалка #}
-<div id="nfStarsBotModal" class="fixed inset-0 z-[240] hidden items-center justify-center p-4 bg-black/75 backdrop-blur-md" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="nfStarsBotModalTitle">
+{# Выше шапки/нижней навигации приложения (z-index ~1000+). В браузере — всегда модалка; в Telegram Mini App с initData — openTelegramLink. #}
+<div id="nfStarsBotModal" class="fixed inset-0 hidden items-center justify-center p-4 bg-black/75 backdrop-blur-md" style="z-index:12050" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="nfStarsBotModalTitle">
   <div class="max-w-md w-full rounded-2xl border border-cyan-500/35 bg-[#0c0e14]/95 shadow-[0_24px_64px_rgba(0,0,0,.55)] p-6 text-center relative overflow-hidden">
     <div class="absolute inset-0 pointer-events-none opacity-[0.07]" style="background:radial-gradient(ellipse 80% 60% at 50% -20%,#3dd4e0,transparent),radial-gradient(ellipse 60% 50% at 100% 100%,#b85fa3,transparent)"></div>
     <div class="relative">
       <div class="w-14 h-14 mx-auto mb-4 rounded-2xl flex items-center justify-center text-2xl bg-gradient-to-br from-cyan-400/25 to-fuchsia-500/20 border border-cyan-400/30 shadow-lg shadow-cyan-500/10">⭐</div>
-      <h3 id="nfStarsBotModalTitle" class="text-lg font-semibold text-text tracking-tight mb-2">Оплата в Telegram</h3>
-      <p class="text-sm text-muted leading-relaxed mb-6">Перейдите в <strong class="text-cyan-200/90">основной бот</strong> — там откроется меню подписки и оплата звёздами (или картой, если включено).</p>
+      <h3 id="nfStarsBotModalTitle" class="text-lg font-semibold text-text tracking-tight mb-2">Оплата в боте Telegram</h3>
+      <p id="nfStarsBotModalText" class="text-sm text-muted leading-relaxed mb-6">Оплата <strong class="text-cyan-200/90">звёздами</strong> и счёт в боте доступны только в официальном боте. Нажмите кнопку ниже — откроется чат с ботом, затем нажмите <strong class="text-text/90">«Подписка»</strong> (или команду <code class="text-xs text-cyan-200/80">/subscribe</code>) и выберите тариф.</p>
       <a id="nfStarsBotModalLink" href="#" class="inline-flex w-full justify-center items-center gap-2 px-5 py-3.5 rounded-xl text-sm font-bold text-[#070708] no-underline mb-3 border-0 cursor-pointer transition-opacity hover:opacity-95" style="background:linear-gradient(120deg,#3dd4e0,#c8a84b,#ff66d0);box-shadow:0 8px 28px rgba(61,212,224,.25)">Перейти в бота</a>
       <button type="button" id="nfStarsBotModalCopy" class="w-full py-2.5 rounded-xl text-xs font-semibold text-cyan-200/90 border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/10 mb-3">Копировать ссылку</button>
       <button type="button" id="nfStarsBotModalClose" class="text-xs text-muted hover:text-text/80 py-2 border-0 bg-transparent cursor-pointer w-full">Закрыть</button>
@@ -164,9 +164,14 @@
   var modal = document.getElementById('nfStarsBotModal');
   var modalLink = document.getElementById('nfStarsBotModalLink');
   var modalCopy = document.getElementById('nfStarsBotModalCopy');
+  var modalText = document.getElementById('nfStarsBotModalText');
   if (!modal || !modalLink) return;
 
   var defaultUrl = {{ (_stars_url if _stars_url else _bot_url)|tojson }};
+  var starsUrlPresent = {{ 'true' if _stars_url else 'false' }};
+
+  var TEXT_STARS = 'Оплата <strong class="text-cyan-200/90">звёздами</strong> и счёт в боте доступны только в официальном боте. Нажмите кнопку ниже — откроется чат с ботом, затем нажмите <strong class="text-text/90">«Подписка»</strong> (или <code class="text-xs text-cyan-200/80">/subscribe</code>) и выберите тариф.';
+  var TEXT_BOT = 'Оплата этого тарифа настроена через <strong class="text-cyan-200/90">Telegram-бота</strong>. Нажмите кнопку ниже, чтобы перейти в бот и завершить оплату.';
 
   function hideModal() {
     modal.classList.add('hidden');
@@ -174,9 +179,13 @@
     modal.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
   }
-  function showModal(url) {
+  function showModal(url, opts) {
     var u = url || defaultUrl;
     modalLink.href = u;
+    if (modalText) {
+      var useStars = (opts && typeof opts.stars === 'boolean') ? opts.stars : starsUrlPresent;
+      modalText.innerHTML = useStars ? TEXT_STARS : TEXT_BOT;
+    }
     modal.classList.remove('hidden');
     modal.classList.add('flex');
     modal.setAttribute('aria-hidden', 'false');
@@ -205,18 +214,29 @@
     });
   }
 
-  function tryOpenInTelegram(url) {
+  function isTelegramMiniApp() {
+    try {
+      var twa = window.Telegram && window.Telegram.WebApp;
+      return !!(twa && typeof twa.initData === 'string' && twa.initData.length > 0);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /** Только внутри Mini App: открыть t.me без модалки */
+  function tryOpenInTelegramMiniApp(url) {
     var twa = window.Telegram && window.Telegram.WebApp;
-    if (twa && typeof twa.ready === 'function') {
+    if (!isTelegramMiniApp() || !twa) return false;
+    if (typeof twa.ready === 'function') {
       try { twa.ready(); } catch (e1) {}
     }
-    if (twa && typeof twa.openTelegramLink === 'function') {
+    if (typeof twa.openTelegramLink === 'function') {
       try {
         twa.openTelegramLink(url);
         return true;
       } catch (e2) {}
     }
-    if (twa && typeof twa.openLink === 'function') {
+    if (typeof twa.openLink === 'function') {
       try {
         twa.openLink(url);
         return true;
@@ -231,13 +251,12 @@
     var url = a.getAttribute('data-tg-url');
     if (!url) return;
     e.preventDefault();
-    if (tryOpenInTelegram(url)) return;
-    var w = null;
-    try {
-      w = window.open(url, '_blank', 'noopener,noreferrer');
-    } catch (e4) {}
-    if (w) return;
-    showModal(url);
+    var v = a.getAttribute('data-nf-pay-stars');
+    var modalOpts = v === '1' ? { stars: true } : v === '0' ? { stars: false } : {};
+    if (isTelegramMiniApp() && tryOpenInTelegramMiniApp(url)) {
+      return;
+    }
+    showModal(url, modalOpts);
   });
 })();
 </script>
