@@ -2449,6 +2449,23 @@ async def admin_wellness_journal_page(request: Request):
     )
 
 
+@router.post("/wellness-journal/test-prompt-self")
+async def admin_wellness_journal_test_prompt_self(request: Request):
+    """Один тестовый промпт дневника в ЛС текущему админу (расписание wellness_next_prompt_at не меняется)."""
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    uid = int(admin.get("primary_user_id") or admin["id"])
+    from services.wellness_journal_service import send_wellness_prompt_for_user, user_has_wellness_journal_access
+
+    if not await user_has_wellness_journal_access(uid):
+        return RedirectResponse("/admin/wellness-journal?test_prompt=no_access", status_code=303)
+    ok = await send_wellness_prompt_for_user(uid, admin_self_test=True)
+    if ok:
+        return RedirectResponse("/admin/wellness-journal?test_prompt=ok", status_code=303)
+    return RedirectResponse("/admin/wellness-journal?test_prompt=fail", status_code=303)
+
+
 @router.post("/wellness-journal/global")
 async def admin_wellness_journal_global(request: Request, enabled: str = Form(...)):
     admin = await require_permission(request, "can_users")

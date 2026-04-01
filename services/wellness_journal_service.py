@@ -373,35 +373,40 @@ async def _count_ai_prompts(user_id: int) -> int:
     return int(r or 0)
 
 
-async def send_wellness_prompt_for_user(user_id: int) -> bool:
+async def send_wellness_prompt_for_user(user_id: int, *, admin_self_test: bool = False) -> bool:
+    """Отправить промпт дневника. admin_self_test=True — только для кнопки в админке: без сдвига расписания."""
     uid = int(user_id)
-    if not await wellness_journal_globally_enabled():
-        return False
+    if not admin_self_test:
+        if not await wellness_journal_globally_enabled():
+            return False
     if not await user_has_wellness_journal_access(uid):
         return False
     row = await database.fetch_one(users.select().where(users.c.id == uid))
-    if not row or row.get("wellness_journal_opt_out") or row.get("wellness_journal_admin_paused"):
+    if not row or row.get("wellness_journal_opt_out"):
+        return False
+    if not admin_self_test and row.get("wellness_journal_admin_paused"):
         return False
     coach_id = await resolve_support_sender_id()
     if not coach_id:
         logger.warning("wellness: no coach/support user id")
         return False
-    if int(coach_id) == int(uid):
+    if not admin_self_test and int(coach_id) == int(uid):
         return False
     interval = _normalize_interval(row.get("wellness_journal_interval_days"))
     nxt = row.get("wellness_next_prompt_at")
     now = datetime.utcnow()
-    if nxt and nxt > now:
-        return False
+    if not admin_self_test:
+        if nxt and nxt > now:
+            return False
 
-    pause_until = row.get("wellness_coach_pause_until")
-    if pause_until and now < pause_until:
-        await database.execute(
-            users.update()
-            .where(users.c.id == uid)
-            .values(wellness_next_prompt_at=pause_until)
-        )
-        return False
+        pause_until = row.get("wellness_coach_pause_until")
+        if pause_until and now < pause_until:
+            await database.execute(
+                users.update()
+                .where(users.c.id == uid)
+                .values(wellness_next_prompt_at=pause_until)
+            )
+            return False
 
     idx = await _count_ai_prompts(uid)
     notify_uid = _notify_uid(dict(row))
@@ -437,15 +442,16 @@ async def send_wellness_prompt_for_user(user_id: int) -> bool:
                 direct_message_id=mid,
             )
         )
-        await database.execute(
-            users.update()
-            .where(users.c.id == uid)
-            .values(
-                wellness_last_prompt_at=now,
-                wellness_next_prompt_at=_next_prompt_after(interval),
-                wellness_coach_pause_until=None,
+        if not admin_self_test:
+            await database.execute(
+                users.update()
+                .where(users.c.id == uid)
+                .values(
+                    wellness_last_prompt_at=now,
+                    wellness_next_prompt_at=_next_prompt_after(interval),
+                    wellness_coach_pause_until=None,
+                )
             )
-        )
         await _telegram_ping_wellness(notify_uid, int(coach_id))
         return True
     except Exception:
