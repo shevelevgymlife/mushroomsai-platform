@@ -11,7 +11,7 @@ from db.database import database
 from db.models import payment_webhook_dedup
 from services.payment_plans_catalog import get_effective_plans
 from services.payment_provider_settings import get_provider_settings
-from services.subscription_service import activate_subscription
+from services.subscription_service import activate_subscription, gift_subscription
 from services.yookassa_bot_offerings import (
     DEFAULT_DURATION_MINUTES,
     get_merged_bot_offerings,
@@ -60,7 +60,7 @@ async def fetch_yookassa_payment(shop_id: str, secret_key: str, payment_id: str)
 async def apply_yookassa_payment_succeeded(payment: dict[str, Any]) -> tuple[bool, str]:
     """
     Обрабатывает объект payment из API/вебхука (status=succeeded).
-    Ожидает metadata: user_id, plan (start|pro|maxi).
+    Ожидает metadata: user_id, plan (start|pro|maxi) или подарок: gift, giver_id, recipient_id, offering_id.
     """
     pid = (payment.get("id") or "").strip()
     if not pid:
@@ -80,6 +80,10 @@ async def apply_yookassa_payment_succeeded(payment: dict[str, Any]) -> tuple[boo
             meta = json.loads(meta)
         except Exception:
             meta = {}
+
+    gift_raw = str(meta.get("gift") or "").strip().lower()
+    if gift_raw in ("1", "true", "yes", "on"):
+        return await _apply_yookassa_gift_payment(payment, meta, pid)
 
     uid_raw = meta.get("user_id") or meta.get("userId")
     plan = (meta.get("plan") or "").strip().lower()
@@ -156,6 +160,56 @@ async def apply_yookassa_payment_succeeded(payment: dict[str, Any]) -> tuple[boo
         return False, "activate_failed"
     await _mark("yookassa", pid)
     return True, "ok"
+
+
+async def _apply_yookassa_gift_payment(
+    payment: dict[str, Any], meta: dict[str, Any], pid: str
+) -> tuple[bool, str]:
+    """Подарок подписки: metadata gift=1, giver_id, recipient_id, offering_id."""
+    try:
+        giver_id = int(meta.get("giver_id") or meta.get("gift_giver_id") or 0)
+        recipient_id = int(meta.get("recipient_id") or meta.get("gift_recipient_id") or 0)
+    except (TypeError, ValueError):
+        return False, "bad_gift_ids"
+    oid = (meta.get("offering_id") or meta.get("offeringId") or "").strip().lower()
+    if giver_id <= 0 or recipient_id <= 0 or not oid:
+        return False, "bad_gift_metadata"
+
+    amount_obj = payment.get("amount") or {}
+    val = amount_obj.get("value")
+    try:
+        from decimal import Decimal
+
+        paid = float(Decimal(str(val)))
+    except Exception:
+        paid = 0.0
+
+    offerings = await get_merged_bot_offerings()
+    off = offering_by_id(offerings, oid)
+    if not off or not off.get("enabled"):
+        return False, "bad_offering_metadata"
+    eff = str(off.get("effective_plan") or "start").lower()
+    if eff not in ("start", "pro", "maxi"):
+        return False, "bad_effective_plan"
+    expected = float(off.get("price_rub") or 0)
+    if expected <= 0:
+        return False, "bad_price_config"
+    if abs(paid - expected) > 0.02 and abs(paid - expected) > expected * 0.005:
+        logger.warning(
+            "yookassa gift amount mismatch giver=%s off=%s paid=%s expected=%s",
+            giver_id,
+            oid,
+            paid,
+            expected,
+        )
+        return False, "amount_mismatch"
+
+    ok, err = await gift_subscription(giver_id, recipient_id, eff)
+    if not ok:
+        logger.warning("yookassa gift_subscription failed: %s", err)
+        return False, f"gift_{err}"
+    await _mark("yookassa", pid)
+    return True, "ok_gift"
 
 
 async def handle_yookassa_http_notification(body: dict[str, Any]) -> tuple[bool, str]:

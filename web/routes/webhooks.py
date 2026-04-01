@@ -104,7 +104,19 @@ async def cloudpayments_webhook(
     body = await request.body()
     ok, msg = await handle_cloudpayments_notification(body, content_hmac)
     if not ok:
-        if msg in ("bad_hmac", "cloudpayments_disabled", "no_api_secret", "bad_json", "bad_user", "bad_plan", "bad_price_config", "amount_mismatch", "user_not_found", "activate_failed"):
+        if msg in (
+            "bad_hmac",
+            "cloudpayments_disabled",
+            "no_api_secret",
+            "bad_json",
+            "bad_user",
+            "bad_plan",
+            "bad_price_config",
+            "amount_mismatch",
+            "user_not_found",
+            "activate_failed",
+            "bad_gift_users",
+        ) or (isinstance(msg, str) and msg.startswith("gift_")):
             return JSONResponse({"code": 0}, status_code=403 if msg == "bad_hmac" else 400)
         return JSONResponse({"code": 0}, status_code=400)
     return JSONResponse({"code": 0})

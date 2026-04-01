@@ -1,10 +1,36 @@
-{# pricing_logged_in: optional; when true, CTAs for logged-in app (subscriptions page)
-   plans: optional dict from get_effective_plans (name, price, description, features)
-   cloudpayments_enabled, cloudpayments_public_id, payment_user_id: optional #}
+{# pricing_logged_in: subscriptions; subscription_checkout: resolve_active_subscription_checkout() #}
 {% set _pl = pricing_logged_in if pricing_logged_in is defined else false %}
 {% set _plan = (user.effective_subscription_plan|default(user.subscription_plan) or 'free') if _pl and user else 'none' %}
+{% set _ck = subscription_checkout.kind if subscription_checkout is defined and subscription_checkout else 'none' %}
 {% set _cp = cloudpayments_enabled if cloudpayments_enabled is defined else false %}
-{% set _yk = yookassa_web_pay_enabled if yookassa_web_pay_enabled is defined else false %}
+{% set _yk_site = subscription_checkout.yookassa_site_checkout_available if subscription_checkout is defined else false %}
+{% set _yk_bot_only = subscription_checkout.yookassa_bot_only if subscription_checkout is defined else false %}
+{% set _bot_url = telegram_bot_url if telegram_bot_url is defined else 'https://t.me/neuro_fungi_bot' %}
+
+{% macro paid_renew_btn(pk) %}
+  {% if _cp %}
+  <button type="button" data-cp-plan="{{ pk }}" class="cp-pay-btn block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-gold/35 text-gold/90 hover:bg-gold/[0.10] mt-2">Оплатить следующий период</button>
+  {% elif _yk_site and offering_id_by_plan is defined and offering_id_by_plan[pk] %}
+  <a href="/pay/subscription?offering_id={{ offering_id_by_plan[pk] }}" class="block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-gold/35 text-gold/90 hover:bg-gold/[0.10] mt-2 no-underline">Оплатить следующий период</a>
+  {% elif _yk_bot_only %}
+  <a href="{{ _bot_url }}" target="_blank" rel="noopener noreferrer" class="block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-gold/35 text-gold/90 hover:bg-gold/[0.10] mt-2 no-underline">Оплатить в Telegram</a>
+  {% else %}
+  <p class="text-xs text-center text-amber-200/80 mt-2 px-1">Настройте способ оплаты в админке (раздел Оплата).</p>
+  {% endif %}
+{% endmacro %}
+
+{% macro paid_connect_btn(pk) %}
+  {% if _cp %}
+  <button type="button" data-cp-plan="{{ pk }}" class="cp-pay-btn block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn mt-auto">Оплатить и подключить</button>
+  {% elif _yk_site and offering_id_by_plan is defined and offering_id_by_plan[pk] %}
+  <a href="/pay/subscription?offering_id={{ offering_id_by_plan[pk] }}" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn mt-auto no-underline">Оплатить и подключить</a>
+  {% elif _yk_bot_only %}
+  <a href="{{ _bot_url }}" target="_blank" rel="noopener noreferrer" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn mt-auto no-underline">Оплатить в Telegram</a>
+  {% else %}
+  <div class="mt-auto text-center px-3 py-3 rounded-xl text-xs text-amber-200/90 border border-amber-500/25 bg-amber-500/5">Оплата не настроена. Включите CloudPayments или ЮKassa в админке.</div>
+  {% endif %}
+{% endmacro %}
+
 <!-- Tariffs -->
 <section class="py-20 sm:py-28 relative scroll-mt-20" id="tariffs">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -47,7 +73,7 @@
           {% if user and user.needs_tariff_choice %}
           <form method="post" action="/onboarding/tariff" class="mt-auto">
             <button type="submit" name="choice" value="free" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">
-              Подключиться
+              Подключиться бесплатно
             </button>
           </form>
           {% elif user and _plan == 'free' %}
@@ -55,7 +81,7 @@
           {% else %}
           <form method="post" action="/subscriptions/connect" class="mt-auto">
             <input type="hidden" name="plan" value="free" />
-            <button type="submit" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">Подключиться</button>
+            <button type="submit" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">Подключить бесплатно</button>
           </form>
           {% endif %}
         {% else %}
@@ -91,27 +117,9 @@
         {% if _pl %}
           {% if _plan == 'start' and not (user and user.start_trial_active and (user.subscription_plan or 'free') == 'free') %}
           <div class="block text-center px-4 py-3 rounded-xl text-sm border border-gold/35 text-gold/90 bg-gold/[0.06]">Текущий план</div>
-          {% if _cp %}
-          <button type="button" data-cp-plan="start" class="cp-pay-btn block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-gold/35 text-gold/90 hover:bg-gold/[0.10] mt-2">Оплатить следующий месяц</button>
-          {% elif _yk and offering_id_by_plan is defined and offering_id_by_plan['start'] %}
-          <a href="/pay/subscription?offering_id={{ offering_id_by_plan['start'] }}" class="block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-gold/35 text-gold/90 hover:bg-gold/[0.10] mt-2 no-underline">Оплатить следующий период</a>
+          {{ paid_renew_btn('start') }}
           {% else %}
-          <form method="post" action="/subscriptions/connect" class="mt-2">
-            <input type="hidden" name="plan" value="start" />
-            <button type="submit" class="block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-gold/35 text-gold/90 hover:bg-gold/[0.10]">Оплатить следующий месяц</button>
-          </form>
-          {% endif %}
-          {% else %}
-          {% if _cp %}
-          <button type="button" data-cp-plan="start" class="cp-pay-btn block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn mt-auto">Подключиться</button>
-          {% elif _yk and offering_id_by_plan is defined and offering_id_by_plan['start'] %}
-          <a href="/pay/subscription?offering_id={{ offering_id_by_plan['start'] }}" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn mt-auto no-underline">Подключиться</a>
-          {% else %}
-          <form method="post" action="/subscriptions/connect" class="mt-auto">
-            <input type="hidden" name="plan" value="start" />
-            <button type="submit" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">Подключиться</button>
-          </form>
-          {% endif %}
+          {{ paid_connect_btn('start') }}
           {% endif %}
         {% else %}
         <a href="/login?next=/subscriptions" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">Подключиться</a>
@@ -143,27 +151,9 @@
         {% if _pl %}
           {% if _plan == 'pro' %}
           <div class="block text-center px-4 py-3 rounded-xl text-sm border border-gold/35 text-gold/90 bg-gold/[0.06]">Текущий план</div>
-          {% if _cp %}
-          <button type="button" data-cp-plan="pro" class="cp-pay-btn block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-gold/35 text-gold/90 hover:bg-gold/[0.10] mt-2">Оплатить следующий месяц</button>
-          {% elif _yk and offering_id_by_plan is defined and offering_id_by_plan['pro'] %}
-          <a href="/pay/subscription?offering_id={{ offering_id_by_plan['pro'] }}" class="block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-gold/35 text-gold/90 hover:bg-gold/[0.10] mt-2 no-underline">Оплатить следующий период</a>
+          {{ paid_renew_btn('pro') }}
           {% else %}
-          <form method="post" action="/subscriptions/connect" class="mt-2">
-            <input type="hidden" name="plan" value="pro" />
-            <button type="submit" class="block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-gold/35 text-gold/90 hover:bg-gold/[0.10]">Оплатить следующий месяц</button>
-          </form>
-          {% endif %}
-          {% else %}
-          {% if _cp %}
-          <button type="button" data-cp-plan="pro" class="cp-pay-btn block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn mt-auto">Подключиться</button>
-          {% elif _yk and offering_id_by_plan is defined and offering_id_by_plan['pro'] %}
-          <a href="/pay/subscription?offering_id={{ offering_id_by_plan['pro'] }}" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn mt-auto no-underline">Подключиться</a>
-          {% else %}
-          <form method="post" action="/subscriptions/connect" class="mt-auto">
-            <input type="hidden" name="plan" value="pro" />
-            <button type="submit" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">Подключиться</button>
-          </form>
-          {% endif %}
+          {{ paid_connect_btn('pro') }}
           {% endif %}
         {% else %}
         <a href="/login?next=/subscriptions" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">Подключиться</a>
@@ -195,27 +185,9 @@
         {% if _pl %}
           {% if _plan == 'maxi' %}
           <div class="block text-center px-4 py-3 rounded-xl text-sm border border-gold/35 text-gold/90 bg-gold/[0.06]">Текущий план</div>
-          {% if _cp %}
-          <button type="button" data-cp-plan="maxi" class="cp-pay-btn block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-gold/35 text-gold/90 hover:bg-gold/[0.10] mt-2">Оплатить следующий месяц</button>
-          {% elif _yk and offering_id_by_plan is defined and offering_id_by_plan['maxi'] %}
-          <a href="/pay/subscription?offering_id={{ offering_id_by_plan['maxi'] }}" class="block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-gold/35 text-gold/90 hover:bg-gold/[0.10] mt-2 no-underline">Оплатить следующий период</a>
+          {{ paid_renew_btn('maxi') }}
           {% else %}
-          <form method="post" action="/subscriptions/connect" class="mt-2">
-            <input type="hidden" name="plan" value="maxi" />
-            <button type="submit" class="block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-gold/35 text-gold/90 hover:bg-gold/[0.10]">Оплатить следующий месяц</button>
-          </form>
-          {% endif %}
-          {% else %}
-          {% if _cp %}
-          <button type="button" data-cp-plan="maxi" class="cp-pay-btn block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn mt-auto">Подключиться</button>
-          {% elif _yk and offering_id_by_plan is defined and offering_id_by_plan['maxi'] %}
-          <a href="/pay/subscription?offering_id={{ offering_id_by_plan['maxi'] }}" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn mt-auto no-underline">Подключиться</a>
-          {% else %}
-          <form method="post" action="/subscriptions/connect" class="mt-auto">
-            <input type="hidden" name="plan" value="maxi" />
-            <button type="submit" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">Подключиться</button>
-          </form>
-          {% endif %}
+          {{ paid_connect_btn('maxi') }}
           {% endif %}
         {% else %}
         <a href="/login?next=/subscriptions" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">Подключиться</a>

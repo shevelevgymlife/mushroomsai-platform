@@ -28,6 +28,10 @@ from services.yookassa_bot_offerings import (
     normalize_offerings_list,
     parse_offerings_post,
 )
+from services.subscription_checkout import (
+    get_subscription_checkout_preference,
+    save_subscription_checkout_preference,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -96,6 +100,7 @@ async def admin_payment_hub(request: Request):
         d = dict(p)
         d["href"] = p.get("admin_path") or f"/admin/payment/{p['id']}"
         hub_providers.append(d)
+    checkout_pref = await get_subscription_checkout_preference()
     return templates.TemplateResponse(
         "dashboard/admin_payment_hub.html",
         {
@@ -104,8 +109,21 @@ async def admin_payment_hub(request: Request):
             "user_permissions": perms,
             "providers": hub_providers,
             "cloudpayments_webhook_url": webhook_url,
+            "subscription_checkout_pref": checkout_pref,
         },
     )
+
+
+@router.post("/payment/subscription-checkout")
+async def admin_subscription_checkout_save(request: Request):
+    require_permission, _ = _lazy_admin()
+    admin = await require_permission(request, "can_payment")
+    if not admin:
+        return RedirectResponse("/login")
+    form = await request.form()
+    raw = (form.get("primary_provider") or "auto").strip().lower()
+    await save_subscription_checkout_preference(raw)
+    return RedirectResponse("/admin/payment?checkout_saved=1", status_code=303)
 
 
 @router.get("/payment/{provider_id}", response_class=HTMLResponse)

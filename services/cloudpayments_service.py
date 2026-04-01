@@ -12,7 +12,7 @@ from db.database import database
 from db.models import payment_webhook_dedup, users
 from services.payment_plans_catalog import get_effective_plans
 from services.payment_provider_settings import get_provider_settings
-from services.subscription_service import activate_subscription
+from services.subscription_service import activate_subscription, gift_subscription
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +99,44 @@ async def handle_cloudpayments_notification(
         return True, "duplicate"
 
     data = _parse_data_field(payload.get("Data"))
+    gift_raw = str(data.get("gift") or "").strip().lower()
+    if gift_raw in ("1", "true", "yes", "on"):
+        giver_raw = data.get("giverId") or data.get("giver_id") or data.get("userId") or payload.get("AccountId")
+        recipient_raw = data.get("recipientId") or data.get("recipient_id")
+        plan = (data.get("plan") or "").strip().lower()
+        try:
+            giver_id = int(giver_raw)
+            recipient_id = int(recipient_raw)
+        except (TypeError, ValueError):
+            return False, "bad_gift_users"
+        if plan not in ("start", "pro", "maxi"):
+            return False, "bad_plan"
+        try:
+            amount = float(payload.get("Amount") or payload.get("PaymentAmount") or 0)
+        except (TypeError, ValueError):
+            amount = 0.0
+        plans = await get_effective_plans()
+        expected = float((plans.get(plan) or {}).get("price") or 0)
+        if expected <= 0:
+            return False, "bad_price_config"
+        if abs(amount - expected) > 0.02 and abs(amount - expected) > expected * 0.005:
+            logger.warning(
+                "cloudpayments gift amount mismatch giver=%s plan=%s amount=%s expected=%s",
+                giver_id,
+                plan,
+                amount,
+                expected,
+            )
+            return False, "amount_mismatch"
+        giver_row = await database.fetch_one(users.select().where(users.c.id == giver_id))
+        if not giver_row:
+            return False, "user_not_found"
+        ok, err = await gift_subscription(giver_id, recipient_id, plan)
+        if not ok:
+            return False, f"gift_{err}"
+        await _mark_processed("cloudpayments", ext)
+        return True, "ok_gift"
+
     uid = data.get("userId") or data.get("user_id") or payload.get("AccountId")
     plan = (data.get("plan") or "").strip().lower()
     try:

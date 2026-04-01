@@ -10,6 +10,26 @@
       Подключение эквайринга и редактирование тарифов для подписок. Выберите провайдера — на отдельной странице задаются реквизиты и (общие для всех) названия, цены и описания планов.
     </p>
 
+    {% if request.query_params.get('checkout_saved') %}
+    <div class="mb-4 p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-200 text-sm max-w-3xl">Сохранено: основной способ оплаты подписок.</div>
+    {% endif %}
+
+    <div class="mb-8 p-5 rounded-2xl border border-gold/25 bg-surface/80 max-w-3xl">
+      <h2 class="text-lg font-semibold text-text mb-2">Основной способ оплаты подписок</h2>
+      <p class="text-xs text-muted mb-4 leading-relaxed">Сайт и бот используют <strong>один</strong> выбранный способ (карточки тарифов, подарок, Mini App). Включите нужного провайдера ниже и при необходимости отключите лишнего. «Авто» = CloudPayments, если включён; иначе ЮKassa.</p>
+      <form method="post" action="/admin/payment/subscription-checkout" class="flex flex-wrap items-end gap-4">
+        <div>
+          <label class="block text-xs text-muted mb-1">Режим</label>
+          <select name="primary_provider" class="px-3 py-2 rounded-lg bg-bg border border-border text-text text-sm min-w-[220px]">
+            <option value="auto" {% if (subscription_checkout_pref or 'auto') == 'auto' %}selected{% endif %}>Авто (CloudPayments → ЮKassa)</option>
+            <option value="cloudpayments" {% if subscription_checkout_pref == 'cloudpayments' %}selected{% endif %}>Только CloudPayments</option>
+            <option value="yookassa_bot" {% if subscription_checkout_pref == 'yookassa_bot' %}selected{% endif %}>Только ЮKassa (бот и сайт)</option>
+          </select>
+        </div>
+        <button type="submit" class="px-4 py-2 rounded-lg bg-gold text-bg text-sm font-semibold hover:opacity-95">Сохранить</button>
+      </form>
+    </div>
+
     <div class="mb-6 p-4 rounded-2xl border border-cyan-500/20 bg-cyan-500/5 text-sm text-muted max-w-3xl">
       <p class="font-medium text-text mb-1">CloudPayments — вебхук для автоматической активации</p>
       <p>Укажите в личном кабинете CloudPayments URL уведомлений:</p>

@@ -32,6 +32,7 @@ from services.yookassa_bot_offerings import (
     offering_by_id,
     yookassa_web_pay_ready,
 )
+from services.subscription_checkout import resolve_active_subscription_checkout
 from services.yookassa_credentials import resolve_yookassa_shop_credentials
 from services.yookassa_hosted_payment import create_yookassa_redirect_payment
 from services.yookassa_pay_service import apply_yookassa_payment_succeeded, fetch_yookassa_payment
@@ -42,7 +43,6 @@ from services.subscription_service import (
     can_ask_question,
     increment_question_count,
     record_subscription_event,
-    gift_subscription,
     fetch_subscription_history_display,
     notify_subscription_manual_free,
 )
@@ -186,21 +186,19 @@ async def subscriptions_page(request: Request):
         return leg
     blocks = await _fetch_homepage_blocks_for_pricing()
     plans_eff = await get_effective_plans()
-    cp = await get_provider_settings("cloudpayments")
-    cp_public = (cp.get("public_id") or "").strip()
-    cp_enabled = bool(cp.get("enabled") and cp_public)
     uid = int(user.get("primary_user_id") or user["id"])
-    yb_st = await get_provider_settings("yookassa_bot")
-    yk_web = yookassa_web_pay_ready(yb_st)
-    try:
-        _all_off = await get_merged_bot_offerings()
-        yookassa_site_offerings = [o for o in _all_off if o.get("enabled") and o.get("show_on_site")]
-        offering_id_by_plan = {
-            pk: find_offering_id_for_plan(_all_off, pk) for pk in ("start", "pro", "maxi")
-        }
-    except Exception:
-        yookassa_site_offerings = []
-        offering_id_by_plan = {"start": None, "pro": None, "maxi": None}
+    subscription_checkout = await resolve_active_subscription_checkout()
+    ck = subscription_checkout.get("kind") or "none"
+    cp_enabled = ck == "cloudpayments"
+    cp_public = (subscription_checkout.get("cloudpayments_public_id") or "").strip() if cp_enabled else ""
+    yk_web = bool(subscription_checkout.get("yookassa_site_checkout_available"))
+    offering_id_by_plan = subscription_checkout.get("offering_id_by_plan") or {
+        "start": None,
+        "pro": None,
+        "maxi": None,
+    }
+    bot_u = (getattr(settings, "TELEGRAM_BOT_USERNAME", None) or "neuro_fungi_bot").strip().lstrip("@")
+    telegram_bot_url = f"https://t.me/{bot_u}"
 
     response = templates.TemplateResponse(
         "subscriptions.html",
@@ -213,9 +211,10 @@ async def subscriptions_page(request: Request):
             "cloudpayments_enabled": cp_enabled,
             "cloudpayments_public_id": cp_public,
             "payment_user_id": uid,
-            "yookassa_site_offerings": yookassa_site_offerings,
             "yookassa_web_pay_enabled": yk_web,
             "offering_id_by_plan": offering_id_by_plan,
+            "subscription_checkout": subscription_checkout,
+            "telegram_bot_url": telegram_bot_url,
         },
     )
 
@@ -309,9 +308,117 @@ async def pay_subscription_yookassa(request: Request, offering_id: str = ""):
     return out
 
 
+@router.get("/pay/gift")
+async def pay_gift_subscription(request: Request, plan: str = "", recipient_id: str = ""):
+    """Оплата подарка подписки — тот же активный провайдер, что и для своей подписки."""
+    user = await require_auth(request)
+    if not user:
+        nxt = f"/pay/gift?plan={quote((plan or '').strip(), safe='')}&recipient_id={quote(str(recipient_id or '').strip(), safe='')}"
+        return RedirectResponse("/login?next=" + quote(nxt, safe=""), status_code=302)
+    leg = await legal_acceptance_redirect(request, user)
+    if leg:
+        return leg
+    plan_key = (plan or "").strip().lower()
+    try:
+        rid = int(str(recipient_id).strip())
+    except (TypeError, ValueError):
+        return RedirectResponse("/subscriptions?gift_error=invalid", status_code=302)
+    giver_id = int(user.get("primary_user_id") or user["id"])
+    if plan_key not in ("start", "pro", "maxi"):
+        return RedirectResponse("/subscriptions?gift_error=invalid", status_code=302)
+    if rid == giver_id:
+        return RedirectResponse("/subscriptions?gift_error=self", status_code=302)
+
+    checkout = await resolve_active_subscription_checkout()
+    kind = checkout.get("kind") or "none"
+    plans_eff = await get_effective_plans()
+    price = float((plans_eff.get(plan_key) or {}).get("price") or 0)
+    pname = (plans_eff.get(plan_key) or {}).get("name") or plan_key
+
+    if kind == "none":
+        return RedirectResponse("/subscriptions?gift_error=no_payment", status_code=302)
+
+    if kind == "cloudpayments":
+        cpid = (checkout.get("cloudpayments_public_id") or "").strip()
+        if not cpid or price <= 0:
+            return RedirectResponse("/subscriptions?gift_error=no_payment", status_code=302)
+        return templates.TemplateResponse(
+            "gift_pay_cloudpayments.html",
+            {
+                "request": request,
+                "user": user,
+                "gift_plan": plan_key,
+                "gift_plan_name": pname,
+                "gift_amount": int(price),
+                "gift_recipient_id": rid,
+                "gift_giver_id": giver_id,
+                "cloudpayments_public_id": cpid,
+            },
+        )
+
+    if kind == "yookassa":
+        if not checkout.get("yookassa_site_checkout_available"):
+            return RedirectResponse("/subscriptions?gift_error=use_bot", status_code=302)
+        yb = await get_provider_settings("yookassa_bot")
+        if not yookassa_web_pay_ready(yb):
+            return RedirectResponse("/subscriptions?gift_error=web_disabled", status_code=302)
+        offerings = await get_merged_bot_offerings()
+        oid = find_offering_id_for_plan(offerings, plan_key)
+        off = offering_by_id(offerings, oid) if oid else None
+        if not off or not off.get("enabled"):
+            return RedirectResponse("/subscriptions?gift_error=bad_offering", status_code=302)
+        try:
+            price_rub = float(off.get("price_rub") or 0)
+        except (TypeError, ValueError):
+            price_rub = 0.0
+        if price_rub <= 0:
+            return RedirectResponse("/subscriptions?gift_error=price", status_code=302)
+        site = (settings.SITE_URL or "").rstrip("/")
+        if not site.startswith("http"):
+            return RedirectResponse("/subscriptions?gift_error=no_site_url", status_code=302)
+        return_url = f"{site}/subscriptions?paid=1&gifted=1"
+        disp = (off.get("display_name") or oid)[:80]
+        dur = (off.get("duration_label") or "")[:40]
+        desc = f"Подарок подписки «{disp}» {dur}".strip()[:128]
+        cust_email = (user.get("email") or "").strip() or None
+        shop_id, sec_key = resolve_yookassa_shop_credentials(yb)
+        url, err, payment_id = await create_yookassa_redirect_payment(
+            shop_id=shop_id,
+            secret_key=sec_key,
+            amount_rub=price_rub,
+            description=desc,
+            return_url=return_url,
+            metadata={
+                "user_id": str(giver_id),
+                "gift": "1",
+                "giver_id": str(giver_id),
+                "recipient_id": str(rid),
+                "offering_id": str(oid),
+            },
+            customer_email=cust_email,
+        )
+        if not url:
+            _logger.warning("yookassa gift create redirect failed: %s", err)
+            return RedirectResponse("/subscriptions?gift_error=create", status_code=302)
+        out = RedirectResponse(url, status_code=302)
+        if payment_id:
+            out.set_cookie(
+                _YK_PENDING_CHECKOUT_COOKIE,
+                payment_id,
+                max_age=3600,
+                httponly=True,
+                samesite="lax",
+                secure=(settings.SITE_URL or "").lower().startswith("https"),
+                path="/",
+            )
+        return out
+
+    return RedirectResponse("/subscriptions?gift_error=no_payment", status_code=302)
+
+
 @router.post("/subscriptions/connect")
 async def subscriptions_connect(request: Request, plan: str = Form(...)):
-    """Временно без оплаты: подключение тарифа на 30 дней (или free)."""
+    """Только бесплатный тариф без оплаты; платные — через эквайринг."""
     user = await require_auth(request)
     if not user:
         return RedirectResponse("/login?next=/subscriptions", status_code=302)
@@ -323,18 +430,7 @@ async def subscriptions_connect(request: Request, plan: str = Form(...)):
     if plan_key not in ("free", "start", "pro", "maxi"):
         return RedirectResponse("/subscriptions", status_code=302)
     if plan_key in ("start", "pro", "maxi"):
-        cp = await get_provider_settings("cloudpayments")
-        cp_ok = bool(cp.get("enabled") and (cp.get("public_id") or "").strip())
-        yb = await get_provider_settings("yookassa_bot")
-        yb_web_ok = yookassa_web_pay_ready(yb)
-        yb_bot_ok = bool(
-            yb.get("enabled")
-            and (yb.get("provider_token") or "").strip()
-        )
-        if cp_ok:
-            return RedirectResponse("/subscriptions?need_payment=1", status_code=302)
-        if yb_web_ok or yb_bot_ok:
-            return RedirectResponse("/subscriptions?need_payment=1", status_code=302)
+        return RedirectResponse("/subscriptions?need_payment=1", status_code=302)
     if plan_key == "free":
         urow = await database.fetch_one(users.select().where(users.c.id == uid))
         prev = (urow.get("subscription_plan") or "free").lower() if urow else "free"
@@ -355,13 +451,6 @@ async def subscriptions_connect(request: Request, plan: str = Form(...)):
                 await notify_subscription_manual_free(uid, prev)
             except Exception:
                 pass
-    else:
-        ok = await activate_subscription(uid, plan_key, months=1)
-        if not ok:
-            return RedirectResponse("/subscriptions", status_code=302)
-        await database.execute(
-            users.update().where(users.c.id == uid).values(needs_tariff_choice=False)
-        )
     return RedirectResponse("/subscriptions?connected=1", status_code=302)
 
 
@@ -448,22 +537,22 @@ async def subscriptions_gift_submit(
     plan: str = Form(...),
     recipient_user_id: int = Form(...),
 ):
+    """Редирект на оплату подарка (бесплатная выдача отключена)."""
     user = await require_auth(request)
     if not user:
         return RedirectResponse("/login?next=/subscriptions", status_code=302)
     leg = await legal_acceptance_redirect(request, user)
     if leg:
         return leg
-    giver_id = int(user.get("primary_user_id") or user["id"])
     plan_key = (plan or "").strip().lower()
     try:
         rid = int(recipient_user_id)
     except (TypeError, ValueError):
         return RedirectResponse("/subscriptions?gift_error=invalid", status_code=302)
-    ok, err = await gift_subscription(giver_id, rid, plan_key)
-    if not ok:
-        return RedirectResponse(f"/subscriptions?gift_error={err}", status_code=302)
-    return RedirectResponse("/subscriptions?gifted=1", status_code=302)
+    return RedirectResponse(
+        f"/pay/gift?plan={quote(plan_key, safe='')}&recipient_id={quote(str(rid), safe='')}",
+        status_code=302,
+    )
 
 
 @router.get("/onboarding/tariff", response_class=HTMLResponse)

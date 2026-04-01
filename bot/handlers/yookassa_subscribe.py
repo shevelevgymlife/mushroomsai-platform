@@ -14,6 +14,7 @@ from config import settings
 from services.payment_plans_catalog import get_effective_plans
 from services.payment_provider_settings import get_provider_settings
 from services.subscription_service import activate_subscription
+from services.subscription_checkout import resolve_active_subscription_checkout
 from services.yookassa_bot_offerings import (
     DEFAULT_DURATION_MINUTES,
     get_merged_bot_offerings,
@@ -126,6 +127,17 @@ async def tgpay_plan_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     if not q:
         return
     await q.answer()
+    ck = await resolve_active_subscription_checkout()
+    if ck.get("kind") != "yookassa":
+        site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
+        try:
+            await q.message.reply_text(
+                f"Сейчас подписка оформляется на сайте ({site}/subscriptions) — в админке выбран другой способ оплаты.",
+                disable_web_page_preview=True,
+            )
+        except Exception:
+            pass
+        return
     m = re.match(r"^tgpay_([a-z0-9_]+)$", q.data or "", re.I)
     if not m:
         return

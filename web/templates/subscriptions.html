@@ -5,12 +5,17 @@
   <div class="max-w-7xl mx-auto px-4">
     {% if request.query_params.get('gifted') %}
     <div class="max-w-3xl mx-auto mb-6 p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 text-sm leading-relaxed text-center">
-      Подписка подарена. У получателя она активна на месяц; позже здесь будет оплата перед дарением.
+      Подарок оплачен. Подписка у получателя активирована.
     </div>
     {% endif %}
     {% if request.query_params.get('gift_error') %}
     <div class="max-w-3xl mx-auto mb-6 p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-100 text-sm leading-relaxed text-center">
-      Не удалось подарить подписку{% if request.query_params.get('gift_error') not in ('1', 'invalid', '') %}: {{ request.query_params.get('gift_error') }}{% endif %}. Проверьте выбор пользователя и тарифа.
+      {% set ge = request.query_params.get('gift_error') %}
+      {% if ge == 'no_payment' %}Оплата подарка недоступна: в админке не включён CloudPayments или ЮKassa (или не выбран основной способ).
+      {% elif ge == 'use_bot' %}Оплата подарка на сайте недоступна — включите веб-оплату ЮKassa или откройте бота.
+      {% elif ge == 'self' %}Нельзя подарить подписку самому себе.
+      {% elif ge not in ('1', 'invalid', '') %}Не удалось оформить подарок: {{ ge }}. Проверьте получателя и тариф.
+      {% else %}Проверьте выбор пользователя и тарифа.{% endif %}
     </div>
     {% endif %}
     {% if request.query_params.get('need_payment') %}
@@ -63,33 +68,12 @@
       <span class="text-muted text-sm text-center max-w-md">Пробный доступ как у подписки «Старт» — один раз на аккаунт.</span>
     </div>
     {% endif %}
-    {% if yookassa_site_offerings is defined and yookassa_site_offerings|length > 0 %}
-    <div class="max-w-7xl mx-auto mb-10 p-5 rounded-2xl border border-cyan-500/20 bg-surface/50">
-      <h2 class="text-lg font-semibold text-text mb-2">Предложения ЮKassa (как в боте)</h2>
-      <p class="text-sm text-muted mb-4">Цена и срок те же, что для кнопок «Подписка» в Telegram: админка → Оплата → <strong>ЮKassa (бот и сайт)</strong>, колонки «Минут» и «Цена». «Показ на сайте» только включает карточку здесь.</p>
-      <p class="text-xs text-muted/90 mb-4 leading-relaxed border border-border/60 rounded-xl px-3 py-2 bg-bg/30">Оплачивая подписку, вы соглашаетесь с <a href="/legal/offer" class="text-gold hover:underline">Публичной офертой</a>. Возврат средств за уже оплаченный период не предусмотрен. При отмене автопродления доступ сохраняется до конца оплаченного срока — см. оферту.</p>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {% for o in yookassa_site_offerings %}
-        <div class="p-4 rounded-xl border border-border bg-bg/40 flex flex-col gap-2">
-          <div class="text-sm font-semibold text-gold">{{ o.display_name }}</div>
-          <div class="text-xs text-muted">Уровень: {{ o.effective_plan }} · {{ o.duration_label }}</div>
-          <div class="text-lg text-text font-light">{{ o.price_rub }} <span class="text-sm text-muted">₽</span></div>
-          <div class="mt-auto flex flex-col gap-2">
-            {% if yookassa_web_pay_enabled is defined and yookassa_web_pay_enabled %}
-            <a href="/pay/subscription?offering_id={{ o.id }}" class="inline-flex justify-center px-3 py-2 rounded-xl text-xs font-semibold bg-gold text-[#0a0c12] hover:opacity-95 no-underline">Оплатить на сайте</a>
-            {% endif %}
-            <a href="https://t.me/neuro_fungi_bot" target="_blank" rel="noopener noreferrer" class="inline-flex justify-center px-3 py-2 rounded-xl text-xs font-semibold bg-gold/15 border border-gold/30 text-gold hover:bg-gold/25 no-underline">Открыть бота</a>
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-    </div>
-    {% endif %}
+    <p class="max-w-3xl mx-auto mb-6 text-xs text-muted/90 leading-relaxed border border-border/60 rounded-xl px-3 py-2 bg-bg/30">Оплачивая подписку или подарок, вы соглашаетесь с <a href="/legal/offer" class="text-gold hover:underline">офертой</a>. Способ оплаты (CloudPayments или ЮKassa) задаётся в <strong>админке → Оплата</strong> — «Основной способ оплаты подписок».</p>
     <div class="max-w-3xl mx-auto mb-10 p-5 rounded-2xl border border-gold/25 bg-surface/60">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 class="text-lg font-semibold text-text">Подарить подписку</h2>
-          <p class="text-sm text-muted mt-1">Выберите тариф и получателя. Сейчас без оплаты — доступ на месяц сразу у получателя.</p>
+          <p class="text-sm text-muted mt-1">Выберите тариф и получателя (@username или id), затем оплатите — тот же способ оплаты, что включён для подписок.</p>
         </div>
         <button type="button" onclick="document.getElementById('giftSubModal').classList.remove('hidden');document.getElementById('giftSubModal').classList.add('flex');document.body.style.overflow='hidden';" class="nf-shimmer-btn px-6 py-3 rounded-xl text-sm font-bold shrink-0 text-[#0a0c12] border-0 cursor-pointer" style="background:linear-gradient(120deg,#3dd4e0,#c8a84b,#ff66d0)">
           Подарить подписку
@@ -105,10 +89,10 @@
   <div class="max-w-md w-full rounded-2xl border border-border bg-bg p-6 shadow-xl relative" role="dialog" aria-modal="true">
     <button type="button" class="absolute top-3 right-3 text-muted hover:text-text text-xl" onclick="closeGiftSubModal()" aria-label="Закрыть">×</button>
     <h3 class="text-lg font-semibold text-text pr-8 mb-4">Подарок подписки</h3>
-    <form method="post" action="/subscriptions/gift" class="space-y-4">
+    <div class="space-y-4">
       <div>
         <label class="block text-xs text-muted mb-2">Тариф</label>
-        <select name="plan" required class="w-full px-3 py-2.5 rounded-xl bg-surface border border-border text-text text-sm">
+        <select id="giftPlanSelect" required class="w-full px-3 py-2.5 rounded-xl bg-surface border border-border text-text text-sm">
           <option value="start">{{ plans.start.name if plans is defined else 'Старт' }} — {{ plans.start.price if plans is defined else 990 }} ₽/мес</option>
           <option value="pro">{{ plans.pro.name if plans is defined else 'Про' }} — {{ plans.pro.price if plans is defined else 1990 }} ₽/мес</option>
           <option value="maxi">{{ plans.maxi.name if plans is defined else 'Макси' }} — {{ plans.maxi.price if plans is defined else 4999 }} ₽/мес</option>
@@ -117,14 +101,14 @@
       <div>
         <label class="block text-xs text-muted mb-2">Кому (поиск по имени, email или ID; только <b>@</b> — список участников; <b>@123</b> или <b>123</b> — по ID)</label>
         <input type="search" id="giftUserSearch" autocomplete="off" placeholder="@ или имя, email, цифры ID…" class="w-full px-3 py-2.5 rounded-xl bg-surface border border-border text-text text-sm mb-2" />
-        <input type="hidden" name="recipient_user_id" id="giftRecipientId" value="" />
+        <input type="hidden" id="giftRecipientId" value="" />
         <p id="giftRecipientLabel" class="text-xs text-muted mb-2 min-h-[1.25rem]">Получатель не выбран — нажмите строку в списке ниже.</p>
         <div id="giftUserResults" class="w-full min-h-[140px] max-h-[240px] overflow-y-auto rounded-xl bg-surface border border-border text-text text-sm divide-y divide-border/60" role="listbox" aria-label="Результаты поиска">
           <div class="px-3 py-3 text-sm text-muted leading-relaxed">Введите в поле выше: только <b class="text-text/80">@</b> — список участников; <b class="text-text/80">@</b> и цифры — поиск по id; имя или email — от 2 символов. Затем <b class="text-text/80">нажмите строку</b> в этом списке.</div>
         </div>
       </div>
-      <button type="submit" class="w-full py-3 rounded-xl bg-gold text-bg font-semibold text-sm">Подарить</button>
-    </form>
+      <button type="button" id="giftPayBtn" class="w-full py-3 rounded-xl bg-gold text-bg font-semibold text-sm">Перейти к оплате</button>
+    </div>
   </div>
 </div>
 <script>
@@ -134,7 +118,6 @@
   var box = document.getElementById('giftUserResults');
   var hid = document.getElementById('giftRecipientId');
   var lbl = document.getElementById('giftRecipientLabel');
-  var form = inp && inp.closest('form');
   if (!inp || !box || !hid) return;
 
   var giftQs = new URLSearchParams(location.search).get('gift_user');
@@ -236,12 +219,16 @@
     }, 300);
   });
 
-  if (form) {
-    form.addEventListener('submit', function (ev) {
+  var payBtn = document.getElementById('giftPayBtn');
+  var planSel = document.getElementById('giftPlanSelect');
+  if (payBtn) {
+    payBtn.addEventListener('click', function () {
       if (!hid.value || String(hid.value).trim() === '') {
-        ev.preventDefault();
         alert('Выберите получателя в списке ниже (нажмите на строку с именем и id).');
+        return;
       }
+      var pl = planSel ? planSel.value : 'start';
+      window.location.href = '/pay/gift?plan=' + encodeURIComponent(pl) + '&recipient_id=' + encodeURIComponent(String(hid.value).trim());
     });
   }
 })();
