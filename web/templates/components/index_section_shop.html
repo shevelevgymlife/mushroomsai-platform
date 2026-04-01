@@ -1,10 +1,10 @@
 <!-- Marketplace Block -->
-<section class="py-10 sm:py-14 relative">
+<section class="py-4 sm:py-6 relative">
   <div class="absolute inset-0 pointer-events-none opacity-40">
     <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(900px,100%)] h-64 rounded-full bg-gold/[0.04] blur-[80px]"></div>
   </div>
   <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="max-w-3xl mx-auto text-center mb-12 sm:mb-16">
+    <div class="max-w-3xl mx-auto text-center mb-8 sm:mb-10">
       <div class="flex justify-center mb-6">
         <span class="h-1 w-16 rounded-full bg-gradient-to-r from-transparent via-gold to-transparent opacity-90"></span>
       </div>
@@ -47,7 +47,7 @@
         .shop-chaos-card:nth-child(6){top:516px!important;right:8px!important;left:auto!important;transform:rotate(5deg)!important}
       }
     </style>
-    <div class="shop-chaos-stage mb-12">
+    <div class="shop-chaos-stage mb-6">
       {% for p in chaos_shop %}
       <div class="shop-chaos-card relative panel-rise overflow-hidden group hover:border-gold/20 transition-all duration-300" style="{{ shop_pos[loop.index0] if loop.index0 < shop_pos|length else 'top:20px;left:20px' }}">
         {% if not user %}
@@ -86,7 +86,7 @@
       {% endfor %}
     </div>
     {% else %}
-    <div class="text-center py-14 text-muted mb-12 panel-rise max-w-lg mx-auto">Товары скоро появятся</div>
+    <div class="text-center py-8 text-muted mb-6 panel-rise max-w-lg mx-auto">Товары скоро появятся</div>
     {% endif %}
 
     <div class="text-center">
