@@ -26,7 +26,8 @@ DEFAULT_PLANS: dict[str, dict[str, Any]] = {
         "description": "",
         "features": [
             "5 вопросов в день",
-            "База знаний о грибах",
+            "Личный кабинет",
+            "Магазин",
         ],
     },
     "start": {
