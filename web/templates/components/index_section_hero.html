@@ -83,38 +83,6 @@
           </div>
         </div>
         <div class="flex justify-center gap-2 mt-4 mb-0" id="nf-hero-dots" aria-hidden="true"></div>
-        <!-- Точки → капсула (овал вверх-вниз) → широкая бирюзовая полоса -->
-        <div class="flex flex-col items-center mt-3 w-full max-w-[min(92vw,260px)] mx-auto select-none" aria-hidden="true">
-          <div class="relative w-full flex flex-col items-center">
-            <div class="relative h-[min(32vw,128px)] sm:h-[128px] w-6 shrink-0">
-              <div class="absolute inset-x-0 top-0 bottom-0 rounded-full border border-cyan-400/50 bg-black/25 shadow-[inset_0_0_14px_rgba(61,212,224,0.15)] overflow-hidden">
-                <div class="nf-hero-scroll-oval absolute w-1.5 h-4 rounded-full bg-cyan-400 shadow-[0_0_16px_rgba(61,212,224,1)]"></div>
-              </div>
-            </div>
-            <div class="w-full h-[3px] mt-2 rounded-full bg-gradient-to-r from-transparent via-cyan-400 to-transparent opacity-95 shadow-[0_0_22px_rgba(61,212,224,0.45)]"></div>
-          </div>
-        </div>
-        <style>
-          @keyframes nf-hero-scroll-oval-move {
-            0%, 100% {
-              top: calc(100% - 20px);
-              transform: translateX(-50%);
-              opacity: 0.88;
-            }
-            50% {
-              top: 8px;
-              transform: translateX(-50%);
-              opacity: 1;
-            }
-          }
-          .nf-hero-scroll-oval {
-            left: 50%;
-            animation: nf-hero-scroll-oval-move 2.5s cubic-bezier(0.42, 0, 0.58, 1) infinite;
-          }
-          @media (prefers-reduced-motion: reduce) {
-            .nf-hero-scroll-oval { animation: none; top: 45% !important; transform: translateX(-50%) !important; opacity: 0.95; }
-          }
-        </style>
         <script>
         (function () {
           var sc = document.getElementById('nf-hero-cards');

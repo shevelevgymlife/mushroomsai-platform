@@ -15,11 +15,16 @@
 {% block content %}
 {# block_order comes from server (sorted by position). Fallback if empty (DB error / all hidden). #}
 {% set render_order = block_order if block_order else ['hero', 'features', 'pricing', 'community', 'shop'] %}
+{% set ns = namespace(first_section=true) %}
 
 {% for bkey in render_order %}
   {% set _eff = user.effective_subscription_plan|default(user.subscription_plan)|default('free') if user else 'free' %}
   {% set skip_free_blocks = user and (_eff == 'free' or user.needs_tariff_choice|default(false)) and bkey in ['community','shop'] %}
   {% if block_visible(bkey) | trim and not skip_free_blocks %}
+    {% if not ns.first_section %}
+      {% include "components/index_scroll_beacon.html" %}
+    {% endif %}
+    {% set ns.first_section = false %}
     {% set _b = blocks[bkey] if blocks and bkey in blocks else none %}
     {% set section_tpl = "components/index_section_" + bkey + ".html" %}
     {% if _b and _b.blur_for_guests and not user %}
