@@ -34,30 +34,101 @@
         </div>
       </div>
 
-      <div class="lg:col-span-5 relative max-w-md mx-auto lg:max-w-none w-full">
-        <div class="relative aspect-square max-h-[420px] lg:max-h-[480px] mx-auto">
-          <div class="absolute inset-[8%] rounded-[1.75rem] border border-gold/20 bg-gradient-to-br from-gold/[0.12] to-transparent rotate-[-3deg]"></div>
-          <div class="absolute inset-0 panel-rise p-6 sm:p-8 flex flex-col justify-between rotate-[2deg] hover:rotate-0 transition-transform duration-500">
-            <div>
-              <p class="section-eyebrow mb-2 nf-shimmer">NEUROFUNGI AI</p>
-              <p class="font-display text-xl sm:text-2xl font-semibold leading-snug nf-gold-text">{{ t.community_tagline }}</p>
+      <div class="lg:col-span-5 relative w-full max-w-lg mx-auto lg:max-w-none">
+        <p class="text-center text-[11px] sm:text-xs text-muted uppercase tracking-wider mb-3 px-2">{{ t.hero_cards_swipe_hint }}</p>
+        <div class="relative">
+          <div class="pointer-events-none absolute inset-y-0 left-0 w-10 z-10 bg-gradient-to-r from-bg to-transparent"></div>
+          <div class="pointer-events-none absolute inset-y-0 right-0 w-10 z-10 bg-gradient-to-l from-bg to-transparent"></div>
+          <div
+            id="nf-hero-cards"
+            class="nf-hero-cards-scroll flex gap-4 overflow-x-auto overscroll-x-contain snap-x snap-mandatory pb-2 pl-3 pr-3 sm:pl-4 sm:pr-4 scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+            style="-webkit-overflow-scrolling: touch;"
+          >
+            {% set card_bg_rot = ['-3deg', '2.5deg', '-2.5deg', '3deg', '-2deg'] %}
+            {% set card_panel_rot = ['2deg', '-2.5deg', '2.5deg', '-2deg', '2.2deg'] %}
+            {% for i in [1, 2, 3, 4, 5] %}
+            {% set hk = 'hero_card_' ~ i %}
+            <div class="snap-center shrink-0 w-[min(82vw,280px)] sm:w-[260px]" data-nf-hero-card>
+              <div class="relative h-[min(72vw,380px)] sm:h-[400px] mx-auto">
+                <div
+                  class="absolute inset-[7%] rounded-[1.75rem] border border-gold/20 bg-gradient-to-br from-cyan-500/[0.08] via-gold/[0.06] to-transparent opacity-90"
+                  style="transform: rotate({{ card_bg_rot[i - 1] }});"
+                ></div>
+                <div
+                  class="absolute inset-0 panel-rise p-5 sm:p-7 flex flex-col justify-between shadow-[0_0_40px_rgba(61,212,224,0.06)]"
+                  style="transform: rotate({{ card_panel_rot[i - 1] }});"
+                >
+                  <div class="min-h-0">
+                    <p class="section-eyebrow mb-2 nf-shimmer text-[10px] sm:text-xs">NEUROFUNGI AI</p>
+                    <p class="font-display text-base sm:text-lg font-semibold leading-snug nf-gold-text">{{ t[hk] }}</p>
+                  </div>
+                  <div class="space-y-2.5 pt-4 border-t border-white/[0.06]">
+                    <div class="flex justify-between items-baseline gap-2">
+                      <span class="text-[10px] sm:text-xs text-muted uppercase tracking-wider shrink-0">Фокус</span>
+                      <span class="text-xs sm:text-sm text-gold-light font-medium text-right leading-tight">Функциональные грибы</span>
+                    </div>
+                    <div class="flex justify-between items-baseline gap-2">
+                      <span class="text-[10px] sm:text-xs text-muted uppercase tracking-wider shrink-0">Формат</span>
+                      <span class="text-xs sm:text-sm text-text text-right leading-tight">AI + эксперт · 24/7</span>
+                    </div>
+                    <div class="flex justify-between items-baseline gap-2">
+                      <span class="text-[10px] sm:text-xs text-muted uppercase tracking-wider shrink-0">Доступ</span>
+                      <span class="text-xs sm:text-sm text-text text-right leading-tight">Telegram · сайт · кабинет</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="space-y-3 pt-6 border-t border-white/[0.06]">
-              <div class="flex justify-between items-baseline gap-4">
-                <span class="text-xs text-muted uppercase tracking-wider">Фокус</span>
-                <span class="text-sm text-gold-light font-medium text-right">Функциональные грибы</span>
-              </div>
-              <div class="flex justify-between items-baseline gap-4">
-                <span class="text-xs text-muted uppercase tracking-wider">Формат</span>
-                <span class="text-sm text-text text-right">AI + эксперт · 24/7</span>
-              </div>
-              <div class="flex justify-between items-baseline gap-4">
-                <span class="text-xs text-muted uppercase tracking-wider">Доступ</span>
-                <span class="text-sm text-text text-right">Telegram · сайт · кабинет</span>
-              </div>
-            </div>
+            {% endfor %}
           </div>
         </div>
+        <div class="flex justify-center gap-1.5 mt-3" id="nf-hero-dots" aria-hidden="true"></div>
+        <script>
+        (function () {
+          var sc = document.getElementById('nf-hero-cards');
+          var dots = document.getElementById('nf-hero-dots');
+          if (!sc || !dots) return;
+          var cards = sc.querySelectorAll('[data-nf-hero-card]');
+          var n = cards.length;
+          for (var i = 0; i < n; i++) {
+            var d = document.createElement('button');
+            d.type = 'button';
+            d.className = 'nf-hero-dot h-1.5 w-1.5 rounded-full transition-all duration-300 bg-gold/25 hover:bg-gold/50 shrink-0';
+            d.setAttribute('aria-label', 'Карточка ' + (i + 1));
+            (function (idx) {
+              d.addEventListener('click', function () {
+                cards[idx].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+              });
+            })(i);
+            dots.appendChild(d);
+          }
+          var dotEls = dots.querySelectorAll('.nf-hero-dot');
+          function syncDots() {
+            var sr = sc.getBoundingClientRect();
+            var centerX = sr.left + sr.width / 2;
+            var best = 0;
+            var bestScore = -1;
+            for (var j = 0; j < cards.length; j++) {
+              var r = cards[j].getBoundingClientRect();
+              var overlap = Math.max(0, Math.min(r.right, sr.right) - Math.max(r.left, sr.left));
+              var cardCenter = r.left + r.width / 2;
+              var dist = Math.abs(cardCenter - centerX);
+              var score = overlap / Math.max(r.width, 1) - dist / Math.max(sr.width, 1) * 0.25;
+              if (score > bestScore) { bestScore = score; best = j; }
+            }
+            for (var k = 0; k < dotEls.length; k++) {
+              if (k === best) {
+                dotEls[k].className = 'nf-hero-dot h-1.5 w-5 rounded-full transition-all duration-300 bg-gold shrink-0';
+              } else {
+                dotEls[k].className = 'nf-hero-dot h-1.5 w-1.5 rounded-full transition-all duration-300 bg-gold/25 hover:bg-gold/50 shrink-0';
+              }
+            }
+          }
+          sc.addEventListener('scroll', function () { requestAnimationFrame(syncDots); }, { passive: true });
+          window.addEventListener('resize', function () { requestAnimationFrame(syncDots); });
+          syncDots();
+        })();
+        </script>
       </div>
     </div>
   </div>
