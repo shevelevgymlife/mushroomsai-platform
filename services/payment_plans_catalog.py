@@ -25,7 +25,7 @@ DEFAULT_PLANS: dict[str, dict[str, Any]] = {
         "recipes_per_day": 1,
         "description": "",
         "features": [
-            "5 вопросов в день",
+            "5 вопросов AI",
             "Личный кабинет",
             "Магазин",
         ],
