@@ -366,6 +366,14 @@ async def admin_payment_provider_save(request: Request, provider_id: str):
         new_st["shop_id"] = (form.get("shop_id") or "").strip()
         new_st["secret_key"] = (form.get("secret_key") or "").strip()
         new_st["instructions"] = (form.get("instructions") or "").strip()
+        raw_trv = (form.get("telegram_receipt_vat_code") or "").strip()
+        if raw_trv == "":
+            new_st["telegram_receipt_vat_code"] = -1
+        else:
+            try:
+                new_st["telegram_receipt_vat_code"] = max(-1, min(10, int(float(raw_trv))))
+            except ValueError:
+                pass
         secrets = ("bot_token", "provider_token", "secret_key")
     elif pid == "telegram_stars":
         new_st["enabled"] = str(form.get("enabled") or "").strip().lower() in ("1", "true", "on", "yes")

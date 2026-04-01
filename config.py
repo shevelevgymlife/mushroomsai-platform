@@ -77,6 +77,8 @@ class Settings(BaseSettings):
     YOOKASSA_RECEIPT_VAT_CODE: int = 0
     # None — как YOOKASSA_RECEIPT_VAT_CODE; 0 — явно без чека в sendInvoice бота; 1+ — только для бота (если на сайте чек не передаёте, а в боте провайдер требует).
     YOOKASSA_TELEGRAM_RECEIPT_VAT_CODE: int | None = None
+    # Счёт с чеком: сначала запрашивать email (пусто) или телефон (phone) у покупателя для ЮKassa.
+    YOOKASSA_TELEGRAM_RECEIPT_CONTACT: str = ""
     # Временно: другой магазин ЮKassa (напр. тестовый) без смены ключей в админке. Оба поля обязательны; вебхук проверяется тем же секретом.
     YOOKASSA_OVERRIDE_SHOP_ID: str = ""
     YOOKASSA_OVERRIDE_SECRET_KEY: str = ""
