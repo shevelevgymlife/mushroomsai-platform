@@ -40,6 +40,7 @@ from services.payment_plans_catalog import (
     plan_billing_captions_for_keys,
     visible_plan_keys_from,
 )
+from services.subscription_checkout import resolve_active_subscription_checkout
 from services.subscription_service import check_subscription, web_default_home_path
 from services.shop_catalog import product_gallery_urls
 from services.legal import legal_acceptance_redirect
@@ -294,6 +295,8 @@ async def index(request: Request):
     plans_eff = await get_effective_plans()
     plan_keys_visible = visible_plan_keys_from(plans_eff)
     plan_billing_captions = plan_billing_captions_for_keys(plans_eff, plan_keys_visible)
+    subscription_checkout = await resolve_active_subscription_checkout()
+    bot_u = (getattr(settings, "TELEGRAM_BOT_USERNAME", None) or "neuro_fungi_bot").strip().lstrip("@")
     response = templates.TemplateResponse(
         "index.html",
         {
@@ -310,6 +313,8 @@ async def index(request: Request):
             "plans": plans_eff,
             "plan_keys_visible": plan_keys_visible,
             "plan_billing_captions": plan_billing_captions,
+            "subscription_checkout": subscription_checkout,
+            "telegram_bot_url": f"https://t.me/{bot_u}",
         },
     )
     # Главная страница с live-метриками: без кэша, чтобы блок всегда обновлялся.

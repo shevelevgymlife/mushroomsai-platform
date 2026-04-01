@@ -6,12 +6,20 @@
 {% set _yk_site = subscription_checkout.yookassa_site_checkout_available if subscription_checkout is defined else false %}
 {% set _yk_bot_only = subscription_checkout.yookassa_bot_only if subscription_checkout is defined else false %}
 {% set _bot_url = telegram_bot_url if telegram_bot_url is defined else 'https://t.me/neuro_fungi_bot' %}
+{% set _stars_on = subscription_checkout is defined and subscription_checkout.telegram_stars_subscriptions_enabled %}
+{% set _stars_url = subscription_checkout.telegram_stars_subscribe_url if _stars_on and subscription_checkout.telegram_stars_subscribe_url else '' %}
 {% set pkv = plan_keys_visible if plan_keys_visible is defined else ['free', 'start', 'pro', 'maxi'] %}
 {% set _captions = plan_billing_captions if plan_billing_captions is defined else {} %}
 {% set np = namespace(fp=none) %}
 {% for _x in pkv %}
   {% if _x != 'free' and np.fp is none %}{% set np.fp = _x %}{% endif %}
 {% endfor %}
+
+{% macro stars_pay_link(extra_class='') %}
+  {% if _stars_url %}
+  <a href="{{ _stars_url }}" target="_blank" rel="noopener noreferrer" class="block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-cyan-400/35 text-cyan-100/95 hover:bg-cyan-500/10 mt-2 no-underline {{ extra_class }}">⭐ Оплатить звёздами в Telegram</a>
+  {% endif %}
+{% endmacro %}
 
 {% macro paid_renew_btn(pk) %}
   {% if _cp %}
@@ -23,6 +31,7 @@
   {% else %}
   <p class="text-xs text-center text-amber-200/80 mt-2 px-1">Настройте способ оплаты в админке (раздел Оплата).</p>
   {% endif %}
+  {{ stars_pay_link() }}
 {% endmacro %}
 
 {% macro paid_connect_btn(pk) %}
@@ -35,11 +44,17 @@
   {% else %}
   <div class="mt-auto text-center px-3 py-3 rounded-xl text-xs text-amber-200/90 border border-amber-500/25 bg-amber-500/5">Оплата не настроена. Включите CloudPayments или ЮKassa в админке.</div>
   {% endif %}
+  {{ stars_pay_link() }}
 {% endmacro %}
 
 <!-- Tariffs -->
 <section class="py-4 sm:py-6 relative scroll-mt-20" id="tariffs">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    {% if subscription_checkout is defined and subscription_checkout.checkout_blocked_hint %}
+    <div class="max-w-3xl mx-auto mb-6 p-4 rounded-2xl border border-amber-500/35 bg-amber-500/10 text-amber-100 text-sm leading-relaxed text-center">
+      {{ subscription_checkout.checkout_blocked_hint }}
+    </div>
+    {% endif %}
     <div class="max-w-3xl mx-auto text-center mb-8 sm:mb-10">
       <h2 class="font-display text-3xl sm:text-4xl lg:text-5xl font-semibold mb-5 tracking-tight">
         <span class="nf-gold-text">{{ blocks.pricing.title if blocks and 'pricing' in blocks else t.tariffs_title }}</span>
@@ -114,6 +129,7 @@
           {% endif %}
         {% else %}
         <a href="/login?next=/subscriptions" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">Подключиться</a>
+        {{ stars_pay_link() }}
         {% endif %}
         {% endif %}
       </div>

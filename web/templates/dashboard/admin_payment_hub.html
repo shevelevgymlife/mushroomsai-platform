@@ -22,14 +22,14 @@
 
     <div class="mb-8 p-5 rounded-2xl border border-gold/25 bg-surface/80 max-w-3xl">
       <h2 class="text-lg font-semibold text-text mb-2">Основной способ оплаты подписок</h2>
-      <p class="text-xs text-muted mb-4 leading-relaxed">Сайт и бот используют <strong>один</strong> выбранный способ (карточки тарифов, подарок, Mini App). Включите нужного провайдера ниже и при необходимости отключите лишнего. «Авто» = CloudPayments, если включён; иначе ЮKassa.</p>
+      <p class="text-xs text-muted mb-4 leading-relaxed">Сайт, Mini App и сценарии вроде подарка используют <strong>один</strong> выбранный способ в рублях. Карточки провайдеров ниже — для реквизитов и включения. <strong>Telegram Stars</strong> задаются отдельно в карточке «Telegram Stars» (кнопка на витрине тарифов ведёт в бота).</p>
       <form method="post" action="/admin/payment/subscription-checkout" class="flex flex-wrap items-end gap-4">
         <div>
           <label class="block text-xs text-muted mb-1">Режим</label>
-          <select name="primary_provider" class="px-3 py-2 rounded-lg bg-bg border border-border text-text text-sm min-w-[220px]">
-            <option value="auto" {% if (subscription_checkout_pref or 'auto') == 'auto' %}selected{% endif %}>Авто (CloudPayments → ЮKassa)</option>
-            <option value="cloudpayments" {% if subscription_checkout_pref == 'cloudpayments' %}selected{% endif %}>Только CloudPayments</option>
-            <option value="yookassa_bot" {% if subscription_checkout_pref == 'yookassa_bot' %}selected{% endif %}>Только ЮKassa (бот и сайт)</option>
+          <select name="primary_provider" class="px-3 py-2 rounded-lg bg-bg border border-border text-text text-sm min-w-[280px] max-w-[100%]">
+            {% for row in subscription_checkout_options %}
+            <option value="{{ row.id }}" {% if (subscription_checkout_pref or 'auto') == row.id %}selected{% endif %}>{{ row.label }}{{ row.suffix }}</option>
+            {% endfor %}
           </select>
         </div>
         <button type="submit" class="px-4 py-2 rounded-lg bg-gold text-bg text-sm font-semibold hover:opacity-95">Сохранить</button>

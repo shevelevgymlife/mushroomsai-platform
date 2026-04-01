@@ -1,7 +1,9 @@
 """
-Единая точка: какой способ оплаты подписок активен (сайт и бот).
-Приоритет задаётся в админке (Оплата) или «авто»: CloudPayments → ЮKassa.
-Telegram Stars для подписок — только в боте (счёт XTR), включается в Оплата → Telegram Stars.
+Единая точка: какой способ оплаты подписок активен (сайт, Mini App, бот).
+В админке можно выбрать любой зарегистрированный провайдер; CloudPayments и ЮKassa (бот и сайт)
+дают рабочую оплату. Тинькофф, крипто и карточка «ЮKassa (резерв)» сохраняются как выбор,
+но поток подписок на сайте для них пока не подключён — kind будет none и показывается подсказка.
+Telegram Stars (XTR) — отдельно в карточке провайдера; на сайте показывается ссылка в бота.
 """
 from __future__ import annotations
 
@@ -10,11 +12,12 @@ import logging
 import math
 from typing import Any
 
+from config import settings
 from db.database import database
 from db.models import platform_settings
 
 from services.payment_plans_catalog import get_effective_plans, is_catalog_paid_checkout_plan
-from services.payment_provider_settings import get_provider_settings
+from services.payment_provider_settings import PAYMENT_PROVIDERS, get_provider_settings
 from services.yookassa_bot_offerings import (
     find_offering_id_for_plan,
     get_merged_bot_offerings,
@@ -24,7 +27,47 @@ from services.yookassa_bot_offerings import (
 logger = logging.getLogger(__name__)
 
 _CHECKOUT_KEY = "subscription_checkout"
-_VALID_PREFS = frozenset({"auto", "cloudpayments", "yookassa_bot"})
+
+# Telegram Stars не бывает «основным» RUB-эквайрингом; включается в своей карточке провайдера.
+_STARS_PROVIDER_ID = "telegram_stars"
+
+
+def subscription_checkout_valid_preferences() -> frozenset[str]:
+    ids = {"auto"} | {p["id"] for p in PAYMENT_PROVIDERS if p["id"] != _STARS_PROVIDER_ID}
+    return frozenset(ids)
+
+
+def subscription_checkout_select_rows() -> list[dict[str, str]]:
+    """Подписи для выпадающего списка в админке «Основной способ оплаты подписок»."""
+    rows: list[dict[str, str]] = [
+        {
+            "id": "auto",
+            "label": "Авто: CloudPayments, если включён; иначе ЮKassa (бот и сайт)",
+            "suffix": "",
+        }
+    ]
+    for p in PAYMENT_PROVIDERS:
+        if p["id"] == _STARS_PROVIDER_ID:
+            continue
+        suffix = ""
+        pid = p["id"]
+        if pid == "tinkoff":
+            suffix = " — оплата подписок на сайте пока не подключена"
+        elif pid == "crypto":
+            suffix = " — оплата подписок на сайте пока не подключена"
+        elif pid == "yookassa":
+            suffix = " — не используется для подписок; нужна «ЮKassa (бот и сайт)»"
+        rows.append({"id": pid, "label": p["title"], "suffix": suffix})
+    return rows
+
+
+def _telegram_bot_username() -> str:
+    return (getattr(settings, "TELEGRAM_BOT_USERNAME", None) or "neuro_fungi_bot").strip().lstrip("@")
+
+
+def telegram_stars_subscribe_deeplink() -> str:
+    """Ссылка в бота: сразу открывается меню подписки (обработчик /start subscribe)."""
+    return f"https://t.me/{_telegram_bot_username()}?start=subscribe"
 
 
 def subscription_stars_amount(price_rub: float, stars_per_rub: float) -> int:
@@ -58,7 +101,8 @@ async def telegram_stars_subscription_meta() -> dict[str, Any]:
 
 
 async def get_subscription_checkout_preference() -> str:
-    """auto | cloudpayments | yookassa_bot"""
+    """auto | id из PAYMENT_PROVIDERS (кроме telegram_stars)."""
+    valid = subscription_checkout_valid_preferences()
     try:
         row = await database.fetch_one(
             platform_settings.select().where(platform_settings.c.key == _CHECKOUT_KEY)
@@ -67,15 +111,16 @@ async def get_subscription_checkout_preference() -> str:
             return "auto"
         data = json.loads(row["value"])
         p = (data.get("primary_provider") or "auto").strip().lower()
-        return p if p in _VALID_PREFS else "auto"
+        return p if p in valid else "auto"
     except Exception:
         logger.debug("get_subscription_checkout_preference failed", exc_info=True)
         return "auto"
 
 
 async def save_subscription_checkout_preference(primary_provider: str) -> None:
+    valid = subscription_checkout_valid_preferences()
     p = (primary_provider or "auto").strip().lower()
-    if p not in _VALID_PREFS:
+    if p not in valid:
         p = "auto"
     raw = json.dumps({"primary_provider": p}, ensure_ascii=False)
     exists = await database.fetch_one(
@@ -132,10 +177,34 @@ async def resolve_active_subscription_checkout() -> dict[str, Any]:
             return "cloudpayments" if cp_ok else "none"
         if pref == "yookassa_bot":
             return "yookassa" if (yk_web or yk_bot) else "none"
+        if pref in ("tinkoff", "crypto", "yookassa"):
+            return "none"
         return pick_auto()
 
     kind = kind_for_pref()
     tsm = await telegram_stars_subscription_meta()
+    stars_on = bool(tsm.get("available_for_subscriptions"))
+
+    blocked_hint: str | None = None
+    if pref == "tinkoff":
+        blocked_hint = (
+            "В админке выбран основной способ «Тинькофф Касса», но оплата подписок на сайте и в приложении "
+            "для него ещё не подключена. Временно включите CloudPayments или «ЮKassa (бот и сайт)»."
+        )
+    elif pref == "crypto":
+        blocked_hint = (
+            "Выбран основной способ «Криптовалюта», но приём подписок через него на сайте ещё не реализован. "
+            "Используйте CloudPayments или ЮKassa либо Telegram Stars в боте."
+        )
+    elif pref == "yookassa":
+        blocked_hint = (
+            "Выбрана устаревшая карточка «ЮKassa (резерв)» — подписки не обрабатываются. "
+            "Выберите «ЮKassa (бот и сайт)» или CloudPayments."
+        )
+    elif pref == "cloudpayments" and not cp_ok:
+        blocked_hint = "Выбран CloudPayments, но он выключен или не заполнен Public ID в настройках провайдера."
+    elif pref == "yookassa_bot" and not (yk_web or yk_bot):
+        blocked_hint = "Выбрана ЮKassa (бот и сайт), но провайдер выключен или не заданы shopId и секрет / токен бота."
 
     return {
         "kind": kind,
@@ -148,6 +217,8 @@ async def resolve_active_subscription_checkout() -> dict[str, Any]:
         "yookassa_bot_only": kind == "yookassa" and not yk_web and yk_bot,
         "offering_id_by_plan": offering_id_by_plan,
         "offerings": offerings,
-        "telegram_stars_subscriptions_enabled": bool(tsm.get("available_for_subscriptions")),
+        "telegram_stars_subscriptions_enabled": stars_on,
         "telegram_stars_per_rub": float(tsm.get("stars_per_rub") or 0.55),
+        "telegram_stars_subscribe_url": telegram_stars_subscribe_deeplink() if stars_on else "",
+        "checkout_blocked_hint": blocked_hint,
     }

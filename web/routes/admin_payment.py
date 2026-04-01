@@ -31,6 +31,7 @@ from services.yookassa_bot_offerings import get_merged_bot_offerings
 from services.subscription_checkout import (
     get_subscription_checkout_preference,
     save_subscription_checkout_preference,
+    subscription_checkout_select_rows,
 )
 
 logger = logging.getLogger(__name__)
@@ -181,6 +182,7 @@ async def admin_payment_hub(request: Request):
             "providers": hub_providers,
             "cloudpayments_webhook_url": webhook_url,
             "subscription_checkout_pref": checkout_pref,
+            "subscription_checkout_options": subscription_checkout_select_rows(),
         },
     )
 

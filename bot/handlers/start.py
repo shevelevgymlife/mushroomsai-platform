@@ -168,6 +168,11 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reply_markup=kb,
             )
             return
+        if ref_code in ("subscribe", "stars", "sub"):
+            from bot.handlers.yookassa_subscribe import subscribe_menu_handler
+
+            await subscribe_menu_handler(update, context)
+            return
         if ref_code and ref_code != user.get("referral_code"):
             from services.referral_service import process_referral
             await process_referral(user["id"], ref_code)
