@@ -108,6 +108,13 @@
         <span class="ig-drawer-trial-banner__title" id="drawerSubHead">{{ user.get('drawer_sub_head') or 'Бесплатный' }}</span>
       </div>
       <p class="ig-drawer-trial-banner__sub" id="drawerSubSub">{{ user.get('drawer_sub_sub') or 'Без ограничения по времени' }}</p>
+      {% if user.get('drawer_plan_bullets') %}
+      <ul class="ig-drawer-plan-bullets" style="margin:10px 0 0;padding:0 4px 0 18px;font-size:11px;color:#9fb4c4;line-height:1.45;list-style:disc;text-align:left">
+        {% for line in user.drawer_plan_bullets %}
+        <li style="margin-bottom:4px">{{ line }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
       <div id="drawerSubCountdown" class="ig-drawer-trial-banner__grid{% if not _sub_show_cd %} ig-drawer-sub-countdown--hidden{% endif %}" aria-hidden="{{ 'true' if not _sub_show_cd else 'false' }}">
         <div class="ig-drawer-trial-chip"><span class="ig-drawer-trial-chip__val" id="drawerSubD">—</span><span class="ig-drawer-trial-chip__unit">дн</span></div>
         <div class="ig-drawer-trial-chip"><span class="ig-drawer-trial-chip__val" id="drawerSubH">—</span><span class="ig-drawer-trial-chip__unit">ч</span></div>

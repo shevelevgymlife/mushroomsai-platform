@@ -38,7 +38,7 @@
   {% for label, href, perm_key, iname in nav_items %}
   {% if user_permissions is not defined or user_permissions.get(perm_key, True) %}
   <a href="{{ href }}"
-     class="admin-nav-item {{ 'on' if request.url.path == href else '' }}">
+     class="admin-nav-item {{ 'on' if (request.url.path == href or (href == '/admin/payment' and request.url.path.startswith('/admin/payment'))) else '' }}">
     <span class="ni-ic">{{ ico(iname) }}</span>
     <span>{{ label }}</span>
   </a>

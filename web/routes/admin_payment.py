@@ -16,6 +16,7 @@ from services.payment_plans_catalog import (
     get_effective_plans,
     load_subscription_overrides_raw,
     save_subscription_overrides_raw,
+    visible_plan_keys_from,
 )
 from services.payment_provider_settings import (
     PAYMENT_PROVIDERS,
@@ -56,9 +57,29 @@ def _provider_meta(pid: str) -> dict[str, str] | None:
     return None
 
 
+def _merge_subscription_overrides(prev_sub: dict[str, Any], sub_raw: dict[str, Any]) -> dict[str, Any]:
+    merged_sub = {**prev_sub}
+    for pk, v in sub_raw.items():
+        if not isinstance(v, dict):
+            merged_sub[pk] = v
+            continue
+        if isinstance(prev_sub.get(pk), dict):
+            merged = {**prev_sub[pk], **v}
+            if "drawer_features" in v and v.get("drawer_features") is None:
+                merged.pop("drawer_features", None)
+            merged_sub[pk] = merged
+        else:
+            merged_sub[pk] = v
+    return merged_sub
+
+
 async def _parse_subscription_forms(form: Any) -> dict[str, Any]:
     """Собирает JSON переопределений тарифов из полей form name=plan_<key>_<field>."""
     raw: dict[str, Any] = {}
+    try:
+        form_keys = set(form.keys())
+    except Exception:
+        form_keys = set()
     for pk in PLAN_KEYS:
         name = (form.get(f"plan_{pk}_name") or "").strip()
         desc = (form.get(f"plan_{pk}_description") or "").strip()
@@ -71,6 +92,20 @@ async def _parse_subscription_forms(form: Any) -> dict[str, Any]:
             block["description"] = desc
         if feats:
             block["features"] = [ln.strip() for ln in feats.splitlines() if ln.strip()]
+        if f"plan_{pk}_clear_drawer" in form_keys and str(form.get(f"plan_{pk}_clear_drawer") or "").strip().lower() in (
+            "1",
+            "on",
+            "true",
+            "yes",
+        ):
+            block["drawer_features"] = None
+        elif f"plan_{pk}_drawer_features" in form_keys:
+            drawer = (form.get(f"plan_{pk}_drawer_features") or "").strip()
+            if drawer:
+                block["drawer_features"] = [ln.strip() for ln in drawer.splitlines() if ln.strip()]
+        if f"plan_{pk}_show_in_catalog" in form_keys:
+            vals = form.getlist(f"plan_{pk}_show_in_catalog")
+            block["show_in_catalog"] = "1" in [str(x) for x in vals]
         if pk != "free" and pr is not None and str(pr).strip() != "":
             try:
                 block["price"] = max(0, int(str(pr).strip()))
@@ -124,6 +159,47 @@ async def admin_subscription_checkout_save(request: Request):
     raw = (form.get("primary_provider") or "auto").strip().lower()
     await save_subscription_checkout_preference(raw)
     return RedirectResponse("/admin/payment?checkout_saved=1", status_code=303)
+
+
+@router.get("/payment/subscription-plans", response_class=HTMLResponse)
+async def admin_subscription_plans_page(request: Request):
+    require_permission, get_user_permissions = _lazy_admin()
+    admin = await require_permission(request, "can_payment")
+    if not admin:
+        return RedirectResponse("/login")
+    perms = await get_user_permissions(admin)
+    plans = await get_effective_plans()
+    raw_over = await load_subscription_overrides_raw()
+    pkv = visible_plan_keys_from(plans)
+    return templates.TemplateResponse(
+        "dashboard/admin_subscription_plans.html",
+        {
+            "request": request,
+            "user": admin,
+            "user_permissions": perms,
+            "plans": plans,
+            "defaults": DEFAULT_PLANS,
+            "raw_overrides": raw_over,
+            "plan_keys_visible": pkv,
+        },
+    )
+
+
+@router.post("/payment/subscription-plans")
+async def admin_subscription_plans_save(request: Request):
+    require_permission, _ = _lazy_admin()
+    admin = await require_permission(request, "can_payment")
+    if not admin:
+        return RedirectResponse("/login")
+    form = await request.form()
+    try:
+        sub_raw = await _parse_subscription_forms(form)
+        prev_sub = await load_subscription_overrides_raw()
+        merged_sub = _merge_subscription_overrides(prev_sub, sub_raw)
+        await save_subscription_overrides_raw(merged_sub)
+    except Exception:
+        logger.exception("admin_subscription_plans_save failed")
+    return RedirectResponse("/admin/payment/subscription-plans?saved=1", status_code=303)
 
 
 @router.get("/payment/{provider_id}", response_class=HTMLResponse)
@@ -242,12 +318,7 @@ async def admin_payment_provider_save(request: Request, provider_id: str):
     try:
         sub_raw = await _parse_subscription_forms(form)
         prev_sub = await load_subscription_overrides_raw()
-        merged_sub = {**prev_sub}
-        for pk, v in sub_raw.items():
-            if isinstance(v, dict) and isinstance(prev_sub.get(pk), dict):
-                merged_sub[pk] = {**prev_sub[pk], **v}
-            else:
-                merged_sub[pk] = v
+        merged_sub = _merge_subscription_overrides(prev_sub, sub_raw)
         await save_subscription_overrides_raw(merged_sub)
     except Exception:
         logger.exception("save_subscription_overrides_raw failed")

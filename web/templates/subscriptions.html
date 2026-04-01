@@ -52,7 +52,7 @@
     {% endif %}
     {% if request.query_params.get('locked') %}
     <div class="max-w-3xl mx-auto mb-6 p-4 rounded-2xl border border-cyan-500/25 bg-cyan-500/10 text-cyan-100 text-sm leading-relaxed text-center">
-      Лента и магазин доступны с тарифа <strong>«Старт»</strong> или в <strong>пробном режиме 3 дня</strong> (акция в меню). Оформите подписку или активируйте пробный период.
+      Лента и магазин доступны с тарифа <strong>«{{ plans.start.name if plans is defined else 'Старт' }}»</strong> или в <strong>пробном режиме 3 дня</strong> (акция в меню). Оформите подписку или активируйте пробный период.
     </div>
     {% endif %}
     {% if error %}

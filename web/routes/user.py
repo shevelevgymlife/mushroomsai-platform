@@ -24,7 +24,7 @@ from db.models import (
     homepage_blocks,
 )
 from services.referral_service import get_referral_stats
-from services.payment_plans_catalog import get_effective_plans
+from services.payment_plans_catalog import get_effective_plans, visible_plan_keys_from
 from services.payment_provider_settings import get_provider_settings
 from services.yookassa_bot_offerings import (
     find_offering_id_for_plan,
@@ -186,6 +186,7 @@ async def subscriptions_page(request: Request):
         return leg
     blocks = await _fetch_homepage_blocks_for_pricing()
     plans_eff = await get_effective_plans()
+    plan_keys_visible = visible_plan_keys_from(plans_eff)
     uid = int(user.get("primary_user_id") or user["id"])
     subscription_checkout = await resolve_active_subscription_checkout()
     ck = subscription_checkout.get("kind") or "none"
@@ -208,6 +209,7 @@ async def subscriptions_page(request: Request):
             "blocks": blocks,
             "error": None,
             "plans": plans_eff,
+            "plan_keys_visible": plan_keys_visible,
             "cloudpayments_enabled": cp_enabled,
             "cloudpayments_public_id": cp_public,
             "payment_user_id": uid,

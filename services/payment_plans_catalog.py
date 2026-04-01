@@ -82,6 +82,17 @@ def _deep_merge_plan(base: dict[str, Any], over: dict[str, Any] | None) -> dict[
             lines = [str(x).strip() for x in v if str(x).strip()]
             if lines:
                 out["features"] = lines
+        elif k == "drawer_features" and isinstance(v, list):
+            lines = [str(x).strip() for x in v if str(x).strip()]
+            if lines:
+                out["drawer_features"] = lines
+            else:
+                out.pop("drawer_features", None)
+        elif k == "show_in_catalog":
+            if isinstance(v, bool):
+                out["show_in_catalog"] = v
+            elif v is not None:
+                out["show_in_catalog"] = str(v).strip().lower() in ("1", "true", "yes", "on")
         elif k == "price" and v is not None:
             try:
                 out["price"] = max(0, int(v))
@@ -132,8 +143,33 @@ async def get_effective_plans() -> dict[str, dict[str, Any]]:
     for pk in PLAN_KEYS:
         base = DEFAULT_PLANS.get(pk) or DEFAULT_PLANS["free"]
         merged = _deep_merge_plan(base, raw.get(pk) if isinstance(raw.get(pk), dict) else None)
+        merged.setdefault("show_in_catalog", True)
         out[pk] = merged
     return out
+
+
+def plan_drawer_lines(plan: dict[str, Any] | None) -> list[str]:
+    """Строки для блока подписки в бургере: отдельный список или те же пункты, что в карточке тарифа."""
+    if not plan:
+        return []
+    df = plan.get("drawer_features")
+    if isinstance(df, list) and df:
+        return [str(x).strip() for x in df if str(x).strip()]
+    feats = plan.get("features")
+    if isinstance(feats, list):
+        return [str(x).strip() for x in feats if str(x).strip()]
+    return []
+
+
+def visible_plan_keys_from(plans: dict[str, dict[str, Any]]) -> list[str]:
+    """Ключи тарифов для витрины по уже загруженному словарю `get_effective_plans()`."""
+    return [pk for pk in PLAN_KEYS if plans.get(pk, {}).get("show_in_catalog", True)]
+
+
+async def visible_plan_keys_ordered() -> list[str]:
+    """Ключи тарифов, которые показываются в витрине (главная, /subscriptions)."""
+    plans = await get_effective_plans()
+    return visible_plan_keys_from(plans)
 
 
 async def plan_display_name(plan_key: str | None) -> str:

@@ -1,0 +1,56 @@
+{# plans, defaults — из get_effective_plans / DEFAULT_PLANS #}
+<div class="p-6 rounded-2xl border border-gold/25 bg-surface/80 space-y-6">
+  <h2 class="text-lg font-medium text-text">Тарифы подписки (общие для всех способов оплаты)</h2>
+  <p class="text-xs text-muted leading-relaxed">
+    Названия, цены, описания и списки пунктов используются на главной странице сайта, на странице «Подписки», в расчётах оплаты и в боковом меню (бургер). Отдельный блок «В бургере» — что видит пользователь с этим тарифом под баннером подписки; если пусто, показываются те же пункты, что в карточке тарифа выше.
+  </p>
+
+  {% for pk in ['free', 'start', 'pro', 'maxi'] %}
+  {% set p = plans[pk] %}
+  {% set d = defaults[pk] %}
+  <div class="p-4 rounded-xl border border-border/80 bg-bg/40 space-y-3">
+    <p class="text-sm font-semibold text-gold uppercase tracking-wide">{{ pk }}</p>
+    <label class="flex items-center gap-2 text-xs text-muted cursor-pointer">
+      <input type="hidden" name="plan_{{ pk }}_show_in_catalog" value="0" />
+      <input type="checkbox" name="plan_{{ pk }}_show_in_catalog" value="1" class="rounded border-border" {% if p.get('show_in_catalog', True) %}checked{% endif %} />
+      Показывать тариф на главной и на странице подписок
+    </label>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div>
+        <label class="block text-xs text-muted mb-1">Название</label>
+        <input type="text" name="plan_{{ pk }}_name" value="{{ p.name }}" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" />
+      </div>
+      {% if pk != 'free' %}
+      <div>
+        <label class="block text-xs text-muted mb-1">Цена ₽ / мес</label>
+        <input type="number" name="plan_{{ pk }}_price" min="0" step="1" value="{{ p.price }}" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" />
+      </div>
+      {% else %}
+      <div>
+        <label class="block text-xs text-muted mb-1">Цена</label>
+        <input type="text" readonly value="0" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm text-muted" />
+      </div>
+      {% endif %}
+    </div>
+    <div>
+      <label class="block text-xs text-muted mb-1">Краткое описание (под названием, необязательно)</label>
+      <input type="text" name="plan_{{ pk }}_description" value="{{ p.description or '' }}" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" placeholder="Пусто — только список преимуществ ниже" />
+    </div>
+    <div>
+      <label class="block text-xs text-muted mb-1">Преимущества в карточке (одна строка — один пункт)</label>
+      <textarea name="plan_{{ pk }}_features" rows="{% if pk == 'start' %}8{% elif pk == 'free' %}4{% else %}6{% endif %}" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono leading-relaxed">{% for line in p.features %}{{ line }}
+{% endfor %}</textarea>
+      <p class="text-[11px] text-muted mt-1">По умолчанию из кода: {{ d.features|length }} строк.</p>
+    </div>
+    <div>
+      <label class="block text-xs text-muted mb-1">В бургере под баннером подписки (необязательно)</label>
+      <textarea name="plan_{{ pk }}_drawer_features" rows="{% if pk == 'start' %}6{% elif pk == 'free' %}3{% else %}5{% endif %}" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono leading-relaxed" placeholder="Пусто = те же пункты, что «Преимущества в карточке»">{% if p.get('drawer_features') %}{% for line in p.drawer_features %}{{ line }}
+{% endfor %}{% endif %}</textarea>
+      <label class="flex items-center gap-2 text-[11px] text-muted cursor-pointer mt-2">
+        <input type="checkbox" name="plan_{{ pk }}_clear_drawer" value="1" class="rounded border-border" />
+        Сбросить отдельный список для бургера (будут показаны пункты из карточки тарифа)
+      </label>
+    </div>
+  </div>
+  {% endfor %}
+</div>

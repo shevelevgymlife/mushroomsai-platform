@@ -7,8 +7,14 @@
 
     <h1 class="text-3xl font-light text-text mb-2">Оплата</h1>
     <p class="text-sm text-muted mb-6 max-w-3xl">
-      Подключение эквайринга и редактирование тарифов для подписок. Выберите провайдера — на отдельной странице задаются реквизиты и (общие для всех) названия, цены и описания планов.
+      Подключение эквайринга и настройки тарифов. Названия, цены и описания планов редактируются в одном месте — разделе «Тарифы подписок»; реквизиты провайдеров — на страницах CloudPayments, ЮKassa и т.д.
     </p>
+
+    <div class="mb-8 p-5 rounded-2xl border border-gold/30 bg-gold/[0.06] max-w-3xl">
+      <h2 class="text-lg font-semibold text-text mb-2">Тарифы подписок</h2>
+      <p class="text-xs text-muted mb-4 leading-relaxed">Главная страница, страница подписок, бургер меню и расчёт сумм при оплате используют эти данные.</p>
+      <a href="/admin/payment/subscription-plans" class="inline-flex px-5 py-2.5 rounded-xl bg-gold text-bg text-sm font-semibold hover:opacity-95">Открыть редактор тарифов</a>
+    </div>
 
     {% if request.query_params.get('checkout_saved') %}
     <div class="mb-4 p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-200 text-sm max-w-3xl">Сохранено: основной способ оплаты подписок.</div>

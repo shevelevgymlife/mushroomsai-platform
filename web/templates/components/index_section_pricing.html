@@ -6,6 +6,7 @@
 {% set _yk_site = subscription_checkout.yookassa_site_checkout_available if subscription_checkout is defined else false %}
 {% set _yk_bot_only = subscription_checkout.yookassa_bot_only if subscription_checkout is defined else false %}
 {% set _bot_url = telegram_bot_url if telegram_bot_url is defined else 'https://t.me/neuro_fungi_bot' %}
+{% set pkv = plan_keys_visible if plan_keys_visible is defined else ['free', 'start', 'pro', 'maxi'] %}
 
 {% macro paid_renew_btn(pk) %}
   {% if _cp %}
@@ -43,8 +44,9 @@
       </p>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 lg:gap-6 max-w-7xl mx-auto">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-6 max-w-7xl mx-auto {% if pkv|length >= 4 %}xl:grid-cols-4{% elif pkv|length == 3 %}xl:grid-cols-3{% elif pkv|length == 2 %}xl:grid-cols-2{% else %}xl:grid-cols-1{% endif %}">
       <!-- Free -->
+      {% if 'free' in pkv %}
       <div class="panel-rise p-7 flex flex-col relative{% if _pl and _plan == 'free' %} ring-2 ring-gold/45 ring-offset-2 ring-offset-bg{% endif %}">
         <h3 class="font-display text-lg font-semibold text-text mb-1">{{ plans.free.name if plans is defined else t.plan_free }}</h3>
         {% if plans is defined and plans.free.description %}
@@ -87,8 +89,10 @@
         </a>
         {% endif %}
       </div>
+      {% endif %}
 
       <!-- Start -->
+      {% if 'start' in pkv %}
       <div class="panel-rise p-7 flex flex-col relative border-gold/30 shadow-[0_0_0_1px_rgba(61,212,224,0.12)_inset] {% if _pl and _plan == 'start' %}ring-2 ring-gold/45 ring-offset-2 ring-offset-bg{% endif %}">
         <div class="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gold text-bg text-xs font-semibold shadow-lg shadow-gold/20">{{ t.plan_popular }}</div>
         <h3 class="font-display text-lg font-semibold text-text mb-1">{{ plans.start.name if plans is defined else t.plan_start }}</h3>
@@ -122,8 +126,10 @@
         <a href="/login?next=/subscriptions" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">Подключиться</a>
         {% endif %}
       </div>
+      {% endif %}
 
       <!-- Pro -->
+      {% if 'pro' in pkv %}
       <div class="panel-rise p-7 flex flex-col{% if _pl and _plan == 'pro' %} ring-2 ring-gold/45 ring-offset-2 ring-offset-bg{% endif %}">
         <h3 class="font-display text-lg font-semibold text-text mb-1">{{ plans.pro.name if plans is defined else t.plan_pro }}</h3>
         {% if plans is defined and plans.pro.description %}
@@ -156,8 +162,10 @@
         <a href="/login?next=/subscriptions" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">Подключиться</a>
         {% endif %}
       </div>
+      {% endif %}
 
       <!-- Maxi -->
+      {% if 'maxi' in pkv %}
       <div class="panel-rise p-7 flex flex-col bg-gradient-to-br from-gold/[0.07] via-transparent to-transparent{% if _pl and _plan == 'maxi' %} ring-2 ring-gold/45 ring-offset-2 ring-offset-bg{% endif %}">
         <h3 class="font-display text-lg font-semibold text-text mb-1">{{ plans.maxi.name if plans is defined else t.plan_maxi }}</h3>
         {% if plans is defined and plans.maxi.description %}
@@ -190,6 +198,7 @@
         <a href="/login?next=/subscriptions" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">Подключиться</a>
         {% endif %}
       </div>
+      {% endif %}
     </div>
   </div>
 </section>
