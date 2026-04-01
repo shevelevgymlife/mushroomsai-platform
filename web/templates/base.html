@@ -2,6 +2,7 @@
 <html lang="ru" class="scroll-smooth" data-ui-theme="editorial-grain" data-ui-asset-v="3" data-nf-video-calls="{{ 1 if video_calls_enabled|default(true) else 0 }}" data-nf-links="{{ 1 if links_clickable_enabled|default(true) else 0 }}" style="background:#070708">
 <head>
   <meta charset="UTF-8" />
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script>
     window.__NF_VIDEO_CALLS__={{ 'true' if video_calls_enabled|default(true) else 'false' }};
     window.__NF_LINKS__={{ 'true' if links_clickable_enabled|default(true) else 'false' }};
