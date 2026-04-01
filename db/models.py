@@ -85,6 +85,12 @@ users = sqlalchemy.Table(
     sqlalchemy.Column("wellness_renewal_nudge_for_end", sqlalchemy.DateTime, nullable=True),
     sqlalchemy.Column("wellness_coach_pause_until", sqlalchemy.DateTime, nullable=True),
     sqlalchemy.Column("wellness_pending_stats_entry_id", sqlalchemy.Integer, nullable=True),
+    sqlalchemy.Column(
+        "wellness_awaiting_which_stats_after_decline",
+        sqlalchemy.Boolean,
+        default=False,
+        server_default="false",
+    ),
 )
 
 sessions = sqlalchemy.Table(

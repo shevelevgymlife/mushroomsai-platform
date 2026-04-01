@@ -160,6 +160,58 @@ def _parse_stats_confirmation_reply(text: str) -> Optional[str]:
     return None
 
 
+def _parse_which_stats_none_reply(text: str) -> bool:
+    """После отказа: пользователь подтвердил, что в статистику ничего не включать."""
+    t = (text or "").strip().lower()
+    if not t or len(t) > 96:
+        return False
+    if t in frozenset(
+        {
+            "никакое",
+            "никаких",
+            "ни одно",
+            "ни одного",
+            "ничего",
+            "нет",
+            "неа",
+            "не надо",
+            "не нужно",
+            "пусто",
+            "ни одного сообщения",
+            "никаких сообщений",
+            "ничего не надо",
+            "ничего не нужно",
+            "остановись",
+            "хватит",
+        }
+    ):
+        return True
+    if len(t) < 48 and (t.startswith("никакое") or t.startswith("ни одно")):
+        return True
+    if len(t) < 44 and "никакое" in t:
+        return True
+    return False
+
+
+def _is_vague_other_only_reply(text: str) -> bool:
+    """Только «другое» без текста — просим прислать формулировку или «никакое»."""
+    t = (text or "").strip().lower()
+    if len(t) > 40:
+        return False
+    return t in (
+        "другое",
+        "другой",
+        "другая",
+        "другое сообщение",
+        "вот другое",
+        "есть другое",
+        "другую",
+        "другие",
+        "не то",
+        "не это",
+    )
+
+
 async def _insert_coach_dm(coach_id: int, recipient_user_id: int, body: str) -> None:
     dm_row = await database.fetch_one_write(
         direct_messages.insert()
@@ -641,7 +693,55 @@ async def on_user_message_to_coach(
     coach_id = await resolve_wellness_dm_sender_id(notify_dm)
     if not coach_id:
         return None
+
+    awaiting_which = bool(urow.get("wellness_awaiting_which_stats_after_decline"))
     pending_raw = urow.get("wellness_pending_stats_entry_id")
+
+    # После «нет» на включение в статистику: ждём «никакое» или новый текст (снова да/нет)
+    if awaiting_which and pending_raw is None:
+        if _parse_which_stats_none_reply(text):
+            await database.execute(
+                users.update()
+                .where(users.c.id == uid)
+                .values(wellness_awaiting_which_stats_after_decline=False)
+            )
+            await _insert_coach_dm(
+                int(coach_id),
+                notify_dm,
+                MSG_PREFIX + "Хорошо — в статистику из этой переписки ничего не добавляю.",
+            )
+            return None
+        if _is_vague_other_only_reply(text):
+            await _insert_coach_dm(
+                int(coach_id),
+                notify_dm,
+                MSG_PREFIX
+                + "Напиши **одним сообщением** полный текст, который нужно включить в статистику, или **никакое**, если не включать ничего.",
+            )
+            return None
+        eid_new = await record_user_reply(uid, text, direct_message_id=direct_message_id)
+        if not eid_new:
+            return None
+        await database.execute(
+            users.update()
+            .where(users.c.id == uid)
+            .values(
+                wellness_pending_stats_entry_id=int(eid_new),
+                wellness_awaiting_which_stats_after_decline=False,
+            )
+        )
+        snippet = (text or "").strip()
+        if len(snippet) > 900:
+            snippet = snippet[:900] + "…"
+        body = (
+            MSG_PREFIX
+            + "Твой ответ (для статистики):\n\n«"
+            + snippet
+            + "»\n\nВключить это сообщение в статистику дневника? Напиши «да» или «нет»."
+        )
+        await _insert_coach_dm(int(coach_id), notify_dm, body)
+        return int(eid_new)
+
     if pending_raw is not None:
         pending = int(pending_raw)
         verdict = _parse_stats_confirmation_reply(text)
@@ -657,7 +757,12 @@ async def on_user_message_to_coach(
                     .values(statistics_excluded=False)
                 )
                 await database.execute(
-                    users.update().where(users.c.id == uid).values(wellness_pending_stats_entry_id=None)
+                    users.update()
+                    .where(users.c.id == uid)
+                    .values(
+                        wellness_pending_stats_entry_id=None,
+                        wellness_awaiting_which_stats_after_decline=False,
+                    )
                 )
                 asyncio.create_task(extract_wellness_json_async(pending, raw_prev))
                 await _insert_coach_dm(
@@ -673,12 +778,20 @@ async def on_user_message_to_coach(
                     .values(statistics_excluded=True)
                 )
                 await database.execute(
-                    users.update().where(users.c.id == uid).values(wellness_pending_stats_entry_id=None)
+                    users.update()
+                    .where(users.c.id == uid)
+                    .values(
+                        wellness_pending_stats_entry_id=None,
+                        wellness_awaiting_which_stats_after_decline=True,
+                    )
                 )
                 await _insert_coach_dm(
                     int(coach_id),
                     notify_dm,
-                    MSG_PREFIX + "Понял — не включаю это сообщение в статистику.",
+                    MSG_PREFIX
+                    + "Понял — не включаю это сообщение в статистику.\n\n"
+                    + "Какое сообщение тогда включить в статистику? Пришли его **целиком одним следующим сообщением**.\n"
+                    + "Если ничего включать не нужно — напиши **никакое** — на этом закончим.",
                 )
                 return None
         # Не распознали да/нет или запись чужая — снимаем ожидание со старой записи
@@ -689,14 +802,24 @@ async def on_user_message_to_coach(
                 .values(statistics_excluded=True)
             )
         await database.execute(
-            users.update().where(users.c.id == uid).values(wellness_pending_stats_entry_id=None)
+            users.update()
+            .where(users.c.id == uid)
+            .values(
+                wellness_pending_stats_entry_id=None,
+                wellness_awaiting_which_stats_after_decline=False,
+            )
         )
 
     eid = await record_user_reply(uid, text, direct_message_id=direct_message_id)
     if not eid:
         return None
     await database.execute(
-        users.update().where(users.c.id == uid).values(wellness_pending_stats_entry_id=int(eid))
+        users.update()
+        .where(users.c.id == uid)
+        .values(
+            wellness_pending_stats_entry_id=int(eid),
+            wellness_awaiting_which_stats_after_decline=False,
+        )
     )
     snippet = (text or "").strip()
     if len(snippet) > 900:
