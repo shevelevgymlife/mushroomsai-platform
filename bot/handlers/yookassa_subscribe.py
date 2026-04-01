@@ -28,6 +28,9 @@ from services.yookassa_bot_offerings import (
 
 logger = logging.getLogger(__name__)
 
+# sendInvoice: поле title — строго 1–32 символа (Unicode), иначе Telegram возвращает Bad Request.
+TG_INVOICE_TITLE_MAX_LEN = 32
+
 # Текст согласия при оплате (оферта на сайте /legal/offer).
 TG_SUBSCRIPTION_PAYMENT_NOTICE = (
     "Оплачивая подписку, вы соглашаетесь с условиями. Возврат средств за уже оплаченный период не предусмотрен."
@@ -47,6 +50,15 @@ def _invoice_payload_nf(uid: int, offering_id: str, amount_kop: int) -> str:
     if len(raw.encode("utf-8")) > 127:
         raw = f"nf|{int(uid)}|{oid}|{int(amount_kop)}|{secrets.token_hex(2)}"
     return raw
+
+
+def _telegram_send_invoice_title(display_name: str, offering_id: str, *, is_renew: bool) -> str:
+    """Заголовок счёта в лимите Telegram (32 символа). Полное имя тарифа — в description."""
+    base = (display_name or offering_id or "Подписка").strip() or "Подписка"
+    core = f"Продл. {base}" if is_renew else base
+    if len(core) <= TG_INVOICE_TITLE_MAX_LEN:
+        return core
+    return core[: TG_INVOICE_TITLE_MAX_LEN - 1] + "…"
 
 
 def _invoice_payload_nfs(uid: int, offering_id: str, n_stars: int) -> str:
@@ -309,19 +321,20 @@ async def tgpay_plan_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     is_renew = _offering_is_renewal(off, user, eff_plan)
     payload = _invoice_payload_nf(uid, offering_id, amount_kop)
     provider_token = _payment_provider_token(st)
-    base_title = (off.get("display_name") or offering_id)[:60]
-    inv_title = (f"Продление — {base_title}" if is_renew else base_title)[:128]
+    disp_name = str(off.get("display_name") or offering_id or "").strip()
+    inv_title = _telegram_send_invoice_title(disp_name, offering_id, is_renew=is_renew)
     disp_short = (off.get("display_name") or offering_id)[:40]
     pay_ref = secrets.randbelow(899_999) + 100_000
     price_label = (
-        (f"Продление · {disp_short}" if is_renew else disp_short)
-    )[:52] + f" #{pay_ref}"
+        (f"Продл.·{disp_short}" if is_renew else disp_short)
+    )[:40] + f"#{pay_ref}"
     dur_h = off.get("duration_label") or ""
     site = (settings.SITE_URL or "").rstrip("/")
     extra = f" {TG_SUBSCRIPTION_PAYMENT_NOTICE}"
     if site:
         extra += f" {site}/legal/offer"
-    desc = f"NEUROFUNGI AI — {dur_h}.{extra}"[:255]
+    renew_note = f"Продление подписки «{disp_name}». " if is_renew and disp_name else ("Продление подписки. " if is_renew else "")
+    desc = f"{renew_note}NEUROFUNGI AI — {dur_h}.{extra}"[:255]
 
     try:
         await context.bot.send_invoice(
@@ -331,7 +344,7 @@ async def tgpay_plan_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
             payload=payload,
             provider_token=provider_token,
             currency="RUB",
-            prices=[LabeledPrice(price_label[:64], amount_kop)],
+            prices=[LabeledPrice(price_label[:32], amount_kop)],
             start_parameter=None,
         )
     except Exception as e:
@@ -398,17 +411,18 @@ async def tgstars_plan_callback(update: Update, context: ContextTypes.DEFAULT_TY
     eff_plan = await check_subscription(uid)
     is_renew = _offering_is_renewal(off, user, eff_plan)
     payload = _invoice_payload_nfs(uid, offering_id, n_stars)
-    base_title = (off.get("display_name") or offering_id)[:60]
-    inv_title = (f"Продление — {base_title}" if is_renew else base_title)[:128]
+    disp_name = str(off.get("display_name") or offering_id or "").strip()
+    inv_title = _telegram_send_invoice_title(disp_name, offering_id, is_renew=is_renew)
     disp_short = (off.get("display_name") or offering_id)[:36]
     pay_ref = secrets.randbelow(899_999) + 100_000
-    lp_lbl = ((f"Продление · {disp_short}" if is_renew else disp_short)[:48] + f" #{pay_ref}")[:64]
+    lp_lbl = ((f"Продл·{disp_short}" if is_renew else disp_short)[:22] + f"#{pay_ref}")[:32]
     dur_h = off.get("duration_label") or ""
     site = (settings.SITE_URL or "").rstrip("/")
     extra = f" {TG_SUBSCRIPTION_PAYMENT_NOTICE}"
     if site:
         extra += f" {site}/legal/offer"
-    desc = f"NEUROFUNGI AI — {dur_h}. {n_stars} ⭐.{extra}"[:255]
+    renew_note = f"Продление «{disp_name}». " if is_renew and disp_name else ("Продление. " if is_renew else "")
+    desc = f"{renew_note}NEUROFUNGI AI — {dur_h}. {n_stars} ⭐.{extra}"[:255]
 
     try:
         await context.bot.send_invoice(
@@ -418,7 +432,7 @@ async def tgstars_plan_callback(update: Update, context: ContextTypes.DEFAULT_TY
             payload=payload,
             provider_token="",
             currency="XTR",
-            prices=[LabeledPrice(lp_lbl or "Подписка", n_stars)],
+            prices=[LabeledPrice((lp_lbl or "Подписка")[:32], n_stars)],
             start_parameter=None,
         )
     except Exception:
