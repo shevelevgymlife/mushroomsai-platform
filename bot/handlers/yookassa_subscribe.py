@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+import secrets
 import unicodedata
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice, Update
@@ -32,10 +33,15 @@ TG_SUBSCRIPTION_PAYMENT_NOTICE = (
     "Оплачивая подписку, вы соглашаетесь с условиями. Возврат средств за уже оплаченный период не предусмотрен."
 )
 
-# Сумма в копейках в конце — чтобы pre_checkout не ломался при смене цены в админке после выставления счёта
-_PAYLOAD_RX = re.compile(r"^nf\|(\d+)\|([a-z0-9_]+)(?:\|(\d+))?$")
-# Подписка за Telegram Stars: nfs|user_id|plan_slug|expected_stars
-_STARS_PAYLOAD_RX = re.compile(r"^nfs\|(\d+)\|([a-z0-9_]+)\|(\d+)$")
+# Сумма в копейках; опционально |nonce — чтобы каждый счёт был уникален (повторная покупка того же тарифа).
+_PAYLOAD_RX = re.compile(r"^nf\|(\d+)\|([a-z0-9_]+)(?:\|(\d+))?(?:\|([a-f0-9]+))?$")
+# Подписка за Telegram Stars: nfs|user_id|plan_slug|expected_stars[|nonce]
+_STARS_PAYLOAD_RX = re.compile(r"^nfs\|(\d+)\|([a-z0-9_]+)\|(\d+)(?:\|([a-f0-9]+))?$")
+
+
+def _unique_invoice_start_parameter() -> str:
+    """Telegram требует уникальный start_parameter для счёта; иначе повтор «тот же тариф» даёт ошибку API."""
+    return secrets.token_hex(8)[:32]
 
 
 class _SuccessfulPaymentFilter(filters.MessageFilter):
@@ -211,7 +217,7 @@ async def tgpay_plan_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         await q.message.reply_text("Цена не настроена для этого предложения.")
         return
 
-    payload = f"nf|{uid}|{offering_id}|{amount_kop}"
+    payload = f"nf|{uid}|{offering_id}|{amount_kop}|{secrets.token_hex(8)}"
     provider_token = _payment_provider_token(st)
     title = (off.get("display_name") or offering_id)[:32]
     dur_h = off.get("duration_label") or ""
@@ -230,7 +236,7 @@ async def tgpay_plan_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
             provider_token=provider_token,
             currency="RUB",
             prices=[LabeledPrice(title[:64], amount_kop)],
-            start_parameter=f"sub_{offering_id}_{uid}"[:32],
+            start_parameter=_unique_invoice_start_parameter(),
         )
     except Exception as e:
         logger.exception("send_invoice failed uid=%s offering=%s", uid, offering_id)
@@ -288,7 +294,7 @@ async def tgstars_plan_callback(update: Update, context: ContextTypes.DEFAULT_TY
         return
 
     uid = int(user.get("primary_user_id") or user["id"])
-    payload = f"nfs|{uid}|{offering_id}|{n_stars}"
+    payload = f"nfs|{uid}|{offering_id}|{n_stars}|{secrets.token_hex(8)}"
     title = (off.get("display_name") or offering_id)[:32]
     dur_h = off.get("duration_label") or ""
     site = (settings.SITE_URL or "").rstrip("/")
@@ -306,7 +312,7 @@ async def tgstars_plan_callback(update: Update, context: ContextTypes.DEFAULT_TY
             provider_token="",
             currency="XTR",
             prices=[LabeledPrice((title[:64] or "Подписка"), n_stars)],
-            start_parameter=f"st_{offering_id}_{uid}"[:32],
+            start_parameter=_unique_invoice_start_parameter(),
         )
     except Exception:
         logger.exception("send_invoice stars failed uid=%s offering=%s", uid, offering_id)
