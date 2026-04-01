@@ -1133,6 +1133,7 @@ async def wellness_results_page(request: Request):
     agg = aggregate_entries_for_display(entries)
     coach_ok = await wellness_journal_globally_enabled()
     from services.wellness_insights_service import (
+        calendar_week_strip_for_user,
         chartjs_line_config_dict,
         compute_segment_for_user,
         count_checkin_streak,
@@ -1145,6 +1146,7 @@ async def wellness_results_page(request: Request):
     )
 
     series = await fetch_snapshots_series(uid, 14)
+    wellness_week_strip = calendar_week_strip_for_user(series)
     streak = await count_checkin_streak(uid)
     rec_text = await latest_recommendation_text(uid)
     segment = await compute_segment_for_user(uid)
@@ -1224,6 +1226,7 @@ async def wellness_results_page(request: Request):
             "user_charts": user_charts,
             "heatmap_rows": heatmap_rows,
             "wellness_stability": stab,
+            "wellness_week_strip": wellness_week_strip,
         },
     )
 

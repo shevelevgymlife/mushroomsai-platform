@@ -1,14 +1,101 @@
 {% extends "base.html" %}
 {% block title %}Мои результаты — NEUROFUNGI AI{% endblock %}
+{% block extra_head %}
+<style>
+  .wd-root { --wd-teal:#3dd4e0; --wd-violet:#a78bfa; --wd-rose:#f472b6; --wd-mint:#34d399; --wd-gold:#d4a853;
+    --wd-card: rgba(255,255,255,0.045); --wd-line: rgba(255,255,255,0.09); --wd-glow: rgba(61,212,224,0.12);
+    max-width: 920px; margin: 0 auto; padding-bottom: 2.5rem;
+  }
+  .wd-head { display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:1rem; margin-bottom:1.25rem; }
+  .wd-head h1 { font-size:1.65rem; font-weight:600; letter-spacing:-0.02em; margin:0; color:var(--text, #e8e8ee); }
+  .wd-sub { font-size:0.8125rem; color:#8e8e96; line-height:1.5; max-width:32rem; margin:0.35rem 0 0; }
+  .wd-disclaimer {
+    font-size:0.75rem; line-height:1.5; color:#b8a882; padding:0.75rem 1rem; border-radius:16px;
+    border:1px solid rgba(212,168,83,0.28); background: linear-gradient(135deg, rgba(212,168,83,0.08), transparent);
+    margin-bottom:1.25rem;
+  }
+  .wd-cal { display:flex; justify-content:space-between; gap:0.35rem; margin-bottom:1.5rem; padding:0.75rem 0.5rem;
+    background: var(--wd-card); border:1px solid var(--wd-line); border-radius:20px;
+  }
+  .wd-cal-i { flex:1; text-align:center; min-width:0; }
+  .wd-cal-l { font-size:0.58rem; letter-spacing:0.06em; color:#6b6b78; text-transform:uppercase; margin-bottom:0.35rem; }
+  .wd-cal-n {
+    width:2.35rem; height:2.35rem; margin:0 auto; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:0.85rem; font-weight:600; color:#c8c8d2; border:2px solid transparent; background:rgba(0,0,0,0.2);
+  }
+  .wd-cal-i.wd-today .wd-cal-n { border-color: var(--wd-teal); color: #fff; box-shadow: 0 0 0 3px var(--wd-glow); }
+  .wd-cal-i.wd-has .wd-cal-n { background: rgba(61,212,224,0.15); color: var(--wd-teal); }
+  .wd-cal-i.wd-today.wd-has .wd-cal-n { background: linear-gradient(145deg, rgba(61,212,224,0.35), rgba(167,139,250,0.2)); }
+  .wd-cal-dot { width:4px; height:4px; border-radius:50%; margin:0.25rem auto 0; background:transparent; }
+  .wd-cal-i.wd-has .wd-cal-dot { background: var(--wd-mint); }
+  .wd-hero-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:0.75rem; margin-bottom:1.25rem; }
+  .wd-hero {
+    border-radius:22px; padding:1.1rem 1rem 1rem; position:relative; overflow:hidden; min-height:118px;
+    border:1px solid rgba(255,255,255,0.08);
+  }
+  .wd-hero::after { content:""; position:absolute; inset:0; pointer-events:none; opacity:0.5;
+    background: radial-gradient(120% 80% at 100% 0%, rgba(255,255,255,0.14), transparent 55%);
+  }
+  .wd-hero-mood { background: linear-gradient(155deg, rgba(61,212,224,0.35) 0%, rgba(61,212,224,0.06) 55%, rgba(0,0,0,0.15) 100%); }
+  .wd-hero-energy { background: linear-gradient(155deg, rgba(167,139,250,0.4) 0%, rgba(167,139,250,0.07) 55%, rgba(0,0,0,0.15) 100%); }
+  .wd-hero-anx { background: linear-gradient(155deg, rgba(244,114,182,0.38) 0%, rgba(244,114,182,0.06) 55%, rgba(0,0,0,0.15) 100%); }
+  .wd-hero-lbl { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.1em; color:rgba(255,255,255,0.55); position:relative; z-index:1; }
+  .wd-hero-val { font-size:2rem; font-weight:700; line-height:1.1; margin:0.2rem 0 0.5rem; color:#fff; position:relative; z-index:1;
+    text-shadow: 0 2px 24px rgba(0,0,0,0.35);
+  }
+  .wd-hero-bar { height:4px; border-radius:4px; background:rgba(0,0,0,0.35); overflow:hidden; position:relative; z-index:1; }
+  .wd-hero-bar > i { display:block; height:100%; border-radius:4px; background:linear-gradient(90deg, #fff, rgba(255,255,255,0.45)); }
+  .wd-stat-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap:0.65rem; margin-bottom:1.5rem; }
+  .wd-stat {
+    border-radius:18px; padding:0.85rem; background: var(--wd-card); border:1px solid var(--wd-line); text-align:center;
+  }
+  .wd-stat-k { font-size:0.58rem; text-transform:uppercase; letter-spacing:0.08em; color:#6b6b78; }
+  .wd-stat-v { font-size:1.35rem; font-weight:700; color:var(--wd-gold); margin-top:0.2rem; }
+  .wd-stat-wide { text-align:left; grid-column: span 2; }
+  @media (max-width: 520px) { .wd-stat-wide { grid-column: span 1; } }
+  .wd-stat-note { font-size:0.7rem; color:#9a9aa8; margin-top:0.35rem; line-height:1.4; }
+  .wd-sec-title { font-size:0.95rem; font-weight:600; color:#e4e4ec; margin:0 0 0.35rem; display:flex; align-items:center; gap:0.5rem; }
+  .wd-sec-sub { font-size:0.7rem; color:#6b6b78; margin-bottom:0.75rem; }
+  .wd-tabs { display:inline-flex; gap:0.25rem; padding:0.2rem; border-radius:999px; background:rgba(0,0,0,0.25); border:1px solid var(--wd-line); margin-bottom:1rem; }
+  .wd-tabs span { font-size:0.65rem; padding:0.35rem 0.75rem; border-radius:999px; color:#6b6b78; }
+  .wd-tabs span.wd-active { background: rgba(61,212,224,0.2); color: var(--wd-teal); font-weight:600; }
+  .wd-chart-card {
+    border-radius:22px; border:1px solid var(--wd-line); background: linear-gradient(165deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+    padding:0.65rem; height:228px;
+  }
+  .wd-chart-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:0.75rem; }
+  .wd-ai {
+    border-radius:22px; padding:1.1rem 1.15rem; margin-bottom:1.5rem;
+    border:1px solid rgba(61,212,224,0.28);
+    background: linear-gradient(120deg, rgba(61,212,224,0.12), rgba(167,139,250,0.06), transparent);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+  }
+  .wd-ai-h { font-size:0.8rem; font-weight:600; color:var(--wd-teal); margin:0 0 0.5rem; display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap; }
+  .wd-ai-badge { font-size:0.58rem; font-weight:500; text-transform:uppercase; letter-spacing:0.08em; color:#6b6b78; border:1px solid var(--wd-line); padding:0.15rem 0.45rem; border-radius:999px; }
+  .wd-ai-body { font-size:0.8125rem; line-height:1.55; color:#d4d4de; white-space:pre-wrap; word-break:break-word; }
+  .wd-table-wrap { border-radius:20px; border:1px solid var(--wd-line); overflow:hidden; background:rgba(0,0,0,0.2); }
+  .wd-actions { display:flex; flex-wrap:wrap; gap:0.5rem; margin:1.25rem 0; }
+  .wd-btn {
+    display:inline-flex; align-items:center; justify-content:center; padding:0.55rem 1.1rem; border-radius:999px; font-size:0.8rem; font-weight:600;
+    text-decoration:none; border:none; cursor:pointer;
+    background: linear-gradient(135deg, rgba(61,212,224,0.35), rgba(167,139,250,0.25)); color:#fff; border:1px solid rgba(255,255,255,0.12);
+  }
+  .wd-btn.secondary { opacity:0.85; background: rgba(255,255,255,0.06); }
+  .wd-form-card { border-radius:20px; border:1px solid var(--wd-line); padding:1rem; background:var(--wd-card); margin-bottom:1.5rem; }
+  .wd-entry { border-radius:16px; border:1px solid var(--wd-line); padding:0.75rem 0.85rem; background:rgba(0,0,0,0.15); }
+</style>
+{% endblock %}
 {% block content %}
-<div class="accneo-wrap" style="max-width:820px">
-  <h1 class="accneo-title">Мои результаты</h1>
-  <p class="text-sm text-muted mb-3" style="color:#8e8e96;line-height:1.55">
-    Статистика из ответов AI в личных сообщениях. Доступно на тарифах Старт, Про и Макси (включая пробный Старт).
-  </p>
-  <div class="mb-6 p-4 rounded-2xl border border-amber-500/35 bg-amber-500/5 text-sm" style="color:#c4b998;line-height:1.55">
-    <strong class="text-amber-200/90">Важно:</strong> сервис не является медицинским. Рекомендации и графики носят
-    <strong>информационный</strong> характер, без диагнозов и назначений — только самонаблюдение и размышление вместе с AI.
+<div class="accneo-wrap wd-root">
+  <div class="wd-head">
+    <div>
+      <h1>Моё состояние</h1>
+      <p class="wd-sub">Данные из ответов в ЛС с NeuroFungi AI. Тарифы Старт / Про / Макси (включая пробный Старт).</p>
+    </div>
+  </div>
+
+  <div class="wd-disclaimer">
+    <strong style="color:#e8d4a8">Не медицина.</strong> Графики и советы AI — только для самонаблюдения и носят информационный характер, без диагнозов и назначений.
   </div>
 
   {% if request.query_params.get('saved') %}
@@ -19,162 +106,156 @@
     Скачивание PDF отключено администратором. Если это ошибка — напишите в поддержку.
   </div>
   {% endif %}
-
   {% if not coach_ok %}
   <div class="mb-4 p-3 rounded-xl border border-amber-500/40 bg-amber-500/10 text-sm text-amber-200">
     Сбор дневника временно отключён на уровне платформы. Ваши сохранённые данные остаются доступны.
   </div>
   {% endif %}
 
-  <section class="mb-8 p-5 rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.07] to-transparent">
-    <h2 class="text-base font-semibold text-gold mb-4 tracking-wide uppercase text-xs" style="letter-spacing:0.08em">Сегодня (последний снимок)</h2>
-    <div class="grid gap-4" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">
-      {% macro bar_row(label, val, color) %}
-      <div>
-        <div class="flex justify-between text-xs text-muted mb-1"><span>{{ label }}</span><span class="text-text font-medium">{% if val is not none %}{{ (val | float) | round(1) }}{% else %}—{% endif %} / 10</span></div>
-        <div class="h-2.5 rounded-full bg-white/10 overflow-hidden">
-          <div class="h-full rounded-full transition-all" style="width:{% if val is not none %}{{ ((val | float) / 10 * 100) | round }}{% else %}0{% endif %}%;background:linear-gradient(90deg,{{ color }},transparent)"></div>
-        </div>
-      </div>
-      {% endmacro %}
-      {{ bar_row('Настроение', today_mood, '#3dd4e0') }}
-      {{ bar_row('Энергия', today_energy, '#a78bfa') }}
-      {{ bar_row('Тревога', today_anxiety, '#f472b6') }}
-    </div>
-    <div class="grid gap-3 mt-6" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px">
-      <div class="p-3 rounded-xl border border-white/10 bg-white/5 text-center">
-        <div class="text-[10px] uppercase text-muted tracking-wider">Серия дней</div>
-        <div class="text-2xl font-bold text-gold mt-1">{{ wellness_streak }}</div>
-      </div>
-      <div class="p-3 rounded-xl border border-white/10 bg-white/5 text-center">
-        <div class="text-[10px] uppercase text-muted tracking-wider">Динамика настроения*</div>
-        <div class="text-2xl font-bold text-gold mt-1">{% if wellness_mood_progress_pct is not none %}{{ wellness_mood_progress_pct }}%{% else %}—{% endif %}</div>
-      </div>
-      <div class="p-3 rounded-xl border border-white/10 bg-white/5 text-center">
-        <div class="text-[10px] uppercase text-muted tracking-wider">Стабильность настроения†</div>
-        <div class="text-2xl font-bold text-gold mt-1">{% if wellness_stability is not none %}σ {{ wellness_stability }}{% else %}—{% endif %}</div>
-      </div>
-      <div class="p-3 rounded-xl border border-white/10 bg-white/5 text-center md:col-span-1" style="min-width:0">
-        <div class="text-[10px] uppercase text-muted tracking-wider">Профиль (эвристика)</div>
-        <div class="text-xs text-text mt-2 leading-snug text-left">{{ wellness_segment }}</div>
-      </div>
-    </div>
-    <p class="text-[11px] text-muted mt-3 leading-relaxed">* Сравнение первого и последнего дня в окне снимков (до {{ wellness_series_n }} дней). † Ниже σ — ровнее настроение за последние 7 дней с данными.</p>
-  </section>
-
-  {% if wellness_rec_text %}
-  <section class="mb-8 p-5 rounded-2xl border border-cyan-500/25 bg-cyan-500/5">
-    <h2 class="text-sm font-semibold text-cyan-200/90 mb-2 flex items-center gap-2">🤖 Рекомендация AI <span class="text-[10px] font-normal text-muted uppercase tracking-wider">информационно</span></h2>
-    <div class="text-sm text-text/95 whitespace-pre-wrap leading-relaxed" style="word-break:break-word">{{ wellness_rec_text }}</div>
-  </section>
-  {% elif wellness_series_n < 2 %}
-  <section class="mb-8 p-4 rounded-2xl border border-white/10 bg-white/5 text-sm text-muted">
-    Как только накопится больше дней со структурными ответами, здесь появится ежедневный разбор и мягкие идеи по схеме — без медицинских назначений.
-  </section>
-  {% endif %}
-
-  {% if user_charts and user_charts|length > 0 %}
-  <section class="mb-8">
-    <h2 class="text-lg font-semibold text-text mb-3">Динамика и корреляция</h2>
-    <p class="text-xs text-muted mb-4">Линии — по дням из подтверждённых ответов. Точечный график — если в тексте дозы есть число.</p>
-    <div class="grid md:grid-cols-2 gap-4">
-      {% for c in user_charts %}
-      <div class="rounded-2xl border border-white/10 p-3 bg-white/5" style="height:220px">
-        <canvas id="{{ c.canvas_id }}"></canvas>
-      </div>
-      {% endfor %}
-    </div>
-  </section>
-  {% endif %}
-
-  {% macro hmcell(v, invert) %}
-    {% if v is none %}
-    <td class="p-2 text-center text-muted">—</td>
-    {% else %}
-      {% set p = ((v | float) / 10 * 100) | round %}
-      {% if invert %}
-        {% set alpha = 0.12 + (p / 100) * 0.55 %}
-        <td class="p-2 text-center rounded-md" style="background:rgba(244,114,182,{{ alpha }});color:#fce7f3">{{ (v | float) | round(1) }}</td>
-      {% else %}
-        {% set alpha = 0.1 + (p / 100) * 0.5 %}
-        <td class="p-2 text-center rounded-md" style="background:rgba(61,212,224,{{ alpha }});color:#ecfeff">{{ (v | float) | round(1) }}</td>
-      {% endif %}
-    {% endif %}
-  {% endmacro %}
-
-  {% if heatmap_rows and heatmap_rows|length > 0 %}
-  <section class="mb-8">
-    <h2 class="text-lg font-semibold text-text mb-2">Тепловая карта (дни × показатели)</h2>
-    <p class="text-xs text-muted mb-3">Интенсивность фона отражает величину 0–10 (для тревоги высокие значения темнее).</p>
-    <div class="overflow-x-auto rounded-xl border border-white/10">
-      <table class="w-full text-xs text-left border-collapse min-w-[520px]">
-        <thead>
-          <tr class="border-b border-white/10 text-muted">
-            <th class="p-2 pl-3">Дата</th>
-            <th class="p-2">Приём</th>
-            <th class="p-2">Доза (текст)</th>
-            <th class="p-2">Трев.</th>
-            <th class="p-2">Настр.</th>
-            <th class="p-2">Энерг.</th>
-            <th class="p-2">Сон</th>
-            <th class="p-2 pr-3">Конц.</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in heatmap_rows %}
-          <tr class="border-b border-white/5">
-            <td class="p-2 pl-3 text-text whitespace-nowrap">{% if row.d and row.d|length >= 10 %}{{ row.d[8:10] }}.{{ row.d[5:7] }}{% else %}{{ row.d }}{% endif %}</td>
-            <td class="p-2 text-muted">{% if row.took is true %}да{% elif row.took is false %}нет{% else %}—{% endif %}</td>
-            <td class="p-2 text-muted max-w-[100px] truncate" title="{{ row.dose }}">{{ row.dose or '—' }}</td>
-            {{ hmcell(row.anxiety, true) }}
-            {{ hmcell(row.mood, false) }}
-            {{ hmcell(row.energy, false) }}
-            {{ hmcell(row.sleep, false) }}
-            {{ hmcell(row.conc, false) }}
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </section>
-  {% endif %}
-
-  <div class="grid gap-3 mb-6" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px">
-    <div class="p-4 rounded-2xl border border-white/10 bg-white/5">
-      <div class="text-xs text-muted uppercase">Ответов</div>
-      <div class="text-2xl font-bold text-gold mt-1">{{ agg.reply_count }}</div>
-    </div>
-    <div class="p-4 rounded-2xl border border-white/10 bg-white/5">
-      <div class="text-xs text-muted uppercase">Настроение Ø</div>
-      <div class="text-2xl font-bold text-gold mt-1">{{ agg.mood_avg if agg.mood_avg is not none else '—' }}</div>
-    </div>
-    <div class="p-4 rounded-2xl border border-white/10 bg-white/5">
-      <div class="text-xs text-muted uppercase">Энергия Ø</div>
-      <div class="text-2xl font-bold text-gold mt-1">{{ agg.energy_avg if agg.energy_avg is not none else '—' }}</div>
-    </div>
-  </div>
-
-  {% if agg.mushroom_counts and agg.mushroom_counts|length > 0 %}
-  <h2 class="text-lg font-semibold text-text mb-2">Грибы в ответах</h2>
-  <div class="mb-6 space-y-2">
-    {% for name, cnt in agg.mushroom_counts %}
-    <div class="flex items-center gap-3">
-      <div class="flex-1 h-2 rounded-full bg-white/10 overflow-hidden">
-        <div class="h-full rounded-full bg-gradient-to-r from-cyan-400 to-fuchsia-400" style="width: {{ [100, cnt * 25] | min }}%"></div>
-      </div>
-      <span class="text-sm text-text w-40 text-right">{{ name }} · {{ cnt }}</span>
+  {% if wellness_week_strip and wellness_week_strip|length > 0 %}
+  <div class="wd-cal" aria-label="Неделя check-in">
+    {% for day in wellness_week_strip %}
+    <div class="wd-cal-i{% if day.is_today %} wd-today{% endif %}{% if day.has_data %} wd-has{% endif %}">
+      <div class="wd-cal-l">{{ day.label }}</div>
+      <div class="wd-cal-n">{{ day.num }}</div>
+      <div class="wd-cal-dot" title="{% if day.has_data %}Есть запись{% else %}Нет записи{% endif %}"></div>
     </div>
     {% endfor %}
   </div>
   {% endif %}
 
-  <div class="flex flex-wrap gap-3 mb-8">
-    <a href="/account/wellness-results/pdf" class="accneo-btn" style="text-decoration:none;display:inline-block">Скачать PDF</a>
-    <a href="/chats" class="accneo-btn" style="text-decoration:none;display:inline-block;opacity:.85">Открыть чаты</a>
+  <div class="wd-hero-grid">
+    <div class="wd-hero wd-hero-mood">
+      <div class="wd-hero-lbl">Настроение</div>
+      <div class="wd-hero-val">{% if today_mood is not none %}{{ (today_mood | float) | round(1) }}{% else %}—{% endif %}<span style="font-size:0.45em;opacity:0.6;font-weight:500">/10</span></div>
+      <div class="wd-hero-bar"><i style="width:{% if today_mood is not none %}{{ ((today_mood | float) / 10 * 100) | round }}{% else %}0{% endif %}%"></i></div>
+    </div>
+    <div class="wd-hero wd-hero-energy">
+      <div class="wd-hero-lbl">Энергия</div>
+      <div class="wd-hero-val">{% if today_energy is not none %}{{ (today_energy | float) | round(1) }}{% else %}—{% endif %}<span style="font-size:0.45em;opacity:0.6;font-weight:500">/10</span></div>
+      <div class="wd-hero-bar"><i style="width:{% if today_energy is not none %}{{ ((today_energy | float) / 10 * 100) | round }}{% else %}0{% endif %}%"></i></div>
+    </div>
+    <div class="wd-hero wd-hero-anx">
+      <div class="wd-hero-lbl">Тревога</div>
+      <div class="wd-hero-val">{% if today_anxiety is not none %}{{ (today_anxiety | float) | round(1) }}{% else %}—{% endif %}<span style="font-size:0.45em;opacity:0.6;font-weight:500">/10</span></div>
+      <div class="wd-hero-bar"><i style="width:{% if today_anxiety is not none %}{{ ((today_anxiety | float) / 10 * 100) | round }}{% else %}0{% endif %}%"></i></div>
+    </div>
   </div>
 
-  <h2 class="text-lg font-semibold text-text mb-3">Настройки напоминаний</h2>
-  <form method="post" action="/account/wellness-results" class="mb-8 p-4 rounded-2xl border border-white/10 bg-white/5 space-y-4">
+  <div class="wd-stat-grid">
+    <div class="wd-stat"><div class="wd-stat-k">Серия дней</div><div class="wd-stat-v">{{ wellness_streak }}</div></div>
+    <div class="wd-stat"><div class="wd-stat-k">Динамика настроения</div><div class="wd-stat-v">{% if wellness_mood_progress_pct is not none %}{{ wellness_mood_progress_pct }}%{% else %}—{% endif %}</div></div>
+    <div class="wd-stat"><div class="wd-stat-k">Стабильность σ</div><div class="wd-stat-v">{% if wellness_stability is not none %}{{ wellness_stability }}{% else %}—{% endif %}</div></div>
+    <div class="wd-stat wd-stat-wide">
+      <div class="wd-stat-k">Профиль (эвристика)</div>
+      <div style="font-size:0.78rem;color:#b4b4c0;margin-top:0.35rem;line-height:1.45">{{ wellness_segment }}</div>
+      <div class="wd-stat-note">Динамика — сравнение краёв окна снимков (до {{ wellness_series_n }} дней). σ — разброс настроения за 7 дней с данными.</div>
+    </div>
+  </div>
+
+  {% if wellness_rec_text %}
+  <div class="wd-ai">
+    <div class="wd-ai-h">AI-разбор и идея на сегодня <span class="wd-ai-badge">информационно</span></div>
+    <div class="wd-ai-body">{{ wellness_rec_text }}</div>
+  </div>
+  {% elif wellness_series_n < 2 %}
+  <div class="wd-ai" style="border-color:var(--wd-line);background:rgba(255,255,255,0.03)">
+    <div class="wd-ai-h" style="color:#9a9aa8">Пока мало структурных данных</div>
+    <div class="wd-ai-body" style="color:#8e8e96">Продолжайте отвечать на опрос в чате — появится ежедневный разбор и мягкие варианты по схеме (без медицинских назначений).</div>
+  </div>
+  {% endif %}
+
+  {% if user_charts and user_charts|length > 0 %}
+  <div class="mb-2">
+    <h2 class="wd-sec-title">Динамика <span style="font-size:0.65rem;font-weight:500;color:#6b6b78">14 дней</span></h2>
+    <p class="wd-sec-sub">Линии по дням; точки — настроение vs число из текста дозы (если удалось выделить).</p>
+    <div class="wd-tabs" aria-hidden="true"><span>День</span><span class="wd-active">Неделя</span><span>Месяц</span></div>
+  </div>
+  <div class="wd-chart-grid mb-8">
+    {% for c in user_charts %}
+    <div class="wd-chart-card"><canvas id="{{ c.canvas_id }}"></canvas></div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% macro hmcell(v, invert) %}
+    {% if v is none %}
+    <td class="p-2.5 text-center text-muted">—</td>
+    {% else %}
+      {% set p = ((v | float) / 10 * 100) | round %}
+      {% if invert %}
+        {% set alpha = 0.14 + (p / 100) * 0.5 %}
+        <td class="p-2.5 text-center rounded-lg" style="background:rgba(244,114,182,{{ alpha }});color:#fce7f3">{{ (v | float) | round(1) }}</td>
+      {% else %}
+        {% set alpha = 0.12 + (p / 100) * 0.48 %}
+        <td class="p-2.5 text-center rounded-lg" style="background:rgba(61,212,224,{{ alpha }});color:#ecfeff">{{ (v | float) | round(1) }}</td>
+      {% endif %}
+    {% endif %}
+  {% endmacro %}
+
+  {% if heatmap_rows and heatmap_rows|length > 0 %}
+  <h2 class="wd-sec-title">Сводка по дням</h2>
+  <p class="wd-sec-sub">Тепловая карта: сильнее оттенок — выше значение; у тревоги это наоборот «насыщеннее» при росте.</p>
+  <div class="wd-table-wrap mb-8 overflow-x-auto">
+    <table class="w-full text-xs text-left border-collapse min-w-[540px]">
+      <thead>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.08)" class="text-muted">
+          <th class="p-2.5 pl-3">Дата</th>
+          <th class="p-2.5">Приём</th>
+          <th class="p-2.5">Доза</th>
+          <th class="p-2.5">Трев.</th>
+          <th class="p-2.5">Настр.</th>
+          <th class="p-2.5">Энерг.</th>
+          <th class="p-2.5">Сон</th>
+          <th class="p-2.5 pr-3">Конц.</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in heatmap_rows %}
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
+          <td class="p-2.5 pl-3 text-text whitespace-nowrap">{% if row.d and row.d|length >= 10 %}{{ row.d[8:10] }}.{{ row.d[5:7] }}{% else %}{{ row.d }}{% endif %}</td>
+          <td class="p-2.5 text-muted">{% if row.took is true %}да{% elif row.took is false %}нет{% else %}—{% endif %}</td>
+          <td class="p-2.5 text-muted max-w-[104px] truncate" title="{{ row.dose }}">{{ row.dose or '—' }}</td>
+          {{ hmcell(row.anxiety, true) }}
+          {{ hmcell(row.mood, false) }}
+          {{ hmcell(row.energy, false) }}
+          {{ hmcell(row.sleep, false) }}
+          {{ hmcell(row.conc, false) }}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <h2 class="wd-sec-title">За всё время (по ответам)</h2>
+  <div class="wd-stat-grid mb-6">
+    <div class="wd-stat"><div class="wd-stat-k">Ответов</div><div class="wd-stat-v">{{ agg.reply_count }}</div></div>
+    <div class="wd-stat"><div class="wd-stat-k">Настроение Ø</div><div class="wd-stat-v">{{ agg.mood_avg if agg.mood_avg is not none else '—' }}</div></div>
+    <div class="wd-stat"><div class="wd-stat-k">Энергия Ø</div><div class="wd-stat-v">{{ agg.energy_avg if agg.energy_avg is not none else '—' }}</div></div>
+  </div>
+
+  {% if agg.mushroom_counts and agg.mushroom_counts|length > 0 %}
+  <h2 class="wd-sec-title">Грибы в ответах</h2>
+  <div class="mb-6 space-y-2.5">
+    {% for name, cnt in agg.mushroom_counts %}
+    <div class="flex items-center gap-3">
+      <div class="flex-1 h-2 rounded-full bg-white/10 overflow-hidden">
+        <div class="h-full rounded-full" style="width: {{ [100, cnt * 25] | min }}%; background:linear-gradient(90deg,var(--wd-teal),var(--wd-violet))"></div>
+      </div>
+      <span class="text-sm text-text w-44 text-right shrink-0">{{ name }} · {{ cnt }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="wd-actions">
+    <a href="/account/wellness-results/pdf" class="wd-btn">Скачать PDF</a>
+    <a href="/chats" class="wd-btn secondary">Открыть чаты</a>
+  </div>
+
+  <h2 class="wd-sec-title">Напоминания</h2>
+  <form method="post" action="/account/wellness-results" class="wd-form-card space-y-4">
     <div>
       <label class="block text-sm text-muted mb-2">Как часто присылать опрос</label>
       <select name="interval_days" class="w-full rounded-xl bg-bg border border-border px-3 py-2 text-text">
@@ -188,13 +269,13 @@
       <input type="checkbox" name="opt_out" value="1" {% if wrow.wellness_journal_opt_out %}checked{% endif %} />
       Полностью отключить дневник и напоминания AI
     </label>
-    <button type="submit" class="accneo-btn" style="border:none;cursor:pointer">Сохранить</button>
+    <button type="submit" class="wd-btn" style="cursor:pointer">Сохранить</button>
   </form>
 
-  <h2 class="text-lg font-semibold text-text mb-3">Последние записи</h2>
+  <h2 class="wd-sec-title">Последние записи</h2>
   <div class="space-y-3">
     {% for e in entries %}
-    <div class="p-3 rounded-xl border border-white/10 bg-white/5 text-sm">
+    <div class="wd-entry text-sm">
       <div class="text-xs text-muted mb-1">{{ e.created_at.strftime('%d.%m.%Y %H:%M') if e.created_at else '' }} · {{ e.role }}</div>
       <div class="text-text whitespace-pre-wrap" style="word-break:break-word">{{ (e.raw_text or '')[:900] }}{% if (e.raw_text or '')|length > 900 %}…{% endif %}</div>
     </div>

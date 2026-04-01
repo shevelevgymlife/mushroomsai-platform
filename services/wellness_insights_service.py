@@ -28,6 +28,66 @@ def _utc_today() -> date:
     return datetime.utcnow().date()
 
 
+def calendar_week_strip_for_user(
+    series: list[dict[str, Any]], *, today: Optional[date] = None
+) -> list[dict[str, Any]]:
+    """Пн–Вс календарной недели (UTC): метки дня, есть ли снимок."""
+    d0 = today or _utc_today()
+    monday = d0 - timedelta(days=d0.weekday())
+    have = {str(x.get("date") or "") for x in series}
+    labels = ("ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС")
+    out: list[dict[str, Any]] = []
+    for i in range(7):
+        dt = monday + timedelta(days=i)
+        iso = dt.isoformat()
+        out.append(
+            {
+                "label": labels[i],
+                "num": dt.day,
+                "iso": iso,
+                "is_today": dt == d0,
+                "has_data": iso in have,
+            }
+        )
+    return out
+
+
+async def admin_snapshot_counts_rolling_days(days: int = 7) -> list[dict[str, Any]]:
+    """Последние `days` дат UTC: сколько снимков (строк) в день по всей платформе."""
+    end = _utc_today()
+    since = end - timedelta(days=max(1, days) - 1)
+    rows = await database.fetch_all(
+        sa.select(
+            wellness_daily_snapshots.c.snapshot_date,
+            sa.func.count().label("cnt"),
+        )
+        .where(wellness_daily_snapshots.c.snapshot_date >= since)
+        .group_by(wellness_daily_snapshots.c.snapshot_date)
+        .order_by(wellness_daily_snapshots.c.snapshot_date.asc())
+    )
+    counts: dict[str, int] = {}
+    for r in rows:
+        sd = r["snapshot_date"]
+        iso = sd.isoformat() if hasattr(sd, "isoformat") else str(sd)
+        counts[iso] = int(r["cnt"] or 0)
+    labels = ("ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС")
+    out: list[dict[str, Any]] = []
+    d = since
+    while d <= end:
+        iso = d.isoformat()
+        out.append(
+            {
+                "label": labels[d.weekday()],
+                "num": d.day,
+                "iso": iso,
+                "is_today": d == end,
+                "n": counts.get(iso, 0),
+            }
+        )
+        d += timedelta(days=1)
+    return out
+
+
 def _parse_entry_date(row: dict) -> date:
     ca = row.get("created_at")
     if isinstance(ca, datetime):

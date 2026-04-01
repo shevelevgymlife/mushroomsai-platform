@@ -2609,7 +2609,10 @@ async def admin_wellness_analytics(request: Request):
     perms = await get_user_permissions(admin)
     from services.wellness_insights_service import (
         admin_platform_series_for_charts,
+        admin_snapshot_counts_rolling_days,
         admin_user_ids_with_snapshots,
+        aggregate_platform_snapshot_means,
+        calendar_week_strip_for_user,
         chartjs_line_config_dict,
         fetch_snapshots_series,
         series_metric_arrays,
@@ -2624,12 +2627,17 @@ async def admin_wellness_analytics(request: Request):
             return None
 
     platform_series = await admin_platform_series_for_charts(30)
+    plat_means_7 = await aggregate_platform_snapshot_means(7)
+    plat_activity_strip = await admin_snapshot_counts_rolling_days(7)
     user_list = await admin_user_ids_with_snapshots(200)
     filter_uid_raw = (request.query_params.get("user_id") or "").strip()
     user_charts: list[dict] = []
+    user_week_strip: list[dict] = []
+    series_f: list = []
     if filter_uid_raw.isdigit():
         uid_f = int(filter_uid_raw)
-        s = await fetch_snapshots_series(uid_f, 30)
+        series_f = await fetch_snapshots_series(uid_f, 30)
+        user_week_strip = calendar_week_strip_for_user(series_f)
         for mk, ru, col in (
             ("anxiety_0_10", "Тревога", "#f472b6"),
             ("mood_0_10", "Настроение", "#3dd4e0"),
@@ -2637,7 +2645,7 @@ async def admin_wellness_analytics(request: Request):
             ("sleep_quality_0_10", "Сон", "#34d399"),
             ("concentration_0_10", "Концентрация", "#fbbf24"),
         ):
-            lab, dat = series_metric_arrays(s, mk)
+            lab, dat = series_metric_arrays(series_f, mk)
             if any(x is not None for x in dat):
                 user_charts.append(
                     {
@@ -2692,6 +2700,9 @@ async def admin_wellness_analytics(request: Request):
             "platform_charts": platform_charts,
             "schemes": [dict(x) for x in schemes],
             "refreshed": request.query_params.get("refreshed"),
+            "platform_kpis": plat_means_7,
+            "plat_activity_strip": plat_activity_strip,
+            "user_week_strip": user_week_strip,
         },
     )
 
