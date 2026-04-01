@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Удаление данных — NEUROFUNGI AI{% endblock %}
+{% block content %}
+<div class="accneo-wrap">
+  <h1 class="accneo-title">Удаление данных аккаунта</h1>
+  <p class="text-sm text-muted leading-relaxed max-w-xl mb-6">
+    Будут удалены профиль, публикации, сообщения, подписки в системе и привязки (в т.ч. Telegram/Google в рамках нашей базы), как описано в
+    <a href="/legal/privacy" class="text-gold hover:underline">Политике конфиденциальности</a>. Восстановление невозможно.
+  </p>
+  {% if delete_blocked %}
+  <div class="mb-6 p-4 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-200 text-sm">Для этой учётной записи самоудаление через сайт отключено. Обратитесь в поддержку при необходимости.</div>
+  {% elif error %}
+  <div class="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm">{{ error }}</div>
+  {% endif %}
+  {% if not delete_blocked %}
+  <form method="post" action="/account/delete-data" class="max-w-xl space-y-5">
+    <label class="flex items-start gap-3 cursor-pointer text-sm text-text p-3 rounded-xl border border-border bg-bg/40">
+      <input type="checkbox" name="accept_irreversible" value="1" class="mt-1 h-5 w-5 rounded border-gold/50 text-gold" required>
+      <span>Я понимаю, что действие необратимо и все мои данные в сервисе будут удалены.</span>
+    </label>
+    <div>
+      <label class="block text-xs text-muted mb-1">Для подтверждения введите слово <strong class="text-text">УДАЛИТЬ</strong> заглавными буквами:</label>
+      <input type="text" name="confirm_phrase" autocomplete="off" class="w-full px-3 py-2 rounded-xl border border-border bg-bg text-text text-sm" placeholder="УДАЛИТЬ" required>
+    </div>
+    <button type="submit" class="w-full py-3 rounded-xl bg-red-600/90 hover:bg-red-600 text-white font-semibold text-sm">Удалить навсегда</button>
+  </form>
+  {% endif %}
+  <p class="accneo-back" style="margin-top:28px"><a href="/account/settings">← Назад в настройки</a></p>
+</div>
+{% endblock %}

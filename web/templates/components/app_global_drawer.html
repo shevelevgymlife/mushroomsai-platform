@@ -85,6 +85,7 @@
     <details class="ig-drawer-details" style="border-bottom:1px solid rgba(255,255,255,.06)">
       <summary class="ig-drawer-item ig-drawer-summary" style="list-style:none;cursor:pointer"><span class="e">📄</span><span class="lbl">Документы</span><span class="ig-drawer-chev" style="margin-left:auto;opacity:.5;font-size:10px">▼</span></summary>
       <div style="padding:4px 12px 14px 18px;font-size:13px">
+        <a href="/legal/offer" target="_blank" rel="noopener noreferrer" class="ig-drawer-sub" onclick="closeAppGlobalDrawer()">Публичная оферта{% if user.get('legal_accepted_at') %} · ПОДПИСАНО МНОЮ{% endif %}</a>
         <a href="/legal/terms" target="_blank" rel="noopener noreferrer" class="ig-drawer-sub" onclick="closeAppGlobalDrawer()">Пользовательское соглашение{% if user.get('legal_accepted_at') %} · ПОДПИСАНО МНОЮ{% endif %}</a>
         <a href="/legal/privacy" target="_blank" rel="noopener noreferrer" class="ig-drawer-sub" onclick="closeAppGlobalDrawer()">Политика конфиденциальности{% if user.get('legal_accepted_at') %} · ПОДПИСАНО МНОЮ{% endif %}</a>
         <p style="font-size:11px;color:#666;margin-top:10px;line-height:1.45">Актуальная редакция при входе. Дата: {% if user.get('legal_accepted_at') %}{{ user.legal_accepted_at.strftime('%d.%m.%Y %H:%M') if user.legal_accepted_at else '—' }}{% else %}—{% endif %} · версия {{ user.get('legal_docs_version') or '—' }}</p>

@@ -27,6 +27,15 @@ async def legal_terms(request: Request):
     )
 
 
+@router.get("/legal/offer", response_class=HTMLResponse)
+async def legal_offer(request: Request):
+    user = await get_user_from_request(request)
+    return templates.TemplateResponse(
+        "legal/offer.html",
+        {"request": request, "user": user, "legal_version": LEGAL_DOCS_VERSION},
+    )
+
+
 @router.get("/legal/privacy", response_class=HTMLResponse)
 async def legal_privacy(request: Request):
     user = await get_user_from_request(request)

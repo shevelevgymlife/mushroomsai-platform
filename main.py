@@ -292,6 +292,7 @@ class LegalAcceptanceGateMiddleware(BaseHTTPMiddleware):
         "/legal/accept",
         "/legal/terms",
         "/legal/privacy",
+        "/legal/offer",
     })
     _SKIP_PREFIX = (
         "/static/",
@@ -324,7 +325,7 @@ class LegalAcceptanceGateMiddleware(BaseHTTPMiddleware):
             return JSONResponse(
                 {
                     "error": "legal_required",
-                    "message": "Требуется принятие пользовательского соглашения и политики конфиденциальности.",
+                    "message": "Требуется принятие оферты, пользовательского соглашения и политики конфиденциальности.",
                     "redirect": f"/legal/accept?next={next_url}",
                 },
                 status_code=403,

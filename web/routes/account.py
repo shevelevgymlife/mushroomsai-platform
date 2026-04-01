@@ -16,6 +16,7 @@ from starlette.responses import JSONResponse
 from auth.session import get_user_from_request, attach_subscription_effective
 from services.legal import legal_acceptance_redirect
 from services.subscription_service import claim_start_trial, web_default_home_path, check_subscription
+from services.user_permanent_delete import is_protected_super_admin, permanently_delete_user
 from auth.telegram_auth import verify_telegram_auth
 from auth.ui_prefs import DEFAULT_SCREEN_RIM, attach_screen_rim_prefs
 from db.database import database
@@ -532,6 +533,66 @@ async def account_settings_hub(request: Request):
         "account/settings.html",
         {"request": request, "user": user},
     )
+
+
+@router.get("/delete-data", response_class=HTMLResponse)
+async def account_delete_data_page(request: Request):
+    user = await get_user_from_request(request)
+    if not user:
+        return RedirectResponse("/login?next=/account/delete-data", status_code=302)
+    attach_screen_rim_prefs(user)
+    session_uid = int(user["id"])
+    primary = await _resolve_primary_row(session_uid)
+    delete_blocked = bool(primary and is_protected_super_admin(dict(primary)))
+    return templates.TemplateResponse(
+        "account/delete_data.html",
+        {"request": request, "user": user, "delete_blocked": delete_blocked},
+    )
+
+
+@router.post("/delete-data")
+async def account_delete_data_submit(
+    request: Request,
+    confirm_phrase: str = Form(""),
+    accept_irreversible: str = Form(""),
+):
+    user = await get_user_from_request(request)
+    if not user:
+        return RedirectResponse("/login?next=/account/delete-data", status_code=302)
+    session_uid = int(user["id"])
+    primary = await _resolve_primary_row(session_uid)
+    if not primary:
+        return RedirectResponse("/account/settings", status_code=302)
+    target = dict(primary)
+    attach_screen_rim_prefs(user)
+    ctx = {
+        "request": request,
+        "user": user,
+        "delete_blocked": is_protected_super_admin(target),
+    }
+    if ctx["delete_blocked"]:
+        return templates.TemplateResponse(
+            "account/delete_data.html",
+            {**ctx, "error": "Удаление этой учётной записи через сайт недоступно."},
+            status_code=403,
+        )
+    phrase_ok = (confirm_phrase or "").strip().upper() == "УДАЛИТЬ"
+    if not phrase_ok or accept_irreversible != "1":
+        return templates.TemplateResponse(
+            "account/delete_data.html",
+            {**ctx, "error": "Введите слово УДАЛИТЬ и отметьте, что действие необратимо."},
+            status_code=400,
+        )
+    ok, err = await permanently_delete_user(int(target["id"]))
+    if not ok:
+        return templates.TemplateResponse(
+            "account/delete_data.html",
+            {**ctx, "error": (err or "Не удалось удалить данные. Напишите в поддержку.")[:300]},
+            status_code=500,
+        )
+    resp = RedirectResponse("/", status_code=302)
+    resp.delete_cookie("access_token")
+    return resp
 
 
 @router.get("/settings/sound-notifications", response_class=HTMLResponse)

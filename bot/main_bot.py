@@ -37,6 +37,7 @@ from bot.handlers.yookassa_subscribe import (
     successful_payment_handler,
     tgpay_plan_callback,
 )
+from bot.handlers.legal_commands import privacy_command, terms_command
 
 logger = logging.getLogger(__name__)
 
@@ -183,6 +184,9 @@ def create_bot() -> Application:
     )
 
     application.add_handler(CommandHandler("start", start))
+    legal_group = -4
+    application.add_handler(CommandHandler("terms", terms_command), group=legal_group)
+    application.add_handler(CommandHandler("privacy", privacy_command), group=legal_group)
     # Подписка ЮKassa в Telegram (до общих текстовых хендлеров)
     pay_group = -3
     application.add_handler(CommandHandler("subscribe", subscribe_command), group=pay_group)

@@ -23,6 +23,11 @@ from services.yookassa_bot_offerings import (
 
 logger = logging.getLogger(__name__)
 
+# Текст согласия при оплате (оферта на сайте /legal/offer).
+TG_SUBSCRIPTION_PAYMENT_NOTICE = (
+    "Оплачивая подписку, вы соглашаетесь с условиями. Возврат средств за уже оплаченный период не предусмотрен."
+)
+
 # Сумма в копейках в конце — чтобы pre_checkout не ломался при смене цены в админке после выставления счёта
 _PAYLOAD_RX = re.compile(r"^nf\|(\d+)\|([a-z0-9_]+)(?:\|(\d+))?$")
 
@@ -81,7 +86,8 @@ async def subscribe_menu_handler(update: Update, context: ContextTypes.DEFAULT_T
         await update.message.reply_text(
             f"💳 <b>Подписка</b>\n\n"
             f"Оплата через бота ещё не включена в админке (Оплата → ЮKassa Бот) или не указан provider token.\n\n"
-            f"Оформите подписку на сайте: {site}/subscriptions",
+            f"Оформите подписку на сайте: {site}/subscriptions\n\n"
+            f"<i>{TG_SUBSCRIPTION_PAYMENT_NOTICE}</i>",
             parse_mode="HTML",
             disable_web_page_preview=True,
         )
@@ -106,9 +112,12 @@ async def subscribe_menu_handler(update: Update, context: ContextTypes.DEFAULT_T
         return
 
     await update.message.reply_text(
-        "💳 <b>Подписка</b>\n\nВыберите предложение — откроется счёт ЮKassa.",
+        "💳 <b>Подписка</b>\n\nВыберите предложение — откроется счёт ЮKassa.\n\n"
+        f"<i>{TG_SUBSCRIPTION_PAYMENT_NOTICE}</i>\n"
+        f'<a href="{site}/legal/offer">Оферта</a> · <a href="{site}/legal/privacy">Конфиденциальность</a>',
         reply_markup=InlineKeyboardMarkup(rows),
         parse_mode="HTML",
+        disable_web_page_preview=True,
     )
 
 
@@ -154,7 +163,11 @@ async def tgpay_plan_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     provider_token = _payment_provider_token(st)
     title = (off.get("display_name") or offering_id)[:32]
     dur_h = off.get("duration_label") or ""
-    desc = f"NEUROFUNGI AI — {dur_h}"[:255]
+    site = (settings.SITE_URL or "").rstrip("/")
+    extra = f" {TG_SUBSCRIPTION_PAYMENT_NOTICE}"
+    if site:
+        extra += f" {site}/legal/offer"
+    desc = f"NEUROFUNGI AI — {dur_h}.{extra}"[:255]
 
     try:
         await context.bot.send_invoice(
