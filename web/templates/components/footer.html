@@ -19,12 +19,12 @@
       <!-- Middle: Platform links -->
       <div>
         <h4 class="section-eyebrow mb-5">Платформа</h4>
-        <ul class="space-y-3">
-          <li><a href="/chat" onclick="return guestGuard(event)" class="text-sm text-muted hover:text-gold transition-colors">AI Консультант</a></li>
-          <li><a href="/shop" onclick="return guestGuard(event)" class="text-sm text-muted hover:text-gold transition-colors">{% if user and user.get('show_marketplace_nav') == false %}Магазин{% else %}Магазин / Маркетплейс{% endif %}</a></li>
-          <li><a href="/community" class="text-sm text-muted hover:text-gold transition-colors">Сообщество</a></li>
+        <ul class="flex flex-col gap-2">
+          <li><a href="/chat" onclick="return guestGuard(event)" class="nf-footer-btn">AI Консультант</a></li>
+          <li><a href="/shop" onclick="return guestGuard(event)" class="nf-footer-btn">{% if user and user.get('show_marketplace_nav') == false %}Магазин{% else %}Магазин / Маркетплейс{% endif %}</a></li>
+          <li><a href="/community" class="nf-footer-btn">Сообщество</a></li>
           {% if user %}
-          <li><a href="/community" class="text-sm text-muted hover:text-gold transition-colors">Соцсеть</a></li>
+          <li><a href="/community" class="nf-footer-btn">Соцсеть</a></li>
           {% endif %}
         </ul>
       </div>
@@ -32,22 +32,21 @@
       <!-- Right: Contacts -->
       <div>
         <h4 class="section-eyebrow mb-5">Контакты</h4>
-        <ul class="space-y-3">
+        <ul class="flex flex-col gap-2">
           <li>
-            <a href="https://t.me/neuro_fungi_bot" target="_blank" onclick="openBotLink(event)"
-               class="text-sm text-muted hover:text-gold transition-colors flex items-center gap-2">
+            <a href="https://t.me/neuro_fungi_bot" target="_blank" rel="noopener noreferrer" onclick="openBotLink(event)"
+               class="nf-footer-btn">
               ✈️ Telegram бот
             </a>
           </li>
           <li>
             <a href="https://mushroomsai.ru" onclick="openSiteLink(event)"
-               class="text-sm text-muted hover:text-gold transition-colors">
+               class="nf-footer-btn">
               🌐 mushroomsai.ru
             </a>
           </li>
           <li>
-            <button onclick="openFeedbackModal()"
-               class="text-sm text-muted hover:text-gold transition-colors text-left cursor-pointer bg-none border-none p-0">
+            <button type="button" onclick="openFeedbackModal()" class="nf-footer-btn">
               💬 Вопросы и предложения
             </button>
           </li>
@@ -55,14 +54,16 @@
       </div>
     </div>
 
-    <div class="border-t border-white/[0.06] pt-8 flex flex-col sm:flex-row justify-between items-start gap-3">
-      <div class="text-xs text-muted space-x-3">
-        <span>© 2026 NEUROFUNGI AI. Евгений Шевелев.</span>
-        <a href="/legal/offer" class="hover:text-gold transition-colors">Оферта</a>
-        <a href="/legal/terms" class="hover:text-gold transition-colors">Соглашение</a>
-        <a href="/legal/privacy" class="hover:text-gold transition-colors">Конфиденциальность</a>
+    <div class="border-t border-white/[0.06] pt-8 flex flex-col sm:flex-row justify-between items-start gap-6">
+      <div class="flex flex-col gap-3">
+        <span class="text-xs text-muted">© 2026 NEUROFUNGI AI. Евгений Шевелев.</span>
+        <div class="flex flex-wrap gap-2">
+          <a href="/legal/offer" class="nf-footer-btn nf-footer-btn--legal">Оферта</a>
+          <a href="/legal/terms" class="nf-footer-btn nf-footer-btn--legal">Соглашение</a>
+          <a href="/legal/privacy" class="nf-footer-btn nf-footer-btn--legal">Конфиденциальность</a>
+        </div>
       </div>
-      <p class="text-xs text-muted text-right max-w-md">Информация носит образовательный характер. Не является медицинской рекомендацией. Все товары не являются лекарственным средством.</p>
+      <p class="text-xs text-muted text-left sm:text-right max-w-md">Информация носит образовательный характер. Не является медицинской рекомендацией. Все товары не являются лекарственным средством.</p>
     </div>
   </div>
 </footer>
