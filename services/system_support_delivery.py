@@ -52,6 +52,55 @@ async def resolve_support_sender_id() -> Optional[int]:
     return await resolve_neurofungi_ai_user_id()
 
 
+async def resolve_wellness_dm_sender_id(recipient_user_id: int) -> Optional[int]:
+    """
+    users.id для исходящих ЛС дневника (промпты, подтверждения статистики, отбивки).
+    Должен отличаться от получателя: иначе sync_direct_messages_pair не переносит сообщение
+    в chat_messages (условие uid != other_id), и в мессенджере /chats пусто, хотя строка в
+    direct_messages есть и Telegram-пинг мог сработать.
+    """
+    rid = int(recipient_user_id)
+    base = await resolve_neurofungi_ai_user_id()
+    if base and int(base) != rid:
+        return int(base)
+
+    nid = int(getattr(settings, "NEUROFUNGI_AI_USER_ID", 0) or 0)
+    tid = int(getattr(settings, "TECH_SUPPORT_USER_ID", 0) or 0)
+    for cand in (nid, tid):
+        if cand > 0 and cand != rid:
+            row = await database.fetch_one(sa.select(users.c.id).where(users.c.id == cand))
+            if row:
+                logger.warning(
+                    "wellness_dm_sender: дефолтный AI id совпадает с получателем %s; используем из env user id=%s",
+                    rid,
+                    cand,
+                )
+                return int(row["id"])
+
+    alt = await database.fetch_one(
+        sa.select(users.c.id)
+        .where(users.c.id != rid)
+        .where(users.c.role == "admin")
+        .order_by(users.c.id.asc())
+        .limit(1)
+    )
+    if alt:
+        logger.warning(
+            "wellness_dm_sender: аккаунт AI совпадает с получателем %s; ЛС уходит от другого admin id=%s. "
+            "Надёжно: создайте отдельного пользователя NeuroFungi AI и NEUROFUNGI_AI_USER_ID в Render.",
+            rid,
+            alt["id"],
+        )
+        return int(alt["id"])
+
+    logger.error(
+        "wellness_dm_sender: нет отправителя ЛС — получатель %s и единственный AI это один users.id. "
+        "Создайте второй аккаунт на сайте для NeuroFungi AI и укажите NEUROFUNGI_AI_USER_ID.",
+        rid,
+    )
+    return None
+
+
 async def all_legacy_neurofungi_ai_peer_ids() -> set[int]:
     """Все id, которые могли быть «ботом» — для свёртки чатов и ответов дневнику."""
     ids: set[int] = set()

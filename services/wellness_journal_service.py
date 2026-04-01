@@ -17,7 +17,7 @@ from config import settings
 from db.database import database
 from db.models import users, wellness_journal_entries, platform_settings, direct_messages
 from services.subscription_service import check_subscription
-from services.system_support_delivery import all_legacy_neurofungi_ai_peer_ids, resolve_support_sender_id
+from services.system_support_delivery import all_legacy_neurofungi_ai_peer_ids, resolve_wellness_dm_sender_id
 from services.legacy_dm_chat_sync import sync_direct_messages_pair
 
 logger = logging.getLogger(__name__)
@@ -386,12 +386,6 @@ async def send_wellness_prompt_for_user(user_id: int, *, admin_self_test: bool =
         return False
     if not admin_self_test and row.get("wellness_journal_admin_paused"):
         return False
-    coach_id = await resolve_support_sender_id()
-    if not coach_id:
-        logger.warning("wellness: no coach/support user id")
-        return False
-    if not admin_self_test and int(coach_id) == int(uid):
-        return False
     interval = _normalize_interval(row.get("wellness_journal_interval_days"))
     nxt = row.get("wellness_next_prompt_at")
     now = datetime.utcnow()
@@ -410,6 +404,10 @@ async def send_wellness_prompt_for_user(user_id: int, *, admin_self_test: bool =
 
     idx = await _count_ai_prompts(uid)
     notify_uid = _notify_uid(dict(row))
+    coach_id = await resolve_wellness_dm_sender_id(notify_uid)
+    if not coach_id:
+        logger.warning("wellness: no DM sender id for recipient notify_uid=%s", notify_uid)
+        return False
     body = await _compose_coach_message_body(
         uid,
         notify_uid,
@@ -533,7 +531,8 @@ async def _maybe_send_weekly_digest(user_id: int) -> None:
             users.update().where(users.c.id == uid).values(wellness_weekly_digest_last_at=now)
         )
         return
-    coach_id = await resolve_support_sender_id()
+    notify_uid = _notify_uid(dict(row))
+    coach_id = await resolve_wellness_dm_sender_id(notify_uid)
     if not coach_id:
         return
     site = (settings.SITE_URL or "").rstrip("/") or "https://mushroomsai.ru"
@@ -544,7 +543,6 @@ async def _maybe_send_weekly_digest(user_id: int) -> None:
         + f"Откройте сводку и графики: {results_url}\n\n"
         + "Если хотите изменить частоту опросов — напишите «каждый день», «раз в 3 дня», «раз в 5 дней» или «раз в неделю»."
     )
-    notify_uid = _notify_uid(dict(row))
     try:
         dm_row = await database.fetch_one_write(
             direct_messages.insert()
@@ -635,12 +633,13 @@ async def on_user_message_to_coach(
     uid = int(sender_uid)
     if not await user_has_wellness_journal_access(uid):
         return None
-    coach_id = await resolve_support_sender_id()
-    if not coach_id:
-        return None
 
     urow = await database.fetch_one(users.select().where(users.c.id == uid))
     if not urow:
+        return None
+    notify_dm = _notify_uid(dict(urow))
+    coach_id = await resolve_wellness_dm_sender_id(notify_dm)
+    if not coach_id:
         return None
     pending_raw = urow.get("wellness_pending_stats_entry_id")
     if pending_raw is not None:
@@ -663,7 +662,7 @@ async def on_user_message_to_coach(
                 asyncio.create_task(extract_wellness_json_async(pending, raw_prev))
                 await _insert_coach_dm(
                     int(coach_id),
-                    uid,
+                    notify_dm,
                     MSG_PREFIX + "Хорошо — включаю твой предыдущий ответ в статистику дневника.",
                 )
                 return None
@@ -678,7 +677,7 @@ async def on_user_message_to_coach(
                 )
                 await _insert_coach_dm(
                     int(coach_id),
-                    uid,
+                    notify_dm,
                     MSG_PREFIX + "Понял — не включаю это сообщение в статистику.",
                 )
                 return None
@@ -708,7 +707,7 @@ async def on_user_message_to_coach(
         + snippet
         + "»\n\nВключить это сообщение в статистику дневника? Напиши «да» или «нет»."
     )
-    await _insert_coach_dm(int(coach_id), uid, body)
+    await _insert_coach_dm(int(coach_id), notify_dm, body)
     return int(eid)
 
 
@@ -915,9 +914,6 @@ async def run_wellness_subscription_renewal_nudges_job() -> None:
     now = datetime.utcnow()
     lo = now + timedelta(days=2)
     hi = now + timedelta(days=4)
-    coach_id = await resolve_support_sender_id()
-    if not coach_id:
-        return
     rows = await database.fetch_all(
         sa.text(
             """
@@ -964,7 +960,12 @@ async def run_wellness_subscription_renewal_nudges_job() -> None:
                     continue
             except Exception:
                 pass
-        await _deliver_renewal_nudge(uid, int(coach_id), target)
+        ufull = await database.fetch_one(users.select().where(users.c.id == uid))
+        nu = _notify_uid(dict(ufull)) if ufull else uid
+        cid = await resolve_wellness_dm_sender_id(nu)
+        if not cid:
+            continue
+        await _deliver_renewal_nudge(uid, int(cid), target)
 
 
 async def admin_global_wellness_summary() -> dict[str, Any]:

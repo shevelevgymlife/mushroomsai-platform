@@ -29,7 +29,7 @@
     </div>
     {% elif tp == 'fail' %}
     <div class="mb-4 p-3 rounded-xl border border-red-500/40 text-red-300 text-sm">
-      Отправить не удалось: проверьте, что задан аккаунт отправителя (NEUROFUNGI_AI_USER_ID / техподдержка), дневник не отключён у вас в настройках и логи сервера.
+      Отправить не удалось: задайте в Render отдельный аккаунт <code class="text-xs opacity-90">NEUROFUNGI_AI_USER_ID</code> (не ваш личный admin), иначе ЛС не попадает в мессенджер. Также проверьте opt-out дневника и логи сервера.
     </div>
     {% endif %}
 
@@ -37,6 +37,7 @@
       <h2 class="text-lg font-medium text-text mb-2">Тест для админа</h2>
       <p class="text-sm text-muted mb-3 max-w-2xl">
         Отправить себе один промпт дневника (как в проде): увидите формулировки AI и блок вопросов для статистики. Расписание следующего автоматического напоминания не сдвигается.
+        В Render должен быть отдельный пользователь-отправитель (<code class="text-xs opacity-90">NEUROFUNGI_AI_USER_ID</code>), не совпадающий с вашим аккаунтом — иначе сообщение не появится в /чатах (сам себе в ЛС не синхронизируется).
       </p>
       <form method="post" action="/admin/wellness-journal/test-prompt-self">
         <button type="submit" class="px-4 py-2 rounded-xl text-sm font-medium border border-gold/40 text-gold hover:bg-gold/10">
