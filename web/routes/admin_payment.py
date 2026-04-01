@@ -12,6 +12,7 @@ from config import settings
 from web.templates_utils import Jinja2Templates
 from services.payment_plans_catalog import (
     DEFAULT_PLANS,
+    DRAWER_MENU_ITEM_SPECS,
     PLAN_KEYS,
     get_effective_plans,
     load_subscription_overrides_raw,
@@ -106,6 +107,21 @@ async def _parse_subscription_forms(form: Any) -> dict[str, Any]:
         if f"plan_{pk}_show_in_catalog" in form_keys:
             vals = form.getlist(f"plan_{pk}_show_in_catalog")
             block["show_in_catalog"] = "1" in [str(x) for x in vals]
+        if pk != "free":
+            if f"plan_{pk}_billing_unlimited" in form_keys:
+                uvals = form.getlist(f"plan_{pk}_billing_unlimited")
+                block["billing_period_unlimited"] = "1" in [str(x) for x in uvals]
+            if f"plan_{pk}_billing_unit" in form_keys:
+                unit = (form.get(f"plan_{pk}_billing_unit") or "months").strip().lower()
+                if unit in ("minutes", "days", "months", "years"):
+                    block["billing_period_unit"] = unit
+            if f"plan_{pk}_billing_value" in form_keys:
+                try:
+                    bv = int(str(form.get(f"plan_{pk}_billing_value") or "1").strip())
+                    if bv >= 1:
+                        block["billing_period_value"] = bv
+                except ValueError:
+                    pass
         if pk != "free" and pr is not None and str(pr).strip() != "":
             try:
                 block["price"] = max(0, int(str(pr).strip()))
@@ -181,8 +197,39 @@ async def admin_subscription_plans_page(request: Request):
             "defaults": DEFAULT_PLANS,
             "raw_overrides": raw_over,
             "plan_keys_visible": pkv,
+            "drawer_menu_specs": DRAWER_MENU_ITEM_SPECS,
         },
     )
+
+
+def _parse_drawer_menu_post(form: Any) -> dict[str, bool]:
+    out: dict[str, bool] = {}
+    for item_id, _ in DRAWER_MENU_ITEM_SPECS:
+        vals = form.getlist(f"dm_{item_id}")
+        out[item_id] = "1" in [str(x) for x in vals]
+    return out
+
+
+@router.post("/payment/subscription-plans/drawer/{plan_key}")
+async def admin_subscription_plans_drawer_save(request: Request, plan_key: str):
+    require_permission, _ = _lazy_admin()
+    admin = await require_permission(request, "can_payment")
+    if not admin:
+        return RedirectResponse("/login")
+    pk = (plan_key or "").strip().lower()
+    if pk not in PLAN_KEYS:
+        return RedirectResponse("/admin/payment/subscription-plans", status_code=303)
+    form = await request.form()
+    try:
+        menu = _parse_drawer_menu_post(form)
+        prev_sub = await load_subscription_overrides_raw()
+        block = dict(prev_sub.get(pk) or {})
+        block["drawer_menu"] = menu
+        prev_sub[pk] = block
+        await save_subscription_overrides_raw(prev_sub)
+    except Exception:
+        logger.exception("admin_subscription_plans_drawer_save failed pk=%s", pk)
+    return RedirectResponse(f"/admin/payment/subscription-plans?drawer_saved={quote(pk)}", status_code=303)
 
 
 @router.post("/payment/subscription-plans")
@@ -246,6 +293,7 @@ async def admin_payment_provider_page(request: Request, provider_id: str):
             "yookassa_http_webhook_url": yk_wh if meta["id"] == "yookassa_bot" else "",
             "form_action": form_action,
             "bot_offerings": bot_offerings if meta["id"] == "yookassa_bot" else [],
+            "drawer_menu_specs": DRAWER_MENU_ITEM_SPECS,
         },
     )
 

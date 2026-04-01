@@ -7,6 +7,7 @@ from __future__ import annotations
 import copy
 import json
 import logging
+from datetime import timedelta
 from typing import Any
 
 from db.database import database
@@ -33,6 +34,9 @@ DEFAULT_PLANS: dict[str, dict[str, Any]] = {
     "start": {
         "name": "Старт",
         "price": 990,
+        "billing_period_unlimited": False,
+        "billing_period_unit": "months",
+        "billing_period_value": 1,
         "questions_per_day": -1,
         "recipes_per_day": -1,
         "description": "",
@@ -48,6 +52,9 @@ DEFAULT_PLANS: dict[str, dict[str, Any]] = {
     "pro": {
         "name": "Про",
         "price": 1990,
+        "billing_period_unlimited": False,
+        "billing_period_unit": "months",
+        "billing_period_value": 1,
         "questions_per_day": -1,
         "recipes_per_day": -1,
         "description": "",
@@ -60,6 +67,9 @@ DEFAULT_PLANS: dict[str, dict[str, Any]] = {
     "maxi": {
         "name": "Макси",
         "price": 4999,
+        "billing_period_unlimited": False,
+        "billing_period_unit": "months",
+        "billing_period_value": 1,
         "questions_per_day": -1,
         "recipes_per_day": -1,
         "description": "",
@@ -71,6 +81,61 @@ DEFAULT_PLANS: dict[str, dict[str, Any]] = {
 }
 
 PLAN_KEYS = ("free", "start", "pro", "maxi")
+
+# id → подпись в админке (боковое меню / бургер)
+DRAWER_MENU_ITEM_SPECS: tuple[tuple[str, str], ...] = (
+    ("trial_cta", "Кнопка «Попробовать бесплатно 3 дня»"),
+    ("locked_sub_promo", "Блок «Тарифы и оплата» (free без ленты)"),
+    ("free_ai_limit", "Блок «Бесплатный AI-лимит»"),
+    ("profile", "Мой профиль"),
+    ("feed", "Лента"),
+    ("chats", "Чаты"),
+    ("shop", "Магазин"),
+    ("ai_chat", "AI-чат"),
+    ("knowledge", "База знаний"),
+    ("referral", "Реферальная программа"),
+    ("wellness", "Мои результаты"),
+    ("wallet", "Мои кошельки"),
+    ("link_account", "Присоединить / привязать Telegram"),
+    ("documents", "Документы"),
+    ("subscriptions_page", "Пункт «Подписка»"),
+    ("sub_history", "История подписок"),
+    ("settings", "Настройки"),
+    ("telegram_bot", "Бот в Telegram"),
+    ("logout", "Выйти из кабинета"),
+    ("admin_entry", "Кнопка админки / модерации"),
+    ("subscription_banner", "Нижний баннер тарифа и таймер"),
+)
+
+
+def drawer_menu_effective(plan: dict[str, Any] | None) -> dict[str, bool]:
+    """Полная карта видимости пунктов бургера (по умолчанию всё включено)."""
+    out = {iid: True for iid, _ in DRAWER_MENU_ITEM_SPECS}
+    raw = (plan or {}).get("drawer_menu")
+    if isinstance(raw, dict):
+        for k, v in raw.items():
+            ks = str(k).strip()
+            if ks in out:
+                out[ks] = bool(v)
+    return out
+
+
+def plan_billing_timedelta(plan_meta: dict[str, Any]) -> timedelta:
+    """Длительность одного оплаченного периода (не бессрочно)."""
+    unit = (plan_meta.get("billing_period_unit") or "months").strip().lower()
+    try:
+        val = max(1, int(plan_meta.get("billing_period_value") or 1))
+    except (TypeError, ValueError):
+        val = 1
+    if unit == "minutes":
+        return timedelta(minutes=val)
+    if unit == "days":
+        return timedelta(days=val)
+    if unit == "months":
+        return timedelta(days=30 * val)
+    if unit == "years":
+        return timedelta(days=365 * val)
+    return timedelta(days=30 * val)
 
 
 def _deep_merge_plan(base: dict[str, Any], over: dict[str, Any] | None) -> dict[str, Any]:
@@ -103,6 +168,26 @@ def _deep_merge_plan(base: dict[str, Any], over: dict[str, Any] | None) -> dict[
         elif k in ("questions_per_day", "recipes_per_day") and v is not None:
             try:
                 out[k] = int(v)
+            except (TypeError, ValueError):
+                pass
+        elif k == "drawer_menu" and isinstance(v, dict):
+            dm = dict(out.get("drawer_menu") or {})
+            for kk, vv in v.items():
+                ks = str(kk).strip()
+                if ks:
+                    dm[ks] = bool(vv)
+            out["drawer_menu"] = dm
+        elif k == "billing_period_unlimited":
+            out["billing_period_unlimited"] = bool(v)
+        elif k == "billing_period_unit" and v is not None:
+            u = str(v).strip().lower()
+            if u in ("minutes", "days", "months", "years"):
+                out["billing_period_unit"] = u
+        elif k == "billing_period_value" and v is not None:
+            try:
+                n = int(v)
+                if n >= 1:
+                    out["billing_period_value"] = n
             except (TypeError, ValueError):
                 pass
     return out
@@ -144,6 +229,9 @@ async def get_effective_plans() -> dict[str, dict[str, Any]]:
         base = DEFAULT_PLANS.get(pk) or DEFAULT_PLANS["free"]
         merged = _deep_merge_plan(base, raw.get(pk) if isinstance(raw.get(pk), dict) else None)
         merged.setdefault("show_in_catalog", True)
+        merged.setdefault("billing_period_unlimited", False)
+        merged.setdefault("billing_period_unit", "months")
+        merged.setdefault("billing_period_value", 1)
         out[pk] = merged
     return out
 

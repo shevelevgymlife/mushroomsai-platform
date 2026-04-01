@@ -7,20 +7,25 @@
 
     <h1 class="text-3xl font-light text-text mb-2">Тарифы подписок</h1>
     <p class="text-sm text-muted mb-6 max-w-3xl leading-relaxed">
-      Единые названия, цены, описания и пункты для всех способов оплаты (CloudPayments, ЮKassa и т.д.). Изменения сразу видны на главной странице сайта, на <a href="/subscriptions" class="text-gold hover:underline">/subscriptions</a> и в боковом меню у пользователей.
+      Единые названия, цены, сроки, описания и пункты для всех способов оплаты (CloudPayments, ЮKassa и т.д.). Изменения сразу видны на главной, на <a href="/subscriptions" class="text-gold hover:underline">/subscriptions</a> и в боковом меню.
     </p>
 
     {% if request.query_params.get('saved') %}
     <div class="mb-4 p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-200 text-sm max-w-3xl">Настройки тарифов сохранены.</div>
     {% endif %}
+    {% if request.query_params.get('drawer_saved') %}
+    <div class="mb-4 p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-200 text-sm max-w-3xl">Пункты бургера для тарифа «{{ request.query_params.get('drawer_saved') }}» сохранены.</div>
+    {% endif %}
 
     <form method="post" action="/admin/payment/subscription-plans">
       {% include "dashboard/_admin_subscription_plans_block.html" %}
       <div class="flex flex-wrap gap-3 mt-6">
-        <button type="submit" class="px-6 py-3 rounded-xl bg-gold text-bg font-semibold text-sm">Сохранить</button>
+        <button type="submit" class="px-6 py-3 rounded-xl bg-gold text-bg font-semibold text-sm">Сохранить тарифы</button>
         <a href="/admin/payment" class="px-6 py-3 rounded-xl border border-border text-text text-sm">Назад к оплате</a>
       </div>
     </form>
+
+    {% include "dashboard/_admin_subscription_plans_drawer_forms.html" %}
   </div>
 </div>
 {% endblock %}

@@ -7,7 +7,7 @@ from db.models import users, sessions
 from auth.blocked_identities import login_denied_for_user_row_sync
 from auth.owner import sync_owner_admin_role
 from auth.ui_prefs import attach_screen_rim_prefs
-from services.payment_plans_catalog import get_effective_plans, plan_drawer_lines
+from services.payment_plans_catalog import drawer_menu_effective, get_effective_plans, plan_drawer_lines
 from services.subscription_service import check_subscription, paid_subscription_for_referral_program
 
 ALGORITHM = "HS256"
@@ -87,6 +87,7 @@ async def attach_subscription_effective(u: dict) -> None:
         u["drawer_sub_until_iso"] = None
         u["drawer_sub_kind"] = "free"
         u["drawer_plan_bullets"] = plan_drawer_lines(plans.get("free"))
+        u["plan_drawer_menu"] = drawer_menu_effective(plans.get("free"))
         u["referral_program_unlocked"] = False
         return
     now = datetime.utcnow()
@@ -96,8 +97,11 @@ async def attach_subscription_effective(u: dict) -> None:
     sp = (row.get("subscription_plan") or "free").lower()
     admin_granted = bool(row.get("subscription_admin_granted"))
     sub_end = row.get("subscription_end")
+    paid_life = bool(row.get("subscription_paid_lifetime"))
     paid_active = sp in ("start", "pro", "maxi") and (
-        (sub_end and sub_end > now) or (admin_granted and sub_end is None)
+        paid_life
+        or (sub_end and sub_end > now)
+        or (admin_granted and sub_end is None)
     )
     u["can_claim_start_trial"] = role not in ("admin", "moderator") and not claimed and not paid_active
 
@@ -131,12 +135,17 @@ async def attach_subscription_effective(u: dict) -> None:
         kind = "paid_admin"
     elif paid_active:
         head = f"Подписка «{_pname(sp)}»"
-        sub = "Осталось до окончания оплаченного периода"
-        se = row.get("subscription_end")
-        if se:
-            se_utc = se.replace(tzinfo=timezone.utc) if se.tzinfo is None else se.astimezone(timezone.utc)
-            until_iso = se_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
-        show_cd = bool(until_iso)
+        if paid_life and not admin_granted:
+            sub = "Без ограничения по времени"
+            show_cd = False
+            until_iso = None
+        else:
+            sub = "Осталось до окончания оплаченного периода"
+            se = row.get("subscription_end")
+            if se:
+                se_utc = se.replace(tzinfo=timezone.utc) if se.tzinfo is None else se.astimezone(timezone.utc)
+                until_iso = se_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
+            show_cd = bool(until_iso)
         kind = "paid_self"
     elif trial_active:
         head = f"Пробный «{_pname('start')}»"
@@ -156,12 +165,16 @@ async def attach_subscription_effective(u: dict) -> None:
 
     if role in ("admin", "moderator"):
         u["drawer_plan_bullets"] = []
+        u["plan_drawer_menu"] = None
     elif trial_active:
         u["drawer_plan_bullets"] = plan_drawer_lines(plans.get("start") or plans["free"])
+        u["plan_drawer_menu"] = drawer_menu_effective(plans.get("start") or plans["free"])
     elif paid_active:
         u["drawer_plan_bullets"] = plan_drawer_lines(plans.get(sp) or plans["free"])
+        u["plan_drawer_menu"] = drawer_menu_effective(plans.get(sp) or plans["free"])
     else:
         u["drawer_plan_bullets"] = plan_drawer_lines(plans.get("free"))
+        u["plan_drawer_menu"] = drawer_menu_effective(plans.get("free"))
 
     try:
         u["referral_program_unlocked"] = await paid_subscription_for_referral_program(int(uid))

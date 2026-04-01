@@ -852,6 +852,7 @@ async def change_subscription(request: Request, user_id: int, plan: str = Form(.
             subscription_plan=plan,
             subscription_end=end_date,
             subscription_admin_granted=granted,
+            subscription_paid_lifetime=False,
         )
     )
     now = datetime.utcnow()
@@ -913,6 +914,7 @@ async def patch_user_plan(request: Request, user_id: int):
             subscription_plan=plan,
             subscription_end=end_date,
             subscription_admin_granted=granted,
+            subscription_paid_lifetime=False,
         )
     )
     now = datetime.utcnow()

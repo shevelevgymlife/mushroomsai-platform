@@ -444,6 +444,7 @@ async def subscriptions_connect(request: Request, plan: str = Form(...)):
                 subscription_plan="free",
                 subscription_end=None,
                 subscription_admin_granted=False,
+                subscription_paid_lifetime=False,
                 needs_tariff_choice=False,
             )
         )
@@ -595,6 +596,7 @@ async def onboarding_tariff_submit(request: Request, choice: str = Form(...)):
                 subscription_end=None,
                 needs_tariff_choice=False,
                 subscription_admin_granted=False,
+                subscription_paid_lifetime=False,
             )
         )
         await record_subscription_event(int(uid), "free", "free", 0.0, _now, None, None)

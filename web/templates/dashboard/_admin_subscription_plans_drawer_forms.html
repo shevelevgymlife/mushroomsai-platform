@@ -1,0 +1,27 @@
+{# plans, drawer_menu_specs — отдельная форма на тариф (вне основной form). #}
+<div class="mt-10 space-y-8 max-w-4xl">
+  <h2 class="text-xl font-semibold text-text">Пункты бокового меню (бургер) по тарифам</h2>
+  <p class="text-xs text-muted leading-relaxed max-w-3xl">
+    Для каждого тарифа отметьте, что показывать пользователю, у которого сейчас этот план. Настройки блоков кабинета (лента, магазин и т.д.) по-прежнему действуют там, где указано в шаблоне — пункт появится только если разрешён и там, и здесь.
+  </p>
+  {% for pk in ['free', 'start', 'pro', 'maxi'] %}
+  {% set p = plans[pk] %}
+  <div class="p-5 rounded-2xl border border-border bg-surface/80 space-y-4">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <p class="text-sm font-bold text-gold uppercase tracking-wide">Меню бургера — {{ pk }}</p>
+    </div>
+    <form method="post" action="/admin/payment/subscription-plans/drawer/{{ pk }}" class="space-y-2">
+      {% for item_id, label in drawer_menu_specs %}
+      {% set vis = p.get('drawer_menu', {}).get(item_id) %}
+      {% set chk = (vis is not sameas false) %}
+      <label class="flex items-start gap-2 text-xs text-text cursor-pointer py-1 border-b border-border/40 last:border-0">
+        <input type="hidden" name="dm_{{ item_id }}" value="0" />
+        <input type="checkbox" name="dm_{{ item_id }}" value="1" class="rounded border-border mt-0.5 shrink-0" {% if chk %}checked{% endif %} />
+        <span><span class="font-mono text-[10px] text-muted">{{ item_id }}</span> — {{ label }}</span>
+      </label>
+      {% endfor %}
+      <button type="submit" class="mt-4 px-5 py-2.5 rounded-xl bg-gold text-bg text-sm font-semibold">Сохранить меню для «{{ pk }}»</button>
+    </form>
+  </div>
+  {% endfor %}
+</div>

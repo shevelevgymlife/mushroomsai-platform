@@ -8,7 +8,12 @@ from config import settings
 logger = logging.getLogger(__name__)
 from db.database import database
 from db.models import users, subscriptions, subscription_events, direct_messages
-from services.payment_plans_catalog import DEFAULT_PLANS, get_effective_plans, plan_display_name
+from services.payment_plans_catalog import (
+    DEFAULT_PLANS,
+    get_effective_plans,
+    plan_billing_timedelta,
+    plan_display_name,
+)
 
 # Статические значения по умолчанию (для обратной совместимости импортов).
 PLANS = DEFAULT_PLANS
@@ -63,7 +68,9 @@ async def record_subscription_event(
         pass
 
 
-async def _notify_paid_subscription_activated(user_id: int, plan_key: str, end_date: datetime) -> None:
+async def _notify_paid_subscription_activated(
+    user_id: int, plan_key: str, end_date: datetime | None
+) -> None:
     """ЛС (чат) + Telegram + колокольчик: оформлена или продлена платная подписка."""
     from services.system_support_delivery import deliver_system_support_notification
     from services.in_app_notifications import create_notification
@@ -73,12 +80,20 @@ async def _notify_paid_subscription_activated(user_id: int, plan_key: str, end_d
     pname = await plan_display_name(plan_key)
     site = (settings.SITE_URL or "").rstrip("/")
     sub_url = f"{site}/subscriptions" if site else "/subscriptions"
-    d = end_date.strftime("%d.%m.%Y") if end_date else "—"
-    plain = (
-        f"Ваша подписка оформлена: тариф «{pname}».\n"
-        f"Действует до {d} (дата окончания, UTC).\n\n"
-        f"Управление и продление: {sub_url}"
-    )
+    if end_date is None:
+        d = "бессрочно"
+        plain = (
+            f"Ваша подписка оформлена: тариф «{pname}».\n"
+            f"Срок: без ограничения по времени.\n\n"
+            f"Управление: {sub_url}"
+        )
+    else:
+        d = end_date.strftime("%d.%m.%Y")
+        plain = (
+            f"Ваша подписка оформлена: тариф «{pname}».\n"
+            f"Действует до {d} (дата окончания, UTC).\n\n"
+            f"Управление и продление: {sub_url}"
+        )
     if (plan_key or "").lower() == "start":
         plain += (
             "\n\nПри тарифе «Старт» в Telegram-боте доступна партнёрская программа "
@@ -87,7 +102,7 @@ async def _notify_paid_subscription_activated(user_id: int, plan_key: str, end_d
     tg_html = (
         f"✅ <b>Подписка активирована</b>\n"
         f"Тариф: <b>{html.escape(pname)}</b>\n"
-        f"До: <b>{html.escape(d)}</b> (UTC)\n\n"
+        f"{'Срок: <b>без ограничения</b>' if end_date is None else f'До: <b>{html.escape(d)}</b> (UTC)'}\n\n"
         f'<a href="{html.escape(sub_url, quote=True)}">Раздел подписок</a>'
     )
     if (plan_key or "").lower() == "start":
@@ -108,7 +123,7 @@ async def _notify_paid_subscription_activated(user_id: int, plan_key: str, end_d
             actor_id=None,
             ntype="subscription_update",
             title="Подписка активирована",
-            body=f"Тариф «{pname}» до {d} (UTC).",
+            body=(f"Тариф «{pname}» без ограничения срока." if end_date is None else f"Тариф «{pname}» до {d} (UTC)."),
             link_url="/subscriptions",
             source_kind="subscription_activate",
             source_id=int(time.time() * 1000) % (2**31 - 1),
@@ -208,6 +223,7 @@ async def activate_subscription(
         return False
 
     eff = await get_effective_plans()
+    meta = eff.get(plan) or eff["free"]
     now = datetime.utcnow()
     use_duration = False
     delta_minutes: int | None = None
@@ -219,26 +235,44 @@ async def activate_subscription(
         if delta_minutes is not None and delta_minutes > 0:
             use_duration = True
 
+    paid_lifetime = False
+    period_delta: timedelta | None = None
+    end_date: datetime | None = None
+    base_price = float((meta or {}).get("price") or 0)
+
     if use_duration and delta_minutes is not None:
-        delta = timedelta(minutes=delta_minutes)
-        end_date = now + delta
-        base_price = float(eff[plan]["price"])
+        end_date = now + timedelta(minutes=delta_minutes)
+        price = float(paid_price_rub) if paid_price_rub is not None else base_price
+    elif plan in ("start", "pro", "maxi") and bool(meta.get("billing_period_unlimited")):
+        end_date = None
+        paid_lifetime = True
+        price = float(paid_price_rub) if paid_price_rub is not None else base_price
+    elif plan in ("start", "pro", "maxi"):
+        period_delta = plan_billing_timedelta(meta)
+        end_date = now + period_delta
         price = float(paid_price_rub) if paid_price_rub is not None else base_price
     else:
-        end_date = now + timedelta(days=30 * months)
-        price = float(eff[plan]["price"]) * months
+        m = max(1, int(months or 1))
+        period_delta = timedelta(days=30 * m)
+        end_date = now + period_delta
+        price = base_price * m
 
     row = await database.fetch_one(users.select().where(users.c.id == int(user_id)))
     if row:
         cur_plan = (row.get("subscription_plan") or "free").lower()
         cur_end = row.get("subscription_end")
+        cur_life = bool(row.get("subscription_paid_lifetime"))
         if use_duration and delta_minutes is not None:
             if cur_plan == plan and cur_end and cur_end > now:
                 end_date = cur_end + timedelta(minutes=delta_minutes)
-        else:
-            # Если пользователь продлевает тот же активный тариф, добавляем месяц к текущему остатку.
+            paid_lifetime = False
+        elif paid_lifetime:
+            end_date = None
+        elif period_delta is not None:
             if cur_plan == plan and cur_end and cur_end > now:
-                end_date = cur_end + timedelta(days=30 * months)
+                end_date = cur_end + period_delta
+            elif cur_plan == plan and cur_life:
+                end_date = now + period_delta
 
     await database.execute(
         subscriptions.insert().values(
@@ -256,6 +290,7 @@ async def activate_subscription(
             subscription_plan=plan,
             subscription_end=end_date,
             subscription_admin_granted=False,
+            subscription_paid_lifetime=paid_lifetime,
             wellness_renewal_nudge_for_end=None,
         )
     )
@@ -524,8 +559,10 @@ async def check_subscription(user_id: int) -> str:
     stored_plan = (row.get("subscription_plan") or "free").lower()
     admin_granted = bool(row.get("subscription_admin_granted"))
 
-    # Активная оплата / назначение админом
+    # Активная оплата / назначение админом / бессрочная оплата из каталога
     if stored_plan in ("start", "pro", "maxi"):
+        if bool(row.get("subscription_paid_lifetime")):
+            return stored_plan
         if sub_end and sub_end > now:
             return stored_plan
         if admin_granted and sub_end is None:
@@ -533,7 +570,7 @@ async def check_subscription(user_id: int) -> str:
 
     # Просроченная оплата → free в БД (бессрочная выдача админом: subscription_end IS NULL)
     if stored_plan != "free" and (not sub_end or sub_end <= now):
-        if not (admin_granted and sub_end is None):
+        if not (admin_granted and sub_end is None) and not bool(row.get("subscription_paid_lifetime")):
             prev_plan = stored_plan
             await database.execute(
                 users.update()
@@ -542,6 +579,7 @@ async def check_subscription(user_id: int) -> str:
                     subscription_plan="free",
                     subscription_end=None,
                     subscription_admin_granted=False,
+                    subscription_paid_lifetime=False,
                 )
             )
             row = await database.fetch_one(users.select().where(users.c.id == user_id)) or row
@@ -595,6 +633,8 @@ async def paid_subscription_for_referral_program(user_id: int) -> bool:
     admin_granted = bool(row.get("subscription_admin_granted"))
     if sp not in ("start", "pro", "maxi"):
         return False
+    if bool(row.get("subscription_paid_lifetime")):
+        return True
     if admin_granted and sub_end is None:
         return True
     if sub_end and sub_end > now:

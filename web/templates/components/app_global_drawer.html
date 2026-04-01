@@ -4,6 +4,11 @@
 {% set vbk = visible_block_keys if visible_block_keys is defined else ['ai_chat','messages','community','shop','profile_photo','posts','tariffs','referral','knowledge_base','pro_telegram','pro_pin_info','seller_marketplace'] %}
 {% set _eff_plan = (user.effective_subscription_plan|default(user.subscription_plan) or 'free') %}
 {% set is_locked_free = (_eff_plan == 'free') and ((user.role or 'user') not in ['admin','moderator']) %}
+{% set _staff = (user.role or 'user') in ['admin','moderator'] %}
+{% set _pdm = user.get('plan_drawer_menu') %}
+{% macro drawer_on(key) -%}
+{%- if _staff %}1{% elif _pdm is none %}1{% elif _pdm.get(key) is sameas false %}0{% else %}1{% endif -%}
+{%- endmacro %}
 <div class="ig-drawer-backdrop" id="appGlobalDrawerBackdrop" onclick="closeAppGlobalDrawer()"></div>
 <aside class="ig-drawer" id="appGlobalDrawer" aria-label="Меню">
   <div class="ig-drawer-head">
@@ -12,12 +17,12 @@
       <div class="em">{{ user.email or ('Telegram: ' + (user.tg_id|string) if user.tg_id else '') }}</div>
     </div>
   </div>
-  {% if user.get('can_claim_start_trial') and not (suppress_start_trial_prompt|default(false)) %}
+  {% if user.get('can_claim_start_trial') and not (suppress_start_trial_prompt|default(false)) and drawer_on('trial_cta') == '1' %}
   <button type="button" class="ig-drawer-trial-cta" id="drawerTrialCta" onclick="confirmStartTrial()" style="display:block;width:calc(100% - 20px);margin:10px 10px 8px;padding:12px 14px;border:none;border-radius:14px;cursor:pointer;text-align:center;font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#0a0c12;background:linear-gradient(120deg,#3dd4e0 0%,#c8a84b 50%,#ff66d0 100%);box-shadow:0 6px 24px rgba(61,212,224,.25),inset 0 1px 0 rgba(255,255,255,.35)">
     Попробовать бесплатно 3 дня
   </button>
   {% endif %}
-  {% if is_locked_free %}
+  {% if is_locked_free and drawer_on('locked_sub_promo') == '1' %}
   <div class="mx-2 mb-2 mt-1 p-3 rounded-2xl border border-gold/30 bg-gold/[0.07]">
     <div class="text-[11px] font-extrabold uppercase tracking-wider text-gold mb-2">Подписка</div>
     <a href="/subscriptions" class="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-gold/15 text-text text-sm font-semibold no-underline border border-gold/25" onclick="closeAppGlobalDrawer()" style="text-decoration:none">
@@ -28,6 +33,7 @@
     </p>
   </div>
   {% endif %}
+  {% if drawer_on('free_ai_limit') == '1' %}
   <div id="drawerFreeAiLimit" style="display:none;padding:10px 12px;margin:10px 10px 6px;border:1px solid rgba(61,212,224,.22);border-radius:14px;background:rgba(61,212,224,.07)">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
       <div style="font-size:12px;font-weight:700;color:#bfeff3">Бесплатный AI-лимит</div>
@@ -47,41 +53,53 @@
       <div id="drawerAiHistory" style="margin-top:7px;display:flex;flex-direction:column;gap:5px"></div>
     </details>
   </div>
+  {% endif %}
   <div class="ig-drawer-scroll">
     {% if not is_locked_free %}
+    {% if drawer_on('profile') == '1' %}
     <a href="/community/profile/{{ eff_uid|int }}" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('grid') }}</span><span class="lbl">Мой профиль</span></a>
+    {% endif %}
+    {% if drawer_on('feed') == '1' %}
     <a href="/community" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('feed') }}</span><span class="lbl">Лента</span></a>
+    {% endif %}
+    {% if drawer_on('chats') == '1' %}
     <a href="/chats" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none;position:relative;padding-right:36px"><span class="e">💬</span><span class="lbl">Чаты</span><span id="drawer-chats-badge" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%)">0</span></a>
     {% endif %}
+    {% endif %}
     {% if not is_locked_free %}
-    {% if 'shop' in vbk %}
+    {% if 'shop' in vbk and drawer_on('shop') == '1' %}
     <a href="/shop" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('shop') }}</span><span class="lbl">Магазин</span></a>
     {% endif %}
     {% endif %}
 
-    {% if 'ai_chat' in vbk %}
+    {% if 'ai_chat' in vbk and drawer_on('ai_chat') == '1' %}
     <a href="/chat" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('cpu') }}</span><span class="lbl">AI-чат</span></a>
     {% endif %}
-    {% if 'knowledge_base' in vbk %}
+    {% if 'knowledge_base' in vbk and drawer_on('knowledge') == '1' %}
     <a href="https://t.me/ShevelevVlog" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('book') }}</span><span class="lbl">База знаний</span></a>
     {% endif %}
     {% if 'referral' in vbk %}
+    {% if drawer_on('referral') == '1' %}
     <a href="/referral" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('gift') }}</span><span class="lbl">Реферальная программа</span></a>
+    {% endif %}
     {% set _draw_w = (user.get('effective_subscription_plan') or user.subscription_plan or 'free')|lower %}
-    {% if _draw_w != 'free' %}
+    {% if _draw_w != 'free' and drawer_on('wellness') == '1' %}
     <a href="/account/wellness-results" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">📊</span><span class="lbl">Мои результаты</span></a>
     {% endif %}
     {% endif %}
-    {% if not is_locked_free %}
+    {% if not is_locked_free and drawer_on('wallet') == '1' %}
     <div class="ig-drawer-sep"></div>
     <a href="/account/wallet" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">₿</span><span class="lbl">Мои кошельки</span></a>
     {% endif %}
 
+    {% if drawer_on('link_account') == '1' %}
     {% if not (user.tg_id or user.linked_tg_id) %}
     <a href="/account/link" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none;color:#38bdf8;border:1px solid rgba(56,189,248,.2);border-radius:12px;margin:0 8px"><span class="e">✈️</span><span class="lbl">Присоединить Telegram</span></a>
     {% else %}
     <a href="/account/link" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('link') }}</span><span class="lbl">Привязать аккаунт</span></a>
     {% endif %}
+    {% endif %}
+    {% if drawer_on('documents') == '1' %}
     <details class="ig-drawer-details" style="border-bottom:1px solid rgba(255,255,255,.06)">
       <summary class="ig-drawer-item ig-drawer-summary" style="list-style:none;cursor:pointer"><span class="e">📄</span><span class="lbl">Документы</span><span class="ig-drawer-chev" style="margin-left:auto;opacity:.5;font-size:10px">▼</span></summary>
       <div style="padding:4px 12px 14px 18px;font-size:13px">
@@ -91,15 +109,29 @@
         <p style="font-size:11px;color:#666;margin-top:10px;line-height:1.45">Актуальная редакция при входе. Дата: {% if user.get('legal_accepted_at') %}{{ user.legal_accepted_at.strftime('%d.%m.%Y %H:%M') if user.legal_accepted_at else '—' }}{% else %}—{% endif %} · версия {{ user.get('legal_docs_version') or '—' }}</p>
       </div>
     </details>
+    {% endif %}
+    {% if drawer_on('subscriptions_page') == '1' %}
     <a href="/subscriptions" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('spark') }}</span><span class="lbl">Подписка</span></a>
+    {% endif %}
+    {% if drawer_on('sub_history') == '1' %}
     <a href="/subscriptions/history" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('history') }}</span><span class="lbl">История подписок</span></a>
+    {% endif %}
+    {% if drawer_on('settings') == '1' %}
     <a href="/account/settings" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('settings') }}</span><span class="lbl">Настройки</span></a>
+    {% endif %}
+    {% if drawer_on('telegram_bot') == '1' or drawer_on('logout') == '1' %}
     <div class="ig-drawer-sep"></div>
+    {% endif %}
+    {% if drawer_on('telegram_bot') == '1' %}
     <a href="https://t.me/neuro_fungi_bot" class="ig-drawer-item" onclick="event.preventDefault();openMainTelegramBot();" style="text-decoration:none" role="button"><span class="e">{{ ico('send') }}</span><span class="lbl">Бот в Telegram</span></a>
+    {% endif %}
+    {% if drawer_on('logout') == '1' %}
     <a href="/logout" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none;color:#f87171;background:rgba(248,113,113,.08)"><span class="e">⎋</span><span class="lbl">Выйти из кабинета</span></a>
-    {% if user.role in ['admin', 'moderator'] %}
+    {% endif %}
+    {% if user.role in ['admin', 'moderator'] and drawer_on('admin_entry') == '1' %}
     <button type="button" class="ig-drawer-item" onclick="closeAppGlobalDrawer();window.location='/admin'" style="color:#f87171"><span class="e">{{ ico('shield') }}</span><span class="lbl">{{ 'Администратор' if user.role == 'admin' else 'Модератор' }}</span></button>
     {% endif %}
+    {% if drawer_on('subscription_banner') == '1' %}
     {% set _sub_kind = user.get('drawer_sub_kind') or 'free' %}
     {% set _sub_show_cd = user.get('drawer_sub_show_countdown') %}
     {% set _sub_until = user.get('drawer_sub_until_iso') or '' %}
@@ -124,6 +156,7 @@
       <a href="/subscriptions" class="ig-drawer-trial-banner__cta" onclick="closeAppGlobalDrawer()">{% if _sub_kind in ('paid_self', 'paid_admin') %}Управление подпиской{% else %}Перейти к подписке{% endif %}</a>
       {% endif %}
     </div>
+    {% endif %}
   </div>
 </aside>
 {% if user.get('can_claim_start_trial') and not (suppress_start_trial_prompt|default(false)) %}
