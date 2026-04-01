@@ -61,7 +61,7 @@ async def _is_unlimited_ai(user_id: int | None) -> bool:
     from services.subscription_service import check_subscription
 
     plan = await check_subscription(user_id)
-    return plan in ("start", "pro", "maxi")
+    return plan != "free"
 
 
 async def _count_today_messages(user_id: int) -> int:

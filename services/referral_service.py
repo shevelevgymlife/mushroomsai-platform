@@ -8,14 +8,16 @@ from typing import Any, Optional
 import sqlalchemy as sa
 from db.database import database
 from db.models import users, referrals, referral_withdrawals, referral_promo_links, subscriptions
-from services.payment_plans_catalog import DEFAULT_PLANS, get_effective_plans
+from services.payment_plans_catalog import DEFAULT_PLANS, get_effective_plans, resolve_promo_plan_key
 
 logger = logging.getLogger(__name__)
 
 
-def referral_bonus_per_invite_rub() -> int:
-    """10% от месячной цены тарифа Старт (баллы на продление)."""
-    return max(1, int(DEFAULT_PLANS["start"]["price"] * 0.1))
+async def referral_bonus_per_invite_rub() -> int:
+    """10% от месячной цены тарифа «Старт» в каталоге (или дефолт из кода)."""
+    eff = await get_effective_plans()
+    base = float((eff.get("start") or DEFAULT_PLANS.get("start") or {}).get("price") or 0)
+    return max(1, int(base * 0.1))
 
 
 async def _telegram_chat_id_for_user(user_id: int) -> Optional[int]:
@@ -200,7 +202,7 @@ async def process_referral(new_user_id: int, referral_code: str) -> bool:
     if dup:
         return False
 
-    bonus = float(referral_bonus_per_invite_rub())
+    bonus = float(await referral_bonus_per_invite_rub())
 
     await database.execute(
         users.update()
@@ -241,7 +243,7 @@ async def credit_referrer_bonus_for_paid_subscription(referred_user_id: int) -> 
     if not ref_row:
         return 0.0
 
-    bonus = float(ref_row.get("referral_bonus_amount") or referral_bonus_per_invite_rub())
+    bonus = float(ref_row.get("referral_bonus_amount") or await referral_bonus_per_invite_rub())
     if bonus <= 0:
         return 0.0
 
@@ -443,14 +445,14 @@ async def get_referral_stats(user_id: int) -> dict:
     }
 
 
-def _bonus_from_row(r: dict) -> float:
+def _bonus_from_row(r: dict, default_bonus: float) -> float:
     v = r.get("referral_bonus_amount")
     if v is not None:
         try:
             return float(v)
         except (TypeError, ValueError):
             pass
-    return float(referral_bonus_per_invite_rub())
+    return float(default_bonus)
 
 
 async def get_referrer_invites_detailed(referrer_id: int) -> list[dict[str, Any]]:
@@ -461,6 +463,7 @@ async def get_referrer_invites_detailed(referrer_id: int) -> list[dict[str, Any]
         .order_by(referrals.c.created_at.desc())
     )
     out: list[dict[str, Any]] = []
+    default_bonus = float(await referral_bonus_per_invite_rub())
     for r in rows:
         rid = int(r["referred_id"])
         u = await database.fetch_one(users.select().where(users.c.id == rid))
@@ -483,7 +486,7 @@ async def get_referrer_invites_detailed(referrer_id: int) -> list[dict[str, Any]
                 "name": ud.get("name") or f"Участник #{rid}",
                 "avatar": ud.get("avatar"),
                 "created_at": r.get("created_at"),
-                "bonus_rub": _bonus_from_row(dict(r)),
+                "bonus_rub": _bonus_from_row(dict(r), default_bonus),
                 "bonus_credited": bool(r.get("bonus_applied")),
                 "tg_id": ud.get("tg_id") or ud.get("linked_tg_id"),
                 "google_id": ud.get("google_id") or ud.get("linked_google_id"),
@@ -511,7 +514,7 @@ async def _format_withdrawal_text(
     name = u.get("name") or ""
     email = u.get("email") or ""
     ref_code = (u.get("referral_code") or "").strip()
-    default_bonus = float(referral_bonus_per_invite_rub())
+    default_bonus = float(await referral_bonus_per_invite_rub())
     lines = [
         "💸 <b>Запрос вывода реферального баланса</b>",
         f"ID: <code>{uid}</code>",
@@ -652,9 +655,7 @@ async def apply_promo_token_from_cookie(request, response, user_id: int) -> None
     if max_a is not None and cnt >= int(max_a):
         response.delete_cookie("promo_token", path="/")
         return
-    plan = (r.get("plan_key") or "start").lower()
-    if plan not in DEFAULT_PLANS:
-        plan = "start"
+    plan = await resolve_promo_plan_key(r.get("plan_key"))
     days = max(1, int(r.get("period_days") or 30))
     end = datetime.utcnow() + timedelta(days=days)
     eff = await get_effective_plans()
@@ -698,9 +699,7 @@ async def create_referral_promo_link(
     created_by: int | None,
 ) -> dict | None:
     """Создать промо-ссылку (токен для cookie promo_token)."""
-    pk = (plan_key or "start").lower()
-    if pk not in DEFAULT_PLANS or pk == "free":
-        pk = "start"
+    pk = await resolve_promo_plan_key(plan_key)
     days = max(1, int(period_days or 30))
     token = secrets.token_urlsafe(48)[:64]
     await database.execute(

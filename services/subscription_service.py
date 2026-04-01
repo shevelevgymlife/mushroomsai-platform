@@ -31,7 +31,7 @@ async def format_admin_subscription_assigned_message(
             "Ваш тариф изменён на «Бесплатный». Расширенные функции недоступны до оформления подписки."
         )
     plans = await get_effective_plans()
-    meta = plans.get(pk) or plans["start"]
+    meta = plans.get(pk) or plans.get("free") or next(iter(plans.values()))
     pname = meta["name"]
     if unlimited:
         return f"Вам назначен тариф «{pname}» без срока окончания (бессрочно)."
@@ -94,10 +94,10 @@ async def _notify_paid_subscription_activated(
             f"Действует до {d} (дата окончания, UTC).\n\n"
             f"Управление и продление: {sub_url}"
         )
-    if (plan_key or "").lower() == "start":
+    if (plan_key or "").lower() != "free":
         plain += (
-            "\n\nПри тарифе «Старт» в Telegram-боте доступна партнёрская программа "
-            "(кнопка «Стать партнёром»)."
+            "\n\nПартнёрская программа поставщиков: в Telegram-боте — «Стать партнёром» "
+            "(на платных тарифах)."
         )
     tg_html = (
         f"✅ <b>Подписка активирована</b>\n"
@@ -105,10 +105,8 @@ async def _notify_paid_subscription_activated(
         f"{'Срок: <b>без ограничения</b>' if end_date is None else f'До: <b>{html.escape(d)}</b> (UTC)'}\n\n"
         f'<a href="{html.escape(sub_url, quote=True)}">Раздел подписок</a>'
     )
-    if (plan_key or "").lower() == "start":
-        tg_html += (
-            "\n\n<i>Партнёрская программа: в боте — «Стать партнёром».</i>"
-        )
+    if (plan_key or "").lower() != "free":
+        tg_html += "\n\n<i>Партнёрская программа: в боте — «Стать партнёром».</i>"
     try:
         await deliver_system_support_notification(
             recipient_user_id=notify_uid,
@@ -219,10 +217,9 @@ async def activate_subscription(
     credit_referrer_bonus: bool = True,
     skip_user_notify: bool = False,
 ):
-    if plan not in PLANS:
-        return False
-
     eff = await get_effective_plans()
+    if plan not in eff:
+        return False
     meta = eff.get(plan) or eff["free"]
     now = datetime.utcnow()
     use_duration = False
@@ -243,11 +240,11 @@ async def activate_subscription(
     if use_duration and delta_minutes is not None:
         end_date = now + timedelta(minutes=delta_minutes)
         price = float(paid_price_rub) if paid_price_rub is not None else base_price
-    elif plan in ("start", "pro", "maxi") and bool(meta.get("billing_period_unlimited")):
+    elif plan != "free" and bool(meta.get("billing_period_unlimited")):
         end_date = None
         paid_lifetime = True
         price = float(paid_price_rub) if paid_price_rub is not None else base_price
-    elif plan in ("start", "pro", "maxi"):
+    elif plan != "free":
         period_delta = plan_billing_timedelta(meta)
         end_date = now + period_delta
         price = float(paid_price_rub) if paid_price_rub is not None else base_price
@@ -305,15 +302,15 @@ async def activate_subscription(
             None,
         )
     bonus_rub = 0.0
-    if credit_referrer_bonus and plan in ("start", "pro", "maxi"):
+    if credit_referrer_bonus and plan != "free":
         from services.referral_service import credit_referrer_bonus_for_paid_subscription
 
         bonus_rub = await credit_referrer_bonus_for_paid_subscription(int(user_id))
-    if plan in ("start", "pro", "maxi"):
+    if plan != "free":
         try:
             from services.referral_service import notify_referrer_about_referred_subscription
 
-            pname = (eff.get(plan) or eff["start"])["name"]
+            pname = str((eff.get(plan) or {}).get("name") or plan)
             await notify_referrer_about_referred_subscription(
                 int(user_id),
                 plan_label=f"подписку «{pname}»",
@@ -337,7 +334,11 @@ async def activate_subscription(
 
 async def gift_subscription(giver_id: int, recipient_id: int, plan: str) -> tuple[bool, str]:
     """Подарок тарифа на 1 месяц получателю (без оплаты; позже привяжете к оплате)."""
-    if plan not in ("start", "pro", "maxi"):
+    eff = await get_effective_plans()
+    pk = (plan or "").strip().lower()
+    if pk not in eff or pk == "free":
+        return False, "invalid_plan"
+    if int((eff[pk].get("price") or 0)) <= 0:
         return False, "invalid_plan"
     if int(giver_id) == int(recipient_id):
         return False, "self"
@@ -346,7 +347,7 @@ async def gift_subscription(giver_id: int, recipient_id: int, plan: str) -> tupl
         return False, "recipient_not_found"
     ok = await activate_subscription(
         int(recipient_id),
-        plan,
+        pk,
         1,
         skip_event_log=True,
         credit_referrer_bonus=False,
@@ -358,14 +359,14 @@ async def gift_subscription(giver_id: int, recipient_id: int, plan: str) -> tupl
     refreshed = await database.fetch_one(users.select().where(users.c.id == int(recipient_id)))
     end_date = refreshed.get("subscription_end") if refreshed else None
     eff = await get_effective_plans()
-    p = float(eff[plan]["price"])
+    p = float(eff[pk]["price"])
     await record_subscription_event(
-        int(recipient_id), "gift_in", plan, p, now, end_date, int(giver_id)
+        int(recipient_id), "gift_in", pk, p, now, end_date, int(giver_id)
     )
     await record_subscription_event(
-        int(giver_id), "gift_out", plan, p, now, end_date, int(recipient_id)
+        int(giver_id), "gift_out", pk, p, now, end_date, int(recipient_id)
     )
-    await _notify_subscription_gift_recipient(int(recipient_id), int(giver_id), plan)
+    await _notify_subscription_gift_recipient(int(recipient_id), int(giver_id), pk)
     return True, "ok"
 
 
@@ -509,7 +510,7 @@ async def claim_start_trial(user_id: int) -> dict:
     now = datetime.utcnow()
     if row.get("subscription_end") and row["subscription_end"] > now:
         p = (row.get("subscription_plan") or "free").lower()
-        if p in ("start", "pro", "maxi"):
+        if p != "free":
             return {"ok": False, "error": "has_paid"}
     until = now + timedelta(days=START_TRIAL_DAYS)
     await database.execute(
@@ -560,7 +561,7 @@ async def check_subscription(user_id: int) -> str:
     admin_granted = bool(row.get("subscription_admin_granted"))
 
     # Активная оплата / назначение админом / бессрочная оплата из каталога
-    if stored_plan in ("start", "pro", "maxi"):
+    if stored_plan != "free":
         if bool(row.get("subscription_paid_lifetime")):
             return stored_plan
         if sub_end and sub_end > now:
@@ -631,7 +632,7 @@ async def paid_subscription_for_referral_program(user_id: int) -> bool:
     sp = (row.get("subscription_plan") or "free").lower()
     sub_end = row.get("subscription_end")
     admin_granted = bool(row.get("subscription_admin_granted"))
-    if sp not in ("start", "pro", "maxi"):
+    if sp == "free":
         return False
     if bool(row.get("subscription_paid_lifetime")):
         return True
@@ -665,7 +666,7 @@ async def can_ask_question(user_id: int) -> bool:
         return True
 
     plan = await check_subscription(user_id)
-    if plan in ("start", "pro", "maxi"):
+    if plan != "free":
         return True
 
     eff = await get_effective_plans()
@@ -690,7 +691,7 @@ async def increment_question_count(user_id: int):
     if row and (row.get("role") or "user").lower() in ("admin", "moderator"):
         return
     plan = await check_subscription(user_id)
-    if plan in ("start", "pro", "maxi"):
+    if plan != "free":
         return
     await database.execute(
         users.update()

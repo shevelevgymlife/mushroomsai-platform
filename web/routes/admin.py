@@ -587,10 +587,8 @@ async def users_list(request: Request, search: str = "", shop_partners: str = ""
             "now": datetime.utcnow(),
             "plan_labels": {k: v["name"] for k, v in plans_eff.items()},
             "plan_modal_rows": [
-                ("free", plans_eff["free"]["name"], plans_eff["free"]["price"]),
-                ("start", plans_eff["start"]["name"], plans_eff["start"]["price"]),
-                ("pro", plans_eff["pro"]["name"], plans_eff["pro"]["price"]),
-                ("maxi", plans_eff["maxi"]["name"], plans_eff["maxi"]["price"]),
+                (pk, plans_eff[pk]["name"], plans_eff[pk]["price"])
+                for pk in plans_eff.keys()
             ],
             "viewer_is_platform_owner": is_platform_owner(admin),
             "permission_items": PERMISSION_ITEMS,
@@ -821,10 +819,11 @@ async def change_subscription(request: Request, user_id: int, plan: str = Form(.
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
 
-    if plan not in ("free", "start", "pro", "maxi"):
+    plans_eff = await get_effective_plans()
+    plan = (plan or "").strip().lower()
+    if plan not in plans_eff:
         return JSONResponse({"error": "invalid plan"}, status_code=400)
 
-    plans_eff = await get_effective_plans()
     sub_end_str = None
     sub_unlimited = False
     try:
@@ -894,9 +893,11 @@ async def patch_user_plan(request: Request, user_id: int):
     plan = body.get("plan")
     plan_expires_at = body.get("plan_expires_at")
     sub_unlimited = bool(body.get("subscription_unlimited"))
-    if plan not in ("free", "start", "pro", "maxi"):
-        return JSONResponse({"error": "invalid plan"}, status_code=400)
     plans_eff = await get_effective_plans()
+    plan = (plan or "").strip().lower()
+    if plan not in plans_eff:
+        return JSONResponse({"error": "invalid plan"}, status_code=400)
+
     if plan == "free":
         end_date = None
     elif sub_unlimited:

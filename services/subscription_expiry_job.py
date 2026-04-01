@@ -21,7 +21,8 @@ async def run_subscription_expiry_sweep_job() -> None:
             sa.text(
                 """
                 SELECT id FROM users
-                WHERE subscription_plan IN ('start', 'pro', 'maxi')
+                WHERE subscription_plan <> 'free'
+                  AND COALESCE(subscription_paid_lifetime, false) = false
                   AND subscription_end IS NOT NULL
                   AND subscription_end <= NOW()
                   AND COALESCE(subscription_admin_granted, false) = false

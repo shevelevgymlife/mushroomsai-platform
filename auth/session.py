@@ -7,7 +7,12 @@ from db.models import users, sessions
 from auth.blocked_identities import login_denied_for_user_row_sync
 from auth.owner import sync_owner_admin_role
 from auth.ui_prefs import attach_screen_rim_prefs
-from services.payment_plans_catalog import drawer_menu_effective, get_effective_plans, plan_drawer_lines
+from services.payment_plans_catalog import (
+    ACCESS_TIERS,
+    drawer_menu_effective,
+    get_effective_plans,
+    plan_drawer_lines,
+)
 from services.subscription_service import check_subscription, paid_subscription_for_referral_program
 
 ALGORITHM = "HS256"
@@ -88,6 +93,7 @@ async def attach_subscription_effective(u: dict) -> None:
         u["drawer_sub_kind"] = "free"
         u["drawer_plan_bullets"] = plan_drawer_lines(plans.get("free"))
         u["plan_drawer_menu"] = drawer_menu_effective(plans.get("free"))
+        u["plan_access_tier"] = "free"
         u["referral_program_unlocked"] = False
         return
     now = datetime.utcnow()
@@ -98,7 +104,7 @@ async def attach_subscription_effective(u: dict) -> None:
     admin_granted = bool(row.get("subscription_admin_granted"))
     sub_end = row.get("subscription_end")
     paid_life = bool(row.get("subscription_paid_lifetime"))
-    paid_active = sp in ("start", "pro", "maxi") and (
+    paid_active = sp != "free" and (
         paid_life
         or (sub_end and sub_end > now)
         or (admin_granted and sub_end is None)
@@ -162,6 +168,19 @@ async def attach_subscription_effective(u: dict) -> None:
     u["drawer_sub_show_countdown"] = show_cd
     u["drawer_sub_until_iso"] = until_iso
     u["drawer_sub_kind"] = kind
+
+    def _norm_tier(raw: str | None) -> str:
+        t = (raw or "free").strip().lower()
+        return t if t in ACCESS_TIERS else "free"
+
+    if role in ("admin", "moderator"):
+        u["plan_access_tier"] = "maxi"
+    elif trial_active and not paid_active:
+        u["plan_access_tier"] = _norm_tier(str((plans.get("start") or {}).get("access_tier") or "start"))
+    elif paid_active:
+        u["plan_access_tier"] = _norm_tier(str((plans.get(sp) or {}).get("access_tier") or ("start" if sp != "free" else "free")))
+    else:
+        u["plan_access_tier"] = _norm_tier(str((plans.get("free") or {}).get("access_tier") or "free"))
 
     if role in ("admin", "moderator"):
         u["drawer_plan_bullets"] = []

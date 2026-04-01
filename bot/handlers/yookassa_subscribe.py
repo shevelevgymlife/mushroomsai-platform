@@ -16,7 +16,6 @@ from services.payment_provider_settings import get_provider_settings
 from services.subscription_service import activate_subscription
 from services.subscription_checkout import resolve_active_subscription_checkout
 from services.yookassa_bot_offerings import (
-    DEFAULT_DURATION_MINUTES,
     get_merged_bot_offerings,
     load_raw_offerings,
     offering_by_id,
@@ -107,13 +106,13 @@ async def subscribe_menu_handler(update: Update, context: ContextTypes.DEFAULT_T
     if not rows:
         await update.message.reply_text(
             "💳 <b>Подписка</b>\n\n"
-            "Нет доступных предложений. Администратор может включить их в разделе Оплата → ЮKassa Бот.",
+            "Нет доступных платных тарифов в каталоге. Настройте «Тарифы подписок» в админке (Оплата).",
             parse_mode="HTML",
         )
         return
 
     await update.message.reply_text(
-        "💳 <b>Подписка</b>\n\nВыберите предложение — откроется счёт ЮKassa.\n\n"
+        "💳 <b>Подписка</b>\n\nВыберите тариф — откроется счёт ЮKassa (цены и сроки из «Тарифы подписок» в админке).\n\n"
         f"<i>{TG_SUBSCRIPTION_PAYMENT_NOTICE}</i>\n"
         f'<a href="{site}/legal/offer">Оферта</a> · <a href="{site}/legal/privacy">Конфиденциальность</a>',
         reply_markup=InlineKeyboardMarkup(rows),
@@ -281,18 +280,12 @@ async def successful_payment_handler(update: Update, context: ContextTypes.DEFAU
         await msg.reply_text("Предложение устарело. Обратитесь в поддержку.")
         return
 
-    eff = str(off.get("effective_plan") or "start").lower()
+    eff = str(off.get("effective_plan") or offering_id).strip().lower()
     price_rub = float(off.get("price_rub") or 0)
     if payload_amount_kop:
         expected_kop = int(payload_amount_kop)
     else:
         expected_kop = int(round(price_rub * 100))
-    try:
-        dm = int(off.get("duration_minutes") or 0)
-    except (TypeError, ValueError):
-        dm = 0
-    if dm <= 0:
-        dm = DEFAULT_DURATION_MINUTES
 
     if expected_kop <= 0 or int(sp.total_amount) != expected_kop:
         logger.warning(
@@ -309,7 +302,6 @@ async def successful_payment_handler(update: Update, context: ContextTypes.DEFAU
         uid,
         eff,
         months=1,
-        duration_minutes=dm,
         paid_price_rub=price_rub,
     )
     if ok:

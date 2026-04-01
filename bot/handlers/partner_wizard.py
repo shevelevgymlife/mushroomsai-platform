@@ -153,7 +153,7 @@ async def _send_final_links_block(
     base = (settings.SITE_URL or "").strip().rstrip("/")
     ref_tg = f"https://t.me/{bot}?start={code}" if code else "—"
     ref_site = f"{base}/login?ref={code}" if code and base else "—"
-    bonus = referral_bonus_per_invite_rub()
+    bonus = await referral_bonus_per_invite_rub()
     shop_note = ""
     if shop_saved:
         shop_note = "✅ Ссылка магазина сохранена. Приглашённые по приложению увидят ваш магазин.\n\n"

@@ -7,12 +7,17 @@
 {% set _yk_bot_only = subscription_checkout.yookassa_bot_only if subscription_checkout is defined else false %}
 {% set _bot_url = telegram_bot_url if telegram_bot_url is defined else 'https://t.me/neuro_fungi_bot' %}
 {% set pkv = plan_keys_visible if plan_keys_visible is defined else ['free', 'start', 'pro', 'maxi'] %}
+{% set _captions = plan_billing_captions if plan_billing_captions is defined else {} %}
+{% set np = namespace(fp=none) %}
+{% for _x in pkv %}
+  {% if _x != 'free' and np.fp is none %}{% set np.fp = _x %}{% endif %}
+{% endfor %}
 
 {% macro paid_renew_btn(pk) %}
   {% if _cp %}
   <button type="button" data-cp-plan="{{ pk }}" class="cp-pay-btn block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-gold/35 text-gold/90 hover:bg-gold/[0.10] mt-2">Оплатить следующий период</button>
-  {% elif _yk_site and offering_id_by_plan is defined and offering_id_by_plan[pk] %}
-  <a href="/pay/subscription?offering_id={{ offering_id_by_plan[pk] }}" class="block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-gold/35 text-gold/90 hover:bg-gold/[0.10] mt-2 no-underline">Оплатить следующий период</a>
+  {% elif _yk_site %}
+  <a href="/pay/subscription?plan={{ pk }}" class="block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-gold/35 text-gold/90 hover:bg-gold/[0.10] mt-2 no-underline">Оплатить следующий период</a>
   {% elif _yk_bot_only %}
   <a href="{{ _bot_url }}" target="_blank" rel="noopener noreferrer" class="block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-gold/35 text-gold/90 hover:bg-gold/[0.10] mt-2 no-underline">Оплатить в Telegram</a>
   {% else %}
@@ -23,8 +28,8 @@
 {% macro paid_connect_btn(pk) %}
   {% if _cp %}
   <button type="button" data-cp-plan="{{ pk }}" class="cp-pay-btn block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn mt-auto">Оплатить и подключить</button>
-  {% elif _yk_site and offering_id_by_plan is defined and offering_id_by_plan[pk] %}
-  <a href="/pay/subscription?offering_id={{ offering_id_by_plan[pk] }}" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn mt-auto no-underline">Оплатить и подключить</a>
+  {% elif _yk_site %}
+  <a href="/pay/subscription?plan={{ pk }}" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn mt-auto no-underline">Оплатить и подключить</a>
   {% elif _yk_bot_only %}
   <a href="{{ _bot_url }}" target="_blank" rel="noopener noreferrer" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn mt-auto no-underline">Оплатить в Telegram</a>
   {% else %}
@@ -45,22 +50,28 @@
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-6 max-w-7xl mx-auto {% if pkv|length >= 4 %}xl:grid-cols-4{% elif pkv|length == 3 %}xl:grid-cols-3{% elif pkv|length == 2 %}xl:grid-cols-2{% else %}xl:grid-cols-1{% endif %}">
-      <!-- Free -->
-      {% if 'free' in pkv %}
-      <div class="panel-rise p-7 flex flex-col relative{% if _pl and _plan == 'free' %} ring-2 ring-gold/45 ring-offset-2 ring-offset-bg{% endif %}">
-        <h3 class="font-display text-lg font-semibold text-text mb-1">{{ plans.free.name if plans is defined else t.plan_free }}</h3>
-        {% if plans is defined and plans.free.description %}
-        <p class="text-xs text-muted mb-2 leading-relaxed">{{ plans.free.description }}</p>
+      {% for pk in pkv %}
+      {% set meta = plans[pk] if plans is defined and pk in plans else {} %}
+      {% set is_free = (pk == 'free') %}
+      {% set is_pop = (not is_free and np.fp == pk) %}
+      {% set feat_list = meta.features if meta and meta.features else [] %}
+      <div class="panel-rise p-7 flex flex-col relative{% if is_pop %} border-gold/30 shadow-[0_0_0_1px_rgba(61,212,224,0.12)_inset]{% endif %}{% if _pl and _plan == pk %} ring-2 ring-gold/45 ring-offset-2 ring-offset-bg{% endif %}{% if pk != 'free' and pk == 'maxi' %} bg-gradient-to-br from-gold/[0.07] via-transparent to-transparent{% endif %}">
+        {% if is_pop %}
+        <div class="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gold text-bg text-xs font-semibold shadow-lg shadow-gold/20">{{ t.plan_popular }}</div>
         {% endif %}
-        <p class="text-3xl font-light text-text mb-6">{{ plans.free.price if plans is defined else 0 }} <span class="text-base text-muted">{{ t.plan_per_month }}</span></p>
+        <h3 class="font-display text-lg font-semibold text-text mb-1">{{ meta.name or pk }}</h3>
+        {% if meta.description %}
+        <p class="text-xs text-muted mb-2 leading-relaxed">{{ meta.description }}</p>
+        {% endif %}
+        <p class="text-3xl font-light text-text mb-6">{{ meta.price|default(0) }} <span class="text-base text-muted">₽ · {{ _captions[pk] if pk in _captions else ('за период' if not is_free else '') }}</span></p>
         <ul class="space-y-3 mb-8 flex-1">
-          {% if plans is defined and plans.free.features %}
-          {% for item in plans.free.features %}
+          {% if feat_list %}
+          {% for item in feat_list %}
           <li class="flex items-start gap-2 text-sm text-muted">
-            <span class="w-1.5 h-1.5 rounded-full bg-muted flex-shrink-0 mt-1.5"></span>{{ item }}
+            <span class="w-1.5 h-1.5 rounded-full {% if is_free %}bg-muted{% else %}bg-gold{% endif %} flex-shrink-0 mt-1.5"></span>{{ item }}
           </li>
           {% endfor %}
-          {% else %}
+          {% elif is_free %}
           {% for item in [t.free_f1, t.free_f2, t.free_f3] %}
           <li class="flex items-start gap-2 text-sm text-muted">
             <span class="w-1.5 h-1.5 rounded-full bg-muted flex-shrink-0 mt-1.5"></span>{{ item }}
@@ -68,6 +79,7 @@
           {% endfor %}
           {% endif %}
         </ul>
+        {% if is_free %}
         {% if _pl %}
           {% if user and user.needs_tariff_choice %}
           <form method="post" action="/onboarding/tariff" class="mt-auto">
@@ -88,152 +100,52 @@
           Подключиться
         </a>
         {% endif %}
-      </div>
-      {% endif %}
-
-      <!-- Start -->
-      {% if 'start' in pkv %}
-      <div class="panel-rise p-7 flex flex-col relative border-gold/30 shadow-[0_0_0_1px_rgba(61,212,224,0.12)_inset] {% if _pl and _plan == 'start' %}ring-2 ring-gold/45 ring-offset-2 ring-offset-bg{% endif %}">
-        <div class="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gold text-bg text-xs font-semibold shadow-lg shadow-gold/20">{{ t.plan_popular }}</div>
-        <h3 class="font-display text-lg font-semibold text-text mb-1">{{ plans.start.name if plans is defined else t.plan_start }}</h3>
-        {% if plans is defined and plans.start.description %}
-        <p class="text-xs text-muted mb-2 leading-relaxed">{{ plans.start.description }}</p>
-        {% endif %}
-        <p class="text-3xl font-light text-text mb-6">{{ plans.start.price if plans is defined else 990 }} <span class="text-base text-muted">{{ t.plan_per_month }}</span></p>
-        <ul class="space-y-3 mb-8 flex-1">
-          {% if plans is defined and plans.start.features %}
-          {% for item in plans.start.features %}
-          <li class="flex items-start gap-2 text-sm text-muted">
-            <span class="w-1.5 h-1.5 rounded-full bg-gold flex-shrink-0 mt-1.5"></span>{{ item }}
-          </li>
-          {% endfor %}
-          {% else %}
-          {% for item in [t.start_f1, t.start_f2, t.start_f3, t.start_f4, t.start_f5, t.start_f6] %}
-          <li class="flex items-start gap-2 text-sm text-muted">
-            <span class="w-1.5 h-1.5 rounded-full bg-gold flex-shrink-0 mt-1.5"></span>{{ item }}
-          </li>
-          {% endfor %}
-          {% endif %}
-        </ul>
+        {% else %}
         {% if _pl %}
-          {% if _plan == 'start' and not (user and user.start_trial_active and (user.subscription_plan or 'free') == 'free') %}
-          <div class="block text-center px-4 py-3 rounded-xl text-sm border border-gold/35 text-gold/90 bg-gold/[0.06]">Текущий план</div>
-          {{ paid_renew_btn('start') }}
+          {% if _plan == pk %}
+            {% if pk == 'start' and user and user.start_trial_active and (user.subscription_plan or 'free') == 'free' %}
+            {{ paid_connect_btn(pk) }}
+            {% else %}
+            <div class="block text-center px-4 py-3 rounded-xl text-sm border border-gold/35 text-gold/90 bg-gold/[0.06]">Текущий план</div>
+            {{ paid_renew_btn(pk) }}
+            {% endif %}
           {% else %}
-          {{ paid_connect_btn('start') }}
+          {{ paid_connect_btn(pk) }}
           {% endif %}
         {% else %}
         <a href="/login?next=/subscriptions" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">Подключиться</a>
         {% endif %}
-      </div>
-      {% endif %}
-
-      <!-- Pro -->
-      {% if 'pro' in pkv %}
-      <div class="panel-rise p-7 flex flex-col{% if _pl and _plan == 'pro' %} ring-2 ring-gold/45 ring-offset-2 ring-offset-bg{% endif %}">
-        <h3 class="font-display text-lg font-semibold text-text mb-1">{{ plans.pro.name if plans is defined else t.plan_pro }}</h3>
-        {% if plans is defined and plans.pro.description %}
-        <p class="text-xs text-muted mb-2 leading-relaxed">{{ plans.pro.description }}</p>
-        {% endif %}
-        <p class="text-3xl font-light text-text mb-6">{{ plans.pro.price if plans is defined else 1990 }} <span class="text-base text-muted">{{ t.plan_per_month }}</span></p>
-        <ul class="space-y-3 mb-8 flex-1">
-          {% if plans is defined and plans.pro.features %}
-          {% for item in plans.pro.features %}
-          <li class="flex items-start gap-2 text-sm text-muted">
-            <span class="w-1.5 h-1.5 rounded-full bg-gold-light flex-shrink-0 mt-1.5"></span>{{ item }}
-          </li>
-          {% endfor %}
-          {% else %}
-          {% for item in [t.pro_f1, t.pro_f2, t.pro_f3] %}
-          <li class="flex items-start gap-2 text-sm text-muted">
-            <span class="w-1.5 h-1.5 rounded-full bg-gold-light flex-shrink-0 mt-1.5"></span>{{ item }}
-          </li>
-          {% endfor %}
-          {% endif %}
-        </ul>
-        {% if _pl %}
-          {% if _plan == 'pro' %}
-          <div class="block text-center px-4 py-3 rounded-xl text-sm border border-gold/35 text-gold/90 bg-gold/[0.06]">Текущий план</div>
-          {{ paid_renew_btn('pro') }}
-          {% else %}
-          {{ paid_connect_btn('pro') }}
-          {% endif %}
-        {% else %}
-        <a href="/login?next=/subscriptions" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">Подключиться</a>
         {% endif %}
       </div>
-      {% endif %}
-
-      <!-- Maxi -->
-      {% if 'maxi' in pkv %}
-      <div class="panel-rise p-7 flex flex-col bg-gradient-to-br from-gold/[0.07] via-transparent to-transparent{% if _pl and _plan == 'maxi' %} ring-2 ring-gold/45 ring-offset-2 ring-offset-bg{% endif %}">
-        <h3 class="font-display text-lg font-semibold text-text mb-1">{{ plans.maxi.name if plans is defined else t.plan_maxi }}</h3>
-        {% if plans is defined and plans.maxi.description %}
-        <p class="text-xs text-muted mb-2 leading-relaxed">{{ plans.maxi.description }}</p>
-        {% endif %}
-        <p class="text-3xl font-light text-text mb-6">{{ plans.maxi.price if plans is defined else 4999 }} <span class="text-base text-muted">{{ t.plan_per_month }}</span></p>
-        <ul class="space-y-3 mb-8 flex-1">
-          {% if plans is defined and plans.maxi.features %}
-          {% for item in plans.maxi.features %}
-          <li class="flex items-start gap-2 text-sm text-muted">
-            <span class="w-1.5 h-1.5 rounded-full bg-gold flex-shrink-0 mt-1.5"></span>{{ item }}
-          </li>
-          {% endfor %}
-          {% else %}
-          {% for item in [t.maxi_f1, t.maxi_f2] %}
-          <li class="flex items-start gap-2 text-sm text-muted">
-            <span class="w-1.5 h-1.5 rounded-full bg-gold flex-shrink-0 mt-1.5"></span>{{ item }}
-          </li>
-          {% endfor %}
-          {% endif %}
-        </ul>
-        {% if _pl %}
-          {% if _plan == 'maxi' %}
-          <div class="block text-center px-4 py-3 rounded-xl text-sm border border-gold/35 text-gold/90 bg-gold/[0.06]">Текущий план</div>
-          {{ paid_renew_btn('maxi') }}
-          {% else %}
-          {{ paid_connect_btn('maxi') }}
-          {% endif %}
-        {% else %}
-        <a href="/login?next=/subscriptions" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn">Подключиться</a>
-        {% endif %}
-      </div>
-      {% endif %}
+      {% endfor %}
     </div>
   </div>
 </section>
-{% if _pl and _cp and cloudpayments_public_id and payment_user_id is defined %}
+{% if _pl and _cp and cloudpayments_public_id and payment_user_id is defined and cp_plan_payload is defined %}
 <script src="https://widget.cloudpayments.ru/bundles/cloudpayments.js"></script>
 <script>
 (function () {
   var pubId = {{ cloudpayments_public_id|tojson }};
   var uid = {{ payment_user_id|int }};
-  var amounts = {
-    start: {{ plans.start.price if plans is defined else 990 }},
-    pro: {{ plans.pro.price if plans is defined else 1990 }},
-    maxi: {{ plans.maxi.price if plans is defined else 4999 }}
-  };
-  var names = {
-    start: {{ (plans.start.name if plans is defined else 'Старт')|tojson }},
-    pro: {{ (plans.pro.name if plans is defined else 'Про')|tojson }},
-    maxi: {{ (plans.maxi.name if plans is defined else 'Макси')|tojson }}
-  };
-  function pay(plan) {
-    var amt = amounts[plan];
+  var plansPayload = {{ cp_plan_payload|tojson }};
+  function pay(planKey) {
+    var row = plansPayload[planKey];
+    var amt = row && Number(row.price);
     if (!amt || amt <= 0 || typeof cp === 'undefined' || !cp.CloudPayments) {
-      alert('Виджет оплаты не загрузился. Обновите страницу.');
+      alert('Виджет оплаты не загрузился или тариф недоступен. Обновите страницу.');
       return;
     }
     var widget = new cp.CloudPayments();
-    var inv = 'sub-' + uid + '-' + plan + '-' + Date.now();
+    var inv = 'sub-' + uid + '-' + planKey + '-' + Date.now();
+    var nm = (row && row.name) ? String(row.name) : planKey;
     widget.pay('charge', {
       publicId: pubId,
-      description: 'Подписка «' + (names[plan] || plan) + '», 1 мес.',
-      amount: Number(amt),
+      description: 'Подписка «' + nm + '»',
+      amount: amt,
       currency: 'RUB',
       accountId: String(uid),
       invoiceId: inv,
-      data: { userId: uid, plan: plan }
+      data: { userId: uid, plan: planKey }
     }, {
       onSuccess: function () {
         window.location.href = '/subscriptions?paid=1';

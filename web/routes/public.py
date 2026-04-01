@@ -35,7 +35,11 @@ from db.models import (
 from auth.session import get_user_from_request, attach_subscription_effective
 from auth.ui_prefs import attach_screen_rim_prefs
 from config import settings, shevelev_token_address
-from services.payment_plans_catalog import get_effective_plans, visible_plan_keys_from
+from services.payment_plans_catalog import (
+    get_effective_plans,
+    plan_billing_captions_for_keys,
+    visible_plan_keys_from,
+)
 from services.subscription_service import check_subscription, web_default_home_path
 from services.shop_catalog import product_gallery_urls
 from services.legal import legal_acceptance_redirect
@@ -289,6 +293,7 @@ async def index(request: Request):
     )
     plans_eff = await get_effective_plans()
     plan_keys_visible = visible_plan_keys_from(plans_eff)
+    plan_billing_captions = plan_billing_captions_for_keys(plans_eff, plan_keys_visible)
     response = templates.TemplateResponse(
         "index.html",
         {
@@ -304,6 +309,7 @@ async def index(request: Request):
             "block_order": block_order,
             "plans": plans_eff,
             "plan_keys_visible": plan_keys_visible,
+            "plan_billing_captions": plan_billing_captions,
         },
     )
     # Главная страница с live-метриками: без кэша, чтобы блок всегда обновлялся.

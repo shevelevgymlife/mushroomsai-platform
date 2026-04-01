@@ -10,7 +10,7 @@
 {% endif %}
 {% endblock %}
 
-{% macro block_visible(bkey) %}{% set _b = blocks[bkey] if blocks and bkey in blocks else none %}{% if not _b or not _b.access_level or _b.access_level == 'all' or (user and (user.is_admin or _b.access_level == 'auth' or (_b.access_level == 'start' and user.subscription_plan in ['start','pro','maxi']) or (_b.access_level == 'pro' and user.subscription_plan in ['pro','maxi']) or (_b.access_level == 'maxi' and user.subscription_plan == 'maxi'))) %}1{% endif %}{% endmacro %}
+{% macro block_visible(bkey) %}{% set _b = blocks[bkey] if blocks and bkey in blocks else none %}{% set _tier = ((user.plan_access_tier or 'free')|lower) if user else 'free' %}{% if not _b or not _b.access_level or _b.access_level == 'all' or (user and (user.is_admin or _b.access_level == 'auth' or (_b.access_level == 'start' and _tier in ['start','pro','maxi']) or (_b.access_level == 'pro' and _tier in ['pro','maxi']) or (_b.access_level == 'maxi' and _tier == 'maxi'))) %}1{% endif %}{% endmacro %}
 
 {% block content %}
 {# block_order comes from server (sorted by position). Fallback if empty (DB error / all hidden). #}

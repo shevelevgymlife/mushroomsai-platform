@@ -10,7 +10,7 @@ from typing import Any
 
 from db.database import database
 from db.models import payment_webhook_dedup, users
-from services.payment_plans_catalog import get_effective_plans
+from services.payment_plans_catalog import get_effective_plans, is_catalog_paid_checkout_plan
 from services.payment_provider_settings import get_provider_settings
 from services.subscription_service import activate_subscription, gift_subscription
 
@@ -109,13 +109,13 @@ async def handle_cloudpayments_notification(
             recipient_id = int(recipient_raw)
         except (TypeError, ValueError):
             return False, "bad_gift_users"
-        if plan not in ("start", "pro", "maxi"):
+        plans = await get_effective_plans()
+        if not is_catalog_paid_checkout_plan(plans, plan):
             return False, "bad_plan"
         try:
             amount = float(payload.get("Amount") or payload.get("PaymentAmount") or 0)
         except (TypeError, ValueError):
             amount = 0.0
-        plans = await get_effective_plans()
         expected = float((plans.get(plan) or {}).get("price") or 0)
         if expected <= 0:
             return False, "bad_price_config"
@@ -144,7 +144,8 @@ async def handle_cloudpayments_notification(
     except (TypeError, ValueError):
         return False, "bad_user"
 
-    if plan not in ("start", "pro", "maxi"):
+    plans = await get_effective_plans()
+    if not is_catalog_paid_checkout_plan(plans, plan):
         return False, "bad_plan"
 
     try:
@@ -152,7 +153,6 @@ async def handle_cloudpayments_notification(
     except (TypeError, ValueError):
         amount = 0.0
 
-    plans = await get_effective_plans()
     expected = float((plans.get(plan) or {}).get("price") or 0)
     if expected <= 0:
         return False, "bad_price_config"

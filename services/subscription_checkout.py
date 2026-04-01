@@ -12,6 +12,7 @@ from typing import Any
 from db.database import database
 from db.models import platform_settings
 
+from services.payment_plans_catalog import get_effective_plans, is_catalog_paid_checkout_plan
 from services.payment_provider_settings import get_provider_settings
 from services.yookassa_bot_offerings import (
     find_offering_id_for_plan,
@@ -78,9 +79,13 @@ async def resolve_active_subscription_checkout() -> dict[str, Any]:
     except Exception:
         logger.exception("get_merged_bot_offerings in checkout")
 
-    offering_id_by_plan = {
-        pk: find_offering_id_for_plan(offerings, pk) for pk in ("start", "pro", "maxi")
-    }
+    plans = await get_effective_plans()
+    offering_id_by_plan: dict[str, str | None] = {}
+    for pk, p in plans.items():
+        if is_catalog_paid_checkout_plan(plans, pk):
+            offering_id_by_plan[pk] = find_offering_id_for_plan(offerings, pk) or pk
+        else:
+            offering_id_by_plan[pk] = None
 
     def pick_auto() -> str:
         if cp_ok:

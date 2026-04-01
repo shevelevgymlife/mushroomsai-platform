@@ -788,7 +788,7 @@ async def run_wellness_subscription_renewal_nudges_job() -> None:
         admin_gr = bool(row.get("subscription_admin_granted"))
         sp = (row.get("subscription_plan") or "free").lower()
         target: Optional[datetime] = None
-        if sp in ("start", "pro", "maxi") and sub_end and not admin_gr:
+        if sp != "free" and sub_end and not admin_gr:
             if lo <= sub_end <= hi:
                 target = sub_end
         if target is None and trial_end and plan == "start":

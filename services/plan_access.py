@@ -7,6 +7,7 @@ from typing import Any
 
 from auth.owner import owner_email_effective
 from config import settings
+from services.payment_plans_catalog import ACCESS_TIERS
 
 # Совпадает с auth.owner — legacy супер-админ по tg_id
 SUPER_ADMIN_TG_ID = 742166400
@@ -77,6 +78,18 @@ PRO_EXTRA = frozenset({"pro_pin_info"})
 MAXI_EXTRA = frozenset({"seller_marketplace"})
 
 
+def _effective_access_tier(plan: str | None, user: dict[str, Any] | None) -> str:
+    """Уровень блоков кабинета: из user.plan_access_tier (сессия) или по legacy-совпадению slug с tier."""
+    if user:
+        t = (user.get("plan_access_tier") or "").strip().lower()
+        if t in ACCESS_TIERS:
+            return t
+    p = (plan or "free").lower()
+    if p in ACCESS_TIERS:
+        return p
+    return "start" if p != "free" else "free"
+
+
 def plan_allowed_block_keys(plan: str | None, user: dict[str, Any] | None) -> frozenset[str]:
     """Максимальный набор блоков, разрешённых тарифом (без учёта админских overrides)."""
     if user and user.get("role") == "admin":
@@ -97,14 +110,14 @@ def plan_allowed_block_keys(plan: str | None, user: dict[str, Any] | None) -> fr
             }
         )
 
-    p = (plan or "free").lower()
-    if p == "free":
+    tier = _effective_access_tier(plan, user)
+    if tier == "free":
         return FREE_BLOCKS
-    if p == "start":
+    if tier == "start":
         return START_BLOCKS
-    if p == "pro":
+    if tier == "pro":
         return START_BLOCKS | PRO_EXTRA
-    if p == "maxi":
+    if tier == "maxi":
         u = START_BLOCKS | PRO_EXTRA
         if user and user.get("marketplace_seller"):
             u = u | MAXI_EXTRA
@@ -118,14 +131,13 @@ def can_create_community_groups(plan: str | None, user: dict[str, Any] | None) -
         return False
     if is_platform_operator(user):
         return True
-    p = (plan or "free").lower()
-    return p in ("pro", "maxi")
+    return _effective_access_tier(plan, user) in ("pro", "maxi")
 
 
 def can_use_priority_pin(plan: str | None, user: dict[str, Any] | None) -> bool:
     if user and user.get("role") == "admin":
         return True
-    return (plan or "free").lower() in ("pro", "maxi")
+    return _effective_access_tier(plan, user) in ("pro", "maxi")
 
 
 def can_use_community_group_chats(user: dict[str, Any] | None, plan: str | None) -> bool:
@@ -134,4 +146,4 @@ def can_use_community_group_chats(user: dict[str, Any] | None, plan: str | None)
         return False
     if (user.get("role") or "user").lower() in ("admin", "moderator"):
         return True
-    return (plan or "free").lower() in ("start", "pro", "maxi")
+    return _effective_access_tier(plan, user) != "free"

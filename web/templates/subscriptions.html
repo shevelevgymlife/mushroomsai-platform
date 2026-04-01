@@ -93,9 +93,12 @@
       <div>
         <label class="block text-xs text-muted mb-2">Тариф</label>
         <select id="giftPlanSelect" required class="w-full px-3 py-2.5 rounded-xl bg-surface border border-border text-text text-sm">
-          <option value="start">{{ plans.start.name if plans is defined else 'Старт' }} — {{ plans.start.price if plans is defined else 990 }} ₽/мес</option>
-          <option value="pro">{{ plans.pro.name if plans is defined else 'Про' }} — {{ plans.pro.price if plans is defined else 1990 }} ₽/мес</option>
-          <option value="maxi">{{ plans.maxi.name if plans is defined else 'Макси' }} — {{ plans.maxi.price if plans is defined else 4999 }} ₽/мес</option>
+          {% set pkv = plan_keys_visible if plan_keys_visible is defined else [] %}
+          {% for gpk in pkv %}
+          {% if gpk != 'free' and plans is defined and gpk in plans and (plans[gpk].price|default(0))|int > 0 %}
+          <option value="{{ gpk }}">{{ plans[gpk].name }} — {{ plans[gpk].price }} ₽</option>
+          {% endif %}
+          {% endfor %}
         </select>
       </div>
       <div>

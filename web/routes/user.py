@@ -24,7 +24,13 @@ from db.models import (
     homepage_blocks,
 )
 from services.referral_service import get_referral_stats
-from services.payment_plans_catalog import get_effective_plans, visible_plan_keys_from
+from services.payment_plans_catalog import (
+    get_effective_plans,
+    is_catalog_paid_checkout_plan,
+    visible_plan_keys_from,
+    cloudpayments_checkout_payload,
+    plan_billing_captions_for_keys,
+)
 from services.payment_provider_settings import get_provider_settings
 from services.yookassa_bot_offerings import (
     find_offering_id_for_plan,
@@ -95,8 +101,14 @@ async def compute_visible_blocks(user_id: int, plan: str) -> list[str]:
     )
     overrides = {r["block_key"]: r for r in overrides_raw}
 
-    PLAN_ORDER = ["free", "start", "pro", "maxi"]
-    plan_idx = PLAN_ORDER.index(plan) if plan in PLAN_ORDER else 0
+    TIER_ORDER = ("free", "start", "pro", "maxi")
+    eff = await get_effective_plans()
+    pk = (plan or "free").lower()
+    tier = str((eff.get(pk) or {}).get("access_tier") or pk).lower()
+    if tier in TIER_ORDER:
+        plan_idx = TIER_ORDER.index(tier)
+    else:
+        plan_idx = 1 if pk != "free" else 0
 
     visible = []
     for b in blocks_raw:
@@ -193,13 +205,11 @@ async def subscriptions_page(request: Request):
     cp_enabled = ck == "cloudpayments"
     cp_public = (subscription_checkout.get("cloudpayments_public_id") or "").strip() if cp_enabled else ""
     yk_web = bool(subscription_checkout.get("yookassa_site_checkout_available"))
-    offering_id_by_plan = subscription_checkout.get("offering_id_by_plan") or {
-        "start": None,
-        "pro": None,
-        "maxi": None,
-    }
+    offering_id_by_plan = subscription_checkout.get("offering_id_by_plan") or {}
     bot_u = (getattr(settings, "TELEGRAM_BOT_USERNAME", None) or "neuro_fungi_bot").strip().lstrip("@")
     telegram_bot_url = f"https://t.me/{bot_u}"
+    cp_plan_payload = cloudpayments_checkout_payload(plans_eff, plan_keys_visible)
+    plan_billing_captions = plan_billing_captions_for_keys(plans_eff, plan_keys_visible)
 
     response = templates.TemplateResponse(
         "subscriptions.html",
@@ -217,6 +227,8 @@ async def subscriptions_page(request: Request):
             "offering_id_by_plan": offering_id_by_plan,
             "subscription_checkout": subscription_checkout,
             "telegram_bot_url": telegram_bot_url,
+            "cp_plan_payload": cp_plan_payload,
+            "plan_billing_captions": plan_billing_captions,
         },
     )
 
@@ -246,12 +258,12 @@ async def subscriptions_page(request: Request):
 
 
 @router.get("/pay/subscription")
-async def pay_subscription_yookassa(request: Request, offering_id: str = ""):
+async def pay_subscription_yookassa(request: Request, offering_id: str = "", plan: str = ""):
     """Перенаправление на оплату ЮKassa (сайт и Telegram Mini App)."""
     user = await require_auth(request)
-    oid = (offering_id or "").strip().lower()
+    oid = (offering_id or plan or "").strip().lower()
     if not user:
-        nxt = "/pay/subscription?offering_id=" + quote(oid, safe="")
+        nxt = "/pay/subscription?plan=" + quote(oid, safe="")
         return RedirectResponse("/login?next=" + quote(nxt, safe=""), status_code=302)
     leg = await legal_acceptance_redirect(request, user)
     if leg:
@@ -290,6 +302,7 @@ async def pay_subscription_yookassa(request: Request, offering_id: str = ""):
         metadata={
             "user_id": str(uid),
             "offering_id": oid,
+            "plan": oid,
         },
         customer_email=cust_email,
     )
@@ -326,14 +339,14 @@ async def pay_gift_subscription(request: Request, plan: str = "", recipient_id: 
     except (TypeError, ValueError):
         return RedirectResponse("/subscriptions?gift_error=invalid", status_code=302)
     giver_id = int(user.get("primary_user_id") or user["id"])
-    if plan_key not in ("start", "pro", "maxi"):
+    plans_eff = await get_effective_plans()
+    if not is_catalog_paid_checkout_plan(plans_eff, plan_key):
         return RedirectResponse("/subscriptions?gift_error=invalid", status_code=302)
     if rid == giver_id:
         return RedirectResponse("/subscriptions?gift_error=self", status_code=302)
 
     checkout = await resolve_active_subscription_checkout()
     kind = checkout.get("kind") or "none"
-    plans_eff = await get_effective_plans()
     price = float((plans_eff.get(plan_key) or {}).get("price") or 0)
     pname = (plans_eff.get(plan_key) or {}).get("name") or plan_key
 
@@ -396,6 +409,7 @@ async def pay_gift_subscription(request: Request, plan: str = "", recipient_id: 
                 "giver_id": str(giver_id),
                 "recipient_id": str(rid),
                 "offering_id": str(oid),
+                "plan": str(plan_key),
             },
             customer_email=cust_email,
         )
@@ -429,9 +443,10 @@ async def subscriptions_connect(request: Request, plan: str = Form(...)):
         return leg
     uid = int(user.get("primary_user_id") or user["id"])
     plan_key = (plan or "").strip().lower()
-    if plan_key not in ("free", "start", "pro", "maxi"):
+    plans_eff = await get_effective_plans()
+    if plan_key not in plans_eff:
         return RedirectResponse("/subscriptions", status_code=302)
-    if plan_key in ("start", "pro", "maxi"):
+    if plan_key != "free":
         return RedirectResponse("/subscriptions?need_payment=1", status_code=302)
     if plan_key == "free":
         urow = await database.fetch_one(users.select().where(users.c.id == uid))
@@ -449,7 +464,7 @@ async def subscriptions_connect(request: Request, plan: str = Form(...)):
             )
         )
         await record_subscription_event(uid, "free", "free", 0.0, _now, None, None)
-        if prev in ("start", "pro", "maxi"):
+        if prev != "free":
             try:
                 await notify_subscription_manual_free(uid, prev)
             except Exception:
@@ -582,7 +597,8 @@ async def onboarding_tariff_submit(request: Request, choice: str = Form(...)):
         return leg
     uid = user.get("primary_user_id") or user["id"]
     choice = (choice or "").strip().lower()
-    if choice not in ("free", "start", "pro", "maxi"):
+    plans_eff = await get_effective_plans()
+    if choice not in plans_eff:
         return RedirectResponse("/subscriptions")
     if choice == "free":
         urow = await database.fetch_one(users.select().where(users.c.id == int(uid)))
@@ -600,7 +616,7 @@ async def onboarding_tariff_submit(request: Request, choice: str = Form(...)):
             )
         )
         await record_subscription_event(int(uid), "free", "free", 0.0, _now, None, None)
-        if prev in ("start", "pro", "maxi"):
+        if prev != "free":
             try:
                 await notify_subscription_manual_free(int(uid), prev)
             except Exception:
@@ -1850,7 +1866,8 @@ async def profile_plan_upgrade_request(
         return JSONResponse({"error": "auth required"}, status_code=401)
     uid = user.get("primary_user_id") or user["id"]
     rp = (requested_plan or "").strip().lower()
-    if rp not in ("start", "pro", "maxi"):
+    plans_eff = await get_effective_plans()
+    if not is_catalog_paid_checkout_plan(plans_eff, rp):
         return JSONResponse({"error": "Недопустимый тариф"}, status_code=400)
     nm = (note or "").strip()[:2000]
     urow = await database.fetch_one(users.select().where(users.c.id == uid))

@@ -8,6 +8,7 @@ from typing import Any
 
 from db.database import database
 from db.models import platform_settings
+from services.payment_plans_catalog import PLAN_ID_RE
 from services.plan_access import is_platform_operator
 
 GROUP_CREATION_POLICY_KEY = "group_creation_policy"
@@ -25,8 +26,7 @@ def _normalize_policy(raw: dict[str, Any]) -> dict[str, Any]:
         plans = list(DEFAULT_GROUP_CREATION_POLICY["plans"])
     else:
         plans = [str(p).strip().lower() for p in plans if str(p).strip()]
-    allowed = ("free", "start", "pro", "maxi")
-    plans = [p for p in plans if p in allowed]
+    plans = [p for p in plans if PLAN_ID_RE.match(p)]
     if mode == "by_plan" and not plans:
         plans = list(DEFAULT_GROUP_CREATION_POLICY["plans"])
     return {"mode": mode, "plans": plans}

@@ -13,7 +13,9 @@ from web.templates_utils import Jinja2Templates
 from services.payment_plans_catalog import (
     DEFAULT_PLANS,
     DRAWER_MENU_ITEM_SPECS,
-    PLAN_KEYS,
+    PLAN_ID_RE,
+    PLAN_ORDER_KEY,
+    extract_plan_order,
     get_effective_plans,
     load_subscription_overrides_raw,
     save_subscription_overrides_raw,
@@ -25,11 +27,7 @@ from services.payment_provider_settings import (
     merge_secrets,
     save_provider_settings,
 )
-from services.yookassa_bot_offerings import (
-    get_merged_bot_offerings,
-    normalize_offerings_list,
-    parse_offerings_post,
-)
+from services.yookassa_bot_offerings import get_merged_bot_offerings
 from services.subscription_checkout import (
     get_subscription_checkout_preference,
     save_subscription_checkout_preference,
@@ -60,7 +58,11 @@ def _provider_meta(pid: str) -> dict[str, str] | None:
 
 def _merge_subscription_overrides(prev_sub: dict[str, Any], sub_raw: dict[str, Any]) -> dict[str, Any]:
     merged_sub = {**prev_sub}
+    if PLAN_ORDER_KEY in sub_raw and isinstance(sub_raw[PLAN_ORDER_KEY], list):
+        merged_sub[PLAN_ORDER_KEY] = list(sub_raw[PLAN_ORDER_KEY])
     for pk, v in sub_raw.items():
+        if pk == PLAN_ORDER_KEY:
+            continue
         if not isinstance(v, dict):
             merged_sub[pk] = v
             continue
@@ -75,13 +77,27 @@ def _merge_subscription_overrides(prev_sub: dict[str, Any], sub_raw: dict[str, A
 
 
 async def _parse_subscription_forms(form: Any) -> dict[str, Any]:
-    """Собирает JSON переопределений тарифов из полей form name=plan_<key>_<field>."""
+    """Собирает JSON переопределений тарифов из полей form name=plan_<key>_<field> + catalog_plan_order."""
     raw: dict[str, Any] = {}
+    prev = await load_subscription_overrides_raw()
+    order_csv = (form.get("catalog_plan_order") or "").strip()
+    if order_csv:
+        order = [x.strip().lower() for x in order_csv.split(",") if x.strip()]
+        order = [x for x in order if PLAN_ID_RE.match(x)]
+    else:
+        order = extract_plan_order(prev)
+    new_slug = (form.get("catalog_new_plan_slug") or "").strip().lower()
+    if new_slug and PLAN_ID_RE.match(new_slug) and new_slug not in order:
+        order.append(new_slug)
+    if order:
+        raw[PLAN_ORDER_KEY] = order
     try:
         form_keys = set(form.keys())
     except Exception:
         form_keys = set()
-    for pk in PLAN_KEYS:
+    for pk in order:
+        if not PLAN_ID_RE.match(pk):
+            continue
         name = (form.get(f"plan_{pk}_name") or "").strip()
         desc = (form.get(f"plan_{pk}_description") or "").strip()
         feats = (form.get(f"plan_{pk}_features") or "").strip()
@@ -132,6 +148,10 @@ async def _parse_subscription_forms(form: Any) -> dict[str, Any]:
                 block["price"] = max(0, int(str(pr).strip()))
             except ValueError:
                 pass
+        if pk != "free" and f"plan_{pk}_access_tier" in form_keys:
+            at = (form.get(f"plan_{pk}_access_tier") or "").strip().lower()
+            if at in ("free", "start", "pro", "maxi"):
+                block["access_tier"] = at
         if block:
             raw[pk] = block
     return raw
@@ -187,6 +207,7 @@ async def admin_subscription_plans_page(request: Request):
     plans = await get_effective_plans()
     raw_over = await load_subscription_overrides_raw()
     pkv = visible_plan_keys_from(plans)
+    plan_order_list = list(plans.keys())
     return templates.TemplateResponse(
         "dashboard/admin_subscription_plans.html",
         {
@@ -197,6 +218,7 @@ async def admin_subscription_plans_page(request: Request):
             "defaults": DEFAULT_PLANS,
             "raw_overrides": raw_over,
             "plan_keys_visible": pkv,
+            "plan_order_list": plan_order_list,
             "drawer_menu_specs": DRAWER_MENU_ITEM_SPECS,
         },
     )
@@ -217,7 +239,8 @@ async def admin_subscription_plans_drawer_save(request: Request, plan_key: str):
     if not admin:
         return RedirectResponse("/login")
     pk = (plan_key or "").strip().lower()
-    if pk not in PLAN_KEYS:
+    eff = await get_effective_plans()
+    if pk not in eff:
         return RedirectResponse("/admin/payment/subscription-plans", status_code=303)
     form = await request.form()
     try:
@@ -243,6 +266,11 @@ async def admin_subscription_plans_save(request: Request):
         sub_raw = await _parse_subscription_forms(form)
         prev_sub = await load_subscription_overrides_raw()
         merged_sub = _merge_subscription_overrides(prev_sub, sub_raw)
+        rm = (form.get("catalog_remove_plan_slug") or "").strip().lower()
+        if rm and rm != "free" and PLAN_ID_RE.match(rm):
+            po = list(merged_sub.get(PLAN_ORDER_KEY) or extract_plan_order(merged_sub))
+            merged_sub[PLAN_ORDER_KEY] = [x for x in po if x != rm]
+            merged_sub.pop(rm, None)
         await save_subscription_overrides_raw(merged_sub)
     except Exception:
         logger.exception("admin_subscription_plans_save failed")
@@ -270,13 +298,13 @@ async def admin_payment_provider_page(request: Request, provider_id: str):
         if meta["id"] == "yookassa_bot"
         else f"/admin/payment/{provider_id.strip().replace(' ', '')}"
     )
-    bot_offerings: list = []
+    bot_offerings_preview: list = []
     if meta["id"] == "yookassa_bot":
         try:
-            bot_offerings = await get_merged_bot_offerings()
+            bot_offerings_preview = await get_merged_bot_offerings()
         except Exception:
             logger.exception("get_merged_bot_offerings failed")
-            bot_offerings = []
+            bot_offerings_preview = []
 
     return templates.TemplateResponse(
         "dashboard/admin_payment_provider.html",
@@ -289,10 +317,11 @@ async def admin_payment_provider_page(request: Request, provider_id: str):
             "plans": plans,
             "defaults": DEFAULT_PLANS,
             "raw_overrides": raw_over,
+            "plan_order_list": list(plans.keys()),
             "cloudpayments_webhook_url": webhook_url if meta["id"] == "cloudpayments" else "",
             "yookassa_http_webhook_url": yk_wh if meta["id"] == "yookassa_bot" else "",
             "form_action": form_action,
-            "bot_offerings": bot_offerings if meta["id"] == "yookassa_bot" else [],
+            "bot_offerings_preview": bot_offerings_preview if meta["id"] == "yookassa_bot" else [],
             "drawer_menu_specs": DRAWER_MENU_ITEM_SPECS,
         },
     )
@@ -335,12 +364,6 @@ async def admin_payment_provider_save(request: Request, provider_id: str):
         new_st["shop_id"] = (form.get("shop_id") or "").strip()
         new_st["secret_key"] = (form.get("secret_key") or "").strip()
         new_st["instructions"] = (form.get("instructions") or "").strip()
-        try:
-            post_rows = parse_offerings_post(form)
-            plans_eff = await get_effective_plans()
-            new_st["offerings"] = normalize_offerings_list(post_rows, plans_eff)
-        except Exception:
-            logger.exception("yookassa_bot offerings parse failed")
         secrets = ("bot_token", "provider_token", "secret_key")
     elif pid == "telegram_stars":
         new_st["enabled"] = str(form.get("enabled") or "").strip().lower() in ("1", "true", "on", "yes")
@@ -367,6 +390,11 @@ async def admin_payment_provider_save(request: Request, provider_id: str):
         sub_raw = await _parse_subscription_forms(form)
         prev_sub = await load_subscription_overrides_raw()
         merged_sub = _merge_subscription_overrides(prev_sub, sub_raw)
+        rm = (form.get("catalog_remove_plan_slug") or "").strip().lower()
+        if rm and rm != "free" and PLAN_ID_RE.match(rm):
+            po = list(merged_sub.get(PLAN_ORDER_KEY) or extract_plan_order(merged_sub))
+            merged_sub[PLAN_ORDER_KEY] = [x for x in po if x != rm]
+            merged_sub.pop(rm, None)
         await save_subscription_overrides_raw(merged_sub)
     except Exception:
         logger.exception("save_subscription_overrides_raw failed")

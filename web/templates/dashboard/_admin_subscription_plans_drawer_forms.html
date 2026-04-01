@@ -1,11 +1,12 @@
-{# plans, drawer_menu_specs — отдельная форма на тариф (вне основной form). #}
+{# plans, drawer_menu_specs, plan_order_list — отдельная форма на тариф (вне основной form). #}
+{% set pol = plan_order_list if plan_order_list is defined else (plans.keys()|list if plans is defined else ['free', 'start', 'pro', 'maxi']) %}
 <div class="mt-10 space-y-8 max-w-4xl">
   <h2 class="text-xl font-semibold text-text">Пункты бокового меню (бургер) по тарифам</h2>
   <p class="text-xs text-muted leading-relaxed max-w-3xl">
-    Для каждого тарифа отметьте, что показывать пользователю, у которого сейчас этот план. Настройки блоков кабинета (лента, магазин и т.д.) по-прежнему действуют там, где указано в шаблоне — пункт появится только если разрешён и там, и здесь.
+    Для каждого тарифа отметьте, что показывать пользователю, у которого сейчас этот план. Настройки блоков кабинета по-прежнему пересекаются с этими флажками.
   </p>
-  {% for pk in ['free', 'start', 'pro', 'maxi'] %}
-  {% set p = plans[pk] %}
+  {% for pk in pol %}
+  {% set p = plans[pk] if plans is defined and pk in plans else {} %}
   <div class="p-5 rounded-2xl border border-border bg-surface/80 space-y-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <p class="text-sm font-bold text-gold uppercase tracking-wide">Меню бургера — {{ pk }}</p>
