@@ -1456,10 +1456,56 @@ def _safe_scheme_effect_rows(rows: list[dict]) -> list[dict[str, Any]]:
     return out
 
 
+def _safe_rec_arm_rows(rows: list[dict]) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for x in rows:
+        d = dict(x)
+        out.append(
+            {
+                "bundle_key": str(d.get("bundle_key") or "")[:128],
+                "segment": str(d.get("segment") or "")[:160],
+                "successes": int(d.get("successes") or 0),
+                "trials": int(d.get("trials") or 0),
+            }
+        )
+    return out
+
+
+EMPTY_ADMIN_WELLNESS_SUMMARY: dict[str, Any] = {
+    "users_with_replies_ever": 0,
+    "users_with_replies_30d": 0,
+    "replies_ever": 0,
+    "replies_30d": 0,
+    "prompts_30d": 0,
+    "mood_avg_sample": None,
+    "energy_avg_sample": None,
+    "mushroom_top": [],
+    "mushroom_bars": [],
+    "engagement_pct_30": 0,
+    "sample_moods_n": 0,
+    "therapy_profiles_n": 0,
+    "scheme_effect_rows": [],
+    "rec_arm_rows": [],
+    "cluster_model": None,
+    "kmeans_cluster_dist": [],
+    "automation_high_retention": 0,
+}
+
+
 async def admin_global_wellness_summary() -> dict[str, Any]:
-    """Агрегаты по всем пользователям для админской сводки."""
+    """Агрегаты по всем пользователям для админской сводки. При любой ошибке — пустая сводка (страница не падает)."""
+    try:
+        return await _admin_global_wellness_summary_impl()
+    except Exception:
+        logger.exception("admin_global_wellness_summary: fatal, returning empty summary")
+        return dict(EMPTY_ADMIN_WELLNESS_SUMMARY)
+
+
+async def _admin_global_wellness_summary_impl() -> dict[str, Any]:
+    """Реализация сводки (без внешнего try)."""
     since30 = datetime.utcnow() - timedelta(days=30)
-    _in_stats = wellness_journal_entries.c.statistics_excluded.is_(sa.false())
+    # == False совместимее с SQLite/старыми Postgres, чем IS FALSE
+    _in_stats = wellness_journal_entries.c.statistics_excluded == False
     nu = await database.fetch_val(
         sa.select(sa.func.count(sa.distinct(wellness_journal_entries.c.user_id)))
         .select_from(wellness_journal_entries)
@@ -1546,14 +1592,12 @@ async def admin_global_wellness_summary() -> dict[str, Any]:
     kmeans_cluster_dist: list[dict] = []
     automation_high_retention = 0
     try:
-        import sqlalchemy as sa
-
         from db.models import users as users_t, wellness_user_automation
 
         from services.wellness_bandit_service import list_rec_arm_stats
         from services.wellness_clustering_service import latest_cluster_model_summary
 
-        rec_arm_rows = await list_rec_arm_stats(12)
+        rec_arm_rows = _safe_rec_arm_rows(await list_rec_arm_stats(12))
         _raw_cm = await latest_cluster_model_summary()
         cluster_model = _safe_cluster_model_for_template(_raw_cm)
         _cnt = sa.func.count().label("n")
@@ -1564,9 +1608,14 @@ async def admin_global_wellness_summary() -> dict[str, Any]:
             .group_by(users_t.c.wellness_kmeans_cluster_id)
             .order_by(sa.desc(_cnt))
         )
-        kmeans_cluster_dist = [
-            {"cluster_id": r["wellness_kmeans_cluster_id"], "n": int(r["n"] or 0)} for r in cd
-        ]
+        kmeans_cluster_dist = []
+        for r in cd:
+            cid = r.get("wellness_kmeans_cluster_id")
+            try:
+                cid_out = int(cid) if cid is not None else None
+            except (TypeError, ValueError):
+                cid_out = None
+            kmeans_cluster_dist.append({"cluster_id": cid_out, "n": int(r.get("n") or 0)})
         automation_high_retention = int(
             await database.fetch_val(
                 sa.select(sa.func.count())
@@ -1577,15 +1626,31 @@ async def admin_global_wellness_summary() -> dict[str, Any]:
         )
     except Exception:
         logger.warning("admin_global_wellness_summary: bandit/cluster/automation block failed", exc_info=True)
+    mushroom_top = sorted(by_mushroom.items(), key=lambda x: -x[1])[:20]
+    max_cnt = max((int(c) for _, c in mushroom_top), default=1)
+    if max_cnt < 1:
+        max_cnt = 1
+    mushroom_bars: list[dict[str, Any]] = []
+    for name, cnt in mushroom_top:
+        c = int(cnt)
+        mushroom_bars.append(
+            {"name": str(name), "cnt": c, "width_pct": min(100, (c * 100) // max_cnt)}
+        )
+    rep_ever_i = int(rep_all or 0)
+    rep_30_i = int(rep30 or 0)
+    den_eng = max(1, rep_ever_i)
+    engagement_pct_30 = min(100, (rep_30_i * 100) // den_eng)
     return {
         "users_with_replies_ever": int(nu or 0),
         "users_with_replies_30d": int(nu30 or 0),
-        "replies_ever": int(rep_all or 0),
-        "replies_30d": int(rep30 or 0),
+        "replies_ever": rep_ever_i,
+        "replies_30d": rep_30_i,
         "prompts_30d": int(pr30 or 0),
         "mood_avg_sample": round(sum(moods) / len(moods), 2) if moods else None,
         "energy_avg_sample": round(sum(energies) / len(energies), 2) if energies else None,
-        "mushroom_top": sorted(by_mushroom.items(), key=lambda x: -x[1])[:20],
+        "mushroom_top": mushroom_top,
+        "mushroom_bars": mushroom_bars,
+        "engagement_pct_30": engagement_pct_30,
         "sample_moods_n": len(moods),
         "therapy_profiles_n": int(prof_n or 0),
         "scheme_effect_rows": _safe_scheme_effect_rows([dict(x) for x in scheme_rows]),
