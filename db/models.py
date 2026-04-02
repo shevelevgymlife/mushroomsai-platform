@@ -597,6 +597,17 @@ payment_webhook_dedup = sqlalchemy.Table(
     sqlalchemy.UniqueConstraint("provider", "external_id", name="uq_payment_webhook_dedup"),
 )
 
+# Одноразовый токен в return_url после оплаты ЮKassa (в TG WebView cookie часто не сохраняется).
+yookassa_return_tokens = sqlalchemy.Table(
+    "yookassa_return_tokens",
+    metadata,
+    sqlalchemy.Column("token", sqlalchemy.String(128), primary_key=True),
+    sqlalchemy.Column("payment_id", sqlalchemy.String(128), nullable=False),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+    sqlalchemy.Column("expires_at", sqlalchemy.DateTime, nullable=False),
+)
+
 community_follows = sqlalchemy.Table(
     "community_follows",
     metadata,

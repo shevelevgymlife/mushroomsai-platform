@@ -699,6 +699,14 @@ async def run_heavy_startup(app: FastAPI) -> None:
             logger.info("marketplace visibility controls (migrate_v38) OK")
         except Exception as e:
             logger.warning("migrate_v38 marketplace visibility: %s", e)
+        try:
+            import migrate_v39_yookassa_return_token as migrate_v39
+
+            for s in migrate_v39.STEPS:
+                await database.execute(sa.text(s))
+            logger.info("yookassa return URL tokens (migrate_v39) OK")
+        except Exception as e:
+            logger.warning("migrate_v39 yookassa_return_token: %s", e)
 
         try:
             from services.merge_neurofungi_ai_chats import merge_all_neurofungi_ai_personal_chats

@@ -35,6 +35,28 @@ async def _mark(provider: str, external_id: str) -> None:
         logger.debug("yookassa dedup insert failed", exc_info=True)
 
 
+async def fetch_yookassa_payment_with_fallback(payment_id: str) -> dict[str, Any] | None:
+    """
+    GET /v3/payments/{id}: сначала yookassa_bot, затем payment_provider:yookassa (как при создании платежа).
+    Нужно, если платёж создан резервным магазином или вебхук проверяет чужой shop_id.
+    """
+    pid = (payment_id or "").strip()
+    if not pid:
+        return None
+    st1 = await get_provider_settings("yookassa_bot")
+    sid1, sec1 = resolve_yookassa_shop_credentials(st1)
+    pay = await fetch_yookassa_payment(sid1, sec1, pid)
+    if pay:
+        return pay
+    st2 = await get_provider_settings("yookassa")
+    sid2, sec2 = resolve_yookassa_shop_credentials(st2)
+    if sid2 and sec2 and (sid2 != sid1 or sec2 != sec1):
+        pay2 = await fetch_yookassa_payment(sid2, sec2, pid)
+        if pay2:
+            return pay2
+    return None
+
+
 async def fetch_yookassa_payment(shop_id: str, secret_key: str, payment_id: str) -> dict[str, Any] | None:
     auth = base64.b64encode(f"{shop_id}:{secret_key}".encode()).decode("ascii")
     try:
@@ -183,16 +205,11 @@ async def handle_yookassa_http_notification(body: dict[str, Any]) -> tuple[bool,
     if event != "payment.succeeded":
         return True, f"ignored_event:{event}"
 
-    st = await get_provider_settings("yookassa_bot")
-    shop_id, secret_key = resolve_yookassa_shop_credentials(st)
-    if not shop_id or not secret_key:
-        return True, "ignored_no_credentials"
-
     payment_id = (obj.get("id") or "").strip()
     if not payment_id:
         return False, "no_id"
 
-    verified = await fetch_yookassa_payment(shop_id, secret_key, payment_id)
+    verified = await fetch_yookassa_payment_with_fallback(payment_id)
     if not verified:
         return False, "verify_failed"
 

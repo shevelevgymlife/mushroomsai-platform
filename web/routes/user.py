@@ -11,7 +11,7 @@ from auth.session import get_user_from_request
 from auth.ui_prefs import attach_screen_rim_prefs
 from db.database import database
 from db.models import (
-    users, messages, orders, posts, post_likes, community_posts, community_likes, community_comments,
+    users, yookassa_return_tokens, messages, orders, posts, post_likes, community_posts, community_likes, community_comments,
     community_folders, community_follows, community_saved, community_reposts, profile_likes, community_profiles,
     direct_messages,
     dashboard_blocks, user_block_overrides, community_groups, community_group_members, community_group_messages,
@@ -41,7 +41,10 @@ from services.yookassa_bot_offerings import (
 from services.subscription_checkout import resolve_active_subscription_checkout
 from services.yookassa_credentials import resolve_yookassa_shop_credentials
 from services.yookassa_hosted_payment import create_yookassa_redirect_payment
-from services.yookassa_pay_service import apply_yookassa_payment_succeeded, fetch_yookassa_payment
+from services.yookassa_pay_service import (
+    apply_yookassa_payment_succeeded,
+    fetch_yookassa_payment_with_fallback,
+)
 from services.subscription_service import (
     activate_subscription,
     check_subscription,
@@ -89,6 +92,21 @@ _YK_PENDING_CHECKOUT_COOKIE = "yk_pending_checkout"
 
 router = APIRouter()
 templates = Jinja2Templates(directory="web/templates")
+
+
+async def _persist_yookassa_return_token(*, token: str, payment_id: str, user_id: int) -> None:
+    """Связка токена в URL возврата с payment_id (в TG Mini App cookie часто не сохраняется)."""
+    try:
+        await database.execute(
+            yookassa_return_tokens.insert().values(
+                token=(token or "")[:128],
+                payment_id=(payment_id or "")[:128],
+                user_id=int(user_id),
+                expires_at=datetime.utcnow() + timedelta(hours=4),
+            )
+        )
+    except Exception as e:
+        _logger.warning("yookassa return token persist failed: %s", e)
 
 
 async def _create_yookassa_with_fallback(
@@ -281,27 +299,42 @@ async def subscriptions_page(request: Request):
         },
     )
 
-    # Возврат с ЮKassa: вебхук мог не дойти (новый магазин, URL в ЛК). Достаём payment_id из cookie и активируем по API.
+    # Возврат с ЮKassa: вебхук мог не дойти; payment_id — из cookie или из yk_rt (Mini App / WebView без cookie).
     if user and request.query_params.get("paid") == "1":
+        uid_pay = int(user.get("primary_user_id") or user["id"])
         pid = (request.cookies.get(_YK_PENDING_CHECKOUT_COOKIE) or "").strip()
+        yk_rt = (request.query_params.get("yk_rt") or "").strip()
+        if not pid and yk_rt:
+            row = await database.fetch_one(
+                yookassa_return_tokens.select()
+                .where(yookassa_return_tokens.c.token == yk_rt[:128])
+                .where(yookassa_return_tokens.c.user_id == uid_pay)
+                .where(yookassa_return_tokens.c.expires_at > datetime.utcnow())
+            )
+            if row:
+                pid = (row.get("payment_id") or "").strip()
         if pid:
-            yb = await get_provider_settings("yookassa_bot")
-            shop_id, sec_key = resolve_yookassa_shop_credentials(yb)
-            if shop_id and sec_key:
-                pay = await fetch_yookassa_payment(shop_id, sec_key, pid)
-                if pay:
-                    stp = (pay.get("status") or "").strip().lower()
-                    if stp == "succeeded":
-                        ok, msg = await apply_yookassa_payment_succeeded(pay)
-                        if ok or msg == "duplicate":
-                            _logger.info("yookassa paid=1 fallback ok payment_id=%s msg=%s", pid, msg)
-                        else:
-                            _logger.warning("yookassa paid=1 fallback payment_id=%s msg=%s", pid, msg)
-                        response.delete_cookie(_YK_PENDING_CHECKOUT_COOKIE, path="/")
-                    elif stp in ("canceled", "cancelled", "rejected"):
-                        response.delete_cookie(_YK_PENDING_CHECKOUT_COOKIE, path="/")
-                else:
-                    pass  # сеть/ключи — cookie оставляем, пользователь может обновить страницу
+            pay = await fetch_yookassa_payment_with_fallback(pid)
+            if pay:
+                stp = (pay.get("status") or "").strip().lower()
+                if stp == "succeeded":
+                    ok, msg = await apply_yookassa_payment_succeeded(pay)
+                    if ok or msg == "duplicate":
+                        _logger.info("yookassa paid=1 fallback ok payment_id=%s msg=%s", pid, msg)
+                    else:
+                        _logger.warning("yookassa paid=1 fallback payment_id=%s msg=%s", pid, msg)
+                    response.delete_cookie(_YK_PENDING_CHECKOUT_COOKIE, path="/")
+                    if yk_rt:
+                        try:
+                            await database.execute(
+                                yookassa_return_tokens.delete().where(
+                                    yookassa_return_tokens.c.token == yk_rt[:128]
+                                )
+                            )
+                        except Exception:
+                            pass
+                elif stp in ("canceled", "cancelled", "rejected"):
+                    response.delete_cookie(_YK_PENDING_CHECKOUT_COOKIE, path="/")
 
     return response
 
@@ -336,7 +369,8 @@ async def pay_subscription_yookassa(request: Request, offering_id: str = "", pla
     site = (settings.SITE_URL or "").rstrip("/")
     if not site.startswith("http"):
         return RedirectResponse("/subscriptions?pay_error=no_site_url", status_code=302)
-    return_url = f"{site}/subscriptions?paid=1"
+    yk_rt = secrets.token_urlsafe(32)
+    return_url = f"{site}/subscriptions?paid=1&yk_rt={quote(yk_rt, safe='')}"
     disp = (off.get("display_name") or oid)[:80]
     dur = (off.get("duration_label") or "")[:40]
     desc = f"Подписка «{disp}» {dur}".strip()[:128]
@@ -371,6 +405,7 @@ async def pay_subscription_yookassa(request: Request, offering_id: str = "", pla
             secure=(settings.SITE_URL or "").lower().startswith("https"),
             path="/",
         )
+        await _persist_yookassa_return_token(token=yk_rt, payment_id=payment_id, user_id=uid)
     return out
 
 
@@ -442,7 +477,8 @@ async def pay_gift_subscription(request: Request, plan: str = "", recipient_id: 
         site = (settings.SITE_URL or "").rstrip("/")
         if not site.startswith("http"):
             return RedirectResponse("/subscriptions?gift_error=no_site_url", status_code=302)
-        return_url = f"{site}/subscriptions?paid=1&gifted=1"
+        yk_rt = secrets.token_urlsafe(32)
+        return_url = f"{site}/subscriptions?paid=1&gifted=1&yk_rt={quote(yk_rt, safe='')}"
         disp = (off.get("display_name") or oid)[:80]
         dur = (off.get("duration_label") or "")[:40]
         desc = f"Подарок подписки «{disp}» {dur}".strip()[:128]
@@ -480,6 +516,7 @@ async def pay_gift_subscription(request: Request, plan: str = "", recipient_id: 
                 secure=(settings.SITE_URL or "").lower().startswith("https"),
                 path="/",
             )
+            await _persist_yookassa_return_token(token=yk_rt, payment_id=payment_id, user_id=giver_id)
         return out
 
     return RedirectResponse("/subscriptions?gift_error=no_payment", status_code=302)
