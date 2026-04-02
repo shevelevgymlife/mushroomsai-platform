@@ -73,7 +73,11 @@
       </div>
     </div>
 
-    {% if shop_exclusive_referrer_id %}
+    {% if shop_partner_transition_hold %}
+    <div class="mb-6 rounded-xl border border-rose-500/40 bg-rose-950/30 px-4 py-3 text-sm text-rose-100/95 leading-relaxed">
+      <strong class="text-rose-200">Магазин временно не функционирует.</strong> Скоро открытие другого магазина — стандартной витрины платформы с официальными ссылками и товарами администратора. Обычно это в течение суток после окончания льготного периода вашего пригласившего продавца.
+    </div>
+    {% elif shop_exclusive_referrer_id %}
     <div class="mb-6 rounded-xl border border-amber-500/35 bg-amber-500/[0.08] px-4 py-3 text-sm text-amber-100/95 leading-relaxed">
       <strong class="text-amber-200">Партнёрский магазин.</strong> Показаны только товары вашего пригласившего продавца; общая витрина Neurotrops для вас скрыта. Если у продавца закончится тариф Макси и льготный период, снова откроется стандартный каталог платформы.
     </div>

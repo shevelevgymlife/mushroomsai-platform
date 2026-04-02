@@ -290,6 +290,7 @@ async def activate_subscription(
     }
     if plan == "maxi":
         upd_vals["maxi_perks_grace_until"] = None
+        upd_vals["maxi_shop_banner_until"] = None
     await database.execute(users.update().where(users.c.id == user_id).values(**upd_vals))
     if not skip_event_log:
         await record_subscription_event(

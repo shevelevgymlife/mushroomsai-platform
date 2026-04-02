@@ -78,6 +78,10 @@ async def shop_urls_for_user(internal_user_id: int) -> tuple[str, str]:
         row = await database.fetch_one(users.select().where(users.c.id == uid))
     if not row:
         return SHOP_RUS_URL, eu
+    from services.shop_referral_hub import viewer_in_partner_shop_transition_hold
+
+    if await viewer_in_partner_shop_transition_hold(uid):
+        return SHOP_RUS_URL, eu
     # Только партнёры с сохранённой своей ссылкой; иначе смотрим referred_by (приглашённый по рефке амбассадора).
     if (row.get("referral_shop_url") or "").strip() and bool(row.get("referral_shop_partner_self")):
         from services.subscription_service import paid_subscription_for_referral_program
@@ -104,6 +108,12 @@ async def attach_referral_shop_context(u: dict) -> None:
     uid = int(u.get("primary_user_id") or u["id"])
     row = await database.fetch_one(users.select().where(users.c.id == uid))
     if not row:
+        u["show_marketplace_nav"] = True
+        u["referrer_external_shop_url"] = None
+        return
+    from services.shop_referral_hub import viewer_in_partner_shop_transition_hold
+
+    if await viewer_in_partner_shop_transition_hold(uid):
         u["show_marketplace_nav"] = True
         u["referrer_external_shop_url"] = None
         return
@@ -147,6 +157,10 @@ async def external_buy_url_for_user(user: dict | None) -> Optional[str]:
     uid = int(user.get("primary_user_id") or user["id"])
     row = await database.fetch_one(users.select().where(users.c.id == uid))
     if not row:
+        return None
+    from services.shop_referral_hub import viewer_in_partner_shop_transition_hold
+
+    if await viewer_in_partner_shop_transition_hold(uid):
         return None
     if (row.get("referral_shop_url") or "").strip() and bool(row.get("referral_shop_partner_self")):
         from services.subscription_service import paid_subscription_for_referral_program

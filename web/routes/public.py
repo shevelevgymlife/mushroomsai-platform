@@ -61,7 +61,7 @@ from services.referral_shop_prefs import (
     external_buy_url_for_user,
     normalize_referral_shop_url_for_save,
 )
-from services.shop_referral_hub import viewer_exclusive_referrer_id
+from services.shop_referral_hub import viewer_exclusive_referrer_id, viewer_in_partner_shop_transition_hold
 from services.ops_alerts import (
     notify_new_feedback,
     notify_new_order,
@@ -170,6 +170,8 @@ async def _viewer_referred_by_seller(viewer_uid: int | None, seller_id: int | No
 
 
 async def _can_view_shop_product(viewer_uid: int | None, product_row: dict) -> bool:
+    if viewer_uid and await viewer_in_partner_shop_transition_hold(int(viewer_uid)):
+        return False
     if viewer_uid:
         ex = await viewer_exclusive_referrer_id(int(viewer_uid))
         if ex:
@@ -421,6 +423,7 @@ async def shop(
                 "cart_qty": 0,
                 "cart_totals": {},
                 "shop_exclusive_referrer_id": None,
+                "shop_partner_transition_hold": False,
             },
         )
 
@@ -441,7 +444,10 @@ async def shop(
     )
     exclusive_rid = await viewer_exclusive_referrer_id(viewer_uid)
     shop_exclusive_referrer_id = int(exclusive_rid) if exclusive_rid else None
-    if exclusive_rid:
+    shop_partner_transition_hold = await viewer_in_partner_shop_transition_hold(viewer_uid)
+    if shop_partner_transition_hold:
+        query = sa.select(shop_products).where(shop_products.c.id == -1)
+    elif exclusive_rid:
         query = query.where(shop_products.c.seller_id == int(exclusive_rid))
         query = query.where(seller_eligible)
     else:
@@ -522,6 +528,7 @@ async def shop(
             "cart_qty": cart_qty,
             "cart_totals": cart_totals,
             "shop_exclusive_referrer_id": shop_exclusive_referrer_id,
+            "shop_partner_transition_hold": shop_partner_transition_hold,
         },
     )
 

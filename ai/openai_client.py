@@ -242,9 +242,18 @@ async def _shop_links_system_extra(user_id: int) -> str:
     from services.shop_referral_hub import (
         single_link_ai_for_exclusive_enabled,
         viewer_exclusive_referrer_id,
+        viewer_in_partner_shop_transition_hold,
     )
 
     try:
+        if await viewer_in_partner_shop_transition_hold(int(user_id)):
+            ru, eu = await shop_urls_for_user(user_id)
+            return (
+                "\n\nВитрина магазина у этого пользователя сейчас на перенастройке (закончился льготный период продавца). "
+                "Не предлагай ссылки пригласившего продавца. Только официальные площадки до открытия стандартного каталога:\n"
+                f"Россия и Беларусь: {ru}\n"
+                f"Европа и Америка: {eu}\n"
+            )
         if await single_link_ai_for_exclusive_enabled():
             rid = await viewer_exclusive_referrer_id(int(user_id))
             if rid:

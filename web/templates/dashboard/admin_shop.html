@@ -33,6 +33,8 @@
     {% set hub = shop_referral_hub or {} %}
     {% set ex = hub.get('exclusive_catalog', {}) %}
     {% set ex_mode = ex.get('mode', 'off') %}
+    {% set tb = hub.get('transition_banner', {}) %}
+    {% set tb_scope = tb.get('scope_mode', 'same_as_exclusive') %}
 
     <div class="ash-chips mb-3" id="ashChips" role="tablist" aria-label="Разделы магазина">
       <button type="button" class="ash-chip ash-chip--on" data-ash="catalog" id="ash-chip-catalog">
@@ -169,7 +171,47 @@
               <label class="block text-xs text-muted mb-1.5">Льготные дни после окончания Макси</label>
               <input type="number" name="grace_days" min="0" max="90" value="{{ hub.get('grace_days_after_maxi_end', 5) }}"
                 class="w-32 px-3 py-2 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60" />
-              <p class="text-[11px] text-muted mt-1">Сколько дней после смены тарифа с Макси сохраняются «перки» витрины и своя ссылка магазина для реферера. По истечении — новые гости видят стандартные ссылки/витрину; старые привязки дерева не меняются.</p>
+              <p class="text-[11px] text-muted mt-1">Сколько дней после смены тарифа с Макси сохраняются «перки» витрины и своя ссылка магазина для реферера. Дальше — опциональная фаза баннера (ниже), затем стандартные ссылки и товары платформы.</p>
+            </div>
+            <div class="rounded-xl border border-rose-500/25 bg-rose-500/[0.06] p-4 space-y-4">
+              <h3 class="text-sm font-semibold text-text">Переход: баннер «магазин не работает»</h3>
+              <p class="text-xs text-muted leading-relaxed">После окончания льготных дней выше приглашённые реферером попадают на экран без товаров и без партнёрских ссылок: показывается сообщение о перенастройке. Через указанное число суток открывается обычный каталог администратора и официальные ссылки. Длительности одинаковы для всех продавцов в выбранной области.</p>
+              <label class="flex items-center gap-2 cursor-pointer text-sm text-text">
+                <input type="checkbox" name="transition_enabled" value="1" class="accent-gold w-4 h-4" {% if tb.get('enabled') %}checked{% endif %} />
+                <span><strong>Включить</strong> фазу баннера после грейса (если область ниже не «выкл»).</span>
+              </label>
+              <div>
+                <label class="block text-xs text-muted mb-1.5">Суток «закрытого» магазина после грейса</label>
+                <input type="number" name="transition_days_after_grace" min="0" max="30" value="{{ tb.get('days_after_grace', 1) }}"
+                  class="w-32 px-3 py-2 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60" />
+                <p class="text-[11px] text-muted mt-1">По умолчанию 1: один день только баннер, затем стандарт. 0 — сразу стандарт после грейса.</p>
+              </div>
+              <div>
+                <p class="text-xs text-muted mb-2">Область (на кого распространяется сценарий грейс → баннер → стандарт)</p>
+                <div class="space-y-2 text-sm text-text">
+                  <label class="flex items-start gap-2 cursor-pointer">
+                    <input type="radio" name="transition_scope_mode" value="off" class="mt-1 accent-gold" {% if tb_scope == 'off' %}checked{% endif %} />
+                    <span><strong>Выкл.</strong> — не показывать баннер никому (сразу стандарт после грейса).</span>
+                  </label>
+                  <label class="flex items-start gap-2 cursor-pointer">
+                    <input type="radio" name="transition_scope_mode" value="same_as_exclusive" class="mt-1 accent-gold" {% if tb_scope == 'same_as_exclusive' %}checked{% endif %} />
+                    <span><strong>Как эксклюзивный каталог</strong> — те же продавцы и режим «все/список», что и в блоке выше (эксклюзив должен быть включён).</span>
+                  </label>
+                  <label class="flex items-start gap-2 cursor-pointer">
+                    <input type="radio" name="transition_scope_mode" value="all_maxi_sellers" class="mt-1 accent-gold" {% if tb_scope == 'all_maxi_sellers' %}checked{% endif %} />
+                    <span><strong>Все продавцы маркетплейса</strong> — любой с флагом продавца, кто теряет Макси (независимо от эксклюзива).</span>
+                  </label>
+                  <label class="flex items-start gap-2 cursor-pointer">
+                    <input type="radio" name="transition_scope_mode" value="selected" class="mt-1 accent-gold" {% if tb_scope == 'selected' %}checked{% endif %} />
+                    <span><strong>Только выбранные id</strong> — список ниже.</span>
+                  </label>
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs text-muted mb-1.5">ID продавцов для перехода (через запятую)</label>
+                <textarea name="transition_seller_user_ids" rows="2" placeholder="Только при режиме «выбранные id»"
+                  class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm font-mono resize-none focus:outline-none focus:border-gold/60">{{ shop_hub_transition_selected_ids_text or '' }}</textarea>
+              </div>
             </div>
             <div>
               <label class="flex items-center gap-2 cursor-pointer text-sm text-text">

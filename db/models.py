@@ -22,6 +22,11 @@ users = sqlalchemy.Table(
         sqlalchemy.DateTime,
         nullable=True,
     ),
+    sqlalchemy.Column(
+        "maxi_shop_banner_until",
+        sqlalchemy.DateTime,
+        nullable=True,
+    ),
     sqlalchemy.Column("referral_code", sqlalchemy.String(20), unique=True, nullable=True),
     sqlalchemy.Column("referred_by", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=True),
     sqlalchemy.Column("linked_tg_id", sqlalchemy.BigInteger, nullable=True),

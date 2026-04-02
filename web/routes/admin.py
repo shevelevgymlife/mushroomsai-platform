@@ -343,6 +343,8 @@ async def shop_page(request: Request):
     pol = await get_referral_shop_link_policy()
     ids = hub.get("exclusive_catalog") or {}
     sel_txt = ", ".join(str(x) for x in (ids.get("seller_user_ids") or []))
+    tb = hub.get("transition_banner") or {}
+    sel_tb_txt = ", ".join(str(x) for x in (tb.get("seller_user_ids") or []))
     return templates.TemplateResponse(
         "dashboard/admin_shop.html",
         {
@@ -354,6 +356,7 @@ async def shop_page(request: Request):
             "shop_referral_hub": hub,
             "referral_shop_link_policy": pol,
             "shop_hub_selected_ids_text": sel_txt,
+            "shop_hub_transition_selected_ids_text": sel_tb_txt,
         },
     )
 
@@ -365,6 +368,10 @@ async def admin_shop_referral_hub_save(
     seller_user_ids: str = Form(""),
     grace_days: str = Form("5"),
     single_link_ai: str = Form(""),
+    transition_enabled: str = Form(""),
+    transition_days_after_grace: str = Form("1"),
+    transition_scope_mode: str = Form("same_as_exclusive"),
+    transition_seller_user_ids: str = Form(""),
 ):
     admin = await require_permission(request, "can_shop")
     if not admin:
@@ -381,6 +388,18 @@ async def admin_shop_referral_hub_save(
         gd = int(float(str(grace_days).strip() or "5"))
     except (TypeError, ValueError):
         gd = 5
+    tscope = (transition_scope_mode or "same_as_exclusive").strip().lower()
+    if tscope not in ("off", "same_as_exclusive", "all_maxi_sellers", "selected"):
+        tscope = "same_as_exclusive"
+    t_raw_ids: list[int] = []
+    for part in (transition_seller_user_ids or "").replace(";", ",").split(","):
+        p = part.strip()
+        if p.isdigit():
+            t_raw_ids.append(int(p))
+    try:
+        td = int(float(str(transition_days_after_grace).strip() or "1"))
+    except (TypeError, ValueError):
+        td = 1
     from services.shop_referral_hub import set_shop_referral_hub
 
     await set_shop_referral_hub(
@@ -389,6 +408,12 @@ async def admin_shop_referral_hub_save(
             "grace_days_after_maxi_end": gd,
             "single_link_ai_for_exclusive": str(single_link_ai).strip().lower()
             in ("1", "true", "on", "yes"),
+            "transition_banner": {
+                "enabled": str(transition_enabled).strip().lower() in ("1", "true", "on", "yes"),
+                "days_after_grace": td,
+                "scope_mode": tscope,
+                "seller_user_ids": t_raw_ids,
+            },
         }
     )
     return RedirectResponse("/admin/shop?hub_saved=1", status_code=303)
@@ -946,6 +971,7 @@ async def change_subscription(request: Request, user_id: int, plan: str = Form(.
     }
     if plan == "maxi":
         sub_adm_vals["maxi_perks_grace_until"] = None
+        sub_adm_vals["maxi_shop_banner_until"] = None
     await database.execute(users.update().where(users.c.id == user_id).values(**sub_adm_vals))
     now = datetime.utcnow()
     if plan == "free":
@@ -1025,6 +1051,7 @@ async def patch_user_plan(request: Request, user_id: int):
     }
     if plan == "maxi":
         patch_plan_vals["maxi_perks_grace_until"] = None
+        patch_plan_vals["maxi_shop_banner_until"] = None
     await database.execute(users.update().where(users.c.id == user_id).values(**patch_plan_vals))
     now = datetime.utcnow()
     if plan == "free":
