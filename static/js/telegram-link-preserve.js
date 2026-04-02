@@ -36,6 +36,7 @@
     if (p.indexOf("/auth/") === 0) return true;
     if (p.indexOf("/onboarding") === 0) return true;
     if (p.indexOf("/account") === 0) return true;
+    if (p.indexOf("/pay/") === 0) return true;
     return false;
   }
 

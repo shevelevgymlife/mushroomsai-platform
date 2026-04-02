@@ -7,7 +7,8 @@ from urllib.parse import quote
 from fastapi import APIRouter, Request, Form, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from web.templates_utils import Jinja2Templates
-from auth.session import get_user_from_request
+from auth.session import create_access_token, get_user_from_request
+from auth.telegram_auth import verify_telegram_miniapp
 from auth.ui_prefs import attach_screen_rim_prefs
 from db.database import database
 from db.models import (
@@ -332,6 +333,31 @@ async def pay_subscription_yookassa(request: Request, offering_id: str = "", pla
     """Перенаправление на оплату ЮKassa (сайт и Telegram Mini App)."""
     user = await require_auth(request)
     oid = (offering_id or plan or "").strip().lower()
+    if not user:
+        init_raw = (request.query_params.get("tg_init_data") or "").strip()
+        if init_raw:
+            try:
+                udata = verify_telegram_miniapp(init_raw)
+                tg_id = int(udata.get("id"))
+                row = await database.fetch_one(
+                    users.select().where(
+                        sa.or_(users.c.tg_id == tg_id, users.c.linked_tg_id == tg_id)
+                    )
+                )
+                if row:
+                    root_id = int(row.get("primary_user_id") or row["id"])
+                    token = create_access_token(root_id)
+                    nxt = f"/pay/subscription?plan={quote(oid, safe='')}&pay_ctx=tg"
+                    resp = RedirectResponse(nxt, status_code=302)
+                    resp.set_cookie(
+                        "access_token",
+                        token,
+                        httponly=True,
+                        max_age=30 * 24 * 3600,
+                    )
+                    return resp
+            except Exception:
+                _logger.warning("pay/subscription tg_init_data auth failed", exc_info=True)
     if not user:
         nxt = "/pay/subscription?plan=" + quote(oid, safe="")
         return RedirectResponse("/login?next=" + quote(nxt, safe=""), status_code=302)

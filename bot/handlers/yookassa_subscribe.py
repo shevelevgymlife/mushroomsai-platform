@@ -10,7 +10,7 @@ import unicodedata
 from decimal import Decimal, ROUND_HALF_UP
 from urllib.parse import quote
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice, Update, WebAppInfo
 from telegram.error import BadRequest, TelegramError
 from telegram.ext import ContextTypes, filters
 
@@ -327,11 +327,12 @@ async def subscribe_menu_handler(update: Update, context: ContextTypes.DEFAULT_T
             )
         elif show_cp_card:
             card_lbl = f"💳 Продлить · {disp} {price}₽" if renew else f"💳 {disp} {price}₽"
-            pay_url = f"{site}/pay/subscription?plan={quote(oid, safe='')}&pay_ctx=tg"
+            next_path = f"/pay/subscription?plan={quote(oid, safe='')}&pay_ctx=tg"
+            pay_url = f"{site}/telegram-webapp?next={quote(next_path, safe='')}"
             btns.append(
                 InlineKeyboardButton(
                     card_lbl[:64],
-                    url=pay_url,
+                    web_app=WebAppInfo(url=pay_url),
                 )
             )
         if show_stars:
@@ -368,8 +369,8 @@ async def subscribe_menu_handler(update: Update, context: ContextTypes.DEFAULT_T
         )
     elif show_cp_card:
         intro = (
-            "Выберите тариф — откроется оплата CloudPayments на сайте. Для текущего тарифа кнопка с пометкой "
-            "<b>«Продлить»</b>: оплаченный период удлинится."
+            "Выберите тариф — откроется оплата CloudPayments внутри Telegram Mini App (без перехода в веб-логин). "
+            "Для текущего тарифа кнопка с пометкой <b>«Продлить»</b>: оплаченный период удлинится."
         )
     else:
         intro = "Выберите тариф — оплата звёздами Telegram (XTR). Текущий тариф можно продлить — кнопка «Продлить»."

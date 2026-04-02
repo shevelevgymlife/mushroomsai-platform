@@ -118,6 +118,91 @@ async def _login_blocked_response(request: Request):
     )
 
 
+@router.post("/auth/telegram/webapp/callback")
+async def telegram_webapp_callback(request: Request):
+    """
+    Унифицированный вход для Mini App (используется telegram-webapp-auth.js):
+    принимает initData и next, возвращает {ok:true, redirect:"..."} и ставит access_token cookie.
+    """
+    try:
+        body = await request.json()
+        init_data = (body.get("initData") or body.get("init_data") or "").strip()
+        next_path = _safe_next_path(body.get("next")) or "/community"
+        if next_path in ("/login", "/logout"):
+            next_path = "/community"
+
+        if not init_data:
+            return JSONResponse({"ok": False, "error": "initData is empty"}, status_code=400)
+
+        user_data = verify_telegram_miniapp(init_data)
+        if not user_data:
+            return JSONResponse({"ok": False, "error": "Invalid Telegram data"}, status_code=400)
+
+        tg_id = int(user_data.get("id"))
+        name = f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip()
+        avatar = user_data.get("photo_url", "")
+
+        if await is_identity_blocked("tg_id", str(tg_id)):
+            return JSONResponse({"ok": False, "error": "Аккаунт заблокирован"}, status_code=403)
+
+        from auth.avatar_policy import is_server_uploaded_avatar
+
+        row = await _find_user_by_tg_login_id(tg_id)
+        if row:
+            if await login_denied_for_user_row(dict(row)):
+                return JSONResponse({"ok": False, "error": "Аккаунт заблокирован"}, status_code=403)
+            user_id = row["primary_user_id"] or row["id"]
+            vals = {}
+            if not is_server_uploaded_avatar(row.get("avatar")) and avatar:
+                vals["avatar"] = avatar
+            existing_tg = row.get("tg_id")
+            if not existing_tg or int(existing_tg) == int(tg_id):
+                vals["tg_id"] = tg_id
+            vals["linked_tg_id"] = tg_id
+            await database.execute(users.update().where(users.c.id == user_id).values(**vals))
+        else:
+            ref_code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
+            await database.execute(
+                users.insert().values(
+                    tg_id=tg_id,
+                    linked_tg_id=tg_id,
+                    name=name,
+                    avatar=avatar,
+                    referral_code=ref_code,
+                )
+            )
+            row_new = await database.fetch_one(
+                users.select().where(
+                    (users.c.tg_id == tg_id) | (users.c.linked_tg_id == tg_id)
+                )
+            )
+            if not row_new:
+                return JSONResponse({"ok": False, "error": "Не удалось создать пользователя"}, status_code=500)
+            user_id = row_new.get("primary_user_id") or row_new["id"]
+
+        token = create_access_token(user_id)
+        request.session.pop("login_next", None)
+        resp = JSONResponse({"ok": True, "redirect": next_path})
+        resp.set_cookie("access_token", token, httponly=True, max_age=30 * 24 * 3600)
+        await finalize_web_referral(request, resp, int(user_id))
+        return resp
+
+    except Exception as e:
+        _logger.warning("telegram_webapp_callback error: %s", e)
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
+@router.get("/telegram-webapp", response_class=HTMLResponse)
+async def telegram_webapp_entry(request: Request):
+    nxt = _safe_next_path(request.query_params.get("next")) or "/community"
+    if nxt in ("/login", "/logout"):
+        nxt = "/community"
+    return templates.TemplateResponse(
+        "telegram_webapp.html",
+        {"request": request, "user": None, "next_path": nxt},
+    )
+
+
 @router.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
     from auth.session import get_user_from_request
