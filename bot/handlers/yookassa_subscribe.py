@@ -8,6 +8,7 @@ import re
 import secrets
 import unicodedata
 from decimal import Decimal, ROUND_HALF_UP
+from urllib.parse import quote
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice, Update
 from telegram.error import BadRequest, TelegramError
@@ -281,15 +282,17 @@ async def subscribe_menu_handler(update: Update, context: ContextTypes.DEFAULT_T
     ck = await resolve_active_subscription_checkout()
     yk_ready, _st = await _provider_ready()
     kind_tg = ck.get("kind_telegram") or ck.get("kind")
-    show_card = yk_ready and kind_tg == "yookassa"
+    cp_public_id = (ck.get("cloudpayments_public_id") or "").strip()
+    show_yk_card = yk_ready and kind_tg == "yookassa"
+    show_cp_card = bool(cp_public_id) and kind_tg == "cloudpayments"
     show_stars = bool(ck.get("telegram_stars_subscriptions_enabled"))
     stars_spr = float(ck.get("telegram_stars_per_rub") or 0.55)
 
     site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
-    if not show_card and not show_stars:
+    if not show_yk_card and not show_cp_card and not show_stars:
         await update.message.reply_text(
             f"💳 <b>Подписка</b>\n\n"
-            f"В боте не включена оплата: нужны ЮKassa (бот) для карты и/или Telegram Stars в админке → Оплата.\n\n"
+            f"В боте не включена оплата: нужен CloudPayments или ЮKassa (бот) для карты и/или Telegram Stars в админке → Оплата.\n\n"
             f"Сайт: {site}/subscriptions\n\n"
             f"<i>{TG_SUBSCRIPTION_PAYMENT_NOTICE}</i>",
             parse_mode="HTML",
@@ -314,12 +317,21 @@ async def subscribe_menu_handler(update: Update, context: ContextTypes.DEFAULT_T
         disp = (o.get("display_name") or oid)[:20]
         renew = _offering_is_renewal(o, user, eff_plan)
         btns: list[InlineKeyboardButton] = []
-        if show_card:
+        if show_yk_card:
             card_lbl = f"💳 Продлить · {disp} {price}₽" if renew else f"💳 {disp} {price}₽"
             btns.append(
                 InlineKeyboardButton(
                     card_lbl[:64],
                     callback_data=f"tgpay_{oid}",
+                )
+            )
+        elif show_cp_card:
+            card_lbl = f"💳 Продлить · {disp} {price}₽" if renew else f"💳 {disp} {price}₽"
+            pay_url = f"{site}/pay/subscription?plan={quote(oid, safe='')}&pay_ctx=tg"
+            btns.append(
+                InlineKeyboardButton(
+                    card_lbl[:64],
+                    url=pay_url,
                 )
             )
         if show_stars:
@@ -343,14 +355,20 @@ async def subscribe_menu_handler(update: Update, context: ContextTypes.DEFAULT_T
         )
         return
 
-    if show_card and show_stars:
+    if (show_yk_card or show_cp_card) and show_stars:
+        card_name = "CloudPayments" if show_cp_card else "ЮKassa"
         intro = (
             "Ниже все тарифы из каталога. <b>«Продлить»</b> — тот же уровень, что сейчас; срок после оплаты "
-            "<b>прибавится</b> к оставшемуся. <b>💳</b> — карта (ЮKassa), <b>⭐</b> — Stars."
+            f"<b>прибавится</b> к оставшемуся. <b>💳</b> — карта ({card_name}), <b>⭐</b> — Stars."
         )
-    elif show_card:
+    elif show_yk_card:
         intro = (
             "Выберите тариф — откроется счёт ЮKassa. Для текущего тарифа кнопка с пометкой "
+            "<b>«Продлить»</b>: оплаченный период удлинится."
+        )
+    elif show_cp_card:
+        intro = (
+            "Выберите тариф — откроется оплата CloudPayments на сайте. Для текущего тарифа кнопка с пометкой "
             "<b>«Продлить»</b>: оплаченный период удлинится."
         )
     else:
