@@ -1,0 +1,58 @@
+{% set tp = wellness_therapy_panel %}
+{% if tp is defined and tp.show %}
+<div class="wd-therapy" id="wd-therapy-panel">
+  <div class="wd-therapy-head">
+    <h2 class="wd-therapy-title">Ориентиры по фунготерапии <span class="wd-therapy-tag">образовательно</span></h2>
+    <p class="wd-therapy-sub">{{ tp.disclaimer }}</p>
+  </div>
+  <div class="wd-therapy-meta">
+    <span>Эвристический тип: <strong>{{ tp.cluster }}</strong></span>
+    {% if tp.updated_at %}<span class="wd-therapy-upd">обновлено {{ tp.updated_at[:19]|replace('T',' ') }} UTC</span>{% endif %}
+  </div>
+  {% if tp.triggers and tp.triggers|length > 0 %}
+  <p class="wd-therapy-triggers"><span class="wd-muted">Сработавшие пороги (по последнему снимку):</span> {{ tp.triggers | join(' · ') }}</p>
+  {% endif %}
+
+  {% if tp.bundles and tp.bundles|length > 0 %}
+  <h3 class="wd-therapy-h3">Связки из внутренней базы</h3>
+  <div class="wd-therapy-bundles">
+    {% for b in tp.bundles %}
+    <div class="wd-therapy-card">
+      <div class="wd-therapy-card-t">{{ b.title }}</div>
+      <div class="wd-therapy-card-m">{{ b.mushroom_names | join(' + ') }}</div>
+      <p class="wd-therapy-card-r">{{ b.rationale }}</p>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if tp.singles and tp.singles|length > 0 %}
+  <h3 class="wd-therapy-h3">Доп. ориентиры по шкалам</h3>
+  <ul class="wd-therapy-singles">
+    {% for s in tp.singles %}
+    <li><strong>{{ s.name_ru }}</strong> — {{ s.why }}{% if s.dose_hint %} <em class="wd-muted">({{ s.dose_hint }})</em>{% endif %}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  <details class="wd-therapy-catalog">
+    <summary>Справочник «гриб → функция → показания» (кратко)</summary>
+    <div class="wd-therapy-table-wrap">
+      <table class="wd-therapy-table">
+        <thead>
+          <tr><th>Гриб</th><th>Ядро (образовательно)</th><th>Показания (из базы)</th></tr>
+        </thead>
+        <tbody>
+          {% for row in tp.mushroom_catalog %}
+          <tr>
+            <td class="wd-td-name">{{ row.name }}</td>
+            <td>{{ row.core }}</td>
+            <td class="wd-td-ind">{{ row.indications }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </details>
+</div>
+{% endif %}

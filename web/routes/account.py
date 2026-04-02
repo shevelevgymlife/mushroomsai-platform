@@ -1265,6 +1265,21 @@ async def wellness_results_pdf(request: Request):
                 (rec_body or "")[:4500],
             )
         )
+    try:
+        from services.wellness_ai_profile_service import load_wellness_ai_profile_dict
+
+        prof = await load_wellness_ai_profile_dict(uid)
+        if prof and (prof.get("ai_context_compact") or prof.get("cluster_label")):
+            pc = (prof.get("ai_context_compact") or "").strip()
+            cl = prof.get("cluster_label") or ""
+            lines.append(
+                (
+                    "Профиль ориентиров (грибы/связки, не назначение)",
+                    f"Тип (эвристика): {cl}\n{pc}"[:5000],
+                )
+            )
+    except Exception:
+        pass
     mush = agg.get("mushroom_counts") or []
     if mush:
         lines.append(("Упоминания грибов (по числу ответов)", "\n".join(f"• {m[0]}: {m[1]}" for m in mush[:20])))

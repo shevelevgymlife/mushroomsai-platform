@@ -105,6 +105,10 @@
 </div>
 {% endif %}
 
+{% if iv != 'platform' %}
+{% include "components/wellness_therapy_panel.html" %}
+{% endif %}
+
 <div class="wd-stat-grid">
   <div class="wd-stat">
     <div class="wd-stat-k">{% if iv == 'platform' %}Снимков в окне{% else %}Серия дней{% endif %}</div>

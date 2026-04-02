@@ -660,6 +660,15 @@ async def run_heavy_startup(app: FastAPI) -> None:
             logger.warning("migrate_v33 wellness_prompts_per_day: %s", e)
 
         try:
+            import migrate_v34_wellness_ai_profile_json as migrate_v34
+
+            for s in migrate_v34.STEPS:
+                await database.execute(sa.text(s))
+            logger.info("wellness AI profile JSON (migrate_v34) OK")
+        except Exception as e:
+            logger.warning("migrate_v34 wellness_ai_profile_json: %s", e)
+
+        try:
             from services.merge_neurofungi_ai_chats import merge_all_neurofungi_ai_personal_chats
 
             await merge_all_neurofungi_ai_personal_chats()

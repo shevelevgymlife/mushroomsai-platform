@@ -2513,6 +2513,9 @@ async def admin_wellness_journal_user(request: Request, user_id: int):
     )
     raw_dicts = [dict(e) for e in entries_raw]
     agg = aggregate_entries_for_display(raw_dicts)
+    from services.wellness_ai_profile_service import therapy_dashboard_panel
+
+    wellness_therapy_panel = await therapy_dashboard_panel(int(user_id))
     entries = []
     for d in raw_dicts:
         ca = d.get("created_at")
@@ -2528,6 +2531,7 @@ async def admin_wellness_journal_user(request: Request, user_id: int):
             "target": dict(target),
             "entries": entries,
             "agg": agg,
+            "wellness_therapy_panel": wellness_therapy_panel,
         },
     )
 
@@ -2579,6 +2583,19 @@ async def admin_wellness_overview_pdf(request: Request):
         ),
         ("Топ упоминаний грибов (по разобранным ответам)", mush_txt),
     ]
+    sch = s.get("scheme_effect_rows") or []
+    if sch:
+        sch_txt = "\n".join(
+            f"• {r.get('mushroom_key') or ''} | сегм. {r.get('segment') or ''} | N={r.get('sample_n')} | дельта={r.get('avg_progress_score')}"
+            for r in sch[:25]
+        )
+        sections.append(("Топ эвристики схем (дельта прогресса)", sch_txt))
+    sections.append(
+        (
+            "Профили AI (грибы/связки)",
+            f"Пользователей с заполненным профилем: {s.get('therapy_profiles_n', 0)}",
+        )
+    )
     pdf_bytes = generate_wellness_admin_overview_pdf(sections)
     return StreamingResponse(
         iter([pdf_bytes]),

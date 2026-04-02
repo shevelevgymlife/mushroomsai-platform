@@ -1,5 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Дневник пользователя — Admin{% endblock %}
+{% block extra_head %}
+{% include "components/wellness_dashboard_css.html" %}
+{% endblock %}
 {% block content %}
 <div class="pt-24 pb-16 neo-app-surface">
   <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -7,6 +10,10 @@
     <p class="mb-4"><a href="/admin/wellness-journal" class="text-gold text-sm hover:underline">← К списку</a></p>
     <h1 class="text-2xl font-light text-text mb-2">Дневник: {{ target.name or ('id ' ~ target.id) }}</h1>
     <p class="text-sm text-muted mb-6">Ответов: {{ agg.reply_count }} · Напоминаний: {{ agg.prompt_count }} · Настроение Ø: {{ agg.mood_avg or '—' }} · Энергия Ø: {{ agg.energy_avg or '—' }}</p>
+
+    <div class="wd-root mb-8" style="max-width:100%">
+      {% include "components/wellness_therapy_panel.html" %}
+    </div>
 
     {% if agg.mushroom_counts %}
     <h2 class="text-lg font-medium text-text mb-2">Грибы (упоминания)</h2>

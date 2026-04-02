@@ -1,5 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Сводка дневника — платформа — Admin{% endblock %}
+{% block extra_head %}
+{% include "components/wellness_dashboard_css.html" %}
+{% endblock %}
 {% block content %}
 <div class="pt-24 pb-16 neo-app-surface">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -15,7 +18,7 @@
       <a href="/admin/ai-community-bot" class="px-4 py-2 rounded-xl text-sm font-medium border border-border text-text hover:border-gold/40">Управление AI в сообществе</a>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-10">
       <div class="rounded-2xl border border-border p-4 bg-surface/40">
         <div class="text-xs text-muted uppercase">Пользователей с ответами (всё время)</div>
         <div class="text-2xl font-semibold text-gold mt-1">{{ summary.users_with_replies_ever }}</div>
@@ -31,6 +34,11 @@
       <div class="rounded-2xl border border-border p-4 bg-surface/40">
         <div class="text-xs text-muted uppercase">Напоминаний AI за 30 дней</div>
         <div class="text-2xl font-semibold text-text mt-1">{{ summary.prompts_30d }}</div>
+      </div>
+      <div class="rounded-2xl border border-border p-4 bg-surface/40 sm:col-span-2 lg:col-span-1">
+        <div class="text-xs text-muted uppercase">Профили AI (грибы/связки)</div>
+        <div class="text-2xl font-semibold text-cyan-300 mt-1">{{ summary.therapy_profiles_n|default(0) }}</div>
+        <p class="text-xs text-muted mt-1">Заполнены после структурного снимка; контекст для коуча.</p>
       </div>
     </div>
 
@@ -58,6 +66,31 @@
         </div>
         <p class="text-xs text-muted mt-2">Доля ответов за 30 дней от всех ответов в дневнике (оценочно).</p>
       </div>
+    </div>
+
+    <h2 class="text-xl font-medium text-text mb-3">Эвристика схем (агрегат по дельтам настроения/энергии)</h2>
+    <p class="text-sm text-muted mb-3 max-w-3xl">Не клинический исход. Таблица из «Коллективный интеллект» на странице статистики дневника; здесь — краткий топ по N.</p>
+    <div class="rounded-2xl border border-border overflow-hidden mb-10">
+      {% set sch = summary.scheme_effect_rows or [] %}
+      {% if sch|length > 0 %}
+      <table class="w-full text-sm">
+        <thead class="text-left text-muted border-b border-border">
+          <tr><th class="px-4 py-2">Гриб (ключ)</th><th class="px-4 py-2">Сегмент</th><th class="px-4 py-2">N</th><th class="px-4 py-2 pr-4">Ср. дельта*</th></tr>
+        </thead>
+        <tbody>
+          {% for s in sch %}
+          <tr class="border-b border-border/40">
+            <td class="px-4 py-2 text-text">{{ s.mushroom_key }}</td>
+            <td class="px-4 py-2 text-muted">{{ s.segment or '—' }}</td>
+            <td class="px-4 py-2">{{ s.sample_n }}</td>
+            <td class="px-4 py-2 pr-4">{% if s.avg_progress_score is not none %}{{ (s.avg_progress_score | float) | round(3) }}{% else %}—{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="px-4 py-8 text-center text-muted text-sm">Пока нет строк — нужны снимки и пересчёт на странице статистики.</div>
+      {% endif %}
     </div>
 
     <h2 class="text-xl font-medium text-text mb-3">Топ упоминаний грибов (по разобранным ответам)</h2>

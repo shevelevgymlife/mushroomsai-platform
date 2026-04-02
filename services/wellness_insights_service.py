@@ -371,6 +371,13 @@ async def upsert_daily_snapshot_from_extracted_entry(entry_id: int, extracted_js
             )
         )
 
+    try:
+        from services.wellness_ai_profile_service import refresh_wellness_ai_profile
+
+        await refresh_wellness_ai_profile(uid, merged)
+    except Exception:
+        logger.debug("wellness: ai profile refresh skipped", exc_info=True)
+
 
 async def count_checkin_streak(user_id: int) -> int:
     rows = await database.fetch_all(
@@ -1074,6 +1081,7 @@ def minimal_admin_user_insights_shell(range_raw: str) -> dict[str, Any]:
         "wellness_kpi_heading": "",
         "wellness_kpi_chips": [],
         "wellness_kpi_footnotes": [],
+        "wellness_therapy_panel": {"show": False},
     }
 
 
@@ -1179,6 +1187,9 @@ async def build_user_insights_dashboard_context(
         days_in_window=range_days,
         platform_means=plat_means_window,
     )
+    from services.wellness_ai_profile_service import therapy_dashboard_panel
+
+    therapy_panel = await therapy_dashboard_panel(uid)
     return {
         "chart_range": chart_range,
         "chart_range_days": range_days,
@@ -1205,6 +1216,7 @@ async def build_user_insights_dashboard_context(
         "wellness_series_long_n": len(series_long),
         "wd_tab_urls": _tab_urls_for_wellness(tab_url_base, tab_extra_query),
         "insights_view": "user",
+        "wellness_therapy_panel": therapy_panel,
         **kpi_blk,
     }
 
@@ -1320,6 +1332,7 @@ async def build_platform_insights_dashboard_context(
         "platform_kpis": plat_means,
         "wd_tab_urls": _tab_urls_for_wellness(base, extra),
         "insights_view": "platform",
+        "wellness_therapy_panel": {"show": False},
         **kpi_plat,
     }
 

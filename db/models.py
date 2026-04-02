@@ -97,6 +97,7 @@ users = sqlalchemy.Table(
         default=False,
         server_default="false",
     ),
+    sqlalchemy.Column("wellness_ai_profile_json", sqlalchemy.Text, nullable=True),
 )
 
 sessions = sqlalchemy.Table(
