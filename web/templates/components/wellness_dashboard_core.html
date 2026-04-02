@@ -71,6 +71,40 @@
   </div>
 </div>
 
+{% if wellness_kpi_chips is defined and wellness_kpi_chips|length > 0 and wellness_kpi_heading %}
+<div class="wd-kpi-block{% if iv != 'platform' %} wd-kpi-block--user{% endif %}" aria-label="Краткие показатели за период">
+  <div class="wd-kpi-head">
+    <span class="wd-kpi-title">{{ wellness_kpi_heading }}</span>
+    {% if iv != 'platform' %}
+    <span class="wd-kpi-badge">ваши данные</span>
+    {% else %}
+    <span class="wd-kpi-badge wd-kpi-badge--plat">платформа</span>
+    {% endif %}
+  </div>
+  <div class="wd-kpi-strip">
+    {% for chip in wellness_kpi_chips %}
+    <div class="wd-kpi-chip">
+      <div class="wd-kpi-chip-l">{{ chip.label }}</div>
+      <div class="wd-kpi-chip-v">{{ chip.value }}</div>
+      {% if chip.detail %}
+      <div class="wd-kpi-chip-d">{{ chip.detail }}</div>
+      {% endif %}
+      {% if chip.compare %}
+      <div class="wd-kpi-chip-c">{{ chip.compare }}</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% if wellness_kpi_footnotes is defined and wellness_kpi_footnotes %}
+  <div class="wd-kpi-foot">
+    {% for line in wellness_kpi_footnotes %}
+    <p>{{ line }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
 <div class="wd-stat-grid">
   <div class="wd-stat">
     <div class="wd-stat-k">{% if iv == 'platform' %}Снимков в окне{% else %}Серия дней{% endif %}</div>

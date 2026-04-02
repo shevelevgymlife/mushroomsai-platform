@@ -62,6 +62,35 @@
   .wd-cal-dot { width:4px; height:4px; border-radius:50%; margin:0.25rem auto 0; background:transparent; }
   .wd-cal-i.wd-has .wd-cal-dot { background: var(--wd-mint); }
   .wd-cal-plat-cnt { font-size:0.55rem; font-weight:600; color:#5c5c6a; margin-top:0.2rem; }
+  .wd-kpi-block {
+    margin-bottom: 1.35rem; padding: 0.85rem 1rem 1rem; border-radius: 22px;
+    border: 1px solid var(--wd-line); background: linear-gradient(165deg, rgba(255,255,255,0.055), rgba(0,0,0,0.12));
+  }
+  .wd-kpi-block--user {
+    border-color: rgba(61,212,224,0.22);
+    background: linear-gradient(155deg, rgba(61,212,224,0.08), rgba(167,139,250,0.05), rgba(0,0,0,0.1));
+  }
+  .wd-kpi-head { display:flex; flex-wrap:wrap; align-items:center; gap:0.5rem; margin-bottom:0.65rem; }
+  .wd-kpi-title { font-size:0.78rem; font-weight:600; color:#d8d8e4; letter-spacing:0.02em; }
+  .wd-kpi-badge {
+    font-size:0.52rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em;
+    padding:0.15rem 0.45rem; border-radius:999px; border:1px solid rgba(61,212,224,0.35); color:var(--wd-teal);
+  }
+  .wd-kpi-badge--plat { border-color: rgba(52,211,153,0.35); color: var(--wd-mint); }
+  .wd-kpi-strip {
+    display:flex; flex-wrap:wrap; gap:0.45rem;
+  }
+  .wd-kpi-chip {
+    flex:1 1 auto; min-width:min(100%, 118px); max-width:220px;
+    padding:0.5rem 0.6rem; border-radius:14px; background:rgba(0,0,0,0.22);
+    border:1px solid rgba(255,255,255,0.06);
+  }
+  .wd-kpi-chip-l { font-size:0.52rem; text-transform:uppercase; letter-spacing:0.08em; color:#6b6b78; margin-bottom:0.2rem; }
+  .wd-kpi-chip-v { font-size:1.05rem; font-weight:700; color:#f0f0f6; line-height:1.15; }
+  .wd-kpi-chip-d { font-size:0.58rem; color:#8a8a96; line-height:1.35; margin-top:0.25rem; }
+  .wd-kpi-chip-c { font-size:0.58rem; color:#9ca3af; margin-top:0.2rem; font-style:italic; }
+  .wd-kpi-foot { margin-top:0.65rem; padding-top:0.55rem; border-top:1px solid rgba(255,255,255,0.06); }
+  .wd-kpi-foot p { font-size:0.58rem; color:#6b6b78; line-height:1.45; margin:0.2rem 0 0; }
   .wd-hero-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap:0.75rem; margin-bottom:1.25rem; }
   .wd-hero {
     border-radius:22px; padding:1.1rem 1rem 0.85rem; position:relative; overflow:hidden; min-height:132px;

@@ -593,6 +593,225 @@ _REC_SYSTEM = """Ты — аналитический модуль NeuroFungi AI 
 Объём до ~1100 символов, конкретно и без воды."""
 
 
+_METRIC_KPI_SPEC: tuple[tuple[str, str, str, bool], ...] = (
+    ("mood_0_10", "mean_mood_0_10", "Настроение", False),
+    ("energy_0_10", "mean_energy_0_10", "Энергия", False),
+    ("anxiety_0_10", "mean_anxiety_0_10", "Тревога", True),
+    ("sleep_quality_0_10", "mean_sleep_quality_0_10", "Сон", False),
+    ("concentration_0_10", "mean_concentration_0_10", "Концентрация", False),
+)
+
+# Доп. шкалы из снимка (только личный KPI; на платформе в aggregate нет средних по ним).
+_USER_EXTRA_SCALE_KEYS: tuple[tuple[str, str, bool], ...] = (
+    ("fatigue_0_10", "Усталость", True),
+    ("body_tension_0_10", "Напряжение", True),
+    ("apathy_0_10", "Апатия", True),
+    ("irritability_0_10", "Раздражительность", True),
+    ("appetite_0_10", "Аппетит", False),
+    ("libido_0_10", "Либидо", False),
+)
+
+
+def _metric_val_from_m(m: dict[str, Any], key: str) -> Optional[float]:
+    v = m.get(key)
+    if v is None or (isinstance(v, str) and not str(v).strip()):
+        return None
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def _fmt_scale_10(v: float) -> str:
+    if abs(v - round(v)) < 0.02:
+        return f"{int(round(v))}/10"
+    return f"{round(v, 1)}/10"
+
+
+def build_wellness_kpis_platform_block(
+    plat: dict[str, Any], *, chart_range_label: str
+) -> dict[str, Any]:
+    """Краткий KPI-блок для режима «вся платформа» (уже есть в aggregate_platform_snapshot_means)."""
+    chips: list[dict[str, Any]] = []
+    n_rows = int(plat.get("snapshot_rows") or 0)
+    chips.append(
+        {
+            "label": "Строк снимков",
+            "value": str(n_rows),
+            "detail": "суммарно по всем пользователям в окне",
+        }
+    )
+    for _uk, pk, title, _invert in _METRIC_KPI_SPEC:
+        mv = plat.get(pk)
+        if mv is None:
+            continue
+        try:
+            mvf = float(mv)
+        except (TypeError, ValueError):
+            continue
+        chips.append(
+            {
+                "label": f"{title} Ø",
+                "value": _fmt_scale_10(mvf),
+                "detail": "среднее по всем ответам в окне",
+            }
+        )
+    footnotes = [
+        "Не медицина. Средние по анонимным снимкам за выбранный период.",
+    ]
+    return {
+        "wellness_kpi_heading": f"Платформа · сводка ({chart_range_label})",
+        "wellness_kpi_chips": chips,
+        "wellness_kpi_footnotes": footnotes,
+    }
+
+
+def build_wellness_kpis_user_block(
+    series: list[dict[str, Any]],
+    *,
+    chart_range_label: str,
+    days_in_window: int,
+    platform_means: dict[str, Any],
+) -> dict[str, Any]:
+    """Расширенные KPI пользователя за окно + сравнение с анонимным средним платформы за тот же период."""
+    chips: list[dict[str, Any]] = []
+    footnotes: list[str] = []
+    n = len(series)
+    if n == 0:
+        return {
+            "wellness_kpi_heading": "",
+            "wellness_kpi_chips": [],
+            "wellness_kpi_footnotes": [],
+        }
+
+    first_d = str(series[0].get("date") or "")[:10]
+    last_d = str(series[-1].get("date") or "")[:10]
+    chips.append(
+        {
+            "label": "Дней с данными",
+            "value": f"{n}/{max(1, int(days_in_window))}",
+            "detail": f"период {first_d} — {last_d}" if first_d and last_d else "в выбранном окне",
+        }
+    )
+
+    took_y = took_n = took_u = 0
+    dose_days = 0
+    composites: list[int] = []
+    for x in series:
+        m = x.get("m") or {}
+        t = m.get("took_mushrooms_today")
+        if t is True:
+            took_y += 1
+        elif t is False:
+            took_n += 1
+        else:
+            took_u += 1
+        dose_raw = m.get("dosage_amount_text")
+        if dose_raw is not None and str(dose_raw).strip():
+            dose_days += 1
+        mo = _metric_val_from_m(m, "mood_0_10")
+        en = _metric_val_from_m(m, "energy_0_10")
+        ax = _metric_val_from_m(m, "anxiety_0_10")
+        ci = wellness_composite_index_percent(mo, en, ax)
+        if ci is not None:
+            composites.append(int(ci))
+
+    if took_y or took_n or took_u:
+        chips.append(
+            {
+                "label": "Отметки «грибы сегодня»",
+                "value": f"да {took_y} · нет {took_n}" + (f" · — {took_u}" if took_u else ""),
+                "detail": "по дням с заполненным полем в опросе",
+            }
+        )
+    if dose_days:
+        chips.append(
+            {
+                "label": "Дней с текстом дозы",
+                "value": str(dose_days),
+                "detail": "есть запись о дозировке в снимке",
+            }
+        )
+    if composites:
+        cm = round(statistics.mean(composites), 1)
+        chips.append(
+            {
+                "label": "Индекс дня Ø",
+                "value": f"{cm}%",
+                "detail": "по дням, где заполнены шкалы для кольца",
+            }
+        )
+
+    for uk, pk, title, invert in _METRIC_KPI_SPEC:
+        vals: list[float] = []
+        for x in series:
+            m = x.get("m") or {}
+            v = _metric_val_from_m(m, uk)
+            if v is not None:
+                vals.append(v)
+        if not vals:
+            continue
+        mean_u = statistics.mean(vals)
+        mn, mx = min(vals), max(vals)
+        std = round(statistics.pstdev(vals), 2) if len(vals) >= 2 else None
+        detail = f"min {mn:.1f} · max {mx:.1f}"
+        if std is not None:
+            detail += f" · σ {std}"
+        chip: dict[str, Any] = {
+            "label": f"{title} Ø",
+            "value": _fmt_scale_10(mean_u),
+            "detail": detail,
+        }
+        plat_mv = platform_means.get(pk)
+        if plat_mv is not None:
+            try:
+                pv = float(plat_mv)
+                delta = round(mean_u - pv, 2)
+                if abs(delta) < 0.05:
+                    chip["compare"] = "как среднее по платформе"
+                elif (delta > 0 and not invert) or (delta < 0 and invert):
+                    chip["compare"] = f"↑ на {abs(delta):.1f} к платформе"
+                else:
+                    chip["compare"] = f"↓ на {abs(delta):.1f} к платформе"
+            except (TypeError, ValueError):
+                pass
+        chips.append(chip)
+
+    for uk, title, invert in _USER_EXTRA_SCALE_KEYS:
+        vals = []
+        for x in series:
+            m = x.get("m") or {}
+            v = _metric_val_from_m(m, uk)
+            if v is not None:
+                vals.append(v)
+        if not vals:
+            continue
+        mean_u = statistics.mean(vals)
+        mn, mx = min(vals), max(vals)
+        std = round(statistics.pstdev(vals), 2) if len(vals) >= 2 else None
+        detail = f"min {mn:.1f} · max {mx:.1f}"
+        if std is not None:
+            detail += f" · σ {std}"
+        chips.append(
+            {
+                "label": f"{title} Ø",
+                "value": _fmt_scale_10(mean_u),
+                "detail": detail + (" · чем ниже, тем лучше" if invert else ""),
+            }
+        )
+
+    footnotes.append(
+        "Сравнение с анонимным средним по всем пользователям за тот же календарный период (окно вкладки)."
+    )
+    footnotes.append("Не диагноз и не назначение; только самонаблюдение.")
+
+    return {
+        "wellness_kpi_heading": f"Ваши показатели ({chart_range_label})",
+        "wellness_kpi_chips": chips,
+        "wellness_kpi_footnotes": footnotes,
+    }
+
+
 async def aggregate_platform_snapshot_means(days: int = 14) -> dict[str, Any]:
     since = _utc_today() - timedelta(days=days)
     rows = await database.fetch_all(
@@ -852,6 +1071,9 @@ def minimal_admin_user_insights_shell(range_raw: str) -> dict[str, Any]:
         "heatmap_rows": [],
         "heatmap_mode": "user",
         "wellness_week_strip_show_extremes": False,
+        "wellness_kpi_heading": "",
+        "wellness_kpi_chips": [],
+        "wellness_kpi_footnotes": [],
     }
 
 
@@ -950,6 +1172,13 @@ async def build_user_insights_dashboard_context(
     )
     range_labels = {"day": "2 дня", "week": "7 дней", "month": "30 дней"}
     range_letter = {"day": "d", "week": "w", "month": "m"}.get(chart_range, "w")
+    plat_means_window = await aggregate_platform_snapshot_means(range_days)
+    kpi_blk = build_wellness_kpis_user_block(
+        series_chart,
+        chart_range_label=range_labels.get(chart_range, ""),
+        days_in_window=range_days,
+        platform_means=plat_means_window,
+    )
     return {
         "chart_range": chart_range,
         "chart_range_days": range_days,
@@ -976,6 +1205,7 @@ async def build_user_insights_dashboard_context(
         "wellness_series_long_n": len(series_long),
         "wd_tab_urls": _tab_urls_for_wellness(tab_url_base, tab_extra_query),
         "insights_view": "user",
+        **kpi_blk,
     }
 
 
@@ -1059,6 +1289,9 @@ async def build_platform_insights_dashboard_context(
     range_letter = {"day": "d", "week": "w", "month": "m"}.get(chart_range, "w")
     base = "/admin/wellness-journal/insights"
     extra = "mode=platform"
+    kpi_plat = build_wellness_kpis_platform_block(
+        plat_means, chart_range_label=range_labels.get(chart_range, "")
+    )
     return {
         "chart_range": chart_range,
         "chart_range_days": range_days,
@@ -1087,6 +1320,7 @@ async def build_platform_insights_dashboard_context(
         "platform_kpis": plat_means,
         "wd_tab_urls": _tab_urls_for_wellness(base, extra),
         "insights_view": "platform",
+        **kpi_plat,
     }
 
 
