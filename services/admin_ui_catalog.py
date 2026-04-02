@@ -355,7 +355,8 @@ def build_admin_ui_context(
         cid = c["id"]
         sub = [x for x in items_out if x.get("category_id") == cid]
         if sub:
-            cats_out.append({**c, "items": sub})
+            # Не ключ «items»: в Jinja cat.items — это dict.items(), а не список пунктов.
+            cats_out.append({**c, "section_items": sub})
 
     return {
         "categories": cats_out,
