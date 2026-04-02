@@ -17,7 +17,7 @@
     </div>
 
     {% if request.query_params.get('checkout_saved') %}
-    <div class="mb-4 p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-200 text-sm max-w-3xl">Сохранено: основной способ оплаты подписок.</div>
+    <div class="mb-4 p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-200 text-sm max-w-3xl">Сохранено: настройки оплаты подписок.</div>
     {% endif %}
 
     {% set cfg = subscription_checkout_config or {} %}
@@ -79,6 +79,29 @@
         sync();
       })();
       </script>
+    </div>
+
+    <div class="mb-8 p-5 rounded-2xl border border-cyan-500/25 bg-cyan-500/5 max-w-3xl space-y-4">
+      <h2 class="text-lg font-semibold text-text mb-1">Отдельно для бота</h2>
+      <p class="text-xs text-muted leading-relaxed">
+        Этот блок управляет только ботом (кнопка «💳 Подписка» в Telegram). Здесь можно быстро выключить оплату в боте
+        и выбрать канал оплаты именно для бота, не меняя веб.
+      </p>
+      <form method="post" action="/admin/payment/subscription-checkout-bot" class="space-y-4">
+        <label class="inline-flex items-center gap-2 text-sm text-text">
+          <input type="checkbox" name="bot_payments_enabled" value="1" class="rounded border-border" {% if cfg.telegram_payments_enabled is not sameas false %}checked{% endif %} />
+          Включить оплату в боте
+        </label>
+        <div>
+          <label class="block text-xs text-muted mb-1">Способ оплаты в боте</label>
+          <select name="bot_provider" class="px-3 py-2 rounded-lg bg-bg border border-border text-text text-sm min-w-[280px] max-w-[100%]">
+            {% for row in subscription_checkout_options %}
+            <option value="{{ row.id }}" {% if (cfg.telegram_provider or 'auto') == row.id %}selected{% endif %}>{{ row.label }}{{ row.suffix }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <button type="submit" class="px-4 py-2 rounded-lg bg-cyan-400 text-[#05080a] text-sm font-semibold hover:opacity-95">Сохранить настройки бота</button>
+      </form>
     </div>
 
     <div class="mb-6 p-4 rounded-2xl border border-cyan-500/20 bg-cyan-500/5 text-sm text-muted max-w-3xl">

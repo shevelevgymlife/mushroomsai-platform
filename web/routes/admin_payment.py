@@ -194,11 +194,55 @@ async def admin_subscription_checkout_save(request: Request):
     if not admin:
         return RedirectResponse("/login")
     form = await request.form()
+    cfg = await get_subscription_checkout_config()
     mode = (form.get("checkout_mode") or "unified").strip().lower()
     primary = (form.get("primary_provider") or "auto").strip().lower()
     web_p = (form.get("web_provider") or primary).strip().lower()
     tg_p = (form.get("telegram_provider") or primary).strip().lower()
-    await save_subscription_checkout_bundle(mode, primary, web_p, tg_p)
+    if "telegram_enabled" in form:
+        tg_enabled = str(form.get("telegram_enabled") or "").strip().lower() in (
+            "1",
+            "true",
+            "on",
+            "yes",
+        )
+    else:
+        tg_enabled = bool(cfg.get("telegram_payments_enabled", True))
+    await save_subscription_checkout_bundle(
+        mode,
+        primary,
+        web_p,
+        tg_p,
+        telegram_payments_enabled=tg_enabled,
+    )
+    return RedirectResponse("/admin/payment?checkout_saved=1", status_code=303)
+
+
+@router.post("/payment/subscription-checkout-bot")
+async def admin_subscription_checkout_bot_save(request: Request):
+    require_permission, _ = _lazy_admin()
+    admin = await require_permission(request, "can_payment")
+    if not admin:
+        return RedirectResponse("/login")
+    form = await request.form()
+    cfg = await get_subscription_checkout_config()
+    mode = str(cfg.get("checkout_mode") or "unified")
+    primary = str(cfg.get("primary_provider") or "auto")
+    web_p = str(cfg.get("web_provider") or primary)
+    tg_p = (form.get("bot_provider") or cfg.get("telegram_provider") or primary).strip().lower()
+    tg_enabled = str(form.get("bot_payments_enabled") or "").strip().lower() in (
+        "1",
+        "true",
+        "on",
+        "yes",
+    )
+    await save_subscription_checkout_bundle(
+        mode,
+        primary,
+        web_p,
+        tg_p,
+        telegram_payments_enabled=tg_enabled,
+    )
     return RedirectResponse("/admin/payment?checkout_saved=1", status_code=303)
 
 

@@ -212,11 +212,20 @@ async def get_subscription_checkout_config() -> dict[str, Any]:
     if mode == "unified":
         web_p = primary
         tg_p = primary
+    tg_enabled_raw = data.get("telegram_payments_enabled")
+    if tg_enabled_raw is None:
+        tg_enabled = True
+    else:
+        tg_enabled = bool(tg_enabled_raw)
     return {
         "checkout_mode": mode,
         "primary_provider": primary,
         "web_provider": web_p,
         "telegram_provider": tg_p,
+        "telegram_payments_enabled": tg_enabled,
+        # Алиасы для UI-блока «Отдельно для бота» (чтобы шаблон был проще).
+        "bot_provider": tg_p,
+        "bot_payments_enabled": tg_enabled,
     }
 
 
@@ -231,6 +240,7 @@ async def save_subscription_checkout_bundle(
     primary_provider: str,
     web_provider: str,
     telegram_provider: str,
+    telegram_payments_enabled: bool = True,
 ) -> None:
     valid = subscription_checkout_valid_preferences()
     mode = _normalize_checkout_mode(checkout_mode)
@@ -245,6 +255,7 @@ async def save_subscription_checkout_bundle(
         "primary_provider": primary,
         "web_provider": web_p,
         "telegram_provider": tg_p,
+        "telegram_payments_enabled": bool(telegram_payments_enabled),
     }
     raw = json.dumps(payload, ensure_ascii=False)
     exists = await database.fetch_one(
@@ -263,7 +274,7 @@ async def save_subscription_checkout_bundle(
 async def save_subscription_checkout_preference(primary_provider: str) -> None:
     """Совместимость: только единый режим с одним провайдером."""
     p = (primary_provider or "auto").strip().lower()
-    await save_subscription_checkout_bundle("unified", p, p, p)
+    await save_subscription_checkout_bundle("unified", p, p, p, True)
 
 
 async def resolve_active_subscription_checkout() -> dict[str, Any]:
@@ -277,6 +288,7 @@ async def resolve_active_subscription_checkout() -> dict[str, Any]:
     pref_web = str(cfg.get("web_provider") or "auto")
     pref_tg = str(cfg.get("telegram_provider") or "auto")
     primary = str(cfg.get("primary_provider") or "auto")
+    tg_enabled = bool(cfg.get("telegram_payments_enabled", True))
 
     cp = await get_provider_settings("cloudpayments")
     cp_ok = bool(cp.get("enabled") and (cp.get("public_id") or "").strip())
@@ -309,6 +321,8 @@ async def resolve_active_subscription_checkout() -> dict[str, Any]:
     }
     kind_web = _compute_subscription_kind(pref_web, **kw)
     kind_telegram = _compute_subscription_kind(pref_tg, **kw)
+    if not tg_enabled:
+        kind_telegram = "none"
 
     tsm = await telegram_stars_subscription_meta()
     stars_on = bool(tsm.get("available_for_subscriptions"))
@@ -327,6 +341,7 @@ async def resolve_active_subscription_checkout() -> dict[str, Any]:
         "preference": primary,
         "preference_web": pref_web,
         "preference_telegram": pref_tg,
+        "telegram_payments_enabled": tg_enabled,
         "kind": kind_web,
         "kind_web": kind_web,
         "kind_telegram": kind_telegram,
