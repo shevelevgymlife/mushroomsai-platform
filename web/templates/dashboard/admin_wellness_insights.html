@@ -4,27 +4,26 @@
 {% include "components/wellness_dashboard_css.html" %}
 {% endblock %}
 {% block content %}
-<div class="pt-24 pb-16 neo-app-surface">
+<div class="pt-24 pb-16 neo-app-surface" style="padding-bottom:max(2rem, env(safe-area-inset-bottom))">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     {% include "components/admin_nav.html" %}
 
-    <div class="flex flex-wrap items-start justify-between gap-4 mb-4">
-      <div>
-        <h1 class="text-2xl sm:text-3xl font-semibold text-text tracking-tight">Статистика дневника</h1>
-        <p class="wd-sub mt-2 mb-0" style="max-width:40rem">Те же графики и таблицы, что у пользователя в «Моё состояние», плюс сводка по платформе. Не медицинская аналитика.</p>
-      </div>
-      <div class="flex flex-wrap gap-2 text-sm">
-        <a href="/admin/wellness-journal" class="text-gold hover:underline">← Дневник терапии</a>
-        <span class="text-border opacity-40">|</span>
-        <a href="/admin/wellness-journal/overview" class="text-gold hover:underline">Сводка цифр</a>
+    <div class="wa-shelf wa-shelf-body--flush mb-5">
+      <div class="wa-shelf-h" style="padding-top:1rem">Статистика дневника</div>
+      <p class="text-sm text-muted px-4 pb-2 max-w-3xl leading-relaxed">Те же графики, что у пользователя в «Моё состояние». Свайп графиков на узком экране.</p>
+      <div class="wa-chips pb-3">
+        <a href="/admin/wellness-journal" class="wa-chip">← Дневник</a>
+        <a href="/admin/wellness-journal/overview" class="wa-chip">Сводка</a>
       </div>
     </div>
 
     {% if refreshed %}
-    <div class="mb-4 p-3 rounded-xl border border-emerald-500/40 text-emerald-200 text-sm">Таблица эффективности схем пересчитана.</div>
+    <div class="wa-shelf wa-shelf-body--pad mb-4" style="border-color:rgba(52,211,153,0.35)">
+      <p class="text-sm text-emerald-200 m-0">Таблица эффективности схем пересчитана.</p>
+    </div>
     {% endif %}
 
-    <div class="wd-mode-bar">
+    <div class="wd-mode-bar" style="border-radius:14px;margin-bottom:1rem">
       <span class="text-xs text-muted uppercase tracking-wider mr-1">Режим:</span>
       <a href="/admin/wellness-journal/insights?mode=platform&range={{ chart_range_letter|default('w') }}" class="text-sm {% if insights_mode == 'platform' %}wd-mode-active text-gold{% else %}text-muted hover:text-text{% endif %}">Вся платформа</a>
       <span class="text-muted opacity-40">·</span>
@@ -32,7 +31,7 @@
     </div>
 
     {% if insights_mode == 'user' %}
-    <form method="get" action="/admin/wellness-journal/insights" class="flex flex-wrap gap-2 items-end mb-6 p-4 rounded-2xl border border-border bg-surface/40">
+    <form method="get" action="/admin/wellness-journal/insights" class="wa-shelf wa-shelf-body flex flex-wrap gap-2 items-end mb-6 p-4">
       <input type="hidden" name="mode" value="user" />
       <input type="hidden" name="range" value="{{ chart_range_letter|default('w') }}" />
       <div class="flex-1 min-w-[220px]">
@@ -50,7 +49,7 @@
     </form>
     {% endif %}
 
-    <div class="wd-root wd-admin-wide">
+    <div class="wd-root wd-admin-wide wd-ios">
       {% if insights_mode == 'platform' %}
       <div id="wd-dash-mount" data-wellness-spa="1">
         {% include "components/wellness_dashboard_core.html" %}
@@ -67,13 +66,14 @@
       {% endif %}
     </div>
 
-    <h2 class="wd-sec-title mt-10">Коллективный интеллект · схемы (эвристика)</h2>
-    <p class="wd-sec-sub">По дельте настроения/энергии между соседними днями. Пересчёт вручную.</p>
-    <form method="post" action="/admin/wellness-journal/insights/refresh-schemes" class="mb-4">
-      <button type="submit" class="px-4 py-2 rounded-xl text-sm border border-border text-text hover:border-gold/40 font-medium">Пересчитать таблицу</button>
-    </form>
-    <div class="wd-table-wrap mb-10">
-      <table class="w-full text-sm">
+    <div class="wa-shelf wa-shelf-body--flush mt-8 mb-6">
+      <div class="wa-shelf-h">Коллективный интеллект · схемы</div>
+      <p class="text-xs text-muted px-4 pb-2">Дельта настроения/энергии между днями. Пересчёт вручную.</p>
+      <form method="post" action="/admin/wellness-journal/insights/refresh-schemes" class="px-4 pb-3">
+        <button type="submit" class="px-4 py-2.5 rounded-xl text-sm border border-border text-text hover:border-gold/40 font-medium min-h-[44px]">Пересчитать таблицу</button>
+      </form>
+      <div class="wa-table-scroll">
+      <table class="w-full text-sm min-w-[520px]">
         <thead>
           <tr class="border-b border-border text-left text-muted">
             <th class="px-3 py-2.5">Гриб (ключ)</th>
@@ -95,8 +95,9 @@
           {% endfor %}
         </tbody>
       </table>
+      </div>
+      <p class="text-xs text-muted px-4 py-3 mb-0">* Не клинический исход.</p>
     </div>
-    <p class="text-xs text-muted mb-8">* Не клинический исход.</p>
   </div>
 </div>
 

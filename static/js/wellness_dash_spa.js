@@ -22,6 +22,86 @@
     });
   }
 
+  var _carouselIo = null;
+
+  function destroyWellnessChartCarousel(mount) {
+    if (_carouselIo) {
+      try {
+        _carouselIo.disconnect();
+      } catch (e) {}
+      _carouselIo = null;
+    }
+    if (!mount) return;
+    mount.querySelectorAll("[data-carousel-dots]").forEach(function (dots) {
+      dots.innerHTML = "";
+    });
+  }
+
+  function initWellnessChartCarousel(mount) {
+    destroyWellnessChartCarousel(mount);
+    if (!mount) return;
+    var wrap = mount.querySelector(".wd-chart-carousel-wrap");
+    if (!wrap) return;
+    var car = wrap.querySelector("[data-wellness-chart-carousel]");
+    var dots = wrap.querySelector("[data-carousel-dots]");
+    var slides = wrap.querySelectorAll(".wd-chart-slide");
+    if (!car || !dots || slides.length === 0) return;
+
+    slides.forEach(function (_, i) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "wd-chart-dot" + (i === 0 ? " wd-chart-dot--active" : "");
+      b.setAttribute("aria-label", "График " + (i + 1));
+      b.setAttribute("role", "tab");
+      b.addEventListener("click", function () {
+        slides[i].scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+      });
+      dots.appendChild(b);
+    });
+
+    var dotEls = dots.querySelectorAll(".wd-chart-dot");
+    function setActive(idx) {
+      dotEls.forEach(function (d, j) {
+        d.classList.toggle("wd-chart-dot--active", j === idx);
+      });
+    }
+
+    if (typeof IntersectionObserver === "undefined") {
+      car.addEventListener(
+        "scroll",
+        function () {
+          var w = car.clientWidth || 1;
+          var idx = Math.round(car.scrollLeft / (w * 0.85));
+          idx = Math.max(0, Math.min(slides.length - 1, idx));
+          setActive(idx);
+        },
+        { passive: true }
+      );
+      return;
+    }
+
+    _carouselIo = new IntersectionObserver(
+      function (entries) {
+        var best = -1;
+        var bestRatio = 0;
+        entries.forEach(function (en) {
+          if (!en.isIntersecting) return;
+          var idx = Array.prototype.indexOf.call(slides, en.target);
+          if (idx < 0) return;
+          if (en.intersectionRatio > bestRatio) {
+            bestRatio = en.intersectionRatio;
+            best = idx;
+          }
+        });
+        if (best >= 0) setActive(best);
+      },
+      { root: car, threshold: [0.35, 0.55, 0.75] }
+    );
+    slides.forEach(function (s) {
+      _carouselIo.observe(s);
+    });
+  }
+
   function tabUrlToPartialJson(href) {
     var u = new URL(href, window.location.origin);
     u.searchParams.set("partial", "json");
@@ -51,8 +131,10 @@
       .then(function (data) {
         if (!data || typeof data.html !== "string") throw new Error("bad payload");
         destroyWellnessChartsInMount(mount);
+        destroyWellnessChartCarousel(mount);
         mount.innerHTML = data.html;
         mountWellnessCharts(data.charts || []);
+        initWellnessChartCarousel(mount);
         if (hrefForTabs) updateTabActive(mount, hrefForTabs);
       });
   }
@@ -75,6 +157,7 @@
     if (opts.initialCharts && opts.initialCharts.length && window.Chart) {
       mountWellnessCharts(opts.initialCharts);
     }
+    initWellnessChartCarousel(mount);
 
     mount.addEventListener("click", function (e) {
       var a = e.target.closest(".wd-tabs a.wd-tab-spa");

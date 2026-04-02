@@ -241,4 +241,220 @@
     background:rgba(61,212,224,0.04); margin-bottom:1.5rem;
   }
   .wd-plan-empty p { font-size:0.85rem; color:#a8a8b4; line-height:1.55; margin:0 0 1rem; max-width:32rem; margin-left:auto; margin-right:auto; }
+
+  /* ─── iOS Health / Settings style ─── */
+  .wd-ios, .wd-ios .wd-root {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wd-ios .wd-user-shell {
+    border-radius: 20px;
+    padding: max(0.75rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right)) 0.25rem max(0.75rem, env(safe-area-inset-left));
+    background: linear-gradient(180deg, rgba(61,212,224,0.07), transparent 120px);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 0 0 1px rgba(61,212,224,0.08);
+  }
+  .wd-ios .wd-head h1 { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.03em; }
+  .wd-ios-section { margin-bottom: 1.65rem; }
+  .wd-ios-section-h {
+    font-size: 0.7rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+    color: #8e8e96; padding: 0 0.5rem 0.4rem 0.75rem;
+  }
+  .wd-ios-group {
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(28,28,32,0.72);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.25);
+  }
+  .wd-ios-group--pad { padding: 0.85rem 1rem; }
+  .wd-ios-footer {
+    font-size: 0.65rem; color: #6b6b78; line-height: 1.45; padding: 0.35rem 0.75rem 0;
+  }
+  .wd-ios-swipe-hint {
+    font-size: 0.65rem; color: #6b6b78; text-align: center; margin-bottom: 0.45rem;
+    letter-spacing: 0.04em;
+  }
+  @media (min-width: 900px) {
+    .wd-ios-swipe-hint { display: none; }
+  }
+  .wd-chart-carousel-wrap { margin-bottom: 1.75rem; }
+  .wd-chart-carousel {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    margin: 0 -0.35rem;
+    padding: 0 0.35rem 0.5rem;
+  }
+  .wd-chart-carousel::-webkit-scrollbar { display: none; height: 0; }
+  .wd-chart-carousel-track { display: flex; gap: 0.75rem; align-items: stretch; }
+  .wd-chart-slide {
+    flex: 0 0 min(100% - 1.5rem, 300px);
+    max-width: 340px;
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+  }
+  @media (min-width: 480px) {
+    .wd-chart-slide { flex-basis: min(100% - 2rem, 320px); }
+  }
+  @media (min-width: 900px) {
+    .wd-chart-carousel { scroll-snap-type: none; margin: 0; padding: 0; overflow: visible; }
+    .wd-chart-carousel-track {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 0.75rem;
+    }
+    .wd-chart-slide { flex: none; max-width: none; scroll-snap-align: unset; }
+  }
+  .wd-chart-dots {
+    display: flex; justify-content: center; align-items: center; gap: 0.4rem;
+    margin-top: 0.25rem; min-height: 1rem;
+  }
+  @media (min-width: 900px) {
+    .wd-chart-dots { display: none !important; }
+  }
+  .wd-chart-dot {
+    width: 7px; height: 7px; border-radius: 50%; border: none; padding: 0; margin: 0;
+    background: rgba(255,255,255,0.22); cursor: pointer; transition: transform 0.15s, background 0.15s;
+  }
+  .wd-chart-dot--active { background: var(--wd-teal); transform: scale(1.2); }
+  .wd-hero-grid--snap {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+    gap: 0.75rem;
+  }
+  @media (max-width: 640px) {
+    .wd-hero-grid--snap {
+      display: flex;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      gap: 0.65rem;
+      padding: 0.15rem 0.25rem 0.5rem;
+      margin: 0 -0.25rem;
+      scrollbar-width: none;
+    }
+    .wd-hero-grid--snap::-webkit-scrollbar { display: none; }
+    .wd-hero-grid--snap > .wd-hero {
+      flex: 0 0 76vw;
+      max-width: 280px;
+      scroll-snap-align: center;
+    }
+  }
+  .wd-kpi-strip--snap { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+  @media (max-width: 640px) {
+    .wd-kpi-strip--snap {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 0.35rem;
+      margin: 0 -0.25rem;
+      scrollbar-width: none;
+    }
+    .wd-kpi-strip--snap::-webkit-scrollbar { display: none; }
+    .wd-kpi-strip--snap > .wd-kpi-chip {
+      flex: 0 0 42vw;
+      max-width: 200px;
+      scroll-snap-align: start;
+    }
+  }
+  .wd-hm-shelf {
+    border-radius: 14px;
+    border: 1px solid var(--wd-line);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    background: rgba(0,0,0,0.18);
+    margin-bottom: 1.5rem;
+  }
+  .wd-ios .wd-tabs {
+    display: flex;
+    width: 100%;
+    max-width: 100%;
+    justify-content: stretch;
+    padding: 3px;
+    border-radius: 11px;
+    background: rgba(0,0,0,0.35);
+  }
+  .wd-ios .wd-tabs a {
+    flex: 1;
+    text-align: center;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.45rem 0.5rem;
+    border-radius: 9px;
+  }
+  .wd-ios .wd-tabs a.wd-active {
+    background: rgba(255,255,255,0.14);
+    color: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  .wd-ios .wd-cal { border-radius: 14px; }
+  .wd-ios .wd-btn {
+    border-radius: 12px;
+    min-height: 44px;
+    padding: 0.55rem 1.15rem;
+  }
+
+  /* ─── Admin «полки» (тот же визуальный язык) ─── */
+  .wa-shelf {
+    margin-bottom: 1.25rem;
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(22,22,28,0.65);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  }
+  .wa-shelf-h {
+    font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    color: #8b8b96; padding: 0.65rem 1rem 0.35rem;
+  }
+  .wa-shelf-body { padding: 0 0 0.75rem; }
+  .wa-shelf-body--flush { padding: 0; }
+  .wa-shelf-body--pad { padding: 0.85rem 1rem 1rem; }
+  .wa-scroll {
+    display: flex;
+    gap: 0.65rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    padding: 0.35rem 1rem 0.65rem;
+    scrollbar-width: thin;
+  }
+  .wa-scroll--stats .wa-stat-card {
+    flex: 0 0 auto;
+    min-width: 140px;
+    scroll-snap-align: start;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.07);
+    background: rgba(255,255,255,0.04);
+    padding: 0.85rem 1rem;
+  }
+  .wa-table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0;
+  }
+  .wa-table-scroll table { min-width: 560px; }
+  .wa-chips {
+    display: flex; flex-wrap: wrap; gap: 0.5rem;
+    padding: 0 1rem 0.75rem;
+  }
+  .wa-chip {
+    display: inline-flex; align-items: center;
+    padding: 0.45rem 0.85rem; border-radius: 999px;
+    font-size: 0.78rem; font-weight: 500;
+    border: 1px solid rgba(212,168,83,0.35); color: #e8d4a8;
+    text-decoration: none; white-space: nowrap;
+  }
+  .wa-chip:hover { background: rgba(212,168,83,0.1); }
+  .wa-page-title {
+    font-size: 1.65rem; font-weight: 700; letter-spacing: -0.025em;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  }
 </style>

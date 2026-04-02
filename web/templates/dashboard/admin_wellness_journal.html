@@ -1,111 +1,128 @@
 {% extends "base.html" %}
 {% block title %}Дневник терапии — Admin{% endblock %}
+{% block extra_head %}
+{% include "components/wellness_dashboard_css.html" %}
+{% endblock %}
 {% block content %}
-<div class="pt-24 pb-16 neo-app-surface">
+<div class="pt-24 pb-16 neo-app-surface" style="padding-bottom:max(2rem, env(safe-area-inset-bottom))">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     {% include "components/admin_nav.html" %}
 
-    <h1 class="text-3xl font-light text-text mb-2">Дневник терапии / статистика ответов</h1>
-    <p class="text-sm text-muted mb-4 max-w-3xl">
-      Глобальный переключатель останавливает автоматические напоминания AI всем пользователям (данные в БД сохраняются).
-      По пользователю — пауза сбора и разрешение скачивать PDF со страницы «Мои результаты». Топ — по числу ответов за 30 дней.
-    </p>
-    <p class="mb-6 flex flex-wrap gap-3">
-      <a href="/admin/wellness-journal/insights" class="inline-flex items-center px-4 py-2 rounded-xl text-sm font-medium border border-gold/40 text-gold hover:bg-gold/10">Статистика дневника — платформа и пользователи</a>
-      <a href="/admin/wellness-journal/overview" class="inline-flex items-center px-4 py-2 rounded-xl text-sm font-medium border border-border text-text hover:border-gold/40">Сводка цифр (кратко)</a>
-      <a href="/admin/ai-community-bot" class="inline-flex items-center px-4 py-2 rounded-xl text-sm font-medium border border-border text-text hover:border-gold/40">Управление AI в сообществе</a>
-    </p>
+    <div class="wa-shelf wa-shelf-body--flush" style="margin-bottom:1.5rem">
+      <div class="wa-shelf-h" style="padding-top:1rem">Дневник терапии</div>
+      <p class="text-sm text-muted px-4 pb-2 max-w-3xl leading-relaxed">
+        Глобальный переключатель останавливает напоминания AI всем пользователям (данные в БД сохраняются).
+        По пользователю — пауза сбора и разрешение PDF на странице «Мои результаты».
+      </p>
+      <div class="wa-chips">
+        <a href="/admin/wellness-journal/insights" class="wa-chip">Статистика · графики</a>
+        <a href="/admin/wellness-journal/overview" class="wa-chip">Сводка цифр</a>
+        <a href="/admin/ai-community-bot" class="wa-chip opacity-80">AI в сообществе</a>
+      </div>
+    </div>
 
     {% if request.query_params.get('saved') %}
-    <div class="mb-4 p-3 rounded-xl border border-gold/30 text-gold text-sm">Сохранено.</div>
+    <div class="wa-shelf wa-shelf-body--pad mb-4" style="padding:0.75rem 1rem;border-color:rgba(212,168,83,0.35)">
+      <p class="text-sm text-gold m-0">Сохранено.</p>
+    </div>
     {% endif %}
     {% set tp = request.query_params.get('test_prompt') %}
     {% if tp == 'ok' %}
-    <div class="mb-4 p-3 rounded-xl border border-emerald-500/40 text-emerald-300 text-sm">
-      Тестовый промпт отправлен в ваши личные сообщения от NeuroFungi AI. Откройте <a href="/chats" class="underline hover:text-emerald-200">чаты</a> и диалог с AI — там текст и вопросы для сбора статистики (как у пользователей).
+    <div class="wa-shelf wa-shelf-body--pad mb-4" style="border-color:rgba(52,211,153,0.35)">
+      <p class="text-sm text-emerald-300 m-0">
+        Тестовый промпт отправлен в ЛС. Откройте <a href="/chats" class="underline hover:text-emerald-200">чаты</a>.
+      </p>
     </div>
     {% elif tp == 'no_access' %}
-    <div class="mb-4 p-3 rounded-xl border border-amber-500/40 text-amber-200 text-sm">
-      У этого аккаунта нет доступа к дневнику (нужна подписка или роль admin).
+    <div class="wa-shelf wa-shelf-body--pad mb-4" style="border-color:rgba(251,191,36,0.35)">
+      <p class="text-sm text-amber-200 m-0">У аккаунта нет доступа к дневнику (подписка или admin).</p>
     </div>
     {% elif tp == 'fail' %}
-    <div class="mb-4 p-3 rounded-xl border border-red-500/40 text-red-300 text-sm">
-      Отправить не удалось: задайте в Render отдельный аккаунт <code class="text-xs opacity-90">NEUROFUNGI_AI_USER_ID</code> (не ваш личный admin), иначе ЛС не попадает в мессенджер. Также проверьте opt-out дневника и логи сервера.
+    <div class="wa-shelf wa-shelf-body--pad mb-4" style="border-color:rgba(248,113,113,0.35)">
+      <p class="text-sm text-red-300 m-0">
+        Не удалось: задайте <code class="text-xs opacity-90">NEUROFUNGI_AI_USER_ID</code> в Render и проверьте логи.
+      </p>
     </div>
     {% endif %}
 
-    <div class="rounded-2xl border border-border p-4 mb-6 bg-surface/40">
-      <h2 class="text-lg font-medium text-text mb-2">Тест для админа</h2>
-      <p class="text-sm text-muted mb-3 max-w-2xl">
-        Отправить себе один промпт дневника (как в проде): увидите формулировки AI и блок вопросов для статистики. Расписание следующего автоматического напоминания не сдвигается.
-        В Render должен быть отдельный пользователь-отправитель (<code class="text-xs opacity-90">NEUROFUNGI_AI_USER_ID</code>), не совпадающий с вашим аккаунтом — иначе сообщение не появится в /чатах (сам себе в ЛС не синхронизируется).
-      </p>
-      <form method="post" action="/admin/wellness-journal/test-prompt-self">
-        <button type="submit" class="px-4 py-2 rounded-xl text-sm font-medium border border-gold/40 text-gold hover:bg-gold/10">
-          Отправить тестовый промпт мне в ЛС
-        </button>
-      </form>
+    <div class="wa-shelf">
+      <div class="wa-shelf-h">Тест для админа</div>
+      <div class="wa-shelf-body px-4 pb-4">
+        <p class="text-sm text-muted mb-3 max-w-2xl leading-relaxed">
+          Один промпт дневника в ваши ЛС (как в проде). Расписание следующего напоминания не сдвигается.
+        </p>
+        <form method="post" action="/admin/wellness-journal/test-prompt-self">
+          <button type="submit" class="px-4 py-3 rounded-xl text-sm font-semibold border border-gold/40 text-gold hover:bg-gold/10 w-full sm:w-auto">
+            Отправить тестовый промпт в ЛС
+          </button>
+        </form>
+      </div>
     </div>
 
-    <div class="rounded-2xl border border-border p-4 mb-8 bg-surface/40">
-      <h2 class="text-lg font-medium text-text mb-3">Платформа</h2>
-      <p class="text-sm text-muted mb-3">Сейчас: <strong class="text-text">{% if global_on %}включено{% else %}выключено{% endif %}</strong></p>
-      <form method="post" action="/admin/wellness-journal/global" class="flex flex-wrap gap-3">
-        <button type="submit" name="enabled" value="1" class="px-4 py-2 rounded-xl text-sm font-medium border border-gold/40 text-gold hover:bg-gold/10">Включить для всех</button>
-        <button type="submit" name="enabled" value="0" class="px-4 py-2 rounded-xl text-sm font-medium border border-border hover:border-red-400/50 text-red-300">Выключить для всех</button>
-      </form>
+    <div class="wa-shelf">
+      <div class="wa-shelf-h">Платформа</div>
+      <div class="wa-shelf-body px-4 pb-4">
+        <p class="text-sm text-muted mb-3">Сейчас: <strong class="text-text">{% if global_on %}включено{% else %}выключено{% endif %}</strong></p>
+        <form method="post" action="/admin/wellness-journal/global" class="flex flex-col sm:flex-row flex-wrap gap-2">
+          <button type="submit" name="enabled" value="1" class="flex-1 min-h-[44px] px-4 py-2 rounded-xl text-sm font-medium border border-gold/40 text-gold hover:bg-gold/10">Включить для всех</button>
+          <button type="submit" name="enabled" value="0" class="flex-1 min-h-[44px] px-4 py-2 rounded-xl text-sm font-medium border border-border text-red-300 hover:border-red-400/40">Выключить для всех</button>
+        </form>
+      </div>
     </div>
 
-    <h2 class="text-xl font-medium text-text mb-3">Топ отвечающих (30 дней)</h2>
-    <div class="overflow-x-auto rounded-2xl border border-border mb-10">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="border-b border-border text-left text-muted">
-            <th class="px-3 py-2">#</th>
-            <th class="px-3 py-2">Пользователь</th>
-            <th class="px-3 py-2">Ответов</th>
-            <th class="px-3 py-2">Пауза (админ)</th>
-            <th class="px-3 py-2">PDF у пользователя</th>
-            <th class="px-3 py-2"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for r in top_users %}
-          <tr class="border-b border-border/50 hover:bg-border/10">
-            <td class="px-3 py-2 text-muted">{{ loop.index }}</td>
-            <td class="px-3 py-2">
-              <a href="/admin/wellness-journal/user/{{ r.id }}" class="text-gold hover:underline">{{ r.name or ('id ' ~ r.id) }}</a>
-              {% if r.email %}<span class="text-muted text-xs block">{{ r.email }}</span>{% endif %}
-            </td>
-            <td class="px-3 py-2 font-semibold">{{ r.cnt }}</td>
-            <td class="px-3 py-2">
-              <form method="post" action="/admin/wellness-journal/user-pause" class="inline">
-                <input type="hidden" name="user_id" value="{{ r.id }}" />
-                <input type="hidden" name="paused" value="{{ 0 if user_pause_map.get(r.id) else 1 }}" />
-                <button type="submit" class="text-xs px-2 py-1 rounded-lg border border-border hover:border-gold/40">
-                  {% if user_pause_map.get(r.id) %}Снять паузу{% else %}Пауза{% endif %}
-                </button>
-              </form>
-            </td>
-            <td class="px-3 py-2">
-              {% set pdf_ok = r.wellness_journal_pdf_allowed != false %}
-              <span class="text-xs {% if pdf_ok %}text-emerald-400{% else %}text-red-300{% endif %}">{% if pdf_ok %}разрешён{% else %}запрещён{% endif %}</span>
-              <form method="post" action="/admin/wellness-journal/user-pdf" class="inline ml-1">
-                <input type="hidden" name="user_id" value="{{ r.id }}" />
-                <input type="hidden" name="allow_pdf" value="{{ 0 if pdf_ok else 1 }}" />
-                <button type="submit" class="text-xs px-2 py-1 rounded-lg border border-border hover:border-gold/40">{% if pdf_ok %}Запретить{% else %}Разрешить{% endif %}</button>
-              </form>
-            </td>
-            <td class="px-3 py-2 whitespace-nowrap">
-              <a href="/admin/wellness-journal/insights?mode=user&user_id={{ r.id }}" class="text-gold hover:underline text-xs mr-2">Графики</a>
-              <a href="/community/profile/{{ r.id }}" target="_blank" class="text-muted hover:text-gold text-xs">Профиль</a>
-            </td>
-          </tr>
-          {% else %}
-          <tr><td colspan="6" class="px-3 py-6 text-center text-muted">Пока нет ответов за период.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <div class="wa-shelf wa-shelf-body--flush" style="margin-top:1.25rem">
+      <div class="wa-shelf-h">Топ отвечающих · 30 дней</div>
+      <p class="text-xs text-muted px-4 pb-2">Свайп по таблице на узком экране</p>
+      <div class="wa-table-scroll">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-border text-left text-muted">
+              <th class="px-3 py-2.5 whitespace-nowrap">#</th>
+              <th class="px-3 py-2.5 min-w-[160px]">Пользователь</th>
+              <th class="px-3 py-2.5 whitespace-nowrap">Ответов</th>
+              <th class="px-3 py-2.5 min-w-[100px]">Пауза</th>
+              <th class="px-3 py-2.5 min-w-[120px]">PDF</th>
+              <th class="px-3 py-2.5 whitespace-nowrap"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in top_users %}
+            <tr class="border-b border-border/50 hover:bg-white/[0.03]">
+              <td class="px-3 py-2 text-muted">{{ loop.index }}</td>
+              <td class="px-3 py-2">
+                <a href="/admin/wellness-journal/user/{{ r.id }}" class="text-gold hover:underline font-medium">{{ r.name or ('id ' ~ r.id) }}</a>
+                {% if r.email %}<span class="text-muted text-xs block truncate max-w-[200px]">{{ r.email }}</span>{% endif %}
+              </td>
+              <td class="px-3 py-2 font-semibold">{{ r.cnt }}</td>
+              <td class="px-3 py-2">
+                <form method="post" action="/admin/wellness-journal/user-pause" class="inline">
+                  <input type="hidden" name="user_id" value="{{ r.id }}" />
+                  <input type="hidden" name="paused" value="{{ 0 if user_pause_map.get(r.id) else 1 }}" />
+                  <button type="submit" class="text-xs px-2 py-1.5 rounded-lg border border-border hover:border-gold/40 min-h-[36px]">
+                    {% if user_pause_map.get(r.id) %}Снять{% else %}Пауза{% endif %}
+                  </button>
+                </form>
+              </td>
+              <td class="px-3 py-2">
+                {% set pdf_ok = r.wellness_journal_pdf_allowed != false %}
+                <span class="text-xs {% if pdf_ok %}text-emerald-400{% else %}text-red-300{% endif %} block mb-1">{% if pdf_ok %}да{% else %}нет{% endif %}</span>
+                <form method="post" action="/admin/wellness-journal/user-pdf" class="inline">
+                  <input type="hidden" name="user_id" value="{{ r.id }}" />
+                  <input type="hidden" name="allow_pdf" value="{{ 0 if pdf_ok else 1 }}" />
+                  <button type="submit" class="text-xs px-2 py-1 rounded-lg border border-border">{% if pdf_ok %}Запретить{% else %}Разрешить{% endif %}</button>
+                </form>
+              </td>
+              <td class="px-3 py-2 whitespace-nowrap">
+                <a href="/admin/wellness-journal/insights?mode=user&user_id={{ r.id }}" class="text-gold hover:underline text-xs mr-2">Графики</a>
+                <a href="/community/profile/{{ r.id }}" target="_blank" class="text-muted hover:text-gold text-xs">Профиль</a>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="px-3 py-8 text-center text-muted">Пока нет ответов за период.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
