@@ -4,6 +4,7 @@
 """
 from __future__ import annotations
 
+from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -115,6 +116,55 @@ BUNDLES: dict[str, dict[str, Any]] = {
         "title": "Ориентир: метаболизм",
         "keys": ["maitake", "shiitake"],
         "rationale": "Акцент на метаболизм и липиды в образовательной базе.",
+    },
+}
+
+# Памятка: как применять и курс — только образовательные ориентиры, не рецепт.
+MUSHROOM_PLAN_MEMO: dict[str, dict[str, str]] = {
+    "amanita_muscaria": {
+        "dose_addendum": "Конкретные мг/капли и шаг титрации задаёт только специалист по фунготерапии.",
+        "how_apply": "Курс строят поэтапно (подстройка → поддержание). Вести дневник сна, тревоги и тела. Не сочетать с алкоголем и седативными без врача.",
+        "course_weeks": "Ориентир первого цикла 4–10 недель с пересмотром у сопровождающего.",
+    },
+    "amanita_pantherina": {
+        "dose_addendum": "Только под наблюдением; доза подбирается индивидуально, не по шаблону из приложения.",
+        "how_apply": "Обсуждать частоту и окна приёма со специалистом; при ухудшении — немедленно к врачу.",
+        "course_weeks": "Короткие контролируемые фазы с оценкой переносимости.",
+    },
+    "amanita_regalis": {
+        "dose_addendum": "Индивидуально со специалистом; не копировать чужие схемы.",
+        "how_apply": "Отслеживать сон и эмоциональные качели; дневник обязателен.",
+        "course_weeks": "Ориентир 4–8 недель с коррекцией.",
+    },
+    "hericium": {
+        "dose_addendum": "По маркировке БАД/порошка и по согласованию с врачом (типично обсуждают 1–3 г экстракта в сутки или капсулы по схеме производителя).",
+        "how_apply": "Принимать согласованно с приёмом пищи или натощак — как решите со специалистом; курс для когниции обычно не менее 4–8 недель.",
+        "course_weeks": "6–12 недель с оценкой концентрации и сна.",
+    },
+    "cordyceps": {
+        "dose_addendum": "Доза зависит от экстракта; уточнять у специалиста и по инструкции к продукту.",
+        "how_apply": "Часто утром или до нагрузки (если нет противопоказаний по давлению/щитовидке — у врача).",
+        "course_weeks": "4–8 недель для оценки энергии и выносливости.",
+    },
+    "reishi": {
+        "dose_addendum": "Порошок/настой/капсулы — по маркировке и согласованию; не резко повышать дозу самостоятельно.",
+        "how_apply": "Часто вечером для расслабления или в 2 приёма; не с алкоголем без согласования.",
+        "course_weeks": "8–12 недель для фона стресса и сна.",
+    },
+    "trametes": {
+        "dose_addendum": "PSK/PSP-продукты — строго по схеме сопровождения и маркировке.",
+        "how_apply": "Длительные курсы; согласовать с онкологом/терапевтом при любой соматике.",
+        "course_weeks": "От 8 недель и более — по протоколу специалиста.",
+    },
+    "maitake": {
+        "dose_addendum": "При диабете и метформинах — только по согласованию с эндокринологом.",
+        "how_apply": "Отслеживать глюкозу и самочувствие; принимать стабильно в одно время суток.",
+        "course_weeks": "8–12 недель для оценки метаболических маркеров.",
+    },
+    "shiitake": {
+        "dose_addendum": "Пищевой порошок или экстракт — по маркировке; при аллергии на грибы не использовать.",
+        "how_apply": "В составе курса иммунитета и липидов вместе со сном и питанием.",
+        "course_weeks": "6–10 недель.",
     },
 }
 
@@ -308,6 +358,85 @@ def build_stored_profile_json(merged_metrics: dict[str, Any]) -> dict[str, Any]:
         "single_hints": payload["single_hints"],
         "ai_context_compact": ai_compact,
     }
+
+
+def build_memo_rows_from_profile(stored: dict[str, Any]) -> list[dict[str, Any]]:
+    """Строки для таблицы «личная памятка» по сохранённому или эфемерному профилю."""
+    roles: dict[str, list[str]] = defaultdict(list)
+    order: list[str] = []
+    seen: set[str] = set()
+    for b in stored.get("bundles") or []:
+        bid = b.get("id")
+        sp = BUNDLES.get(bid) or {}
+        title = (b.get("title") or "").strip()
+        for k in sp.get("keys") or []:
+            if k not in MUSHROOMS:
+                continue
+            roles[k].append(f"связка «{title}»")
+            if k not in seen:
+                seen.add(k)
+                order.append(k)
+    for s in stored.get("single_hints") or []:
+        k = s.get("key")
+        if not k or k not in MUSHROOMS:
+            continue
+        why = (s.get("why") or "").strip()
+        if why:
+            roles[k].append(why)
+        if k not in seen:
+            seen.add(k)
+            order.append(k)
+    rows: list[dict[str, Any]] = []
+    for k in order:
+        spec = MUSHROOMS[k]
+        memo = MUSHROOM_PLAN_MEMO.get(k, {})
+        dose_line = (spec.get("dose_hint") or "").strip()
+        if memo.get("dose_addendum"):
+            dose_line = (dose_line + " " + memo["dose_addendum"]).strip()
+        rows.append(
+            {
+                "key": k,
+                "name_ru": spec["name_ru"],
+                "latin": spec["latin"],
+                "core": spec["core"],
+                "indications": ", ".join(spec.get("indications") or []),
+                "role_for_you": " · ".join(roles.get(k, [])),
+                "dose_orientation": dose_line,
+                "how_apply": memo.get("how_apply", ""),
+                "course_weeks": memo.get("course_weeks", ""),
+                "contra": spec.get("contra", ""),
+            }
+        )
+    return rows
+
+
+def format_normalized_metrics_ru(norm: dict[str, Any]) -> list[str]:
+    """Короткие строки для блока «ваши шкалы»."""
+    if not norm:
+        return []
+    labels = {
+        "anxiety": "тревога",
+        "energy": "энергия",
+        "sleep": "сон",
+        "focus": "концентрация",
+        "stress": "стресс (оценка)",
+        "immunity": "иммунитет по ощущениям",
+        "fatigue": "усталость",
+        "metabolic": "метаболика/вес (флаг)",
+        "panic": "паника сегодня",
+    }
+    lines: list[str] = []
+    for k, lab in labels.items():
+        v = norm.get(k)
+        if v is None:
+            continue
+        if k == "metabolic":
+            lines.append(f"{lab}: да" if v else f"{lab}: нет")
+        elif k == "panic":
+            lines.append(f"{lab}: да" if v else f"{lab}: нет")
+        else:
+            lines.append(f"{lab}: {v}/10")
+    return lines
 
 
 def format_therapy_context_for_coach(stored: Optional[dict[str, Any]]) -> str:

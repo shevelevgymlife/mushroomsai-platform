@@ -1165,6 +1165,27 @@ async def wellness_results_page(request: Request):
     )
 
 
+@router.get("/wellness-personal-plan", response_class=HTMLResponse)
+async def wellness_personal_plan_page(request: Request):
+    user = await get_user_from_request(request)
+    if not user:
+        return RedirectResponse("/login?next=/account/wellness-personal-plan")
+    leg = await legal_acceptance_redirect(request, user)
+    if leg:
+        return leg
+    uid = int(user.get("primary_user_id") or user["id"])
+    from services.wellness_journal_service import user_has_wellness_journal_access
+    from services.wellness_personal_plan_service import build_wellness_personal_plan_context
+
+    if not await user_has_wellness_journal_access(uid):
+        return RedirectResponse("/subscriptions", status_code=302)
+    ctx = await build_wellness_personal_plan_context(uid)
+    return templates.TemplateResponse(
+        "account/wellness_personal_plan.html",
+        {"request": request, "user": user, **ctx},
+    )
+
+
 @router.post("/wellness-results")
 async def wellness_results_save(
     request: Request,

@@ -74,6 +74,7 @@
     {% set _draw_w = (user.get('effective_subscription_plan') or user.subscription_plan or 'free')|lower %}
     {% if _draw_w != 'free' and drawer_on('wellness') == '1' %}
     <a href="/account/wellness-results" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">📊</span><span class="lbl">Мои результаты</span></a>
+    <a href="/account/wellness-personal-plan" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">📝</span><span class="lbl">Памятка по грибам</span></a>
     {% endif %}
     {% endif %}
     {% if not is_locked_free and drawer_on('wallet') == '1' %}

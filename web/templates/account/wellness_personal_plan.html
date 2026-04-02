@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block title %}Личная памятка — NEUROFUNGI AI{% endblock %}
+{% block extra_head %}
+{% include "components/wellness_dashboard_css.html" %}
+{% endblock %}
+{% block content %}
+<div class="accneo-wrap wd-root wd-user-shell">
+  <span class="wd-personal-badge">Только ваши данные</span>
+  <div class="wd-head">
+    <div>
+      <h1>Личная памятка по грибам</h1>
+      <p class="wd-sub">Подбор из справочника платформы по вашему дневнику и последним метрикам. Это не рецепт и не назначение: ориентиры для разговора со специалистом по фунготерапии.</p>
+    </div>
+  </div>
+
+  <div class="wd-disclaimer">
+    <strong style="color:#e8d4a8">Не медицина.</strong> Таблицы и формулировки носят исключительно информационный характер. Любые дозы, курсы и сочетания с лекарствами согласуйте с врачом или сертифицированным специалистом.
+  </div>
+
+  <p class="wd-plan-meta">
+    {% if profile_source == 'saved' %}
+    <span class="wd-plan-pill">Профиль: сохранённый снимок</span>
+    {% elif profile_source == 'snapshot' %}
+    <span class="wd-plan-pill">Профиль: по последнему дню в дневнике</span>
+    {% else %}
+    <span class="wd-plan-pill wd-plan-pill--muted">Профиль: данных пока мало</span>
+    {% endif %}
+    {% if profile_updated_at %}
+    <span class="wd-plan-upd">обновлено {{ profile_updated_at }}</span>
+    {% endif %}
+  </p>
+
+  <div class="wd-plan-grid-2">
+    <section class="wd-plan-card">
+      <h2 class="wd-plan-h2">Психологический фокус <span class="wd-plan-tag">из ваших ответов</span></h2>
+      <ul class="wd-plan-list">
+        {% if goals.life_goal_short %}
+        <li><span class="wd-plan-k">Цель</span> {{ goals.life_goal_short }}</li>
+        {% endif %}
+        {% if goals.motivation_why_mushrooms %}
+        <li><span class="wd-plan-k">Зачем грибы</span> {{ goals.motivation_why_mushrooms }}</li>
+        {% endif %}
+        {% if goals.trigger_or_distortion %}
+        <li><span class="wd-plan-k">Триггер / паттерн</span> {{ goals.trigger_or_distortion }}</li>
+        {% endif %}
+        {% if goals.free_summary %}
+        <li><span class="wd-plan-k">Сводка</span> {{ goals.free_summary }}</li>
+        {% endif %}
+        {% if not goals.life_goal_short and not goals.motivation_why_mushrooms and not goals.trigger_or_distortion and not goals.free_summary %}
+        <li class="wd-muted">Пока нет развёрнутых целей в извлечённых ответах — продолжайте писать в ЛС, AI подтянет формулировки.</li>
+        {% endif %}
+      </ul>
+    </section>
+    <section class="wd-plan-card">
+      <h2 class="wd-plan-h2">Физиология и самочувствие <span class="wd-plan-tag">эвристика</span></h2>
+      <ul class="wd-plan-list">
+        {% if cluster_label %}
+        <li><span class="wd-plan-k">Портрет по шкалам</span> {{ cluster_label }}</li>
+        {% endif %}
+        {% if segment_display %}
+        <li><span class="wd-plan-k">Сегмент платформы</span> {{ segment_display }}</li>
+        {% endif %}
+        {% if triggers_fired and triggers_fired|length > 0 %}
+        <li><span class="wd-plan-k">Сработавшие пороги</span> {{ triggers_fired | join(' · ') }}</li>
+        {% endif %}
+        {% for line in normalized_metrics_lines %}
+        <li>{{ line }}</li>
+        {% endfor %}
+        {% if goals.physical_symptoms and goals.physical_symptoms|length > 0 %}
+        <li><span class="wd-plan-k">Телесные отметки</span> {{ goals.physical_symptoms | join('; ') }}</li>
+        {% endif %}
+        {% if goals.mental_symptoms and goals.mental_symptoms|length > 0 %}
+        <li><span class="wd-plan-k">Психо-симптомы в дневнике</span> {{ goals.mental_symptoms | join('; ') }}</li>
+        {% endif %}
+        {% if goals.dose_notes or goals.dosage_amount_text or goals.timing %}
+        <li><span class="wd-plan-k">Ваши заметки о приёме</span>
+          {% if goals.dosage_amount_text %}{{ goals.dosage_amount_text }}{% endif %}
+          {% if goals.timing %} · время: {{ goals.timing }}{% endif %}
+          {% if goals.dose_notes %} — {{ goals.dose_notes }}{% endif %}
+        </li>
+        {% endif %}
+      </ul>
+    </section>
+  </div>
+
+  {% if latest_ai_recommendation %}
+  <section class="wd-ai wd-plan-ai">
+    <h2 class="wd-ai-h"><span class="wd-ai-badge">Последняя рекомендация AI</span> из дашборда</h2>
+    <div class="wd-ai-body">{{ latest_ai_recommendation }}</div>
+  </section>
+  {% endif %}
+
+  {% if bundles and bundles|length > 0 %}
+  <h2 class="wd-sec-title">Связки под ваш портрет</h2>
+  <div class="wd-plan-table-wrap">
+    <table class="wd-plan-table">
+      <thead>
+        <tr>
+          <th>Связка</th>
+          <th>Состав</th>
+          <th>Зачем (образовательно)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in bundles %}
+        <tr>
+          <td class="wd-plan-td-strong">{{ b.title }}</td>
+          <td>{{ b.mushroom_names | join(', ') }}</td>
+          <td class="wd-plan-td-note">{{ b.rationale }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  {% if memo_rows and memo_rows|length > 0 %}
+  <h2 class="wd-sec-title">Ваш ориентир по видам из каталога</h2>
+  <p class="wd-sec-sub">Одна строка — один вид. «Роль для вас» связывает связки и одиночные подсказки эвристики. Дозировка — только ориентир, не инструкция к действию.</p>
+  <div class="wd-plan-table-wrap">
+    <table class="wd-plan-table wd-plan-table--wide">
+      <thead>
+        <tr>
+          <th>Вид</th>
+          <th>Латинское имя</th>
+          <th>Роль для вас</th>
+          <th>Ориентир по дозе</th>
+          <th>Как применять</th>
+          <th>Курс (ориентир)</th>
+          <th>Осторожно</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in memo_rows %}
+        <tr>
+          <td class="wd-plan-td-strong">{{ row.name_ru }}<div class="wd-plan-mini">{{ row.core }}</div></td>
+          <td class="wd-plan-td-lat"><em>{{ row.latin }}</em></td>
+          <td>{{ row.role_for_you }}</td>
+          <td>{{ row.dose_orientation }}</td>
+          <td>{{ row.how_apply }}</td>
+          <td>{{ row.course_weeks }}</td>
+          <td class="wd-plan-td-note">{{ row.contra }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="wd-plan-empty">
+    <p>Пока не из чего собрать таблицу: отметьте самочувствие в чате с NeuroFungi AI несколько дней подряд — появятся шкалы, связки и строки памятки.</p>
+    <a href="/chats" class="wd-btn">Открыть чаты</a>
+  </div>
+  {% endif %}
+
+  <div class="wd-actions" style="margin-top:2rem">
+    <a href="/account/wellness-results" class="wd-btn secondary">← Мои результаты</a>
+  </div>
+</div>
+{% endblock %}
