@@ -29,8 +29,8 @@ from services.payment_provider_settings import (
 )
 from services.yookassa_bot_offerings import get_merged_bot_offerings
 from services.subscription_checkout import (
-    get_subscription_checkout_preference,
-    save_subscription_checkout_preference,
+    get_subscription_checkout_config,
+    save_subscription_checkout_bundle,
     subscription_checkout_select_rows,
 )
 
@@ -172,7 +172,7 @@ async def admin_payment_hub(request: Request):
         d = dict(p)
         d["href"] = p.get("admin_path") or f"/admin/payment/{p['id']}"
         hub_providers.append(d)
-    checkout_pref = await get_subscription_checkout_preference()
+    checkout_cfg = await get_subscription_checkout_config()
     return templates.TemplateResponse(
         "dashboard/admin_payment_hub.html",
         {
@@ -181,7 +181,7 @@ async def admin_payment_hub(request: Request):
             "user_permissions": perms,
             "providers": hub_providers,
             "cloudpayments_webhook_url": webhook_url,
-            "subscription_checkout_pref": checkout_pref,
+            "subscription_checkout_config": checkout_cfg,
             "subscription_checkout_options": subscription_checkout_select_rows(),
         },
     )
@@ -194,8 +194,11 @@ async def admin_subscription_checkout_save(request: Request):
     if not admin:
         return RedirectResponse("/login")
     form = await request.form()
-    raw = (form.get("primary_provider") or "auto").strip().lower()
-    await save_subscription_checkout_preference(raw)
+    mode = (form.get("checkout_mode") or "unified").strip().lower()
+    primary = (form.get("primary_provider") or "auto").strip().lower()
+    web_p = (form.get("web_provider") or primary).strip().lower()
+    tg_p = (form.get("telegram_provider") or primary).strip().lower()
+    await save_subscription_checkout_bundle(mode, primary, web_p, tg_p)
     return RedirectResponse("/admin/payment?checkout_saved=1", status_code=303)
 
 

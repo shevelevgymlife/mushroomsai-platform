@@ -280,7 +280,8 @@ async def subscribe_menu_handler(update: Update, context: ContextTypes.DEFAULT_T
         return
     ck = await resolve_active_subscription_checkout()
     yk_ready, _st = await _provider_ready()
-    show_card = yk_ready and ck.get("kind") == "yookassa"
+    kind_tg = ck.get("kind_telegram") or ck.get("kind")
+    show_card = yk_ready and kind_tg == "yookassa"
     show_stars = bool(ck.get("telegram_stars_subscriptions_enabled"))
     stars_spr = float(ck.get("telegram_stars_per_rub") or 0.55)
 
@@ -371,7 +372,8 @@ async def tgpay_plan_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
     await q.answer()
     ck = await resolve_active_subscription_checkout()
-    if ck.get("kind") != "yookassa":
+    kind_tg = ck.get("kind_telegram") or ck.get("kind")
+    if kind_tg != "yookassa":
         site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
         try:
             await q.message.reply_text(

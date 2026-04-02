@@ -20,20 +20,65 @@
     <div class="mb-4 p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-200 text-sm max-w-3xl">Сохранено: основной способ оплаты подписок.</div>
     {% endif %}
 
-    <div class="mb-8 p-5 rounded-2xl border border-gold/25 bg-surface/80 max-w-3xl">
-      <h2 class="text-lg font-semibold text-text mb-2">Основной способ оплаты подписок</h2>
-      <p class="text-xs text-muted mb-4 leading-relaxed">Выбранный ниже способ задаёт <strong>основной</strong> рублёвый эквайринг. ЮKassa при этом может быть разнесена: браузер → карточка «веб-сайт», Telegram / Mini App → карточка «бот и Mini App». <strong>Telegram Stars</strong> — в своей карточке.</p>
-      <form method="post" action="/admin/payment/subscription-checkout" class="flex flex-wrap items-end gap-4">
+    {% set cfg = subscription_checkout_config or {} %}
+    <div class="mb-8 p-5 rounded-2xl border border-gold/25 bg-surface/80 max-w-3xl space-y-5">
+      <h2 class="text-lg font-semibold text-text mb-1">Способ оплаты подписок: веб и Telegram / Mini App</h2>
+      <p class="text-xs text-muted leading-relaxed">
+        <strong>Один способ на оба канала</strong> — как раньше: и кнопки на сайте, и сценарии в боте смотрят на одно значение.
+        <strong>Раздельно</strong> — на сайте (браузер) используется первый список, в боте и Mini App — второй. ЮKassa по-прежнему двумя карточками: магазин для <strong>сайта</strong> и магазин для <strong>бота / Mini App</strong> (разные shopId). После оплаты любым каналом срабатывает одна и та же логика подписки аккаунта (вебхуки и обработчики не разделяются).
+        <strong>Telegram Stars</strong> — отдельная карточка провайдера; при включении кнопка звёзд доступна там, где показаны тарифы.
+      </p>
+      <form method="post" action="/admin/payment/subscription-checkout" class="space-y-4" id="checkoutPrefForm">
         <div>
-          <label class="block text-xs text-muted mb-1">Режим</label>
+          <label class="block text-xs text-muted mb-1.5">Режим выбора</label>
+          <select name="checkout_mode" id="checkoutModeSel" class="px-3 py-2 rounded-lg bg-bg border border-border text-text text-sm min-w-[280px] max-w-[100%]">
+            <option value="unified" {% if (cfg.checkout_mode or 'unified') == 'unified' %}selected{% endif %}>Один способ — и для сайта, и для бота / приложения</option>
+            <option value="split" {% if cfg.checkout_mode == 'split' %}selected{% endif %}>Раздельно: свой способ для веба и для Telegram / Mini App</option>
+          </select>
+        </div>
+        <div id="checkoutUnifiedWrap" class="space-y-2">
+          <label class="block text-xs text-muted">Способ для обоих каналов</label>
           <select name="primary_provider" class="px-3 py-2 rounded-lg bg-bg border border-border text-text text-sm min-w-[280px] max-w-[100%]">
             {% for row in subscription_checkout_options %}
-            <option value="{{ row.id }}" {% if (subscription_checkout_pref or 'auto') == row.id %}selected{% endif %}>{{ row.label }}{{ row.suffix }}</option>
+            <option value="{{ row.id }}" {% if (cfg.primary_provider or 'auto') == row.id %}selected{% endif %}>{{ row.label }}{{ row.suffix }}</option>
             {% endfor %}
           </select>
         </div>
-        <button type="submit" class="px-4 py-2 rounded-lg bg-gold text-bg text-sm font-semibold hover:opacity-95">Сохранить</button>
+        <div id="checkoutSplitWrap" class="space-y-3 hidden">
+          <div>
+            <label class="block text-xs text-muted mb-1">Сайт (браузер): страницы /subscriptions, оплата с веба</label>
+            <select name="web_provider" class="px-3 py-2 rounded-lg bg-bg border border-border text-text text-sm min-w-[280px] max-w-[100%]">
+              {% for row in subscription_checkout_options %}
+              <option value="{{ row.id }}" {% if (cfg.web_provider or 'auto') == row.id %}selected{% endif %}>{{ row.label }}{{ row.suffix }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-muted mb-1">Telegram-бот и Mini App (счёт в чате, редирект ЮKassa из WebView)</label>
+            <select name="telegram_provider" class="px-3 py-2 rounded-lg bg-bg border border-border text-text text-sm min-w-[280px] max-w-[100%]">
+              {% for row in subscription_checkout_options %}
+              <option value="{{ row.id }}" {% if (cfg.telegram_provider or 'auto') == row.id %}selected{% endif %}>{{ row.label }}{{ row.suffix }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="px-4 py-2 rounded-lg bg-gold text-bg text-sm font-semibold hover:opacity-95">Сохранить настройки оплаты подписок</button>
       </form>
+      <script>
+      (function () {
+        var m = document.getElementById('checkoutModeSel');
+        var u = document.getElementById('checkoutUnifiedWrap');
+        var s = document.getElementById('checkoutSplitWrap');
+        if (!m || !u || !s) return;
+        function sync() {
+          var split = m.value === 'split';
+          u.classList.toggle('hidden', split);
+          s.classList.toggle('hidden', !split);
+        }
+        m.addEventListener('change', sync);
+        sync();
+      })();
+      </script>
     </div>
 
     <div class="mb-6 p-4 rounded-2xl border border-cyan-500/20 bg-cyan-500/5 text-sm text-muted max-w-3xl">
