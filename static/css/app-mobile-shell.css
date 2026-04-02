@@ -442,8 +442,11 @@ body.app-mobile-layout .cp-create-fab {
   outline: none;
 }
 .ig-drawer-item .e {
-  font-size: 17px;
   width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   flex-shrink: 0;
 }
@@ -485,7 +488,22 @@ details.ig-drawer-details > summary {
   list-style: none;
 }
 .ig-drawer-item .stroke-ico {
-  color: #888;
+  width: 20px;
+  height: 20px;
+  color: #4fdbe7;
+  filter: drop-shadow(0 0 8px rgba(61, 212, 224, 0.32));
+  transition: color 0.18s ease, filter 0.18s ease;
+}
+
+.ig-drawer-item:hover .stroke-ico,
+.ig-drawer-item:focus-visible .stroke-ico {
+  color: #7ee8f0;
+  filter: drop-shadow(0 0 10px rgba(61, 212, 224, 0.42));
+}
+
+.ig-drawer-item--danger .stroke-ico {
+  color: #f87171;
+  filter: drop-shadow(0 0 8px rgba(248, 113, 113, 0.35));
 }
 
 /* Обратный отсчёт пробного «Старт» внизу бургера */
