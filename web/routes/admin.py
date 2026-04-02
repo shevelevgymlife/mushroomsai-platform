@@ -2438,6 +2438,9 @@ async def admin_wellness_journal_page(request: Request):
         rows = await database.fetch_all(users.select().where(users.c.id.in_(ids)))
         for r in rows:
             user_pause_map[int(r["id"])] = bool(r.get("wellness_journal_admin_paused"))
+    admin_uid = int(admin.get("primary_user_id") or admin["id"])
+    me_row = await database.fetch_one(users.select().where(users.c.id == admin_uid))
+    admin_wellness_ai_silent = bool(me_row.get("wellness_admin_ai_silent")) if me_row else False
     return templates.TemplateResponse(
         "dashboard/admin_wellness_journal.html",
         {
@@ -2447,6 +2450,7 @@ async def admin_wellness_journal_page(request: Request):
             "global_on": global_on,
             "top_users": top,
             "user_pause_map": user_pause_map,
+            "admin_wellness_ai_silent": admin_wellness_ai_silent,
         },
     )
 
@@ -2466,6 +2470,20 @@ async def admin_wellness_journal_test_prompt_self(request: Request):
     if ok:
         return RedirectResponse("/admin/wellness-journal?test_prompt=ok", status_code=303)
     return RedirectResponse("/admin/wellness-journal?test_prompt=fail", status_code=303)
+
+
+@router.post("/wellness-journal/self-ai-silent")
+async def admin_wellness_journal_self_ai_silent(request: Request, silent: str = Form(...)):
+    """Лично для админа: без цепочки вопросов в ЛС; разбор в статистику остаётся."""
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    uid = int(admin.get("primary_user_id") or admin["id"])
+    from services.wellness_journal_service import set_wellness_admin_ai_silent
+
+    on = (silent or "").strip() in ("1", "true", "on", "yes")
+    await set_wellness_admin_ai_silent(uid, on)
+    return RedirectResponse("/admin/wellness-journal?saved=1", status_code=303)
 
 
 @router.post("/wellness-journal/global")

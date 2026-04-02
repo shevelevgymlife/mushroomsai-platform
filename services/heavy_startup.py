@@ -675,6 +675,14 @@ async def run_heavy_startup(app: FastAPI) -> None:
             logger.info("wellness states/schemes/RL (migrate_v35) OK")
         except Exception as e:
             logger.warning("migrate_v35 wellness_states_schemes_rl: %s", e)
+        try:
+            import migrate_v36_wellness_admin_ai_silent as migrate_v36
+
+            for s in migrate_v36.STEPS:
+                await database.execute(sa.text(s))
+            logger.info("wellness admin AI silent (migrate_v36) OK")
+        except Exception as e:
+            logger.warning("migrate_v36 wellness_admin_ai_silent: %s", e)
 
         try:
             from services.merge_neurofungi_ai_chats import merge_all_neurofungi_ai_personal_chats

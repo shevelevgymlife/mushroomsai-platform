@@ -99,6 +99,18 @@ users = sqlalchemy.Table(
     ),
     sqlalchemy.Column("wellness_ai_profile_json", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("wellness_kmeans_cluster_id", sqlalchemy.Integer, nullable=True),
+    sqlalchemy.Column(
+        "wellness_admin_ai_silent",
+        sqlalchemy.Boolean,
+        nullable=False,
+        server_default="false",
+    ),
+    sqlalchemy.Column(
+        "wellness_admin_q_index",
+        sqlalchemy.Integer,
+        nullable=False,
+        server_default="0",
+    ),
 )
 
 sessions = sqlalchemy.Table(

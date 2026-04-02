@@ -60,6 +60,29 @@
     </div>
 
     <div class="wa-shelf">
+      <div class="wa-shelf-h">Мой режим в ЛС с NeuroFungi AI</div>
+      <div class="wa-shelf-body px-4 pb-4">
+        <p class="text-sm text-muted mb-3 max-w-2xl leading-relaxed">
+          Для аккаунта админа ответы в дневник сразу идут в статистику и разбираются в JSON (кейс для графиков).
+          По умолчанию после каждого ответа бот задаёт следующий структурный вопрос для быстрого наполнения дневника.
+          Тихий режим отключает эти сообщения — вы пишете сами, без опроса в чате.
+        </p>
+        <p class="text-sm mb-3">
+          Сейчас:
+          <strong class="text-text">{% if admin_wellness_ai_silent %}тихий режим (только разбор){% else %}с вопросами после ответа{% endif %}</strong>
+        </p>
+        <form method="post" action="/admin/wellness-journal/self-ai-silent" class="flex flex-col sm:flex-row flex-wrap gap-2">
+          <button type="submit" name="silent" value="0" class="flex-1 min-h-[44px] px-4 py-2 rounded-xl text-sm font-medium border border-gold/40 text-gold hover:bg-gold/10">
+            Включить вопросы AI после моих ответов
+          </button>
+          <button type="submit" name="silent" value="1" class="flex-1 min-h-[44px] px-4 py-2 rounded-xl text-sm font-medium border border-border text-muted hover:border-gold/30">
+            Тихий режим: без сообщений бота, только статистика
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div class="wa-shelf">
       <div class="wa-shelf-h">Платформа</div>
       <div class="wa-shelf-body px-4 pb-4">
         <p class="text-sm text-muted mb-3">Сейчас: <strong class="text-text">{% if global_on %}включено{% else %}выключено{% endif %}</strong></p>
