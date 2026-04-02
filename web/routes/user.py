@@ -330,7 +330,7 @@ async def subscriptions_page(request: Request):
 
 @router.get("/pay/subscription")
 async def pay_subscription_yookassa(request: Request, offering_id: str = "", plan: str = ""):
-    """Перенаправление на оплату ЮKassa (сайт и Telegram Mini App)."""
+    """Старт оплаты подписки: CloudPayments или ЮKassa по активным настройкам канала."""
     user = await require_auth(request)
     oid = (offering_id or plan or "").strip().lower()
     if not user:
@@ -366,14 +366,12 @@ async def pay_subscription_yookassa(request: Request, offering_id: str = "", pla
         return leg
     if not oid:
         return RedirectResponse("/subscriptions?pay_error=no_offering", status_code=302)
+    checkout = await resolve_active_subscription_checkout()
     channel = detect_yookassa_pay_channel(request)
-    yk = await get_provider_settings("yookassa")
-    yb = await get_provider_settings("yookassa_bot")
-    if channel == "telegram_embedded":
-        if not yookassa_redirect_api_ready(yb):
-            return RedirectResponse("/subscriptions?pay_error=tg_shop", status_code=302)
-    elif not yookassa_redirect_api_ready(yk):
-        return RedirectResponse("/subscriptions?pay_error=web_shop", status_code=302)
+    kind = checkout.get("kind_telegram") if channel == "telegram_embedded" else checkout.get("kind")
+    kind = (kind or "none").strip().lower()
+    if kind == "none":
+        return RedirectResponse("/subscriptions?pay_error=no_payment", status_code=302)
     offerings = await get_merged_bot_offerings()
     off = offering_by_id(offerings, oid)
     if not off or not off.get("enabled"):
@@ -384,6 +382,32 @@ async def pay_subscription_yookassa(request: Request, offering_id: str = "", pla
         price = 0.0
     if price <= 0:
         return RedirectResponse("/subscriptions?pay_error=price", status_code=302)
+    if kind == "cloudpayments":
+        cpid = (checkout.get("cloudpayments_public_id") or "").strip()
+        if not cpid:
+            return RedirectResponse("/subscriptions?pay_error=no_payment", status_code=302)
+        uid = int(user.get("primary_user_id") or user["id"])
+        return templates.TemplateResponse(
+            "pay_cloudpayments.html",
+            {
+                "request": request,
+                "user": user,
+                "pay_plan": oid,
+                "pay_plan_name": (off.get("display_name") or oid),
+                "pay_amount": int(price),
+                "payment_user_id": uid,
+                "cloudpayments_public_id": cpid,
+            },
+        )
+    if kind != "yookassa":
+        return RedirectResponse("/subscriptions?pay_error=no_payment", status_code=302)
+    yk = await get_provider_settings("yookassa")
+    yb = await get_provider_settings("yookassa_bot")
+    if channel == "telegram_embedded":
+        if not yookassa_redirect_api_ready(yb):
+            return RedirectResponse("/subscriptions?pay_error=tg_shop", status_code=302)
+    elif not yookassa_redirect_api_ready(yk):
+        return RedirectResponse("/subscriptions?pay_error=web_shop", status_code=302)
     uid = int(user.get("primary_user_id") or user["id"])
     site = (settings.SITE_URL or "").rstrip("/")
     if not site.startswith("http"):

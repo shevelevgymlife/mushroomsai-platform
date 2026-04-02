@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Оплата подписки — NEUROFUNGI AI{% endblock %}
+{% block content %}
+<div class="neo-app-surface min-h-screen bg-bg pt-28 pb-16 px-4">
+  <div class="max-w-md mx-auto text-center">
+    <h1 class="text-xl font-semibold text-text mb-2">Оплата подписки</h1>
+    <p class="text-sm text-muted mb-6">Тариф «{{ pay_plan_name }}». Сумма: {{ pay_amount }} ₽</p>
+    <p id="cp-status" class="text-sm text-gold mb-4">Открываем окно оплаты…</p>
+    <p class="text-xs text-muted"><a href="/subscriptions" class="text-gold hover:underline">← Назад к подпискам</a></p>
+  </div>
+</div>
+<script src="https://widget.cloudpayments.ru/bundles/cloudpayments.js"></script>
+<script>
+(function () {
+  var pubId = {{ cloudpayments_public_id|tojson }};
+  var uid = {{ payment_user_id|int }};
+  var plan = {{ pay_plan|tojson }};
+  var amt = {{ pay_amount|int }};
+  var pname = {{ pay_plan_name|tojson }};
+  var st = document.getElementById('cp-status');
+  function fail(msg) {
+    if (st) {
+      st.textContent = msg;
+      st.classList.remove('text-gold');
+      st.classList.add('text-amber-300');
+    }
+  }
+  if (!pubId || !amt || amt <= 0 || typeof cp === 'undefined' || !cp.CloudPayments) {
+    fail('Виджет CloudPayments не загрузился. Обновите страницу.');
+    return;
+  }
+  var widget = new cp.CloudPayments();
+  var inv = 'sub-' + uid + '-' + plan + '-' + Date.now();
+  widget.pay('charge', {
+    publicId: pubId,
+    description: 'Подписка «' + pname + '»',
+    amount: Number(amt),
+    currency: 'RUB',
+    accountId: String(uid),
+    invoiceId: inv,
+    data: {
+      userId: uid,
+      plan: plan
+    }
+  }, {
+    onSuccess: function () {
+      window.location.href = '/subscriptions?paid=1';
+    },
+    onFail: function (reason) {
+      fail('Оплата не прошла: ' + (reason || 'ошибка'));
+    }
+  });
+})();
+</script>
+{% endblock %}
