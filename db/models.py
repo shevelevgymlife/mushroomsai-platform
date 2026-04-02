@@ -98,6 +98,7 @@ users = sqlalchemy.Table(
         server_default="false",
     ),
     sqlalchemy.Column("wellness_ai_profile_json", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("wellness_kmeans_cluster_id", sqlalchemy.Integer, nullable=True),
 )
 
 sessions = sqlalchemy.Table(
@@ -793,6 +794,125 @@ wellness_scheme_effect_stats = sqlalchemy.Table(
     sqlalchemy.Column("sample_n", sqlalchemy.Integer, nullable=False, server_default="0"),
     sqlalchemy.Column("avg_progress_score", sqlalchemy.Float, nullable=True),
     sqlalchemy.Column("updated_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+wellness_scheme_catalog = sqlalchemy.Table(
+    "wellness_scheme_catalog",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("scheme_key", sqlalchemy.String(64), nullable=False, unique=True),
+    sqlalchemy.Column("title", sqlalchemy.Text, nullable=False),
+    sqlalchemy.Column("description", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("bundle_ids_json", sqlalchemy.Text, nullable=False, server_default="[]"),
+    sqlalchemy.Column("is_active", sqlalchemy.Boolean, nullable=False, server_default="true"),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+wellness_user_state_daily = sqlalchemy.Table(
+    "wellness_user_state_daily",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("state_date", sqlalchemy.Date, nullable=False),
+    sqlalchemy.Column("feature_vector_json", sqlalchemy.Text, nullable=False, server_default="{}"),
+    sqlalchemy.Column("discrete_state_label", sqlalchemy.String(160), nullable=True),
+    sqlalchemy.Column("kmeans_cluster_id", sqlalchemy.Integer, nullable=True),
+    sqlalchemy.Column("source", sqlalchemy.String(32), nullable=False, server_default="snapshot"),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+wellness_experiments = sqlalchemy.Table(
+    "wellness_experiments",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("experiment_key", sqlalchemy.String(64), nullable=False, unique=True),
+    sqlalchemy.Column("title", sqlalchemy.Text, nullable=False),
+    sqlalchemy.Column("scheme_a_key", sqlalchemy.String(64), nullable=False),
+    sqlalchemy.Column("scheme_b_key", sqlalchemy.String(64), nullable=False),
+    sqlalchemy.Column("status", sqlalchemy.String(20), nullable=False, server_default="draft"),
+    sqlalchemy.Column("started_at", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("ended_at", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("config_json", sqlalchemy.Text, nullable=True),
+)
+
+wellness_experiment_assignments = sqlalchemy.Table(
+    "wellness_experiment_assignments",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column(
+        "experiment_id",
+        sqlalchemy.Integer,
+        sqlalchemy.ForeignKey("wellness_experiments.id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("arm", sqlalchemy.String(1), nullable=False),
+    sqlalchemy.Column("assigned_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+wellness_bundle_feedback = sqlalchemy.Table(
+    "wellness_bundle_feedback",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("bundle_id", sqlalchemy.String(64), nullable=False),
+    sqlalchemy.Column("vote", sqlalchemy.SmallInteger, nullable=False),
+    sqlalchemy.Column("source", sqlalchemy.String(32), nullable=False, server_default="dm_command"),
+    sqlalchemy.Column(
+        "direct_message_id",
+        sqlalchemy.Integer,
+        sqlalchemy.ForeignKey("direct_messages.id", ondelete="SET NULL"),
+        nullable=True,
+    ),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+wellness_rec_arm_stats = sqlalchemy.Table(
+    "wellness_rec_arm_stats",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("bundle_key", sqlalchemy.String(64), nullable=False),
+    sqlalchemy.Column("segment", sqlalchemy.String(80), nullable=False, server_default=""),
+    sqlalchemy.Column("successes", sqlalchemy.Integer, nullable=False, server_default="0"),
+    sqlalchemy.Column("trials", sqlalchemy.Integer, nullable=False, server_default="0"),
+    sqlalchemy.Column("updated_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+wellness_cluster_models = sqlalchemy.Table(
+    "wellness_cluster_models",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("k", sqlalchemy.Integer, nullable=False),
+    sqlalchemy.Column("model_version", sqlalchemy.Integer, nullable=False, server_default="1"),
+    sqlalchemy.Column("centroids_json", sqlalchemy.Text, nullable=False),
+    sqlalchemy.Column("user_count", sqlalchemy.Integer, nullable=True),
+    sqlalchemy.Column("trained_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+wellness_user_automation = sqlalchemy.Table(
+    "wellness_user_automation",
+    metadata,
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    sqlalchemy.Column("active_scheme_key", sqlalchemy.String(64), nullable=True),
+    sqlalchemy.Column("auto_switched_at", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("early_warning_level", sqlalchemy.Integer, nullable=False, server_default="0"),
+    sqlalchemy.Column("early_warning_signals_json", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("retention_risk", sqlalchemy.String(24), nullable=False, server_default="unknown"),
+    sqlalchemy.Column("updated_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+wellness_mushroom_dose_rules = sqlalchemy.Table(
+    "wellness_mushroom_dose_rules",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("mushroom_key", sqlalchemy.String(64), nullable=False),
+    sqlalchemy.Column("form", sqlalchemy.String(32), nullable=False, server_default="general"),
+    sqlalchemy.Column("dose_text_ru", sqlalchemy.Text, nullable=False),
+    sqlalchemy.Column("dose_min_mg", sqlalchemy.Float, nullable=True),
+    sqlalchemy.Column("dose_max_mg", sqlalchemy.Float, nullable=True),
+    sqlalchemy.Column("course_weeks_hint", sqlalchemy.String(80), nullable=True),
+    sqlalchemy.Column("cautions_ru", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("sort_order", sqlalchemy.Integer, nullable=False, server_default="0"),
 )
 
 platform_ai_feedback = sqlalchemy.Table(

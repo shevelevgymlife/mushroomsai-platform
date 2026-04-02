@@ -17,6 +17,20 @@
     <strong style="color:#e8d4a8">Не медицина.</strong> Таблицы и формулировки носят исключительно информационный характер. Любые дозы, курсы и сочетания с лекарствами согласуйте с врачом или сертифицированным специалистом.
   </div>
 
+  {% if wellness_automation and (wellness_automation.active_scheme_key or wellness_automation.early_warning_level or wellness_automation.retention_risk != 'unknown') %}
+  <div class="wd-plan-card" style="margin-bottom:1.25rem;border-color:rgba(212,168,83,0.25)">
+    <h2 class="wd-plan-h2">Автоматизация платформы <span class="wd-plan-tag">не назначение</span></h2>
+    <p class="text-sm text-muted leading-relaxed mb-2">Фоновый анализ по дневнику: риск «пропажи» отметок, раннее предупреждение по шкалам, при сильном сигнале — автоматический фокус на связке стабилизации (без смены ваших лекарств и без медицинских приказов).</p>
+    <ul class="wd-plan-list">
+      {% if wellness_automation.active_scheme_key %}
+      <li><span class="wd-plan-k">Активный фокус связки</span> {{ wellness_automation.active_scheme_key }}{% if wellness_automation.auto_switched_at %} · с {{ wellness_automation.auto_switched_at }}{% endif %}</li>
+      {% endif %}
+      <li><span class="wd-plan-k">Уровень раннего предупреждения</span> {{ wellness_automation.early_warning_level|default(0) }}</li>
+      <li><span class="wd-plan-k">Риск по вовлечённости</span> {{ wellness_automation.retention_risk|default('—') }}</li>
+    </ul>
+  </div>
+  {% endif %}
+
   <p class="wd-plan-meta">
     {% if profile_source == 'saved' %}
     <span class="wd-plan-pill">Профиль: сохранённый снимок</span>
@@ -27,6 +41,9 @@
     {% endif %}
     {% if profile_updated_at %}
     <span class="wd-plan-upd">обновлено {{ profile_updated_at }}</span>
+    {% endif %}
+    {% if kmeans_cluster_id is not none %}
+    <span class="wd-plan-pill wd-plan-pill--muted">Кластер k-means: {{ kmeans_cluster_id }}</span>
     {% endif %}
   </p>
 

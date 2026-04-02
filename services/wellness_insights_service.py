@@ -377,6 +377,12 @@ async def upsert_daily_snapshot_from_extracted_entry(entry_id: int, extracted_js
         await refresh_wellness_ai_profile(uid, merged)
     except Exception:
         logger.debug("wellness: ai profile refresh skipped", exc_info=True)
+    try:
+        from services.wellness_state_service import upsert_wellness_user_state_daily
+
+        await upsert_wellness_user_state_daily(uid, snap_d, merged, source="journal")
+    except Exception:
+        logger.debug("wellness: user state daily skipped", exc_info=True)
 
 
 async def count_checkin_streak(user_id: int) -> int:

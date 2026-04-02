@@ -844,6 +844,22 @@ async def on_user_message_to_coach(
     if not coach_id:
         return None
 
+    try:
+        from services.wellness_bundle_feedback_service import parse_bundle_feedback_command, record_bundle_feedback
+
+        bf = parse_bundle_feedback_command(text)
+        if bf:
+            bid, vote = bf
+            await record_bundle_feedback(uid, bid, vote, direct_message_id=direct_message_id)
+            await _insert_coach_dm(
+                int(coach_id),
+                notify_dm,
+                MSG_PREFIX + f"Записал оценку связки «{bid}» ({vote:+d}). Учтём в сводной статистике.",
+            )
+            return None
+    except Exception:
+        logger.debug("wellness bundle feedback cmd skipped", exc_info=True)
+
     awaiting_which = bool(urow.get("wellness_awaiting_which_stats_after_decline"))
     pending_raw = urow.get("wellness_pending_stats_entry_id")
 
@@ -1337,6 +1353,41 @@ async def admin_global_wellness_summary() -> dict[str, Any]:
         .order_by(wellness_scheme_effect_stats.c.sample_n.desc())
         .limit(18)
     )
+    rec_arm_rows: list[dict] = []
+    cluster_model: dict | None = None
+    kmeans_cluster_dist: list[dict] = []
+    automation_high_retention = 0
+    try:
+        import sqlalchemy as sa
+
+        from db.models import users as users_t, wellness_user_automation
+
+        from services.wellness_bandit_service import list_rec_arm_stats
+        from services.wellness_clustering_service import latest_cluster_model_summary
+
+        rec_arm_rows = await list_rec_arm_stats(12)
+        cluster_model = await latest_cluster_model_summary()
+        _cnt = sa.func.count().label("n")
+        cd = await database.fetch_all(
+            sa.select(users_t.c.wellness_kmeans_cluster_id, _cnt)
+            .where(users_t.c.primary_user_id.is_(None))
+            .where(users_t.c.wellness_kmeans_cluster_id.isnot(None))
+            .group_by(users_t.c.wellness_kmeans_cluster_id)
+            .order_by(sa.desc(_cnt))
+        )
+        kmeans_cluster_dist = [
+            {"cluster_id": r["wellness_kmeans_cluster_id"], "n": int(r["n"] or 0)} for r in cd
+        ]
+        automation_high_retention = int(
+            await database.fetch_val(
+                sa.select(sa.func.count())
+                .select_from(wellness_user_automation)
+                .where(wellness_user_automation.c.retention_risk == "high")
+            )
+            or 0
+        )
+    except Exception:
+        pass
     return {
         "users_with_replies_ever": int(nu or 0),
         "users_with_replies_30d": int(nu30 or 0),
@@ -1349,6 +1400,10 @@ async def admin_global_wellness_summary() -> dict[str, Any]:
         "sample_moods_n": len(moods),
         "therapy_profiles_n": int(prof_n or 0),
         "scheme_effect_rows": [dict(x) for x in scheme_rows],
+        "rec_arm_rows": rec_arm_rows,
+        "cluster_model": cluster_model,
+        "kmeans_cluster_dist": kmeans_cluster_dist,
+        "automation_high_retention": automation_high_retention,
     }
 
 

@@ -13,8 +13,14 @@
       Агрегаты по ответам пользователей и напоминаниям NeuroFungi AI. Помогает оценить вовлечённость и тематику (грибы, настроение по выборке с разобранным JSON).
       Не медицинская аналитика — только данные самонаблюдения в приложении.
     </p>
+    {% if pipeline_ok %}
+    <div class="mb-4 p-3 rounded-xl border border-cyan-500/30 bg-cyan-500/10 text-sm text-cyan-100">Пайплайн аналитики (состояния, k-means, bandit, retention) выполнен.</div>
+    {% endif %}
     <div class="flex flex-wrap gap-3 mb-8">
       <a href="/admin/wellness-journal/overview/pdf" class="px-4 py-2 rounded-xl text-sm font-medium border border-gold/40 text-gold hover:bg-gold/10">Скачать PDF</a>
+      <form method="post" action="/admin/wellness-journal/overview/run-pipeline" class="inline">
+        <button type="submit" class="px-4 py-2 rounded-xl text-sm font-medium border border-cyan-500/40 text-cyan-200 hover:bg-cyan-500/10">Запустить пайплайн аналитики</button>
+      </form>
       <a href="/admin/ai-community-bot" class="px-4 py-2 rounded-xl text-sm font-medium border border-border text-text hover:border-gold/40">Управление AI в сообществе</a>
     </div>
 
@@ -67,6 +73,54 @@
         <p class="text-xs text-muted mt-2">Доля ответов за 30 дней от всех ответов в дневнике (оценочно).</p>
       </div>
     </div>
+
+    <h2 class="text-xl font-medium text-text mb-3">K-means кластеры пользователей</h2>
+    <p class="text-sm text-muted mb-3 max-w-3xl">По средним векторам состояний (wellness_user_state_daily). Версия модели и k — в последней строке wellness_cluster_models.</p>
+    <div class="rounded-2xl border border-border overflow-hidden mb-8 text-sm">
+      {% if summary.cluster_model %}
+      <div class="px-4 py-2 border-b border-border/40 text-muted">Последняя модель: k={{ summary.cluster_model.k }}, пользователей в обучении={{ summary.cluster_model.user_count or '—' }}, версия={{ summary.cluster_model.model_version }}, {{ summary.cluster_model.trained_at }}</div>
+      {% endif %}
+      {% set kdist = summary.kmeans_cluster_dist or [] %}
+      {% if kdist|length > 0 %}
+      <table class="w-full">
+        <thead class="text-left text-muted border-b border-border"><tr><th class="px-4 py-2">cluster_id</th><th class="px-4 py-2 pr-4">Пользователей</th></tr></thead>
+        <tbody>
+          {% for row in kdist %}
+          <tr class="border-b border-border/40"><td class="px-4 py-2 text-text">{{ row.cluster_id }}</td><td class="px-4 py-2 pr-4">{{ row.n }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="px-4 py-6 text-center text-muted">Нет назначенных кластеров — дождитесь пайплайна или больше снимков.</div>
+      {% endif %}
+    </div>
+
+    <h2 class="text-xl font-medium text-text mb-3">Bandit / веса связок (успехи / попытки)</h2>
+    <p class="text-sm text-muted mb-3 max-w-3xl">Пересчёт из дельт снимков + явные голоса в ЛС («связка anti_stress +»). Не клинический исход.</p>
+    <div class="rounded-2xl border border-border overflow-hidden mb-10">
+      {% set arms = summary.rec_arm_rows or [] %}
+      {% if arms|length > 0 %}
+      <table class="w-full text-sm">
+        <thead class="text-left text-muted border-b border-border">
+          <tr><th class="px-4 py-2">Связка</th><th class="px-4 py-2">Сегмент</th><th class="px-4 py-2">Успехи</th><th class="px-4 py-2 pr-4">Попытки</th></tr>
+        </thead>
+        <tbody>
+          {% for a in arms %}
+          <tr class="border-b border-border/40">
+            <td class="px-4 py-2 text-text">{{ a.bundle_key }}</td>
+            <td class="px-4 py-2 text-muted">{{ a.segment or '—' }}</td>
+            <td class="px-4 py-2">{{ a.successes }}</td>
+            <td class="px-4 py-2 pr-4">{{ a.trials }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="px-4 py-6 text-center text-muted">Пока пусто — запустите пайплайн после накопления снимков/оценок.</div>
+      {% endif %}
+    </div>
+
+    <p class="text-sm text-muted mb-6">Пользователей с retention_risk=high (автоматизация): <strong class="text-text">{{ summary.automation_high_retention|default(0) }}</strong></p>
 
     <h2 class="text-xl font-medium text-text mb-3">Эвристика схем (агрегат по дельтам настроения/энергии)</h2>
     <p class="text-sm text-muted mb-3 max-w-3xl">Не клинический исход. Таблица из «Коллективный интеллект» на странице статистики дневника; здесь — краткий топ по N.</p>

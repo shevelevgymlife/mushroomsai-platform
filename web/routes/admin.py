@@ -2552,8 +2552,20 @@ async def admin_wellness_overview_page(request: Request):
             "user": admin,
             "user_permissions": perms,
             "summary": summary,
+            "pipeline_ok": (request.query_params.get("pipeline") or "").strip() == "1",
         },
     )
+
+
+@router.post("/wellness-journal/overview/run-pipeline")
+async def admin_wellness_overview_run_pipeline(request: Request):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    from services.wellness_analytics_pipeline import run_wellness_analytics_pipeline
+
+    await run_wellness_analytics_pipeline()
+    return RedirectResponse("/admin/wellness-journal/overview?pipeline=1", status_code=303)
 
 
 @router.get("/wellness-journal/overview/pdf")

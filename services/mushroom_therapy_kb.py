@@ -119,6 +119,10 @@ BUNDLES: dict[str, dict[str, Any]] = {
     },
 }
 
+
+def list_bundle_ids() -> list[str]:
+    return list(BUNDLES.keys())
+
 # Памятка: как применять и курс — только образовательные ориентиры, не рецепт.
 MUSHROOM_PLAN_MEMO: dict[str, dict[str, str]] = {
     "amanita_muscaria": {

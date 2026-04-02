@@ -4,19 +4,23 @@ from __future__ import annotations
 import json
 from typing import Any
 
+import sqlalchemy as sa
+
 from db.database import database
-from db.models import wellness_journal_entries
+from db.models import users, wellness_journal_entries
 from services.mushroom_therapy_kb import (
     build_memo_rows_from_profile,
     build_stored_profile_json,
     format_normalized_metrics_ru,
 )
 from services.wellness_ai_profile_service import load_wellness_ai_profile_dict
+from services.wellness_dose_catalog_service import dose_text_map_for_mushroom_keys
 from services.wellness_insights_service import (
     compute_segment_for_user,
     fetch_snapshots_series,
     latest_recommendation_text,
 )
+from services.wellness_retention_automation_service import get_user_automation
 
 
 async def _fetch_plan_goals_from_journal(user_id: int) -> dict[str, Any]:
@@ -110,11 +114,21 @@ async def build_wellness_personal_plan_context(user_id: int) -> dict[str, Any]:
         segment = await compute_segment_for_user(uid)
 
     memo_rows = build_memo_rows_from_profile(prof) if prof else []
+    if memo_rows:
+        try:
+            dmap = await dose_text_map_for_mushroom_keys([str(r["key"]) for r in memo_rows])
+            for r in memo_rows:
+                dt = dmap.get(str(r.get("key") or ""))
+                if dt:
+                    r["dose_orientation"] = dt
+        except Exception:
+            pass
     norm = prof.get("normalized_metrics") if isinstance(prof, dict) else None
     norm_lines = format_normalized_metrics_ru(norm) if isinstance(norm, dict) else []
 
     goals = await _fetch_plan_goals_from_journal(uid)
     rec = await latest_recommendation_text(uid)
+    automation = await get_user_automation(uid)
 
     return {
         "profile_source": profile_source,
@@ -128,4 +142,5 @@ async def build_wellness_personal_plan_context(user_id: int) -> dict[str, Any]:
         "goals": goals,
         "latest_ai_recommendation": rec,
         "has_plan_content": bool(memo_rows),
+        "wellness_automation": automation,
     }
