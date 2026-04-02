@@ -17,10 +17,51 @@
 <script>
 (function () {
   var next = new URLSearchParams(window.location.search).get("next") || "{{ next_path|e }}";
+  var retried = false;
+  function withTgInit(path) {
+    if (!path || typeof path !== "string") return path;
+    var base = path;
+    var hash = "";
+    var iHash = base.indexOf("#");
+    if (iHash >= 0) {
+      hash = base.slice(iHash);
+      base = base.slice(0, iHash);
+    }
+    var q = "";
+    var iQ = base.indexOf("?");
+    if (iQ >= 0) {
+      q = base.slice(iQ + 1);
+      base = base.slice(0, iQ);
+    }
+    var p = new URLSearchParams(q || "");
+    if (!p.get("pay_ctx")) p.set("pay_ctx", "tg");
+    var initData = "";
+    try {
+      var tg = window.Telegram && window.Telegram.WebApp;
+      if (tg && tg.initData && String(tg.initData).length) initData = String(tg.initData);
+      if (!initData) {
+        var h = window.location.hash || "";
+        var m = h.match(/tgWebAppData=([^&#]+)/);
+        if (m) initData = decodeURIComponent((m[1] || "").replace(/\+/g, " "));
+      }
+    } catch (e) {}
+    if (initData && !p.get("tg_init_data")) p.set("tg_init_data", initData);
+    var out = base + "?" + p.toString();
+    if (hash) out += hash;
+    return out;
+  }
   window.runTelegramWebAppAuth({
     nextPath: next,
     onError: function (msg) {
-      document.body.innerHTML = "<div style=\"padding:24px;font-family:system-ui;color:#f87171;line-height:1.5\">" + msg + "</div>";
+      if (!retried) {
+        retried = true;
+        var fallback = withTgInit(next || "/community");
+        if (fallback) {
+          window.location.replace(fallback);
+          return;
+        }
+      }
+      document.body.innerHTML = "<div style=\"padding:24px;font-family:system-ui;color:#cbd5e1;line-height:1.55\">Секунду, повторяем вход через Telegram…<br><small style=\"opacity:.75\">Если не открылось автоматически, вернитесь назад и нажмите кнопку оплаты ещё раз.</small></div>";
     },
     onSuccess: function () {}
   });

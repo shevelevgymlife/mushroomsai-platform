@@ -150,7 +150,7 @@
           setTimeout(r, 150);
         });
 
-        var initData = await waitForInitData(tg, 35000, 80);
+        var initData = await waitForInitData(tg, 7000, 80);
 
         if (!initData) {
           var platform = null;
@@ -199,19 +199,45 @@
           return;
         }
 
-        var resp = await fetch("/auth/telegram/webapp/callback", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ initData: initData, next: next }),
-        });
-
-        var data = await resp.json().catch(function () {
-          return {};
-        });
-        if (!resp.ok || !data || !data.ok) {
+        var attempts = [
+          {
+            url: "/auth/telegram/webapp/callback",
+            payload: { initData: initData, next: next },
+            ok: function (resp, data) {
+              return !!(resp.ok && data && data.ok);
+            },
+          },
+          {
+            url: "/auth/telegram/miniapp",
+            payload: { init_data: initData },
+            ok: function (resp, data) {
+              return !!(resp.ok && data && data.redirect);
+            },
+          },
+        ];
+        var data = null;
+        var lastErr = "";
+        var success = false;
+        for (var i = 0; i < attempts.length; i++) {
+          var a = attempts[i];
+          var resp = await fetch(a.url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(a.payload),
+          });
+          data = await resp.json().catch(function () {
+            return {};
+          });
+          if (a.ok(resp, data)) {
+            success = true;
+            break;
+          }
+          lastErr = (data && data.error) || ("Ошибка " + resp.status);
+        }
+        if (!success) {
           window.__tgWebAppAuthStarted = false;
-          onError((data && data.error) || "Ошибка " + resp.status);
+          onError(lastErr || "Не удалось авторизоваться через Telegram");
           return;
         }
         var redirectTo = data.redirect || "/community";
