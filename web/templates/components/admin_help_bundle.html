@@ -1,0 +1,5 @@
+{# Справка админки: вне <main>, иначе fixed-оверлей обрезается overflow-x: clip (app-mobile-shell). #}
+{% if admin_ui is defined and admin_ui.help_registry %}
+<script type="application/json" id="admin-help-json">{{ admin_ui.help_registry | tojson }}</script>
+{% endif %}
+{% include "components/admin_help_modal.html" %}

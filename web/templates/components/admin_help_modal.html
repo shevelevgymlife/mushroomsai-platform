@@ -17,8 +17,8 @@
 
   var reg = {};
   try {
-    var el = document.getElementById('admin-help-json');
-    if (el && el.textContent) reg = JSON.parse(el.textContent);
+    var jel = document.getElementById('admin-help-json');
+    if (jel && jel.textContent) reg = JSON.parse(jel.textContent);
   } catch (e) {}
 
   function openHelp(id, title) {
@@ -46,11 +46,26 @@
       openHelp(btn.getAttribute('data-admin-help'), btn.getAttribute('data-admin-help-title'));
       return;
     }
-    if (t === overlay) closeHelp();
   });
 
-  closeBtn.addEventListener('click', closeHelp);
-  overlay.querySelector('.admin-ios-modal').addEventListener('click', function (e) { e.stopPropagation(); });
+  overlay.addEventListener('click', function (ev) {
+    if (ev.target === overlay) closeHelp();
+  });
+
+  if (closeBtn) closeBtn.addEventListener('click', closeHelp);
+
+  var modalInner = overlay.querySelector('.admin-ios-modal');
+  if (modalInner) {
+    modalInner.addEventListener('click', function (e) { e.stopPropagation(); });
+  }
+
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape' && overlay.classList.contains('is-open')) {
+      closeHelp();
+    }
+  });
 
   window.__adminOpenHelp = openHelp;
+  window.__adminCloseHelp = closeHelp;
 })();
+</script>

@@ -1,8 +1,4 @@
-<link rel="stylesheet" href="/static/css/admin-ios.css?v=1" />
-{% if admin_ui is defined and admin_ui.help_registry %}
-<script type="application/json" id="admin-help-json">{{ admin_ui.help_registry | tojson }}</script>
-{% endif %}
-{% include "components/admin_help_modal.html" %}
+<link rel="stylesheet" href="/static/css/admin-ios.css?v=2" />
 
 {% if admin_ui is defined and admin_ui.categories and admin_ui.categories|length > 0 %}
   {% if request.url.path == '/admin' %}
