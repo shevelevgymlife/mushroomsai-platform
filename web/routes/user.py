@@ -98,6 +98,7 @@ async def _create_yookassa_with_fallback(
     return_url: str,
     metadata: dict[str, str],
     customer_email: str | None,
+    customer_phone: str | None = None,
 ) -> tuple[str | None, str | None, str | None]:
     """
     Пытается создать web-платёж сначала по yookassa_bot,
@@ -113,6 +114,7 @@ async def _create_yookassa_with_fallback(
         return_url=return_url,
         metadata=metadata,
         customer_email=customer_email,
+        customer_phone=customer_phone,
     )
     if url:
         return url, None, pid
@@ -128,6 +130,7 @@ async def _create_yookassa_with_fallback(
             return_url=return_url,
             metadata=metadata,
             customer_email=customer_email,
+            customer_phone=customer_phone,
         )
         if url2:
             _logger.info("yookassa web pay fallback credentials used from payment_provider:yookassa")
@@ -338,6 +341,7 @@ async def pay_subscription_yookassa(request: Request, offering_id: str = "", pla
     dur = (off.get("duration_label") or "")[:40]
     desc = f"Подписка «{disp}» {dur}".strip()[:128]
     cust_email = (user.get("email") or "").strip() or None
+    cust_phone = (user.get("phone") or "").strip() or None
     url, err, payment_id = await _create_yookassa_with_fallback(
         amount_rub=price,
         description=desc,
@@ -348,6 +352,7 @@ async def pay_subscription_yookassa(request: Request, offering_id: str = "", pla
             "plan": oid,
         },
         customer_email=cust_email,
+        customer_phone=cust_phone,
     )
     if not url:
         _logger.warning("yookassa create redirect failed: %s", err)
@@ -442,6 +447,7 @@ async def pay_gift_subscription(request: Request, plan: str = "", recipient_id: 
         dur = (off.get("duration_label") or "")[:40]
         desc = f"Подарок подписки «{disp}» {dur}".strip()[:128]
         cust_email = (user.get("email") or "").strip() or None
+        cust_phone = (user.get("phone") or "").strip() or None
         url, err, payment_id = await _create_yookassa_with_fallback(
             amount_rub=price_rub,
             description=desc,
@@ -455,6 +461,7 @@ async def pay_gift_subscription(request: Request, plan: str = "", recipient_id: 
                 "plan": str(plan_key),
             },
             customer_email=cust_email,
+            customer_phone=cust_phone,
         )
         if not url:
             _logger.warning("yookassa gift create redirect failed: %s", err)

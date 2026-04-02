@@ -81,6 +81,10 @@ class Settings(BaseSettings):
     # Чек 54-ФЗ: в теле create payment (сайт) и по умолчанию для счёта в боте (1 = без НДС и т.п. по API ЮKassa). 0 — не добавлять.
     # Если в кабинете ЮKassa включены чеки, счёт в боте без receipt часто не создаётся (звёзды XTR при этом работают).
     YOOKASSA_RECEIPT_VAT_CODE: int = 0
+    # Система налогообложения для чека в create payment (1–6). 0 — не передавать (если магазин один в ЛК — часто не нужно).
+    YOOKASSA_RECEIPT_TAX_SYSTEM_CODE: int = 0
+    # Признак предмета расчёта для веб-чека: service | intellectual_activity и др. по справочнику ЮKassa.
+    YOOKASSA_WEB_RECEIPT_PAYMENT_SUBJECT: str = "service"
     # None — как YOOKASSA_RECEIPT_VAT_CODE; 0 — явно без чека в sendInvoice бота; 1+ — только для бота (если на сайте чек не передаёте, а в боте провайдер требует).
     YOOKASSA_TELEGRAM_RECEIPT_VAT_CODE: int | None = None
     # Счёт с чеком: сначала запрашивать email (пусто) или телефон (phone) у покупателя для ЮKassa.
