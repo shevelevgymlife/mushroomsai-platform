@@ -158,14 +158,21 @@
       <p id="refWithdrawMsg" class="text-xs mt-3 text-muted" style="display:none"></p>
     </div>
 
-    <div class="card rounded-2xl border border-white/10 bg-white/[0.03] p-5 mb-8">
-      <div style="font-size:14px;font-weight:700;color:#e8e8e8;margin-bottom:12px">Бонус за подписку (коротко)</div>
-      {% for step in ['Переход по вашей ссылке и регистрация','Платная подписка (пробные 3 дня не считаются)','Начисление 1 раз за каждого приглашённого'] %}
-      <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px">
-        <div style="width:24px;height:24px;border-radius:50%;background:rgba(61,212,224,.2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#3dd4e0;flex-shrink:0">{{ loop.index }}</div>
-        <div style="font-size:13px;color:#aaa;padding-top:3px">{{ step }}</div>
+    <div id="conditions" class="card rounded-2xl border border-white/10 bg-white/[0.03] p-5 mb-8">
+      <div style="font-size:14px;font-weight:700;color:#e8e8e8;margin-bottom:12px">Условия</div>
+      <div style="font-size:13px;color:#aaa;line-height:1.65">
+        <p style="margin:0 0 10px 0"><strong class="text-text">1) Бонусы за подписки (в приложении)</strong></p>
+        <p style="margin:0 0 8px 0">• Начисляется <strong>10% от фактической оплаченной суммы</strong> любой платной подписки приглашённого (Старт / Про / Макси) в момент оплаты.</p>
+        <p style="margin:0 0 8px 0">• Начисление идёт <strong>с каждой платной оплаты</strong> приглашённого, не только с первой.</p>
+        <p style="margin:0 0 8px 0">• Если у вас в момент этой оплаты <strong>нет активной платной подписки</strong> (только free/пробный), бонус за эту оплату <strong>не начисляется</strong>.</p>
+        <p style="margin:0 0 12px 0">• Пробные 3 дня не считаются платной оплатой.</p>
+
+        <p style="margin:0 0 10px 0"><strong class="text-text">2) Ссылка магазина Neurotrops</strong></p>
+        <p style="margin:0 0 8px 0">• Вы вставляете свою ссылку магазина в этом разделе, и она закрепляется за вами.</p>
+        <p style="margin:0 0 8px 0">• Люди, пришедшие по вашей ссылке приглашения, видят в магазине вашу партнёрскую ссылку (по текущей логике системы).</p>
+        <p style="margin:0 0 8px 0">• Если у вас на этот момент нет активной платной подписки, новым приглашённым показываются <strong>стандартные ссылки магазина платформы</strong>.</p>
+        <p style="margin:0">• В админке может быть включена проверка формата: ваша ссылка должна начинаться с заданного префикса (например, <code>https://t.me/neurotrops_rus_bot?start=</code>).</p>
       </div>
-      {% endfor %}
     </div>
 
     <p class="text-center text-sm text-muted">

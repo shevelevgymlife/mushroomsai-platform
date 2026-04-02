@@ -305,7 +305,10 @@ async def activate_subscription(
     if credit_referrer_bonus and plan != "free":
         from services.referral_service import credit_referrer_bonus_for_paid_subscription
 
-        bonus_rub = await credit_referrer_bonus_for_paid_subscription(int(user_id))
+        bonus_rub = await credit_referrer_bonus_for_paid_subscription(
+            int(user_id),
+            float(price or 0.0),
+        )
     if plan != "free":
         try:
             from services.referral_service import notify_referrer_about_referred_subscription

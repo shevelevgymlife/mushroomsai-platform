@@ -76,6 +76,7 @@ def _intro_html() -> str:
         "2) Магазин: Neurotrops → меню → кабинет → <b>Моя ссылка</b>.\n"
         "3) Пришлите ссылку сюда — я сохраню.\n"
         "4) Раздавайте ссылки Telegram и сайта.\n\n"
+        "Полные условия: <b>/referral → вкладка/блок «Условия»</b>.\n\n"
         "<i>Уже сохраняли ссылку? Напишите «дальше».</i>"
     )
 
@@ -98,6 +99,11 @@ async def partner_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
     intro = await update.message.reply_html(_intro_html(), disable_web_page_preview=True)
     await _pin_safe(context, update.effective_chat.id, intro.message_id)
+    site = (settings.SITE_URL or "https://mushroomsai.ru").rstrip("/")
+    await update.message.reply_html(
+        f"ℹ️ Условия партнёрства: <a href=\"{html.escape(site + '/referral#conditions', quote=True)}\">открыть</a>",
+        disable_web_page_preview=True,
+    )
 
     if not await paid_subscription_for_referral_program(uid):
         site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
@@ -154,6 +160,7 @@ async def _send_final_links_block(
     ref_tg = f"https://t.me/{bot}?start={code}" if code else "—"
     ref_site = f"{base}/login?ref={code}" if code and base else "—"
     bonus = await referral_bonus_per_invite_rub()
+    conditions_url = f"{base}/referral#conditions" if base else "https://mushroomsai.ru/referral#conditions"
     shop_note = ""
     if shop_saved:
         shop_note = "✅ Ссылка магазина сохранена. Приглашённые по приложению увидят ваш магазин.\n\n"
@@ -175,9 +182,11 @@ async def _send_final_links_block(
         f"<a href=\"{html.escape(ref_site, quote=True)}\">Открыть ссылку</a>\n"
         f"<code>{html.escape(ref_site)}</code>\n\n"
         f"Раздавайте эти ссылки везде.\n"
-        f"Подписки в приложении: до <b>10%</b> (~{bonus} ₽ со Старт), 1 раз после <b>платной</b> оплаты.\n"
-        "Пробные 3 дня не считаются.\n\n"
-        "Магазин: до ~10% по правилам Neurotrops. Учёт — в кабинете магазина."
+        f"Подписки в приложении: <b>10% от каждой фактической платной покупки</b> приглашённого.\n"
+        "Начисление идёт, только если у вас в этот момент активна платная подписка (Старт/Про/Макси).\n"
+        f"Пробные 3 дня не считаются. Для ориентира: со Старт это ~{bonus} ₽.\n\n"
+        "Магазин: до ~10% по правилам Neurotrops. Учёт — в кабинете магазина.\n"
+        f"Условия: <a href=\"{html.escape(conditions_url, quote=True)}\">подробно</a>"
     )
     inline = InlineKeyboardMarkup(
         [

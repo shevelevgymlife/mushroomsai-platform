@@ -3,6 +3,7 @@ import logging
 import secrets
 import string
 from datetime import datetime, timedelta
+from decimal import Decimal, ROUND_HALF_UP
 from typing import Any, Optional
 
 import sqlalchemy as sa
@@ -13,8 +14,16 @@ from services.payment_plans_catalog import DEFAULT_PLANS, get_effective_plans, r
 logger = logging.getLogger(__name__)
 
 
+def _referral_bonus_from_paid_price(price_rub: float) -> float:
+    """10% от фактически оплаченной суммы с округлением до копеек."""
+    p = max(0.0, float(price_rub or 0.0))
+    return float(
+        (Decimal(str(p)) * Decimal("0.10")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    )
+
+
 async def referral_bonus_per_invite_rub() -> int:
-    """10% от месячной цены тарифа «Старт» в каталоге (или дефолт из кода)."""
+    """Оценка «со Старт»: 10% от месячной цены Старт (для подсказок в UI)."""
     eff = await get_effective_plans()
     base = float((eff.get("start") or DEFAULT_PLANS.get("start") or {}).get("price") or 0)
     return max(1, int(base * 0.1))
@@ -168,7 +177,7 @@ async def generate_referral_code() -> str:
 async def process_referral(new_user_id: int, referral_code: str) -> bool:
     """
     Привязать приглашённого к рефереру. Один раз на пользователя.
-    Баланс рефереру начисляется только после первой платной подписки приглашённого
+    Баланс рефереру начисляется при каждой платной покупке приглашённого
     (см. credit_referrer_bonus_for_paid_subscription), не за пробный 3 дня.
     Если владелец кода без активной Старт+ (не админ/модератор), закрепление идёт
     за платформенным аккаунтом (код default_admin_referral_code), как по ссылке админа.
@@ -202,7 +211,7 @@ async def process_referral(new_user_id: int, referral_code: str) -> bool:
     if dup:
         return False
 
-    bonus = float(await referral_bonus_per_invite_rub())
+    bonus = float(await referral_bonus_per_invite_rub())  # Оценка «со Старт» для карточек UI.
 
     await database.execute(
         users.update()
@@ -224,11 +233,15 @@ async def process_referral(new_user_id: int, referral_code: str) -> bool:
     return True
 
 
-async def credit_referrer_bonus_for_paid_subscription(referred_user_id: int) -> float:
+async def credit_referrer_bonus_for_paid_subscription(
+    referred_user_id: int,
+    paid_amount_rub: float,
+) -> float:
     """
-    Однократно начислить рефереру баланс, когда приглашённый оформил платный тариф
-    (Старт / Про / Макси). Пробный период не вызывает эту функцию.
-    Возвращает сумму начисленного бонуса или 0.0.
+    Начислить рефереру 10% от фактической оплаченной суммы подписки.
+    Срабатывает на КАЖДУЮ платную покупку/продление приглашённого (не trial),
+    но только если у реферера в момент оплаты активна платная подписка.
+    Возвращает начисленную сумму или 0.0.
     """
     row = await database.fetch_one(users.select().where(users.c.id == int(referred_user_id)))
     if not row:
@@ -238,16 +251,25 @@ async def credit_referrer_bonus_for_paid_subscription(referred_user_id: int) -> 
     ref_row = await database.fetch_one(
         referrals.select()
         .where(referrals.c.referred_id == uid)
-        .where(referrals.c.bonus_applied == False)  # noqa: E712
+        .order_by(referrals.c.id.desc())
+        .limit(1)
     )
     if not ref_row:
         return 0.0
 
-    bonus = float(ref_row.get("referral_bonus_amount") or await referral_bonus_per_invite_rub())
+    rid = int(ref_row["referrer_id"])
+    if rid == uid:
+        return 0.0
+
+    from services.subscription_service import paid_subscription_for_referral_program
+
+    if not await paid_subscription_for_referral_program(rid):
+        return 0.0
+
+    bonus = _referral_bonus_from_paid_price(float(paid_amount_rub or 0.0))
     if bonus <= 0:
         return 0.0
 
-    rid = int(ref_row["referrer_id"])
     ref_id = int(ref_row["id"])
 
     await database.execute(
