@@ -7,56 +7,51 @@
 
     {% include "components/admin_nav.html" %}
 
-    {% if user_permissions is defined and not user_permissions.get('can_dashboard', False) %}
-    <!-- Partial admin: show accessible sections list -->
-    <h1 class="text-3xl font-light text-text mb-8">Панель администратора</h1>
-
-    {% set section_map = [
-      ('can_ai', 'AI управление', '/admin/ai', 'Управление системным промптом и тестирование AI'),
-      ('can_ai_posts', 'Обучающие посты', '/admin/ai-posts', 'Папки и посты для обучения AI'),
-      ('can_shop', 'Магазин', '/admin/shop', 'Управление товарами и продуктами'),
-      ('can_payment', 'Оплата', '/admin/payment', 'Эквайринг, тарифы подписок'),
-      ('can_users', 'Пользователи', '/admin/users', 'Просмотр и управление пользователями'),
-      ('can_feedback', 'Обратная связь', '/admin/feedback', 'Обращения пользователей'),
-      ('can_broadcast', 'Рассылки', '/admin/broadcast', 'Отправка сообщений пользователям'),
-      ('can_knowledge', 'База знаний', '/admin/knowledge', 'Управление базой знаний'),
-      ('can_community', 'Сообщество', '/admin/community', 'Модерация ленты и активности сообщества'),
-      ('can_groups', 'Группы / Чаты', '/admin/groups-chats', 'Раздел в разработке; управление чатами позже'),
-      ('can_homepage', 'Главная сайта', '/admin/homepage', 'Редактирование блоков главной страницы'),
-      ('can_dashboard_blocks', 'Блоки кабинета', '/admin/dashboard-blocks', 'Доступность блоков в кабинете'),
-      ('can_radio_downtempo', 'Радио Down Tempo', '/admin/radio-downtempo', 'Плейлист и загрузка треков для /downtempo'),
-    ] %}
-
-    {% set accessible = [] %}
-    {% for perm_key, title, href, desc in section_map %}
-      {% if user_permissions.get(perm_key, False) %}
-        {% set _ = accessible.append(1) %}
-      {% endif %}
-    {% endfor %}
-
-    {% if accessible|length == 0 %}
-    <div class="p-8 rounded-2xl bg-surface border border-border text-center">
-      <p class="text-muted text-sm">У вас нет доступа ни к одному разделу.</p>
-      <p class="text-muted text-xs mt-2">Обратитесь к главному администратору для получения прав.</p>
-    </div>
-    {% else %}
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {% for perm_key, title, href, desc in section_map %}
-      {% if user_permissions.get(perm_key, False) %}
-      <a href="{{ href }}" class="p-5 rounded-2xl bg-surface border border-border hover:border-gold/40 transition-colors group">
-        <p class="font-semibold text-text group-hover:text-gold transition-colors mb-1">{{ title }}</p>
-        <p class="text-xs text-muted">{{ desc }}</p>
-      </a>
-      {% endif %}
-      {% endfor %}
+    {% if request.url.path == '/admin' and admin_ui is defined and admin_ui.categories and admin_ui.categories|length > 0 %}
+    <div class="admin-ios-panels-wrap">
+      <p class="admin-ios-panels-hint">Свайп между группами</p>
+      <div class="admin-ios-panels" id="admin-ios-panels">
+        {% for cat in admin_ui.categories %}
+        <section class="admin-ios-panel admin-ios-anchor" id="admin-cat-{{ cat.id }}" data-admin-cat-idx="{{ loop.index0 }}">
+          <header class="admin-ios-panel-head">
+            <div class="admin-ios-panel-icon" aria-hidden="true">{{ cat.icon }}</div>
+            <h2 class="admin-ios-panel-title">{{ cat.title }}</h2>
+            <p class="admin-ios-panel-sub">{{ cat.subtitle }}</p>
+          </header>
+          <div class="admin-ios-panel-list">
+            {% for it in cat.items %}
+            <div class="admin-ios-row">
+              <a class="admin-ios-row-main" href="{{ it.href }}">
+                <div class="admin-ios-row-text">
+                  <span class="admin-ios-row-label">{{ it.label }}</span>
+                  {% if it.subtitle %}
+                  <span class="admin-ios-row-desc">{{ it.subtitle }}</span>
+                  {% endif %}
+                </div>
+                <span class="admin-ios-row-chev" aria-hidden="true">›</span>
+              </a>
+              <button type="button" class="admin-ios-help-btn" data-admin-help="{{ it.id }}" data-admin-help-title="{{ it.label | e }}" title="Подробная справка">?</button>
+            </div>
+            {% endfor %}
+          </div>
+        </section>
+        {% endfor %}
+      </div>
+      <div class="admin-ios-dots" id="admin-ios-dots" hidden></div>
     </div>
     {% endif %}
 
+    {% if user_permissions is defined and not user_permissions.get('can_dashboard', False) %}
+      {% if request.url.path == '/admin' and (admin_ui is not defined or admin_ui.categories|length == 0) %}
+      <div class="p-8 rounded-2xl bg-surface border border-border text-center">
+        <p class="text-muted text-sm">У вас нет доступа ни к одному разделу.</p>
+        <p class="text-muted text-xs mt-2">Обратитесь к главному администратору для получения прав.</p>
+      </div>
+      {% endif %}
     {% else %}
-    <!-- Full dashboard (super-admin or can_dashboard) -->
-    <h1 class="text-3xl font-light text-text mb-8">Панель администратора</h1>
+    {% if user_permissions is defined and user_permissions.get('can_dashboard', False) %}
+    <h1 class="text-3xl font-light text-text mb-8">Показатели платформы</h1>
 
-    <!-- Stats cards -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
       {% for label, value, icon in [
         ('Всего пользователей', total_users, '👤'),
@@ -91,7 +86,6 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-      <!-- Recent messages -->
       <div class="p-6 rounded-2xl bg-surface border border-border">
         <div class="flex items-center justify-between mb-5">
           <h2 class="font-semibold text-text">Последние сообщения</h2>
@@ -117,7 +111,6 @@
         {% endif %}
       </div>
 
-      <!-- Recent feedback -->
       {% if user_permissions is not defined or user_permissions.get('can_feedback', True) %}
       <div class="p-6 rounded-2xl bg-surface border border-border">
         <div class="flex items-center justify-between mb-5">
@@ -150,7 +143,71 @@
 
     </div>
     {% endif %}
+    {% endif %}
 
   </div>
 </div>
+{% if request.url.path == '/admin' %}
+<script>
+(function () {
+  var sc = document.getElementById('admin-ios-panels');
+  var dots = document.getElementById('admin-ios-dots');
+  if (!sc || !dots) return;
+  var panels = sc.querySelectorAll('.admin-ios-panel');
+  if (panels.length === 0) return;
+  dots.hidden = false;
+  dots.innerHTML = '';
+  for (var i = 0; i < panels.length; i++) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'admin-ios-dot' + (i === 0 ? ' on' : '');
+    b.setAttribute('aria-label', 'Группа ' + (i + 1));
+    b._idx = i;
+    b.addEventListener('click', function () {
+      var idx = this._idx;
+      var el = panels[idx];
+      if (el) el.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+    });
+    dots.appendChild(b);
+  }
+  var dotBtns = dots.querySelectorAll('.admin-ios-dot');
+  function syncDots() {
+    var w = sc.clientWidth;
+    if (w < 1) return;
+    var mid = sc.scrollLeft + w * 0.25;
+    var idx = 0;
+    for (var k = 0; k < panels.length; k++) {
+      var p = panels[k];
+      if (p.offsetLeft + p.offsetWidth * 0.2 > mid) {
+        idx = k;
+        break;
+      }
+      idx = k;
+    }
+    for (var j = 0; j < dotBtns.length; j++) {
+      dotBtns[j].classList.toggle('on', j === idx);
+    }
+  }
+  var t;
+  sc.addEventListener('scroll', function () {
+    clearTimeout(t);
+    t = setTimeout(syncDots, 80);
+  });
+  window.addEventListener('resize', syncDots);
+  syncDots();
+
+  function scrollToHash() {
+    var h = (window.location.hash || '').replace(/^#/, '');
+    if (!h || h.indexOf('admin-cat-') !== 0) return;
+    var target = document.getElementById(h);
+    if (target) {
+      sc.scrollTo({ left: target.offsetLeft - sc.offsetLeft, behavior: 'smooth' });
+      setTimeout(syncDots, 400);
+    }
+  }
+  window.addEventListener('hashchange', scrollToHash);
+  if (window.location.hash) setTimeout(scrollToHash, 100);
+})();
+</script>
+{% endif %}
 {% endblock %}

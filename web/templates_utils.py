@@ -103,4 +103,19 @@ class Jinja2Templates(_Jinja2Templates):
             ujson = (user.get("notification_prefs_json") if user and isinstance(user, dict) else None)
             context.setdefault("notification_prefs", merge_prefs(ujson))
 
+            path = getattr(request.url, "path", "") or ""
+            if path.startswith("/admin"):
+                from services.admin_ui_catalog import build_admin_ui_context
+
+                uctx = context.get("user")
+                user_dict = uctx if isinstance(uctx, dict) else None
+                context.setdefault(
+                    "admin_ui",
+                    build_admin_ui_context(context.get("user_permissions"), user_dict),
+                )
+                if "nav" not in context:
+                    from web.routes.admin import ADMIN_NAV
+
+                    context["nav"] = ADMIN_NAV
+
         return super().TemplateResponse(*args, **kwargs)

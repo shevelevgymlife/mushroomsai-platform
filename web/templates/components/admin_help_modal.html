@@ -1,0 +1,56 @@
+<div id="admin-ios-help-overlay" class="admin-ios-modal-overlay" aria-hidden="true">
+  <div class="admin-ios-modal" role="dialog" aria-modal="true" aria-labelledby="admin-ios-help-title">
+    <div class="admin-ios-modal-head">
+      <h2 id="admin-ios-help-title" class="admin-ios-modal-title">Справка</h2>
+      <button type="button" class="admin-ios-modal-close" id="admin-ios-help-close" aria-label="Закрыть">×</button>
+    </div>
+    <div class="admin-ios-modal-body" id="admin-ios-help-body"></div>
+  </div>
+</div>
+<script>
+(function () {
+  var overlay = document.getElementById('admin-ios-help-overlay');
+  var bodyEl = document.getElementById('admin-ios-help-body');
+  var titleEl = document.getElementById('admin-ios-help-title');
+  var closeBtn = document.getElementById('admin-ios-help-close');
+  if (!overlay || !bodyEl || !titleEl) return;
+
+  var reg = {};
+  try {
+    var el = document.getElementById('admin-help-json');
+    if (el && el.textContent) reg = JSON.parse(el.textContent);
+  } catch (e) {}
+
+  function openHelp(id, title) {
+    var html = reg[id] || '<p>Описание пока не добавлено.</p>';
+    titleEl.textContent = title || 'Справка';
+    bodyEl.innerHTML = html;
+    overlay.classList.add('is-open');
+    overlay.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeHelp() {
+    overlay.classList.remove('is-open');
+    overlay.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+  }
+
+  document.addEventListener('click', function (ev) {
+    var t = ev.target;
+    if (!t || !t.closest) return;
+    var btn = t.closest('[data-admin-help]');
+    if (btn) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      openHelp(btn.getAttribute('data-admin-help'), btn.getAttribute('data-admin-help-title'));
+      return;
+    }
+    if (t === overlay) closeHelp();
+  });
+
+  closeBtn.addEventListener('click', closeHelp);
+  overlay.querySelector('.admin-ios-modal').addEventListener('click', function (e) { e.stopPropagation(); });
+
+  window.__adminOpenHelp = openHelp;
+})();

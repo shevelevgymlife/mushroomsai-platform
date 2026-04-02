@@ -36,11 +36,19 @@ async def admin_music_page(request: Request):
     if not admin:
         return RedirectResponse("/login", status_code=302)
     tracks = await _get_tracks()
-    return templates.TemplateResponse("dashboard/admin_music.html", {
-        "request": request,
-        "user": dict(admin),
-        "tracks": [dict(t) for t in tracks],
-    })
+    u = dict(admin)
+    from web.routes.admin import ADMIN_NAV, get_user_permissions
+
+    return templates.TemplateResponse(
+        "dashboard/admin_music.html",
+        {
+            "request": request,
+            "user": u,
+            "nav": ADMIN_NAV,
+            "user_permissions": await get_user_permissions(u),
+            "tracks": [dict(t) for t in tracks],
+        },
+    )
 
 
 @router.post("/admin/music/upload")

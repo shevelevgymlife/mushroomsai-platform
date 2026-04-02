@@ -1,0 +1,378 @@
+/* Админка: стиль «Настройки» iOS — группы, свайп, строки, справка */
+
+.admin-ios-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.admin-ios-dashboard-nav {
+  margin-bottom: 1.25rem;
+}
+
+.admin-ios-screen-title {
+  font-size: 1.75rem;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  color: var(--text, #eaeaec);
+  margin: 0 0 0.35rem;
+}
+
+.admin-ios-screen-sub {
+  font-size: 0.8125rem;
+  color: var(--muted, #8e8e96);
+  line-height: 1.45;
+  margin: 0;
+  max-width: 36rem;
+}
+
+.admin-ios-sub-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.admin-ios-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: #3dd4e0;
+  text-decoration: none;
+  padding: 0.35rem 0;
+}
+
+.admin-ios-back:hover {
+  color: #6ee7f0;
+}
+
+/* Горизонтальный свайп по группам */
+.admin-ios-panels-wrap {
+  position: relative;
+  margin-bottom: 2rem;
+}
+
+.admin-ios-panels-hint {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(142, 142, 150, 0.85);
+  margin: 0 0 0.5rem 0.25rem;
+}
+
+.admin-ios-panels {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding: 0.5rem;
+  padding: 0.25rem 0 1rem;
+  margin: 0 -0.25rem;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.admin-ios-panels::-webkit-scrollbar {
+  height: 4px;
+}
+
+.admin-ios-panels::-webkit-scrollbar-thumb {
+  background: rgba(61, 212, 224, 0.35);
+  border-radius: 4px;
+}
+
+.admin-ios-panel {
+  flex: 0 0 min(100%, 22rem);
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  background: rgba(12, 12, 15, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  overflow: hidden;
+  min-height: 12rem;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 640px) {
+  .admin-ios-panel {
+    flex-basis: 24rem;
+  }
+}
+
+.admin-ios-panel-head {
+  padding: 1rem 1rem 0.65rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.admin-ios-panel-icon {
+  font-size: 1.35rem;
+  line-height: 1;
+  margin-bottom: 0.35rem;
+}
+
+.admin-ios-panel-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text, #eaeaec);
+  margin: 0 0 0.2rem;
+}
+
+.admin-ios-panel-sub {
+  font-size: 0.75rem;
+  color: var(--muted, #8e8e96);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.admin-ios-panel-list {
+  overflow-y: auto;
+  flex: 1;
+  padding: 0.35rem 0 0.65rem;
+}
+
+.admin-ios-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.admin-ios-row:last-child {
+  border-bottom: none;
+}
+
+.admin-ios-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem 0.75rem 0.65rem 1rem;
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.15s ease;
+}
+
+.admin-ios-row-main:hover {
+  background: rgba(61, 212, 224, 0.06);
+}
+
+.admin-ios-row-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-ios-row-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text, #eaeaec);
+  display: block;
+}
+
+.admin-ios-row-desc {
+  font-size: 0.6875rem;
+  color: var(--muted, #8e8e96);
+  line-height: 1.35;
+  margin-top: 0.15rem;
+  display: block;
+}
+
+.admin-ios-row-chev {
+  flex-shrink: 0;
+  opacity: 0.35;
+  font-size: 1rem;
+  color: #8e8e96;
+}
+
+.admin-ios-help-btn {
+  flex-shrink: 0;
+  width: 2.75rem;
+  border: none;
+  border-left: 1px solid rgba(255, 255, 255, 0.06);
+  background: transparent;
+  color: rgba(61, 212, 224, 0.85);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.admin-ios-help-btn:hover {
+  background: rgba(61, 212, 224, 0.1);
+  color: #3dd4e0;
+}
+
+.admin-ios-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.35rem;
+  margin-top: -0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.admin-ios-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.admin-ios-dot.on {
+  background: #3dd4e0;
+  transform: scale(1.15);
+}
+
+/* Точки привязки для якоря с подстраниц */
+.admin-ios-anchor {
+  scroll-margin-top: 5rem;
+}
+
+/* Модалка справки */
+.admin-ios-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 1rem;
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.admin-ios-modal-overlay.is-open {
+  opacity: 1;
+  visibility: visible;
+}
+
+@media (min-width: 640px) {
+  .admin-ios-modal-overlay {
+    align-items: center;
+  }
+}
+
+.admin-ios-modal {
+  width: 100%;
+  max-width: 28rem;
+  max-height: min(78vh, 32rem);
+  background: #121214;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px 18px 14px 14px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  transform: translateY(12px);
+  transition: transform 0.22s ease;
+}
+
+@media (min-width: 640px) {
+  .admin-ios-modal {
+    border-radius: 18px;
+    transform: scale(0.96);
+  }
+
+  .admin-ios-modal-overlay.is-open .admin-ios-modal {
+    transform: scale(1);
+  }
+}
+
+.admin-ios-modal-overlay.is-open .admin-ios-modal {
+  transform: translateY(0);
+}
+
+.admin-ios-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1rem 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.admin-ios-modal-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text, #eaeaec);
+  margin: 0;
+  padding-right: 0.5rem;
+}
+
+.admin-ios-modal-close {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted, #8e8e96);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.admin-ios-modal-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text, #eaeaec);
+}
+
+.admin-ios-modal-body {
+  padding: 1rem 1.1rem 1.25rem;
+  overflow-y: auto;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: rgba(234, 234, 236, 0.92);
+}
+
+.admin-ios-modal-body p {
+  margin: 0 0 0.65rem;
+}
+
+.admin-ios-modal-body p:last-child {
+  margin-bottom: 0;
+}
+
+.admin-ios-modal-body b {
+  color: #eaeaec;
+  font-weight: 600;
+}
+
+/* Полоска категорий на подстраницах */
+.admin-ios-cat-strip {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  padding: 0.15rem 0 0.5rem;
+  margin-bottom: 0.25rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-ios-cat-pill {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.55);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.admin-ios-cat-pill:hover {
+  border-color: rgba(61, 212, 224, 0.4);
+  color: #3dd4e0;
+}

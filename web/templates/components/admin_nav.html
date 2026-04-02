@@ -1,3 +1,27 @@
+<link rel="stylesheet" href="/static/css/admin-ios.css?v=1" />
+{% if admin_ui is defined and admin_ui.help_registry %}
+<script type="application/json" id="admin-help-json">{{ admin_ui.help_registry | tojson }}</script>
+{% endif %}
+{% include "components/admin_help_modal.html" %}
+
+{% if admin_ui is defined and admin_ui.categories and admin_ui.categories|length > 0 %}
+  {% if request.url.path == '/admin' %}
+  <div class="admin-ios-dashboard-nav">
+    <p class="admin-ios-screen-title">Администрирование</p>
+    <p class="admin-ios-screen-sub">Группы разделов ниже можно листать свайпом влево-вправо. У каждого пункта есть «?» — подробная справка, что делает раздел и на что влияет.</p>
+  </div>
+  {% else %}
+  <div class="admin-ios-sub-nav">
+    <a href="/admin" class="admin-ios-back">‹ Панель</a>
+    <div class="admin-ios-cat-strip" aria-label="Группы разделов">
+      {% for cat in admin_ui.categories %}
+      <a href="/admin#admin-cat-{{ cat.id }}" class="admin-ios-cat-pill">{{ cat.icon }} {{ cat.title }}</a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+{% else %}
+{# Fallback: старая сетка чипов, если каталог недоступен #}
 {% from 'components/stroke_icons.html' import ico %}
 <style>
 .admin-nav-wrap{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:2rem}
@@ -34,9 +58,11 @@
     ('🎵 Музыка', '/admin/music', 'can_dashboard', 'cpu'),
     ('Реферальная программа', '/admin/referral', 'can_users', 'users'),
     ('Дневник терапии', '/admin/wellness-journal', 'can_users', 'heart'),
+    ('Радио Down Tempo', '/admin/radio-downtempo', 'can_radio_downtempo', 'cpu'),
   ] %}
   {% for label, href, perm_key, iname in nav_items %}
-  {% if user_permissions is not defined or user_permissions.get(perm_key, True) %}
+  {% if href == '/admin/music' and (not user or user.get('role') != 'admin') %}
+  {% elif user_permissions is not defined or user_permissions.get(perm_key, True) %}
   <a href="{{ href }}"
      class="admin-nav-item {{ 'on' if (request.url.path == href or (href == '/admin/payment' and request.url.path.startswith('/admin/payment'))) else '' }}">
     <span class="ni-ic">{{ ico(iname) }}</span>
@@ -45,3 +71,4 @@
   {% endif %}
   {% endfor %}
 </div>
+{% endif %}
