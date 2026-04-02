@@ -57,6 +57,10 @@ async def create_yookassa_redirect_payment(
     }
 
     vat = int(getattr(settings, "YOOKASSA_RECEIPT_VAT_CODE", 0) or 0)
+    if vat not in (1, 2, 3, 4, 5, 6):
+        if vat:
+            logger.warning("yookassa: unsupported vat_code=%s, receipt disabled for web payment", vat)
+        vat = 0
     em = (customer_email or "").strip()
     if vat > 0 and em and "@" in em:
         body["receipt"] = {
@@ -67,8 +71,6 @@ async def create_yookassa_redirect_payment(
                     "quantity": "1",
                     "amount": {"value": value_str, "currency": "RUB"},
                     "vat_code": vat,
-                    "payment_mode": "full_payment",
-                    "payment_subject": "service",
                 }
             ],
         }
@@ -100,6 +102,37 @@ async def create_yookassa_redirect_payment(
             if isinstance(err_body, dict):
                 code = err_body.get("code") or err_body.get("type") or ""
                 desc = (err_body.get("description") or err_body.get("message") or "")[:400]
+                # Некоторые аккаунты ЮKassa отклоняют расширенные поля чека.
+                # Повторяем запрос один раз без receipt, чтобы не блокировать web checkout.
+                if (
+                    r.status_code == 400
+                    and "receipt" in body
+                    and isinstance(desc, str)
+                    and "receipt is missing or illegal" in desc.lower()
+                ):
+                    try:
+                        retry_body = dict(body)
+                        retry_body.pop("receipt", None)
+                        async with httpx.AsyncClient(timeout=45.0) as client:
+                            rr = await client.post(
+                                YOOKASSA_API,
+                                headers={
+                                    "Authorization": f"Basic {auth}",
+                                    "Idempotence-Key": str(uuid.uuid4()),
+                                    "Content-Type": "application/json",
+                                },
+                                json=retry_body,
+                            )
+                        if rr.status_code in (200, 201):
+                            data2 = rr.json()
+                            pay_id2 = (data2.get("id") or "").strip() or None
+                            conf2 = data2.get("confirmation") or {}
+                            url2 = (conf2.get("confirmation_url") or "").strip()
+                            if url2:
+                                logger.warning("yookassa create payment succeeded after retry without receipt")
+                                return url2, None, pay_id2
+                    except Exception:
+                        logger.exception("yookassa receipt retry failed")
                 err_tag = f"{err_tag}:{code}:{desc}" if (code or desc) else err_tag
                 logger.warning(
                     "yookassa create payment HTTP %s code=%s desc=%s full=%s",
