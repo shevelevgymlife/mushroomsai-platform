@@ -1422,33 +1422,68 @@ async def run_wellness_subscription_renewal_nudges_job() -> None:
         await _deliver_renewal_nudge(uid, int(cid), target)
 
 
+def _safe_cluster_model_for_template(cm: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not cm:
+        return None
+    k = cm.get("k")
+    try:
+        k_i = int(k) if k is not None else None
+    except (TypeError, ValueError):
+        k_i = None
+    uc = cm.get("user_count")
+    try:
+        uc_i = int(uc) if uc is not None else None
+    except (TypeError, ValueError):
+        uc_i = None
+    mv = cm.get("model_version")
+    try:
+        mv_i = int(mv) if mv is not None else None
+    except (TypeError, ValueError):
+        mv_i = None
+    return {"k": k_i, "user_count": uc_i, "model_version": mv_i}
+
+
+def _safe_scheme_effect_rows(rows: list[dict]) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for x in rows:
+        d = dict(x)
+        v = d.get("avg_progress_score")
+        try:
+            d["avg_progress_score"] = float(v) if v is not None else None
+        except (TypeError, ValueError):
+            d["avg_progress_score"] = None
+        out.append(d)
+    return out
+
+
 async def admin_global_wellness_summary() -> dict[str, Any]:
     """Агрегаты по всем пользователям для админской сводки."""
     since30 = datetime.utcnow() - timedelta(days=30)
+    _in_stats = wellness_journal_entries.c.statistics_excluded.is_(sa.false())
     nu = await database.fetch_val(
         sa.select(sa.func.count(sa.distinct(wellness_journal_entries.c.user_id)))
         .select_from(wellness_journal_entries)
         .where(wellness_journal_entries.c.role == "user_reply")
-        .where(wellness_journal_entries.c.statistics_excluded == False)
+        .where(_in_stats)
     )
     nu30 = await database.fetch_val(
         sa.select(sa.func.count(sa.distinct(wellness_journal_entries.c.user_id)))
         .select_from(wellness_journal_entries)
         .where(wellness_journal_entries.c.role == "user_reply")
-        .where(wellness_journal_entries.c.statistics_excluded == False)
+        .where(_in_stats)
         .where(wellness_journal_entries.c.created_at >= since30)
     )
     rep_all = await database.fetch_val(
         sa.select(sa.func.count())
         .select_from(wellness_journal_entries)
         .where(wellness_journal_entries.c.role == "user_reply")
-        .where(wellness_journal_entries.c.statistics_excluded == False)
+        .where(_in_stats)
     )
     rep30 = await database.fetch_val(
         sa.select(sa.func.count())
         .select_from(wellness_journal_entries)
         .where(wellness_journal_entries.c.role == "user_reply")
-        .where(wellness_journal_entries.c.statistics_excluded == False)
+        .where(_in_stats)
         .where(wellness_journal_entries.c.created_at >= since30)
     )
     pr30 = await database.fetch_val(
@@ -1460,7 +1495,7 @@ async def admin_global_wellness_summary() -> dict[str, Any]:
     rows = await database.fetch_all(
         wellness_journal_entries.select()
         .where(wellness_journal_entries.c.role == "user_reply")
-        .where(wellness_journal_entries.c.statistics_excluded == False)
+        .where(_in_stats)
         .where(wellness_journal_entries.c.extracted_json.isnot(None))
         .order_by(wellness_journal_entries.c.created_at.desc())
         .limit(900)
@@ -1486,17 +1521,26 @@ async def admin_global_wellness_summary() -> dict[str, Any]:
             if isinstance(sh, str) and sh.strip():
                 k = sh.strip().lower()[:80]
                 by_mushroom[k] = by_mushroom.get(k, 0) + 1
-    prof_n = await database.fetch_val(
-        sa.select(sa.func.count())
-        .select_from(users)
-        .where(users.c.wellness_ai_profile_json.isnot(None))
-        .where(sa.func.coalesce(sa.func.length(sa.func.trim(users.c.wellness_ai_profile_json)), 0) > 2)
-    )
-    scheme_rows = await database.fetch_all(
-        wellness_scheme_effect_stats.select()
-        .order_by(wellness_scheme_effect_stats.c.sample_n.desc())
-        .limit(18)
-    )
+    prof_n = 0
+    try:
+        # Без TRIM: на части драйверов/типов trim(json) давал ошибку; достаточно length > 2.
+        prof_n = await database.fetch_val(
+            sa.select(sa.func.count())
+            .select_from(users)
+            .where(users.c.wellness_ai_profile_json.isnot(None))
+            .where(sa.func.coalesce(sa.func.length(users.c.wellness_ai_profile_json), 0) > 2)
+        )
+    except Exception:
+        logger.warning("admin_global_wellness_summary: therapy_profiles_n query failed", exc_info=True)
+    scheme_rows: list[dict] = []
+    try:
+        scheme_rows = await database.fetch_all(
+            wellness_scheme_effect_stats.select()
+            .order_by(wellness_scheme_effect_stats.c.sample_n.desc())
+            .limit(18)
+        )
+    except Exception:
+        logger.warning("admin_global_wellness_summary: scheme_effect_stats query failed", exc_info=True)
     rec_arm_rows: list[dict] = []
     cluster_model: dict | None = None
     kmeans_cluster_dist: list[dict] = []
@@ -1510,7 +1554,8 @@ async def admin_global_wellness_summary() -> dict[str, Any]:
         from services.wellness_clustering_service import latest_cluster_model_summary
 
         rec_arm_rows = await list_rec_arm_stats(12)
-        cluster_model = await latest_cluster_model_summary()
+        _raw_cm = await latest_cluster_model_summary()
+        cluster_model = _safe_cluster_model_for_template(_raw_cm)
         _cnt = sa.func.count().label("n")
         cd = await database.fetch_all(
             sa.select(users_t.c.wellness_kmeans_cluster_id, _cnt)
@@ -1531,7 +1576,7 @@ async def admin_global_wellness_summary() -> dict[str, Any]:
             or 0
         )
     except Exception:
-        pass
+        logger.warning("admin_global_wellness_summary: bandit/cluster/automation block failed", exc_info=True)
     return {
         "users_with_replies_ever": int(nu or 0),
         "users_with_replies_30d": int(nu30 or 0),
@@ -1543,7 +1588,7 @@ async def admin_global_wellness_summary() -> dict[str, Any]:
         "mushroom_top": sorted(by_mushroom.items(), key=lambda x: -x[1])[:20],
         "sample_moods_n": len(moods),
         "therapy_profiles_n": int(prof_n or 0),
-        "scheme_effect_rows": [dict(x) for x in scheme_rows],
+        "scheme_effect_rows": _safe_scheme_effect_rows([dict(x) for x in scheme_rows]),
         "rec_arm_rows": rec_arm_rows,
         "cluster_model": cluster_model,
         "kmeans_cluster_dist": kmeans_cluster_dist,

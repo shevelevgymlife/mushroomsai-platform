@@ -76,9 +76,10 @@
         <div class="wa-shelf-h">Вовлечённость</div>
         <div class="wa-shelf-body px-4 pb-4">
           <p class="text-sm text-muted">Ответов всего: <strong class="text-text">{{ summary.replies_ever }}</strong></p>
-          {% set den = [1, summary.replies_ever]|max %}
+          {% set den = [1, (summary.replies_ever|default(0))|int]|max %}
+          {% set pct30 = 0 if den <= 0 else ((summary.replies_30d|default(0))|int * 100) // den %}
           <div class="mt-3 h-3 rounded-full bg-border/40 overflow-hidden">
-            <div class="h-full bg-gradient-to-r from-cyan-500/80 to-fuchsia-500/80 rounded-full" style="width: {{ [100, ((summary.replies_30d * 100) // den)]|min }}%"></div>
+            <div class="h-full bg-gradient-to-r from-cyan-500/80 to-fuchsia-500/80 rounded-full" style="width: {{ [100, pct30]|min }}%"></div>
           </div>
           <p class="text-xs text-muted mt-2">Доля ответов за 30 дней.</p>
         </div>
@@ -149,7 +150,7 @@
               <td class="px-4 py-2 text-text">{{ s.mushroom_key }}</td>
               <td class="px-4 py-2 text-muted">{{ s.segment or '—' }}</td>
               <td class="px-4 py-2">{{ s.sample_n }}</td>
-              <td class="px-4 py-2 pr-4">{% if s.avg_progress_score is not none %}{{ (s.avg_progress_score | float) | round(3) }}{% else %}—{% endif %}</td>
+              <td class="px-4 py-2 pr-4">{% if s.avg_progress_score is not none and s.avg_progress_score is number %}{{ s.avg_progress_score | round(3) }}{% else %}—{% endif %}</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -163,12 +164,13 @@
     <div class="wa-shelf wa-shelf-body--flush mb-8">
       <div class="wa-shelf-h">Топ грибов</div>
       {% set mt = summary.mushroom_top or [] %}
-      {% set max_cnt = mt[0][1] if mt else 1 %}
+      {% set max_cnt = ([1, (mt[0][1] if mt else 1)|int]|max) %}
       {% for name, cnt in mt %}
       <div class="flex items-center gap-3 px-4 py-2.5 border-b border-border/40 text-sm">
         <div class="flex-1 min-w-0 text-text truncate">{{ name }}</div>
         <div class="w-28 h-2 rounded-full bg-border/50 overflow-hidden shrink-0">
-          <div class="h-full bg-gold/70 rounded-full" style="width: {{ [100, ((cnt * 100) // max_cnt)]|min }}%"></div>
+          {% set bar_w = 0 if max_cnt <= 0 else ((cnt|int * 100) // max_cnt) %}
+          <div class="h-full bg-gold/70 rounded-full" style="width: {{ [100, bar_w]|min }}%"></div>
         </div>
         <span class="text-muted w-8 text-right shrink-0">{{ cnt }}</span>
       </div>
