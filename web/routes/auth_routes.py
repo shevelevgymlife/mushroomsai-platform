@@ -75,7 +75,11 @@ def _safe_next_path(raw: str | None) -> str | None:
     s = raw.strip()
     if not s.startswith("/") or s.startswith("//"):
         return None
-    return s.split("?")[0][:512]
+    path, sep, query = s.partition("?")
+    path = path[:512]
+    if not sep:
+        return path
+    return f"{path}?{query[:2048]}"
 
 
 async def post_login_redirect_path(
