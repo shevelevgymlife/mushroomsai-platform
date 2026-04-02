@@ -201,6 +201,21 @@ referrals = sqlalchemy.Table(
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
 
+referral_bonus_events = sqlalchemy.Table(
+    "referral_bonus_events",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("referral_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("referrals.id", ondelete="SET NULL"), nullable=True),
+    sqlalchemy.Column("referrer_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("referred_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column("subscription_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("subscriptions.id", ondelete="SET NULL"), nullable=True),
+    sqlalchemy.Column("plan_key", sqlalchemy.String(20), nullable=False),
+    sqlalchemy.Column("paid_amount_rub", sqlalchemy.Numeric(12, 2), nullable=False),
+    sqlalchemy.Column("bonus_rub", sqlalchemy.Numeric(12, 2), nullable=False),
+    sqlalchemy.Column("payment_source", sqlalchemy.String(32), nullable=True),
+    sqlalchemy.Column("credited_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
 referral_withdrawals = sqlalchemy.Table(
     "referral_withdrawals",
     metadata,

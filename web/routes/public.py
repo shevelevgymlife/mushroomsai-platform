@@ -1056,7 +1056,10 @@ async def referral_program_page(request: Request):
     uid = user.get("primary_user_id") or user["id"]
     plan = await check_subscription(uid)
     from services.subscription_service import paid_subscription_for_referral_program
-    from services.referral_service import invite_referral_code_for_sharing
+    from services.referral_service import (
+        invite_referral_code_for_sharing,
+        list_referral_bonus_events_for_referrer,
+    )
 
     show_partner_shop = await paid_subscription_for_referral_program(uid)
     ref_links_use_platform_default = not await paid_subscription_for_referral_program(uid)
@@ -1067,6 +1070,7 @@ async def referral_program_page(request: Request):
     ref_link_site = f"{base}/login?ref={code}" if code and base else ""
     ref_stats = await get_referral_stats(uid)
     ref_invites = await get_referrer_invites_detailed(uid)
+    bonus_events = await list_referral_bonus_events_for_referrer(int(uid), 120)
     display_user = user
     if user.get("primary_user_id"):
         primary = await database.fetch_one(users.select().where(users.c.id == uid))
@@ -1091,6 +1095,7 @@ async def referral_program_page(request: Request):
             "ref_link_site": ref_link_site,
             "ref_stats": ref_stats,
             "ref_invites": ref_invites,
+            "ref_bonus_events": bonus_events,
             "visible_block_keys": visible_block_keys,
             "show_partner_shop": show_partner_shop,
             "ref_links_use_platform_default": ref_links_use_platform_default,

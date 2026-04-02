@@ -8,7 +8,14 @@ from typing import Any, Optional
 
 import sqlalchemy as sa
 from db.database import database
-from db.models import users, referrals, referral_withdrawals, referral_promo_links, subscriptions
+from db.models import (
+    users,
+    referrals,
+    referral_withdrawals,
+    referral_promo_links,
+    subscriptions,
+    referral_bonus_events,
+)
 from services.payment_plans_catalog import DEFAULT_PLANS, get_effective_plans, resolve_promo_plan_key
 
 logger = logging.getLogger(__name__)
@@ -282,6 +289,29 @@ async def credit_referrer_bonus_for_paid_subscription(
     await database.execute(
         referrals.update().where(referrals.c.id == ref_id).values(bonus_applied=True)
     )
+    try:
+        sub = await database.fetch_one(
+            subscriptions.select()
+            .where(subscriptions.c.user_id == uid)
+            .order_by(subscriptions.c.id.desc())
+            .limit(1)
+        )
+        sub_id = int(sub["id"]) if sub and sub.get("id") is not None else None
+        plan_key = str((sub.get("plan") if sub else None) or "start").strip().lower()[:20]
+        await database.execute(
+            referral_bonus_events.insert().values(
+                referral_id=ref_id,
+                referrer_id=rid,
+                referred_id=uid,
+                subscription_id=sub_id,
+                plan_key=plan_key,
+                paid_amount_rub=float(paid_amount_rub or 0.0),
+                bonus_rub=float(bonus),
+                payment_source="activation",
+            )
+        )
+    except Exception:
+        logger.debug("referral bonus event insert skipped", exc_info=True)
     return bonus
 
 
@@ -516,6 +546,35 @@ async def get_referrer_invites_detailed(referrer_id: int) -> list[dict[str, Any]
                 "trial_active": trial,
                 "subscription_end": sub_end,
                 "registration_channel": ch,
+            }
+        )
+    return out
+
+
+async def list_referral_bonus_events_for_referrer(
+    referrer_id: int,
+    limit: int = 120,
+) -> list[dict[str, Any]]:
+    rows = await database.fetch_all(
+        referral_bonus_events.select()
+        .where(referral_bonus_events.c.referrer_id == int(referrer_id))
+        .order_by(referral_bonus_events.c.credited_at.desc())
+        .limit(int(limit))
+    )
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        rid = int(r.get("referred_id") or 0)
+        u = await database.fetch_one(users.select().where(users.c.id == rid))
+        out.append(
+            {
+                "id": int(r["id"]),
+                "credited_at": r.get("credited_at"),
+                "referred_id": rid,
+                "referred_name": (u.get("name") if u else None) or f"Участник #{rid}",
+                "plan_key": (r.get("plan_key") or "").strip().lower(),
+                "paid_amount_rub": float(r.get("paid_amount_rub") or 0),
+                "bonus_rub": float(r.get("bonus_rub") or 0),
+                "subscription_id": r.get("subscription_id"),
             }
         )
     return out

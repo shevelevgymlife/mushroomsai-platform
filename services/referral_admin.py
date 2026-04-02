@@ -10,7 +10,14 @@ import sqlalchemy as sa
 from sqlalchemy import func
 
 from db.database import database
-from db.models import referrals, referral_promo_links, referral_withdrawals, subscriptions, users
+from db.models import (
+    referrals,
+    referral_promo_links,
+    referral_withdrawals,
+    subscriptions,
+    users,
+    referral_bonus_events,
+)
 
 
 async def count_referrals_in_period(
@@ -27,13 +34,13 @@ async def count_referrals_in_period(
 async def sum_bonuses_in_period(
     date_from: Optional[datetime], date_to: Optional[datetime]
 ) -> float:
-    q = sa.select(func.coalesce(func.sum(referrals.c.referral_bonus_amount), 0)).select_from(
-        referrals
+    q = sa.select(func.coalesce(func.sum(referral_bonus_events.c.bonus_rub), 0)).select_from(
+        referral_bonus_events
     )
     if date_from is not None:
-        q = q.where(referrals.c.created_at >= date_from)
+        q = q.where(referral_bonus_events.c.credited_at >= date_from)
     if date_to is not None:
-        q = q.where(referrals.c.created_at <= date_to)
+        q = q.where(referral_bonus_events.c.credited_at <= date_to)
     v = await database.fetch_val(q)
     try:
         return float(v or 0)
@@ -46,17 +53,17 @@ async def top_ambassadors_by_earnings(
     date_from: Optional[datetime],
     date_to: Optional[datetime],
 ) -> list[dict[str, Any]]:
-    """Сумма referral_bonus_amount по приглашениям за период."""
+    """Сумма фактических начислений bonus_rub за период."""
     q = sa.select(
-        referrals.c.referrer_id,
-        func.coalesce(func.sum(referrals.c.referral_bonus_amount), 0).label("total_bonus"),
+        referral_bonus_events.c.referrer_id,
+        func.coalesce(func.sum(referral_bonus_events.c.bonus_rub), 0).label("total_bonus"),
         func.count().label("cnt"),
     )
     if date_from is not None:
-        q = q.where(referrals.c.created_at >= date_from)
+        q = q.where(referral_bonus_events.c.credited_at >= date_from)
     if date_to is not None:
-        q = q.where(referrals.c.created_at <= date_to)
-    q = q.group_by(referrals.c.referrer_id).order_by(sa.desc("total_bonus")).limit(limit)
+        q = q.where(referral_bonus_events.c.credited_at <= date_to)
+    q = q.group_by(referral_bonus_events.c.referrer_id).order_by(sa.desc("total_bonus")).limit(limit)
     rows = await database.fetch_all(q)
     out: list[dict[str, Any]] = []
     for r in rows:
@@ -203,6 +210,40 @@ async def renewal_ranking(limit: int = 40) -> list[dict[str, Any]]:
                 "user_id": uid,
                 "name": (dict(u).get("name") if u else None) or f"#{uid}",
                 "subscription_rows_12m": int(r["cnt"] or 0),
+            }
+        )
+    return out
+
+
+async def bonus_events_in_period(
+    date_from: Optional[datetime],
+    date_to: Optional[datetime],
+    limit: int = 200,
+) -> list[dict[str, Any]]:
+    q = referral_bonus_events.select().order_by(referral_bonus_events.c.credited_at.desc())
+    if date_from is not None:
+        q = q.where(referral_bonus_events.c.credited_at >= date_from)
+    if date_to is not None:
+        q = q.where(referral_bonus_events.c.credited_at <= date_to)
+    q = q.limit(int(limit))
+    rows = await database.fetch_all(q)
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        referrer_id = int(r["referrer_id"])
+        referred_id = int(r["referred_id"])
+        u_ref = await database.fetch_one(users.select().where(users.c.id == referrer_id))
+        u_referred = await database.fetch_one(users.select().where(users.c.id == referred_id))
+        out.append(
+            {
+                "id": int(r["id"]),
+                "credited_at": r.get("credited_at"),
+                "referrer_id": referrer_id,
+                "referrer_name": (u_ref.get("name") if u_ref else None) or f"#{referrer_id}",
+                "referred_id": referred_id,
+                "referred_name": (u_referred.get("name") if u_referred else None) or f"#{referred_id}",
+                "plan_key": (r.get("plan_key") or "").strip().lower(),
+                "paid_amount_rub": float(r.get("paid_amount_rub") or 0),
+                "bonus_rub": float(r.get("bonus_rub") or 0),
             }
         )
     return out

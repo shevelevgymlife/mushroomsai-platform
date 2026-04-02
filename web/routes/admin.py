@@ -2301,6 +2301,7 @@ async def admin_referral_page(
     paid_w = await ra.paid_withdrawals_in_period(d1, d2)
     promos = await ra.list_promo_links()
     renew = await ra.renewal_ranking(30)
+    bonus_events = await ra.bonus_events_in_period(d1, d2, 240)
     seg_rows, seg_total = await ra.referred_users_segment(segment, d1, d2, plan_filter)
     search_hits = await ra.search_users(user_search or "", 25) if (user_search or "").strip() else []
     ref_tree = await ra.invites_for_referrer(int(ref_uid)) if ref_uid else []
@@ -2337,6 +2338,7 @@ async def admin_referral_page(
             "paid_withdrawals": paid_w,
             "promos": promos,
             "renewal_rank": renew,
+            "bonus_events": bonus_events,
             "segment_rows": seg_rows,
             "segment_total": seg_total,
             "search_hits": search_hits,

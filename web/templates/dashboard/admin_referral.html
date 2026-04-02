@@ -139,6 +139,41 @@
       </table>
     </div>
 
+    <h2 class="text-xl font-medium text-text mb-3">История начислений бонусов (подписки)</h2>
+    <p class="text-xs text-muted mb-3">Каждая строка — отдельная платная оплата приглашённого и начисление 10% рефереру.</p>
+    <div class="overflow-x-auto rounded-2xl border border-border mb-10">
+      <table class="w-full text-sm min-w-[860px]">
+        <thead><tr class="border-b border-border text-left text-muted">
+          <th class="px-3 py-2">Дата</th>
+          <th class="px-3 py-2">Реферер</th>
+          <th class="px-3 py-2">Приглашённый</th>
+          <th class="px-3 py-2">Тариф</th>
+          <th class="px-3 py-2">Оплата</th>
+          <th class="px-3 py-2">Бонус</th>
+        </tr></thead>
+        <tbody>
+          {% for e in bonus_events %}
+          <tr class="border-b border-border/50 hover:bg-border/10">
+            <td class="px-3 py-2 text-xs text-muted">{{ e.credited_at or '—' }}</td>
+            <td class="px-3 py-2">
+              <a href="/community/profile/{{ e.referrer_id }}" class="text-gold hover:underline" target="_blank">{{ e.referrer_name }}</a>
+              <span class="text-xs text-muted">id {{ e.referrer_id }}</span>
+            </td>
+            <td class="px-3 py-2">
+              <a href="/community/profile/{{ e.referred_id }}" class="text-gold hover:underline" target="_blank">{{ e.referred_name }}</a>
+              <span class="text-xs text-muted">id {{ e.referred_id }}</span>
+            </td>
+            <td class="px-3 py-2">{{ (e.plan_key or 'start')|upper }}</td>
+            <td class="px-3 py-2">{{ '%.2f'|format(e.paid_amount_rub) }} ₽</td>
+            <td class="px-3 py-2 font-semibold text-gold">+{{ '%.2f'|format(e.bonus_rub) }} ₽</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="px-3 py-6 text-center text-muted">Пока начислений нет за выбранный период.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
     <h2 class="text-xl font-medium text-text mb-3">Заявки на вывод</h2>
     <div class="overflow-x-auto rounded-2xl border border-border mb-4">
       <table class="w-full text-sm">
