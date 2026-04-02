@@ -19,6 +19,37 @@ logger = logging.getLogger(__name__)
 YOOKASSA_API = "https://api.yookassa.ru/v3/payments"
 
 
+def _yookassa_error_description(err_body: Any) -> str:
+    """Собирает текст ошибки из ответа API (в т.ч. вложенные поля)."""
+    if not isinstance(err_body, dict):
+        return ""
+    parts: list[str] = []
+    d = err_body.get("description") or err_body.get("message") or ""
+    if isinstance(d, str) and d.strip():
+        parts.append(d.strip())
+    for key in ("parameter", "code"):
+        v = err_body.get(key)
+        if isinstance(v, str) and v.strip():
+            parts.append(v.strip())
+    nested = err_body.get("errors")
+    if isinstance(nested, list):
+        for it in nested:
+            if isinstance(it, dict):
+                for k in ("description", "message", "code"):
+                    s = it.get(k)
+                    if isinstance(s, str) and s.strip():
+                        parts.append(s.strip())
+    return " ".join(parts)[:800]
+
+
+def _is_receipt_related_error(desc: str) -> bool:
+    """Ошибка чека 54-ФЗ (EN/RU), как в ответе ЮKassa."""
+    low = (desc or "").lower()
+    if "receipt" in low or "чек" in low or "54" in low or "фиск" in low:
+        return True
+    return False
+
+
 async def create_yookassa_redirect_payment(
     *,
     shop_id: str,
@@ -63,14 +94,18 @@ async def create_yookassa_redirect_payment(
         vat = 0
     em = (customer_email or "").strip()
     if vat > 0 and em and "@" in em:
+        # Как в bot/handlers/yookassa_subscribe.py: без payment_mode/payment_subject ЮKassa
+        # часто отвечает 400 «Receipt is missing or illegal».
         body["receipt"] = {
             "customer": {"email": em[:256]},
             "items": [
                 {
                     "description": (description or "Подписка")[:128],
-                    "quantity": "1",
+                    "quantity": "1.00",
                     "amount": {"value": value_str, "currency": "RUB"},
                     "vat_code": vat,
+                    "payment_mode": "full_payment",
+                    "payment_subject": "service",
                 }
             ],
         }
@@ -101,14 +136,20 @@ async def create_yookassa_redirect_payment(
             err_body = r.json()
             if isinstance(err_body, dict):
                 code = err_body.get("code") or err_body.get("type") or ""
-                desc = (err_body.get("description") or err_body.get("message") or "")[:400]
-                # Некоторые аккаунты ЮKassa отклоняют расширенные поля чека.
-                # Повторяем запрос один раз без receipt, чтобы не блокировать web checkout.
-                if (
-                    r.status_code == 400
-                    and "receipt" in body
-                    and isinstance(desc, str)
-                    and "receipt is missing or illegal" in desc.lower()
+                desc = _yookassa_error_description(err_body) or (
+                    (err_body.get("description") or err_body.get("message") or "")[:400]
+                )
+                desc_l = (desc or "").lower()
+                # Та же формулировка EN/RU, что в кабинете ЮKassa; «отсутствует» только в связке с чеком.
+                receipt_illegal = (
+                    "receipt is missing or illegal" in desc_l
+                    or ("illegal" in desc_l and "receipt" in desc_l)
+                    or ("некоррект" in desc_l and ("чек" in desc_l or "receipt" in desc_l))
+                    or ("чек" in desc_l and "отсутствует" in desc_l and "некоррект" in desc_l)
+                )
+                # Некоторые аккаунты ЮKassa отклоняют чек в API — повтор без receipt.
+                if r.status_code == 400 and "receipt" in body and receipt_illegal and _is_receipt_related_error(
+                    desc
                 ):
                     try:
                         retry_body = dict(body)
