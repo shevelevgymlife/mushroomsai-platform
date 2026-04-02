@@ -92,5 +92,5 @@ async def assert_partner_shop_url_allowed(normalized_url: str) -> None:
         raise ValueError(
             "Ссылка магазина должна начинаться с:\n"
             f"{prefix}\n"
-            "Скопируйте «Мою ссылку» из кабинета Neurotrops — там как раз такой формат."
+            "Магазин: каталог → меню → личный кабинет → «Моя ссылка» → копировать."
         )

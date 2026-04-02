@@ -149,6 +149,44 @@ def _shop_effective_uid(user: dict) -> int:
     return int(user.get("primary_user_id") or user["id"])
 
 
+def _norm_visibility_scope(raw: str | None) -> str:
+    return "referrals" if (raw or "").strip().lower() in ("referrals", "only_referrals") else "all"
+
+
+def _product_restricted_to_referrals(product_row: dict, seller_row: dict | None) -> bool:
+    p_scope = _norm_visibility_scope(product_row.get("visibility_scope"))
+    s_scope = _norm_visibility_scope((seller_row or {}).get("marketplace_visibility_scope"))
+    return p_scope == "referrals" or s_scope == "referrals"
+
+
+async def _viewer_referred_by_seller(viewer_uid: int | None, seller_id: int | None) -> bool:
+    if not viewer_uid or not seller_id:
+        return False
+    viewer = await database.fetch_one(users.select().where(users.c.id == int(viewer_uid)))
+    if not viewer:
+        return False
+    return int(viewer.get("referred_by") or 0) == int(seller_id)
+
+
+async def _can_view_shop_product(viewer_uid: int | None, product_row: dict) -> bool:
+    seller_id = product_row.get("seller_id")
+    if not seller_id:
+        return True
+    seller = await database.fetch_one(users.select().where(users.c.id == int(seller_id)))
+    if not seller:
+        return False
+    seller_d = dict(seller)
+    # Продавец обязан иметь активный режим маркетплейса и тариф Maxi.
+    # Если нет — его товары скрыты для всех до восстановления условий.
+    if not bool(seller_d.get("marketplace_seller")):
+        return False
+    if (seller_d.get("subscription_plan") or "free").strip().lower() != "maxi":
+        return False
+    if not _product_restricted_to_referrals(product_row, seller_d):
+        return True
+    return await _viewer_referred_by_seller(viewer_uid, int(seller_id))
+
+
 async def _shop_cart_qty(user_id: int) -> int:
     q = await database.fetch_val(
         sa.select(sa.func.coalesce(sa.func.sum(shop_cart_items.c.quantity), 0)).where(
@@ -250,9 +288,27 @@ async def index(request: Request):
     ) or 0
 
     # Featured marketplace products with avg ratings
+    seller_users = users.alias("seller_users")
+    seller_eligible = sa.and_(
+        sa.func.coalesce(seller_users.c.marketplace_seller, False) == True,
+        sa.func.coalesce(seller_users.c.subscription_plan, "free") == "maxi",
+    )
     featured_raw = await database.fetch_all(
-        shop_products.select().where(shop_products.c.in_stock == True)
-        .order_by(shop_products.c.created_at.desc()).limit(6)
+        sa.select(shop_products)
+        .select_from(shop_products.outerjoin(seller_users, shop_products.c.seller_id == seller_users.c.id))
+        .where(shop_products.c.in_stock == True)
+        .where(
+            sa.or_(
+                shop_products.c.seller_id.is_(None),
+                sa.and_(
+                    seller_eligible,
+                    sa.func.coalesce(shop_products.c.visibility_scope, "all") == "all",
+                    sa.func.coalesce(seller_users.c.marketplace_visibility_scope, "all") == "all",
+                ),
+            )
+        )
+        .order_by(shop_products.c.created_at.desc())
+        .limit(6)
     )
     featured_products = []
     for p in featured_raw:
@@ -354,7 +410,29 @@ async def shop(
             },
         )
 
-    query = shop_products.select()
+    viewer_uid = _shop_effective_uid(current_user)
+    viewer_row = await database.fetch_one(users.select().where(users.c.id == viewer_uid))
+    viewer_referred_by = int((viewer_row or {}).get("referred_by") or 0)
+    seller_users = users.alias("seller_users")
+    seller_eligible = sa.and_(
+        sa.func.coalesce(seller_users.c.marketplace_seller, False) == True,
+        sa.func.coalesce(seller_users.c.subscription_plan, "free") == "maxi",
+    )
+    query = (
+        sa.select(shop_products)
+        .select_from(shop_products.outerjoin(seller_users, shop_products.c.seller_id == seller_users.c.id))
+    )
+    visibility_public = sa.and_(
+        seller_eligible,
+        sa.func.coalesce(shop_products.c.visibility_scope, "all") == "all",
+        sa.func.coalesce(seller_users.c.marketplace_visibility_scope, "all") == "all",
+    )
+    visibility_filter = sa.or_(
+        shop_products.c.seller_id.is_(None),
+        visibility_public,
+        sa.and_(seller_eligible, shop_products.c.seller_id == viewer_referred_by),
+    )
+    query = query.where(visibility_filter)
 
     if mushroom_type:
         query = query.where(shop_products.c.mushroom_type == mushroom_type)
@@ -395,7 +473,7 @@ async def shop(
 
     cart_qty = 0
     if current_user:
-        cart_qty = await _shop_cart_qty(_shop_effective_uid(current_user))
+        cart_qty = await _shop_cart_qty(viewer_uid)
 
     cart_totals_rows = await database.fetch_all(
         sa.text(
@@ -429,11 +507,14 @@ async def product_page(request: Request, product_id: int):
     current_user = await get_user_from_request(request)
     if not current_user:
         return RedirectResponse(f"/login?next=/shop/{product_id}", status_code=302)
+    uid = _shop_effective_uid(current_user)
     product = await database.fetch_one(
         shop_products.select().where(shop_products.c.id == product_id)
     )
     if not product:
         return HTMLResponse("Товар не найден", status_code=404)
+    if not await _can_view_shop_product(uid, dict(product)):
+        return RedirectResponse("/shop", status_code=302)
 
     # Reviews with reviewer info
     reviews_raw = await database.fetch_all(
@@ -455,12 +536,15 @@ async def product_page(request: Request, product_id: int):
     # Similar products (same mushroom type, different id)
     similar = []
     if product["mushroom_type"]:
-        similar = await database.fetch_all(
+        similar_rows = await database.fetch_all(
             shop_products.select()
             .where(shop_products.c.mushroom_type == product["mushroom_type"])
             .where(shop_products.c.id != product_id)
             .limit(4)
         )
+        for s in similar_rows:
+            if await _can_view_shop_product(uid, dict(s)):
+                similar.append(s)
 
     q_rows = await database.fetch_all(
         product_questions.select()
@@ -480,9 +564,7 @@ async def product_page(request: Request, product_id: int):
 
     can_answer_questions = False
     cart_qty = 0
-    uid = None
     if current_user:
-        uid = _shop_effective_uid(current_user)
         cart_qty = await _shop_cart_qty(uid)
         can_answer_questions = await _can_answer_product_question(uid, dict(product))
 
@@ -715,6 +797,8 @@ async def shop_cart_add(
     )
     if not product or not product.get("in_stock", True):
         return RedirectResponse("/shop", status_code=302)
+    if not await _can_view_shop_product(_shop_effective_uid(current_user), dict(product)):
+        return RedirectResponse("/shop", status_code=302)
     qty = max(1, min(99, int(quantity or 1)))
     uid = _shop_effective_uid(current_user)
     existing = await database.fetch_one(
@@ -795,6 +879,8 @@ async def shop_cart_page(request: Request):
         )
         if not p:
             continue
+        if not await _can_view_shop_product(uid, dict(p)):
+            continue
         price = int(p["price"] or 0)
         qty = int(line["quantity"] or 1)
         line_total = price * qty
@@ -831,6 +917,8 @@ async def shop_checkout_get(request: Request):
             shop_products.select().where(shop_products.c.id == line["product_id"])
         )
         if not p:
+            continue
+        if not await _can_view_shop_product(uid, dict(p)):
             continue
         price = int(p["price"] or 0)
         qty = int(line["quantity"] or 1)
@@ -876,6 +964,8 @@ async def shop_checkout_post(
             shop_products.select().where(shop_products.c.id == line["product_id"])
         )
         if not p or not p.get("in_stock", True):
+            return RedirectResponse("/shop/cart?err=stock", status_code=302)
+        if not await _can_view_shop_product(uid, dict(p)):
             return RedirectResponse("/shop/cart?err=stock", status_code=302)
         price = int(p["price"] or 0)
         qty = int(line["quantity"] or 1)

@@ -43,6 +43,12 @@ users = sqlalchemy.Table(
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
     sqlalchemy.Column("needs_tariff_choice", sqlalchemy.Boolean, default=False, server_default="false"),
     sqlalchemy.Column("marketplace_seller", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column(
+        "marketplace_visibility_scope",
+        sqlalchemy.String(20),
+        nullable=False,
+        server_default="all",
+    ),
     sqlalchemy.Column("referral_shop_url", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column(
         "referral_shop_partner_self",
@@ -336,6 +342,12 @@ shop_products = sqlalchemy.Table(
     sqlalchemy.Column("brand_name", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("price_old", sqlalchemy.Integer, nullable=True),
     sqlalchemy.Column("verified_personal", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column(
+        "visibility_scope",
+        sqlalchemy.String(20),
+        nullable=False,
+        server_default="all",
+    ),
     sqlalchemy.Column("category", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("in_stock", sqlalchemy.Boolean, default=True, server_default="true"),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),

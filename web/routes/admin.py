@@ -119,6 +119,10 @@ def _parse_form_price(raw: Optional[str]) -> Optional[int]:
         return None
 
 
+def _normalize_visibility_scope(raw: Optional[str]) -> str:
+    return "referrals" if (raw or "").strip().lower() in ("referrals", "only_referrals") else "all"
+
+
 async def require_admin(request: Request):
     """Basic admin check — role=admin|moderator."""
     user = await get_user_from_request(request)
@@ -369,6 +373,7 @@ async def admin_shop_product_json(request: Request, product_id: int):
     p["review_avg"] = round(float(rv_avg), 2) if rv_avg is not None else None
     p["review_count"] = int(rv_n)
     p["extra_image_lines"] = extra_image_lines_from_json(p.get("image_urls_json"))
+    p["visibility_scope"] = _normalize_visibility_scope(p.get("visibility_scope"))
     if p.get("price_old") is not None:
         try:
             p["price_old"] = int(p["price_old"])
@@ -393,6 +398,7 @@ async def add_shop_product(
     price_old: str = Form(""),
     extra_image_urls: str = Form(""),
     verified_personal: str = Form(""),
+    visibility_scope: str = Form("all"),
 ):
     admin = await require_permission(request, "can_shop")
     if not admin:
@@ -414,6 +420,7 @@ async def add_shop_product(
             price_old=pov,
             image_urls_json=extra_j,
             verified_personal=(verified_personal == "true"),
+            visibility_scope=_normalize_visibility_scope(visibility_scope),
         )
     )
     return RedirectResponse("/admin/shop", status_code=302)
@@ -435,6 +442,7 @@ async def edit_shop_product(
     price_old: str = Form(""),
     extra_image_urls: str = Form(""),
     verified_personal: str = Form(""),
+    visibility_scope: str = Form("all"),
 ):
     admin = await require_permission(request, "can_shop")
     if not admin:
@@ -460,6 +468,7 @@ async def edit_shop_product(
                 price_old=pov,
                 image_urls_json=extra_j,
                 verified_personal=(verified_personal == "true"),
+                visibility_scope=_normalize_visibility_scope(visibility_scope),
             )
         )
         return JSONResponse({"ok": True})
@@ -648,6 +657,21 @@ async def set_marketplace_seller_flag(request: Request, user_id: int, enabled: s
         users.update().where(users.c.id == user_id).values(marketplace_seller=flag)
     )
     return JSONResponse({"ok": True, "user_id": user_id, "marketplace_seller": flag})
+
+
+@router.post("/users/{user_id}/marketplace-visibility")
+async def set_marketplace_visibility_scope(request: Request, user_id: int, scope: str = Form("all")):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    target = await database.fetch_one(users.select().where(users.c.id == user_id))
+    if not target:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    normalized = _normalize_visibility_scope(scope)
+    await database.execute(
+        users.update().where(users.c.id == user_id).values(marketplace_visibility_scope=normalized)
+    )
+    return JSONResponse({"ok": True, "user_id": user_id, "marketplace_visibility_scope": normalized})
 
 
 @router.post("/users/{user_id}/referral-shop-url")
@@ -854,6 +878,7 @@ async def change_subscription(request: Request, user_id: int, plan: str = Form(.
             subscription_end=end_date,
             subscription_admin_granted=granted,
             subscription_paid_lifetime=False,
+            marketplace_seller=(plan == "maxi"),
         )
     )
     now = datetime.utcnow()
@@ -918,6 +943,7 @@ async def patch_user_plan(request: Request, user_id: int):
             subscription_end=end_date,
             subscription_admin_granted=granted,
             subscription_paid_lifetime=False,
+            marketplace_seller=(plan == "maxi"),
         )
     )
     now = datetime.utcnow()

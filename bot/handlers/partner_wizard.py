@@ -73,7 +73,7 @@ def _intro_html() -> str:
     return (
         "🤝 <b>Партнёр: коротко</b>\n\n"
         "1) Нужен <b>оплаченный Старт+</b> (пробные 3 дня не считаются).\n"
-        "2) Магазин: Neurotrops → меню → кабинет → <b>Моя ссылка</b>.\n"
+        "2) Магазин: каталог → меню → личный кабинет → <b>Моя ссылка</b> → копировать.\n"
         "3) Пришлите ссылку сюда — я сохраню.\n"
         "4) Раздавайте ссылки Telegram и сайта.\n\n"
         "Полные условия: <b>/referral → вкладка/блок «Условия»</b>.\n\n"
@@ -137,7 +137,7 @@ async def partner_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     ]
     await update.message.reply_html(
         "<b>Шаг 2–3: ссылка магазина</b>\n"
-        "Откройте Neurotrops, скопируйте «Моя ссылка» и отправьте сюда." + hint,
+        "Магазин: каталог → меню → личный кабинет → «Моя ссылка» → копировать. Затем отправьте ссылку сюда." + hint,
         reply_markup=InlineKeyboardMarkup(rows),
         disable_web_page_preview=True,
     )
@@ -288,7 +288,7 @@ async def partner_receive_shop_url(update: Update, context: ContextTypes.DEFAULT
     except ValueError as e:
         await update.message.reply_text(
             f"Не получилось принять ссылку: {e}\n"
-            "Нужна ссылка с https://… Скопируйте «Моя ссылка» из кабинета Neurotrops.",
+            "Нужна ссылка с https://… Магазин: каталог → меню → личный кабинет → «Моя ссылка» → копировать.",
             reply_markup=kb,
         )
         return WAITING_SHOP_URL

@@ -59,6 +59,11 @@
           {% if p.in_stock == false %}
           <span class="px-2 py-0.5 rounded-full text-xs bg-red-500/10 text-red-400">Нет в наличии</span>
           {% endif %}
+          {% if p.visibility_scope == 'referrals' %}
+          <span class="px-2 py-0.5 rounded-full text-xs bg-cyan-500/15 text-cyan-300 border border-cyan-500/25">Только рефералы продавца</span>
+          {% else %}
+          <span class="px-2 py-0.5 rounded-full text-xs bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">Виден всем</span>
+          {% endif %}
         </div>
 
         <p class="text-xs text-muted line-clamp-2 mb-4">{{ p.description or '' }}</p>
@@ -160,6 +165,10 @@
           <label class="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" name="verified_personal" value="true" class="accent-gold w-4 h-4" />
             <span class="text-sm text-text">Лично проверено (галочка на витрине)</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" name="visibility_scope" value="referrals" class="accent-gold w-4 h-4" />
+            <span class="text-sm text-text">Только для рефералов продавца</span>
           </label>
         </div>
       </div>
@@ -270,8 +279,13 @@
             <input type="checkbox" name="verified_personal" id="editVerified" value="true" class="accent-gold w-4 h-4" />
             <span class="text-sm text-text">Лично проверено</span>
           </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" name="visibility_scope_referrals" id="editVisibilityReferrals" value="true" class="accent-gold w-4 h-4" />
+            <span class="text-sm text-text">Только для рефералов продавца</span>
+          </label>
         </div>
       </div>
+      <input type="hidden" name="visibility_scope" id="editVisibilityScope" value="all" />
       <div>
         <label class="block text-xs text-muted mb-1.5">Ссылка на товар</label>
         <div class="flex gap-2">
@@ -378,6 +392,8 @@ function openEditModal(pr) {
   document.getElementById('editPriceOld').value = pr.price_old != null ? pr.price_old : '';
   document.getElementById('editExtraImages').value = pr.extra_image_lines || '';
   document.getElementById('editVerified').checked = !!pr.verified_personal;
+  document.getElementById('editVisibilityReferrals').checked = (pr.visibility_scope === 'referrals');
+  document.getElementById('editVisibilityScope').value = (pr.visibility_scope === 'referrals') ? 'referrals' : 'all';
 
   // URL link button
   var linkBtn = document.getElementById('editUrlLink');
@@ -522,6 +538,7 @@ async function saveEditProduct() {
   fd.set('in_stock', inStock ? 'true' : 'false');
   var ver = document.getElementById('editVerified').checked;
   fd.set('verified_personal', ver ? 'true' : 'false');
+  fd.set('visibility_scope', document.getElementById('editVisibilityReferrals').checked ? 'referrals' : 'all');
 
   var errEl = document.getElementById('editSaveError');
   errEl.classList.add('hidden');

@@ -288,6 +288,7 @@ async def activate_subscription(
             subscription_end=end_date,
             subscription_admin_granted=False,
             subscription_paid_lifetime=paid_lifetime,
+            marketplace_seller=(plan == "maxi"),
             wellness_renewal_nudge_for_end=None,
         )
     )

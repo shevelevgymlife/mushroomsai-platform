@@ -691,6 +691,14 @@ async def run_heavy_startup(app: FastAPI) -> None:
             logger.info("referral bonus events (migrate_v37) OK")
         except Exception as e:
             logger.warning("migrate_v37 referral_bonus_events: %s", e)
+        try:
+            import migrate_v38_marketplace_visibility as migrate_v38
+
+            for s in migrate_v38.STEPS:
+                await database.execute(sa.text(s))
+            logger.info("marketplace visibility controls (migrate_v38) OK")
+        except Exception as e:
+            logger.warning("migrate_v38 marketplace visibility: %s", e)
 
         try:
             from services.merge_neurofungi_ai_chats import merge_all_neurofungi_ai_personal_chats

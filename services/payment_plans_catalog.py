@@ -105,6 +105,7 @@ DRAWER_MENU_ITEM_SPECS: tuple[tuple[str, str], ...] = (
     ("ai_chat", "AI-чат"),
     ("knowledge", "База знаний"),
     ("referral", "Реферальная программа"),
+    ("seller_marketplace", "Пункт «Магазин-кабинет»"),
     ("wellness", "Мои результаты"),
     ("wallet", "Мои кошельки"),
     ("link_account", "Присоединить / привязать Telegram"),

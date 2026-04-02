@@ -20,6 +20,10 @@ ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_IMAGE_SIZE = 5 * 1024 * 1024
 
 
+def _normalize_visibility_scope(raw: Optional[str]) -> str:
+    return "referrals" if (raw or "").strip().lower() in ("referrals", "only_referrals") else "all"
+
+
 def _parse_price(raw: Optional[str]) -> Optional[int]:
     if raw is None:
         return None
@@ -139,6 +143,7 @@ async def seller_shop_product_json(request: Request, product_id: int):
         "in_stock": p.get("in_stock") is not False,
         "brand_name": p.get("brand_name") or "",
         "verified_personal": bool(p.get("verified_personal")),
+        "visibility_scope": _normalize_visibility_scope(p.get("visibility_scope")),
         "extra_image_lines": extra_image_lines_from_json(p.get("image_urls_json")),
     }
     return JSONResponse(payload)
@@ -186,6 +191,7 @@ async def seller_add_product(
     price_old: str = Form(""),
     extra_image_urls: str = Form(""),
     verified_personal: str = Form(""),
+    visibility_scope: str = Form("all"),
 ):
     seller = await require_maxi_seller(request)
     if not seller:
@@ -211,6 +217,7 @@ async def seller_add_product(
             price_old=pov,
             image_urls_json=extra_j,
             verified_personal=(verified_personal == "true"),
+            visibility_scope=_normalize_visibility_scope(visibility_scope),
         )
     )
     return RedirectResponse("/seller/shop", status_code=302)
@@ -232,6 +239,7 @@ async def seller_edit_product(
     price_old: str = Form(""),
     extra_image_urls: str = Form(""),
     verified_personal: str = Form(""),
+    visibility_scope: str = Form("all"),
 ):
     seller = await require_maxi_seller(request)
     if not seller:
@@ -261,6 +269,7 @@ async def seller_edit_product(
             price_old=pov,
             image_urls_json=extra_j,
             verified_personal=(verified_personal == "true"),
+            visibility_scope=_normalize_visibility_scope(visibility_scope),
         )
     )
     return JSONResponse({"ok": True})
