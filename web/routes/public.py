@@ -61,6 +61,7 @@ from services.referral_shop_prefs import (
     external_buy_url_for_user,
     normalize_referral_shop_url_for_save,
 )
+from services.shop_referral_hub import viewer_exclusive_referrer_id
 from services.ops_alerts import (
     notify_new_feedback,
     notify_new_order,
@@ -169,6 +170,12 @@ async def _viewer_referred_by_seller(viewer_uid: int | None, seller_id: int | No
 
 
 async def _can_view_shop_product(viewer_uid: int | None, product_row: dict) -> bool:
+    if viewer_uid:
+        ex = await viewer_exclusive_referrer_id(int(viewer_uid))
+        if ex:
+            psid = product_row.get("seller_id")
+            if not psid or int(psid) != int(ex):
+                return False
     seller_id = product_row.get("seller_id")
     if not seller_id:
         return True
@@ -180,7 +187,10 @@ async def _can_view_shop_product(viewer_uid: int | None, product_row: dict) -> b
     # Если нет — его товары скрыты для всех до восстановления условий.
     if not bool(seller_d.get("marketplace_seller")):
         return False
-    if (seller_d.get("subscription_plan") or "free").strip().lower() != "maxi":
+    sp = (seller_d.get("subscription_plan") or "free").strip().lower()
+    gu = seller_d.get("maxi_perks_grace_until")
+    grace_ok = bool(gu and gu > datetime.utcnow())
+    if sp != "maxi" and not grace_ok:
         return False
     if not _product_restricted_to_referrals(product_row, seller_d):
         return True
@@ -291,7 +301,10 @@ async def index(request: Request):
     seller_users = users.alias("seller_users")
     seller_eligible = sa.and_(
         sa.func.coalesce(seller_users.c.marketplace_seller, False) == True,
-        sa.func.coalesce(seller_users.c.subscription_plan, "free") == "maxi",
+        sa.or_(
+            sa.func.coalesce(seller_users.c.subscription_plan, "free") == "maxi",
+            seller_users.c.maxi_perks_grace_until > sa.func.now(),
+        ),
     )
     featured_raw = await database.fetch_all(
         sa.select(shop_products)
@@ -407,6 +420,7 @@ async def shop(
                 "search": search,
                 "cart_qty": 0,
                 "cart_totals": {},
+                "shop_exclusive_referrer_id": None,
             },
         )
 
@@ -416,23 +430,32 @@ async def shop(
     seller_users = users.alias("seller_users")
     seller_eligible = sa.and_(
         sa.func.coalesce(seller_users.c.marketplace_seller, False) == True,
-        sa.func.coalesce(seller_users.c.subscription_plan, "free") == "maxi",
+        sa.or_(
+            sa.func.coalesce(seller_users.c.subscription_plan, "free") == "maxi",
+            seller_users.c.maxi_perks_grace_until > sa.func.now(),
+        ),
     )
     query = (
         sa.select(shop_products)
         .select_from(shop_products.outerjoin(seller_users, shop_products.c.seller_id == seller_users.c.id))
     )
-    visibility_public = sa.and_(
-        seller_eligible,
-        sa.func.coalesce(shop_products.c.visibility_scope, "all") == "all",
-        sa.func.coalesce(seller_users.c.marketplace_visibility_scope, "all") == "all",
-    )
-    visibility_filter = sa.or_(
-        shop_products.c.seller_id.is_(None),
-        visibility_public,
-        sa.and_(seller_eligible, shop_products.c.seller_id == viewer_referred_by),
-    )
-    query = query.where(visibility_filter)
+    exclusive_rid = await viewer_exclusive_referrer_id(viewer_uid)
+    shop_exclusive_referrer_id = int(exclusive_rid) if exclusive_rid else None
+    if exclusive_rid:
+        query = query.where(shop_products.c.seller_id == int(exclusive_rid))
+        query = query.where(seller_eligible)
+    else:
+        visibility_public = sa.and_(
+            seller_eligible,
+            sa.func.coalesce(shop_products.c.visibility_scope, "all") == "all",
+            sa.func.coalesce(seller_users.c.marketplace_visibility_scope, "all") == "all",
+        )
+        visibility_filter = sa.or_(
+            shop_products.c.seller_id.is_(None),
+            visibility_public,
+            sa.and_(seller_eligible, shop_products.c.seller_id == viewer_referred_by),
+        )
+        query = query.where(visibility_filter)
 
     if mushroom_type:
         query = query.where(shop_products.c.mushroom_type == mushroom_type)
@@ -498,6 +521,7 @@ async def shop(
             "search": search,
             "cart_qty": cart_qty,
             "cart_totals": cart_totals,
+            "shop_exclusive_referrer_id": shop_exclusive_referrer_id,
         },
     )
 
@@ -1151,8 +1175,12 @@ async def referral_program_page(request: Request):
         list_referral_bonus_events_for_referrer,
     )
 
-    show_partner_shop = await paid_subscription_for_referral_program(uid)
-    ref_links_use_platform_default = not await paid_subscription_for_referral_program(uid)
+    from services.shop_referral_hub import maxi_marketplace_can_bind_any_shop_url
+
+    paid_ref = await paid_subscription_for_referral_program(uid)
+    maxi_shop = await maxi_marketplace_can_bind_any_shop_url(uid)
+    show_partner_shop = paid_ref or maxi_shop
+    ref_links_use_platform_default = not paid_ref and not maxi_shop
     code = await invite_referral_code_for_sharing(uid)
     bot = (settings.TELEGRAM_BOT_USERNAME or "").strip().lstrip("@") or "mushrooms_ai_bot"
     base = (settings.SITE_URL or "").strip().rstrip("/")
@@ -1205,11 +1233,15 @@ async def referral_partner_shop_url_save(request: Request, shop_url: str = Form(
         return RedirectResponse("/login?next=/referral", status_code=302)
     uid = int(user.get("primary_user_id") or user["id"])
     from services.subscription_service import paid_subscription_for_referral_program
+    from services.shop_referral_hub import maxi_marketplace_can_bind_any_shop_url
 
-    if not await paid_subscription_for_referral_program(uid):
+    if not (
+        await paid_subscription_for_referral_program(uid)
+        or await maxi_marketplace_can_bind_any_shop_url(uid)
+    ):
         return RedirectResponse("/referral?partner_err=plan", status_code=303)
     try:
-        normalized = await normalize_referral_shop_url_for_save(shop_url)
+        normalized = await normalize_referral_shop_url_for_save(shop_url, saver_user_id=uid)
     except ValueError as e:
         return RedirectResponse("/referral?partner_err=bad&detail=" + quote(str(e), safe=""), status_code=303)
     await database.execute(

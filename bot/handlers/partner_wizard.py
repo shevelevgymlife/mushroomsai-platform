@@ -284,7 +284,7 @@ async def partner_receive_shop_url(update: Update, context: ContextTypes.DEFAULT
         return ConversationHandler.END
 
     try:
-        normalized = await normalize_referral_shop_url_for_save(raw)
+        normalized = await normalize_referral_shop_url_for_save(raw, saver_user_id=uid)
     except ValueError as e:
         await update.message.reply_text(
             f"Не получилось принять ссылку: {e}\n"

@@ -280,18 +280,17 @@ async def activate_subscription(
             active=True,
         )
     )
-    await database.execute(
-        users.update()
-        .where(users.c.id == user_id)
-        .values(
-            subscription_plan=plan,
-            subscription_end=end_date,
-            subscription_admin_granted=False,
-            subscription_paid_lifetime=paid_lifetime,
-            marketplace_seller=(plan == "maxi"),
-            wellness_renewal_nudge_for_end=None,
-        )
-    )
+    upd_vals: dict = {
+        "subscription_plan": plan,
+        "subscription_end": end_date,
+        "subscription_admin_granted": False,
+        "subscription_paid_lifetime": paid_lifetime,
+        "marketplace_seller": (plan == "maxi"),
+        "wellness_renewal_nudge_for_end": None,
+    }
+    if plan == "maxi":
+        upd_vals["maxi_perks_grace_until"] = None
+    await database.execute(users.update().where(users.c.id == user_id).values(**upd_vals))
     if not skip_event_log:
         await record_subscription_event(
             int(user_id),
@@ -577,6 +576,13 @@ async def check_subscription(user_id: int) -> str:
     if stored_plan != "free" and (not sub_end or sub_end <= now):
         if not (admin_granted and sub_end is None) and not bool(row.get("subscription_paid_lifetime")):
             prev_plan = stored_plan
+            if prev_plan == "maxi" and bool(row.get("marketplace_seller")):
+                try:
+                    from services.shop_referral_hub import schedule_maxi_perks_grace
+
+                    await schedule_maxi_perks_grace(int(user_id))
+                except Exception:
+                    logger.debug("schedule_maxi_perks_grace failed uid=%s", user_id, exc_info=True)
             await database.execute(
                 users.update()
                 .where(users.c.id == user_id)

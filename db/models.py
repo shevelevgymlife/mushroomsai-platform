@@ -17,6 +17,11 @@ users = sqlalchemy.Table(
     sqlalchemy.Column("subscription_end", sqlalchemy.DateTime, nullable=True),
     sqlalchemy.Column("subscription_admin_granted", sqlalchemy.Boolean, default=False, server_default="false"),
     sqlalchemy.Column("subscription_paid_lifetime", sqlalchemy.Boolean, default=False, server_default="false"),
+    sqlalchemy.Column(
+        "maxi_perks_grace_until",
+        sqlalchemy.DateTime,
+        nullable=True,
+    ),
     sqlalchemy.Column("referral_code", sqlalchemy.String(20), unique=True, nullable=True),
     sqlalchemy.Column("referred_by", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=True),
     sqlalchemy.Column("linked_tg_id", sqlalchemy.BigInteger, nullable=True),

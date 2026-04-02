@@ -17,11 +17,18 @@ def normalize_referral_shop_url(raw: Optional[str]) -> Optional[str]:
     return s
 
 
-async def normalize_referral_shop_url_for_save(raw: Optional[str]) -> Optional[str]:
-    """Нормализация + опциональная проверка префикса (настройка в админке)."""
+async def normalize_referral_shop_url_for_save(
+    raw: Optional[str], saver_user_id: Optional[int] = None
+) -> Optional[str]:
+    """Нормализация + префикс Neurotrops (если включён), кроме активного Макси-продавца (любой https)."""
     s = normalize_referral_shop_url(raw)
     if s is None:
         return None
+    if saver_user_id is not None:
+        from services.shop_referral_hub import maxi_marketplace_can_bind_any_shop_url
+
+        if await maxi_marketplace_can_bind_any_shop_url(int(saver_user_id)):
+            return s
     from services.referral_shop_link_policy import assert_partner_shop_url_allowed
 
     await assert_partner_shop_url_allowed(s)
@@ -85,9 +92,9 @@ async def shop_urls_for_user(internal_user_id: int) -> tuple[str, str]:
         return SHOP_RUS_URL, eu
     u = (ref.get("referral_shop_url") or "").strip()
     if u:
-        from services.subscription_service import paid_subscription_for_referral_program
+        from services.shop_referral_hub import referrer_ambassador_shop_visible
 
-        if await paid_subscription_for_referral_program(int(ref["id"])):
+        if await referrer_ambassador_shop_visible(int(ref["id"])):
             return u, eu
     return SHOP_RUS_URL, eu
 
@@ -123,9 +130,9 @@ async def attach_referral_shop_context(u: dict) -> None:
         return
     url = (ref.get("referral_shop_url") or "").strip()
     if url:
-        from services.subscription_service import paid_subscription_for_referral_program
+        from services.shop_referral_hub import referrer_ambassador_shop_visible
 
-        if await paid_subscription_for_referral_program(int(ref["id"])):
+        if await referrer_ambassador_shop_visible(int(ref["id"])):
             u["show_marketplace_nav"] = False
             u["referrer_external_shop_url"] = url
             return
@@ -186,9 +193,9 @@ async def tg_shop_button_label(internal_user_id: int) -> str:
     url = (ref.get("referral_shop_url") or "").strip()
     if not url:
         return TG_BTN_SHOP_MARKETPLACE
-    from services.subscription_service import paid_subscription_for_referral_program
+    from services.shop_referral_hub import referrer_ambassador_shop_visible
 
-    if not await paid_subscription_for_referral_program(int(ref["id"])):
+    if not await referrer_ambassador_shop_visible(int(ref["id"])):
         return TG_BTN_SHOP_MARKETPLACE
     return TG_BTN_SHOP_SIMPLE
 

@@ -11,11 +11,17 @@
 
     {% include "components/admin_nav.html" %}
 
-    <div class="neo-page-hero mb-8">
+    {% if request.query_params.get('hub_saved') == '1' %}
+    <div class="mb-4 p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-200 text-sm max-w-3xl">
+      Настройки «Рефералы · Магазин Макси» сохранены.
+    </div>
+    {% endif %}
+
+    <div class="neo-page-hero mb-6">
       <div class="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 class="text-2xl sm:text-3xl font-semibold text-text tracking-tight">Управление магазином</h1>
-          <p class="text-sm text-muted mt-2">Каталог, цены и карточки товаров на сайте</p>
+          <p class="text-sm text-muted mt-2">Каталог на сайте и режим витрины для рефералов продавцов Макси. Листайте шапки влево/вправо, как в разделе «События».</p>
         </div>
         <button type="button" onclick="openAddModal()"
           class="px-5 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:opacity-95 transition-all shadow-[0_0_24px_rgba(61,212,224,0.25)] shrink-0">
@@ -24,6 +30,30 @@
       </div>
     </div>
 
+    {% set hub = shop_referral_hub or {} %}
+    {% set ex = hub.get('exclusive_catalog', {}) %}
+    {% set ex_mode = ex.get('mode', 'off') %}
+
+    <div class="ash-chips mb-3" id="ashChips" role="tablist" aria-label="Разделы магазина">
+      <button type="button" class="ash-chip ash-chip--on" data-ash="catalog" id="ash-chip-catalog">
+        <span class="ash-chip-ico">🛒</span><span class="ash-chip-txt">Каталог</span>
+      </button>
+      <button type="button" class="ash-chip" data-ash="referral" id="ash-chip-referral">
+        <span class="ash-chip-ico">🔗</span><span class="ash-chip-txt">Рефералы · Макси</span>
+      </button>
+      <button type="button" class="ash-chip" data-ash="links" id="ash-chip-links">
+        <span class="ash-chip-ico">🌐</span><span class="ash-chip-txt">Ссылки и политика</span>
+      </button>
+    </div>
+
+    <div class="ash-cols-wrap mb-10" id="ashColsWrap">
+      <section class="ash-cat-col" id="ash-sec-catalog" aria-labelledby="ash-chip-catalog">
+        <div class="ash-cat-head">
+          <span class="ash-cat-head-ico">🛒</span>
+          <span class="ash-cat-head-txt">Каталог товаров</span>
+        </div>
+        <div class="ash-cat-inner">
+          <p class="text-xs text-muted mb-4 leading-relaxed">Карточки на витрине <code class="text-gold/90">/shop</code>, цены, фото. Товары с <strong>продавцом</strong> привязаны к аккаунту продавца; строки без продавца — общая витрина платформы.</p>
     <!-- Products grid -->
     {% if products %}
     <div id="shop-products-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -96,6 +126,144 @@
       <p class="text-sm">Товаров пока нет. Добавьте первый!</p>
     </div>
     {% endif %}
+        </div>
+      </section>
+
+      <section class="ash-cat-col" id="ash-sec-referral" aria-labelledby="ash-chip-referral">
+        <div class="ash-cat-head">
+          <span class="ash-cat-head-ico">🔗</span>
+          <span class="ash-cat-head-txt">Рефералы и витрина Макси</span>
+        </div>
+        <div class="ash-cat-inner ash-form-scroll">
+          <p class="text-xs text-muted mb-4 leading-relaxed border border-border/60 rounded-xl p-3 bg-surface/30">
+            <strong>Не трогает начисление реферальных бонусов.</strong> Только то, что видят пользователи в магазине и какие внешние ссылки показываются приглашённым.
+            Реферальное дерево (<code class="text-gold/80">referred_by</code>) не переписывается: после окончания Макси + льготных дней витрина снова общая для зрителя, без «возврата» к старому режиму магазина.
+          </p>
+
+          <form action="/admin/shop/referral-hub-save" method="post" class="space-y-5 max-w-xl">
+            <div>
+              <h3 class="text-sm font-semibold text-text mb-2">Эксклюзивный каталог для рефералов</h3>
+              <p class="text-xs text-muted mb-3">Если включено и реферер — активный продавец маркетплейса с Макси (или в льготном окне после Макси), приглашённый на <code class="text-gold/80">/shop</code> видит <strong>только</strong> товары этого продавца, без общих позиций Neurotrops.</p>
+              <div class="space-y-2 text-sm text-text">
+                <label class="flex items-start gap-2 cursor-pointer">
+                  <input type="radio" name="exclusive_mode" value="off" class="mt-1 accent-gold" {% if ex_mode == 'off' %}checked{% endif %} />
+                  <span><strong>Выкл.</strong> — у всех обычная витрина (и свои товары продавца, и общие).</span>
+                </label>
+                <label class="flex items-start gap-2 cursor-pointer">
+                  <input type="radio" name="exclusive_mode" value="all_maxi_sellers" class="mt-1 accent-gold" {% if ex_mode == 'all_maxi_sellers' %}checked{% endif %} />
+                  <span><strong>Все продавцы Макси</strong> — для любого приглашённого, чей реферер — маркетплейс-продавец с активным Макси/льготой, только его товары.</span>
+                </label>
+                <label class="flex items-start gap-2 cursor-pointer">
+                  <input type="radio" name="exclusive_mode" value="selected" class="mt-1 accent-gold" {% if ex_mode == 'selected' %}checked{% endif %} />
+                  <span><strong>Только выбранные id</strong> — ниже список user id продавцов; эксклюзив срабатывает только если реферер в списке и подходит по Макси/льготе.</span>
+                </label>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs text-muted mb-1.5">ID продавцов (через запятую)</label>
+              <textarea name="seller_user_ids" rows="3" placeholder="12, 34, 56"
+                class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm font-mono resize-none focus:outline-none focus:border-gold/60">{{ shop_hub_selected_ids_text or '' }}</textarea>
+              <p class="text-[11px] text-muted mt-1">Имеет смысл при режиме «Только выбранные id». Пусто = никого.</p>
+            </div>
+            <div>
+              <label class="block text-xs text-muted mb-1.5">Льготные дни после окончания Макси</label>
+              <input type="number" name="grace_days" min="0" max="90" value="{{ hub.get('grace_days_after_maxi_end', 5) }}"
+                class="w-32 px-3 py-2 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60" />
+              <p class="text-[11px] text-muted mt-1">Сколько дней после смены тарифа с Макси сохраняются «перки» витрины и своя ссылка магазина для реферера. По истечении — новые гости видят стандартные ссылки/витрину; старые привязки дерева не меняются.</p>
+            </div>
+            <div>
+              <label class="flex items-center gap-2 cursor-pointer text-sm text-text">
+                <input type="checkbox" name="single_link_ai" value="1" class="accent-gold w-4 h-4" {% if hub.get('single_link_ai_for_exclusive', True) %}checked{% endif %} />
+                <span><strong>AI: одна ссылка «где купить»</strong> для эксклюзивного режима (если у реферера задана своя ссылка магазина).</span>
+              </label>
+              <p class="text-[11px] text-muted mt-1.5 ml-6">Вопросы «где купить» / магазин — бот отвечает одной ссылкой партнёра, без подмешивания шаблонной Neurotrops.</p>
+            </div>
+            <div class="rounded-xl border border-border/80 bg-bg/40 p-3 text-[11px] text-muted space-y-2">
+              <p><strong class="text-text/90">Своя ссылка без префикса Neurotrops:</strong> пользователь с флагом продавца маркетплейса и тарифом Макси (или в льготе) может сохранить произвольный URL в партнёрском магазине — обход глобального префикса из раздела «Реферальная программа».</p>
+              <p><strong class="text-text/90">Видимость ссылки приглашённым:</strong> как у Старт+ по подписке, плюс для рефереров в эксклюзивном режиме Макси — их ссылка показывается в реферальных материалах при активном Макси/льготе.</p>
+            </div>
+            <button type="submit" class="px-5 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:opacity-95 transition-all">Сохранить настройки хаба</button>
+          </form>
+        </div>
+      </section>
+
+      <section class="ash-cat-col" id="ash-sec-links" aria-labelledby="ash-chip-links">
+        <div class="ash-cat-head">
+          <span class="ash-cat-head-ico">🌐</span>
+          <span class="ash-cat-head-txt">Ссылки и политика</span>
+        </div>
+        <div class="ash-cat-inner ash-form-scroll">
+          {% set pol = referral_shop_link_policy or {} %}
+          <p class="text-xs text-muted mb-4 leading-relaxed">Глобальное правило «ссылка магазина должна начинаться с префикса» настраивается в <a href="/admin/referral" class="text-gold hover:underline">Реферальная программа</a>. Продавцы Макси с активной подпиской/льготой могут сохранять ссылку без этого префикса (см. соседнюю шапку).</p>
+          <dl class="text-sm space-y-3 border border-border rounded-xl p-4 bg-surface/20">
+            <div>
+              <dt class="text-muted text-xs uppercase tracking-wide mb-1">Префикс обязателен</dt>
+              <dd class="text-text">{% if pol.get('enforce_prefix') %}Да — не-Макси партнёры должны подчиняться префиксу.{% else %}Нет — проверка отключена для обычных пользователей.{% endif %}</dd>
+            </div>
+            <div>
+              <dt class="text-muted text-xs uppercase tracking-wide mb-1">Текущий префикс</dt>
+              <dd class="text-text break-all font-mono text-xs opacity-90">{{ pol.get('required_prefix', '') }}</dd>
+            </div>
+          </dl>
+          <p class="text-[11px] text-muted mt-4">Изменить префикс и включить/выключить проверку — только на странице реферальной программы, чтобы не дублировать формы.</p>
+        </div>
+      </section>
+    </div>
+
+    <style>
+    .ash-chips { display:flex; flex-wrap:nowrap; gap:8px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:thin; padding:4px 2px 10px; margin:0 -4px 4px; scroll-padding-inline:4px; }
+    .ash-chips::-webkit-scrollbar { height:4px; }
+    .ash-chips::-webkit-scrollbar-thumb { background:rgba(61,212,224,.35); border-radius:4px; }
+    .ash-chip { flex:0 0 auto; display:inline-flex; align-items:center; gap:6px; padding:10px 14px; border-radius:999px; border:1px solid rgba(61,212,224,.45); background:rgba(255,255,255,.04); color:#3dd4e0; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap; transition:background .15s,border-color .15s,color .15s; }
+    .ash-chip:hover { border-color:rgba(61,212,224,.75); background:rgba(61,212,224,.1); }
+    .ash-chip--on { background:rgba(61,212,224,.22); border-color:#3dd4e0; color:#b8f6ff; box-shadow:0 0 0 1px rgba(61,212,224,.2); }
+    .ash-chip-ico { font-size:15px; line-height:1; }
+    .ash-cols-wrap { display:flex; flex-direction:row; flex-wrap:nowrap; gap:12px; overflow-x:auto; overflow-y:hidden; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; scrollbar-width:thin; min-height:420px; max-height:min(72vh,640px); padding-bottom:8px; }
+    .ash-cols-wrap::-webkit-scrollbar { height:5px; }
+    .ash-cols-wrap::-webkit-scrollbar-thumb { background:rgba(61,212,224,.35); border-radius:4px; }
+    .ash-cat-col { flex:0 0 100%; width:100%; max-width:100%; scroll-snap-align:start; scroll-snap-stop:always; display:flex; flex-direction:column; min-width:0; box-sizing:border-box; }
+    .ash-cat-head { flex-shrink:0; display:flex; align-items:center; gap:8px; padding:12px 14px; margin-bottom:10px; border-radius:16px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); }
+    .ash-cat-head-ico { font-size:18px; }
+    .ash-cat-head-txt { font-size:15px; font-weight:700; color:#e8e8e8; flex:1; }
+    .ash-cat-inner { flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; padding-right:4px; padding-bottom:8px; }
+    .ash-form-scroll { max-height:100%; }
+    </style>
+    <script>
+    (function () {
+      var wrap = document.getElementById("ashColsWrap");
+      var chips = document.querySelectorAll(".ash-chip");
+      if (!wrap || !chips.length) return;
+      function syncChipsFromScroll() {
+        var cols = wrap.querySelectorAll(".ash-cat-col");
+        if (!cols.length) return;
+        var sl = wrap.scrollLeft, vw = wrap.clientWidth, best = 0, bestOv = -1;
+        for (var i = 0; i < cols.length; i++) {
+          var el = cols[i], left = el.offsetLeft, cw = el.offsetWidth;
+          var ov = Math.min(sl + vw, left + cw) - Math.max(sl, left);
+          if (ov > bestOv) { bestOv = ov; best = i; }
+        }
+        var active = cols[best].id.replace("ash-sec-", "");
+        chips.forEach(function (c) {
+          c.classList.toggle("ash-chip--on", c.getAttribute("data-ash") === active);
+        });
+      }
+      chips.forEach(function (ch) {
+        ch.addEventListener("click", function () {
+          var k = ch.getAttribute("data-ash");
+          var col = document.getElementById("ash-sec-" + k);
+          if (!col) return;
+          col.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
+        });
+      });
+      var t = null;
+      wrap.addEventListener("scroll", function () {
+        if (t) cancelAnimationFrame(t);
+        t = requestAnimationFrame(syncChipsFromScroll);
+      }, { passive: true });
+      window.addEventListener("resize", function () { requestAnimationFrame(syncChipsFromScroll); });
+      syncChipsFromScroll();
+    })();
+    </script>
   </div>
 </div>
 

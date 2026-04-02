@@ -336,10 +336,62 @@ async def shop_page(request: Request):
     all_products = await database.fetch_all(
         shop_products.select().order_by(shop_products.c.id.desc())
     )
+    from services.referral_shop_link_policy import get_referral_shop_link_policy
+    from services.shop_referral_hub import get_shop_referral_hub
+
+    hub = await get_shop_referral_hub()
+    pol = await get_referral_shop_link_policy()
+    ids = hub.get("exclusive_catalog") or {}
+    sel_txt = ", ".join(str(x) for x in (ids.get("seller_user_ids") or []))
     return templates.TemplateResponse(
         "dashboard/admin_shop.html",
-        {"request": request, "user": admin, "nav": ADMIN_NAV, "user_permissions": await get_user_permissions(admin), "products": all_products},
+        {
+            "request": request,
+            "user": admin,
+            "nav": ADMIN_NAV,
+            "user_permissions": await get_user_permissions(admin),
+            "products": all_products,
+            "shop_referral_hub": hub,
+            "referral_shop_link_policy": pol,
+            "shop_hub_selected_ids_text": sel_txt,
+        },
     )
+
+
+@router.post("/shop/referral-hub-save")
+async def admin_shop_referral_hub_save(
+    request: Request,
+    exclusive_mode: str = Form("off"),
+    seller_user_ids: str = Form(""),
+    grace_days: str = Form("5"),
+    single_link_ai: str = Form(""),
+):
+    admin = await require_permission(request, "can_shop")
+    if not admin:
+        return RedirectResponse("/login", status_code=302)
+    mode = (exclusive_mode or "off").strip().lower()
+    if mode not in ("off", "all_maxi_sellers", "selected"):
+        mode = "off"
+    raw_ids: list[int] = []
+    for part in (seller_user_ids or "").replace(";", ",").split(","):
+        p = part.strip()
+        if p.isdigit():
+            raw_ids.append(int(p))
+    try:
+        gd = int(float(str(grace_days).strip() or "5"))
+    except (TypeError, ValueError):
+        gd = 5
+    from services.shop_referral_hub import set_shop_referral_hub
+
+    await set_shop_referral_hub(
+        {
+            "exclusive_catalog": {"mode": mode, "seller_user_ids": raw_ids},
+            "grace_days_after_maxi_end": gd,
+            "single_link_ai_for_exclusive": str(single_link_ai).strip().lower()
+            in ("1", "true", "on", "yes"),
+        }
+    )
+    return RedirectResponse("/admin/shop?hub_saved=1", status_code=303)
 
 
 @router.get("/shop/product/{product_id}")
@@ -686,7 +738,7 @@ async def set_user_referral_shop_url(request: Request, user_id: int, url: str = 
     keep_self = (form.get("keep_partner_self") or "").strip().lower() in ("1", "true", "yes", "on")
     prev_self = bool(target.get("referral_shop_partner_self"))
     try:
-        normalized = await _normalize_referral_shop_url_for_save(url)
+        normalized = await _normalize_referral_shop_url_for_save(url, saver_user_id=user_id)
     except ValueError as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
     if not normalized:
@@ -872,15 +924,29 @@ async def change_subscription(request: Request, user_id: int, plan: str = Form(.
         end_date = datetime.utcnow() + timedelta(days=30)
 
     granted = plan != "free"
-    await database.execute(
-        users.update().where(users.c.id == user_id).values(
-            subscription_plan=plan,
-            subscription_end=end_date,
-            subscription_admin_granted=granted,
-            subscription_paid_lifetime=False,
-            marketplace_seller=(plan == "maxi"),
-        )
-    )
+    row_prev_sub = await database.fetch_one(users.select().where(users.c.id == user_id))
+    if (
+        plan == "free"
+        and row_prev_sub
+        and (row_prev_sub.get("subscription_plan") or "").lower() == "maxi"
+        and bool(row_prev_sub.get("marketplace_seller"))
+    ):
+        try:
+            from services.shop_referral_hub import schedule_maxi_perks_grace
+
+            await schedule_maxi_perks_grace(int(user_id))
+        except Exception:
+            pass
+    sub_adm_vals = {
+        "subscription_plan": plan,
+        "subscription_end": end_date,
+        "subscription_admin_granted": granted,
+        "subscription_paid_lifetime": False,
+        "marketplace_seller": (plan == "maxi"),
+    }
+    if plan == "maxi":
+        sub_adm_vals["maxi_perks_grace_until"] = None
+    await database.execute(users.update().where(users.c.id == user_id).values(**sub_adm_vals))
     now = datetime.utcnow()
     if plan == "free":
         await record_subscription_event(int(user_id), "admin", "free", 0.0, now, None, None)
@@ -937,15 +1003,29 @@ async def patch_user_plan(request: Request, user_id: int):
     else:
         end_date = datetime.utcnow() + timedelta(days=30)
     granted = plan != "free"
-    await database.execute(
-        users.update().where(users.c.id == user_id).values(
-            subscription_plan=plan,
-            subscription_end=end_date,
-            subscription_admin_granted=granted,
-            subscription_paid_lifetime=False,
-            marketplace_seller=(plan == "maxi"),
-        )
-    )
+    row_prev_patch = await database.fetch_one(users.select().where(users.c.id == user_id))
+    if (
+        plan == "free"
+        and row_prev_patch
+        and (row_prev_patch.get("subscription_plan") or "").lower() == "maxi"
+        and bool(row_prev_patch.get("marketplace_seller"))
+    ):
+        try:
+            from services.shop_referral_hub import schedule_maxi_perks_grace
+
+            await schedule_maxi_perks_grace(int(user_id))
+        except Exception:
+            pass
+    patch_plan_vals = {
+        "subscription_plan": plan,
+        "subscription_end": end_date,
+        "subscription_admin_granted": granted,
+        "subscription_paid_lifetime": False,
+        "marketplace_seller": (plan == "maxi"),
+    }
+    if plan == "maxi":
+        patch_plan_vals["maxi_perks_grace_until"] = None
+    await database.execute(users.update().where(users.c.id == user_id).values(**patch_plan_vals))
     now = datetime.utcnow()
     if plan == "free":
         await record_subscription_event(int(user_id), "admin", "free", 0.0, now, None, None)

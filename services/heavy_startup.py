@@ -709,6 +709,15 @@ async def run_heavy_startup(app: FastAPI) -> None:
             logger.warning("migrate_v39 yookassa_return_token: %s", e)
 
         try:
+            import migrate_v40_shop_maxi_grace as migrate_v40
+
+            for s in migrate_v40.STEPS:
+                await database.execute(sa.text(s))
+            logger.info("shop maxi perks grace (migrate_v40) OK")
+        except Exception as e:
+            logger.warning("migrate_v40 shop_maxi_grace: %s", e)
+
+        try:
             from services.merge_neurofungi_ai_chats import merge_all_neurofungi_ai_personal_chats
 
             await merge_all_neurofungi_ai_personal_chats()

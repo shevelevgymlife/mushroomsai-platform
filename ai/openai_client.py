@@ -7,7 +7,7 @@ from openai import AsyncOpenAI
 import sqlalchemy as sa
 from config import settings
 from db.database import database
-from db.models import ai_settings, messages, ai_training_posts
+from db.models import ai_settings, messages, ai_training_posts, users
 from ai.system_prompt import DEFAULT_SYSTEM_PROMPT
 from typing import Optional
 from services.tg_notify import notify_error
@@ -239,8 +239,23 @@ async def get_system_prompt(user_message: str = "") -> str:
 async def _shop_links_system_extra(user_id: int) -> str:
     """Те же URL магазинов, что у кнопки «Магазин» и веб (реферал амбассадора / стандарт)."""
     from services.referral_shop_prefs import shop_urls_for_user
+    from services.shop_referral_hub import (
+        single_link_ai_for_exclusive_enabled,
+        viewer_exclusive_referrer_id,
+    )
 
     try:
+        if await single_link_ai_for_exclusive_enabled():
+            rid = await viewer_exclusive_referrer_id(int(user_id))
+            if rid:
+                ref = await database.fetch_one(users.select().where(users.c.id == int(rid)))
+                u = (ref.get("referral_shop_url") or "").strip() if ref else ""
+                if u:
+                    return (
+                        "\n\nМагазин для этого пользователя — одна ссылка пригласившего (Макси/витрина). "
+                        "При вопросах «где купить», «ссылка на магазин» давай только её:\n"
+                        f"{u}\n"
+                    )
         ru, eu = await shop_urls_for_user(user_id)
         return (
             "\n\nСсылки на магазины для этого пользователя (используй только их при вопросах куда купить, "
