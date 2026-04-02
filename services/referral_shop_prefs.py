@@ -16,6 +16,17 @@ def normalize_referral_shop_url(raw: Optional[str]) -> Optional[str]:
         raise ValueError("Укажите ссылку с http:// или https://")
     return s
 
+
+async def normalize_referral_shop_url_for_save(raw: Optional[str]) -> Optional[str]:
+    """Нормализация + опциональная проверка префикса (настройка в админке)."""
+    s = normalize_referral_shop_url(raw)
+    if s is None:
+        return None
+    from services.referral_shop_link_policy import assert_partner_shop_url_allowed
+
+    await assert_partner_shop_url_allowed(s)
+    return s
+
 from db.database import database
 from db.models import users
 

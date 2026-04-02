@@ -65,6 +65,12 @@
       <p class="text-xs text-muted mb-3">Сначала кнопка в магазин — потом вставьте сюда скопированную «Мою ссылку» из кабинета Neurotrops.</p>
       <a href="{{ neurotrops_shop_entry_url }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-medium border border-gold/40 text-gold hover:bg-gold/10 mb-4">Взять ссылку в магазине</a>
       <p class="text-xs text-muted mb-3 leading-relaxed">В кабинете магазина смотрите продажи и начисления. Здесь только сохраняем <strong>вашу</strong> ссылку для показа приглашённым в приложении.</p>
+      {% if partner_shop_link_policy.enforce_prefix %}
+      <div class="mb-3 p-2.5 rounded-xl border border-cyan-500/25 bg-cyan-500/[0.06] text-xs text-cyan-100/95 leading-relaxed">
+        <strong>Проверка включена:</strong> ссылка должна <strong>точно начинаться</strong> с:<br/>
+        <code class="text-[11px] break-all opacity-95">{{ partner_shop_link_policy.required_prefix }}</code>
+      </div>
+      {% endif %}
       <form method="post" action="/referral/partner-shop-url" class="space-y-3">
         <label class="block text-xs text-muted">Ваша реферальная ссылка магазина (самоприсвоение)</label>
         <input type="url" name="shop_url" value="{{ ref_shop_url_current }}" placeholder="https://…" class="sinp w-full text-sm" autocomplete="off" />

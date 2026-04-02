@@ -30,7 +30,7 @@ from config import settings
 from db.database import database
 from db.models import users
 from services.referral_service import invite_referral_code_for_sharing, referral_bonus_per_invite_rub
-from services.referral_shop_prefs import SHOP_RUS_URL, normalize_referral_shop_url
+from services.referral_shop_prefs import SHOP_RUS_URL, normalize_referral_shop_url_for_save
 from services.subscription_service import paid_subscription_for_referral_program
 
 logger = logging.getLogger(__name__)
@@ -275,7 +275,7 @@ async def partner_receive_shop_url(update: Update, context: ContextTypes.DEFAULT
         return ConversationHandler.END
 
     try:
-        normalized = normalize_referral_shop_url(raw)
+        normalized = await normalize_referral_shop_url_for_save(raw)
     except ValueError as e:
         await update.message.reply_text(
             f"Не получилось принять ссылку: {e}\n"

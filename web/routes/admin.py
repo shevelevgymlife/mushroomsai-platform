@@ -103,7 +103,7 @@ PERM_LABELS = {
 PERMISSION_ITEMS = [(k, PERM_LABELS.get(k, k)) for k in PERM_KEYS]
 
 
-from services.referral_shop_prefs import normalize_referral_shop_url as _normalize_referral_shop_url
+from services.referral_shop_prefs import normalize_referral_shop_url_for_save as _normalize_referral_shop_url_for_save
 
 
 def _parse_form_price(raw: Optional[str]) -> Optional[int]:
@@ -662,7 +662,7 @@ async def set_user_referral_shop_url(request: Request, user_id: int, url: str = 
     keep_self = (form.get("keep_partner_self") or "").strip().lower() in ("1", "true", "yes", "on")
     prev_self = bool(target.get("referral_shop_partner_self"))
     try:
-        normalized = _normalize_referral_shop_url(url)
+        normalized = await _normalize_referral_shop_url_for_save(url)
     except ValueError as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
     if not normalized:
@@ -2308,6 +2308,10 @@ async def admin_referral_page(
     base = (settings.SITE_URL or "").rstrip("/") or ""
     plans_eff = await get_effective_plans()
 
+    from services.referral_shop_link_policy import get_referral_shop_link_policy
+
+    partner_shop_policy = await get_referral_shop_link_policy()
+
     return templates.TemplateResponse(
         "dashboard/admin_referral.html",
         {
@@ -2321,6 +2325,9 @@ async def admin_referral_page(
             "plan_filter": plan_filter or "",
             "user_search": user_search or "",
             "ref_uid": ref_uid,
+            "partner_shop_policy": partner_shop_policy,
+            "shop_policy_saved": (request.query_params.get("shop_policy_saved") or "").strip() == "1",
+            "shop_policy_err": (request.query_params.get("shop_policy_err") or "").strip(),
             "n_refs_period": n_refs,
             "sum_bonuses_period": round(sum_b, 2),
             "top_earn": top_earn,
@@ -2338,6 +2345,31 @@ async def admin_referral_page(
             "site_base": base,
         },
     )
+
+
+@router.post("/referral/partner-shop-policy")
+async def admin_referral_partner_shop_policy(
+    request: Request,
+    enforce_prefix: str = Form(""),
+    required_prefix: str = Form(""),
+):
+    """Вкл/выкл проверки префикса партнёрской ссылки магазина + редактируемый префикс."""
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    from urllib.parse import quote
+
+    from services.referral_shop_link_policy import set_referral_shop_link_policy
+
+    on = (enforce_prefix or "").strip().lower() in ("1", "on", "true", "yes")
+    try:
+        await set_referral_shop_link_policy(on, required_prefix)
+    except ValueError as e:
+        return RedirectResponse(
+            "/admin/referral?shop_policy_err=" + quote(str(e), safe=""),
+            status_code=303,
+        )
+    return RedirectResponse("/admin/referral?shop_policy_saved=1", status_code=303)
 
 
 @router.post("/referral/clear-balance")

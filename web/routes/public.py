@@ -59,7 +59,7 @@ from services.referral_service import (
 from services.referral_shop_prefs import (
     SHOP_RUS_URL,
     external_buy_url_for_user,
-    normalize_referral_shop_url,
+    normalize_referral_shop_url_for_save,
 )
 from services.ops_alerts import (
     notify_new_feedback,
@@ -1079,6 +1079,9 @@ async def referral_program_page(request: Request):
     visible_block_keys = await compute_visible_blocks(uid, plan)
     ref_shop_url_current = (display_user.get("referral_shop_url") or "").strip()
     partner_self = bool(display_user.get("referral_shop_partner_self"))
+    from services.referral_shop_link_policy import get_referral_shop_link_policy
+
+    partner_shop_link_policy = await get_referral_shop_link_policy()
     return templates.TemplateResponse(
         "referral_program.html",
         {
@@ -1094,6 +1097,7 @@ async def referral_program_page(request: Request):
             "ref_shop_url_current": ref_shop_url_current,
             "partner_self_registered": partner_self,
             "neurotrops_shop_entry_url": SHOP_RUS_URL,
+            "partner_shop_link_policy": partner_shop_link_policy,
         },
     )
 
@@ -1110,7 +1114,7 @@ async def referral_partner_shop_url_save(request: Request, shop_url: str = Form(
     if not await paid_subscription_for_referral_program(uid):
         return RedirectResponse("/referral?partner_err=plan", status_code=303)
     try:
-        normalized = normalize_referral_shop_url(shop_url)
+        normalized = await normalize_referral_shop_url_for_save(shop_url)
     except ValueError as e:
         return RedirectResponse("/referral?partner_err=bad&detail=" + quote(str(e), safe=""), status_code=303)
     await database.execute(
