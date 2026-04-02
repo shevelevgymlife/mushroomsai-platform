@@ -415,8 +415,99 @@ async def shop_page(request: Request):
     )
 
 
+def _parse_comma_user_ids(text: str) -> list[int]:
+    raw_ids: list[int] = []
+    for part in (text or "").replace(";", ",").split(","):
+        p = part.strip()
+        if p.isdigit():
+            raw_ids.append(int(p))
+    return raw_ids
+
+
+@router.post("/shop/referral-hub/exclusive")
+async def admin_shop_referral_hub_exclusive(
+    request: Request,
+    exclusive_mode: str = Form("off"),
+    seller_user_ids: str = Form(""),
+):
+    admin = await require_permission(request, "can_shop")
+    if not admin:
+        return RedirectResponse("/login", status_code=302)
+    mode = (exclusive_mode or "off").strip().lower()
+    if mode not in ("off", "all_maxi_sellers", "selected"):
+        mode = "off"
+    from services.shop_referral_hub import set_shop_referral_hub
+
+    await set_shop_referral_hub({"exclusive_catalog": {"mode": mode, "seller_user_ids": _parse_comma_user_ids(seller_user_ids)}})
+    return RedirectResponse("/admin/shop?hub_saved=exclusive", status_code=303)
+
+
+@router.post("/shop/referral-hub/grace")
+async def admin_shop_referral_hub_grace(request: Request, grace_days: str = Form("5")):
+    admin = await require_permission(request, "can_shop")
+    if not admin:
+        return RedirectResponse("/login", status_code=302)
+    try:
+        gd = int(float(str(grace_days).strip() or "5"))
+    except (TypeError, ValueError):
+        gd = 5
+    from services.shop_referral_hub import set_shop_referral_hub
+
+    await set_shop_referral_hub({"grace_days_after_maxi_end": gd})
+    return RedirectResponse("/admin/shop?hub_saved=grace", status_code=303)
+
+
+@router.post("/shop/referral-hub/ai-link")
+async def admin_shop_referral_hub_ai_link(request: Request, single_link_ai: str = Form("")):
+    admin = await require_permission(request, "can_shop")
+    if not admin:
+        return RedirectResponse("/login", status_code=302)
+    from services.shop_referral_hub import set_shop_referral_hub
+
+    await set_shop_referral_hub(
+        {
+            "single_link_ai_for_exclusive": str(single_link_ai).strip().lower()
+            in ("1", "true", "on", "yes"),
+        }
+    )
+    return RedirectResponse("/admin/shop?hub_saved=ai_link", status_code=303)
+
+
+@router.post("/shop/referral-hub/transition")
+async def admin_shop_referral_hub_transition(
+    request: Request,
+    transition_enabled: str = Form(""),
+    transition_days_after_grace: str = Form("1"),
+    transition_scope_mode: str = Form("same_as_exclusive"),
+    transition_seller_user_ids: str = Form(""),
+):
+    admin = await require_permission(request, "can_shop")
+    if not admin:
+        return RedirectResponse("/login", status_code=302)
+    tscope = (transition_scope_mode or "same_as_exclusive").strip().lower()
+    if tscope not in ("off", "same_as_exclusive", "all_maxi_sellers", "selected"):
+        tscope = "same_as_exclusive"
+    try:
+        td = int(float(str(transition_days_after_grace).strip() or "1"))
+    except (TypeError, ValueError):
+        td = 1
+    from services.shop_referral_hub import set_shop_referral_hub
+
+    await set_shop_referral_hub(
+        {
+            "transition_banner": {
+                "enabled": str(transition_enabled).strip().lower() in ("1", "true", "on", "yes"),
+                "days_after_grace": td,
+                "scope_mode": tscope,
+                "seller_user_ids": _parse_comma_user_ids(transition_seller_user_ids),
+            },
+        }
+    )
+    return RedirectResponse("/admin/shop?hub_saved=transition", status_code=303)
+
+
 @router.post("/shop/referral-hub-save")
-async def admin_shop_referral_hub_save(
+async def admin_shop_referral_hub_save_legacy(
     request: Request,
     exclusive_mode: str = Form("off"),
     seller_user_ids: str = Form(""),
@@ -427,17 +518,14 @@ async def admin_shop_referral_hub_save(
     transition_scope_mode: str = Form("same_as_exclusive"),
     transition_seller_user_ids: str = Form(""),
 ):
+    """Совместимость: одна форма обновляет весь хаб (скрипты / старые закладки)."""
     admin = await require_permission(request, "can_shop")
     if not admin:
         return RedirectResponse("/login", status_code=302)
     mode = (exclusive_mode or "off").strip().lower()
     if mode not in ("off", "all_maxi_sellers", "selected"):
         mode = "off"
-    raw_ids: list[int] = []
-    for part in (seller_user_ids or "").replace(";", ",").split(","):
-        p = part.strip()
-        if p.isdigit():
-            raw_ids.append(int(p))
+    raw_ids = _parse_comma_user_ids(seller_user_ids)
     try:
         gd = int(float(str(grace_days).strip() or "5"))
     except (TypeError, ValueError):
@@ -445,11 +533,7 @@ async def admin_shop_referral_hub_save(
     tscope = (transition_scope_mode or "same_as_exclusive").strip().lower()
     if tscope not in ("off", "same_as_exclusive", "all_maxi_sellers", "selected"):
         tscope = "same_as_exclusive"
-    t_raw_ids: list[int] = []
-    for part in (transition_seller_user_ids or "").replace(";", ",").split(","):
-        p = part.strip()
-        if p.isdigit():
-            t_raw_ids.append(int(p))
+    t_raw_ids = _parse_comma_user_ids(transition_seller_user_ids)
     try:
         td = int(float(str(transition_days_after_grace).strip() or "1"))
     except (TypeError, ValueError):
@@ -470,7 +554,7 @@ async def admin_shop_referral_hub_save(
             },
         }
     )
-    return RedirectResponse("/admin/shop?hub_saved=1", status_code=303)
+    return RedirectResponse("/admin/shop?hub_saved=all", status_code=303)
 
 
 @router.get("/shop/product/{product_id}")
@@ -2711,7 +2795,7 @@ async def admin_wellness_journal_self_ai_silent(request: Request, silent: str = 
     await set_wellness_admin_ai_silent(uid, on)
     if was_silent and not on:
         await kickoff_admin_wellness_chain_after_enable(uid)
-    return RedirectResponse("/admin/wellness-journal?saved=1", status_code=303)
+    return RedirectResponse("/admin/wellness-journal?saved=silent", status_code=303)
 
 
 @router.post("/wellness-journal/self-reset-chain")
@@ -2736,7 +2820,7 @@ async def admin_wellness_journal_global(request: Request, enabled: str = Form(..
 
     on = (enabled or "").strip() in ("1", "true", "on", "yes")
     await set_wellness_journal_globally_enabled(on)
-    return RedirectResponse("/admin/wellness-journal?saved=1", status_code=303)
+    return RedirectResponse("/admin/wellness-journal?saved=global", status_code=303)
 
 
 @router.post("/wellness-journal/user-pause")
@@ -2750,7 +2834,7 @@ async def admin_wellness_journal_user_pause(request: Request, user_id: int = For
         .where(users.c.id == int(user_id))
         .values(wellness_journal_admin_paused=pause)
     )
-    return RedirectResponse("/admin/wellness-journal?saved=1", status_code=303)
+    return RedirectResponse("/admin/wellness-journal?saved=pause", status_code=303)
 
 
 @router.get("/wellness-journal/user/{user_id}", response_class=HTMLResponse)
@@ -2886,7 +2970,7 @@ async def admin_wellness_journal_user_pdf(
 
     ok = (allow_pdf or "").strip().lower() in ("1", "true", "on", "yes")
     await set_user_wellness_pdf_allowed(int(user_id), ok)
-    return RedirectResponse("/admin/wellness-journal?saved=1", status_code=303)
+    return RedirectResponse("/admin/wellness-journal?saved=pdf", status_code=303)
 
 
 @router.get("/wellness-journal/insights", response_class=HTMLResponse)

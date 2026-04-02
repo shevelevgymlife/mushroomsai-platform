@@ -21,7 +21,24 @@
       </div>
     </div>
 
-    {% if request.query_params.get('saved') %}
+    {% set _ws = request.query_params.get('saved') %}
+    {% if _ws == 'silent' %}
+    <div class="wa-shelf wa-shelf-body--pad mb-4" style="padding:0.75rem 1rem;border-color:rgba(212,168,83,0.35)">
+      <p class="text-sm text-gold m-0">Сохранён режим AI в ваших ЛС (тихий / с вопросами).</p>
+    </div>
+    {% elif _ws == 'global' %}
+    <div class="wa-shelf wa-shelf-body--pad mb-4" style="padding:0.75rem 1rem;border-color:rgba(212,168,83,0.35)">
+      <p class="text-sm text-gold m-0">Сохранён глобальный переключатель дневника для платформы.</p>
+    </div>
+    {% elif _ws == 'pause' %}
+    <div class="wa-shelf wa-shelf-body--pad mb-4" style="padding:0.75rem 1rem;border-color:rgba(212,168,83,0.35)">
+      <p class="text-sm text-gold m-0">Сохранена пауза дневника для выбранного пользователя.</p>
+    </div>
+    {% elif _ws == 'pdf' %}
+    <div class="wa-shelf wa-shelf-body--pad mb-4" style="padding:0.75rem 1rem;border-color:rgba(212,168,83,0.35)">
+      <p class="text-sm text-gold m-0">Сохранено разрешение PDF для выбранного пользователя.</p>
+    </div>
+    {% elif _ws == '1' %}
     <div class="wa-shelf wa-shelf-body--pad mb-4" style="padding:0.75rem 1rem;border-color:rgba(212,168,83,0.35)">
       <p class="text-sm text-gold m-0">Сохранено.</p>
     </div>

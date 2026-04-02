@@ -11,10 +11,19 @@
 
     {% include "components/admin_nav.html" %}
 
-    {% if request.query_params.get('hub_saved') == '1' %}
-    <div class="mb-4 p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-200 text-sm max-w-3xl">
-      Настройки «Рефералы · Магазин Макси» сохранены.
-    </div>
+    {% set _hub_sv = request.query_params.get('hub_saved') %}
+    {% if _hub_sv == 'exclusive' %}
+    <div class="mb-4 p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-200 text-sm max-w-3xl">Сохранён режим эксклюзивного каталога и список id продавцов.</div>
+    {% elif _hub_sv == 'grace' %}
+    <div class="mb-4 p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-200 text-sm max-w-3xl">Сохранены льготные дни после Макси.</div>
+    {% elif _hub_sv == 'transition' %}
+    <div class="mb-4 p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-200 text-sm max-w-3xl">Сохранены настройки баннера перехода.</div>
+    {% elif _hub_sv == 'ai_link' %}
+    <div class="mb-4 p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-200 text-sm max-w-3xl">Сохранена опция «одна ссылка для AI».</div>
+    {% elif _hub_sv == 'all' %}
+    <div class="mb-4 p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-200 text-sm max-w-3xl">Все блоки хаба сохранены одним запросом (legacy).</div>
+    {% elif _hub_sv == '1' %}
+    <div class="mb-4 p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-200 text-sm max-w-3xl">Настройки «Рефералы · Магазин Макси» сохранены.</div>
     {% endif %}
 
     <div class="neo-page-hero mb-6">
@@ -142,10 +151,11 @@
             Реферальное дерево (<code class="text-gold/80">referred_by</code>) не переписывается: после окончания Макси + льготных дней витрина снова общая для зрителя, без «возврата» к старому режиму магазина.
           </p>
 
-          <form action="/admin/shop/referral-hub-save" method="post" class="space-y-5 max-w-xl">
-            <div>
-              <h3 class="text-sm font-semibold text-text mb-2">Эксклюзивный каталог для рефералов</h3>
-              <p class="text-xs text-muted mb-3">Если включено и реферер — активный продавец маркетплейса с Макси (или в льготном окне после Макси), приглашённый на <code class="text-gold/80">/shop</code> видит <strong>только</strong> товары этого продавца, без общих позиций Neurotrops.</p>
+          <div class="space-y-8 max-w-xl">
+            <form action="/admin/shop/referral-hub/exclusive" method="post" class="space-y-4 p-4 rounded-xl border border-border/60 bg-surface/20">
+              <h3 class="text-sm font-semibold text-text">Эксклюзивный каталог для рефералов</h3>
+              <p class="text-xs text-muted">Сохраняется отдельно: режим и список id. Льготные дни, баннер и AI ниже не меняются.</p>
+              <p class="text-xs text-muted">Если включено и реферер — активный продавец маркетплейса с Макси (или в льготном окне после Макси), приглашённый на <code class="text-gold/80">/shop</code> видит <strong>только</strong> товары этого продавца, без общих позиций Neurotrops.</p>
               <div class="space-y-2 text-sm text-text">
                 <label class="flex items-start gap-2 cursor-pointer">
                   <input type="radio" name="exclusive_mode" value="off" class="mt-1 accent-gold" {% if ex_mode == 'off' %}checked{% endif %} />
@@ -160,22 +170,29 @@
                   <span><strong>Только выбранные id</strong> — ниже список user id продавцов; эксклюзив срабатывает только если реферер в списке и подходит по Макси/льготе.</span>
                 </label>
               </div>
-            </div>
-            <div>
-              <label class="block text-xs text-muted mb-1.5">ID продавцов (через запятую)</label>
-              <textarea name="seller_user_ids" rows="3" placeholder="12, 34, 56"
-                class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm font-mono resize-none focus:outline-none focus:border-gold/60">{{ shop_hub_selected_ids_text or '' }}</textarea>
-              <p class="text-[11px] text-muted mt-1">Имеет смысл при режиме «Только выбранные id». Пусто = никого.</p>
-            </div>
-            <div>
-              <label class="block text-xs text-muted mb-1.5">Льготные дни после окончания Макси</label>
-              <input type="number" name="grace_days" min="0" max="90" value="{{ hub.get('grace_days_after_maxi_end', 5) }}"
-                class="w-32 px-3 py-2 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60" />
-              <p class="text-[11px] text-muted mt-1">Сколько дней после смены тарифа с Макси сохраняются «перки» витрины и своя ссылка магазина для реферера. Дальше — опциональная фаза баннера (ниже), затем стандартные ссылки и товары платформы.</p>
-            </div>
-            <div class="rounded-xl border border-rose-500/25 bg-rose-500/[0.06] p-4 space-y-4">
+              <div>
+                <label class="block text-xs text-muted mb-1.5">ID продавцов (через запятую)</label>
+                <textarea name="seller_user_ids" rows="3" placeholder="12, 34, 56"
+                  class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm font-mono resize-none focus:outline-none focus:border-gold/60">{{ shop_hub_selected_ids_text or '' }}</textarea>
+                <p class="text-[11px] text-muted mt-1">Имеет смысл при режиме «Только выбранные id». Пусто = никого.</p>
+              </div>
+              <button type="submit" class="px-5 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:opacity-95 transition-all">Сохранить эксклюзивный каталог</button>
+            </form>
+
+            <form action="/admin/shop/referral-hub/grace" method="post" class="space-y-3 p-4 rounded-xl border border-border/60 bg-surface/20">
+              <h3 class="text-sm font-semibold text-text">Льготные дни после окончания Макси</h3>
+              <p class="text-xs text-muted">Отдельное сохранение. Число дней, в течение которых после смены тарифа с Макси сохраняются «перки» витрины и своя ссылка магазина для реферера.</p>
+              <div>
+                <label class="block text-xs text-muted mb-1.5">Дней</label>
+                <input type="number" name="grace_days" min="0" max="90" value="{{ hub.get('grace_days_after_maxi_end', 5) }}"
+                  class="w-32 px-3 py-2 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60" />
+              </div>
+              <button type="submit" class="px-5 py-2.5 rounded-xl border border-gold/40 text-gold font-semibold text-sm hover:bg-gold/10">Сохранить льготные дни</button>
+            </form>
+
+            <form action="/admin/shop/referral-hub/transition" method="post" class="space-y-4 p-4 rounded-xl border border-rose-500/25 bg-rose-500/[0.06]">
               <h3 class="text-sm font-semibold text-text">Переход: баннер «магазин не работает»</h3>
-              <p class="text-xs text-muted leading-relaxed">После окончания льготных дней выше приглашённые реферером попадают на экран без товаров и без партнёрских ссылок: показывается сообщение о перенастройке. Через указанное число суток открывается обычный каталог администратора и официальные ссылки. Длительности одинаковы для всех продавцов в выбранной области.</p>
+              <p class="text-xs text-muted leading-relaxed">После окончания льготных дней приглашённые реферером попадают на экран без товаров и без партнёрских ссылок. Сохраняется одним блоком.</p>
               <label class="flex items-center gap-2 cursor-pointer text-sm text-text">
                 <input type="checkbox" name="transition_enabled" value="1" class="accent-gold w-4 h-4" {% if tb.get('enabled') %}checked{% endif %} />
                 <span><strong>Включить</strong> фазу баннера после грейса (если область ниже не «выкл»).</span>
@@ -184,26 +201,26 @@
                 <label class="block text-xs text-muted mb-1.5">Суток «закрытого» магазина после грейса</label>
                 <input type="number" name="transition_days_after_grace" min="0" max="30" value="{{ tb.get('days_after_grace', 1) }}"
                   class="w-32 px-3 py-2 rounded-xl bg-bg border border-border text-text text-sm focus:outline-none focus:border-gold/60" />
-                <p class="text-[11px] text-muted mt-1">По умолчанию 1: один день только баннер, затем стандарт. 0 — сразу стандарт после грейса.</p>
+                <p class="text-[11px] text-muted mt-1">0 — сразу стандарт после грейса.</p>
               </div>
               <div>
-                <p class="text-xs text-muted mb-2">Область (на кого распространяется сценарий грейс → баннер → стандарт)</p>
+                <p class="text-xs text-muted mb-2">Область</p>
                 <div class="space-y-2 text-sm text-text">
                   <label class="flex items-start gap-2 cursor-pointer">
                     <input type="radio" name="transition_scope_mode" value="off" class="mt-1 accent-gold" {% if tb_scope == 'off' %}checked{% endif %} />
-                    <span><strong>Выкл.</strong> — не показывать баннер никому (сразу стандарт после грейса).</span>
+                    <span><strong>Выкл.</strong> — не показывать баннер никому.</span>
                   </label>
                   <label class="flex items-start gap-2 cursor-pointer">
                     <input type="radio" name="transition_scope_mode" value="same_as_exclusive" class="mt-1 accent-gold" {% if tb_scope == 'same_as_exclusive' %}checked{% endif %} />
-                    <span><strong>Как эксклюзивный каталог</strong> — те же продавцы и режим «все/список», что и в блоке выше (эксклюзив должен быть включён).</span>
+                    <span><strong>Как эксклюзивный каталог</strong></span>
                   </label>
                   <label class="flex items-start gap-2 cursor-pointer">
                     <input type="radio" name="transition_scope_mode" value="all_maxi_sellers" class="mt-1 accent-gold" {% if tb_scope == 'all_maxi_sellers' %}checked{% endif %} />
-                    <span><strong>Все продавцы маркетплейса</strong> — любой с флагом продавца, кто теряет Макси (независимо от эксклюзива).</span>
+                    <span><strong>Все продавцы маркетплейса</strong></span>
                   </label>
                   <label class="flex items-start gap-2 cursor-pointer">
                     <input type="radio" name="transition_scope_mode" value="selected" class="mt-1 accent-gold" {% if tb_scope == 'selected' %}checked{% endif %} />
-                    <span><strong>Только выбранные id</strong> — список ниже.</span>
+                    <span><strong>Только выбранные id</strong></span>
                   </label>
                 </div>
               </div>
@@ -212,20 +229,24 @@
                 <textarea name="transition_seller_user_ids" rows="2" placeholder="Только при режиме «выбранные id»"
                   class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm font-mono resize-none focus:outline-none focus:border-gold/60">{{ shop_hub_transition_selected_ids_text or '' }}</textarea>
               </div>
-            </div>
-            <div>
+              <button type="submit" class="px-5 py-2.5 rounded-xl border border-rose-400/40 text-rose-200 font-semibold text-sm hover:bg-rose-500/10">Сохранить баннер перехода</button>
+            </form>
+
+            <form action="/admin/shop/referral-hub/ai-link" method="post" class="space-y-3 p-4 rounded-xl border border-border/60 bg-surface/20">
+              <h3 class="text-sm font-semibold text-text">AI: одна ссылка «где купить»</h3>
               <label class="flex items-center gap-2 cursor-pointer text-sm text-text">
                 <input type="checkbox" name="single_link_ai" value="1" class="accent-gold w-4 h-4" {% if hub.get('single_link_ai_for_exclusive', True) %}checked{% endif %} />
-                <span><strong>AI: одна ссылка «где купить»</strong> для эксклюзивного режима (если у реферера задана своя ссылка магазина).</span>
+                <span>Включить для эксклюзивного режима (если у реферера задана своя ссылка магазина).</span>
               </label>
-              <p class="text-[11px] text-muted mt-1.5 ml-6">Вопросы «где купить» / магазин — бот отвечает одной ссылкой партнёра, без подмешивания шаблонной Neurotrops.</p>
-            </div>
+              <p class="text-[11px] text-muted">Бот отвечает одной ссылкой партнёра, без шаблонной Neurotrops.</p>
+              <button type="submit" class="px-5 py-2.5 rounded-xl border border-gold/40 text-gold font-semibold text-sm hover:bg-gold/10">Сохранить настройку AI</button>
+            </form>
+
             <div class="rounded-xl border border-border/80 bg-bg/40 p-3 text-[11px] text-muted space-y-2">
               <p><strong class="text-text/90">Своя ссылка без префикса Neurotrops:</strong> пользователь с флагом продавца маркетплейса и тарифом Макси (или в льготе) может сохранить произвольный URL в партнёрском магазине — обход глобального префикса из раздела «Реферальная программа».</p>
               <p><strong class="text-text/90">Видимость ссылки приглашённым:</strong> как у Старт+ по подписке, плюс для рефереров в эксклюзивном режиме Макси — их ссылка показывается в реферальных материалах при активном Макси/льготе.</p>
             </div>
-            <button type="submit" class="px-5 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:opacity-95 transition-all">Сохранить настройки хаба</button>
-          </form>
+          </div>
         </div>
       </section>
 
