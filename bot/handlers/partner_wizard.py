@@ -324,6 +324,31 @@ async def partner_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     return ConversationHandler.END
 
 
+async def partner_referral_conditions_command(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
+    """
+    Внутри мастера партнёрства команда /referral не должна «молчать»:
+    даём ссылку на условия и продолжаем ожидать ссылку магазина.
+    """
+    if not update.message:
+        return WAITING_SHOP_URL
+    u = await ensure_user_or_blocked_reply(update)
+    if not u:
+        return ConversationHandler.END
+    uid = int(u.get("primary_user_id") or u["id"])
+    kb = await _reply_kb(update, uid, ai_active=False)
+    site = (settings.SITE_URL or "https://mushroomsai.ru").rstrip("/")
+    await update.message.reply_html(
+        "📘 Условия партнёрской программы:\n"
+        f'<a href="{html.escape(site + "/referral#conditions", quote=True)}">{html.escape(site + "/referral#conditions")}</a>\n\n'
+        "После просмотра пришлите сюда вашу ссылку магазина (https://...).",
+        reply_markup=kb,
+        disable_web_page_preview=True,
+    )
+    return WAITING_SHOP_URL
+
+
 def get_partner_conversation() -> ConversationHandler:
     return ConversationHandler(
         entry_points=[
@@ -334,7 +359,10 @@ def get_partner_conversation() -> ConversationHandler:
                 MessageHandler(filters.TEXT & ~filters.COMMAND, partner_receive_shop_url),
             ],
         },
-        fallbacks=[CommandHandler("cancel", partner_cancel)],
+        fallbacks=[
+            CommandHandler("cancel", partner_cancel),
+            CommandHandler("referral", partner_referral_conditions_command),
+        ],
         name="partner_wizard",
         allow_reentry=True,
         per_message=False,
