@@ -254,6 +254,45 @@ async def admin_dashboard(request: Request):
 
 # ─── AI Settings ──────────────────────────────────────────────────────────────
 
+
+async def _ai_settings_latest_triple() -> tuple[str, str, int]:
+    """Текущие system_prompt, retrieval_mode, retrieval_top_k (для частичного сохранения)."""
+    from ai.system_prompt import DEFAULT_SYSTEM_PROMPT
+
+    row = await database.fetch_one(
+        ai_settings.select().order_by(ai_settings.c.updated_at.desc()).limit(1)
+    )
+    if not row:
+        return (DEFAULT_SYSTEM_PROMPT, "title_first", 24)
+    r = dict(row)
+    sp = (r.get("system_prompt") or "").strip() or DEFAULT_SYSTEM_PROMPT
+    mode = (r.get("retrieval_mode") or "title_first").strip() or "title_first"
+    try:
+        tk = int(r.get("retrieval_top_k") or 24)
+    except (TypeError, ValueError):
+        tk = 24
+    return (sp, mode, tk)
+
+
+def _ai_normalize_mode_topk(retrieval_mode: str, retrieval_top_k: int) -> tuple[str, int]:
+    valid_modes = {m[0] for m in AI_RETRIEVAL_MODES}
+    mode = retrieval_mode if retrieval_mode in valid_modes else "title_first"
+    top_k = max(6, min(80, int(retrieval_top_k or 24)))
+    return mode, top_k
+
+
+async def _ai_settings_persist(system_prompt: str, retrieval_mode: str, retrieval_top_k: int, admin_id: int) -> None:
+    mode, top_k = _ai_normalize_mode_topk(retrieval_mode, retrieval_top_k)
+    await database.execute(
+        ai_settings.insert().values(
+            system_prompt=system_prompt,
+            retrieval_mode=mode,
+            retrieval_top_k=top_k,
+            updated_by=admin_id,
+        )
+    )
+
+
 @router.get("/ai", response_class=HTMLResponse)
 async def ai_settings_page(request: Request):
     admin = await require_permission(request, "can_ai")
@@ -293,22 +332,37 @@ async def update_ai_settings(
     retrieval_mode: str = Form("title_first"),
     retrieval_top_k: int = Form(24),
 ):
+    """Совместимость: одна форма сохраняет и промпт, и RAG (если кто-то шлёт старый запрос)."""
     admin = await require_permission(request, "can_ai")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
+    await _ai_settings_persist(system_prompt.strip(), retrieval_mode, retrieval_top_k, admin["id"])
+    return RedirectResponse("/admin/ai?saved=all", status_code=302)
 
-    valid_modes = {m[0] for m in AI_RETRIEVAL_MODES}
-    mode = retrieval_mode if retrieval_mode in valid_modes else "title_first"
-    top_k = max(6, min(80, int(retrieval_top_k or 24)))
-    await database.execute(
-        ai_settings.insert().values(
-            system_prompt=system_prompt,
-            retrieval_mode=mode,
-            retrieval_top_k=top_k,
-            updated_by=admin["id"],
-        )
-    )
-    return RedirectResponse("/admin/ai", status_code=302)
+
+@router.post("/ai/system-prompt")
+async def admin_ai_save_system_prompt(request: Request, system_prompt: str = Form(...)):
+    admin = await require_permission(request, "can_ai")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    sp_old, mode_old, tk_old = await _ai_settings_latest_triple()
+    mode, top_k = _ai_normalize_mode_topk(mode_old, tk_old)
+    await _ai_settings_persist(system_prompt.strip(), mode, top_k, admin["id"])
+    return RedirectResponse("/admin/ai?saved=prompt", status_code=302)
+
+
+@router.post("/ai/retrieval")
+async def admin_ai_save_retrieval(
+    request: Request,
+    retrieval_mode: str = Form("title_first"),
+    retrieval_top_k: int = Form(24),
+):
+    admin = await require_permission(request, "can_ai")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    sp_old, _, _ = await _ai_settings_latest_triple()
+    await _ai_settings_persist(sp_old, retrieval_mode, retrieval_top_k, admin["id"])
+    return RedirectResponse("/admin/ai?saved=retrieval", status_code=302)
 
 
 @router.post("/ai/test")
@@ -3049,10 +3103,14 @@ async def admin_ai_community_bot_page(request: Request):
             or 0
         )
     urow = await database.fetch_one(users.select().where(users.c.id == uid)) if uid else None
+    perms = await get_user_permissions(admin)
     return templates.TemplateResponse(
         "dashboard/admin_ai_community_bot.html",
         {
             "request": request,
+            "user": admin,
+            "nav": ADMIN_NAV,
+            "user_permissions": perms,
             "cfg": cfg,
             "counts": counts,
             "uid": uid,
@@ -3061,10 +3119,23 @@ async def admin_ai_community_bot_page(request: Request):
     )
 
 
-@router.post("/ai-community-bot")
-async def admin_ai_community_bot_save(
+@router.post("/ai-community-bot/master")
+async def admin_ai_community_bot_save_master(request: Request, master_enabled: str = Form("0")):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    await apply_ai_community_bot_schema_if_needed()
+    await database.execute(
+        ai_community_bot_settings.update()
+        .where(ai_community_bot_settings.c.id == 1)
+        .values(master_enabled=_truthy_form(master_enabled), updated_at=datetime.utcnow())
+    )
+    return RedirectResponse("/admin/ai-community-bot?saved=master", status_code=303)
+
+
+@router.post("/ai-community-bot/flags")
+async def admin_ai_community_bot_save_flags(
     request: Request,
-    master_enabled: str = Form("0"),
     allow_posts: str = Form("0"),
     allow_comments: str = Form("0"),
     allow_follow: str = Form("0"),
@@ -3075,6 +3146,34 @@ async def admin_ai_community_bot_save(
     allow_story_posts: str = Form("0"),
     allow_bug_reports: str = Form("0"),
     allow_telegram_channel: str = Form("0"),
+):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    await apply_ai_community_bot_schema_if_needed()
+    await database.execute(
+        ai_community_bot_settings.update()
+        .where(ai_community_bot_settings.c.id == 1)
+        .values(
+            allow_posts=_truthy_form(allow_posts),
+            allow_comments=_truthy_form(allow_comments),
+            allow_follow=_truthy_form(allow_follow),
+            allow_unfollow=_truthy_form(allow_unfollow),
+            allow_reply_to_comments=_truthy_form(allow_reply_to_comments),
+            allow_profile_thoughts=_truthy_form(allow_profile_thoughts),
+            allow_photos=_truthy_form(allow_photos),
+            allow_story_posts=_truthy_form(allow_story_posts),
+            allow_bug_reports=_truthy_form(allow_bug_reports),
+            allow_telegram_channel=_truthy_form(allow_telegram_channel),
+            updated_at=datetime.utcnow(),
+        )
+    )
+    return RedirectResponse("/admin/ai-community-bot?saved=flags", status_code=303)
+
+
+@router.post("/ai-community-bot/limits")
+async def admin_ai_community_bot_save_limits(
+    request: Request,
     limit_posts_per_day: int = Form(5),
     limit_comments_per_day: int = Form(30),
     limit_follows_per_day: int = Form(15),
@@ -3090,17 +3189,6 @@ async def admin_ai_community_bot_save(
         ai_community_bot_settings.update()
         .where(ai_community_bot_settings.c.id == 1)
         .values(
-            master_enabled=_truthy_form(master_enabled),
-            allow_posts=_truthy_form(allow_posts),
-            allow_comments=_truthy_form(allow_comments),
-            allow_follow=_truthy_form(allow_follow),
-            allow_unfollow=_truthy_form(allow_unfollow),
-            allow_reply_to_comments=_truthy_form(allow_reply_to_comments),
-            allow_profile_thoughts=_truthy_form(allow_profile_thoughts),
-            allow_photos=_truthy_form(allow_photos),
-            allow_story_posts=_truthy_form(allow_story_posts),
-            allow_bug_reports=_truthy_form(allow_bug_reports),
-            allow_telegram_channel=_truthy_form(allow_telegram_channel),
             limit_posts_per_day=max(0, min(50, int(limit_posts_per_day or 0))),
             limit_comments_per_day=max(0, min(200, int(limit_comments_per_day or 0))),
             limit_follows_per_day=max(0, min(100, int(limit_follows_per_day or 0))),
@@ -3110,7 +3198,7 @@ async def admin_ai_community_bot_save(
             updated_at=datetime.utcnow(),
         )
     )
-    return RedirectResponse("/admin/ai-community-bot?saved=1", status_code=303)
+    return RedirectResponse("/admin/ai-community-bot?saved=limits", status_code=303)
 
 
 @router.post("/ai-community-bot/ensure-user")

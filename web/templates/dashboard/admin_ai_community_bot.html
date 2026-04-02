@@ -14,8 +14,13 @@
       Фото в постах отключены, пока не включите «Разрешить фото» (зарезервировано под следующую версию).
     </p>
 
-    {% if request.query_params.get('saved') %}
-    <div class="mb-4 p-3 rounded-xl border border-gold/30 text-gold text-sm">Сохранено.</div>
+    {% set _s = request.query_params.get('saved') %}
+    {% if _s == 'master' %}
+    <div class="mb-4 p-3 rounded-xl border border-emerald-500/35 text-emerald-200 text-sm">Сохранён главный выключатель.</div>
+    {% elif _s == 'flags' %}
+    <div class="mb-4 p-3 rounded-xl border border-emerald-500/35 text-emerald-200 text-sm">Сохранены разрешения по типам действий.</div>
+    {% elif _s == 'limits' %}
+    <div class="mb-4 p-3 rounded-xl border border-emerald-500/35 text-emerald-200 text-sm">Сохранены дневные лимиты.</div>
     {% endif %}
     {% if request.query_params.get('ensured') %}
     <div class="mb-4 p-3 rounded-xl border border-gold/30 text-gold text-sm">Аккаунт привязан или создан. id пользователя: {{ request.query_params.get('ensured') }}.</div>
@@ -90,18 +95,23 @@
     <p class="text-amber-400 text-sm mb-6">Аккаунт ещё не привязан. После следующего деплоя или перезапуска сервиса будет создан пользователь NeuroFungi AI.</p>
     {% endif %}
 
-    <form method="post" action="/admin/ai-community-bot" class="space-y-6 rounded-2xl border border-border p-6 bg-surface/40">
-      <div class="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-border">
+    <form method="post" action="/admin/ai-community-bot/master" class="rounded-2xl border border-border p-6 bg-surface/40 mb-6 space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-4">
         <div>
           <label class="text-sm font-medium text-text">Главный выключатель</label>
-          <p class="text-xs text-muted">Полностью останавливает все действия бота в ленте.</p>
+          <p class="text-xs text-muted">Полностью останавливает все действия бота в ленте. Сохраняется отдельно от остальных настроек.</p>
         </div>
         <label class="inline-flex items-center gap-2 cursor-pointer">
           <input type="checkbox" name="master_enabled" value="1" class="rounded border-border w-5 h-5" {% if cfg.get('master_enabled') %}checked{% endif %} />
           <span class="text-sm text-text">Включено</span>
         </label>
       </div>
+      <button type="submit" class="px-6 py-3 rounded-xl text-sm font-medium border border-gold/40 text-gold hover:bg-gold/10">Сохранить выключатель</button>
+    </form>
 
+    <form method="post" action="/admin/ai-community-bot/flags" class="rounded-2xl border border-border p-6 bg-surface/40 mb-6 space-y-4">
+      <h2 class="text-lg font-medium text-text">Разрешения по типам действий</h2>
+      <p class="text-xs text-muted">Галочки сохраняются одной кнопкой; лимиты и главный выключатель не меняются.</p>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {% set items = [
           ('allow_posts', 'Публиковать посты', cfg.get('allow_posts', true)),
@@ -122,28 +132,29 @@
         </label>
         {% endfor %}
       </div>
+      <button type="submit" class="px-6 py-3 rounded-xl text-sm font-medium border border-gold/40 text-gold hover:bg-gold/10">Сохранить разрешения</button>
+    </form>
 
-      <div>
-        <h2 class="text-lg font-medium text-text mb-3">Лимиты в день (штук)</h2>
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
-          {% for field, lab, default_lim in [
-            ('limit_posts_per_day', 'Посты', 5),
-            ('limit_comments_per_day', 'Комментарии', 30),
-            ('limit_follows_per_day', 'Подписки', 15),
-            ('limit_unfollows_per_day', 'Отписки (резерв)', 10),
-            ('limit_thoughts_per_day', 'Обновления «мыслей»', 15),
-            ('limit_reply_comments_per_day', 'Ответы на комментарии', 25),
-          ] %}
-          <div>
-            <label class="block text-xs text-muted mb-1">{{ lab }}</label>
-            <input type="number" min="0" max="200" name="{{ field }}" value="{{ cfg.get(field, default_lim) }}"
-              class="w-full rounded-xl border border-border bg-surface px-3 py-2 text-text" />
-          </div>
-          {% endfor %}
+    <form method="post" action="/admin/ai-community-bot/limits" class="rounded-2xl border border-border p-6 bg-surface/40 space-y-4">
+      <h2 class="text-lg font-medium text-text">Лимиты в день (штук)</h2>
+      <p class="text-xs text-muted">Сохраняются отдельно; флаги и выключатель не меняются.</p>
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+        {% for field, lab, default_lim in [
+          ('limit_posts_per_day', 'Посты', 5),
+          ('limit_comments_per_day', 'Комментарии', 30),
+          ('limit_follows_per_day', 'Подписки', 15),
+          ('limit_unfollows_per_day', 'Отписки (резерв)', 10),
+          ('limit_thoughts_per_day', 'Обновления «мыслей»', 15),
+          ('limit_reply_comments_per_day', 'Ответы на комментарии', 25),
+        ] %}
+        <div>
+          <label class="block text-xs text-muted mb-1">{{ lab }}</label>
+          <input type="number" min="0" max="200" name="{{ field }}" value="{{ cfg.get(field, default_lim) }}"
+            class="w-full rounded-xl border border-border bg-surface px-3 py-2 text-text" />
         </div>
+        {% endfor %}
       </div>
-
-      <button type="submit" class="px-6 py-3 rounded-xl text-sm font-medium border border-gold/40 text-gold hover:bg-gold/10">Сохранить</button>
+      <button type="submit" class="px-6 py-3 rounded-xl text-sm font-medium border border-gold/40 text-gold hover:bg-gold/10">Сохранить лимиты</button>
     </form>
 
     <p class="text-xs text-muted mt-8 max-w-3xl">

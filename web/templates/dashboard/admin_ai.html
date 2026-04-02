@@ -16,52 +16,68 @@
       </a>
     </div>
 
+    {% set sv = request.query_params.get('saved') %}
+    {% if sv == 'prompt' %}
+    <div class="mb-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-sm text-emerald-200">Системный промпт сохранён. Режим поиска знаний не менялся.</div>
+    {% elif sv == 'retrieval' %}
+    <div class="mb-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-sm text-emerald-200">Режим поиска и лимит фрагментов сохранены. Текст промпта не менялся.</div>
+    {% elif sv == 'all' %}
+    <div class="mb-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-sm text-emerald-200">Все поля AI сохранены (комбинированный запрос).</div>
+    {% endif %}
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-      <!-- Prompt editor -->
       <div class="lg:col-span-2 space-y-6">
-        <form action="/admin/ai" method="post">
-          <div class="p-6 rounded-2xl bg-surface border border-border mb-4">
-            <h2 class="font-semibold text-text mb-1">Системный промт</h2>
-            <p class="text-xs text-muted mb-4">Изменения применяются немедленно для всех новых диалогов.</p>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label class="block text-xs text-muted mb-1">Режим поиска знаний</label>
-                <select name="retrieval_mode" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-text text-sm">
-                  {% for m in ai_retrieval_modes %}
-                  <option value="{{ m[0] }}" {% if current_retrieval_mode == m[0] %}selected{% endif %}>{{ m[1] }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-              <div class="text-xs text-muted self-end">
-                Лимит количества постов для AI теперь управляется автоматически в безопасных границах.
-              </div>
-            </div>
-            <input type="hidden" name="retrieval_top_k" value="{{ current_retrieval_top_k }}">
-            <div class="mb-4 p-3 rounded-xl bg-bg border border-border">
-              <p class="text-xs text-muted mb-2">Кратко по режимам:</p>
-              <div class="space-y-1">
-                {% for m in ai_retrieval_modes %}
-                <div class="text-xs"><span class="text-sky-400">{{ m[1] }}:</span> <span class="text-muted">{{ m[2] }}</span></div>
-                {% endfor %}
-              </div>
-            </div>
-            <textarea name="system_prompt" rows="22"
-              class="w-full px-4 py-3 rounded-xl bg-bg border border-border text-text text-sm font-mono resize-none focus:outline-none focus:border-gold/60 transition-colors leading-relaxed">{{ current_prompt }}</textarea>
-          </div>
+
+        <form action="/admin/ai/system-prompt" method="post" class="p-6 rounded-2xl bg-surface border border-border space-y-4">
+          <h2 class="font-semibold text-text mb-1">Системный промпт</h2>
+          <p class="text-xs text-muted leading-relaxed">Сохраняется отдельно от режима поиска. Новые диалоги используют последнюю сохранённую версию.</p>
+          <textarea name="system_prompt" rows="22" required
+            class="w-full px-4 py-3 rounded-xl bg-bg border border-border text-text text-sm font-mono resize-none focus:outline-none focus:border-gold/60 transition-colors leading-relaxed">{{ current_prompt }}</textarea>
           <button type="submit"
             class="px-6 py-3 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-all duration-300">
-            Сохранить и применить
+            Сохранить промпт
           </button>
         </form>
 
-        <!-- Test question -->
+        <form action="/admin/ai/retrieval" method="post" class="p-6 rounded-2xl bg-surface border border-border space-y-4">
+          <h2 class="font-semibold text-text mb-1">Поиск по обучающим постам (RAG)</h2>
+          <p class="text-xs text-muted mb-2">Сохраняется отдельно от текста промпта.</p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs text-muted mb-1">Режим поиска</label>
+              <select name="retrieval_mode" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-text text-sm">
+                {% for m in ai_retrieval_modes %}
+                <option value="{{ m[0] }}" {% if current_retrieval_mode == m[0] %}selected{% endif %}>{{ m[1] }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs text-muted mb-1">Сколько фрагментов постов подмешивать (6–80)</label>
+              <input type="number" name="retrieval_top_k" min="6" max="80" value="{{ current_retrieval_top_k }}"
+                class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-text text-sm" />
+            </div>
+          </div>
+          <div class="mb-2 p-3 rounded-xl bg-bg border border-border">
+            <p class="text-xs text-muted mb-2">Кратко по режимам:</p>
+            <div class="space-y-1">
+              {% for m in ai_retrieval_modes %}
+              <div class="text-xs"><span class="text-sky-400">{{ m[1] }}:</span> <span class="text-muted">{{ m[2] }}</span></div>
+              {% endfor %}
+            </div>
+          </div>
+          <button type="submit"
+            class="px-6 py-3 rounded-xl bg-surface border border-gold/50 text-gold font-semibold text-sm hover:bg-gold/10 transition-all duration-300">
+            Сохранить режим поиска
+          </button>
+        </form>
+
         <div class="p-6 rounded-2xl bg-surface border border-border">
           <h2 class="font-semibold text-text mb-4">Тестировать промт</h2>
           <div class="space-y-3">
             <textarea id="testQuestion" rows="3" placeholder="Введите тестовый вопрос..."
               class="w-full px-4 py-3 rounded-xl bg-bg border border-border text-text text-sm resize-none focus:outline-none focus:border-gold/60 transition-colors"></textarea>
-            <button onclick="testAI()"
+            <button type="button" onclick="testAI()"
               class="px-5 py-2.5 rounded-xl bg-surface border border-gold/40 text-gold text-sm font-medium hover:bg-gold/10 transition-all duration-300 flex items-center gap-2">
               <span id="testBtnText">Проверить</span>
               <span id="testSpinner" class="hidden">⏳</span>
@@ -77,7 +93,6 @@
         </div>
       </div>
 
-      <!-- History -->
       <div>
         <div class="p-6 rounded-2xl bg-surface border border-border">
           <h2 class="font-semibold text-text mb-4">История изменений</h2>
