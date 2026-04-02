@@ -50,15 +50,23 @@ async def load_raw_offerings(plans: dict[str, Any] | None = None) -> list[dict[s
     return catalog_rows_for_yookassa(plans)
 
 
-def yookassa_web_pay_ready(provider_cfg: dict[str, Any] | None) -> bool:
-    """Оплата на сайте через API ЮKassa (без BotFather provider token)."""
-    if not provider_cfg or not provider_cfg.get("enabled"):
-        return False
+def yookassa_redirect_api_ready(provider_cfg: dict[str, Any] | None) -> bool:
+    """
+    Редирект на оплату ЮKassa (hosted payment): провайдер включён и есть shopId + секрет,
+    либо задан единый override в Environment (тогда оба магазина в dev используют одни ключи).
+    """
     from services.yookassa_credentials import override_yookassa_shop_active
 
     if override_yookassa_shop_active():
         return True
+    if not provider_cfg or not provider_cfg.get("enabled"):
+        return False
     return bool((provider_cfg.get("shop_id") or "").strip() and (provider_cfg.get("secret_key") or "").strip())
+
+
+def yookassa_web_pay_ready(provider_cfg: dict[str, Any] | None) -> bool:
+    """Совместимость: готовность редиректа для карточки yookassa_bot (бот / Mini App)."""
+    return yookassa_redirect_api_ready(provider_cfg)
 
 
 def find_offering_id_for_plan(offerings: list[dict[str, Any]], plan_key: str) -> str | None:

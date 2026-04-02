@@ -25,7 +25,7 @@
   {% if _cp %}
   <button type="button" data-cp-plan="{{ pk }}" class="cp-pay-btn block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-gold/35 text-gold/90 hover:bg-gold/[0.10] mt-2">Продлить подписку</button>
   {% elif _yk_site %}
-  <a href="/pay/subscription?plan={{ pk }}" class="block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-gold/35 text-gold/90 hover:bg-gold/[0.10] mt-2 no-underline">Продлить подписку</a>
+  <a href="/pay/subscription?plan={{ pk }}" class="nf-yk-pay block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-gold/35 text-gold/90 hover:bg-gold/[0.10] mt-2 no-underline">Продлить подписку</a>
   {% elif _yk_bot_only %}
   <a href="{{ _stars_url if _stars_url else _bot_url }}" rel="noopener noreferrer" class="nf-tg-bot-open block w-full text-center px-4 py-2.5 rounded-xl text-sm border border-gold/35 text-gold/90 hover:bg-gold/[0.10] mt-2 no-underline" data-tg-url="{{ _stars_url if _stars_url else _bot_url }}" data-nf-pay-stars="0">Продлить в Telegram</a>
   {% else %}
@@ -38,7 +38,7 @@
   {% if _cp %}
   <button type="button" data-cp-plan="{{ pk }}" class="cp-pay-btn block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn mt-auto">Оформить и оплатить</button>
   {% elif _yk_site %}
-  <a href="/pay/subscription?plan={{ pk }}" class="block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn mt-auto no-underline">Оформить и оплатить</a>
+  <a href="/pay/subscription?plan={{ pk }}" class="nf-yk-pay block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn mt-auto no-underline">Оформить и оплатить</a>
   {% elif _yk_bot_only %}
   <a href="{{ _stars_url if _stars_url else _bot_url }}" rel="noopener noreferrer" class="nf-tg-bot-open block w-full text-center px-4 py-3 rounded-xl text-sm nf-shimmer-btn mt-auto no-underline" data-tg-url="{{ _stars_url if _stars_url else _bot_url }}" data-nf-pay-stars="0">Оформить в Telegram</a>
   {% else %}

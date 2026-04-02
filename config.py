@@ -89,7 +89,7 @@ class Settings(BaseSettings):
     YOOKASSA_TELEGRAM_RECEIPT_VAT_CODE: int | None = None
     # Счёт с чеком: сначала запрашивать email (пусто) или телефон (phone) у покупателя для ЮKassa.
     YOOKASSA_TELEGRAM_RECEIPT_CONTACT: str = ""
-    # Временно: другой магазин ЮKassa (напр. тестовый) без смены ключей в админке. Оба поля обязательны; вебхук проверяется тем же секретом.
+    # Один тестовый магазин на все каналы (подменяет оба провайдера в БД). Для двух боевых магазинов (веб + бот) оставьте пустым.
     YOOKASSA_OVERRIDE_SHOP_ID: str = ""
     YOOKASSA_OVERRIDE_SECRET_KEY: str = ""
 

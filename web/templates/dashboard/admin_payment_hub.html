@@ -7,7 +7,7 @@
 
     <h1 class="text-3xl font-light text-text mb-2">Оплата</h1>
     <p class="text-sm text-muted mb-6 max-w-3xl">
-      Подключение эквайринга и настройки тарифов. Названия, цены и описания планов редактируются в одном месте — разделе «Тарифы подписок»; реквизиты провайдеров — на страницах CloudPayments, ЮKassa и т.д.
+      Подключение эквайринга и настройки тарифов. Названия, цены и описания планов — в «Тарифы подписок». Два магазина ЮKassa: <strong>веб-сайт</strong> и <strong>бот / Mini App</strong> — отдельные карточки с разными shopId.
     </p>
 
     <div class="mb-8 p-5 rounded-2xl border border-gold/30 bg-gold/[0.06] max-w-3xl">
@@ -22,7 +22,7 @@
 
     <div class="mb-8 p-5 rounded-2xl border border-gold/25 bg-surface/80 max-w-3xl">
       <h2 class="text-lg font-semibold text-text mb-2">Основной способ оплаты подписок</h2>
-      <p class="text-xs text-muted mb-4 leading-relaxed">Сайт, Mini App и сценарии вроде подарка используют <strong>один</strong> выбранный способ в рублях. Карточки провайдеров ниже — для реквизитов и включения. <strong>Telegram Stars</strong> задаются отдельно в карточке «Telegram Stars» (кнопка на витрине тарифов ведёт в бота).</p>
+      <p class="text-xs text-muted mb-4 leading-relaxed">Выбранный ниже способ задаёт <strong>основной</strong> рублёвый эквайринг. ЮKassa при этом может быть разнесена: браузер → карточка «веб-сайт», Telegram / Mini App → карточка «бот и Mini App». <strong>Telegram Stars</strong> — в своей карточке.</p>
       <form method="post" action="/admin/payment/subscription-checkout" class="flex flex-wrap items-end gap-4">
         <div>
           <label class="block text-xs text-muted mb-1">Режим</label>

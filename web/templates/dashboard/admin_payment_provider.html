@@ -60,44 +60,54 @@
         </div>
       </div>
       {% elif provider.id == 'yookassa' %}
-      <div class="p-6 rounded-2xl border border-amber-500/25 bg-amber-500/5 space-y-4">
-        <h2 class="text-lg font-medium text-text">ЮKassa — отдельная карточка не используется</h2>
+      <div class="p-6 rounded-2xl border border-cyan-500/25 bg-cyan-500/5 space-y-4">
+        <h2 class="text-xl font-medium text-text">ЮKassa — магазин для сайта в браузере</h2>
         <p class="text-sm text-muted leading-relaxed">
-          Подписки на <b>сайте</b>, в <b>Mini App</b> и в <b>Telegram-боте</b> используют <b>одни и те же</b> настройки: откройте
-          <a href="/admin/payment/yookassa-bot" class="text-gold hover:underline">ЮKassa (бот и сайт)</a>
-          — там <b>shopId</b> и секрет API. Цены и сроки подписки задаются в <a href="/admin/payment/subscription-plans" class="text-gold hover:underline">Тарифы подписок</a>.
+          Отдельный магазин в личном кабинете ЮKassa: оплата подписки, когда пользователь открывает сайт в <b>обычном браузере</b> (не из Telegram WebView).
+          Цены и тарифы общие — <a href="/admin/payment/subscription-plans" class="text-gold hover:underline">Тарифы подписок</a>.
         </p>
-        <p class="text-xs text-muted">Поля ниже — для совместимости со старыми сохранениями; менять их не обязательно.</p>
+        <p class="text-xs text-muted leading-relaxed">
+          Для оплаты из <b>Mini App</b> и <b>бота</b> (редирект на ЮKassa и счёт в Telegram) используйте карточку
+          <a href="/admin/payment/yookassa-bot" class="text-gold hover:underline">ЮKassa (бот и Mini App)</a> — там другой shopId и секрет.
+        </p>
+        {% if yookassa_http_webhook_url %}
+        <div class="p-3 rounded-xl bg-bg border border-border text-xs">
+          <p class="text-muted mb-1">В кабинете <b>этого</b> магазина укажите HTTP-уведомления:</p>
+          <code class="text-gold break-all">{{ yookassa_http_webhook_url }}</code>
+        </div>
+        {% endif %}
         <label class="flex items-center gap-2 text-sm text-text cursor-pointer">
           <input type="checkbox" name="enabled" value="1" class="rounded border-border" {% if provider_cfg.get('enabled') %}checked{% endif %} />
-          Включено (не влияет на текущую оплату подписок)
+          Включить приём оплат с веб-сайта (браузер)
         </label>
         <div>
           <label class="block text-xs text-muted mb-1">shopId</label>
           <input type="text" name="shop_id" value="{{ provider_cfg.get('shop_id', '') }}" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" />
         </div>
         <div>
-          <label class="block text-xs text-muted mb-1">Секретный ключ</label>
+          <label class="block text-xs text-muted mb-1">Секретный ключ API</label>
           <input type="password" name="secret_key" value="" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" placeholder="{% if provider_cfg.get('secret_key') %}••••{% endif %}" />
         </div>
+        <p class="text-[11px] text-muted">Принудительно выбрать канал в ссылке: <code class="text-gold">pay_ctx=web</code> или <code class="text-gold">pay_ctx=tg</code> (редко нужно вручную).</p>
       </div>
       {% elif provider.id == 'yookassa_bot' %}
       <div class="p-6 rounded-2xl border border-gold/25 bg-surface space-y-4">
-        <h2 class="text-xl font-medium text-text">ЮKassa — бот, сайт и Mini App (одни настройки)</h2>
+        <h2 class="text-xl font-medium text-text">ЮKassa — магазин для бота и Mini App</h2>
         <div class="text-xs text-muted space-y-2 leading-relaxed">
-          <p><b>Цены, сроки и витрина</b> — в разделе <a href="/admin/payment/subscription-plans" class="text-gold hover:underline">Тарифы подписок</a> (общие для CloudPayments, ЮKassa и бота). ID оплаты совпадает с кодом тарифа (slug).</p>
-          <p><b>Срок окончания подписки</b> считается по настройкам периода в каталоге; фоновая задача сбрасывает истёкший платный тариф на «Бесплатный».</p>
-          <p><b>HTTP-вебхук ЮKassa:</b> для оплаты <b>с сайта / Mini App</b> в metadata передаются <code>user_id</code>, <code>offering_id</code> и <code>plan</code>. Оплата <b>в боте</b> подтверждается через <code>successful_payment</code>.</p>
+          <p><b>Отдельный магазин</b> в ЮKassa (другой shopId, чем у карточки «ЮKassa (веб-сайт)»): редирект на оплату из <b>Telegram Mini App</b> и при необходимости тот же ключ для проверки платежей.</p>
+          <p><b>Цены и сроки</b> — <a href="/admin/payment/subscription-plans" class="text-gold hover:underline">Тарифы подписок</a>. ID оплаты = slug тарифа.</p>
+          <p><b>Счёт в боте</b> (sendInvoice) — через <b>Provider token</b> из BotFather; он привязан к этому же магазину ЮKassa.</p>
+          <p><b>Обычный браузер</b> (Chrome, Safari без Telegram) использует карточку <a href="/admin/payment/yookassa" class="text-gold hover:underline">ЮKassa (веб-сайт)</a>.</p>
         </div>
         {% if yookassa_http_webhook_url %}
         <div class="p-3 rounded-xl bg-bg border border-border text-xs">
-          <p class="text-muted mb-1">URL для уведомлений в личном кабинете ЮKassa (Интеграция → HTTP-уведомления):</p>
+          <p class="text-muted mb-1">В кабинете <b>этого</b> магазина (бот / Mini App) укажите тот же endpoint:</p>
           <code class="text-gold break-all">{{ yookassa_http_webhook_url }}</code>
         </div>
         {% endif %}
         <label class="flex items-center gap-2 text-sm text-text cursor-pointer">
           <input type="checkbox" name="enabled" value="1" class="rounded border-border" {% if provider_cfg.get('enabled') %}checked{% endif %} />
-          Включить ЮKassa (бот: «Подписка» и /subscribe; сайт и Mini App: редирект на оплату при заданных shopId и секрете)
+          Включить (бот + редирект из Mini App при заданных shopId и секрете)
         </label>
         <div>
           <label class="block text-xs text-muted mb-1">Provider token (BotFather → ваш бот → Payments → подключить ЮKassa)</label>
@@ -118,7 +128,7 @@
         <div>
           <label class="block text-xs text-muted mb-1">shopId (идентификатор магазина ЮKassa)</label>
           <input type="text" name="shop_id" value="{{ provider_cfg.get('shop_id', '') }}" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" />
-          <p class="text-[11px] text-muted mt-1">Вместе с секретом ниже включает <b>оплату на сайте и в Telegram Mini App</b> (переход на страницу ЮKassa). Для <b>пробного второго магазина</b> (тестовые ключи) можно не менять эти поля, а задать в Render: <code class="text-gold">YOOKASSA_OVERRIDE_SHOP_ID</code> и <code class="text-gold">YOOKASSA_OVERRIDE_SECRET_KEY</code> — тогда API и вебхук используют их (боевые в БД остаются).</p>
+          <p class="text-[11px] text-muted mt-1">Нужен для редиректа на оплату из Mini App. Для тестов одним магазином на все каналы можно задать в Render <code class="text-gold">YOOKASSA_OVERRIDE_*</code> (тогда оба магазина в БД игнорируются API) — для двух боевых магазинов оставьте override пустым.</p>
         </div>
         <div>
           <label class="block text-xs text-muted mb-1">Секретный ключ API (для проверки платежа по API и вебхука)</label>

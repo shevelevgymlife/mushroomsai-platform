@@ -1,7 +1,7 @@
 """
 Единая точка: какой способ оплаты подписок активен (сайт, Mini App, бот).
-В админке можно выбрать любой зарегистрированный провайдер; CloudPayments и ЮKassa (бот и сайт)
-дают рабочую оплату. Тинькофф, крипто и карточка «ЮKassa (резерв)» сохраняются как выбор,
+В админке можно выбрать любой зарегистрированный провайдер; CloudPayments и ЮKassa (веб и бот/Mini App отдельно)
+дают рабочую оплату. Тинькофф и крипто сохраняются как выбор,
 но поток подписок на сайте для них пока не подключён — kind будет none и показывается подсказка.
 Telegram Stars (XTR) — отдельно в карточке провайдера; на сайте показывается ссылка в бота.
 """
@@ -21,7 +21,7 @@ from services.payment_provider_settings import PAYMENT_PROVIDERS, get_provider_s
 from services.yookassa_bot_offerings import (
     find_offering_id_for_plan,
     get_merged_bot_offerings,
-    yookassa_web_pay_ready,
+    yookassa_redirect_api_ready,
 )
 
 logger = logging.getLogger(__name__)
@@ -42,7 +42,7 @@ def subscription_checkout_select_rows() -> list[dict[str, str]]:
     rows: list[dict[str, str]] = [
         {
             "id": "auto",
-            "label": "Авто: CloudPayments, если включён; иначе ЮKassa (бот и сайт)",
+            "label": "Авто: CloudPayments, если включён; иначе ЮKassa (любой настроенный канал)",
             "suffix": "",
         }
     ]
@@ -56,7 +56,7 @@ def subscription_checkout_select_rows() -> list[dict[str, str]]:
         elif pid == "crypto":
             suffix = " — оплата подписок на сайте пока не подключена"
         elif pid == "yookassa":
-            suffix = " — не используется для подписок; нужна «ЮKassa (бот и сайт)»"
+            suffix = " — магазин для оплаты с сайта в браузере (отдельные shopId/секрет)"
         rows.append({"id": pid, "label": p["title"], "suffix": suffix})
     return rows
 
@@ -146,7 +146,10 @@ async def resolve_active_subscription_checkout() -> dict[str, Any]:
     cp = await get_provider_settings("cloudpayments")
     cp_ok = bool(cp.get("enabled") and (cp.get("public_id") or "").strip())
     yb = await get_provider_settings("yookassa_bot")
-    yk_web = yookassa_web_pay_ready(yb)
+    yk_site = await get_provider_settings("yookassa")
+    yk_browser = yookassa_redirect_api_ready(yk_site)
+    yk_telegram_redirect = yookassa_redirect_api_ready(yb)
+    yk_web = yk_browser or yk_telegram_redirect
     yk_bot = bool(yb.get("enabled") and (yb.get("provider_token") or "").strip())
 
     offerings: list[dict[str, Any]] = []
@@ -177,8 +180,10 @@ async def resolve_active_subscription_checkout() -> dict[str, Any]:
             return "cloudpayments" if cp_ok else "none"
         if pref == "yookassa_bot":
             return "yookassa" if (yk_web or yk_bot) else "none"
-        if pref in ("tinkoff", "crypto", "yookassa"):
+        if pref in ("tinkoff", "crypto"):
             return "none"
+        if pref == "yookassa":
+            return "yookassa" if yk_browser else "none"
         return pick_auto()
 
     kind = kind_for_pref()
@@ -189,22 +194,24 @@ async def resolve_active_subscription_checkout() -> dict[str, Any]:
     if pref == "tinkoff":
         blocked_hint = (
             "В админке выбран основной способ «Тинькофф Касса», но оплата подписок на сайте и в приложении "
-            "для него ещё не подключена. Временно включите CloudPayments или «ЮKassa (бот и сайт)»."
+            "для него ещё не подключена. Временно включите CloudPayments или настройте ЮKassa (веб и/или бот)."
         )
     elif pref == "crypto":
         blocked_hint = (
             "Выбран основной способ «Криптовалюта», но приём подписок через него на сайте ещё не реализован. "
             "Используйте CloudPayments или ЮKassa либо Telegram Stars в боте."
         )
-    elif pref == "yookassa":
+    elif pref == "yookassa" and not yk_browser:
         blocked_hint = (
-            "Выбрана устаревшая карточка «ЮKassa (резерв)» — подписки не обрабатываются. "
-            "Выберите «ЮKassa (бот и сайт)» или CloudPayments."
+            "Выбран основной способ «ЮKassa (веб-сайт)», но карточка выключена или не заполнены shopId и секрет."
         )
     elif pref == "cloudpayments" and not cp_ok:
         blocked_hint = "Выбран CloudPayments, но он выключен или не заполнен Public ID в настройках провайдера."
     elif pref == "yookassa_bot" and not (yk_web or yk_bot):
-        blocked_hint = "Выбрана ЮKassa (бот и сайт), но провайдер выключен или не заданы shopId и секрет / токен бота."
+        blocked_hint = (
+            "Выбрана ЮKassa (бот и Mini App), но провайдер выключен или не заданы shopId и секрет для редиректа "
+            "и/или provider token для счёта в боте."
+        )
 
     return {
         "kind": kind,
@@ -213,6 +220,8 @@ async def resolve_active_subscription_checkout() -> dict[str, Any]:
         "cloudpayments_public_id": (cp.get("public_id") or "").strip() if cp_ok else "",
         "yookassa_web_pay_enabled": yk_web,
         "yookassa_bot_invoice_enabled": yk_bot,
+        "yookassa_browser_redirect_ready": yk_browser,
+        "yookassa_telegram_redirect_ready": yk_telegram_redirect,
         "yookassa_site_checkout_available": kind == "yookassa" and yk_web,
         "yookassa_bot_only": kind == "yookassa" and not yk_web and yk_bot,
         "offering_id_by_plan": offering_id_by_plan,

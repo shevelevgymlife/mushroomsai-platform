@@ -321,7 +321,7 @@ async def admin_payment_provider_page(request: Request, provider_id: str):
             "raw_overrides": raw_over,
             "plan_order_list": list(plans.keys()),
             "cloudpayments_webhook_url": webhook_url if meta["id"] == "cloudpayments" else "",
-            "yookassa_http_webhook_url": yk_wh if meta["id"] == "yookassa_bot" else "",
+            "yookassa_http_webhook_url": yk_wh if meta["id"] in ("yookassa_bot", "yookassa") else "",
             "form_action": form_action,
             "bot_offerings_preview": bot_offerings_preview if meta["id"] == "yookassa_bot" else [],
             "drawer_menu_specs": DRAWER_MENU_ITEM_SPECS,

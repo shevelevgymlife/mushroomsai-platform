@@ -36,8 +36,9 @@ from services.yookassa_bot_offerings import (
     find_offering_id_for_plan,
     get_merged_bot_offerings,
     offering_by_id,
-    yookassa_web_pay_ready,
+    yookassa_redirect_api_ready,
 )
+from services.yookassa_pay_channel import detect_yookassa_pay_channel
 from services.subscription_checkout import resolve_active_subscription_checkout
 from services.yookassa_credentials import resolve_yookassa_shop_credentials
 from services.yookassa_hosted_payment import create_yookassa_redirect_payment
@@ -109,8 +110,9 @@ async def _persist_yookassa_return_token(*, token: str, payment_id: str, user_id
         _logger.warning("yookassa return token persist failed: %s", e)
 
 
-async def _create_yookassa_with_fallback(
+async def _create_yookassa_redirect_for_channel(
     *,
+    channel: str,
     amount_rub: float,
     description: str,
     return_url: str,
@@ -119,14 +121,22 @@ async def _create_yookassa_with_fallback(
     customer_phone: str | None = None,
 ) -> tuple[str | None, str | None, str | None]:
     """
-    Пытается создать web-платёж сначала по yookassa_bot,
-    затем резервно по yookassa (если там другие ключи).
+    Браузер → payment_provider:yookassa (второй магазин).
+    Telegram / Mini App → payment_provider:yookassa_bot (первый магазин).
     """
+    yk = await get_provider_settings("yookassa")
     yb = await get_provider_settings("yookassa_bot")
-    sid1, sec1 = resolve_yookassa_shop_credentials(yb)
-    url, err, pid = await create_yookassa_redirect_payment(
-        shop_id=sid1,
-        secret_key=sec1,
+    if (channel or "").strip().lower() == "telegram_embedded":
+        if not yookassa_redirect_api_ready(yb):
+            return None, "tg_shop_not_configured", None
+        sid, sec = resolve_yookassa_shop_credentials(yb)
+    else:
+        if not yookassa_redirect_api_ready(yk):
+            return None, "web_shop_not_configured", None
+        sid, sec = resolve_yookassa_shop_credentials(yk)
+    return await create_yookassa_redirect_payment(
+        shop_id=sid,
+        secret_key=sec,
         amount_rub=amount_rub,
         description=description,
         return_url=return_url,
@@ -134,28 +144,6 @@ async def _create_yookassa_with_fallback(
         customer_email=customer_email,
         customer_phone=customer_phone,
     )
-    if url:
-        return url, None, pid
-
-    yk = await get_provider_settings("yookassa")
-    sid2, sec2 = resolve_yookassa_shop_credentials(yk)
-    if sid2 and sec2 and (sid2 != sid1 or sec2 != sec1):
-        url2, err2, pid2 = await create_yookassa_redirect_payment(
-            shop_id=sid2,
-            secret_key=sec2,
-            amount_rub=amount_rub,
-            description=description,
-            return_url=return_url,
-            metadata=metadata,
-            customer_email=customer_email,
-            customer_phone=customer_phone,
-        )
-        if url2:
-            _logger.info("yookassa web pay fallback credentials used from payment_provider:yookassa")
-            return url2, None, pid2
-        if err2:
-            return None, f"{err or 'create_failed'}|fallback:{err2}", None
-    return None, err, None
 
 
 async def compute_visible_blocks(user_id: int, plan: str) -> list[str]:
@@ -352,9 +340,14 @@ async def pay_subscription_yookassa(request: Request, offering_id: str = "", pla
         return leg
     if not oid:
         return RedirectResponse("/subscriptions?pay_error=no_offering", status_code=302)
+    channel = detect_yookassa_pay_channel(request)
+    yk = await get_provider_settings("yookassa")
     yb = await get_provider_settings("yookassa_bot")
-    if not yookassa_web_pay_ready(yb):
-        return RedirectResponse("/subscriptions?pay_error=web_disabled", status_code=302)
+    if channel == "telegram_embedded":
+        if not yookassa_redirect_api_ready(yb):
+            return RedirectResponse("/subscriptions?pay_error=tg_shop", status_code=302)
+    elif not yookassa_redirect_api_ready(yk):
+        return RedirectResponse("/subscriptions?pay_error=web_shop", status_code=302)
     offerings = await get_merged_bot_offerings()
     off = offering_by_id(offerings, oid)
     if not off or not off.get("enabled"):
@@ -376,7 +369,8 @@ async def pay_subscription_yookassa(request: Request, offering_id: str = "", pla
     desc = f"Подписка «{disp}» {dur}".strip()[:128]
     cust_email = (user.get("email") or "").strip() or None
     cust_phone = (user.get("phone") or "").strip() or None
-    url, err, payment_id = await _create_yookassa_with_fallback(
+    url, err, payment_id = await _create_yookassa_redirect_for_channel(
+        channel=channel,
         amount_rub=price,
         description=desc,
         return_url=return_url,
@@ -460,9 +454,14 @@ async def pay_gift_subscription(request: Request, plan: str = "", recipient_id: 
     if kind == "yookassa":
         if not checkout.get("yookassa_site_checkout_available"):
             return RedirectResponse("/subscriptions?gift_error=use_bot", status_code=302)
+        channel = detect_yookassa_pay_channel(request)
+        yk = await get_provider_settings("yookassa")
         yb = await get_provider_settings("yookassa_bot")
-        if not yookassa_web_pay_ready(yb):
-            return RedirectResponse("/subscriptions?gift_error=web_disabled", status_code=302)
+        if channel == "telegram_embedded":
+            if not yookassa_redirect_api_ready(yb):
+                return RedirectResponse("/subscriptions?gift_error=tg_shop", status_code=302)
+        elif not yookassa_redirect_api_ready(yk):
+            return RedirectResponse("/subscriptions?gift_error=web_shop", status_code=302)
         offerings = await get_merged_bot_offerings()
         oid = find_offering_id_for_plan(offerings, plan_key)
         off = offering_by_id(offerings, oid) if oid else None
@@ -484,7 +483,8 @@ async def pay_gift_subscription(request: Request, plan: str = "", recipient_id: 
         desc = f"Подарок подписки «{disp}» {dur}".strip()[:128]
         cust_email = (user.get("email") or "").strip() or None
         cust_phone = (user.get("phone") or "").strip() or None
-        url, err, payment_id = await _create_yookassa_with_fallback(
+        url, err, payment_id = await _create_yookassa_redirect_for_channel(
+            channel=channel,
             amount_rub=price_rub,
             description=desc,
             return_url=return_url,

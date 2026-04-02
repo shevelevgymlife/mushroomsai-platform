@@ -12,7 +12,9 @@
     <div class="max-w-3xl mx-auto mb-6 p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-100 text-sm leading-relaxed text-center">
       {% set ge = request.query_params.get('gift_error') %}
       {% if ge == 'no_payment' %}Оплата подарка недоступна: в админке не включён CloudPayments или ЮKassa (или не выбран основной способ).
-      {% elif ge == 'use_bot' %}Оплата подарка на сайте недоступна — включите веб-оплату ЮKassa или откройте бота.
+      {% elif ge == 'use_bot' %}Оплата подарка недоступна — настройте ЮKassa в админке или откройте бота.
+      {% elif ge == 'web_shop' %}Подарок из браузера: настройте «ЮKassa (веб-сайт)» (shopId и секрет).
+      {% elif ge == 'tg_shop' %}Подарок из Telegram / Mini App: настройте «ЮKassa (бот и Mini App)».
       {% elif ge == 'self' %}Нельзя подарить подписку самому себе.
       {% elif ge == 'create' %}Не удалось создать платёж подарка в ЮKassa. Попробуйте позже или оплатите в боте.{% if request.query_params.get('gift_error_detail') %}<br><span class="text-xs opacity-80">Код: {{ request.query_params.get('gift_error_detail') }}</span>{% endif %}
       {% elif ge not in ('1', 'invalid', '') %}Не удалось оформить подарок: {{ ge }}. Проверьте получателя и тариф.
@@ -24,7 +26,7 @@
       {% if cloudpayments_enabled and cloudpayments_public_id %}
       Оплата через CloudPayments включена. Выберите тариф и нажмите «Подключиться» — откроется окно оплаты. Прямое подключение без оплаты отключено.
       {% elif yookassa_web_pay_enabled is defined and yookassa_web_pay_enabled %}
-      Платные тарифы без оплаты не активируются. Нажмите «Подключиться» у нужного тарифа — откроется оплата ЮKassa (в браузере и в приложении Telegram). Либо оформите подписку в боте. Прямое подключение без оплаты отключено.
+      Платные тарифы без оплаты не активируются. В браузере оплата идёт через магазин «веб» в ЮKassa, в Telegram / Mini App — через отдельный магазин (настраивается в админке → Оплата). Прямое подключение без оплаты отключено.
       {% else %}
       Платные тарифы на сайте и в приложении Telegram без оплаты не активируются: оформите подписку в боте Telegram (счёт ЮKassa). Прямое подключение без оплаты отключено.
       {% endif %}
@@ -35,7 +37,9 @@
       {% set pe = request.query_params.get('pay_error') %}
       {% if pe == 'create' %}Не удалось создать платёж ЮKassa. Попробуйте позже или оплатите в боте.{% if request.query_params.get('pay_error_detail') %}<br><span class="text-xs opacity-80">Код: {{ request.query_params.get('pay_error_detail') }}</span>{% endif %}
       {% elif pe == 'bad_offering' %}Предложение недоступно или отключено в админке.
-      {% elif pe == 'web_disabled' %}Оплата на сайте не настроена (нужны shopId и секрет ЮKassa в разделе Оплата → ЮKassa Бот).
+      {% elif pe == 'web_shop' %}Оплата из браузера не настроена: включите карточку «ЮKassa (веб-сайт)» и укажите shopId и секрет второго магазина.
+      {% elif pe == 'tg_shop' %}Оплата из Telegram / Mini App не настроена: в карточке «ЮKassa (бот и Mini App)» включите провайдер и укажите shopId и секрет первого магазина.
+      {% elif pe == 'web_disabled' %}Оплата ЮKassa недоступна — проверьте обе карточки провайдера в разделе Оплата.
       {% elif pe == 'no_site_url' %}На сервере не задан корректный SITE_URL (нужен https для возврата после оплаты).
       {% elif pe == 'price' %}Неверная цена предложения.
       {% else %}Не удалось начать оплату. Попробуйте снова или откройте бота.{% endif %}
@@ -232,9 +236,27 @@
         return;
       }
       var pl = planSel ? planSel.value : 'start';
-      window.location.href = '/pay/gift?plan=' + encodeURIComponent(pl) + '&recipient_id=' + encodeURIComponent(String(hid.value).trim());
+      var giftUrl = '/pay/gift?plan=' + encodeURIComponent(pl) + '&recipient_id=' + encodeURIComponent(String(hid.value).trim());
+      if (window.Telegram && window.Telegram.WebApp) {
+        giftUrl += '&pay_ctx=tg';
+      }
+      window.location.href = giftUrl;
     });
   }
+})();
+(function () {
+  try {
+    if (!window.Telegram || !window.Telegram.WebApp) return;
+    document.querySelectorAll('a.nf-yk-pay').forEach(function (a) {
+      try {
+        var href = a.getAttribute('href');
+        if (!href || href.indexOf('/pay/') < 0) return;
+        var u = new URL(href, window.location.origin);
+        u.searchParams.set('pay_ctx', 'tg');
+        a.setAttribute('href', u.pathname + u.search);
+      } catch (e) {}
+    });
+  } catch (e) {}
 })();
 </script>
 {% endblock %}
