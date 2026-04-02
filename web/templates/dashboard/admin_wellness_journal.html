@@ -26,6 +26,11 @@
       <p class="text-sm text-gold m-0">Сохранено.</p>
     </div>
     {% endif %}
+    {% if request.query_params.get('chain_reset') %}
+    <div class="wa-shelf wa-shelf-body--pad mb-4" style="border-color:rgba(52,211,153,0.35)">
+      <p class="text-sm text-emerald-300 m-0">Цепочка вопросов сброшена: следующий вопрос снова с первого пункта списка.</p>
+    </div>
+    {% endif %}
     {% set tp = request.query_params.get('test_prompt') %}
     {% if tp == 'ok' %}
     <div class="wa-shelf wa-shelf-body--pad mb-4" style="border-color:rgba(52,211,153,0.35)">
@@ -77,6 +82,12 @@
           </button>
           <button type="submit" name="silent" value="1" class="flex-1 min-h-[44px] px-4 py-2 rounded-xl text-sm font-medium border border-border text-muted hover:border-gold/30">
             Тихий режим: без сообщений бота, только статистика
+          </button>
+        </form>
+        <p class="text-xs text-muted mt-3 mb-2">При включении режима с вопросами в ЛС сразу уходит первый пункт цепочки (если настроен бот).</p>
+        <form method="post" action="/admin/wellness-journal/self-reset-chain" class="mt-2">
+          <button type="submit" class="text-sm px-4 py-2.5 rounded-xl font-medium border border-border text-muted hover:border-gold/40 hover:text-gold w-full sm:w-auto">
+            Сбросить цепочку вопросов (начать с первого)
           </button>
         </form>
       </div>

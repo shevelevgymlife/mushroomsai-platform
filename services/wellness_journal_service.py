@@ -63,14 +63,25 @@ async def set_wellness_admin_ai_silent(user_id: int, silent: bool) -> None:
     )
 
 
-async def _send_admin_chain_followup(entry_id: int) -> None:
-    """После успешного JSON: следующий шаблонный вопрос админу (если не тихий режим)."""
-    ent = await database.fetch_one(
-        wellness_journal_entries.select().where(wellness_journal_entries.c.id == int(entry_id))
+async def reset_wellness_admin_chain_index(user_id: int) -> None:
+    await database.execute(
+        users.update().where(users.c.id == int(user_id)).values(wellness_admin_q_index=0)
     )
-    if not ent or (ent.get("role") or "") != "user_reply":
-        return
-    uid = int(ent["user_id"])
+
+
+async def kickoff_admin_wellness_chain_after_enable(user_id: int) -> None:
+    """Первый вопрос цепочки после включения режима с вопросами (не тихий)."""
+    await _send_admin_chain_dm_for_user(int(user_id), kickoff=True)
+
+
+async def _send_admin_chain_dm_for_user(
+    user_id: int,
+    *,
+    after_extraction_failed: bool = False,
+    kickoff: bool = False,
+) -> None:
+    """Следующий шаблонный вопрос админу; сдвигает wellness_admin_q_index."""
+    uid = int(user_id)
     urow = await database.fetch_one(users.select().where(users.c.id == uid))
     if not urow or not _user_row_is_admin(urow) or urow.get("wellness_admin_ai_silent"):
         return
@@ -87,12 +98,32 @@ async def _send_admin_chain_followup(entry_id: int) -> None:
     await database.execute(
         users.update().where(users.c.id == uid).values(wellness_admin_q_index=int(nxt))
     )
-    await _insert_coach_dm(
-        int(coach_id),
-        notify_uid,
-        MSG_PREFIX
-        + "Следующий пункт дневника (для теста статистики — ответьте одним сообщением):\n\n"
-        + q_text,
+    if kickoff:
+        mid = "Режим вопросов включён. Ответьте одним сообщением:\n\n"
+    elif after_extraction_failed:
+        mid = (
+            "Не удалось сохранить разбор в JSON (нет OPENAI_API_KEY или ошибка модели). "
+            "Текст записи в дневнике уже учитывается в статистике.\n\n"
+            "Следующий вопрос:\n\n"
+        )
+    else:
+        mid = "Следующий пункт дневника (для теста статистики — ответьте одним сообщением):\n\n"
+    await _insert_coach_dm(int(coach_id), notify_uid, MSG_PREFIX + mid + q_text)
+    await _telegram_ping_wellness(notify_uid, int(coach_id))
+
+
+async def _send_admin_chain_followup(entry_id: int, *, extraction_ok: bool) -> None:
+    """После попытки разбора ответа админа — следующий вопрос (и при сбое JSON)."""
+    ent = await database.fetch_one(
+        wellness_journal_entries.select().where(wellness_journal_entries.c.id == int(entry_id))
+    )
+    if not ent or (ent.get("role") or "") != "user_reply":
+        return
+    uid = int(ent["user_id"])
+    await _send_admin_chain_dm_for_user(
+        uid,
+        after_extraction_failed=not extraction_ok,
+        kickoff=False,
     )
 
 
@@ -1170,42 +1201,46 @@ _EXTRACTION_SYSTEM = """Ты помощник для структурирова�
 async def extract_wellness_json_async(
     entry_id: int, raw_text: str, *, after_admin_chain: bool = False
 ) -> None:
-    if not getattr(settings, "OPENAI_API_KEY", None):
-        return
-    try:
-        from openai import AsyncOpenAI
-
-        cli = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-        resp = await cli.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": _EXTRACTION_SYSTEM},
-                {"role": "user", "content": raw_text[:8000]},
-            ],
-            temperature=0.2,
-            max_tokens=2000,
-            response_format={"type": "json_object"},
-        )
-        content = (resp.choices[0].message.content or "").strip()
-        json.loads(content)  # validate
-        await database.execute(
-            wellness_journal_entries.update()
-            .where(wellness_journal_entries.c.id == int(entry_id))
-            .values(extracted_json=content)
-        )
+    extraction_ok = False
+    if getattr(settings, "OPENAI_API_KEY", None):
         try:
-            from services.wellness_insights_service import upsert_daily_snapshot_from_extracted_entry
+            from openai import AsyncOpenAI
 
-            await upsert_daily_snapshot_from_extracted_entry(int(entry_id), content)
-        except Exception:
-            logger.debug("wellness: snapshot upsert skipped", exc_info=True)
-        if after_admin_chain:
+            cli = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+            resp = await cli.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": _EXTRACTION_SYSTEM},
+                    {"role": "user", "content": raw_text[:8000]},
+                ],
+                temperature=0.2,
+                max_tokens=2000,
+                response_format={"type": "json_object"},
+            )
+            content = (resp.choices[0].message.content or "").strip()
+            json.loads(content)  # validate
+            await database.execute(
+                wellness_journal_entries.update()
+                .where(wellness_journal_entries.c.id == int(entry_id))
+                .values(extracted_json=content)
+            )
             try:
-                await _send_admin_chain_followup(int(entry_id))
+                from services.wellness_insights_service import upsert_daily_snapshot_from_extracted_entry
+
+                await upsert_daily_snapshot_from_extracted_entry(int(entry_id), content)
             except Exception:
-                logger.debug("wellness: admin chain followup skipped", exc_info=True)
-    except Exception:
-        logger.exception("wellness: extraction failed entry_id=%s", entry_id)
+                logger.debug("wellness: snapshot upsert skipped", exc_info=True)
+            extraction_ok = True
+        except Exception:
+            logger.exception("wellness: extraction failed entry_id=%s", entry_id)
+    elif after_admin_chain:
+        logger.debug("wellness: OPENAI_API_KEY missing, skip extraction entry_id=%s", entry_id)
+
+    if after_admin_chain:
+        try:
+            await _send_admin_chain_followup(int(entry_id), extraction_ok=extraction_ok)
+        except Exception:
+            logger.debug("wellness: admin chain followup skipped", exc_info=True)
 
 
 def aggregate_entries_for_display(rows: list[dict]) -> dict[str, Any]:

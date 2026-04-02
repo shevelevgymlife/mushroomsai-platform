@@ -2479,11 +2479,31 @@ async def admin_wellness_journal_self_ai_silent(request: Request, silent: str = 
     if not admin:
         return RedirectResponse("/login")
     uid = int(admin.get("primary_user_id") or admin["id"])
-    from services.wellness_journal_service import set_wellness_admin_ai_silent
+    me = await database.fetch_one(users.select().where(users.c.id == uid))
+    was_silent = bool(me.get("wellness_admin_ai_silent")) if me else False
+    from services.wellness_journal_service import (
+        kickoff_admin_wellness_chain_after_enable,
+        set_wellness_admin_ai_silent,
+    )
 
     on = (silent or "").strip() in ("1", "true", "on", "yes")
     await set_wellness_admin_ai_silent(uid, on)
+    if was_silent and not on:
+        await kickoff_admin_wellness_chain_after_enable(uid)
     return RedirectResponse("/admin/wellness-journal?saved=1", status_code=303)
+
+
+@router.post("/wellness-journal/self-reset-chain")
+async def admin_wellness_journal_self_reset_chain(request: Request):
+    """Сбросить индекс цепочки вопросов дневника для текущего админа."""
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    uid = int(admin.get("primary_user_id") or admin["id"])
+    from services.wellness_journal_service import reset_wellness_admin_chain_index
+
+    await reset_wellness_admin_chain_index(uid)
+    return RedirectResponse("/admin/wellness-journal?chain_reset=1", status_code=303)
 
 
 @router.post("/wellness-journal/global")
