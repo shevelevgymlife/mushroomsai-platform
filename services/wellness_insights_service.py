@@ -52,6 +52,54 @@ def calendar_week_strip_for_user(
     return out
 
 
+def _metric_float_for_index(v: Any) -> Optional[float]:
+    if v is None:
+        return None
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def annotate_week_strip_best_worst(
+    strip: list[dict[str, Any]], series: list[dict[str, Any]]
+) -> bool:
+    """Помечает лучший/худший день недели по сводному индексу (как кольцо на дашборде). Возвращает, показывать ли легенду."""
+    by_date: dict[str, dict[str, Any]] = {}
+    for x in series:
+        iso = str(x.get("date") or "")
+        if len(iso) >= 10:
+            by_date[iso] = x.get("m") or {}
+    scored: list[tuple[str, int]] = []
+    for cell in strip:
+        cell["is_week_best"] = False
+        cell["is_week_worst"] = False
+        iso = str(cell.get("iso") or "")
+        if not cell.get("has_data") or not iso:
+            continue
+        m = by_date.get(iso, {})
+        pct = wellness_composite_index_percent(
+            _metric_float_for_index(m.get("mood_0_10")),
+            _metric_float_for_index(m.get("energy_0_10")),
+            _metric_float_for_index(m.get("anxiety_0_10")),
+        )
+        if pct is not None:
+            scored.append((iso, int(pct)))
+    if len(scored) < 2:
+        return False
+    mx = max(s[1] for s in scored)
+    mn = min(s[1] for s in scored)
+    if mx == mn:
+        return False
+    best_isos = {iso for iso, sc in scored if sc == mx}
+    worst_isos = {iso for iso, sc in scored if sc == mn}
+    for cell in strip:
+        iso = str(cell.get("iso") or "")
+        cell["is_week_best"] = iso in best_isos
+        cell["is_week_worst"] = iso in worst_isos
+    return True
+
+
 def parse_wellness_chart_range(raw: Optional[str]) -> tuple[str, int]:
     """Ключ периода и число календарных дней в окне (включая сегодня)."""
     s = (raw or "").strip().lower()
@@ -803,6 +851,7 @@ def minimal_admin_user_insights_shell(range_raw: str) -> dict[str, Any]:
         "user_charts": [],
         "heatmap_rows": [],
         "heatmap_mode": "user",
+        "wellness_week_strip_show_extremes": False,
     }
 
 
@@ -831,6 +880,9 @@ async def build_user_insights_dashboard_context(
     series_long = await fetch_snapshots_series(uid, 40)
     series_chart = slice_series_calendar_days(series_long, range_days)
     wellness_week_strip = calendar_week_strip_for_user(series_long)
+    wellness_week_strip_show_extremes = annotate_week_strip_best_worst(
+        wellness_week_strip, series_long
+    )
 
     streak = await count_checkin_streak(uid)
     rec_text = await latest_recommendation_text(uid)
@@ -904,6 +956,7 @@ async def build_user_insights_dashboard_context(
         "chart_range_label": range_labels.get(chart_range, ""),
         "chart_range_letter": range_letter,
         "wellness_week_strip": wellness_week_strip,
+        "wellness_week_strip_show_extremes": wellness_week_strip_show_extremes,
         "wellness_streak": streak,
         "wellness_segment": segment,
         "wellness_rec_text": rec_text,
@@ -1012,6 +1065,7 @@ async def build_platform_insights_dashboard_context(
         "chart_range_label": range_labels.get(chart_range, ""),
         "chart_range_letter": range_letter,
         "wellness_week_strip": [],
+        "wellness_week_strip_show_extremes": False,
         "plat_activity_strip": activity,
         "wellness_streak": int(plat_means.get("snapshot_rows") or 0),
         "wellness_segment": "Среднее по всем пользователям за выбранное окно (анонимно).",

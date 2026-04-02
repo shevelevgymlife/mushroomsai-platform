@@ -2659,6 +2659,16 @@ async def admin_wellness_journal_insights(request: Request):
     )
     ctx["schemes"] = [dict(x) for x in schemes]
 
+    if request.query_params.get("partial") == "json":
+        if mode == "user" and not uid_raw.isdigit():
+            return JSONResponse({"error": "user_id required"}, status_code=400)
+        from web.templates_utils import template_context_for_request
+
+        html = templates.env.get_template("components/wellness_dashboard_fragment_inner.html").render(
+            **template_context_for_request(request, ctx)
+        )
+        return JSONResponse({"html": html, "charts": ctx.get("user_charts") or []})
+
     return templates.TemplateResponse("dashboard/admin_wellness_insights.html", ctx)
 
 

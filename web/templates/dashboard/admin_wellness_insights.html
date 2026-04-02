@@ -52,10 +52,14 @@
 
     <div class="wd-root wd-admin-wide">
       {% if insights_mode == 'platform' %}
+      <div id="wd-dash-mount" data-wellness-spa="1">
         {% include "components/wellness_dashboard_core.html" %}
+      </div>
       {% elif insights_user_id %}
+      <div id="wd-dash-mount" data-wellness-spa="1">
         <p class="text-xs text-muted mb-3">Просмотр: <strong class="text-text">{{ insights_user_label }}</strong> (id {{ insights_user_id }})</p>
         {% include "components/wellness_dashboard_core.html" %}
+      </div>
       {% else %}
         <div class="wd-disclaimer" style="margin-bottom:0">
           Выберите пользователя в списке выше — загрузятся индекс, sparklines, графики по периоду и тепловая таблица, как в личном кабинете.
@@ -96,24 +100,14 @@
   </div>
 </div>
 
-{% if user_charts is defined and user_charts and user_charts|length > 0 %}
+{% if insights_mode == 'platform' or insights_user_id %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script type="application/json" id="wellness-dash-charts-json">{{ user_charts | tojson }}</script>
+<script src="/static/js/wellness_dash_spa.js"></script>
 <script>
-(function () {
-  function boot() {
-    var el = document.getElementById('wellness-dash-charts-json');
-    if (!el || !window.Chart) return;
-    var list = [];
-    try { list = JSON.parse(el.textContent || '[]'); } catch (e) { return; }
-    list.forEach(function (item) {
-      var c = document.getElementById(item.canvas_id);
-      if (c) new Chart(c, item.config);
-    });
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
-  else boot();
-})();
+document.addEventListener('DOMContentLoaded', function () {
+  var charts = {{ (user_charts if user_charts is defined else []) | tojson }};
+  if (window.wellnessDashSpaInit) window.wellnessDashSpaInit({ initialCharts: charts });
+});
 </script>
 {% endif %}
 {% endblock %}

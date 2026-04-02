@@ -31,7 +31,9 @@
   </div>
   {% endif %}
 
+  <div id="wd-dash-mount" data-wellness-spa="1">
   {% include "components/wellness_dashboard_core.html" %}
+  </div>
 
   <h2 class="wd-sec-title">За всё время (по ответам)</h2>
   <div class="wd-stat-grid mb-6">
@@ -101,24 +103,12 @@
   <p class="accneo-back" style="margin-top:28px"><a href="/account/settings">← Настройки</a></p>
 </div>
 
-{% if user_charts is defined and user_charts and user_charts|length > 0 %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script type="application/json" id="wellness-dash-charts-json">{{ user_charts | tojson }}</script>
+<script src="/static/js/wellness_dash_spa.js"></script>
 <script>
-(function () {
-  function boot() {
-    var el = document.getElementById('wellness-dash-charts-json');
-    if (!el || !window.Chart) return;
-    var list = [];
-    try { list = JSON.parse(el.textContent || '[]'); } catch (e) { return; }
-    list.forEach(function (item) {
-      var c = document.getElementById(item.canvas_id);
-      if (c) new Chart(c, item.config);
-    });
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
-  else boot();
-})();
+document.addEventListener('DOMContentLoaded', function () {
+  var charts = {{ (user_charts if user_charts is defined else []) | tojson }};
+  if (window.wellnessDashSpaInit) window.wellnessDashSpaInit({ initialCharts: charts });
+});
 </script>
-{% endif %}
 {% endblock %}

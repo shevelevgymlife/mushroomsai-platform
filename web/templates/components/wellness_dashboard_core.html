@@ -12,13 +12,16 @@
 {% elif wellness_week_strip is defined and wellness_week_strip and wellness_week_strip|length > 0 %}
   <div class="wd-cal" aria-label="Неделя check-in">
     {% for day in wellness_week_strip %}
-    <div class="wd-cal-i{% if day.is_today %} wd-today{% endif %}{% if day.has_data %} wd-has{% endif %}">
+    <div class="wd-cal-i{% if day.is_today %} wd-today{% endif %}{% if day.has_data %} wd-has{% endif %}{% if day.is_week_best %} wd-week-best{% endif %}{% if day.is_week_worst %} wd-week-worst{% endif %}" title="{% if day.is_week_best and day.is_week_worst %}Лучший и худший по индексу{% elif day.is_week_best %}Лучший день недели по сводному индексу{% elif day.is_week_worst %}Самый тяжёлый день недели по сводному индексу{% elif day.has_data %}Есть запись{% else %}Нет записи{% endif %}">
       <div class="wd-cal-l">{{ day.label }}</div>
       <div class="wd-cal-n">{{ day.num }}</div>
-      <div class="wd-cal-dot" title="{% if day.has_data %}Есть запись{% else %}Нет записи{% endif %}"></div>
+      <div class="wd-cal-dot" aria-hidden="true"></div>
     </div>
     {% endfor %}
   </div>
+  {% if wellness_week_strip_show_extremes is defined and wellness_week_strip_show_extremes %}
+  <p class="wd-cal-legend">По кольцу «Индекс дня»: <span class="wd-leg-best">лучший</span> и <span class="wd-leg-worst">самый тяжёлый</span> среди дней с данными (минимум два таких дня).</p>
+  {% endif %}
 {% endif %}
 
 <div class="wd-hero-grid">
@@ -112,9 +115,9 @@
     {% endif %}
   </p>
   <nav class="wd-tabs" role="tablist" aria-label="Период графиков">
-    <a role="tab" href="{{ wd_tab_urls['d'] }}" class="{% if chart_range == 'day' %}wd-active{% endif %}">День</a>
-    <a role="tab" href="{{ wd_tab_urls['w'] }}" class="{% if chart_range == 'week' %}wd-active{% endif %}">Неделя</a>
-    <a role="tab" href="{{ wd_tab_urls['m'] }}" class="{% if chart_range == 'month' %}wd-active{% endif %}">30 дней</a>
+    <a role="tab" href="{{ wd_tab_urls['d'] }}" class="wd-tab-spa {% if chart_range == 'day' %}wd-active{% endif %}">День</a>
+    <a role="tab" href="{{ wd_tab_urls['w'] }}" class="wd-tab-spa {% if chart_range == 'week' %}wd-active{% endif %}">Неделя</a>
+    <a role="tab" href="{{ wd_tab_urls['m'] }}" class="wd-tab-spa {% if chart_range == 'month' %}wd-active{% endif %}">30 дней</a>
   </nav>
 </div>
 {% if user_charts is defined and user_charts and user_charts|length > 0 %}

@@ -1140,6 +1140,17 @@ async def wellness_results_page(request: Request):
         tab_url_base="/account/wellness-results",
     )
 
+    if request.query_params.get("partial") == "json":
+        from web.templates_utils import template_context_for_request
+
+        html = templates.env.get_template("components/wellness_dashboard_fragment_inner.html").render(
+            **template_context_for_request(
+                request,
+                {"user": user, **dash},
+            )
+        )
+        return JSONResponse({"html": html, "charts": dash.get("user_charts") or []})
+
     return templates.TemplateResponse(
         "account/wellness_results.html",
         {

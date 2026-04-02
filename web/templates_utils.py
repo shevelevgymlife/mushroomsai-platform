@@ -11,11 +11,39 @@ from typing import Any
 from urllib.parse import urlparse, urlencode, parse_qs, urlunparse
 
 from fastapi.templating import Jinja2Templates as _Jinja2Templates
+from starlette.requests import Request
 from config import shevelev_token_address
 from services.in_app_notifications import merge_prefs
 from services.mention_html import jinja_linkify_mentions
 from web.community_media import post_image_urls as jinja_post_image_urls
 from web.translations import TRANSLATIONS, SUPPORTED_LANGS
+
+
+def template_context_for_request(request: Request, extra: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Те же ключи, что подставляет TemplateResponse (t, lang, user, …), для render без обёртки."""
+    ctx: dict[str, Any] = dict(extra or {})
+    ctx["request"] = request
+    if "user" not in ctx:
+        ctx["user"] = getattr(request.state, "_auth_user", None)
+    user = ctx.get("user")
+    lang = getattr(request.state, "lang", "ru")
+    if user and isinstance(user, dict):
+        user_lang = user.get("language")
+        if user_lang and user_lang in SUPPORTED_LANGS:
+            lang = user_lang
+    ru = TRANSLATIONS["ru"]
+    loc = TRANSLATIONS.get(lang, ru)
+    ctx.setdefault("t", {**ru, **loc} if lang != "ru" else dict(ru))
+    ctx.setdefault("lang", lang)
+    ctx.setdefault("shevelev_token", shevelev_token_address())
+    ctx.setdefault("global_radio_enabled", getattr(request.state, "global_radio_enabled", True))
+    ctx.setdefault("video_calls_enabled", getattr(request.state, "video_calls_enabled", True))
+    ctx.setdefault(
+        "links_clickable_enabled", getattr(request.state, "links_clickable_enabled", True)
+    )
+    ujson = (user.get("notification_prefs_json") if user and isinstance(user, dict) else None)
+    ctx.setdefault("notification_prefs", merge_prefs(ujson))
+    return ctx
 
 
 def _replace_query_filter(url, **kwargs):

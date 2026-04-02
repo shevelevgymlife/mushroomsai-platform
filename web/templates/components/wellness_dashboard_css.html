@@ -41,6 +41,24 @@
   .wd-cal-i.wd-today.wd-plat-hot .wd-cal-n {
     background: linear-gradient(145deg, rgba(61,212,224,0.35), rgba(52,211,153,0.2));
   }
+  .wd-cal-i.wd-week-best .wd-cal-n {
+    box-shadow: 0 0 0 2px rgba(52,211,153,0.85), 0 0 14px rgba(52,211,153,0.35);
+    border-color: rgba(52,211,153,0.5);
+    color: #d1fae5;
+  }
+  .wd-cal-i.wd-week-worst .wd-cal-n {
+    box-shadow: 0 0 0 2px rgba(244,114,182,0.75), 0 0 12px rgba(244,114,182,0.25);
+    border-color: rgba(244,114,182,0.45);
+    color: #fce7f3;
+  }
+  .wd-cal-i.wd-week-best.wd-week-worst .wd-cal-n {
+    box-shadow: 0 0 0 2px rgba(52,211,153,0.6), 0 0 0 4px rgba(244,114,182,0.45);
+  }
+  .wd-cal-legend {
+    font-size: 0.65rem; color: #6b6b78; margin: -0.35rem 0 1.1rem; line-height: 1.45; padding: 0 0.35rem;
+  }
+  .wd-cal-legend .wd-leg-best { color: #6ee7b7; font-weight: 600; }
+  .wd-cal-legend .wd-leg-worst { color: #f9a8d4; font-weight: 600; }
   .wd-cal-dot { width:4px; height:4px; border-radius:50%; margin:0.25rem auto 0; background:transparent; }
   .wd-cal-i.wd-has .wd-cal-dot { background: var(--wd-mint); }
   .wd-cal-plat-cnt { font-size:0.55rem; font-weight:600; color:#5c5c6a; margin-top:0.2rem; }
