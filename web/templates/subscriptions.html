@@ -14,6 +14,7 @@
       {% if ge == 'no_payment' %}Оплата подарка недоступна: в админке не включён CloudPayments или ЮKassa (или не выбран основной способ).
       {% elif ge == 'use_bot' %}Оплата подарка на сайте недоступна — включите веб-оплату ЮKassa или откройте бота.
       {% elif ge == 'self' %}Нельзя подарить подписку самому себе.
+      {% elif ge == 'create' %}Не удалось создать платёж подарка в ЮKassa. Попробуйте позже или оплатите в боте.{% if request.query_params.get('gift_error_detail') %}<br><span class="text-xs opacity-80">Код: {{ request.query_params.get('gift_error_detail') }}</span>{% endif %}
       {% elif ge not in ('1', 'invalid', '') %}Не удалось оформить подарок: {{ ge }}. Проверьте получателя и тариф.
       {% else %}Проверьте выбор пользователя и тарифа.{% endif %}
     </div>
@@ -32,7 +33,7 @@
     {% if request.query_params.get('pay_error') %}
     <div class="max-w-3xl mx-auto mb-6 p-4 rounded-2xl border border-red-500/35 bg-red-500/10 text-red-100 text-sm leading-relaxed text-center">
       {% set pe = request.query_params.get('pay_error') %}
-      {% if pe == 'create' %}Не удалось создать платёж ЮKassa. Попробуйте позже или оплатите в боте.
+      {% if pe == 'create' %}Не удалось создать платёж ЮKassa. Попробуйте позже или оплатите в боте.{% if request.query_params.get('pay_error_detail') %}<br><span class="text-xs opacity-80">Код: {{ request.query_params.get('pay_error_detail') }}</span>{% endif %}
       {% elif pe == 'bad_offering' %}Предложение недоступно или отключено в админке.
       {% elif pe == 'web_disabled' %}Оплата на сайте не настроена (нужны shopId и секрет ЮKassa в разделе Оплата → ЮKassa Бот).
       {% elif pe == 'no_site_url' %}На сервере не задан корректный SITE_URL (нужен https для возврата после оплаты).

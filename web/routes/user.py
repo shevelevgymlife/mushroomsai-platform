@@ -91,6 +91,52 @@ router = APIRouter()
 templates = Jinja2Templates(directory="web/templates")
 
 
+async def _create_yookassa_with_fallback(
+    *,
+    amount_rub: float,
+    description: str,
+    return_url: str,
+    metadata: dict[str, str],
+    customer_email: str | None,
+) -> tuple[str | None, str | None, str | None]:
+    """
+    Пытается создать web-платёж сначала по yookassa_bot,
+    затем резервно по yookassa (если там другие ключи).
+    """
+    yb = await get_provider_settings("yookassa_bot")
+    sid1, sec1 = resolve_yookassa_shop_credentials(yb)
+    url, err, pid = await create_yookassa_redirect_payment(
+        shop_id=sid1,
+        secret_key=sec1,
+        amount_rub=amount_rub,
+        description=description,
+        return_url=return_url,
+        metadata=metadata,
+        customer_email=customer_email,
+    )
+    if url:
+        return url, None, pid
+
+    yk = await get_provider_settings("yookassa")
+    sid2, sec2 = resolve_yookassa_shop_credentials(yk)
+    if sid2 and sec2 and (sid2 != sid1 or sec2 != sec1):
+        url2, err2, pid2 = await create_yookassa_redirect_payment(
+            shop_id=sid2,
+            secret_key=sec2,
+            amount_rub=amount_rub,
+            description=description,
+            return_url=return_url,
+            metadata=metadata,
+            customer_email=customer_email,
+        )
+        if url2:
+            _logger.info("yookassa web pay fallback credentials used from payment_provider:yookassa")
+            return url2, None, pid2
+        if err2:
+            return None, f"{err or 'create_failed'}|fallback:{err2}", None
+    return None, err, None
+
+
 async def compute_visible_blocks(user_id: int, plan: str) -> list[str]:
     """Return list of block_keys visible for this user, respecting global settings and per-user overrides."""
     blocks_raw = await database.fetch_all(
@@ -292,10 +338,7 @@ async def pay_subscription_yookassa(request: Request, offering_id: str = "", pla
     dur = (off.get("duration_label") or "")[:40]
     desc = f"Подписка «{disp}» {dur}".strip()[:128]
     cust_email = (user.get("email") or "").strip() or None
-    shop_id, sec_key = resolve_yookassa_shop_credentials(yb)
-    url, err, payment_id = await create_yookassa_redirect_payment(
-        shop_id=shop_id,
-        secret_key=sec_key,
+    url, err, payment_id = await _create_yookassa_with_fallback(
         amount_rub=price,
         description=desc,
         return_url=return_url,
@@ -308,7 +351,10 @@ async def pay_subscription_yookassa(request: Request, offering_id: str = "", pla
     )
     if not url:
         _logger.warning("yookassa create redirect failed: %s", err)
-        return RedirectResponse("/subscriptions?pay_error=create", status_code=302)
+        return RedirectResponse(
+            "/subscriptions?pay_error=create&pay_error_detail=" + quote((err or "unknown")[:260], safe=""),
+            status_code=302,
+        )
     out = RedirectResponse(url, status_code=302)
     if payment_id:
         out.set_cookie(
@@ -396,10 +442,7 @@ async def pay_gift_subscription(request: Request, plan: str = "", recipient_id: 
         dur = (off.get("duration_label") or "")[:40]
         desc = f"Подарок подписки «{disp}» {dur}".strip()[:128]
         cust_email = (user.get("email") or "").strip() or None
-        shop_id, sec_key = resolve_yookassa_shop_credentials(yb)
-        url, err, payment_id = await create_yookassa_redirect_payment(
-            shop_id=shop_id,
-            secret_key=sec_key,
+        url, err, payment_id = await _create_yookassa_with_fallback(
             amount_rub=price_rub,
             description=desc,
             return_url=return_url,
@@ -415,7 +458,10 @@ async def pay_gift_subscription(request: Request, plan: str = "", recipient_id: 
         )
         if not url:
             _logger.warning("yookassa gift create redirect failed: %s", err)
-            return RedirectResponse("/subscriptions?gift_error=create", status_code=302)
+            return RedirectResponse(
+                "/subscriptions?gift_error=create&gift_error_detail=" + quote((err or "unknown")[:260], safe=""),
+                status_code=302,
+            )
         out = RedirectResponse(url, status_code=302)
         if payment_id:
             out.set_cookie(
