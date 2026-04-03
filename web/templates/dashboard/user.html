@@ -77,10 +77,14 @@
   display:grid;
   grid-template-columns:repeat(3,minmax(0,1fr));
   gap:12px;
-  align-items:start;
+  align-items:stretch;
 }
 #feedPosts .ig-post{
   position:relative;
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+  height:100%;
   margin-bottom:0!important;
   border-radius:24px!important;
   background:linear-gradient(165deg,rgba(255,255,255,.075),rgba(9,10,16,.92))!important;
@@ -112,19 +116,6 @@
 #feedPosts.feed-chaos-off .ig-post{transform:none!important}
 #feedPosts.feed-chaos-off .ig-post:hover{transform:none!important}
 #feedPosts .ig-post-header{padding:9px 11px}
-#feedPosts .ig-post-img{
-  aspect-ratio:4/5;
-  max-height:260px;
-}
-#feedPosts .ig-post-textonly{
-  min-height:78px;
-  padding:10px 12px;
-  font-size:13px;
-  display:-webkit-box;
-  -webkit-line-clamp:3;
-  -webkit-box-orient:vertical;
-  overflow:hidden;
-}
 #feedPosts .ig-post-snippet,
 #profilePosts .ig-post-snippet{padding:10px 12px 6px;border-top:1px solid rgba(255,255,255,.06)}
 #feedPosts .ig-post-snippet-title,
@@ -154,6 +145,7 @@
   grid-template-columns:repeat(3,minmax(0,1fr));
   gap:8px;
   padding:8px 10px 11px;
+  margin-top:auto;
 }
 #feedPosts .ig-post-metric,
 #profilePosts .ig-post-metric{
@@ -282,8 +274,15 @@
   display:grid;
   grid-template-columns:repeat(3,minmax(0,1fr));
   gap:12px;
-  align-items:start;
+  align-items:stretch;
   margin-top:10px;
+}
+#profilePosts .ig-post{
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+  height:100%;
+  margin-bottom:0!important;
 }
 #profilePosts.profile-chaos-on .ig-post:nth-child(4n+1){transform:translateY(8px) rotate(-4deg)}
 #profilePosts.profile-chaos-on .ig-post:nth-child(4n+2){transform:translateY(-5px) rotate(3.5deg)}
@@ -299,7 +298,6 @@
   #feedPosts.feed-chaos-on .ig-post:nth-child(4n+3){transform:translateY(0) rotate(1.4deg)}
   #feedPosts.feed-chaos-on .ig-post:nth-child(4n+4){transform:translateY(0) rotate(-1.8deg)}
   #feedPosts .ig-post-header{padding:8px 9px}
-  #feedPosts .ig-post-img{max-height:180px}
   #feedPosts .ig-post-metric,#profilePosts .ig-post-metric{min-height:40px;font-size:14px}
   #feedPosts .ig-post-metric .n,#profilePosts .ig-post-metric .n{font-size:15px}
   #feedPosts .ig-post-snippet,#profilePosts .ig-post-snippet{padding:8px 9px 6px}
@@ -1185,7 +1183,7 @@ body.dash-ig-app .ig-lamp-topbar{
           </div>
           <div id="meProfOk" style="display:none;margin-top:10px;font-size:13px;color:#4ade80">✓ Сохранено</div>
         </div>
-        <link rel="stylesheet" href="/static/css/nf-community-posts.css?v=3" />
+        <link rel="stylesheet" href="/static/css/nf-community-posts.css?v=4" />
         <script src="/static/js/nf-community-star-like.js?v=1"></script>
         <div id="profileChaosWrap">
           <label class="feed-chaos-toggle" for="profileChaosToggle">
@@ -1213,11 +1211,14 @@ body.dash-ig-app .ig-lamp-topbar{
               </details>
             </div>
             {% if p.title %}<div style="padding:10px 14px 0;font-size:15px;font-weight:700;color:#e8e8e8">{{ p.title | linkify_mentions | safe }}</div>{% endif %}
-            {% if pimgs %}
-            <div class="nf-post-gallery" onclick="event.stopPropagation()">{% for u in pimgs %}<img src="{{ u }}" class="nf-post-gallery__slide" loading="lazy" alt="">{% endfor %}</div>
-            {% elif p.content %}
-            <div class="ig-post-textonly">{{ p.content | linkify_mentions(500) | safe }}</div>
-            {% endif %}
+            <div class="nf-post-cover-wrap">
+              {% if pimgs %}
+              <img src="{{ pimgs[0] }}" class="nf-post-cover-img" loading="lazy" alt="">
+              {% if pimgs|length > 1 %}<span class="nf-post-cover-more" aria-hidden="true">+{{ pimgs|length - 1 }}</span>{% endif %}
+              {% else %}
+              <div class="nf-post-cover-placeholder" aria-hidden="true">🍄</div>
+              {% endif %}
+            </div>
             <div class="ig-post-snippet">
               {% if p.title %}<div class="ig-post-snippet-title">{{ p.title | linkify_mentions | safe }}</div>{% endif %}
               <div class="ig-post-snippet-text">{% if p.content %}{{ p.content | linkify_mentions(140) | safe }}{% else %}Новый пост{% endif %}</div>
@@ -1292,7 +1293,7 @@ body.dash-ig-app .ig-lamp-topbar{
           <input id="feedChaosToggle" type="checkbox" checked onchange="setFeedChaos(this.checked)">
         </label>
       </div>
-      <link rel="stylesheet" href="/static/css/nf-community-posts.css?v=3" />
+      <link rel="stylesheet" href="/static/css/nf-community-posts.css?v=4" />
       <script src="/static/js/nf-community-star-like.js?v=1"></script>
 
       <!-- Posts -->
@@ -1339,13 +1340,14 @@ body.dash-ig-app .ig-lamp-topbar{
         {% if p.title %}
         <div style="padding:10px 14px 0;font-size:15px;font-weight:700;color:#e8e8e8">{{ p.title | linkify_mentions | safe }}</div>
         {% endif %}
-        {% if imgs %}
-        <div class="nf-post-gallery" onclick="event.stopPropagation()" style="max-height:none">
-          {% for u in imgs %}<img src="{{ u }}" class="nf-post-gallery__slide" loading="lazy" alt="">{% endfor %}
+        <div class="nf-post-cover-wrap">
+          {% if imgs %}
+          <img src="{{ imgs[0] }}" class="nf-post-cover-img" loading="lazy" alt="">
+          {% if imgs|length > 1 %}<span class="nf-post-cover-more" aria-hidden="true">+{{ imgs|length - 1 }}</span>{% endif %}
+          {% else %}
+          <div class="nf-post-cover-placeholder" aria-hidden="true">🍄</div>
+          {% endif %}
         </div>
-        {% elif p.content %}
-        <div class="ig-post-textonly">{{ p.content | linkify_mentions(500) | safe }}</div>
-        {% endif %}
         <div class="ig-post-snippet">
           {% if p.title %}
           <div class="ig-post-snippet-title">{{ p.title | linkify_mentions | safe }}</div>
@@ -4386,7 +4388,7 @@ function openFeedPostPreview(event, card){
 }
 function openCommunityPostPage(event, postId){
   const t=event&&event.target;
-  if(t && t.closest('a,button,input,textarea,details,summary,.ig-post-metric,.ig-pm,.nf-post-gallery')) return;
+  if(t && t.closest('a,button,input,textarea,details,summary,.ig-post-metric,.ig-pm')) return;
   const back=encodeURIComponent(location.href);
   location.href='/community/post/'+postId+'?back='+back;
 }

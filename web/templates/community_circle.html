@@ -2,6 +2,7 @@
 {% block title %}{{ circle.name }} — {{ profile.name }}{% endblock %}
 {% block content %}
 <script src="/static/js/nf-community-star-like.js?v=1"></script>
+<link rel="stylesheet" href="/static/css/nf-community-posts.css?v=4" />
 <style>
 /* Шапка как у обучающих постов в папке (admin AI) */
 .cc-folder-bar{margin-bottom:16px;padding:14px 16px;border-radius:16px;background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.28);display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px}
@@ -20,7 +21,7 @@
 .ai-ya-title{font-size:17px;font-weight:700;color:#60a5fa;line-height:1.25;margin:0 0 6px}
 .ai-ya-meta{font-size:12px;color:#6b7280;margin-bottom:8px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .ai-ya-desc{font-size:13px;color:#9ca3af;line-height:1.45;margin:0 0 10px;max-height:4.5em;overflow:hidden}
-.ai-ya-thumb img{max-height:100px;max-width:100%;border-radius:10px;border:1px solid rgba(56,189,248,.25);display:block}
+.ai-ya-thumb{margin-bottom:8px;border-radius:12px;overflow:hidden;border:1px solid rgba(56,189,248,.25)}
 .cc-card-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:4px}
 .cc-card-met{border:1px solid rgba(255,255,255,.14);border-radius:12px;min-height:42px;background:linear-gradient(160deg,rgba(255,255,255,.07),rgba(12,13,20,.92));display:flex;align-items:center;justify-content:center;gap:6px;font-size:14px;font-weight:800;color:#e5e7eb}
 .cc-card-met-star{color:#ffd84f;border-color:rgba(255,216,79,.45)}
@@ -52,11 +53,15 @@
       <div class="ai-ya-meta">
         <span>{{ profile.name or 'Участник' }}</span>
         <span>{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '—' }}</span>
-        {% if cimgs %}<span style="color:#38bdf8">▣ {{ cimgs|length }} фото</span>{% endif %}
       </div>
-      {% if cimgs %}
-      <div class="ai-ya-thumb" style="margin-bottom:8px"><img src="{{ cimgs[0] }}" loading="lazy" alt=""></div>
-      {% endif %}
+      <div class="ai-ya-thumb nf-post-cover-wrap">
+        {% if cimgs %}
+        <img src="{{ cimgs[0] }}" class="nf-post-cover-img" loading="lazy" alt="">
+        {% if cimgs|length > 1 %}<span class="nf-post-cover-more" aria-hidden="true">+{{ cimgs|length - 1 }}</span>{% endif %}
+        {% else %}
+        <div class="nf-post-cover-placeholder" aria-hidden="true">🍄</div>
+        {% endif %}
+      </div>
       <p class="ai-ya-desc">{% if p.content %}{{ (p.content | truncate(400, True, '…')) | linkify_mentions | safe }}{% else %}Без текста{% endif %}</p>
       <div class="cc-card-metrics">
         <button type="button" class="cc-card-met cc-card-met-star" onclick="event.stopPropagation();ccLikePost({{ p.id }},this)"><span>{% if item.liked %}⭐{% else %}✩{% endif %}</span> <span id="cc-lkc-{{ p.id }}">{{ p.likes_count }}</span></button>
