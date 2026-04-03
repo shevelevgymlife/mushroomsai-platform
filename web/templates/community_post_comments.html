@@ -226,15 +226,15 @@ function cpcCardHtml(c){
   var rot=chaosRot(c.id),tx=chaosTx(c.id),ty=chaosTy(c.id);
   var nm=esc(c.author_name||'Участник');
   var body=(typeof linkifyCommunityMentionsPlain==='function'?linkifyCommunityMentionsPlain(c.content||''):esc(c.content||''));
-  var likeCls=c.viewer_liked?'cpc-like-btn on':'cpc-like-btn';
-  var likeTxt=c.viewer_liked?'⭐':'✩';
+  var likeCls=(c.viewer_liked||c.liked_by_me)?'cpc-like-btn on':'cpc-like-btn';
+  var likeTxt=(c.viewer_liked||c.liked_by_me)?'⭐':'✩';
   var base=''+
     '<div class="cpc-card-meta"><b>'+nm+'</b> · '+esc(c.created_at||'')+
     (c.author_emoji?(' <span style="opacity:.85">'+esc(c.author_emoji)+'</span>'):'')+'</div>'+
     '<div class="cpc-card-body">'+body+'</div>'+
     '<div class="cpc-card-actions">'+
       '<button type="button" class="'+likeCls+'" onclick="cpcToggleLike('+c.id+')">'+likeTxt+' <span id="cpcLikeCnt_'+c.id+'">'+(Number(c.likes_count)||0)+'</span></button>'+
-      '<button type="button" class="cpc-reply-btn" onclick="setReplyToCpc('+c.id+','+JSON.stringify(c.author_name||'Участник')+')">↩ Ответ</button>'+
+      '<button type="button" class="cpc-reply-btn" data-cname="'+nm+'" onclick="setReplyToCpc('+c.id+', this.dataset.cname)">↩ Ответ</button>'+
     '</div>';
   if(cpcViewMode==='list'){
     return '<div class="cpc-line">'+base+'</div>';
@@ -252,7 +252,7 @@ function buildCommentTree(items){
   });
   Object.keys(map).forEach(function(k){
     const n=map[k];
-    const pid=n.reply_to_id;
+    const pid=n.reply_to_id||n.reply_to_comment_id;
     if(pid && map[String(pid)]){
       map[String(pid)].children.push(n);
     }else{
@@ -384,5 +384,6 @@ document.getElementById('cpcInp')&&document.getElementById('cpcInp').addEventLis
   if(e.key==='Enter'){ e.preventDefault(); cpcSend(); }
 });
 initCommentsView();
+cpcLoad();
 </script>
 {% endblock %}
