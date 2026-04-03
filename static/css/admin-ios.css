@@ -378,3 +378,438 @@
   border-color: rgba(61, 212, 224, 0.4);
   color: #3dd4e0;
 }
+
+/* ── Страницы настроек (как «Настройки» iOS) ─────────────────────────── */
+.admin-ios-settings-page {
+  max-width: 38rem;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+@media (min-width: 640px) {
+  .admin-ios-settings-page {
+    max-width: 40rem;
+  }
+}
+
+.admin-ios-settings-page--wide {
+  max-width: 52rem;
+}
+
+@media (min-width: 768px) {
+  .admin-ios-settings-page--wide {
+    max-width: 56rem;
+  }
+}
+
+.admin-ios-settings-title {
+  font-size: 1.75rem;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  color: var(--text, #eaeaec);
+  margin: 0 0 0.35rem;
+}
+
+.admin-ios-settings-lead {
+  font-size: 0.8125rem;
+  color: var(--muted, #8e8e96);
+  line-height: 1.5;
+  margin: 0 0 1rem;
+}
+
+.admin-ios-settings-lead-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+}
+
+.admin-ios-settings-lead-row .admin-ios-settings-lead {
+  flex: 1;
+  margin: 0;
+  min-width: 0;
+}
+
+.admin-ios-alert {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.admin-ios-alert--ok {
+  background: rgba(52, 199, 89, 0.12);
+  border: 1px solid rgba(52, 199, 89, 0.28);
+  color: #a8e9b0;
+}
+
+.admin-ios-alert--err {
+  background: rgba(255, 69, 58, 0.12);
+  border: 1px solid rgba(255, 69, 58, 0.28);
+  color: #ffb4ae;
+}
+
+.admin-ios-group-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(142, 142, 150, 0.95);
+  margin: 1.25rem 0 0.4rem 0.35rem;
+}
+
+.admin-ios-group-label:first-child {
+  margin-top: 0.25rem;
+}
+
+.admin-ios-group {
+  background: rgba(28, 28, 30, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 1.25rem;
+}
+
+.admin-ios-group--note {
+  background: rgba(44, 44, 46, 0.85);
+}
+
+.admin-ios-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.85rem 0.55rem 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.admin-ios-cell:last-child {
+  border-bottom: none;
+}
+
+.admin-ios-cell--stack {
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.admin-ios-cell--stack .admin-ios-cell__main {
+  width: 100%;
+}
+
+.admin-ios-cell--stack .admin-ios-cell__control {
+  width: 100%;
+  margin-top: 0.35rem;
+}
+
+.admin-ios-app-icon {
+  flex-shrink: 0;
+  width: 29px;
+  height: 29px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.admin-ios-cell__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-ios-cell__label {
+  display: block;
+  font-size: 0.9375rem;
+  font-weight: 400;
+  color: var(--text, #eaeaec);
+  line-height: 1.25;
+}
+
+.admin-ios-cell__desc {
+  display: block;
+  font-size: 0.6875rem;
+  color: var(--muted, #8e8e96);
+  line-height: 1.35;
+  margin-top: 0.12rem;
+}
+
+.admin-ios-cell__control {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.admin-ios-help-circle {
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  border: none;
+  background: rgba(10, 132, 255, 0.18);
+  color: #64b5ff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+
+.admin-ios-help-circle:hover {
+  background: rgba(10, 132, 255, 0.28);
+}
+
+.admin-ios-select {
+  min-width: 8.5rem;
+  max-width: 100%;
+  padding: 0.35rem 0.5rem;
+  border-radius: 8px;
+  background: rgba(58, 58, 60, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #eaeaec;
+  font-size: 0.8125rem;
+  outline: none;
+  cursor: pointer;
+}
+
+.admin-ios-toggle-row .tgl-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 51px;
+  height: 31px;
+}
+
+.admin-ios-toggle-row .tgl-inp {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.admin-ios-toggle-row .tgl-track {
+  position: absolute;
+  inset: 0;
+  background: #39393d;
+  border-radius: 31px;
+  cursor: pointer;
+  transition: 0.22s;
+}
+
+.admin-ios-toggle-row .tgl-inp:checked + .tgl-track {
+  background: #34c759;
+}
+
+.admin-ios-toggle-row .tgl-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  background: #fff;
+  border-radius: 50%;
+  transition: 0.22s;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28);
+}
+
+.admin-ios-toggle-row .tgl-inp:checked + .tgl-track .tgl-thumb {
+  transform: translateX(20px);
+}
+
+.admin-ios-btn-primary {
+  display: block;
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.65rem 1rem;
+  border: none;
+  border-radius: 10px;
+  background: #0a84ff;
+  color: #fff;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease, filter 0.15s ease;
+}
+
+.admin-ios-btn-primary:hover {
+  filter: brightness(1.06);
+}
+
+.admin-ios-btn-primary:active {
+  opacity: 0.92;
+}
+
+.admin-ios-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  border: none;
+  background: rgba(60, 60, 62, 0.95);
+  color: #0a84ff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-ios-btn-secondary:hover {
+  background: rgba(72, 72, 74, 0.98);
+}
+
+.admin-ios-segmented {
+  display: flex;
+  padding: 2px;
+  border-radius: 10px;
+  background: rgba(58, 58, 60, 0.85);
+  margin-bottom: 1.25rem;
+  gap: 2px;
+}
+
+.admin-ios-segmented button {
+  flex: 1;
+  border: none;
+  border-radius: 8px;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.55);
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.admin-ios-segmented button.is-on {
+  background: rgba(99, 99, 102, 0.98);
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.admin-ios-search-wrap {
+  margin-bottom: 1rem;
+}
+
+.admin-ios-search {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.55rem 0.85rem 0.55rem 2.25rem;
+  border-radius: 10px;
+  border: none;
+  background: rgba(58, 58, 60, 0.92);
+  color: #eaeaec;
+  font-size: 0.9375rem;
+  outline: none;
+}
+
+.admin-ios-search-wrap {
+  position: relative;
+}
+
+.admin-ios-search-wrap::before {
+  content: "⌕";
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.95rem;
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.admin-ios-reorder-banner {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  background: rgba(255, 159, 10, 0.12);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.admin-ios-reorder-banner.is-visible {
+  display: flex;
+}
+
+.admin-ios-block-card {
+  margin-bottom: 1rem;
+}
+
+.admin-ios-block-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.admin-ios-icon-btn {
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.35rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(44, 44, 46, 0.6);
+  color: #aeaeb2;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.admin-ios-icon-btn:hover {
+  border-color: rgba(10, 132, 255, 0.45);
+  color: #64b5ff;
+}
+
+.admin-ios-drag {
+  cursor: grab;
+  color: #636366;
+  font-size: 1.1rem;
+  padding: 0.15rem 0.35rem;
+  user-select: none;
+  line-height: 1;
+}
+
+.admin-ios-drag:active {
+  cursor: grabbing;
+}
+
+.admin-ios-badge-mono {
+  font-size: 0.625rem;
+  color: #8e8e93;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-family: ui-monospace, monospace;
+  flex-shrink: 0;
+}
+
+.admin-ios-user-pill {
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  background: rgba(44, 44, 46, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  font-size: 0.8125rem;
+  margin-bottom: 0.35rem;
+  transition: border-color 0.15s ease;
+}
+
+.admin-ios-user-pill:hover {
+  border-color: rgba(10, 132, 255, 0.4);
+}
+
+.sortable-ghost {
+  opacity: 0.45;
+}
+
+.sortable-drag {
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}

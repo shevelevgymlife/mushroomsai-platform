@@ -20,6 +20,13 @@
     var jel = document.getElementById('admin-help-json');
     if (jel && jel.textContent) reg = JSON.parse(jel.textContent);
   } catch (e) {}
+  try {
+    var jex = document.getElementById('admin-help-extra');
+    if (jex && jex.textContent) {
+      var ex = JSON.parse(jex.textContent);
+      if (ex && typeof ex === 'object') reg = Object.assign({}, reg, ex);
+    }
+  } catch (e) {}
 
   function openHelp(id, title) {
     var html = reg[id] || '<p>Описание пока не добавлено.</p>';
@@ -67,5 +74,12 @@
 
   window.__adminOpenHelp = openHelp;
   window.__adminCloseHelp = closeHelp;
+  window.__adminOpenHelpHtml = function (title, html) {
+    titleEl.textContent = title || 'Справка';
+    bodyEl.innerHTML = html || '<p>Нет описания.</p>';
+    overlay.classList.add('is-open');
+    overlay.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+  };
 })();
 </script>
