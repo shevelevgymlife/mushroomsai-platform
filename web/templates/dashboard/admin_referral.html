@@ -91,6 +91,102 @@
       {% endif %}
     </div>
 
+    <div class="rounded-2xl border border-violet-500/30 bg-violet-500/[0.07] p-5 mb-8 max-w-4xl" id="referral-bonus-platform">
+      <h2 class="text-lg font-semibold text-text mb-1">Бонусы · использование на платформе</h2>
+      <p class="text-xs text-muted mb-4 leading-relaxed">
+        Раздел объединяет <strong>реферальные начисления</strong> и внутренние операции: перевод другому пользователю, оплата подписки бонусами, автопродление при окончании периода (если включено), журнал «чеков» и уведомления от системного аккаунта.
+        Пользователи видят условия на <a href="/referral" class="text-gold hover:underline" target="_blank">/referral</a>; юридически — <a href="/legal/offer" class="text-gold hover:underline" target="_blank">оферта п. 2.5</a>, <a href="/legal/referral-payouts" class="text-gold hover:underline" target="_blank">документ о выплатах п. 2.4</a>, <a href="/legal/terms" class="text-gold hover:underline" target="_blank">соглашение п. 6.4</a>.
+      </p>
+      {% if ref_bonus_saved == 'program' %}
+      <div class="mb-3 p-2.5 rounded-xl border border-emerald-500/30 text-emerald-200 text-sm">Настройки программы бонусов сохранены.</div>
+      {% elif ref_bonus_saved == 'grant' %}
+      <div class="mb-3 p-2.5 rounded-xl border border-emerald-500/30 text-emerald-200 text-sm">Бонусы начислены; пользователю отправлен внутренний чек.</div>
+      {% elif ref_bonus_saved == 'transfer' %}
+      <div class="mb-3 p-2.5 rounded-xl border border-emerald-500/30 text-emerald-200 text-sm">Перевод выполнен; обоим пользователям отправлены чеки.</div>
+      {% elif ref_bonus_saved == 'pay' %}
+      <div class="mb-3 p-2.5 rounded-xl border border-emerald-500/30 text-emerald-200 text-sm">Подписка оплачена с баланса пользователя; чек отправлен.</div>
+      {% endif %}
+      {% if ref_bonus_err %}
+      <div class="mb-3 p-2.5 rounded-xl border border-red-400/35 text-red-200 text-sm whitespace-pre-wrap">{{ ref_bonus_err }}</div>
+      {% endif %}
+
+      <h3 class="text-sm font-semibold text-text mb-2">Включение функций</h3>
+      <form method="post" action="/admin/referral/bonus-program-flags" class="space-y-3 mb-6 border-b border-border/50 pb-6">
+        <p class="text-xs text-muted">Снимите галочки, чтобы отключить возможность у пользователей или у себя в админке.</p>
+        <div class="grid sm:grid-cols-2 gap-2 text-sm text-text">
+          <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="user_transfer_enabled" value="1" class="h-4 w-4 rounded border-border" {% if bonus_program_flags.user_transfer_enabled %}checked{% endif %} /> Перевод бонусов между пользователями</label>
+          <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="user_pay_subscription_enabled" value="1" class="h-4 w-4 rounded border-border" {% if bonus_program_flags.user_pay_subscription_enabled %}checked{% endif %} /> Оплата подписки бонусами (вручную)</label>
+          <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="user_auto_renew_enabled" value="1" class="h-4 w-4 rounded border-border" {% if bonus_program_flags.user_auto_renew_enabled %}checked{% endif %} /> Автопродление с баланса при окончании периода</label>
+          <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="admin_grant_enabled" value="1" class="h-4 w-4 rounded border-border" {% if bonus_program_flags.admin_grant_enabled %}checked{% endif %} /> Админ: начисление бонусов</label>
+          <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="admin_transfer_enabled" value="1" class="h-4 w-4 rounded border-border" {% if bonus_program_flags.admin_transfer_enabled %}checked{% endif %} /> Админ: перевод между пользователями</label>
+          <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="admin_pay_subscription_enabled" value="1" class="h-4 w-4 rounded border-border" {% if bonus_program_flags.admin_pay_subscription_enabled %}checked{% endif %} /> Админ: оплата подписки с баланса пользователя</label>
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1">Минимум перевода пользователю (₽)</label>
+          <input type="text" name="min_transfer_rub" value="{{ bonus_program_flags.min_transfer_rub }}" class="w-32 px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono" inputmode="numeric" />
+        </div>
+        <button type="submit" class="px-4 py-2.5 rounded-xl bg-violet-500/25 text-violet-100 border border-violet-500/40 text-sm font-medium">Сохранить настройки</button>
+      </form>
+
+      <div class="grid lg:grid-cols-3 gap-6 mb-6">
+        <form method="post" action="/admin/referral/bonus-grant" class="space-y-2 rounded-xl border border-border/60 p-4 bg-bg/40">
+          <div class="text-sm font-medium text-text">Начислить бонусы</div>
+          <input type="text" name="user_id" placeholder="User id" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono" inputmode="numeric" />
+          <input type="text" name="amount_rub" placeholder="Сумма ₽" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono" inputmode="decimal" />
+          <textarea name="note" rows="2" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" placeholder="Комментарий в чеке"></textarea>
+          <button type="submit" class="w-full px-3 py-2 rounded-xl bg-gold/20 text-gold border border-gold/35 text-sm font-medium">Начислить</button>
+        </form>
+        <form method="post" action="/admin/referral/bonus-admin-transfer" class="space-y-2 rounded-xl border border-border/60 p-4 bg-bg/40">
+          <div class="text-sm font-medium text-text">Перевод (админ)</div>
+          <input type="text" name="from_user_id" placeholder="От (user id)" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono" />
+          <input type="text" name="to_user_id" placeholder="Кому (user id)" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono" />
+          <input type="text" name="amount_rub" placeholder="Сумма ₽" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono" />
+          <button type="submit" class="w-full px-3 py-2 rounded-xl bg-cyan-500/20 text-cyan-100 border border-cyan-500/35 text-sm font-medium">Перевести</button>
+        </form>
+        <form method="post" action="/admin/referral/bonus-pay-subscription" class="space-y-2 rounded-xl border border-border/60 p-4 bg-bg/40">
+          <div class="text-sm font-medium text-text">Оплата подписки бонусами</div>
+          <p class="text-[11px] text-muted leading-relaxed">Списывает с <strong>баланса указанного</strong> пользователя стоимость одного биллингового периода выбранного тарифа.</p>
+          <input type="text" name="user_id" placeholder="User id" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono" />
+          <select name="plan_key" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm">
+            {% for pk, pm in plans.items() %}
+            {% if pk != 'free' %}
+            <option value="{{ pk }}">{{ pm.name or pk }} — {{ pm.price }} ₽</option>
+            {% endif %}
+            {% endfor %}
+          </select>
+          <button type="submit" class="w-full px-3 py-2 rounded-xl bg-emerald-500/20 text-emerald-100 border border-emerald-500/35 text-sm font-medium">Списать и активировать</button>
+        </form>
+      </div>
+
+      <h3 class="text-sm font-semibold text-text mb-2">Последние операции (журнал)</h3>
+      <div class="overflow-x-auto rounded-xl border border-border/60 max-h-72 overflow-y-auto text-xs">
+        <table class="min-w-full text-left text-muted">
+          <thead class="sticky top-0 bg-bg/95 border-b border-border text-[10px] uppercase tracking-wide">
+            <tr>
+              <th class="px-2 py-2">#</th>
+              <th class="px-2 py-2">Когда</th>
+              <th class="px-2 py-2">User</th>
+              <th class="px-2 py-2">Δ ₽</th>
+              <th class="px-2 py-2">Тип</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in bonus_ledger_recent %}
+            <tr class="border-b border-border/40 hover:bg-white/[0.02]">
+              <td class="px-2 py-1.5 font-mono text-text">{{ row.id }}</td>
+              <td class="px-2 py-1.5 whitespace-nowrap">{{ row.created_at }}</td>
+              <td class="px-2 py-1.5">{{ row.user_id }}{% if row.user_name %} · {{ row.user_name }}{% endif %}</td>
+              <td class="px-2 py-1.5 font-mono {% if row.amount_delta and row.amount_delta < 0 %}text-red-300{% else %}text-emerald-300{% endif %}">{{ row.amount_delta }}</td>
+              <td class="px-2 py-1.5">{{ row.kind }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="px-3 py-4 text-center text-muted">Записей пока нет</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <div class="rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] p-5 mb-8 max-w-3xl">
       <h2 class="text-lg font-semibold text-text mb-1">Вывод реф. баланса: порог и даты (МСК)</h2>
       <p class="text-xs text-muted mb-4 leading-relaxed">

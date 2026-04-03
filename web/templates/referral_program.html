@@ -125,6 +125,87 @@
     </div>
     <p class="text-xs text-muted mb-5 text-center">Новые бонусы от рефералов начисляются на <strong>доступный</strong> баланс, а не в резерв. Резерв — только сумма уже поданной заявки на вывод.</p>
 
+    <div class="card rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-5 mb-5">
+      <div style="font-size:15px;font-weight:700;color:#e8e8e8;margin-bottom:6px">Бонусы на платформе</div>
+      <p class="text-xs text-muted mb-3 leading-relaxed">
+        С <strong>доступного</strong> баланса (без учёта суммы в резерве на вывод) при включённых функциях вы можете перевести бонусы другому пользователю по его <strong>числовому id</strong> (users.id в профиле/админке), оплатить подписку на сервисе или включить автопродление: при окончании оплаченного периода система попробует списать стоимость <strong>следующего такого же</strong> периода текущего тарифа (не действует для тарифа, выданного администратором, бессрочной оплаты и если функции отключены).
+        Каждая операция фиксируется в журнале; вам приходит <strong>внутренний чек</strong> в системных уведомлениях (и в Telegram при привязке). Условия: <a href="/legal/offer" class="text-gold hover:underline">оферта §2.5</a>,
+        <a href="/legal/referral-payouts" class="text-gold hover:underline">выплаты §2.4</a>,
+        <a href="/legal/terms" class="text-gold hover:underline">соглашение §6.4</a>.
+      </p>
+      {% if request.query_params.get('ref_bonus_ok') == 'transfer' %}
+      <div class="mb-3 p-2.5 rounded-xl border border-emerald-500/30 text-emerald-200 text-sm">Перевод выполнен. Проверьте чек в сообщениях от системного аккаунта.</div>
+      {% elif request.query_params.get('ref_bonus_ok') == 'pay' %}
+      <div class="mb-3 p-2.5 rounded-xl border border-emerald-500/30 text-emerald-200 text-sm">Подписка оплачена бонусами. Чек отправлен в уведомлениях.</div>
+      {% elif request.query_params.get('ref_bonus_ok') == 'autorenew' %}
+      <div class="mb-3 p-2.5 rounded-xl border border-emerald-500/30 text-emerald-200 text-sm">Настройка автопродления сохранена.</div>
+      {% endif %}
+      {% if request.query_params.get('ref_bonus_err') %}
+      <div class="mb-3 p-2.5 rounded-xl border border-red-400/35 text-red-200 text-sm whitespace-pre-wrap">{{ request.query_params.get('ref_bonus_err') }}</div>
+      {% endif %}
+
+      {% if bonus_program_flags.user_transfer_enabled or bonus_program_flags.user_pay_subscription_enabled or bonus_program_flags.user_auto_renew_enabled %}
+      <div class="space-y-4">
+        {% if bonus_program_flags.user_transfer_enabled %}
+        <form method="post" action="/referral/bonus-transfer" class="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-2">
+          <div class="text-sm font-semibold text-text">Перевод другому пользователю</div>
+          <p class="text-[11px] text-muted">Минимум <strong>{{ bonus_program_flags.min_transfer_rub }}</strong> ₽. Укажите id получателя.</p>
+          <input type="text" name="to_user_id" class="sinp w-full text-sm font-mono" placeholder="ID получателя" inputmode="numeric" autocomplete="off" />
+          <input type="text" name="amount_rub" class="sinp w-full text-sm font-mono" placeholder="Сумма ₽" inputmode="decimal" />
+          <button type="submit" class="btn-o px-4 py-2 rounded-xl text-sm font-medium">Перевести бонусы</button>
+        </form>
+        {% endif %}
+
+        {% if bonus_program_flags.user_pay_subscription_enabled %}
+        <form method="post" action="/referral/bonus-pay-subscription" class="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-2">
+          <div class="text-sm font-semibold text-text">Оплатить подписку бонусами</div>
+          <p class="text-[11px] text-muted">Списывается цена одного биллингового периода выбранного тарифа с доступного баланса (как при оплате картой по сроку).</p>
+          <select name="plan_key" class="sinp w-full text-sm">
+            {% for pk, pm in ref_bonus_plans.items() %}
+            {% if pk != 'free' and not pm.get('billing_period_unlimited') %}
+            <option value="{{ pk }}">{{ pm.name or pk }} — {{ pm.price }} ₽ / период</option>
+            {% endif %}
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn-g px-4 py-2 rounded-xl text-sm font-medium">Списать бонусы и активировать</button>
+        </form>
+        {% endif %}
+
+        {% if bonus_program_flags.user_auto_renew_enabled %}
+        <form method="post" action="/referral/bonus-auto-renew" class="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-2">
+          <div class="text-sm font-semibold text-text">Автопродление с баланса</div>
+          <p class="text-[11px] text-muted">При окончании оплаченного периода подписки, оплаченной <strong>не админом</strong>, система при достаточном балансе спишет бонусы и продлит тот же тариф. Работает при включённой оплате подписки бонусами на платформе.</p>
+          <label class="block text-xs text-muted mb-1">Режим</label>
+          <select name="auto_renew" class="sinp w-full text-sm">
+            <option value="0" {% if not user.referral_bonus_auto_renew %}selected{% endif %}>Выключено — по окончании периода тариф станет бесплатным (как обычно)</option>
+            <option value="1" {% if user.referral_bonus_auto_renew %}selected{% endif %}>Включено — пробовать списать бонусы для продления</option>
+          </select>
+          <button type="submit" class="btn-o px-4 py-2 rounded-xl text-sm font-medium">Сохранить</button>
+        </form>
+        {% endif %}
+
+        <div>
+          <div class="text-sm font-semibold text-text mb-2">Журнал операций с бонусами</div>
+          {% if ref_bonus_ledger and ref_bonus_ledger|length > 0 %}
+          <div class="space-y-1.5 max-h-56 overflow-y-auto text-[11px]">
+            {% for le in ref_bonus_ledger[:40] %}
+            <div class="flex justify-between gap-2 rounded-lg border border-white/10 px-2 py-1.5 bg-white/[0.02]">
+              <span class="text-muted whitespace-nowrap">{% if le.created_at %}{{ le.created_at.strftime('%d.%m %H:%M') }}{% else %}—{% endif %}</span>
+              <span class="text-text truncate flex-1">{{ le.kind }}</span>
+              <span class="font-mono {% if le.amount_delta < 0 %}text-red-300{% else %}text-emerald-300{% endif %}">{{ '%+.2f'|format(le.amount_delta) }}</span>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="text-xs text-muted">Пока нет записей.</p>
+          {% endif %}
+        </div>
+      </div>
+      {% else %}
+      <p class="text-xs text-muted">Сейчас перевод, оплата подписки и автопродление с бонусного баланса <strong>отключены</strong> администратором.</p>
+      {% endif %}
+    </div>
+
     {% if request.query_params.get('payout_profile_saved') %}
     <div class="mb-4 p-3 rounded-xl border border-emerald-500/35 bg-emerald-500/[0.06] text-emerald-100 text-sm">Данные для выплаты сохранены.</div>
     {% endif %}

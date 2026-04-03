@@ -773,6 +773,15 @@ async def run_heavy_startup(app: FastAPI) -> None:
             logger.warning("migrate_v46 referral_withdraw_reserve: %s", e)
 
         try:
+            import migrate_v47_referral_bonus_balance as migrate_v47
+
+            for s in migrate_v47.STEPS:
+                await database.execute(sa.text(s))
+            logger.info("referral bonus ledger + auto_renew (migrate_v47) OK")
+        except Exception as e:
+            logger.warning("migrate_v47 referral_bonus_balance: %s", e)
+
+        try:
             from services.merge_neurofungi_ai_chats import merge_all_neurofungi_ai_personal_chats
 
             await merge_all_neurofungi_ai_personal_chats()

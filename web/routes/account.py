@@ -404,6 +404,9 @@ async def merge_accounts(primary_id: int, secondary_id: int):
     except (TypeError, ValueError):
         pass
 
+    if bool(primary.get("referral_bonus_auto_renew")) or bool(secondary.get("referral_bonus_auto_renew")):
+        updates["referral_bonus_auto_renew"] = True
+
     # Пробный «Старт»: у Telegram часто plan=free, но есть start_trial_until — раньше терялось при merge.
     p_claim = primary.get("start_trial_claimed_at")
     s_claim = secondary.get("start_trial_claimed_at")

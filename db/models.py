@@ -73,6 +73,12 @@ users = sqlalchemy.Table(
         default=0,
         server_default="0",
     ),
+    sqlalchemy.Column(
+        "referral_bonus_auto_renew",
+        sqlalchemy.Boolean,
+        nullable=False,
+        server_default="false",
+    ),
     sqlalchemy.Column("referral_tax_status", sqlalchemy.String(24), nullable=True),
     sqlalchemy.Column("referral_partner_inn", sqlalchemy.String(20), nullable=True),
     sqlalchemy.Column("referral_payout_bank_note", sqlalchemy.Text, nullable=True),
@@ -240,6 +246,32 @@ referral_bonus_events = sqlalchemy.Table(
     sqlalchemy.Column("bonus_rub", sqlalchemy.Numeric(12, 2), nullable=False),
     sqlalchemy.Column("payment_source", sqlalchemy.String(32), nullable=True),
     sqlalchemy.Column("credited_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+referral_balance_ledger = sqlalchemy.Table(
+    "referral_balance_ledger",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+    sqlalchemy.Column("correlation_id", sqlalchemy.String(64), nullable=True),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    sqlalchemy.Column(
+        "counterparty_user_id",
+        sqlalchemy.Integer,
+        sqlalchemy.ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    ),
+    sqlalchemy.Column("amount_delta", sqlalchemy.Numeric(12, 2), nullable=False),
+    sqlalchemy.Column("balance_after", sqlalchemy.Numeric(12, 2), nullable=True),
+    sqlalchemy.Column("kind", sqlalchemy.String(48), nullable=False),
+    sqlalchemy.Column("detail_text", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column(
+        "admin_actor_id",
+        sqlalchemy.Integer,
+        sqlalchemy.ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    ),
+    sqlalchemy.Column("plan_key", sqlalchemy.String(24), nullable=True),
 )
 
 referral_withdrawals = sqlalchemy.Table(

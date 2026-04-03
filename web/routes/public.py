@@ -1247,6 +1247,13 @@ async def referral_program_page(request: Request):
     ref_bonus_pct_global = await get_referral_bonus_percent_global()
     ref_bonus_pct_effective = await get_effective_referrer_bonus_percent(int(uid))
 
+    from services.referral_bonus_program import get_referral_bonus_program_flags
+    from services.referral_balance_ops import list_ledger_for_user
+
+    bonus_program_flags = await get_referral_bonus_program_flags()
+    ref_bonus_ledger = await list_ledger_for_user(int(uid), 80)
+    ref_bonus_plans = await get_effective_plans()
+
     return templates.TemplateResponse(
         "referral_program.html",
         {
@@ -1269,6 +1276,9 @@ async def referral_program_page(request: Request):
             "ref_wd_to": ref_wd_to,
             "ref_bonus_pct_global": ref_bonus_pct_global,
             "ref_bonus_pct_effective": ref_bonus_pct_effective,
+            "bonus_program_flags": bonus_program_flags,
+            "ref_bonus_ledger": ref_bonus_ledger,
+            "ref_bonus_plans": ref_bonus_plans,
         },
     )
 
@@ -1318,6 +1328,58 @@ async def referral_withdraw_submit(request: Request):
         pass
     ok, msg = await request_referral_withdrawal(int(uid), amount)
     return JSONResponse({"ok": ok, "message": msg})
+
+
+@router.post("/referral/bonus-transfer")
+async def referral_bonus_transfer_post(
+    request: Request,
+    to_user_id: str = Form(""),
+    amount_rub: str = Form(""),
+):
+    user = await get_user_from_request(request)
+    if not user:
+        return RedirectResponse("/login?next=/referral", status_code=302)
+    uid = int(user.get("primary_user_id") or user["id"])
+    from services.referral_balance_ops import user_transfer_bonuses, BonusOpError
+
+    if not (to_user_id or "").strip().isdigit():
+        return RedirectResponse("/referral?ref_bonus_err=" + quote("Укажите ID получателя (число)"), status_code=303)
+    try:
+        await user_transfer_bonuses(uid, int(to_user_id), amount_rub)
+    except BonusOpError as e:
+        return RedirectResponse("/referral?ref_bonus_err=" + quote(e.message, safe=""), status_code=303)
+    return RedirectResponse("/referral?ref_bonus_ok=transfer", status_code=303)
+
+
+@router.post("/referral/bonus-pay-subscription")
+async def referral_bonus_pay_subscription_post(request: Request, plan_key: str = Form("start")):
+    user = await get_user_from_request(request)
+    if not user:
+        return RedirectResponse("/login?next=/referral", status_code=302)
+    uid = int(user.get("primary_user_id") or user["id"])
+    from services.referral_balance_ops import user_pay_subscription_with_bonuses, BonusOpError
+
+    try:
+        await user_pay_subscription_with_bonuses(uid, (plan_key or "start").strip().lower())
+    except BonusOpError as e:
+        return RedirectResponse("/referral?ref_bonus_err=" + quote(e.message, safe=""), status_code=303)
+    return RedirectResponse("/referral?ref_bonus_ok=pay", status_code=303)
+
+
+@router.post("/referral/bonus-auto-renew")
+async def referral_bonus_auto_renew_post(request: Request, auto_renew: str = Form("0")):
+    user = await get_user_from_request(request)
+    if not user:
+        return RedirectResponse("/login?next=/referral", status_code=302)
+    uid = int(user.get("primary_user_id") or user["id"])
+    from services.referral_balance_ops import set_user_bonus_auto_renew, BonusOpError
+
+    on = str(auto_renew or "0").strip() in ("1", "on", "true", "yes")
+    try:
+        await set_user_bonus_auto_renew(uid, on)
+    except BonusOpError as e:
+        return RedirectResponse("/referral?ref_bonus_err=" + quote(e.message, safe=""), status_code=303)
+    return RedirectResponse("/referral?ref_bonus_ok=autorenew", status_code=303)
 
 
 @router.post("/referral/payout-profile")

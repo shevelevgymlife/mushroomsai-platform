@@ -262,6 +262,7 @@ async def activate_subscription(
     credit_referrer_bonus: bool = True,
     skip_user_notify: bool = False,
     referral_bonus_payment_channel: str | None = None,
+    subscription_event_kind: str = "activation",
 ):
     eff = await get_effective_plans()
     if plan not in eff:
@@ -341,7 +342,7 @@ async def activate_subscription(
     if not skip_event_log:
         await record_subscription_event(
             int(user_id),
-            "activation",
+            (subscription_event_kind or "activation")[:32],
             plan,
             float(price),
             now,
@@ -629,6 +630,19 @@ async def check_subscription(user_id: int) -> str:
             return stored_plan
         if admin_granted and sub_end is None:
             return stored_plan
+
+    # Просроченная оплата → сначала пробуем продление с бонусного баланса (если включено)
+    if stored_plan != "free" and (not sub_end or sub_end <= now):
+        if not (admin_granted and sub_end is None) and not bool(row.get("subscription_paid_lifetime")):
+            try:
+                from services.referral_balance_ops import try_renew_subscription_with_bonus_balance
+
+                if await try_renew_subscription_with_bonus_balance(int(user_id), row):
+                    row = await database.fetch_one(users.select().where(users.c.id == user_id)) or row
+                    sub_end = row.get("subscription_end")
+                    stored_plan = (row.get("subscription_plan") or "free").lower()
+            except Exception:
+                logger.debug("try_renew_subscription_with_bonus_balance failed uid=%s", user_id, exc_info=True)
 
     # Просроченная оплата → free в БД (бессрочная выдача админом: subscription_end IS NULL)
     if stored_plan != "free" and (not sub_end or sub_end <= now):

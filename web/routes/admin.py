@@ -2612,6 +2612,12 @@ async def admin_referral_page(
     ref_payout_min = await get_referral_min_withdrawal_rub()
     ref_payout_wd_lo, ref_payout_wd_hi = await get_referral_wd_moscow_days()
 
+    from services.referral_bonus_program import get_referral_bonus_program_flags
+    from services.referral_balance_ops import list_ledger_recent_global
+
+    bonus_program_flags = await get_referral_bonus_program_flags()
+    bonus_ledger_recent = await list_ledger_recent_global(100)
+
     return templates.TemplateResponse(
         "dashboard/admin_referral.html",
         {
@@ -2655,6 +2661,10 @@ async def admin_referral_page(
             "ref_tree": ref_tree,
             "plans": plans_eff,
             "site_base": base,
+            "bonus_program_flags": bonus_program_flags,
+            "bonus_ledger_recent": bonus_ledger_recent,
+            "ref_bonus_saved": (request.query_params.get("ref_bonus_saved") or "").strip(),
+            "ref_bonus_err": (request.query_params.get("ref_bonus_err") or "").strip(),
         },
     )
 
@@ -2762,6 +2772,117 @@ async def admin_referral_payout_rules(
             status_code=303,
         )
     return RedirectResponse("/admin/referral?payout_rules_saved=1", status_code=303)
+
+
+def _form_on(form, key: str) -> bool:
+    v = form.get(key)
+    if v is None:
+        return False
+    s = str(v).strip().lower()
+    return s in ("1", "on", "true", "yes")
+
+
+@router.post("/referral/bonus-program-flags")
+async def admin_referral_bonus_program_flags(request: Request):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    from urllib.parse import quote
+
+    from services.referral_bonus_program import set_referral_bonus_program_flags
+
+    form = await request.form()
+    flags = {
+        "user_transfer_enabled": _form_on(form, "user_transfer_enabled"),
+        "user_pay_subscription_enabled": _form_on(form, "user_pay_subscription_enabled"),
+        "user_auto_renew_enabled": _form_on(form, "user_auto_renew_enabled"),
+        "admin_grant_enabled": _form_on(form, "admin_grant_enabled"),
+        "admin_transfer_enabled": _form_on(form, "admin_transfer_enabled"),
+        "admin_pay_subscription_enabled": _form_on(form, "admin_pay_subscription_enabled"),
+        "min_transfer_rub": (form.get("min_transfer_rub") or "10"),
+    }
+    await set_referral_bonus_program_flags(flags)
+    return RedirectResponse("/admin/referral?ref_bonus_saved=program", status_code=303)
+
+
+@router.post("/referral/bonus-grant")
+async def admin_referral_bonus_grant(
+    request: Request,
+    user_id: str = Form(""),
+    amount_rub: str = Form(""),
+    note: str = Form(""),
+):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    from urllib.parse import quote
+
+    from services.referral_balance_ops import admin_grant_bonuses, BonusOpError
+
+    aid = int(admin.get("primary_user_id") or admin["id"])
+    if not (user_id or "").strip().isdigit():
+        return RedirectResponse(
+            "/admin/referral?ref_bonus_err=" + quote("Укажите user id"),
+            status_code=303,
+        )
+    try:
+        await admin_grant_bonuses(int(user_id), amount_rub, aid, note=(note or "")[:2000])
+    except BonusOpError as e:
+        return RedirectResponse("/admin/referral?ref_bonus_err=" + quote(e.message, safe=""), status_code=303)
+    return RedirectResponse("/admin/referral?ref_bonus_saved=grant", status_code=303)
+
+
+@router.post("/referral/bonus-admin-transfer")
+async def admin_referral_bonus_admin_transfer(
+    request: Request,
+    from_user_id: str = Form(""),
+    to_user_id: str = Form(""),
+    amount_rub: str = Form(""),
+):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    from urllib.parse import quote
+
+    from services.referral_balance_ops import admin_transfer_bonuses, BonusOpError
+
+    aid = int(admin.get("primary_user_id") or admin["id"])
+    if not (from_user_id or "").strip().isdigit() or not (to_user_id or "").strip().isdigit():
+        return RedirectResponse(
+            "/admin/referral?ref_bonus_err=" + quote("Укажите оба user id"),
+            status_code=303,
+        )
+    try:
+        await admin_transfer_bonuses(int(from_user_id), int(to_user_id), amount_rub, aid)
+    except BonusOpError as e:
+        return RedirectResponse("/admin/referral?ref_bonus_err=" + quote(e.message, safe=""), status_code=303)
+    return RedirectResponse("/admin/referral?ref_bonus_saved=transfer", status_code=303)
+
+
+@router.post("/referral/bonus-pay-subscription")
+async def admin_referral_bonus_pay_subscription(
+    request: Request,
+    user_id: str = Form(""),
+    plan_key: str = Form("start"),
+):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    from urllib.parse import quote
+
+    from services.referral_balance_ops import admin_pay_subscription_with_user_bonuses, BonusOpError
+
+    aid = int(admin.get("primary_user_id") or admin["id"])
+    if not (user_id or "").strip().isdigit():
+        return RedirectResponse(
+            "/admin/referral?ref_bonus_err=" + quote("Укажите user id"),
+            status_code=303,
+        )
+    try:
+        await admin_pay_subscription_with_user_bonuses(int(user_id), (plan_key or "start").strip().lower(), aid)
+    except BonusOpError as e:
+        return RedirectResponse("/admin/referral?ref_bonus_err=" + quote(e.message, safe=""), status_code=303)
+    return RedirectResponse("/admin/referral?ref_bonus_saved=pay", status_code=303)
 
 
 @router.post("/referral/clear-balance")
