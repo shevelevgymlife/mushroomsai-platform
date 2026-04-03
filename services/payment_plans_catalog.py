@@ -53,7 +53,7 @@ DEFAULT_PLANS: dict[str, dict[str, Any]] = {
         "questions_per_day": -1,
         "recipes_per_day": -1,
         "description": "",
-        "closed_access": {"channel": False, "group": False, "consult": False},
+        "closed_access": {"channel": True, "group": True, "consult": False},
         "features": [
             "Безлимитные консультации",
             "История переписки с AI 1 месяц",
@@ -73,7 +73,7 @@ DEFAULT_PLANS: dict[str, dict[str, Any]] = {
         "questions_per_day": -1,
         "recipes_per_day": -1,
         "description": "",
-        "closed_access": {"channel": True, "group": False, "consult": False},
+        "closed_access": {"channel": True, "group": True, "consult": True},
         "features": [
             "Всё из Старта",
             "Доступ в закрытый Telegram-канал — партнёрство, кейсы, знания",

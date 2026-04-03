@@ -17,6 +17,11 @@ logger = logging.getLogger(__name__)
 
 CONFIG_KEY = "closed_telegram_access_config"
 
+# Подписи кнопок главного бота (совпадают с bot/handlers/closed_telegram.py)
+TG_BTN_CLOSED_CHANNEL = "📢 Закрытый канал (библиотека)"
+TG_BTN_CLOSED_GROUP = "👥 Закрытая группа"
+TG_BTN_CLOSED_CONSULT = "💬 Закрытый чат (консультации)"
+
 DEFAULT_CONFIG: dict[str, Any] = {
     "channel_enabled": False,
     "channel_invite_url": "",
@@ -99,7 +104,7 @@ def plan_closed_access(plan_meta: dict[str, Any] | None) -> dict[str, bool]:
     }
 
 
-def _resource_ready(cfg: dict[str, Any], key: str) -> bool:
+def closed_resource_invite_ready(cfg: dict[str, Any], key: str) -> bool:
     en = f"{key}_enabled"
     url = f"{key}_invite_url"
     return bool(cfg.get(en)) and bool((cfg.get(url) or "").strip())
@@ -121,7 +126,7 @@ async def closed_access_entitlement_for_user(
     any_entitled = False
     for k in keys:
         url = ((cfg.get(f"{k}_invite_url") or "").strip() or None)
-        ready = _resource_ready(cfg, k)
+        ready = closed_resource_invite_ready(cfg, k)
         if is_staff:
             ent = ready and bool(url)
         else:
@@ -176,7 +181,7 @@ async def attach_closed_telegram_to_user(u: dict) -> None:
         u["closed_tg_any"] = bool(ent["any_entitled"])
         if is_staff:
             any_cfg = any(
-                _resource_ready(ent["config"], k) and (ent["config"].get(f"{k}_invite_url") or "").strip()
+                closed_resource_invite_ready(ent["config"], k) and (ent["config"].get(f"{k}_invite_url") or "").strip()
                 for k in ("channel", "group", "consult")
             )
             u["closed_tg_drawer"] = any_cfg
@@ -365,40 +370,12 @@ def _which_resource_for_chat(cfg: dict[str, Any], chat_id: int) -> str | None:
     return None
 
 
-async def closed_telegram_keyboard_rows(internal_user_id: int) -> list[list[Any]]:
-    """Строки ReplyKeyboard для основного бота (импорт KeyboardButton внутри)."""
+async def closed_telegram_keyboard_rows(_internal_user_id: int) -> list[list[Any]]:
+    """Три кнопки закрытых ресурсов — у всех пользователей бота (доступ по подписке проверяется по нажатию)."""
     from telegram import KeyboardButton
 
-    from services.subscription_service import check_subscription
-    from services.payment_plans_catalog import get_effective_plans, drawer_menu_effective
-
-    uid = int(internal_user_id)
-    row = await database.fetch_one(users.select().where(users.c.id == uid))
-    role = (row.get("role") or "user").lower() if row else "user"
-    is_staff = role in ("admin", "moderator")
-    eff_plan = await check_subscription(uid)
-    plans = await get_effective_plans()
-    plan_meta = plans.get(eff_plan) or plans.get("free") or {}
-    ent = await closed_access_entitlement_for_user(
-        uid,
-        is_staff=is_staff,
-        plan_meta=plan_meta,
-    )
-    if not is_staff and eff_plan == "free":
-        return []
-
-    if not is_staff:
-        pdm = drawer_menu_effective(plan_meta)
-        if pdm.get("closed_telegram") is False:
-            return []
-
-    rows: list[list[Any]] = []
-    labels = (
-        ("channel", "📢 Закрытый канал"),
-        ("group", "👥 Закрытая группа"),
-        ("consult", "💬 Закрытый чат (консультации)"),
-    )
-    for key, label in labels:
-        if ent["resources"][key]["entitled"]:
-            rows.append([KeyboardButton(label)])
-    return rows
+    return [
+        [KeyboardButton(TG_BTN_CLOSED_CHANNEL)],
+        [KeyboardButton(TG_BTN_CLOSED_GROUP)],
+        [KeyboardButton(TG_BTN_CLOSED_CONSULT)],
+    ]
