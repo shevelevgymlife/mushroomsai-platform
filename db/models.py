@@ -67,6 +67,7 @@ users = sqlalchemy.Table(
         server_default="false",
     ),
     sqlalchemy.Column("referral_balance", sqlalchemy.Numeric(12, 2), default=0, server_default="0"),
+    sqlalchemy.Column("token_balance", sqlalchemy.Numeric(18, 8), default=0, server_default="0"),
     sqlalchemy.Column(
         "referral_withdraw_reserved_rub",
         sqlalchemy.Numeric(12, 2),
@@ -1193,6 +1194,27 @@ channel_autopost_log = sqlalchemy.Table(
     sqlalchemy.Column("message_id", sqlalchemy.Integer, nullable=False),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
     sqlalchemy.PrimaryKeyConstraint("channel_chat_id", "message_id"),
+)
+
+liquidity_pool = sqlalchemy.Table(
+    "liquidity_pool",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
+    sqlalchemy.Column("token_reserve", sqlalchemy.Numeric(18, 8), nullable=False, server_default="0"),
+    sqlalchemy.Column("bonus_reserve", sqlalchemy.Numeric(18, 8), nullable=False, server_default="0"),
+    sqlalchemy.Column("updated_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+exchange_trades = sqlalchemy.Table(
+    "exchange_trades",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=False),
+    sqlalchemy.Column("type", sqlalchemy.String(20), nullable=False),
+    sqlalchemy.Column("amount_bonus", sqlalchemy.Numeric(18, 8), nullable=False),
+    sqlalchemy.Column("amount_token", sqlalchemy.Numeric(18, 8), nullable=False),
+    sqlalchemy.Column("price", sqlalchemy.Numeric(36, 18), nullable=False),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
 
 # Внутриигровые события (лента /notifications) — не удаляются

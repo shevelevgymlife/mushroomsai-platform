@@ -18,6 +18,14 @@ from web.routes.auth_routes import router as auth_router
 from web.routes.user import router as user_router
 from web.routes.legal_routes import router as legal_router
 from web.routes.admin import router as admin_router
+from web.routes.exchange_routes import (
+    exchange_api_router,
+    exchange_page_router,
+    register_admin_exchange_routes,
+    withdraw_alias_router,
+)
+
+register_admin_exchange_routes(admin_router)
 from web.routes.account import router as account_router
 from web.routes.language import router as language_router
 from web.routes.webhooks import router as webhooks_router
@@ -107,6 +115,12 @@ class CommunitySubscriptionGateMiddleware(BaseHTTPMiddleware):
     def _requires_paid_or_trial(path: str) -> bool:
         p = (path or "").split("?")[0]
         if p.startswith("/shop"):
+            return True
+        if p.startswith("/exchange"):
+            return True
+        if p.startswith("/api/exchange"):
+            return True
+        if p == "/api/withdraw":
             return True
         # Лента и всё сообщество, кроме страниц профиля /community/profile/{id}
         if p.startswith("/community/profile"):
@@ -744,6 +758,9 @@ async def health(request: Request):
 fastapi_app.include_router(chats_router)
 fastapi_app.include_router(rtc_router)
 fastapi_app.include_router(public_router)
+fastapi_app.include_router(exchange_page_router)
+fastapi_app.include_router(exchange_api_router)
+fastapi_app.include_router(withdraw_alias_router)
 fastapi_app.include_router(auth_router)
 fastapi_app.include_router(legal_router)
 fastapi_app.include_router(user_router)

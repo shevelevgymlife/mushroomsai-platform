@@ -1,7 +1,7 @@
 {# Единое боковое меню (и в кабинете, и вне его) #}
 {% from 'components/stroke_icons.html' import ico %}
 {% set eff_uid = user.primary_user_id or user.id %}
-{% set vbk = visible_block_keys if visible_block_keys is defined else ['ai_chat','messages','community','shop','profile_photo','posts','tariffs','referral','knowledge_base','pro_telegram','pro_pin_info','seller_marketplace'] %}
+{% set vbk = visible_block_keys if visible_block_keys is defined else ['ai_chat','messages','community','shop','profile_photo','posts','tariffs','referral','internal_exchange','knowledge_base','pro_telegram','pro_pin_info','seller_marketplace'] %}
 {% set _eff_plan = (user.effective_subscription_plan|default(user.subscription_plan) or 'free') %}
 {% set is_locked_free = (_eff_plan == 'free') and ((user.role or 'user') not in ['admin','moderator']) %}
 {% set _staff = (user.role or 'user') in ['admin','moderator'] %}
@@ -73,6 +73,9 @@
     {% if 'referral' in vbk %}
     {% if drawer_on('referral') == '1' %}
     <a href="/referral" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('gift') }}</span><span class="lbl">Реферальная программа</span></a>
+    {% endif %}
+    {% if 'internal_exchange' in vbk and drawer_on('internal_exchange') == '1' %}
+    <a href="/exchange" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('swap') }}</span><span class="lbl">Биржа</span></a>
     {% endif %}
     {% set _draw_w = (user.get('effective_subscription_plan') or user.subscription_plan or 'free')|lower %}
     {% if _draw_w != 'free' and drawer_on('wellness') == '1' %}

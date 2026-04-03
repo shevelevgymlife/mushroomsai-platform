@@ -401,6 +401,9 @@ async def merge_accounts(primary_id: int, secondary_id: int):
         sr = float(secondary.get("referral_withdraw_reserved_rub") or 0)
         updates["referral_balance"] = pb + sb
         updates["referral_withdraw_reserved_rub"] = pr + sr
+        pt = float(primary.get("token_balance") or 0)
+        st = float(secondary.get("token_balance") or 0)
+        updates["token_balance"] = pt + st
     except (TypeError, ValueError):
         pass
 
@@ -443,6 +446,7 @@ async def merge_accounts(primary_id: int, secondary_id: int):
             password_hash=None,
             referral_balance=0,
             referral_withdraw_reserved_rub=0,
+            token_balance=0,
         )
     )
 

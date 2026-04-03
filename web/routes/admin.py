@@ -50,6 +50,7 @@ ADMIN_SECTIONS = [
     ("Обучающие посты", "/admin/ai-posts", "can_ai_posts"),
     ("Магазин", "/admin/shop", "can_shop"),
     ("Оплата", "/admin/payment", "can_payment"),
+    ("Биржа / ликвидность", "/admin/liquidity", "can_payment"),
     ("Пользователи", "/admin/users", "can_users"),
     ("Обратная связь", "/admin/feedback", "can_feedback"),
     ("Рассылки", "/admin/broadcast", "can_broadcast"),

@@ -791,6 +791,15 @@ async def run_heavy_startup(app: FastAPI) -> None:
             logger.warning("migrate_v48 referral_two_lines: %s", e)
 
         try:
+            import migrate_v49_internal_exchange as migrate_v49
+
+            for s in migrate_v49.STEPS:
+                await database.execute(sa.text(s))
+            logger.info("internal exchange pool + token_balance (migrate_v49) OK")
+        except Exception as e:
+            logger.warning("migrate_v49 internal_exchange: %s", e)
+
+        try:
             from services.merge_neurofungi_ai_chats import merge_all_neurofungi_ai_personal_chats
 
             await merge_all_neurofungi_ai_personal_chats()

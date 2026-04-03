@@ -410,6 +410,21 @@ async def activate_subscription(
         )
     except Exception:
         logger.debug("sync closed tg after activate uid=%s", user_id, exc_info=True)
+    if plan != "free" and credit_referrer_bonus:
+        try:
+            from services.internal_exchange_service import (
+                add_platform_income_to_pool,
+                maybe_auto_liquidity_on_user_growth,
+            )
+
+            await add_platform_income_to_pool(float(price or 0))
+            await maybe_auto_liquidity_on_user_growth()
+        except Exception:
+            logger.debug(
+                "internal exchange pool hook after activate failed uid=%s",
+                user_id,
+                exc_info=True,
+            )
     return True
 
 

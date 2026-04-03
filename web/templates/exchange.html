@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}Биржа — NEUROFUNGI AI{% endblock %}
+{% block extra_head %}
+<style>
+.exch-page .card-x{border-radius:20px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);padding:16px}
+.exch-page .big-num{font-size:26px;font-weight:800;color:#e8e8e8;font-variant-numeric:tabular-nums}
+.exch-page .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#6b7a82}
+.exch-bar{display:flex;align-items:flex-end;gap:3px;height:72px;padding:8px 4px 0}
+.exch-bar i{flex:1;border-radius:4px 4px 0 0;background:linear-gradient(180deg,rgba(61,212,224,.85),rgba(200,168,75,.35));min-width:3px}
+.exch-inp{width:100%;padding:12px 14px;border-radius:14px;background:#0a0c12;border:1px solid rgba(61,212,224,.22);color:#e8e8e8;font-size:16px;font-weight:600}
+.exch-btn{display:block;width:100%;padding:14px;border-radius:14px;border:none;font-weight:800;font-size:13px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;margin-top:10px}
+.exch-btn-buy{background:linear-gradient(120deg,#1a4d52,#3dd4e0);color:#061012}
+.exch-btn-sell{background:linear-gradient(120deg,#4a3a1a,#c8a84b);color:#0a0c12}
+.exch-est{font-size:13px;color:#9ad8de;margin-top:8px;min-height:40px;line-height:1.45}
+.exch-warn{font-size:12px;color:#fecaca;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);border-radius:12px;padding:10px;margin-top:10px;display:none}
+</style>
+{% endblock %}
+{% block content %}
+<div class="neo-app-surface min-h-screen bg-bg exch-page pt-6 pb-28 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-lg mx-auto">
+    <h1 class="text-2xl font-bold text-text mb-1">Биржа</h1>
+    <p class="text-sm text-muted mb-5 leading-relaxed">Внутренний обмен: <strong>бонусы</strong> ↔ токен <strong>NFI</strong>. Курс из пула ликвидности. Комиссия 2%, максимум 10% пула за сделку.</p>
+
+    <div class="grid grid-cols-2 gap-3 mb-4">
+      <div class="card-x">
+        <div class="lbl">Бонусы ₽</div>
+        <div class="big-num" id="exchBalBonus">{{ '%.2f'|format(exchange_bal_initial.bonus) }}</div>
+      </div>
+      <div class="card-x">
+        <div class="lbl">Токен NFI</div>
+        <div class="big-num" id="exchBalTok">{{ '%.8f'|format(exchange_bal_initial.token) }}</div>
+      </div>
+    </div>
+
+    <div class="card-x mb-4">
+      <div class="lbl">Курс (бонус за 1 NFI)</div>
+      <div class="big-num text-gold" id="exchPrice">{{ '%.6f'|format(exchange_pool_initial.price) }}</div>
+      <div class="text-xs text-muted mt-2">Пул: <span id="exchPoolT">{{ '%.2f'|format(exchange_pool_initial.token_reserve) }}</span> NFI · <span id="exchPoolB">{{ '%.2f'|format(exchange_pool_initial.bonus_reserve) }}</span> бонусов</div>
+    </div>
+
+    <div class="card-x mb-4">
+      <div class="lbl mb-2">Динамика курса (последние сделки)</div>
+      <div class="exch-bar" id="exchChart" aria-hidden="true"></div>
+      {% if not exchange_chart_initial or exchange_chart_initial|length == 0 %}
+      <p class="text-xs text-muted mt-2">Пока нет сделок — график появится после первых обменов.</p>
+      {% endif %}
+    </div>
+
+    <div class="card-x mb-4">
+      <label class="lbl block mb-2">Сумма</label>
+      <input type="text" inputmode="decimal" class="exch-inp" id="exchAmt" placeholder="0" autocomplete="off" />
+      <div class="exch-est" id="exchEst"></div>
+      <div class="exch-warn" id="exchErr"></div>
+      <button type="button" class="exch-btn exch-btn-buy" id="exchBuyBtn">Купить NFI за бонусы</button>
+      <button type="button" class="exch-btn exch-btn-sell" id="exchSellBtn">Продать NFI за бонусы</button>
+    </div>
+
+    <div class="card-x mb-4">
+      <div class="lbl mb-2">Вывод на кошелёк (Decimal Chain)</div>
+      <p class="text-xs text-muted leading-relaxed mb-3">Сейчас заявка только фиксируется как «ожидает». Подключение on-chain и автоматический вывод — следующий этап.</p>
+      <button type="button" class="exch-btn" style="background:rgba(255,255,255,.06);color:#e8e8e8;border:1px solid rgba(255,255,255,.12)" id="exchWithdrawBtn">Запросить вывод</button>
+      <p class="text-[11px] text-muted mt-3 leading-relaxed" id="exchWdStatus"></p>
+    </div>
+
+    <details class="card-x mb-6">
+      <summary class="cursor-pointer text-sm font-semibold text-text">Кошелёк Decimal — что нужно от вас</summary>
+      <div class="text-xs text-muted mt-3 space-y-2 leading-relaxed">
+        <p><strong>Создание кошелька:</strong> установите кошелёк с поддержкой сети Decimal (например MetaMask или официальный кошелёк экосистемы), создайте новый адрес и <strong>сохраните seed-фразу только у себя</strong>. Никому её не отправляйте — в том числе поддержке и ботам.</p>
+        <p><strong>Что нужно нам для вывода позже:</strong> только ваш <strong>публичный адрес</strong> (0x…) в нужной сети. Seed, приватный ключ и пароль к кошельку <strong>не нужны</strong> и не должны передаваться.</p>
+        <p><strong>Что я не могу сделать за вас:</strong> установить приложение-кошелёк на вашем устройстве, сгенерировать seed на вашей стороне, войти в вашу учётную запись биржи. Это делаете только вы локально.</p>
+      </div>
+    </details>
+
+    <div class="card-x">
+      <div class="lbl mb-2">Ваши последние сделки</div>
+      <div id="exchHist" class="text-xs text-muted space-y-2 max-h-48 overflow-y-auto"></div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var pool = {{ exchange_pool_initial|tojson }};
+  var FEE = 0.98, MAXP = 0.1;
+  function num(x){ var n = parseFloat(String(x).replace(',','.')); return isFinite(n) ? n : 0; }
+  function fmt8(x){ return (Math.floor(x * 1e8) / 1e8).toFixed(8).replace(/\.?0+$/,''); }
+  function fmt2(x){ return (Math.round(x * 100) / 100).toFixed(2); }
+  function setErr(t){
+    var e = document.getElementById('exchErr');
+    if(!t){ e.style.display='none'; e.textContent=''; return; }
+    e.style.display='block'; e.textContent=t;
+  }
+  function renderChart(pts){
+    var el = document.getElementById('exchChart');
+    if(!el || !pts || !pts.length) return;
+    el.innerHTML='';
+    var pr = pts.map(function(p){ return p.price; });
+    var mn = Math.min.apply(null, pr), mx = Math.max.apply(null, pr);
+    var span = Math.max(1e-12, mx - mn);
+    pts.forEach(function(p){
+      var h = 8 + ((p.price - mn) / span) * 56;
+      var bar = document.createElement('i');
+      bar.style.height = Math.round(h)+'px';
+      bar.title = p.price;
+      el.appendChild(bar);
+    });
+  }
+  renderChart({{ exchange_chart_initial|tojson }});
+
+  function refreshPrice(){
+    fetch('/api/exchange/price',{credentials:'same-origin'}).then(function(r){ return r.json(); }).then(function(d){
+      if(d.error) return;
+      pool = d;
+      document.getElementById('exchPrice').textContent = (d.price||0).toFixed(6);
+      document.getElementById('exchPoolT').textContent = fmt2(d.token_reserve||0);
+      document.getElementById('exchPoolB').textContent = fmt2(d.bonus_reserve||0);
+      recalc();
+    }).catch(function(){});
+  }
+  function recalc(){
+    setErr('');
+    var raw = num(document.getElementById('exchAmt').value);
+    var est = document.getElementById('exchEst');
+    var tr = pool.token_reserve||0, br = pool.bonus_reserve||0;
+    if(tr<=0 || br<=0){ est.textContent='Пул временно недоступен для расчёта.'; return; }
+    var price = br/tr;
+    var buyTok = (raw/price)*FEE;
+    var sellBon = (raw*price)*FEE;
+    var lines = [];
+    lines.push('Купить: при списании '+fmt2(raw)+' бонусов вы получите ~'+fmt8(buyTok)+' NFI'+(buyTok>tr*MAXP?' — превышает лимит 10% пула':'')+'.');
+    lines.push('Продать: при продаже '+fmt8(raw)+' NFI вы получите ~'+fmt2(sellBon)+' бонусов'+(sellBon>br*MAXP?' — превышает лимит 10% пула':'')+'.');
+    est.innerHTML = lines.join('<br/>');
+  }
+  document.getElementById('exchAmt').addEventListener('input', recalc);
+  setInterval(refreshPrice, 20000);
+  recalc();
+
+  function afterTrade(){
+    location.reload();
+  }
+  function renderHist(rows){
+    var h = document.getElementById('exchHist');
+    if(!rows.length){ h.textContent='Пока пусто.'; return; }
+    h.innerHTML = rows.slice(0,20).map(function(r){
+      var t = (r.created_at||'').replace('T',' ').slice(0,19);
+      return '<div class="border-b border-white/5 pb-2">'+(r.type==='buy'?'Купля':'Продажа')+' · '+t+' · бонус '+fmt2(r.amount_bonus)+' · NFI '+fmt8(r.amount_token)+' · курс '+r.price+'</div>';
+    }).join('');
+  }
+  fetch('/api/exchange/history',{credentials:'same-origin'}).then(function(r){ return r.json(); }).then(function(d){
+    renderHist(d.trades||[]);
+  }).catch(function(){});
+
+  document.getElementById('exchBuyBtn').onclick = function(){
+    setErr('');
+    var a = num(document.getElementById('exchAmt').value);
+    if(a<=0){ setErr('Укажите сумму бонусов.'); return; }
+    fetch('/api/exchange/buy',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:a})})
+      .then(function(r){ return r.json().then(function(j){ return {r:r,j:j}; }); })
+      .then(function(x){
+        if(!x.r.ok){ setErr(x.j.message||x.j.error||'Ошибка'); return; }
+        afterTrade();
+      }).catch(function(){ setErr('Сеть недоступна'); });
+  };
+  document.getElementById('exchSellBtn').onclick = function(){
+    setErr('');
+    var a = num(document.getElementById('exchAmt').value);
+    if(a<=0){ setErr('Укажите количество NFI.'); return; }
+    fetch('/api/exchange/sell',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:a})})
+      .then(function(r){ return r.json().then(function(j){ return {r:r,j:j}; }); })
+      .then(function(x){
+        if(!x.r.ok){ setErr(x.j.message||x.j.error||'Ошибка'); return; }
+        afterTrade();
+      }).catch(function(){ setErr('Сеть недоступна'); });
+  };
+  document.getElementById('exchWithdrawBtn').onclick = function(){
+    var st = document.getElementById('exchWdStatus');
+    st.textContent='';
+    fetch('/api/exchange/withdraw',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({})})
+      .then(function(r){ return r.json(); })
+      .then(function(d){ st.textContent = 'Статус: '+(d.status||d.error||'?'); })
+      .catch(function(){ st.textContent='Ошибка сети'; });
+  };
+})();
+</script>
+{% endblock %}

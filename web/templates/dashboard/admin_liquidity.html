@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Ликвидность / биржа — Admin{% endblock %}
+{% block content %}
+<div class="pt-24 pb-16 neo-app-surface">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    {% include "components/admin_nav.html" %}
+
+    <h1 class="text-3xl font-light text-text mb-2">Ликвидность / биржа</h1>
+    <p class="text-sm text-muted mb-6 max-w-3xl leading-relaxed">
+      Пул внутренней биржи (NFI ↔ бонусы). Курс: <code class="text-xs">bonus_reserve / token_reserve</code>.
+      Coverage = token_reserve / сумма бонусов по всем пользователям. При росте числа аккаунтов можно автоматически докидывать ликвидность (ниже).
+    </p>
+
+    <div class="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.06] p-5 mb-6">
+      <div class="grid sm:grid-cols-2 gap-4 text-sm">
+        <div>
+          <div class="text-xs text-muted uppercase tracking-wider">token_reserve</div>
+          <div class="text-2xl font-bold text-text font-mono">{{ '%.4f'|format(snap.token_reserve) }}</div>
+        </div>
+        <div>
+          <div class="text-xs text-muted uppercase tracking-wider">bonus_reserve</div>
+          <div class="text-2xl font-bold text-text font-mono">{{ '%.4f'|format(snap.bonus_reserve) }}</div>
+        </div>
+        <div>
+          <div class="text-xs text-muted uppercase tracking-wider">Текущая цена (бонус/NFI)</div>
+          <div class="text-2xl font-bold text-gold font-mono">{{ '%.8f'|format(snap.price) }}</div>
+        </div>
+        <div>
+          <div class="text-xs text-muted uppercase tracking-wider">Всего бонусов в системе</div>
+          <div class="text-2xl font-bold text-text font-mono">{{ '%.2f'|format(snap.total_bonus_system) }}</div>
+        </div>
+        <div>
+          <div class="text-xs text-muted uppercase tracking-wider">Coverage</div>
+          <div class="text-2xl font-bold text-text font-mono">{% if snap.coverage is not none %}{{ '%.6f'|format(snap.coverage) }}{% else %}—{% endif %}</div>
+        </div>
+        <div>
+          <div class="text-xs text-muted uppercase tracking-wider">Статус</div>
+          <div class="text-2xl font-bold {% if snap.status == 'LOW' %}text-red-300{% elif snap.status == 'GOOD' %}text-emerald-300{% else %}text-amber-200{% endif %}">{{ snap.status }}</div>
+          <p class="text-[11px] text-muted mt-1">&lt; 0.2 — LOW, &gt; 0.5 — GOOD</p>
+        </div>
+      </div>
+      <p class="text-xs text-muted mt-4">Первичных аккаунтов (оценка роста): <strong>{{ snap.primary_users_count }}</strong></p>
+    </div>
+
+    <div class="rounded-2xl border border-gold/25 bg-gold/[0.04] p-5 mb-6">
+      <h2 class="text-lg font-semibold text-text mb-3">Добавить ликвидность</h2>
+      <p class="text-xs text-muted mb-4">POST <code class="text-[11px]">/admin/add-liquidity</code> — увеличивает резервы пула (маркет-мейкер).</p>
+      <div class="flex flex-wrap gap-3 items-end">
+        <div>
+          <label class="block text-xs text-muted mb-1">+ NFI</label>
+          <input type="text" id="liqTok" class="w-40 px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono" value="0" inputmode="decimal" />
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1">+ бонусы</label>
+          <input type="text" id="liqBon" class="w-40 px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono" value="0" inputmode="decimal" />
+        </div>
+        <button type="button" id="liqSend" class="px-4 py-2.5 rounded-xl bg-gold/20 text-gold border border-gold/35 text-sm font-medium">Отправить</button>
+      </div>
+      <p class="text-xs text-amber-200/90 mt-3" id="liqMsg"></p>
+    </div>
+
+    <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-5 mb-8">
+      <h2 class="text-lg font-semibold text-text mb-2">Автодолив при росте пользователей</h2>
+      <p class="text-xs text-muted mb-4">При открытии этой страницы считается число «первичных» пользователей. Если оно выросло с прошлого раза и включён флаг — в пул добавляются указанные объёмы.</p>
+      <label class="flex items-center gap-2 text-sm text-text mb-3">
+        <input type="checkbox" id="agOn" {% if auto_growth %}checked{% endif %} />
+        Включить автодолив при росте
+      </label>
+      <div class="flex flex-wrap gap-3">
+        <div>
+          <label class="block text-xs text-muted mb-1">NFI за шаг</label>
+          <input type="text" id="agTok" class="w-36 px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono" value="{{ growth_token }}" />
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1">Бонусы за шаг</label>
+          <input type="text" id="agBon" class="w-36 px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono" value="{{ growth_bonus }}" />
+        </div>
+        <button type="button" id="agSave" class="self-end px-4 py-2.5 rounded-xl bg-white/10 text-text border border-white/15 text-sm">Сохранить настройки</button>
+      </div>
+      <p class="text-[11px] text-muted mt-3" id="agMsg"></p>
+    </div>
+
+    <p class="text-xs text-muted">Уведомления в Telegram (ops) при coverage &lt; 0.2 — не чаще раза в час.</p>
+  </div>
+</div>
+<script>
+document.getElementById('liqSend').onclick = function(){
+  var msg = document.getElementById('liqMsg');
+  msg.textContent = '';
+  var token = parseFloat(String(document.getElementById('liqTok').value).replace(',','.'))||0;
+  var bonus = parseFloat(String(document.getElementById('liqBon').value).replace(',','.'))||0;
+  fetch('/admin/add-liquidity', { method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ token: token, bonus: bonus }) })
+    .then(function(r){ return r.json().then(function(j){ return { ok:r.ok, j:j }; }); })
+    .then(function(x){
+      if(!x.ok){ msg.textContent = x.j.message || x.j.error || 'Ошибка'; return; }
+      msg.textContent = 'Ок. Новый пул: NFI '+x.j.token_reserve+' · бонусы '+x.j.bonus_reserve;
+      setTimeout(function(){ location.reload(); }, 800);
+    }).catch(function(){ msg.textContent = 'Сеть'; });
+};
+document.getElementById('agSave').onclick = function(){
+  var m = document.getElementById('agMsg');
+  m.textContent = '';
+  fetch('/admin/liquidity/settings', { method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
+    auto_growth: document.getElementById('agOn').checked,
+    growth_token: document.getElementById('agTok').value,
+    growth_bonus: document.getElementById('agBon').value
+  })})
+    .then(function(r){ return r.json(); })
+    .then(function(d){ m.textContent = d.ok ? 'Сохранено' : (d.error||'Ошибка'); })
+    .catch(function(){ m.textContent = 'Сеть'; });
+};
+</script>
+{% endblock %}
