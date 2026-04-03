@@ -67,6 +67,9 @@ users = sqlalchemy.Table(
         server_default="false",
     ),
     sqlalchemy.Column("referral_balance", sqlalchemy.Numeric(12, 2), default=0, server_default="0"),
+    sqlalchemy.Column("referral_tax_status", sqlalchemy.String(24), nullable=True),
+    sqlalchemy.Column("referral_partner_inn", sqlalchemy.String(20), nullable=True),
+    sqlalchemy.Column("referral_payout_bank_note", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("last_seen_at", sqlalchemy.DateTime, nullable=True),
     sqlalchemy.Column("decimal_del_balance", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("decimal_balance_cached_at", sqlalchemy.DateTime, nullable=True),
@@ -238,10 +241,13 @@ referral_withdrawals = sqlalchemy.Table(
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
     sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
     sqlalchemy.Column("amount_rub", sqlalchemy.Numeric(12, 2), nullable=False),
-    sqlalchemy.Column("status", sqlalchemy.String(20), default="pending", server_default="pending"),
+    sqlalchemy.Column("status", sqlalchemy.String(32), default="pending", server_default="pending"),
     sqlalchemy.Column("admin_note", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
     sqlalchemy.Column("processed_at", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("withdraw_calendar_month", sqlalchemy.String(7), nullable=True),
+    sqlalchemy.Column("check_telegram_file_id", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("check_received_at", sqlalchemy.DateTime, nullable=True),
 )
 
 referral_promo_links = sqlalchemy.Table(

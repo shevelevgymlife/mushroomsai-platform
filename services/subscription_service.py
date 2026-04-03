@@ -216,6 +216,7 @@ async def activate_subscription(
     skip_event_log: bool = False,
     credit_referrer_bonus: bool = True,
     skip_user_notify: bool = False,
+    referral_bonus_payment_channel: str | None = None,
 ):
     eff = await get_effective_plans()
     if plan not in eff:
@@ -309,6 +310,7 @@ async def activate_subscription(
         bonus_rub = await credit_referrer_bonus_for_paid_subscription(
             int(user_id),
             float(price or 0.0),
+            payment_channel=referral_bonus_payment_channel,
         )
     if plan != "free":
         try:

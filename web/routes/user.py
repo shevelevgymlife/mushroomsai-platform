@@ -776,7 +776,9 @@ async def onboarding_tariff_submit(request: Request, choice: str = Form(...)):
             except Exception:
                 pass
     else:
-        ok = await activate_subscription(int(uid), choice, months=1)
+        ok = await activate_subscription(
+            int(uid), choice, months=1, credit_referrer_bonus=False
+        )
         if not ok:
             return RedirectResponse("/subscriptions")
         await database.execute(

@@ -267,7 +267,9 @@ async def handle_cloudpayments_notification(
     if not urow:
         return False, "user_not_found"
 
-    ok = await activate_subscription(uid_int, plan, months=1)
+    ok = await activate_subscription(
+        uid_int, plan, months=1, referral_bonus_payment_channel="cloudpayments"
+    )
     if not ok:
         logger.warning("cloudpayments activate_failed uid=%s plan=%s", uid_int, plan)
         return False, "activate_failed"

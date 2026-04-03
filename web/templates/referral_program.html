@@ -100,14 +100,12 @@
         <button type="button" class="btn-o" id="refCopySiteBtn" onclick="copyRefSite()" style="flex-shrink:0;font-size:12px;padding:8px 12px">Копировать</button>
       </div>
       <div style="font-size:12px;color:#9faab0;line-height:1.5">
-        <strong class="text-text">Коротко про бонус:</strong><br/>
+        <strong class="text-text">Коротко про бонус за подписки приложения:</strong><br/>
         • Друг регистрируется по вашей ссылке.<br/>
-        • Покупает <strong>платный</strong> Старт/Про/Макси.<br/>
-        • Вам начисляется бонус <strong>1 раз</strong> за человека.<br/>
-        • <strong>Пробные 3 дня — без бонуса.</strong><br/>
-        • В магазине Neurotrops: <strong class="text-gold">10%</strong> с ваших продаж.<br/>
-        • В магазине Neurotrops: <strong class="text-gold">3%</strong> с продаж ваших рефералов второго уровня.<br/>
-        • Продажи и выплаты магазина — в кабинете Neurotrops.
+        • Покупает <strong>платный</strong> Старт/Про/Макси <strong>картой в ₽</strong> (ЮKassa / CloudPayments / счёт в Telegram). <strong>Звёзды и крипта не дают бонус.</strong><br/>
+        • Вы сохранили <strong>ссылку магазина</strong> (партнёрство) и у вас активна платная подписка в момент его оплаты.<br/>
+        • <strong>10%</strong> с каждой такой оплаты (включая продления). Пробные 3 дня — без бонуса.<br/>
+        • В магазине Neurotrops: <strong class="text-gold">10%</strong> с ваших продаж и <strong class="text-gold">3%</strong> с продаж рефералов 2-го уровня — см. кабинет Neurotrops.
       </div>
     </div>
 
@@ -122,6 +120,34 @@
       </div>
     </div>
     <p class="text-xs text-muted mb-5 text-center">Это сумма по <strong>рефералам приложения</strong> (соцсеть). Не путать с отчётами магазина.</p>
+
+    {% if request.query_params.get('payout_profile_saved') %}
+    <div class="mb-4 p-3 rounded-xl border border-emerald-500/35 bg-emerald-500/[0.06] text-emerald-100 text-sm">Данные для выплаты сохранены.</div>
+    {% endif %}
+
+    <div class="card rounded-2xl border border-white/10 bg-white/[0.03] p-5 mb-4">
+      <div style="font-size:15px;font-weight:700;color:#e8e8e8;margin-bottom:8px">Данные для выплаты</div>
+      <p class="text-xs text-muted mb-3 leading-relaxed">Нужны для кнопки «Вывести»: статус <strong>самозанятого</strong> или <strong>ИП</strong>, ИНН и реквизиты. Полные правила — <a href="/legal/referral-payouts" class="text-gold hover:underline">документ о выплатах</a>.</p>
+      <form method="post" action="/referral/payout-profile" class="space-y-3">
+        <div>
+          <label class="block text-xs text-muted mb-1">Статус для выплаты</label>
+          <select name="tax_status" class="sinp w-full text-sm">
+            <option value="" {% if not user.referral_tax_status %}selected{% endif %}>— выберите —</option>
+            <option value="self_employed" {% if (user.referral_tax_status or '') == 'self_employed' %}selected{% endif %}>Самозанятый (НПД)</option>
+            <option value="ip" {% if (user.referral_tax_status or '') == 'ip' %}selected{% endif %}>ИП</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1">ИНН (10 или 12 цифр)</label>
+          <input type="text" name="partner_inn" value="{{ user.referral_partner_inn or '' }}" class="sinp w-full text-sm" inputmode="numeric" autocomplete="off" />
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1">Реквизиты для перевода</label>
+          <textarea name="bank_note" rows="3" class="sinp w-full text-sm" placeholder="Номер карты или расчётный счёт, банк…">{{ user.referral_payout_bank_note or '' }}</textarea>
+        </div>
+        <button type="submit" class="btn-o px-5 py-2.5 rounded-xl text-sm font-medium">Сохранить данные</button>
+      </form>
+    </div>
 
     <div class="card rounded-2xl border border-white/10 bg-white/[0.03] p-5 mb-4">
       <div style="font-size:15px;font-weight:600;color:#ddd;margin-bottom:12px">Ваши приглашённые</div>
@@ -155,6 +181,7 @@
         </div>
         <button type="button" id="refWithdrawBtn" class="btn-g px-5 py-2.5 rounded-xl text-sm font-medium" onclick="requestWithdraw()">Вывести</button>
       </div>
+      <p class="text-xs text-muted mt-2 leading-relaxed">Минимум <strong>{{ ref_min_withdraw }}</strong> ₽. Заявки принимаются <strong>с {{ ref_wd_from }} по {{ ref_wd_to }} число</strong> каждого месяца (Москва). После заявки вам придёт напоминание в Telegram о чеке в «Мой налог» (для самозанятого). Один вывод в месяц.</p>
       <p id="refWithdrawMsg" class="text-xs mt-3 text-muted" style="display:none"></p>
     </div>
 
@@ -172,6 +199,7 @@
             <div class="text-xs text-muted mt-0.5">
               {{ e.credited_at.strftime('%d.%m.%Y %H:%M') if e.credited_at else '—' }} ·
               {{ e.referred_name }} (id {{ e.referred_id }}) · тариф {{ (e.plan_key or 'start')|upper }}
+              {% if e.payment_source_label %} · {{ e.payment_source_label }}{% endif %}
             </div>
           </div>
           <a href="/community/profile/{{ e.referred_id }}" class="text-xs text-gold hover:underline whitespace-nowrap">Профиль</a>
@@ -189,8 +217,10 @@
         <p style="margin:0 0 10px 0"><strong class="text-text">1) Бонусы за подписки (в приложении)</strong></p>
         <p style="margin:0 0 8px 0">• Начисляется <strong>10% от фактической оплаченной суммы</strong> любой платной подписки приглашённого (Старт / Про / Макси) в момент оплаты.</p>
         <p style="margin:0 0 8px 0">• Начисление идёт <strong>с каждой платной оплаты</strong> приглашённого, не только с первой.</p>
+        <p style="margin:0 0 8px 0">• <strong>Только оплата в рублях картой/эквайрингом</strong> через ЮKassa, CloudPayments или счёт на карту ₽ в Telegram. <strong>Звёзды Telegram, криптовалюта, подарки и ручная выдача тарифа без такой оплаты — без бонуса.</strong></p>
+        <p style="margin:0 0 8px 0">• Нужно <strong>оформить партнёрство</strong> (сохранённая ссылка магазина в этом разделе) и иметь <strong>активную платную подписку</strong> в момент оплаты приглашённого; иначе бонус не начисляется.</p>
         <p style="margin:0 0 8px 0">• Если у вас в момент этой оплаты <strong>нет активной платной подписки</strong> (только free/пробный), бонус за эту оплату <strong>не начисляется</strong>.</p>
-        <p style="margin:0 0 12px 0">• Пробные 3 дня не считаются платной оплатой.</p>
+        <p style="margin:0 0 12px 0">• Пробные 3 дня не считаются платной оплатой. Выплаты с баланса — по <a href="/legal/referral-payouts" class="text-gold hover:underline">правилам для самозанятых и ИП</a>.</p>
 
         <p style="margin:0 0 10px 0"><strong class="text-text">2) Ссылка магазина Neurotrops</strong></p>
         <p style="margin:0 0 8px 0">• Вы вставляете свою ссылку магазина в этом разделе, и она закрепляется за вами.</p>

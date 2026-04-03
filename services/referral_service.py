@@ -1,8 +1,10 @@
 import html
 import logging
+import re
 import secrets
 import string
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Any, Optional
 
@@ -19,6 +21,39 @@ from db.models import (
 from services.payment_plans_catalog import DEFAULT_PLANS, get_effective_plans, resolve_promo_plan_key
 
 logger = logging.getLogger(__name__)
+
+# Бонусы только за оплату подписки в рублях через ЮKassa / CloudPayments / счёт на карту ₽ в Telegram (не Stars).
+REFERRAL_BONUS_PAYMENT_CHANNELS = frozenset({"yookassa", "cloudpayments", "telegram_card_rub"})
+
+
+def _digits_inn(s: str | None) -> str:
+    return re.sub(r"\D", "", str(s or ""))[:12]
+
+
+def _payment_source_label(src: str | None) -> str:
+    k = (src or "").strip().lower()
+    return {
+        "yookassa": "ЮKassa",
+        "cloudpayments": "CloudPayments",
+        "telegram_card_rub": "Карта ₽ (Telegram)",
+        "activation": "—",
+    }.get(k, k or "—")
+
+
+def _referral_withdraw_moscow_window_ok() -> tuple[bool, str]:
+    from config import settings
+
+    now = datetime.now(ZoneInfo("Europe/Moscow"))
+    d = now.day
+    lo = int(getattr(settings, "REFERRAL_WITHDRAW_MOSCOW_DAY_FROM", 1) or 1)
+    hi = int(getattr(settings, "REFERRAL_WITHDRAW_MOSCOW_DAY_TO", 5) or 5)
+    if lo <= d <= hi:
+        return True, ""
+    return (
+        False,
+        f"Заявки на вывод принимаются с {lo} по {hi} число каждого месяца (время Москвы). "
+        f"Сейчас {now.strftime('%d.%m.%Y')}.",
+    )
 
 
 def _referral_bonus_from_paid_price(price_rub: float) -> float:
@@ -243,13 +278,20 @@ async def process_referral(new_user_id: int, referral_code: str) -> bool:
 async def credit_referrer_bonus_for_paid_subscription(
     referred_user_id: int,
     paid_amount_rub: float,
+    *,
+    payment_channel: str | None = None,
 ) -> float:
     """
     Начислить рефереру 10% от фактической оплаченной суммы подписки.
     Срабатывает на КАЖДУЮ платную покупку/продление приглашённого (не trial),
-    но только если у реферера в момент оплаты активна платная подписка.
+    но только если у реферера в момент оплаты активна платная подписка и он оформил партнёрство
+    (сохранена ссылка магазина), а оплата приглашённого прошла через допустимый канал (рубли, не Stars).
     Возвращает начисленную сумму или 0.0.
     """
+    ch = (payment_channel or "").strip().lower()
+    if ch not in REFERRAL_BONUS_PAYMENT_CHANNELS:
+        return 0.0
+
     row = await database.fetch_one(users.select().where(users.c.id == int(referred_user_id)))
     if not row:
         return 0.0
@@ -271,6 +313,10 @@ async def credit_referrer_bonus_for_paid_subscription(
     from services.subscription_service import paid_subscription_for_referral_program
 
     if not await paid_subscription_for_referral_program(rid):
+        return 0.0
+
+    rref = await database.fetch_one(users.select().where(users.c.id == rid))
+    if not rref or not bool(rref.get("referral_shop_partner_self")):
         return 0.0
 
     bonus = _referral_bonus_from_paid_price(float(paid_amount_rub or 0.0))
@@ -307,7 +353,7 @@ async def credit_referrer_bonus_for_paid_subscription(
                 plan_key=plan_key,
                 paid_amount_rub=float(paid_amount_rub or 0.0),
                 bonus_rub=float(bonus),
-                payment_source="activation",
+                payment_source=ch[:32],
             )
         )
     except Exception:
@@ -575,6 +621,8 @@ async def list_referral_bonus_events_for_referrer(
                 "paid_amount_rub": float(r.get("paid_amount_rub") or 0),
                 "bonus_rub": float(r.get("bonus_rub") or 0),
                 "subscription_id": r.get("subscription_id"),
+                "payment_source": (r.get("payment_source") or "").strip().lower(),
+                "payment_source_label": _payment_source_label(r.get("payment_source")),
             }
         )
     return out
@@ -586,6 +634,8 @@ async def _format_withdrawal_text(
     invites: list[dict],
     stats: dict,
     site: str,
+    *,
+    withdrawal_id: int | None = None,
 ) -> str:
     row = await database.fetch_one(users.select().where(users.c.id == uid))
     if not row:
@@ -595,14 +645,23 @@ async def _format_withdrawal_text(
     name = u.get("name") or ""
     email = u.get("email") or ""
     ref_code = (u.get("referral_code") or "").strip()
+    tax = (u.get("referral_tax_status") or "").strip()
+    inn = _digits_inn(u.get("referral_partner_inn"))
+    bank = (u.get("referral_payout_bank_note") or "").strip()
     default_bonus = float(await referral_bonus_per_invite_rub())
     lines = [
         "💸 <b>Запрос вывода реферального баланса</b>",
-        f"ID: <code>{uid}</code>",
-        f"Имя: {name}",
-        f"Email: {email or '—'}",
+    ]
+    if withdrawal_id:
+        lines.append(f"<b>ID заявки:</b> <code>{withdrawal_id}</code>")
+    lines += [
+        f"ID пользователя: <code>{uid}</code>",
+        f"Имя: {html.escape((name or '')[:200])}",
+        f"Email: {html.escape(email or '—')}",
         f"Telegram ID: <code>{tg}</code>" if tg else "Telegram: не привязан",
         f"Код реферала: <code>{ref_code}</code>" if ref_code else "",
+        f"Статус (налог): <b>{html.escape(tax or '—')}</b> · ИНН: <code>{html.escape(inn or '—')}</code>",
+        f"Реквизиты: {html.escape(bank[:500] if bank else '—')}",
         f"Сумма к выводу: <b>{amount:.2f} ₽</b>",
         f"Текущий баланс на момент запроса: <b>{stats.get('balance_rub', 0)} ₽</b>",
         f"Всего приглашено: <b>{stats.get('total', 0)}</b>",
@@ -631,45 +690,136 @@ async def _format_withdrawal_text(
     return "\n".join(x for x in lines if x is not None)
 
 
+async def _notify_partner_withdrawal_instructions(
+    user_id: int, *, amount_rub: float, withdrawal_id: int
+) -> None:
+    """Инструкция партнёру в Telegram: чек самозанятого / документы ИП."""
+    from config import settings
+
+    chat_id = await _telegram_chat_id_for_user(int(user_id))
+    if not chat_id:
+        return
+    try:
+        from services.tg_notify import notify_user_telegram
+    except Exception:
+        return
+
+    inn = (getattr(settings, "REFERRAL_CLIENT_INN", None) or "").strip()
+    cname = (getattr(settings, "REFERRAL_CLIENT_NAME_LEGAL", None) or "").strip()
+    site = (settings.SITE_URL or "").strip().rstrip("/")
+    legal_url = f"{site}/legal/referral-payouts" if site else ""
+
+    text = (
+        f"💸 <b>Заявка на вывод #{withdrawal_id}</b>\n"
+        f"Сумма: <b>{amount_rub:.2f} ₽</b>\n\n"
+        "После проверки реквизитов выплата производится <b>после</b> получения от вас закрывающего документа:\n"
+        f"• <b>Самозанятый (НПД):</b> чек в приложении «Мой налог» на указанную сумму, заказчик — "
+        f"<b>{html.escape(cname)}</b>, ИНН <code>{html.escape(inn)}</code>.\n"
+        "• <b>ИП:</b> акт выполненных работ / счёт-фактура (как принято при вашем режиме).\n\n"
+        "<b>Наименование услуги</b> (пример для самозанятого):\n"
+        "<i>Рекламные услуги / привлечение клиентов по реферальной программе NEUROFUNGI AI</i>\n\n"
+        "Пришлите <b>PDF или скрин</b> чека/документа в этот чат. Администратор проверит и переведёт средства "
+        "на указанные в кабинете реквизиты.\n\n"
+        + (
+            f'<a href="{html.escape(legal_url, quote=True)}">Полные правила выплат</a>'
+            if legal_url
+            else ""
+        )
+    )
+    try:
+        await notify_user_telegram(int(chat_id), text[:4000], "HTML")
+    except Exception:
+        logger.debug("partner withdrawal instruction telegram failed", exc_info=True)
+
+
 async def request_referral_withdrawal(user_id: int) -> tuple[bool, str]:
-    """Создать заявку на вывод и уведомить админа в Telegram."""
+    """Создать заявку на вывод и уведомить админа и партнёра в Telegram."""
+    from config import settings
+
     from services.subscription_service import paid_subscription_for_referral_program
 
-    if not await paid_subscription_for_referral_program(int(user_id)):
+    uid = int(user_id)
+    if not await paid_subscription_for_referral_program(uid):
         return False, "Вывод доступен при активной подписке Старт и выше (не пробный период)."
 
-    stats = await get_referral_stats(user_id)
+    urow = await database.fetch_one(users.select().where(users.c.id == uid))
+    if not urow or not bool(urow.get("referral_shop_partner_self")):
+        return (
+            False,
+            "Сначала оформите партнёрство: сохраните ссылку магазина в блоке «Стать партнёром магазина» на этой странице.",
+        )
+
+    tax = (urow.get("referral_tax_status") or "").strip().lower()
+    if tax not in ("self_employed", "ip"):
+        return False, "Укажите статус самозанятого или ИП и ИНН в форме «Данные для выплаты» ниже."
+
+    inn = _digits_inn(urow.get("referral_partner_inn"))
+    if len(inn) not in (10, 12):
+        return False, "Укажите корректный ИНН (10 или 12 цифр)."
+
+    bank = (urow.get("referral_payout_bank_note") or "").strip()
+    if len(bank) < 5:
+        return False, "Укажите реквизиты для перевода (карта / счёт) в форме ниже."
+
+    ok_w, err_w = _referral_withdraw_moscow_window_ok()
+    if not ok_w:
+        return False, err_w
+
+    min_rub = float(getattr(settings, "REFERRAL_MIN_WITHDRAWAL_RUB", 5000) or 5000)
+    stats = await get_referral_stats(uid)
     bal = float(stats.get("balance_rub") or 0)
-    if bal < 1:
-        return False, "Баланс меньше минимума для вывода"
+    if bal < min_rub:
+        return False, f"Минимум для вывода: {min_rub:.0f} ₽ (сейчас {bal:.2f} ₽)."
+
+    msk = datetime.now(ZoneInfo("Europe/Moscow"))
+    ym = f"{msk.year}-{msk.month:02d}"
+
+    exist_month = await database.fetch_one(
+        referral_withdrawals.select()
+        .where(referral_withdrawals.c.user_id == uid)
+        .where(referral_withdrawals.c.withdraw_calendar_month == ym)
+        .limit(1)
+    )
+    if exist_month:
+        return False, "В этом календарном месяце заявка на вывод уже была подана."
 
     pend = await database.fetch_one(
         referral_withdrawals.select()
-        .where(referral_withdrawals.c.user_id == user_id)
+        .where(referral_withdrawals.c.user_id == uid)
         .where(referral_withdrawals.c.status == "pending")
         .limit(1)
     )
     if pend:
-        return False, "Заявка на вывод уже отправлена — дождитесь обработки"
+        return False, "Заявка на вывод уже на рассмотрении — дождитесь обработки."
 
-    invites = await get_referrer_invites_detailed(user_id)
-    from config import settings
-
+    invites = await get_referrer_invites_detailed(uid)
     site = (settings.SITE_URL or "").rstrip("/") or ""
 
     await database.execute(
         referral_withdrawals.insert().values(
-            user_id=user_id,
+            user_id=uid,
             amount_rub=bal,
             status="pending",
+            withdraw_calendar_month=ym,
         )
     )
+    wid_row = await database.fetch_one(
+        sa.select(referral_withdrawals.c.id)
+        .where(referral_withdrawals.c.user_id == uid)
+        .order_by(referral_withdrawals.c.id.desc())
+        .limit(1)
+    )
+    wid_int = int(wid_row["id"]) if wid_row and wid_row.get("id") is not None else 0
 
-    text = await _format_withdrawal_text(user_id, bal, invites, stats, site)
+    text = await _format_withdrawal_text(
+        uid, bal, invites, stats, site, withdrawal_id=wid_int or None
+    )
 
     from services.notify_admin import notify_admin_telegram
 
     await notify_admin_telegram(text[:3900])
+    if wid_int:
+        await _notify_partner_withdrawal_instructions(uid, amount_rub=bal, withdrawal_id=wid_int)
     return True, "ok"
 
 

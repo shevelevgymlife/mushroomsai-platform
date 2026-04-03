@@ -759,6 +759,7 @@ async def successful_payment_handler(update: Update, context: ContextTypes.DEFAU
             eff,
             months=1,
             paid_price_rub=price_rub,
+            credit_referrer_bonus=False,
         )
         if ok:
             pname = off.get("display_name") or eff
@@ -807,6 +808,7 @@ async def successful_payment_handler(update: Update, context: ContextTypes.DEFAU
         eff,
         months=1,
         paid_price_rub=price_rub,
+        referral_bonus_payment_channel="telegram_card_rub",
     )
     if ok:
         pname = off.get("display_name") or eff

@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import uuid
 from urllib.parse import quote
 import sqlalchemy as sa
@@ -1228,6 +1229,9 @@ async def referral_program_page(request: Request):
             "partner_self_registered": partner_self,
             "neurotrops_shop_entry_url": SHOP_RUS_URL,
             "partner_shop_link_policy": partner_shop_link_policy,
+            "ref_min_withdraw": int(getattr(settings, "REFERRAL_MIN_WITHDRAWAL_RUB", 5000) or 5000),
+            "ref_wd_from": int(getattr(settings, "REFERRAL_WITHDRAW_MOSCOW_DAY_FROM", 1) or 1),
+            "ref_wd_to": int(getattr(settings, "REFERRAL_WITHDRAW_MOSCOW_DAY_TO", 5) or 5),
         },
     )
 
@@ -1270,6 +1274,34 @@ async def referral_withdraw_submit(request: Request):
     uid = user.get("primary_user_id") or user["id"]
     ok, msg = await request_referral_withdrawal(int(uid))
     return JSONResponse({"ok": ok, "message": msg})
+
+
+@router.post("/referral/payout-profile")
+async def referral_payout_profile_save(
+    request: Request,
+    tax_status: str = Form(""),
+    partner_inn: str = Form(""),
+    bank_note: str = Form(""),
+):
+    user = await get_user_from_request(request)
+    if not user:
+        return RedirectResponse("/login?next=/referral", status_code=302)
+    uid = int(user.get("primary_user_id") or user["id"])
+    ts = (tax_status or "").strip().lower()
+    if ts not in ("self_employed", "ip"):
+        ts = ""
+    inn = re.sub(r"\D", "", (partner_inn or "").strip())[:12]
+    bank = (bank_note or "").strip()[:2000]
+    await database.execute(
+        users.update()
+        .where(users.c.id == uid)
+        .values(
+            referral_tax_status=ts or None,
+            referral_partner_inn=inn or None,
+            referral_payout_bank_note=bank or None,
+        )
+    )
+    return RedirectResponse("/referral?payout_profile_saved=1", status_code=303)
 
 
 @router.get("/promo/{token}")

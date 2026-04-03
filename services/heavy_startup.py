@@ -727,6 +727,15 @@ async def run_heavy_startup(app: FastAPI) -> None:
             logger.warning("migrate_v41 shop_banner_phase: %s", e)
 
         try:
+            import migrate_v42_referral_payout as migrate_v42
+
+            for s in migrate_v42.STEPS:
+                await database.execute(sa.text(s))
+            logger.info("referral payout profile & withdrawal month (migrate_v42) OK")
+        except Exception as e:
+            logger.warning("migrate_v42 referral_payout: %s", e)
+
+        try:
             from services.merge_neurofungi_ai_chats import merge_all_neurofungi_ai_personal_chats
 
             await merge_all_neurofungi_ai_personal_chats()

@@ -94,6 +94,13 @@ class Settings(BaseSettings):
     YOOKASSA_OVERRIDE_SHOP_ID: str = ""
     YOOKASSA_OVERRIDE_SECRET_KEY: str = ""
 
+    # Реферальные выплаты (партнёрская программа подписок)
+    REFERRAL_MIN_WITHDRAWAL_RUB: int = 5000
+    REFERRAL_WITHDRAW_MOSCOW_DAY_FROM: int = 1
+    REFERRAL_WITHDRAW_MOSCOW_DAY_TO: int = 5
+    REFERRAL_CLIENT_INN: str = "775105884367"
+    REFERRAL_CLIENT_NAME_LEGAL: str = "ИП Шевелёв Евгений Алексеевич"
+
     model_config = SettingsConfigDict(env_file=_env_file_for_settings(), extra="ignore")
 
 

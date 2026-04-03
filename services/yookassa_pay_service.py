@@ -138,7 +138,13 @@ async def apply_yookassa_payment_succeeded(payment: dict[str, Any]) -> tuple[boo
         logger.warning("yookassa amount mismatch uid=%s plan=%s paid=%s expected=%s", uid, plan_key, paid, expected)
         return False, "amount_mismatch"
 
-    ok = await activate_subscription(uid, plan_key, months=1, paid_price_rub=expected)
+    ok = await activate_subscription(
+        uid,
+        plan_key,
+        months=1,
+        paid_price_rub=expected,
+        referral_bonus_payment_channel="yookassa",
+    )
     if not ok:
         return False, "activate_failed"
     await _mark("yookassa", pid)

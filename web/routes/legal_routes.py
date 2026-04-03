@@ -9,6 +9,7 @@ from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from auth.session import get_user_from_request
+from config import settings
 from db.database import database
 from db.models import users
 from services.legal import LEGAL_DOCS_VERSION
@@ -42,6 +43,24 @@ async def legal_privacy(request: Request):
     return templates.TemplateResponse(
         "legal/privacy.html",
         {"request": request, "user": user, "legal_version": LEGAL_DOCS_VERSION},
+    )
+
+
+@router.get("/legal/referral-payouts", response_class=HTMLResponse)
+async def legal_referral_payouts(request: Request):
+    user = await get_user_from_request(request)
+    return templates.TemplateResponse(
+        "legal/referral_payouts.html",
+        {
+            "request": request,
+            "user": user,
+            "legal_version": LEGAL_DOCS_VERSION,
+            "ref_client_inn": (getattr(settings, "REFERRAL_CLIENT_INN", None) or "").strip(),
+            "ref_client_name": (getattr(settings, "REFERRAL_CLIENT_NAME_LEGAL", None) or "").strip(),
+            "ref_min_withdraw": int(getattr(settings, "REFERRAL_MIN_WITHDRAWAL_RUB", 5000) or 5000),
+            "ref_wd_from": int(getattr(settings, "REFERRAL_WITHDRAW_MOSCOW_DAY_FROM", 1) or 1),
+            "ref_wd_to": int(getattr(settings, "REFERRAL_WITHDRAW_MOSCOW_DAY_TO", 5) or 5),
+        },
     )
 
 
