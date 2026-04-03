@@ -19,6 +19,9 @@ def _admin_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton("📊 Статус", callback_data="admin:status"),
             InlineKeyboardButton("👤 Пользователи", callback_data="admin:users"),
         ],
+        [
+            InlineKeyboardButton("💸 Реф. выводы", callback_data="admin:refwithdraw"),
+        ],
     ])
 
 
@@ -104,6 +107,12 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         text = await _get_status_text()
     elif action == "users":
         text = await _get_users_text()
+    elif action == "refwithdraw":
+        from services.referral_admin import referral_finance_summary_html
+
+        text = await referral_finance_summary_html(22)
+        if len(text) > 3800:
+            text = text[:3790] + "\n…"
     else:
         return
 

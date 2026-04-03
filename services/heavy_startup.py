@@ -764,6 +764,15 @@ async def run_heavy_startup(app: FastAPI) -> None:
             logger.warning("migrate_v45 closed_telegram_access: %s", e)
 
         try:
+            import migrate_v46_referral_withdraw_reserve as migrate_v46
+
+            for s in migrate_v46.STEPS:
+                await database.execute(sa.text(s))
+            logger.info("referral withdraw reserve column (migrate_v46) OK")
+        except Exception as e:
+            logger.warning("migrate_v46 referral_withdraw_reserve: %s", e)
+
+        try:
             from services.merge_neurofungi_ai_chats import merge_all_neurofungi_ai_personal_chats
 
             await merge_all_neurofungi_ai_personal_chats()

@@ -1215,6 +1215,13 @@ async def referral_program_page(request: Request):
     ref_link = f"https://t.me/{bot}?start={code}" if code else ""
     ref_link_site = f"{base}/login?ref={code}" if code and base else ""
     ref_stats = await get_referral_stats(uid)
+    from services.referral_payout_settings import (
+        get_referral_min_withdrawal_rub,
+        get_referral_wd_moscow_days,
+    )
+
+    ref_min_withdraw = await get_referral_min_withdrawal_rub()
+    ref_wd_from, ref_wd_to = await get_referral_wd_moscow_days()
     ref_invites = await get_referrer_invites_detailed(uid)
     bonus_events = await list_referral_bonus_events_for_referrer(int(uid), 120)
     display_user = user
@@ -1257,9 +1264,9 @@ async def referral_program_page(request: Request):
             "partner_self_registered": partner_self,
             "neurotrops_shop_entry_url": SHOP_RUS_URL,
             "partner_shop_link_policy": partner_shop_link_policy,
-            "ref_min_withdraw": int(getattr(settings, "REFERRAL_MIN_WITHDRAWAL_RUB", 5000) or 5000),
-            "ref_wd_from": int(getattr(settings, "REFERRAL_WITHDRAW_MOSCOW_DAY_FROM", 1) or 1),
-            "ref_wd_to": int(getattr(settings, "REFERRAL_WITHDRAW_MOSCOW_DAY_TO", 5) or 5),
+            "ref_min_withdraw": ref_min_withdraw,
+            "ref_wd_from": ref_wd_from,
+            "ref_wd_to": ref_wd_to,
             "ref_bonus_pct_global": ref_bonus_pct_global,
             "ref_bonus_pct_effective": ref_bonus_pct_effective,
         },
@@ -1302,7 +1309,14 @@ async def referral_withdraw_submit(request: Request):
     if not user:
         return JSONResponse({"ok": False, "error": "auth"}, status_code=401)
     uid = user.get("primary_user_id") or user["id"]
-    ok, msg = await request_referral_withdrawal(int(uid))
+    amount: float | None = None
+    try:
+        body = await request.json()
+        if isinstance(body, dict) and body.get("amount_rub") is not None:
+            amount = float(body["amount_rub"])
+    except Exception:
+        pass
+    ok, msg = await request_referral_withdrawal(int(uid), amount)
     return JSONResponse({"ok": ok, "message": msg})
 
 

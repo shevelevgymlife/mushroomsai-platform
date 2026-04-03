@@ -40,14 +40,13 @@ def _payment_source_label(src: str | None) -> str:
     }.get(k, k or "—")
 
 
-def _referral_withdraw_moscow_window_ok() -> tuple[bool, str]:
-    from config import settings
+async def _referral_withdraw_moscow_window_ok() -> tuple[bool, str]:
+    from services.referral_payout_settings import get_referral_wd_moscow_days, moscow_calendar_day_in_window
 
     now = datetime.now(ZoneInfo("Europe/Moscow"))
     d = now.day
-    lo = int(getattr(settings, "REFERRAL_WITHDRAW_MOSCOW_DAY_FROM", 1) or 1)
-    hi = int(getattr(settings, "REFERRAL_WITHDRAW_MOSCOW_DAY_TO", 5) or 5)
-    if lo <= d <= hi:
+    lo, hi = await get_referral_wd_moscow_days()
+    if moscow_calendar_day_in_window(d, lo, hi):
         return True, ""
     return (
         False,
@@ -576,14 +575,20 @@ async def get_referral_stats(user_id: int) -> dict:
     )
     row = await database.fetch_one(users.select().where(users.c.id == user_id))
     bal = row.get("referral_balance") if row else 0
+    res = row.get("referral_withdraw_reserved_rub") if row else 0
     try:
         bal_f = float(bal or 0)
     except (TypeError, ValueError):
         bal_f = 0.0
+    try:
+        res_f = float(res or 0)
+    except (TypeError, ValueError):
+        res_f = 0.0
     return {
         "total": len(refs),
         "bonus_applied": sum(1 for r in refs if r["bonus_applied"]),
         "balance_rub": round(bal_f, 2),
+        "reserved_rub": round(res_f, 2),
     }
 
 
@@ -707,7 +712,8 @@ async def _format_withdrawal_text(
         f"Статус (налог): <b>{html.escape(tax or '—')}</b> · ИНН: <code>{html.escape(inn or '—')}</code>",
         f"Реквизиты: {html.escape(bank[:500] if bank else '—')}",
         f"Сумма к выводу: <b>{amount:.2f} ₽</b>",
-        f"Текущий баланс на момент запроса: <b>{stats.get('balance_rub', 0)} ₽</b>",
+        f"Доступный баланс (после резерва): <b>{stats.get('balance_rub', 0)} ₽</b>",
+        f"В резерве на вывод (всего): <b>{stats.get('reserved_rub', 0)} ₽</b>",
         f"Всего приглашено: <b>{stats.get('total', 0)}</b>",
         "",
     ]
@@ -755,7 +761,7 @@ async def _notify_partner_withdrawal_instructions(
 
     text = (
         f"💸 <b>Заявка на вывод #{withdrawal_id}</b>\n"
-        f"Сумма: <b>{amount_rub:.2f} ₽</b>\n\n"
+        f"Сумма: <b>{amount_rub:.2f} ₽</b> (зарезервирована; новые бонусы копятся на доступный баланс).\n\n"
         "После проверки реквизитов выплата производится <b>после</b> получения от вас закрывающего документа:\n"
         f"• <b>Самозанятый (НПД):</b> чек в приложении «Мой налог» на указанную сумму, заказчик — "
         f"<b>{html.escape(cname)}</b>, ИНН <code>{html.escape(inn)}</code>.\n"
@@ -776,11 +782,16 @@ async def _notify_partner_withdrawal_instructions(
         logger.debug("partner withdrawal instruction telegram failed", exc_info=True)
 
 
-async def request_referral_withdrawal(user_id: int) -> tuple[bool, str]:
-    """Создать заявку на вывод и уведомить админа и партнёра в Telegram."""
+async def request_referral_withdrawal(user_id: int, amount_rub: float | None = None) -> tuple[bool, str]:
+    """
+    Создать заявку на вывод: сумма уходит в резерв (referral_withdraw_reserved_rub),
+    с доступного referral_balance списывается; новые бонусы копятся только на referral_balance.
+    """
     from config import settings
 
+    from services.referral_payout_settings import get_referral_min_withdrawal_rub
     from services.subscription_service import paid_subscription_for_referral_program
+    from services.tg_notify import notify_admin_referral_withdrawal_request
 
     uid = int(user_id)
     if not await paid_subscription_for_referral_program(uid):
@@ -805,15 +816,27 @@ async def request_referral_withdrawal(user_id: int) -> tuple[bool, str]:
     if len(bank) < 5:
         return False, "Укажите реквизиты для перевода (карта / счёт) в форме ниже."
 
-    ok_w, err_w = _referral_withdraw_moscow_window_ok()
+    ok_w, err_w = await _referral_withdraw_moscow_window_ok()
     if not ok_w:
         return False, err_w
 
-    min_rub = float(getattr(settings, "REFERRAL_MIN_WITHDRAWAL_RUB", 5000) or 5000)
-    stats = await get_referral_stats(uid)
-    bal = float(stats.get("balance_rub") or 0)
-    if bal < min_rub:
-        return False, f"Минимум для вывода: {min_rub:.0f} ₽ (сейчас {bal:.2f} ₽)."
+    min_rub = float(await get_referral_min_withdrawal_rub())
+    try:
+        available = float(urow.get("referral_balance") or 0)
+    except (TypeError, ValueError):
+        available = 0.0
+    available = round(max(0.0, available), 2)
+
+    if amount_rub is None:
+        amt = available
+    else:
+        amt = round(float(amount_rub), 2)
+    if amt <= 0:
+        return False, "Укажите сумму больше нуля."
+    if amt - 1e-6 > available:
+        return False, f"Недостаточно доступного баланса (доступно {available:.2f} ₽, в резерве уже не считается)."
+    if amt + 1e-6 < min_rub:
+        return False, f"Минимум для одной заявки: {min_rub:.0f} ₽ (запрошено {amt:.2f} ₽)."
 
     msk = datetime.now(ZoneInfo("Europe/Moscow"))
     ym = f"{msk.year}-{msk.month:02d}"
@@ -836,17 +859,48 @@ async def request_referral_withdrawal(user_id: int) -> tuple[bool, str]:
     if pend:
         return False, "Заявка на вывод уже на рассмотрении — дождитесь обработки."
 
-    invites = await get_referrer_invites_detailed(uid)
-    site = (settings.SITE_URL or "").rstrip("/") or ""
-
-    await database.execute(
-        referral_withdrawals.insert().values(
-            user_id=uid,
-            amount_rub=bal,
-            status="pending",
-            withdraw_calendar_month=ym,
-        )
+    moved = await database.fetch_one(
+        sa.text(
+            """
+            UPDATE users SET
+              referral_balance = COALESCE(referral_balance, 0) - :a,
+              referral_withdraw_reserved_rub = COALESCE(referral_withdraw_reserved_rub, 0) + :a
+            WHERE id = :uid
+              AND COALESCE(referral_balance, 0) + 1e-9 >= :a
+            RETURNING id
+            """
+        ),
+        {"a": amt, "uid": uid},
     )
+    if not moved:
+        return False, "Не удалось зарезервировать сумму. Обновите страницу и проверьте баланс."
+
+    try:
+        await database.execute(
+            referral_withdrawals.insert().values(
+                user_id=uid,
+                amount_rub=amt,
+                status="pending",
+                withdraw_calendar_month=ym,
+            )
+        )
+    except Exception:
+        logger.exception("referral_withdrawals.insert failed; reverting reserve")
+        await database.execute(
+            sa.text(
+                """
+                UPDATE users SET
+                  referral_balance = COALESCE(referral_balance, 0) + :a,
+                  referral_withdraw_reserved_rub = GREATEST(
+                    0, COALESCE(referral_withdraw_reserved_rub, 0) - :a
+                  )
+                WHERE id = :uid
+                """
+            ),
+            {"a": amt, "uid": uid},
+        )
+        return False, "Ошибка записи заявки. Попробуйте позже."
+
     wid_row = await database.fetch_one(
         sa.select(referral_withdrawals.c.id)
         .where(referral_withdrawals.c.user_id == uid)
@@ -855,15 +909,16 @@ async def request_referral_withdrawal(user_id: int) -> tuple[bool, str]:
     )
     wid_int = int(wid_row["id"]) if wid_row and wid_row.get("id") is not None else 0
 
+    invites = await get_referrer_invites_detailed(uid)
+    site = (settings.SITE_URL or "").rstrip("/") or ""
+    stats = await get_referral_stats(uid)
     text = await _format_withdrawal_text(
-        uid, bal, invites, stats, site, withdrawal_id=wid_int or None
+        uid, amt, invites, stats, site, withdrawal_id=wid_int or None
     )
 
-    from services.notify_admin import notify_admin_telegram
-
-    await notify_admin_telegram(text[:3900])
+    await notify_admin_referral_withdrawal_request(text[:3900], withdrawal_id=wid_int)
     if wid_int:
-        await _notify_partner_withdrawal_instructions(uid, amount_rub=bal, withdrawal_id=wid_int)
+        await _notify_partner_withdrawal_instructions(uid, amount_rub=amt, withdrawal_id=wid_int)
     return True, "ok"
 
 
@@ -879,8 +934,10 @@ def referral_withdraw_button_caption(balance_rub: float) -> str:
 
 
 async def referral_withdraw_keyboard_row(internal_user_id: int):
-    """Одна строка клавиатуры «Вывести N ₽» или None, если баланс ниже минимума."""
+    """Одна строка клавиатуры «Вывести N ₽» или None, если доступный баланс ниже минимума."""
     from telegram import KeyboardButton
+
+    from services.referral_payout_settings import get_referral_min_withdrawal_rub
 
     row = await database.fetch_one(users.select().where(users.c.id == int(internal_user_id)))
     if not row:
@@ -889,10 +946,8 @@ async def referral_withdraw_keyboard_row(internal_user_id: int):
         bal = float(row.get("referral_balance") or 0)
     except (TypeError, ValueError):
         bal = 0.0
-    from config import settings
-
-    min_rub = float(getattr(settings, "REFERRAL_MIN_WITHDRAWAL_RUB", 5000) or 5000)
-    if bal < min_rub:
+    min_rub = float(await get_referral_min_withdrawal_rub())
+    if bal + 1e-6 < min_rub:
         return None
     return [[KeyboardButton(referral_withdraw_button_caption(bal))]]
 
@@ -919,19 +974,41 @@ async def telegram_referral_withdraw_reply_html(user_id: int) -> tuple[bool, str
     )
 
 
-async def admin_clear_referral_balance(user_id: int, admin_note: str = "") -> tuple[bool, str]:
-    """Обнулить баланс после подтверждённого вывода (админ)."""
-    row = await database.fetch_one(users.select().where(users.c.id == user_id))
-    if not row:
+async def admin_mark_referral_withdrawal_paid(
+    withdrawal_id: int, admin_note: str = ""
+) -> tuple[bool, str]:
+    """
+    После фактического перевода: заявка paid, снимается только резерв (referral_withdraw_reserved_rub).
+    referral_balance (доступный) не уменьшается — он уже был уменьшен при создании заявки.
+    """
+    wid = int(withdrawal_id)
+    wrow = await database.fetch_one(
+        referral_withdrawals.select().where(referral_withdrawals.c.id == wid)
+    )
+    if not wrow:
         return False, "not_found"
-    prev = float(row.get("referral_balance") or 0)
+    if str(wrow.get("status") or "").strip().lower() != "pending":
+        return False, "already_processed"
+    uid = int(wrow["user_id"])
+    amt = float(wrow.get("amount_rub") or 0)
+    if amt < 0:
+        return False, "bad_amount"
+
     await database.execute(
-        users.update().where(users.c.id == user_id).values(referral_balance=0)
+        sa.text(
+            """
+            UPDATE users SET referral_withdraw_reserved_rub = GREATEST(
+              0,
+              COALESCE(referral_withdraw_reserved_rub, 0) - :a
+            )
+            WHERE id = :uid
+            """
+        ),
+        {"a": amt, "uid": uid},
     )
     await database.execute(
         referral_withdrawals.update()
-        .where(referral_withdrawals.c.user_id == user_id)
-        .where(referral_withdrawals.c.status == "pending")
+        .where(referral_withdrawals.c.id == wid)
         .values(
             status="paid",
             processed_at=datetime.utcnow(),
@@ -939,26 +1016,41 @@ async def admin_clear_referral_balance(user_id: int, admin_note: str = "") -> tu
         )
     )
     plain = (
-        f"Баланс реферальной программы обнулён после подтверждённого вывода.\n"
-        f"Выведено: {prev:.2f} ₽\n"
+        f"Выплата по заявке #{wid} подтверждена.\n"
+        f"Сумма: {amt:.2f} ₽. Резерв снят; новые бонусы начисляются на доступный баланс.\n"
         f"{(admin_note or '').strip()}"
     ).strip()
     tg_html = (
-        f"✅ <b>Баланс реферальной программы обнулён</b>\n"
-        f"Выведено: <b>{prev:.2f} ₽</b>\n"
+        f"✅ <b>Выплата подтверждена</b>\n"
+        f"Заявка <code>#{wid}</code> · <b>{amt:.2f} ₽</b>\n"
+        f"Резерв снят. Доступный баланс при переводе не списывался повторно.\n"
         f"{admin_note or ''}"
     )[:3900]
     try:
         from services.system_support_delivery import deliver_system_support_notification
 
         await deliver_system_support_notification(
-            recipient_user_id=int(user_id),
+            recipient_user_id=int(uid),
             body_plain=plain,
             telegram_html=tg_html,
         )
     except Exception:
         pass
     return True, "ok"
+
+
+async def admin_clear_referral_balance(user_id: int, admin_note: str = "") -> tuple[bool, str]:
+    """Совместимость: найти pending-заявку пользователя и отметить оплаченной (снять резерв)."""
+    row = await database.fetch_one(
+        referral_withdrawals.select()
+        .where(referral_withdrawals.c.user_id == int(user_id))
+        .where(referral_withdrawals.c.status == "pending")
+        .order_by(referral_withdrawals.c.id.desc())
+        .limit(1)
+    )
+    if not row or row.get("id") is None:
+        return False, "no_pending"
+    return await admin_mark_referral_withdrawal_paid(int(row["id"]), admin_note)
 
 
 async def apply_promo_token_from_cookie(request, response, user_id: int) -> None:

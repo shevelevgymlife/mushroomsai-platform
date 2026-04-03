@@ -67,6 +67,12 @@ users = sqlalchemy.Table(
         server_default="false",
     ),
     sqlalchemy.Column("referral_balance", sqlalchemy.Numeric(12, 2), default=0, server_default="0"),
+    sqlalchemy.Column(
+        "referral_withdraw_reserved_rub",
+        sqlalchemy.Numeric(12, 2),
+        default=0,
+        server_default="0",
+    ),
     sqlalchemy.Column("referral_tax_status", sqlalchemy.String(24), nullable=True),
     sqlalchemy.Column("referral_partner_inn", sqlalchemy.String(20), nullable=True),
     sqlalchemy.Column("referral_payout_bank_note", sqlalchemy.Text, nullable=True),

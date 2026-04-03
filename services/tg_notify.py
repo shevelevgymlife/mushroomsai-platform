@@ -239,6 +239,65 @@ async def tg_send(text: str, parse_mode: str = "HTML") -> bool:
         return False
 
 
+def _notify_bot_token_only() -> str:
+    """Токен бота уведомлений (тот же, что обращения в поддержку), без fallback на основной бот."""
+    return (settings.NOTIFY_BOT_TOKEN or "").strip()
+
+
+async def notify_admin_referral_withdrawal_request(html_text: str, *, withdrawal_id: int) -> bool:
+    """
+    Заявка на вывод реф. баланса: только NOTIFY_BOT_TOKEN + кнопка «Оплачено» и ссылка в админку.
+    Если NOTIFY_BOT_TOKEN не задан — fallback на tg_send (без кнопки).
+    """
+    token = _notify_bot_token_only()
+    chat_id = _admin_id()
+    text = (html_text or "").strip()[:_MAX_LEN]
+    if not text:
+        return False
+    site = (settings.SITE_URL or "").strip().rstrip("/") or "https://mushroomsai.ru"
+    admin_ref_url = f"{site}/admin/referral"
+    keyboard = {
+        "inline_keyboard": [
+            [
+                {
+                    "text": "✅ Оплачено (снять резерв)",
+                    "callback_data": f"refwd_paid:{int(withdrawal_id)}",
+                }
+            ],
+            [{"text": "📋 Админка · рефералы", "url": admin_ref_url}],
+        ]
+    }
+    if not token or not chat_id:
+        logger.warning(
+            "referral withdrawal: NOTIFY_BOT_TOKEN пуст или ADMIN_TG_ID=0 — отправка без кнопки (как обычное уведомление)"
+        )
+        return await tg_send(text)
+    payload = {
+        "chat_id": chat_id,
+        "text": text,
+        "parse_mode": "HTML",
+        "disable_web_page_preview": True,
+        "reply_markup": keyboard,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=12) as client:
+            r = await client.post(
+                f"https://api.telegram.org/bot{token}/sendMessage",
+                json=payload,
+            )
+            if r.status_code != 200:
+                logger.warning(
+                    "notify_admin_referral_withdrawal_request failed: %s %s",
+                    r.status_code,
+                    r.text[:200],
+                )
+                return await tg_send(text)
+        return True
+    except Exception as e:
+        logger.warning("notify_admin_referral_withdrawal_request exception: %s", e)
+        return await tg_send(text)
+
+
 # ── Готовые шаблоны ────────────────────────────────────────────────────────
 
 async def notify_deploy_start() -> None:

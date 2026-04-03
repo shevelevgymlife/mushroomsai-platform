@@ -91,6 +91,43 @@
       {% endif %}
     </div>
 
+    <div class="rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] p-5 mb-8 max-w-3xl">
+      <h2 class="text-lg font-semibold text-text mb-1">Вывод реф. баланса: порог и даты (МСК)</h2>
+      <p class="text-xs text-muted mb-4 leading-relaxed">
+        Значения сохраняются в <code class="text-[11px]">site_settings</code> и подставляются на странице <code>/referral</code>, в юридическом документе о выплатах и при проверке заявок.
+        Новые заявки уходят в Telegram только через <strong>notify-бот</strong> (<code>NOTIFY_BOT_TOKEN</code>) — тот же, что обращения в поддержку: там кнопка «Оплачено» и сводка <strong>«Реф. выводы»</strong> в меню после <code>/start</code>.
+      </p>
+      {% if payout_rules_saved %}
+      <div class="mb-3 p-2.5 rounded-xl border border-emerald-500/30 text-emerald-200 text-sm">Правила вывода сохранены.</div>
+      {% endif %}
+      {% if payout_rules_err %}
+      <div class="mb-3 p-2.5 rounded-xl border border-red-400/35 text-red-200 text-sm">{{ payout_rules_err }}</div>
+      {% endif %}
+      <form method="post" action="/admin/referral/payout-rules" class="flex flex-wrap items-end gap-4">
+        <div>
+          <label class="block text-xs text-muted mb-1">Минимум одной заявки (₽)</label>
+          <input type="text" name="min_withdrawal_rub" value="{{ ref_payout_min }}" class="w-32 px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text font-mono" inputmode="numeric" autocomplete="off" />
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1">С какого числа</label>
+          <input type="text" name="moscow_day_from" value="{{ ref_payout_wd_lo }}" class="w-20 px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text font-mono" inputmode="numeric" autocomplete="off" />
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1">По какое число</label>
+          <input type="text" name="moscow_day_to" value="{{ ref_payout_wd_hi }}" class="w-20 px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text font-mono" inputmode="numeric" autocomplete="off" />
+        </div>
+        <button type="submit" class="px-4 py-2.5 rounded-xl bg-amber-500/20 text-amber-100 border border-amber-500/35 text-sm font-medium">Сохранить</button>
+      </form>
+      <p class="text-xs text-muted mt-3">Для автотестов логики без смены даты сервера вызывайте функции в <code class="text-[11px]">services/referral_payout_settings.py</code> (<code>moscow_calendar_day_in_window</code>) и проверяйте границы min/дней в тестах.</p>
+    </div>
+
+    {% if wd_ok %}
+    <div class="mb-4 p-3 rounded-xl border border-emerald-500/30 text-emerald-200 text-sm max-w-3xl">Заявка отмечена оплаченной (резерв пользователя снят).</div>
+    {% endif %}
+    {% if wd_err %}
+    <div class="mb-4 p-3 rounded-xl border border-red-400/35 text-red-200 text-sm max-w-3xl">Ошибка: {{ wd_err }}</div>
+    {% endif %}
+
     <form method="get" class="flex flex-wrap gap-3 items-end mb-8 p-4 rounded-2xl border border-border bg-surface/40">
       <div>
         <label class="block text-xs text-muted mb-1">Дата с</label>
@@ -152,7 +189,7 @@
     <div class="overflow-x-auto rounded-2xl border border-border mb-10">
       <table class="w-full text-sm">
         <thead><tr class="border-b border-border text-left text-muted">
-          <th class="px-3 py-2">#</th><th class="px-3 py-2">Пользователь</th><th class="px-3 py-2">TG</th><th class="px-3 py-2">Приглашений</th><th class="px-3 py-2">Баланс сейчас</th>
+          <th class="px-3 py-2">#</th><th class="px-3 py-2">Пользователь</th><th class="px-3 py-2">TG</th><th class="px-3 py-2">Приглашений</th><th class="px-3 py-2">Доступно</th><th class="px-3 py-2">Резерв</th>
         </tr></thead>
         <tbody>
           {% for r in top_inv %}
@@ -162,9 +199,10 @@
             <td class="px-3 py-2 font-mono text-xs">{% if r.tg_id %}<a href="tg://user?id={{ r.tg_id }}" class="text-muted hover:text-gold">{{ r.tg_id }}</a>{% else %}—{% endif %}</td>
             <td class="px-3 py-2">{{ r.invite_count }}</td>
             <td class="px-3 py-2">{{ '%.2f'|format(r.referral_balance) }} ₽</td>
+            <td class="px-3 py-2 text-amber-200/90">{{ '%.2f'|format(r.referral_reserved_rub) }} ₽</td>
           </tr>
           {% else %}
-          <tr><td colspan="5" class="px-3 py-6 text-center text-muted">Нет данных</td></tr>
+          <tr><td colspan="6" class="px-3 py-6 text-center text-muted">Нет данных</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -174,7 +212,7 @@
     <div class="overflow-x-auto rounded-2xl border border-border mb-10">
       <table class="w-full text-sm">
         <thead><tr class="border-b border-border text-left text-muted">
-          <th class="px-3 py-2">#</th><th class="px-3 py-2">Пользователь</th><th class="px-3 py-2">TG</th><th class="px-3 py-2">Баланс</th>
+          <th class="px-3 py-2">#</th><th class="px-3 py-2">Пользователь</th><th class="px-3 py-2">TG</th><th class="px-3 py-2">Доступно</th><th class="px-3 py-2">Резерв</th>
         </tr></thead>
         <tbody>
           {% for r in lb_bal %}
@@ -183,9 +221,10 @@
             <td class="px-3 py-2"><a href="/community/profile/{{ r.user_id }}" class="text-gold hover:underline" target="_blank">{{ r.name }}</a></td>
             <td class="px-3 py-2 font-mono text-xs">{% if r.tg_id %}<a href="tg://user?id={{ r.tg_id }}" class="text-muted hover:text-gold">{{ r.tg_id }}</a>{% else %}—{% endif %}</td>
             <td class="px-3 py-2 font-semibold text-gold">{{ '%.2f'|format(r.referral_balance) }} ₽</td>
+            <td class="px-3 py-2 text-amber-200/90">{{ '%.2f'|format(r.referral_reserved_rub) }} ₽</td>
           </tr>
           {% else %}
-          <tr><td colspan="4" class="px-3 py-6 text-center text-muted">Нет положительных балансов</td></tr>
+          <tr><td colspan="5" class="px-3 py-6 text-center text-muted">Нет положительных балансов</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -230,32 +269,35 @@
     <div class="overflow-x-auto rounded-2xl border border-border mb-4">
       <table class="w-full text-sm">
         <thead><tr class="border-b border-border text-left text-muted">
-          <th class="px-3 py-2">Пользователь</th><th class="px-3 py-2">Сумма</th><th class="px-3 py-2">Создано</th><th class="px-3 py-2">Действие</th>
+          <th class="px-3 py-2">ID заявки</th><th class="px-3 py-2">Пользователь</th><th class="px-3 py-2">Заявка</th><th class="px-3 py-2">Доступно / резерв</th><th class="px-3 py-2">Создано</th><th class="px-3 py-2">Действие</th>
         </tr></thead>
         <tbody>
           {% for w in pending_withdrawals %}
           <tr class="border-b border-border/50">
+            <td class="px-3 py-2 font-mono text-xs text-muted">#{{ w.id }}</td>
             <td class="px-3 py-2">
               <a href="/community/profile/{{ w.user_id }}" class="text-gold" target="_blank">{{ w.user_name or w.user_id }}</a>
               {% if w.tg_id %}<span class="text-xs text-muted font-mono ml-2">{{ w.tg_id }}</span>{% endif %}
             </td>
-            <td class="px-3 py-2">{{ '%.2f'|format(w.amount_rub) }} ₽</td>
+            <td class="px-3 py-2 font-medium">{{ '%.2f'|format(w.amount_rub) }} ₽</td>
+            <td class="px-3 py-2 text-xs text-muted">{{ '%.2f'|format(w.user_available_rub) }} / <span class="text-amber-200/90">{{ '%.2f'|format(w.user_reserved_rub) }}</span></td>
             <td class="px-3 py-2 text-muted text-xs">{{ w.created_at }}</td>
             <td class="px-3 py-2">
               <form method="post" action="/admin/referral/clear-balance" class="flex flex-wrap gap-2 items-center">
+                <input type="hidden" name="withdrawal_id" value="{{ w.id }}" />
                 <input type="hidden" name="user_id" value="{{ w.user_id }}" />
-                <input type="text" name="note" placeholder="Комментарий (необязательно)" class="px-2 py-1 rounded-lg bg-bg border border-border text-xs max-w-xs" />
-                <button type="submit" class="px-3 py-1 rounded-lg bg-amber-500/20 text-amber-200 border border-amber-500/40 text-xs font-medium">Обнулить баланс</button>
+                <input type="text" name="note" placeholder="Комментарий" class="px-2 py-1 rounded-lg bg-bg border border-border text-xs max-w-[140px]" />
+                <button type="submit" class="px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-200 border border-emerald-500/40 text-xs font-medium">Оплачено</button>
               </form>
             </td>
           </tr>
           {% else %}
-          <tr><td colspan="4" class="px-3 py-6 text-center text-muted">Нет ожидающих заявок</td></tr>
+          <tr><td colspan="6" class="px-3 py-6 text-center text-muted">Нет ожидающих заявок</td></tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
-    <p class="text-xs text-muted mb-10">После «Обнулить» пользователю уходит сообщение в Telegram с суммой вывода.</p>
+    <p class="text-xs text-muted mb-10">После «Оплачено» снимается только <strong>резерв</strong> у пользователя (доступный баланс не уменьшается повторно). Пользователю уходит уведомление. Закрытые заявки — в таблице ниже за период.</p>
 
     <h2 class="text-xl font-medium text-text mb-3">Подтверждённые выводы за период</h2>
     <div class="overflow-x-auto rounded-2xl border border-border mb-10">

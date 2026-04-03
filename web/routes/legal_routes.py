@@ -49,6 +49,13 @@ async def legal_privacy(request: Request):
 @router.get("/legal/referral-payouts", response_class=HTMLResponse)
 async def legal_referral_payouts(request: Request):
     user = await get_user_from_request(request)
+    from services.referral_payout_settings import (
+        get_referral_min_withdrawal_rub,
+        get_referral_wd_moscow_days,
+    )
+
+    ref_min = await get_referral_min_withdrawal_rub()
+    wd_lo, wd_hi = await get_referral_wd_moscow_days()
     return templates.TemplateResponse(
         "legal/referral_payouts.html",
         {
@@ -57,9 +64,9 @@ async def legal_referral_payouts(request: Request):
             "legal_version": LEGAL_DOCS_VERSION,
             "ref_client_inn": (getattr(settings, "REFERRAL_CLIENT_INN", None) or "").strip(),
             "ref_client_name": (getattr(settings, "REFERRAL_CLIENT_NAME_LEGAL", None) or "").strip(),
-            "ref_min_withdraw": int(getattr(settings, "REFERRAL_MIN_WITHDRAWAL_RUB", 5000) or 5000),
-            "ref_wd_from": int(getattr(settings, "REFERRAL_WITHDRAW_MOSCOW_DAY_FROM", 1) or 1),
-            "ref_wd_to": int(getattr(settings, "REFERRAL_WITHDRAW_MOSCOW_DAY_TO", 5) or 5),
+            "ref_min_withdraw": ref_min,
+            "ref_wd_from": wd_lo,
+            "ref_wd_to": wd_hi,
         },
     )
 

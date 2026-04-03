@@ -397,8 +397,10 @@ async def merge_accounts(primary_id: int, secondary_id: int):
     try:
         pb = float(primary.get("referral_balance") or 0)
         sb = float(secondary.get("referral_balance") or 0)
-        if sb:
-            updates["referral_balance"] = pb + sb
+        pr = float(primary.get("referral_withdraw_reserved_rub") or 0)
+        sr = float(secondary.get("referral_withdraw_reserved_rub") or 0)
+        updates["referral_balance"] = pb + sb
+        updates["referral_withdraw_reserved_rub"] = pr + sr
     except (TypeError, ValueError):
         pass
 
@@ -430,6 +432,7 @@ async def merge_accounts(primary_id: int, secondary_id: int):
             email=None,
             password_hash=None,
             referral_balance=0,
+            referral_withdraw_reserved_rub=0,
         )
     )
 

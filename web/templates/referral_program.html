@@ -109,17 +109,21 @@
       </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:8px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:8px">
       <div class="card-sm text-center">
         <div style="font-size:28px;font-weight:700;color:#3dd4e0">{{ ref_stats.total }}</div>
         <div class="muted">приглашено</div>
       </div>
       <div class="card-sm text-center">
         <div style="font-size:28px;font-weight:700;color:#3dd4e0">{{ ref_stats.balance_rub }}</div>
-        <div class="muted">баланс по подпискам, ₽</div>
+        <div class="muted">доступно к выводу, ₽</div>
+      </div>
+      <div class="card-sm text-center">
+        <div style="font-size:28px;font-weight:700;color:#fbbf24">{{ ref_stats.reserved_rub }}</div>
+        <div class="muted">в резерве (заявка), ₽</div>
       </div>
     </div>
-    <p class="text-xs text-muted mb-5 text-center">Это сумма по <strong>рефералам приложения</strong> (соцсеть). Не путать с отчётами магазина.</p>
+    <p class="text-xs text-muted mb-5 text-center">Новые бонусы от рефералов начисляются на <strong>доступный</strong> баланс, а не в резерв. Резерв — только сумма уже поданной заявки на вывод.</p>
 
     {% if request.query_params.get('payout_profile_saved') %}
     <div class="mb-4 p-3 rounded-xl border border-emerald-500/35 bg-emerald-500/[0.06] text-emerald-100 text-sm">Данные для выплаты сохранены.</div>
@@ -174,14 +178,18 @@
     </div>
 
     <div class="card rounded-2xl border border-white/10 bg-white/[0.03] p-5 mb-6">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
         <div>
-          <div style="font-size:13px;color:#888">Баланс к выводу</div>
+          <div style="font-size:13px;color:#888">Доступно к выводу сейчас</div>
           <div style="font-size:24px;font-weight:700;color:#e8e8e8">{{ ref_stats.balance_rub }} <span style="font-size:16px;font-weight:500;color:#888">₽</span></div>
         </div>
-        <button type="button" id="refWithdrawBtn" class="btn-g px-5 py-2.5 rounded-xl text-sm font-medium" onclick="requestWithdraw()">Вывести</button>
       </div>
-      <p class="text-xs text-muted mt-2 leading-relaxed">Минимум <strong>{{ ref_min_withdraw }}</strong> ₽. Заявки принимаются <strong>с {{ ref_wd_from }} по {{ ref_wd_to }} число</strong> каждого месяца (Москва). После заявки вам придёт напоминание в Telegram о чеке в «Мой налог» (для самозанятого). Один вывод в месяц.</p>
+      <label class="block text-xs text-muted mb-1">Сумма вывода (₽)</label>
+      <div class="flex flex-col sm:flex-row gap-3 sm:items-end">
+        <input type="number" id="refWithdrawAmount" class="sinp w-full sm:max-w-[200px] text-sm" min="1" step="0.01" placeholder="например {{ ref_min_withdraw }}" value="{{ ref_stats.balance_rub }}" />
+        <button type="button" id="refWithdrawBtn" class="btn-g px-5 py-2.5 rounded-xl text-sm font-medium" onclick="requestWithdraw()">Заявка на вывод</button>
+      </div>
+      <p class="text-xs text-muted mt-2 leading-relaxed">Укажите сумму от <strong>{{ ref_min_withdraw }}</strong> ₽ до доступного баланса. Заявки принимаются <strong>с {{ ref_wd_from }} по {{ ref_wd_to }} число</strong> (Москва). После заявки сумма уходит в <strong>резерв</strong>; новые бонусы копятся на доступный баланс. Один вывод в месяц. В Telegram придёт напоминание о чеке самозанятого / документе ИП.</p>
       <p id="refWithdrawMsg" class="text-xs mt-3 text-muted" style="display:none"></p>
     </div>
 
@@ -255,8 +263,14 @@ function copyRefSite(){
 function requestWithdraw(){
   var btn=document.getElementById('refWithdrawBtn');
   var msg=document.getElementById('refWithdrawMsg');
+  var inp=document.getElementById('refWithdrawAmount');
+  var body={};
+  if(inp&&inp.value!==''){
+    var x=parseFloat(String(inp.value).replace(',','.'));
+    if(!isNaN(x)&&x>0)body.amount_rub=x;
+  }
   if(btn){btn.disabled=true;}
-  fetch('/referral/withdraw',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'}})
+  fetch('/referral/withdraw',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
     .then(function(r){return r.json();})
     .then(function(d){
       if(msg){

@@ -1,10 +1,11 @@
 """Бот уведомлений администратора — запускается на NOTIFY_BOT_TOKEN."""
 import logging
 
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler
+from telegram.ext import Application, CallbackQueryHandler, CommandHandler
 
 from config import settings
 from bot.handlers.admin import cmd_status, cmd_users, admin_callback
+from bot.handlers.referral_admin_callbacks import referral_withdraw_paid_callback
 from bot.handlers.support_admin import get_reply_conversation
 
 logger = logging.getLogger(__name__)
@@ -21,6 +22,7 @@ def create_notify_bot() -> Application:
     application.add_handler(CommandHandler("status", cmd_status))
     application.add_handler(CommandHandler("users", cmd_users))
     application.add_handler(get_reply_conversation())
+    application.add_handler(CallbackQueryHandler(referral_withdraw_paid_callback, pattern=r"^refwd_paid:\d+$"))
     application.add_handler(CallbackQueryHandler(admin_callback, pattern=r"^admin:"))
 
     return application

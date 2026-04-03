@@ -2601,10 +2601,16 @@ async def admin_referral_page(
         get_referral_bonus_percent_global,
         list_users_with_bonus_override,
     )
+    from services.referral_payout_settings import (
+        get_referral_min_withdrawal_rub,
+        get_referral_wd_moscow_days,
+    )
 
     partner_shop_policy = await get_referral_shop_link_policy()
     bonus_pct_global = await get_referral_bonus_percent_global()
     bonus_pct_overrides = await list_users_with_bonus_override(300)
+    ref_payout_min = await get_referral_min_withdrawal_rub()
+    ref_payout_wd_lo, ref_payout_wd_hi = await get_referral_wd_moscow_days()
 
     return templates.TemplateResponse(
         "dashboard/admin_referral.html",
@@ -2622,10 +2628,17 @@ async def admin_referral_page(
             "partner_shop_policy": partner_shop_policy,
             "bonus_percent_global": bonus_pct_global,
             "bonus_percent_overrides": bonus_pct_overrides,
+            "ref_payout_min": ref_payout_min,
+            "ref_payout_wd_lo": ref_payout_wd_lo,
+            "ref_payout_wd_hi": ref_payout_wd_hi,
+            "payout_rules_saved": (request.query_params.get("payout_rules_saved") or "").strip() == "1",
+            "payout_rules_err": (request.query_params.get("payout_rules_err") or "").strip(),
             "bonus_pct_saved": (request.query_params.get("bonus_pct_saved") or "").strip(),
             "bonus_pct_err": (request.query_params.get("bonus_pct_err") or "").strip(),
             "shop_policy_saved": (request.query_params.get("shop_policy_saved") or "").strip() == "1",
             "shop_policy_err": (request.query_params.get("shop_policy_err") or "").strip(),
+            "wd_ok": (request.query_params.get("wd_ok") or "").strip() == "1",
+            "wd_err": (request.query_params.get("wd_err") or "").strip(),
             "n_refs_period": n_refs,
             "sum_bonuses_period": round(sum_b, 2),
             "top_earn": top_earn,
@@ -2718,19 +2731,70 @@ async def admin_referral_partner_shop_policy(
     return RedirectResponse("/admin/referral?shop_policy_saved=1", status_code=303)
 
 
+@router.post("/referral/payout-rules")
+async def admin_referral_payout_rules(
+    request: Request,
+    min_withdrawal_rub: str = Form("5000"),
+    moscow_day_from: str = Form("1"),
+    moscow_day_to: str = Form("5"),
+):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    from urllib.parse import quote
+
+    from services.referral_payout_settings import set_referral_payout_rules
+
+    try:
+        mn = int(float(str(min_withdrawal_rub or "5000").strip().replace(",", ".")))
+        d1 = int(float(str(moscow_day_from or "1").strip().replace(",", ".")))
+        d2 = int(float(str(moscow_day_to or "5").strip().replace(",", ".")))
+    except ValueError:
+        return RedirectResponse(
+            "/admin/referral?payout_rules_err=" + quote("Некорректные числа"),
+            status_code=303,
+        )
+    try:
+        await set_referral_payout_rules(min_rub=mn, moscow_day_from=d1, moscow_day_to=d2)
+    except Exception as e:
+        return RedirectResponse(
+            "/admin/referral?payout_rules_err=" + quote(str(e)[:200], safe=""),
+            status_code=303,
+        )
+    return RedirectResponse("/admin/referral?payout_rules_saved=1", status_code=303)
+
+
 @router.post("/referral/clear-balance")
 async def admin_referral_clear_balance(
     request: Request,
-    user_id: int = Form(...),
+    withdrawal_id: str = Form(""),
+    user_id: str = Form(""),
     note: str = Form(""),
 ):
     admin = await require_permission(request, "can_users")
     if not admin:
         return RedirectResponse("/login")
-    from services.referral_service import admin_clear_referral_balance
+    from urllib.parse import quote
 
-    await admin_clear_referral_balance(user_id, note)
-    return RedirectResponse("/admin/referral", status_code=303)
+    from services.referral_service import admin_clear_referral_balance, admin_mark_referral_withdrawal_paid
+
+    wid = (withdrawal_id or "").strip()
+    uid = (user_id or "").strip()
+    if wid.isdigit():
+        ok, msg = await admin_mark_referral_withdrawal_paid(int(wid), note)
+        if not ok:
+            return RedirectResponse(
+                "/admin/referral?wd_err=" + quote(msg or "error", safe=""),
+                status_code=303,
+            )
+        return RedirectResponse("/admin/referral?wd_ok=1", status_code=303)
+    if uid.isdigit():
+        ok, msg = await admin_clear_referral_balance(int(uid), note)
+        if not ok:
+            err = "no_pending" if msg == "no_pending" else (msg or "error")
+            return RedirectResponse("/admin/referral?wd_err=" + quote(err, safe=""), status_code=303)
+        return RedirectResponse("/admin/referral?wd_ok=1", status_code=303)
+    return RedirectResponse("/admin/referral?wd_err=" + quote("missing_id", safe=""), status_code=303)
 
 
 @router.post("/referral/promo-create")

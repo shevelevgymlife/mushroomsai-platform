@@ -98,6 +98,7 @@ async def top_ambassadors_by_invite_count(
         uid = int(r["referrer_id"])
         u = await database.fetch_one(users.select().where(users.c.id == uid))
         bal = float(dict(u).get("referral_balance") or 0) if u else 0
+        res = float(dict(u).get("referral_withdraw_reserved_rub") or 0) if u else 0
         out.append(
             {
                 "user_id": uid,
@@ -105,17 +106,21 @@ async def top_ambassadors_by_invite_count(
                 "tg_id": dict(u).get("tg_id") or dict(u).get("linked_tg_id") if u else None,
                 "invite_count": int(r["cnt"] or 0),
                 "referral_balance": bal,
+                "referral_reserved_rub": res,
             }
         )
     return out
 
 
 async def leaderboard_balance_now(limit: int) -> list[dict[str, Any]]:
+    bal = sa.func.coalesce(users.c.referral_balance, 0)
+    res = sa.func.coalesce(users.c.referral_withdraw_reserved_rub, 0)
+    tot = bal + res
     rows = await database.fetch_all(
         users.select()
         .where(users.c.primary_user_id.is_(None))
-        .where(users.c.referral_balance > 0)
-        .order_by(users.c.referral_balance.desc())
+        .where(tot > 0)
+        .order_by(tot.desc())
         .limit(limit)
     )
     return [
@@ -124,6 +129,7 @@ async def leaderboard_balance_now(limit: int) -> list[dict[str, Any]]:
             "name": r.get("name") or f"#{r['id']}",
             "tg_id": r.get("tg_id") or r.get("linked_tg_id"),
             "referral_balance": float(r.get("referral_balance") or 0),
+            "referral_reserved_rub": float(r.get("referral_withdraw_reserved_rub") or 0),
         }
         for r in rows
     ]
@@ -139,17 +145,93 @@ async def pending_withdrawals_list() -> list[dict[str, Any]]:
     for w in rows:
         uid = int(w["user_id"])
         u = await database.fetch_one(users.select().where(users.c.id == uid))
+        ud = dict(u) if u else {}
         out.append(
             {
                 "id": w["id"],
                 "user_id": uid,
                 "amount_rub": float(w.get("amount_rub") or 0),
                 "created_at": w.get("created_at"),
-                "user_name": (dict(u).get("name") if u else None) or "",
-                "tg_id": dict(u).get("tg_id") or dict(u).get("linked_tg_id") if u else None,
+                "user_name": ud.get("name") or "",
+                "tg_id": ud.get("tg_id") or ud.get("linked_tg_id"),
+                "user_available_rub": float(ud.get("referral_balance") or 0),
+                "user_reserved_rub": float(ud.get("referral_withdraw_reserved_rub") or 0),
             }
         )
     return out
+
+
+async def referral_payout_counts() -> dict[str, int]:
+    pend = int(
+        await database.fetch_val(
+            sa.select(func.count()).select_from(referral_withdrawals).where(
+                referral_withdrawals.c.status == "pending"
+            )
+        )
+        or 0
+    )
+    now = datetime.utcnow()
+    month_start = datetime(now.year, now.month, 1)
+    paid_m = int(
+        await database.fetch_val(
+            sa.select(func.count())
+            .select_from(referral_withdrawals)
+            .where(referral_withdrawals.c.status == "paid")
+            .where(referral_withdrawals.c.processed_at >= month_start)
+        )
+        or 0
+    )
+    return {"pending": pend, "paid_this_month": paid_m}
+
+
+async def referral_finance_summary_html(limit_users: int = 22) -> str:
+    """Краткая сводка для notify-бота (HTML)."""
+    import html as html_mod
+
+    from services.referral_payout_settings import (
+        get_referral_min_withdrawal_rub,
+        get_referral_wd_moscow_days,
+    )
+
+    cnt = await referral_payout_counts()
+    min_r = await get_referral_min_withdrawal_rub()
+    d_lo, d_hi = await get_referral_wd_moscow_days()
+    pend_rows = await pending_withdrawals_list()
+    bal = sa.func.coalesce(users.c.referral_balance, 0)
+    res = sa.func.coalesce(users.c.referral_withdraw_reserved_rub, 0)
+    tot = bal + res
+    top = await database.fetch_all(
+        users.select()
+        .where(users.c.primary_user_id.is_(None))
+        .where(tot > 0)
+        .order_by(tot.desc())
+        .limit(int(limit_users))
+    )
+    lines = [
+        "💸 <b>Рефералы · вывод</b>",
+        f"Окно заявок (МСК): <b>{d_lo}–{d_hi}</b> число · мин. <b>{min_r} ₽</b>",
+        f"Открытых заявок: <b>{cnt['pending']}</b> · оплачено заявок с начала месяца: <b>{cnt['paid_this_month']}</b>",
+        "",
+        "<b>Ожидают перевода</b>:",
+    ]
+    if not pend_rows:
+        lines.append("— нет —")
+    else:
+        for p in pend_rows[:15]:
+            nm = html_mod.escape((p.get("user_name") or "")[:40])
+            lines.append(
+                f"• #{p['id']} · id {p['user_id']} {nm} · "
+                f"<b>{float(p.get('amount_rub') or 0):.2f} ₽</b> "
+                f"(дост. {float(p.get('user_available_rub') or 0):.2f} · рез. {float(p.get('user_reserved_rub') or 0):.2f})"
+            )
+    lines += ["", "<b>Топ по сумме (доступно + резерв)</b>:"]
+    for r in top[:12]:
+        uid = int(r["id"])
+        nm = html_mod.escape((r.get("name") or f"#{uid}")[:36])
+        b = float(r.get("referral_balance") or 0)
+        rs = float(r.get("referral_withdraw_reserved_rub") or 0)
+        lines.append(f"• id {uid} {nm}: доступно <b>{b:.2f}</b> · резерв <b>{rs:.2f}</b> ₽")
+    return "\n".join(lines)
 
 
 async def paid_withdrawals_in_period(
