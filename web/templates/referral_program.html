@@ -400,6 +400,7 @@ function requestWithdraw(){
         msg.style.color=d.ok?'#6ee7b7':'#f87171';
         msg.textContent=d.ok?'Заявка отправлена администратору. Мы свяжемся с вами в Telegram.':(d.message||'Не удалось отправить');
       }
+      if(d.ok){window.location.reload();}
     })
     .catch(function(){
       if(msg){msg.style.display='block';msg.style.color='#f87171';msg.textContent='Ошибка сети';}

@@ -1079,7 +1079,7 @@ async def request_referral_withdrawal(user_id: int, amount_rub: float | None = N
     if pend:
         return False, "Заявка на вывод уже на рассмотрении — дождитесь обработки."
 
-    moved = await database.fetch_one(
+    moved = await database.fetch_one_write(
         sa.text(
             """
             UPDATE users SET
