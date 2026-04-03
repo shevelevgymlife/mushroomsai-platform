@@ -176,9 +176,9 @@ async def external_buy_url_for_user(user: dict | None) -> Optional[str]:
     url = (ref.get("referral_shop_url") or "").strip()
     if not url:
         return None
-    from services.subscription_service import paid_subscription_for_referral_program
+    from services.shop_referral_hub import referrer_ambassador_shop_visible
 
-    if not await paid_subscription_for_referral_program(int(ref["id"])):
+    if not await referrer_ambassador_shop_visible(int(ref["id"])):
         return None
     return url
 
