@@ -39,6 +39,58 @@
       </form>
     </div>
 
+    <div class="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.06] p-5 mb-8 max-w-3xl">
+      <h2 class="text-lg font-semibold text-text mb-1">Процент бонуса за подписки рефералов</h2>
+      <p class="text-xs text-muted mb-4 leading-relaxed">
+        От фактической оплаты подписки приглашённого (карта ₽, см. условия на /referral). Диапазон 0–100%.
+        <strong>Персональный процент</strong> перекрывает общий для выбранного пользователя (по <code class="text-[11px]">users.id</code>).
+        Найти id: поиск ниже на этой странице или список пользователей в админке.
+      </p>
+      {% if bonus_pct_saved == 'global' %}
+      <div class="mb-3 p-2.5 rounded-xl border border-emerald-500/30 text-emerald-200 text-sm">Общий процент сохранён.</div>
+      {% elif bonus_pct_saved == 'user' %}
+      <div class="mb-3 p-2.5 rounded-xl border border-emerald-500/30 text-emerald-200 text-sm">Персональный процент сохранён.</div>
+      {% elif bonus_pct_saved == 'user_clear' %}
+      <div class="mb-3 p-2.5 rounded-xl border border-emerald-500/30 text-emerald-200 text-sm">Персональный процент сброшен — действует общий.</div>
+      {% endif %}
+      {% if bonus_pct_err %}
+      <div class="mb-3 p-2.5 rounded-xl border border-red-400/35 text-red-200 text-sm">{{ bonus_pct_err }}</div>
+      {% endif %}
+      <form method="post" action="/admin/referral/bonus-percent-global" class="flex flex-wrap items-end gap-3 mb-6">
+        <div>
+          <label class="block text-xs text-muted mb-1">Общий процент для всех (%)</label>
+          <input type="text" name="percent" value="{{ '%g'|format(bonus_percent_global) }}" class="w-28 px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text font-mono" inputmode="decimal" autocomplete="off" />
+        </div>
+        <button type="submit" class="px-4 py-2.5 rounded-xl bg-cyan-500/20 text-cyan-200 border border-cyan-500/35 text-sm font-medium">Сохранить общий</button>
+      </form>
+      <form method="post" action="/admin/referral/bonus-percent-user" class="space-y-3 border-t border-border/50 pt-5">
+        <div class="flex flex-wrap gap-3">
+          <div>
+            <label class="block text-xs text-muted mb-1">ID пользователя (users.id)</label>
+            <input type="text" name="user_id" id="referral-bonus-user-id" placeholder="напр. 42" class="w-36 px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text font-mono" inputmode="numeric" autocomplete="off" />
+          </div>
+          <div>
+            <label class="block text-xs text-muted mb-1">Персональный %</label>
+            <input type="text" name="percent" placeholder="15" class="w-28 px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text font-mono" inputmode="decimal" autocomplete="off" />
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button type="submit" class="px-4 py-2.5 rounded-xl bg-gold/20 text-gold border border-gold/35 text-sm font-medium">Сохранить для пользователя</button>
+          <button type="submit" name="clear_override" value="1" class="px-4 py-2.5 rounded-xl bg-border/40 text-muted border border-border text-sm font-medium">Сбросить персональный</button>
+        </div>
+      </form>
+      {% if bonus_percent_overrides and bonus_percent_overrides|length > 0 %}
+      <div class="mt-5 text-xs text-muted">
+        <div class="font-medium text-text mb-2">Сейчас с персональным процентом:</div>
+        <ul class="space-y-1 list-disc list-inside">
+          {% for o in bonus_percent_overrides %}
+          <li><a href="/community/profile/{{ o.id }}" class="text-gold hover:underline" target="_blank">{{ o.name }}</a> (id {{ o.id }}) — <strong class="text-text">{{ '%g'|format(o.percent) }}%</strong></li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+
     <form method="get" class="flex flex-wrap gap-3 items-end mb-8 p-4 rounded-2xl border border-border bg-surface/40">
       <div>
         <label class="block text-xs text-muted mb-1">Дата с</label>
@@ -332,8 +384,11 @@
     {% if search_hits %}
     <ul class="mb-10 space-y-1 text-sm">
       {% for u in search_hits %}
-      <li><a href="/community/profile/{{ u.id }}" class="text-gold" target="_blank">{{ u.name or u.id }}</a>
-        <span class="text-muted text-xs">id {{ u.id }}</span></li>
+      <li class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        <a href="/community/profile/{{ u.id }}" class="text-gold" target="_blank">{{ u.name or u.id }}</a>
+        <span class="text-muted text-xs">id {{ u.id }}</span>
+        <button type="button" class="text-xs text-cyan-300/90 hover:underline" onclick="var el=document.getElementById('referral-bonus-user-id');if(el){el.value='{{ u.id }}';el.focus();el.scrollIntoView({behavior:'smooth',block:'center'});}">в форму бонуса ↑</button>
+      </li>
       {% endfor %}
     </ul>
     {% endif %}

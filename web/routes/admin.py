@@ -2581,8 +2581,14 @@ async def admin_referral_page(
     plans_eff = await get_effective_plans()
 
     from services.referral_shop_link_policy import get_referral_shop_link_policy
+    from services.referral_bonus_settings import (
+        get_referral_bonus_percent_global,
+        list_users_with_bonus_override,
+    )
 
     partner_shop_policy = await get_referral_shop_link_policy()
+    bonus_pct_global = await get_referral_bonus_percent_global()
+    bonus_pct_overrides = await list_users_with_bonus_override(300)
 
     return templates.TemplateResponse(
         "dashboard/admin_referral.html",
@@ -2598,6 +2604,10 @@ async def admin_referral_page(
             "user_search": user_search or "",
             "ref_uid": ref_uid,
             "partner_shop_policy": partner_shop_policy,
+            "bonus_percent_global": bonus_pct_global,
+            "bonus_percent_overrides": bonus_pct_overrides,
+            "bonus_pct_saved": (request.query_params.get("bonus_pct_saved") or "").strip(),
+            "bonus_pct_err": (request.query_params.get("bonus_pct_err") or "").strip(),
             "shop_policy_saved": (request.query_params.get("shop_policy_saved") or "").strip() == "1",
             "shop_policy_err": (request.query_params.get("shop_policy_err") or "").strip(),
             "n_refs_period": n_refs,
@@ -2618,6 +2628,53 @@ async def admin_referral_page(
             "site_base": base,
         },
     )
+
+
+@router.post("/referral/bonus-percent-global")
+async def admin_referral_bonus_percent_global(request: Request, percent: str = Form("10")):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    from urllib.parse import quote
+
+    from services.referral_bonus_settings import set_referral_bonus_percent_global
+
+    try:
+        v = float(str(percent or "10").strip().replace(",", "."))
+    except ValueError:
+        return RedirectResponse("/admin/referral?bonus_pct_err=" + quote("Некорректное число"), status_code=303)
+    await set_referral_bonus_percent_global(v)
+    return RedirectResponse("/admin/referral?bonus_pct_saved=global", status_code=303)
+
+
+@router.post("/referral/bonus-percent-user")
+async def admin_referral_bonus_percent_user(
+    request: Request,
+    user_id: str = Form(""),
+    percent: str = Form(""),
+    clear_override: str = Form(""),
+):
+    admin = await require_permission(request, "can_users")
+    if not admin:
+        return RedirectResponse("/login")
+    from urllib.parse import quote
+
+    from services.referral_bonus_settings import set_user_referral_bonus_percent_override
+
+    raw_uid = (user_id or "").strip()
+    if not raw_uid.isdigit():
+        return RedirectResponse("/admin/referral?bonus_pct_err=" + quote("Укажите числовой user id"), status_code=303)
+    uid = int(raw_uid)
+    clear = (clear_override or "").strip().lower() in ("1", "on", "true", "yes")
+    if clear:
+        await set_user_referral_bonus_percent_override(uid, None)
+        return RedirectResponse("/admin/referral?bonus_pct_saved=user_clear", status_code=303)
+    try:
+        v = float(str(percent or "").strip().replace(",", "."))
+    except ValueError:
+        return RedirectResponse("/admin/referral?bonus_pct_err=" + quote("Некорректный процент"), status_code=303)
+    await set_user_referral_bonus_percent_override(uid, v)
+    return RedirectResponse("/admin/referral?bonus_pct_saved=user", status_code=303)
 
 
 @router.post("/referral/partner-shop-policy")

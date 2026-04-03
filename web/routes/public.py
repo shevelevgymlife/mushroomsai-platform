@@ -1212,6 +1212,14 @@ async def referral_program_page(request: Request):
     from services.referral_shop_link_policy import get_referral_shop_link_policy
 
     partner_shop_link_policy = await get_referral_shop_link_policy()
+    from services.referral_bonus_settings import (
+        get_effective_referrer_bonus_percent,
+        get_referral_bonus_percent_global,
+    )
+
+    ref_bonus_pct_global = await get_referral_bonus_percent_global()
+    ref_bonus_pct_effective = await get_effective_referrer_bonus_percent(int(uid))
+
     return templates.TemplateResponse(
         "referral_program.html",
         {
@@ -1232,6 +1240,8 @@ async def referral_program_page(request: Request):
             "ref_min_withdraw": int(getattr(settings, "REFERRAL_MIN_WITHDRAWAL_RUB", 5000) or 5000),
             "ref_wd_from": int(getattr(settings, "REFERRAL_WITHDRAW_MOSCOW_DAY_FROM", 1) or 1),
             "ref_wd_to": int(getattr(settings, "REFERRAL_WITHDRAW_MOSCOW_DAY_TO", 5) or 5),
+            "ref_bonus_pct_global": ref_bonus_pct_global,
+            "ref_bonus_pct_effective": ref_bonus_pct_effective,
         },
     )
 

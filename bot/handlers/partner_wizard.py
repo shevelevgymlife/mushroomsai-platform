@@ -29,6 +29,7 @@ from bot.handlers.channel_autopost import main_keyboard_with_autopost
 from config import settings
 from db.database import database
 from db.models import users
+from services.referral_bonus_settings import get_effective_referrer_bonus_percent
 from services.referral_service import (
     REF_WITHDRAW_BTN_PREFIX,
     invite_referral_code_for_sharing,
@@ -164,7 +165,9 @@ async def _send_final_links_block(
     base = (settings.SITE_URL or "").strip().rstrip("/")
     ref_tg = f"https://t.me/{bot}?start={code}" if code else "—"
     ref_site = f"{base}/login?ref={code}" if code and base else "—"
-    bonus = await referral_bonus_per_invite_rub()
+    bonus = await referral_bonus_per_invite_rub(uid)
+    pct_eff = await get_effective_referrer_bonus_percent(uid)
+    pct_txt = f"{int(pct_eff)}" if abs(pct_eff - round(pct_eff)) < 0.01 else f"{pct_eff:.2f}".rstrip("0").rstrip(".")
     conditions_url = f"{base}/referral#conditions" if base else "https://mushroomsai.ru/referral#conditions"
     shop_note = ""
     if shop_saved:
@@ -187,7 +190,7 @@ async def _send_final_links_block(
         f"<a href=\"{html.escape(ref_site, quote=True)}\">Открыть ссылку</a>\n"
         f"<code>{html.escape(ref_site)}</code>\n\n"
         f"Раздавайте эти ссылки везде.\n"
-        f"Подписки в приложении: <b>10% от каждой фактической платной покупки</b> приглашённого.\n"
+        f"Подписки в приложении: <b>{html.escape(pct_txt)}% от каждой фактической платной покупки</b> приглашённого.\n"
         "Начисление идёт, только если у вас в этот момент активна платная подписка (Старт/Про/Макси).\n"
         f"Пробные 3 дня не считаются. Для ориентира: со Старт это ~{bonus} ₽.\n\n"
         "Магазин: до ~10% по правилам Neurotrops. Учёт — в кабинете магазина.\n"

@@ -56,19 +56,33 @@ def _referral_withdraw_moscow_window_ok() -> tuple[bool, str]:
     )
 
 
-def _referral_bonus_from_paid_price(price_rub: float) -> float:
-    """10% от фактически оплаченной суммы с округлением до копеек."""
+def _referral_bonus_from_paid_price(price_rub: float, bonus_percent: float) -> float:
+    """Процент от фактически оплаченной суммы с округлением до копеек."""
     p = max(0.0, float(price_rub or 0.0))
-    return float(
-        (Decimal(str(p)) * Decimal("0.10")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    pct = max(0.0, min(100.0, float(bonus_percent)))
+    rate = Decimal(str(pct)) / Decimal("100")
+    return float((Decimal(str(p)) * rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+
+
+async def referral_bonus_per_invite_rub(referrer_id: int | None = None) -> int:
+    """Оценка «со Старт»: процент × цена Старт (для подсказок в UI). referrer_id — персональный % если задан."""
+    from services.referral_bonus_settings import (
+        get_effective_referrer_bonus_percent,
+        get_referral_bonus_percent_global,
     )
 
-
-async def referral_bonus_per_invite_rub() -> int:
-    """Оценка «со Старт»: 10% от месячной цены Старт (для подсказок в UI)."""
     eff = await get_effective_plans()
     base = float((eff.get("start") or DEFAULT_PLANS.get("start") or {}).get("price") or 0)
-    return max(1, int(base * 0.1))
+    if referrer_id is not None:
+        pct = await get_effective_referrer_bonus_percent(int(referrer_id))
+    else:
+        pct = await get_referral_bonus_percent_global()
+    hint = float(
+        (Decimal(str(base)) * Decimal(str(pct)) / Decimal("100")).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
+    )
+    return max(1, int(round(hint))) if hint >= 1 else max(1, int(hint + 0.999))
 
 
 async def _telegram_chat_id_for_user(user_id: int) -> Optional[int]:
@@ -253,7 +267,7 @@ async def process_referral(new_user_id: int, referral_code: str) -> bool:
     if dup:
         return False
 
-    bonus = float(await referral_bonus_per_invite_rub())  # Оценка «со Старт» для карточек UI.
+    bonus = float(await referral_bonus_per_invite_rub(int(referrer["id"])))  # Оценка «со Старт» для карточек UI.
 
     await database.execute(
         users.update()
@@ -319,7 +333,10 @@ async def credit_referrer_bonus_for_paid_subscription(
     if not rref or not bool(rref.get("referral_shop_partner_self")):
         return 0.0
 
-    bonus = _referral_bonus_from_paid_price(float(paid_amount_rub or 0.0))
+    from services.referral_bonus_settings import get_effective_referrer_bonus_percent
+
+    pct = await get_effective_referrer_bonus_percent(rid)
+    bonus = _referral_bonus_from_paid_price(float(paid_amount_rub or 0.0), pct)
     if bonus <= 0:
         return 0.0
 
@@ -561,7 +578,7 @@ async def get_referrer_invites_detailed(referrer_id: int) -> list[dict[str, Any]
         .order_by(referrals.c.created_at.desc())
     )
     out: list[dict[str, Any]] = []
-    default_bonus = float(await referral_bonus_per_invite_rub())
+    default_bonus = float(await referral_bonus_per_invite_rub(int(referrer_id)))
     for r in rows:
         rid = int(r["referred_id"])
         u = await database.fetch_one(users.select().where(users.c.id == rid))
@@ -648,7 +665,7 @@ async def _format_withdrawal_text(
     tax = (u.get("referral_tax_status") or "").strip()
     inn = _digits_inn(u.get("referral_partner_inn"))
     bank = (u.get("referral_payout_bank_note") or "").strip()
-    default_bonus = float(await referral_bonus_per_invite_rub())
+    default_bonus = float(await referral_bonus_per_invite_rub(int(uid)))
     lines = [
         "💸 <b>Запрос вывода реферального баланса</b>",
     ]

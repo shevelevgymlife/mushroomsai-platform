@@ -70,6 +70,7 @@ users = sqlalchemy.Table(
     sqlalchemy.Column("referral_tax_status", sqlalchemy.String(24), nullable=True),
     sqlalchemy.Column("referral_partner_inn", sqlalchemy.String(20), nullable=True),
     sqlalchemy.Column("referral_payout_bank_note", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("referral_bonus_percent_override", sqlalchemy.Numeric(5, 2), nullable=True),
     sqlalchemy.Column("last_seen_at", sqlalchemy.DateTime, nullable=True),
     sqlalchemy.Column("decimal_del_balance", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("decimal_balance_cached_at", sqlalchemy.DateTime, nullable=True),

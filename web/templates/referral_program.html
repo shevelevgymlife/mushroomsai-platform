@@ -104,7 +104,7 @@
         • Друг регистрируется по вашей ссылке.<br/>
         • Покупает <strong>платный</strong> Старт/Про/Макси <strong>картой в ₽</strong> (ЮKassa / CloudPayments / счёт в Telegram). <strong>Звёзды и крипта не дают бонус.</strong><br/>
         • Вы сохранили <strong>ссылку магазина</strong> (партнёрство) и у вас активна платная подписка в момент его оплаты.<br/>
-        • <strong>10%</strong> с каждой такой оплаты (включая продления). Пробные 3 дня — без бонуса.<br/>
+        • <strong>{{ '%g'|format(ref_bonus_pct_effective) }}%</strong> с каждой такой оплаты (включая продления) — для вас сейчас{% if ref_bonus_pct_effective != ref_bonus_pct_global %} (индивидуально; по умолчанию на платформе {{ '%g'|format(ref_bonus_pct_global) }}%){% endif %}. Пробные 3 дня — без бонуса.<br/>
         • В магазине Neurotrops: <strong class="text-gold">10%</strong> с ваших продаж и <strong class="text-gold">3%</strong> с продаж рефералов 2-го уровня — см. кабинет Neurotrops.
       </div>
     </div>
@@ -215,7 +215,7 @@
       <div style="font-size:14px;font-weight:700;color:#e8e8e8;margin-bottom:12px">Условия</div>
       <div style="font-size:13px;color:#aaa;line-height:1.65">
         <p style="margin:0 0 10px 0"><strong class="text-text">1) Бонусы за подписки (в приложении)</strong></p>
-        <p style="margin:0 0 8px 0">• Начисляется <strong>10% от фактической оплаченной суммы</strong> любой платной подписки приглашённого (Старт / Про / Макси) в момент оплаты.</p>
+        <p style="margin:0 0 8px 0">• Начисляется <strong>{{ '%g'|format(ref_bonus_pct_effective) }}% от фактической оплаченной суммы</strong> любой платной подписки приглашённого (Старт / Про / Макси) в момент оплаты. Базовый процент на платформе: {{ '%g'|format(ref_bonus_pct_global) }}% (для вас может быть задан индивидуально).</p>
         <p style="margin:0 0 8px 0">• Начисление идёт <strong>с каждой платной оплаты</strong> приглашённого, не только с первой.</p>
         <p style="margin:0 0 8px 0">• <strong>Только оплата в рублях картой/эквайрингом</strong> через ЮKassa, CloudPayments или счёт на карту ₽ в Telegram. <strong>Звёзды Telegram, криптовалюта, подарки и ручная выдача тарифа без такой оплаты — без бонуса.</strong></p>
         <p style="margin:0 0 8px 0">• Нужно <strong>оформить партнёрство</strong> (сохранённая ссылка магазина в этом разделе) и иметь <strong>активную платную подписку</strong> в момент оплаты приглашённого; иначе бонус не начисляется.</p>
