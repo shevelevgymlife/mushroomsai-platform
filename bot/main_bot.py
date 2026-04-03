@@ -165,6 +165,23 @@ async def _ai_exit_handler(update, context):
     )
 
 
+async def _referral_withdraw_handler(update, context):
+    """Кнопка «💸 Вывести N ₽» — та же заявка, что на сайте /referral/withdraw."""
+    from bot.handlers.start import ensure_user
+    from services.referral_service import telegram_referral_withdraw_reply_html
+
+    context.user_data["tg_ai_mode"] = False
+    if not update.message or not update.effective_user:
+        return
+    u = await ensure_user(update.effective_user)
+    if not u:
+        return
+    uid = int(u.get("primary_user_id") or u["id"])
+    _ok, html_body = await telegram_referral_withdraw_reply_html(uid)
+    await update.message.reply_html(html_body, disable_web_page_preview=True)
+    await update.message.reply_text("⌨️", reply_markup=await _reply_kb(update, context, ai_active=False))
+
+
 def create_bot() -> Application:
     application = (
         Application.builder()
@@ -227,6 +244,13 @@ def create_bot() -> Application:
     )
     application.add_handler(get_toggle_autopost_handler(), group=ch_group)
     application.add_handler(get_toggle_channel_social_button_handler(), group=ch_group)
+    application.add_handler(
+        MessageHandler(
+            filters.ChatType.PRIVATE & filters.TEXT & filters.Regex(r"^💸 Вывести\s"),
+            _referral_withdraw_handler,
+        ),
+        group=ch_group,
+    )
 
     # Режим AI: вход / выход (до общего текстового хендлера)
     application.add_handler(MessageHandler(filters.Regex(f"^{BTN_AI_EXIT}$"), _ai_exit_handler))

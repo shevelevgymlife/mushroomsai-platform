@@ -29,7 +29,12 @@ from bot.handlers.channel_autopost import main_keyboard_with_autopost
 from config import settings
 from db.database import database
 from db.models import users
-from services.referral_service import invite_referral_code_for_sharing, referral_bonus_per_invite_rub
+from services.referral_service import (
+    REF_WITHDRAW_BTN_PREFIX,
+    invite_referral_code_for_sharing,
+    referral_bonus_per_invite_rub,
+    telegram_referral_withdraw_reply_html,
+)
 from services.referral_shop_prefs import SHOP_RUS_URL, normalize_referral_shop_url_for_save
 from services.subscription_service import paid_subscription_for_referral_program
 
@@ -261,6 +266,15 @@ async def partner_receive_shop_url(update: Update, context: ContextTypes.DEFAULT
     raw = (update.message.text or "").strip()
     if raw == BTN_PARTNER:
         return await partner_start(update, context)
+
+    if raw.startswith(REF_WITHDRAW_BTN_PREFIX):
+        ok, html_body = await telegram_referral_withdraw_reply_html(uid)
+        await update.message.reply_html(
+            html_body,
+            reply_markup=kb,
+            disable_web_page_preview=True,
+        )
+        return ConversationHandler.END
 
     if raw in _MENU_INTERRUPTS:
         await update.message.reply_text(

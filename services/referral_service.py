@@ -823,6 +823,58 @@ async def request_referral_withdrawal(user_id: int) -> tuple[bool, str]:
     return True, "ok"
 
 
+REF_WITHDRAW_BTN_PREFIX = "💸 Вывести"
+
+
+def referral_withdraw_button_caption(balance_rub: float) -> str:
+    """Текст кнопки в Telegram (ReplyKeyboard)."""
+    b = float(balance_rub or 0)
+    if abs(b - round(b)) < 0.01:
+        return f"{REF_WITHDRAW_BTN_PREFIX} {int(round(b))} ₽"
+    return f"{REF_WITHDRAW_BTN_PREFIX} {b:.2f} ₽"
+
+
+async def referral_withdraw_keyboard_row(internal_user_id: int):
+    """Одна строка клавиатуры «Вывести N ₽» или None, если баланс ниже минимума."""
+    from telegram import KeyboardButton
+
+    row = await database.fetch_one(users.select().where(users.c.id == int(internal_user_id)))
+    if not row:
+        return None
+    try:
+        bal = float(row.get("referral_balance") or 0)
+    except (TypeError, ValueError):
+        bal = 0.0
+    from config import settings
+
+    min_rub = float(getattr(settings, "REFERRAL_MIN_WITHDRAWAL_RUB", 5000) or 5000)
+    if bal < min_rub:
+        return None
+    return [[KeyboardButton(referral_withdraw_button_caption(bal))]]
+
+
+async def telegram_referral_withdraw_reply_html(user_id: int) -> tuple[bool, str]:
+    """Текст ответа в HTML после нажатия «Вывести» в боте (та же логика, что POST /referral/withdraw)."""
+    from config import settings
+
+    ok, msg = await request_referral_withdrawal(int(user_id))
+    site = (settings.SITE_URL or "https://mushroomsai.ru").strip().rstrip("/")
+    ref_url = html.escape(f"{site}/referral", quote=True)
+    if ok:
+        return (
+            True,
+            "✅ <b>Заявка на вывод создана.</b>\n\n"
+            "В этом чате вы получите сообщение с инструкцией по чеку (самозанятый / ИП). "
+            f'Данные для выплаты можно править на сайте: <a href="{ref_url}">реферальный кабинет</a>.',
+        )
+    return (
+        False,
+        f"❌ {html.escape(str(msg))}\n\n"
+        f'<a href="{ref_url}">Откройте сайт → реферальная программа</a> — укажите статус, ИНН и реквизиты, '
+        "проверьте окно вывода (1–5 число, МСК) и партнёрство.",
+    )
+
+
 async def admin_clear_referral_balance(user_id: int, admin_note: str = "") -> tuple[bool, str]:
     """Обнулить баланс после подтверждённого вывода (админ)."""
     row = await database.fetch_one(users.select().where(users.c.id == user_id))
