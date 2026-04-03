@@ -59,6 +59,8 @@ from services.subscription_service import (
     record_subscription_event,
     fetch_subscription_history_display,
     notify_subscription_manual_free,
+    FREE_AI_LIMIT_MESSAGE,
+    FREE_AI_UPGRADE_INLINE,
 )
 from ai.openai_client import chat_with_ai
 from services.plan_access import plan_allowed_block_keys, is_platform_operator, can_use_community_group_chats
@@ -825,6 +827,7 @@ async def dashboard_lite(request: Request):
 
 
 @router.get("/community/ai/free-status")
+@router.get("/community/ai/quota")
 async def community_ai_free_status(request: Request):
     user = await require_auth(request)
     if not user:
@@ -839,19 +842,7 @@ async def community_ai_free_status(request: Request):
     plan = await check_subscription(uid)
     eff = await get_effective_plans()
     free_limit = int((eff.get("free") or {}).get("questions_per_day") or 5)
-    today = date.today()
     used = int(u.get("daily_questions") or 0)
-
-    if plan == "free" and u.get("last_reset") != today:
-        used = 0
-        try:
-            await database.execute(
-                users.update()
-                .where(users.c.id == uid)
-                .values(daily_questions=0, daily_recipes=0, last_reset=today)
-            )
-        except Exception:
-            pass
 
     remaining = max(0, free_limit - used) if plan == "free" else -1
 
@@ -882,11 +873,12 @@ async def community_ai_free_status(request: Request):
             "ok": True,
             "plan": plan,
             "limit": free_limit,
+            "free_limit": free_limit,
             "used": used if plan == "free" else None,
             "remaining": remaining,
             "last_messages": last_user_messages,
             "menu_hint": (
-                "Лимит сообщений закончился. Откройте меню и купите подписку для безлимитного общения."
+                FREE_AI_LIMIT_MESSAGE
                 if plan == "free" and remaining <= 0
                 else ""
             ),
@@ -921,12 +913,28 @@ async def api_chat(request: Request):
                     return JSONResponse(
                         {
                             "error": "limit",
-                            "message": "Лимит сообщений на бесплатном тарифе исчерпан (0). Откройте меню и купите подписку для безлимитного общения.",
+                            "message": FREE_AI_LIMIT_MESSAGE,
                         },
                         status_code=429,
                     )
+            plan_before = await check_subscription(effective_user_id)
             answer = await chat_with_ai(user_message=user_message, user_id=effective_user_id)
             await increment_question_count(effective_user_id)
+            if user and not is_unlimited and plan_before == "free":
+                eff = await get_effective_plans()
+                cap = int((eff.get("free") or {}).get("questions_per_day") or 5)
+                rowq = await database.fetch_one(users.select().where(users.c.id == effective_user_id))
+                used_after = int((rowq or {}).get("daily_questions") or 0)
+                rem_after = max(0, cap - used_after)
+                if rem_after == 0:
+                    answer = (answer or "").rstrip() + FREE_AI_UPGRADE_INLINE
+                return JSONResponse(
+                    {
+                        "answer": answer,
+                        "free_ai_remaining": rem_after,
+                        "free_ai_limit": cap,
+                    }
+                )
         else:
             session_key = request.cookies.get("guest_session")
             if not session_key:

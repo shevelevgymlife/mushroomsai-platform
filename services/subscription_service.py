@@ -1,7 +1,7 @@
 import html
 import logging
 import time
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta
 
 import sqlalchemy as sa
 
@@ -21,6 +21,10 @@ from services.payment_plans_catalog import (
 PLANS = DEFAULT_PLANS
 
 START_TRIAL_DAYS = 3
+
+# Текст при исчерпании бесплатных сообщений к AI (тариф free).
+FREE_AI_UPGRADE_INLINE = "\n\nПриобретите подписку. Минимум — тариф «Старт»."
+FREE_AI_LIMIT_MESSAGE = "Приобретите подписку. Минимум — тариф «Старт»."
 
 
 async def user_ineligible_for_start_trial_offer(user_id: int) -> bool:
@@ -722,20 +726,12 @@ async def can_ask_question(user_id: int) -> bool:
         return True
 
     eff = await get_effective_plans()
-    daily_cap = int(eff.get("free", {}).get("questions_per_day") or 5)
-    if daily_cap < 0:
+    cap = int(eff.get("free", {}).get("questions_per_day") or 5)
+    if cap < 0:
         return True
 
-    today = date.today()
-    if row["last_reset"] != today:
-        await database.execute(
-            users.update()
-            .where(users.c.id == user_id)
-            .values(daily_questions=0, daily_recipes=0, last_reset=today)
-        )
-        return True
-
-    return (row["daily_questions"] or 0) < daily_cap
+    # daily_questions = накопительно использованных сообщений к AI на free (не сбрасывается по дням).
+    return (row["daily_questions"] or 0) < cap
 
 
 async def increment_question_count(user_id: int):

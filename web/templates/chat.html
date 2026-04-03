@@ -141,10 +141,14 @@
           </svg>
         </button>
       </div>
-      <p class="text-[11px] sm:text-xs text-muted text-center mt-2 px-1 leading-snug" id="chat-limit-line">
+      <p class="text-[11px] sm:text-xs text-muted text-center mt-2 px-1 leading-snug" id="chat-limit-line"
+         data-free-limit="{{ free_ai_limit if free_ai_limit is not none else '' }}"
+         data-free-remaining="{{ free_ai_remaining if free_ai_remaining is not none else '' }}">
         {% if user %}
-          {% if (subscription_plan or 'free') == 'free' %}
-            Бесплатный тариф: до <strong class="text-gold">5</strong> сообщений к AI в сутки. Тарифы Старт и выше — безлимит и сохранение истории в этой вкладке.
+          {% if free_ai_remaining is not none and free_ai_limit is not none %}
+            Бесплатный тариф: осталось <strong class="text-gold" id="freeAiRemDisplay">{{ free_ai_remaining }}</strong> из <strong class="text-gold">{{ free_ai_limit }}</strong> сообщений к AI (всего на аккаунт). Тариф «Старт» и выше — безлимит и история в этой вкладке.
+          {% elif (subscription_plan or 'free') == 'free' %}
+            Бесплатный тариф: лимит сообщений к AI. Тариф «Старт» и выше — безлимит.
           {% else %}
             Безлимитный диалог с AI; история переписки сохраняется — при возврате на эту страницу она подгружается снова.
           {% endif %}
@@ -179,5 +183,5 @@ function openCabinet() {
 </script>
 {% endblock %}
 {% block extra_scripts %}
-<script src="/static/js/chat.js?v=4"></script>
+<script src="/static/js/chat.js?v=5"></script>
 {% endblock %}

@@ -1115,13 +1115,30 @@ async def chat_page(request: Request):
     current_user = await get_user_from_request(request)
     plan = None
     ai_chat_history: list = []
+    free_ai_limit = None
+    free_ai_remaining = None
+    free_ai_used = None
     if current_user:
         uid = int(current_user.get("primary_user_id") or current_user["id"])
         plan = await check_subscription(uid)
         role = (current_user.get("role") or "user").lower()
+        perm_row = await database.fetch_one(
+            admin_permissions.select().where(admin_permissions.c.user_id == uid)
+        )
+        unlimited_ai = role in ("admin", "moderator") or (
+            bool(perm_row.get("can_ai_unlimited")) if perm_row else False
+        )
         # Персистентная лента в UI — как у оплаченного/пробного Старт; free без админки не подгружаем
         if plan != "free" or role in ("admin", "moderator"):
             ai_chat_history = await _fetch_ai_chat_transcript_for_ui(uid)
+        if plan == "free" and not unlimited_ai:
+            eff = await get_effective_plans()
+            cap = int((eff.get("free") or {}).get("questions_per_day") or 5)
+            urow = await database.fetch_one(users.select().where(users.c.id == uid))
+            used = int((urow or {}).get("daily_questions") or 0)
+            free_ai_limit = cap
+            free_ai_used = used
+            free_ai_remaining = max(0, cap - used)
     return templates.TemplateResponse(
         "chat.html",
         {
@@ -1129,6 +1146,9 @@ async def chat_page(request: Request):
             "user": current_user,
             "subscription_plan": plan,
             "ai_chat_history": ai_chat_history,
+            "free_ai_limit": free_ai_limit,
+            "free_ai_remaining": free_ai_remaining,
+            "free_ai_used": free_ai_used,
         },
     )
 

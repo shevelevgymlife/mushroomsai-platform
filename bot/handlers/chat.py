@@ -1,6 +1,5 @@
 """AI в главном боте: только после кнопки «Задать вопрос AI»; лимит 5/сутки (без подписки) или безлимит по тарифу Старт+."""
 import logging
-from datetime import datetime, timezone
 
 import sqlalchemy as sa
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
@@ -12,6 +11,14 @@ from bot.handlers.channel_autopost import main_keyboard_with_autopost as _main_k
 from config import settings
 from db.database import database
 from db.models import admin_permissions, messages, users
+from services.subscription_service import (
+    can_ask_question,
+    check_subscription,
+    increment_question_count,
+    FREE_AI_LIMIT_MESSAGE,
+    FREE_AI_UPGRADE_INLINE,
+)
+from services.payment_plans_catalog import get_effective_plans
 
 logger = logging.getLogger(__name__)
 
@@ -64,16 +71,17 @@ async def _is_unlimited_ai(user_id: int | None) -> bool:
     return plan != "free"
 
 
-async def _count_today_messages(user_id: int) -> int:
-    today = datetime.now(timezone.utc).date()
-    count = await database.fetch_val(
-        sa.select(sa.func.count()).select_from(messages).where(
-            messages.c.user_id == user_id,
-            messages.c.role == "user",
-            sa.func.date(messages.c.created_at) == today,
+async def _count_lifetime_tg_guest_user_messages(tg_inner_id: int) -> int:
+    sk = f"tg_{int(tg_inner_id)}"
+    return int(
+        await database.fetch_val(
+            sa.select(sa.func.count()).select_from(messages).where(
+                messages.c.session_key == sk,
+                messages.c.role == "user",
+            )
         )
+        or 0
     )
-    return int(count or 0)
 
 
 async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -139,21 +147,13 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         unlimited = False
 
     if not unlimited and user_id:
-        count = await _count_today_messages(user_id)
-        if count >= BOT_DAILY_LIMIT:
+        if not await can_ask_question(user_id):
             await _send_limit_reached(update, context, site)
             return
     elif not unlimited and not user_id:
-        session_key = f"tg_{tg_user.id}"
-        today = datetime.now(timezone.utc).date()
-        count = await database.fetch_val(
-            sa.select(sa.func.count()).select_from(messages).where(
-                messages.c.session_key == session_key,
-                messages.c.role == "user",
-                sa.func.date(messages.c.created_at) == today,
-            )
-        ) or 0
-        if int(count) >= BOT_DAILY_LIMIT:
+        eff0 = await get_effective_plans()
+        guest_cap = int((eff0.get("free") or {}).get("questions_per_day") or BOT_DAILY_LIMIT)
+        if await _count_lifetime_tg_guest_user_messages(tg_user.id) >= guest_cap:
             await _send_limit_reached(update, context, site)
             return
 
@@ -177,48 +177,59 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     if not unlimited:
+        eff = await get_effective_plans()
+        cap = int((eff.get("free") or {}).get("questions_per_day") or BOT_DAILY_LIMIT)
+        remaining = 0
         if user_id:
-            used = await _count_today_messages(user_id)
+            await increment_question_count(user_id)
+            plan_u = await check_subscription(user_id)
+            if plan_u == "free":
+                row = await database.fetch_one(users.select().where(users.c.id == user_id))
+                used = int((row or {}).get("daily_questions") or 0)
+                remaining = max(0, cap - used)
         else:
-            sk = f"tg_{tg_user.id}"
-            today = datetime.now(timezone.utc).date()
-            used = int(
-                await database.fetch_val(
-                    sa.select(sa.func.count()).select_from(messages).where(
-                        messages.c.session_key == sk,
-                        messages.c.role == "user",
-                        sa.func.date(messages.c.created_at) == today,
-                    )
-                )
-                or 0
-            )
-        remaining = max(0, BOT_DAILY_LIMIT - used)
-        if remaining > 0:
-            answer += f"\n\n_Осталось вопросов сегодня: {remaining} из {BOT_DAILY_LIMIT}_"
-        else:
-            answer += f"\n\n_Это был последний бесплатный вопрос на сегодня._"
-            context.user_data["tg_ai_mode"] = False
-            await update.message.reply_text(answer, parse_mode="Markdown")
+            used = await _count_lifetime_tg_guest_user_messages(tg_user.id)
+            remaining = max(0, cap - used)
+
+        if user_id and plan_u != "free":
             await update.message.reply_text(
-                "⏳ Суточный лимит исчерпан. Режим AI отключён — кнопки бота снова только меню.\n\n"
-                "Безлимит — подписка «Старт» в приложении.",
-                reply_markup=await _standard_reply_kb(update, site, False),
-                parse_mode="HTML",
-            )
-            await update.message.reply_text(
-                "Открыть приложение:",
-                reply_markup=InlineKeyboardMarkup(
-                    [
-                        [
-                            InlineKeyboardButton(
-                                "🍄 Открыть приложение по подписке Старт",
-                                web_app=WebAppInfo(url=site),
-                            )
-                        ],
-                    ]
-                ),
+                answer,
+                parse_mode="Markdown",
+                reply_markup=ai_followup_inline(),
             )
             return
+
+        if remaining > 0:
+            answer += f"\n\n_Осталось бесплатных сообщений: {remaining} из {cap}._"
+            await update.message.reply_text(
+                answer,
+                parse_mode="Markdown",
+                reply_markup=ai_followup_inline(),
+            )
+            return
+
+        answer = (answer or "").rstrip() + FREE_AI_UPGRADE_INLINE
+        context.user_data["tg_ai_mode"] = False
+        await update.message.reply_text(answer, parse_mode="Markdown")
+        await update.message.reply_text(
+            f"⏳ {FREE_AI_LIMIT_MESSAGE}\n\nРежим AI отключён.",
+            reply_markup=await _standard_reply_kb(update, site, False),
+            parse_mode="HTML",
+        )
+        await update.message.reply_text(
+            "Открыть приложение:",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "🍄 Открыть приложение по подписке Старт",
+                            web_app=WebAppInfo(url=site),
+                        )
+                    ],
+                ]
+            ),
+        )
+        return
 
     await update.message.reply_text(
         answer,
@@ -252,9 +263,9 @@ async def _send_limit_reached(update: Update, context: ContextTypes.DEFAULT_TYPE
     context.user_data["tg_ai_mode"] = False
 
     await update.message.reply_text(
-        "💬 Вы использовали все 5 бесплатных вопросов на сегодня.\n\n"
+        f"💬 {FREE_AI_LIMIT_MESSAGE}\n\n"
         "Режим AI отключён. Кнопки бота работают как обычно.\n\n"
-        "Безлимит — подписка «Старт» в приложении.",
+        "Подписка «Старт» в приложении — безлимитные вопросы к AI.",
         reply_markup=await _standard_reply_kb(update, site, False),
         parse_mode="HTML",
     )

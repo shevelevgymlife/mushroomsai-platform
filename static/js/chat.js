@@ -3,6 +3,17 @@ const inputEl = document.getElementById('messageInput');
 const sendBtn = document.getElementById('sendBtn');
 let isLoading = false;
 
+function updateFreeAiQuotaUi(remaining, limit) {
+  if (remaining === undefined || limit === undefined) return;
+  const line = document.getElementById('chat-limit-line');
+  if (line) {
+    line.setAttribute('data-free-remaining', String(remaining));
+    line.setAttribute('data-free-limit', String(limit));
+  }
+  const disp = document.getElementById('freeAiRemDisplay');
+  if (disp) disp.textContent = String(remaining);
+}
+
 document.addEventListener('DOMContentLoaded', function () {
   var c = document.getElementById('chatContainer');
   if (c) c.scrollTop = c.scrollHeight;
@@ -121,12 +132,18 @@ async function sendMessage() {
 
     if (res.status === 429) {
       const data = await res.json();
-      appendMessage('assistant', data.message || 'Лимит исчерпан. Подключите подписку для продолжения.');
+      appendMessage(
+        'assistant',
+        data.message || 'Приобретите подписку. Минимум — тариф «Старт».'
+      );
     } else if (!res.ok) {
       appendMessage('assistant', 'Произошла ошибка. Попробуйте ещё раз.');
     } else {
       const data = await res.json();
       appendMessage('assistant', data.answer);
+      if (data.free_ai_remaining !== undefined && data.free_ai_limit !== undefined) {
+        updateFreeAiQuotaUi(data.free_ai_remaining, data.free_ai_limit);
+      }
     }
   } catch (e) {
     removeLoader();

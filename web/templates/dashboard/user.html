@@ -1547,9 +1547,9 @@ body.dash-ig-app .ig-lamp-topbar{
         </div>
         <div style="margin-top:12px;position:relative">
           {% if plan == 'free' %}
-          <div style="font-size:12px;color:#666;margin-bottom:6px">
-            Осталось вопросов сегодня: <span class="gold">{{ [0, 5 - ai_questions_today] | max }}</span>/5
-            {% if ai_questions_today >= 5 %} · <button class="btn-g" style="font-size:11px;padding:4px 10px" onclick="goSec('plan')">Улучшить тариф</button>{% endif %}
+          <div style="font-size:12px;color:#666;margin-bottom:6px" id="cabinetFreeAiQuotaWrap">
+            Осталось вопросов к AI: <span class="gold" id="cabinetFreeAiRem">{{ [0, (free_ai_limit|default(5)) - (free_ai_used|default(0))] | max }}</span> из <span class="gold">{{ free_ai_limit|default(5) }}</span> (всего на аккаунт)
+            {% if (free_ai_used|default(0)) >= (free_ai_limit|default(5)) %} · <button class="btn-g" style="font-size:11px;padding:4px 10px" onclick="goSec('plan')">Тариф «Старт»</button>{% endif %}
           </div>
           {% endif %}
           <div class="app-input-row" style="gap:8px">
@@ -1639,12 +1639,12 @@ body.dash-ig-app .ig-lamp-topbar{
         <div style="font-size:13px;color:#888;margin-top:4px">Активен до {{ user.subscription_end.strftime('%d.%m.%Y') }}</div>
         {% endif %}
         <div style="margin-top:12px;font-size:13px;color:#888">
-          Вопросов в день: <span class="gold">{% if plan_info.questions_per_day == -1 %}Безлимит{% else %}{{ plan_info.questions_per_day }}{% endif %}</span>
+          Вопросов к AI (лимит): <span class="gold">{% if plan_info.questions_per_day == -1 %}Безлимит{% elif plan == 'free' %}{{ plan_info.questions_per_day }} всего{% else %}{{ plan_info.questions_per_day }}{% endif %}</span>
         </div>
       </div>
       <div class="plan-grid">
         {% set pls = [
-          ('free','🌿','Бесплатный','0 ₽/мес',['5 вопросов AI','Личный кабинет','Магазин']),
+          ('free','🌿','Бесплатный','0 ₽/мес',['5 вопросов к AI всего','Личный кабинет','Магазин']),
           ('start','⭐','Старт','990 ₽/мес',['Безлимит AI консультаций','Соцсеть и лента','Маркетплейс','Партнёрство']),
           ('pro','💎','Про','1 990 ₽/мес',['Всё из Старт','Приватный канал','Значок ⭐ в профиле','Закреп постов на 3 дня']),
           ('maxi','🏪','Макси','4 999 ₽/мес',['Всё из Про','Значок 🏪 вместо ⭐','Максимальные возможности']),
@@ -2610,6 +2610,10 @@ async function sendChat(){
       const am=document.createElement('div');am.className='msg-ai';
       am.innerHTML='<div class="ai-lbl">Mushroom AI</div>'+esc(d.answer);
       box.appendChild(am);box.scrollTop=box.scrollHeight;
+      if(d.free_ai_remaining!==undefined&&d.free_ai_limit!==undefined){
+        const cr=document.getElementById('cabinetFreeAiRem');
+        if(cr)cr.textContent=String(d.free_ai_remaining);
+      }
     }
   }catch(e){err.textContent='Ошибка соединения';err.style.display='block'}
   send.disabled=false;send.textContent='→';inp.focus();
