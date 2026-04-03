@@ -78,9 +78,10 @@ class Settings(BaseSettings):
     TELEGRAM_WEBAPP_EXTRA_BOT_TOKENS: str = ""
     # Provider token ЮKassa из @BotFather (тот же бот, что и TELEGRAM_TOKEN). Если задан — имеет приоритет над полем в админке.
     TELEGRAM_PAYMENT_PROVIDER_TOKEN: str = ""
-    # Чек 54-ФЗ: в теле create payment (сайт) и по умолчанию для счёта в боте (1 = без НДС и т.п. по API ЮKassa). 0 — не добавлять.
+    # Чек 54-ФЗ: в теле create payment (сайт) и по умолчанию для счёта в боте (1 = без НДС и т.п. по API ЮKassa).
+    # По умолчанию 1: без чека ЮKassa часто отвечает 400 «Receipt is missing or illegal».
     # Если в кабинете ЮKassa включены чеки, счёт в боте без receipt часто не создаётся (звёзды XTR при этом работают).
-    YOOKASSA_RECEIPT_VAT_CODE: int = 0
+    YOOKASSA_RECEIPT_VAT_CODE: int = 1
     # Система налогообложения для чека в create payment (1–6). 0 — не передавать (если магазин один в ЛК — часто не нужно).
     YOOKASSA_RECEIPT_TAX_SYSTEM_CODE: int = 0
     # Признак предмета расчёта для веб-чека: service | intellectual_activity и др. по справочнику ЮKassa.

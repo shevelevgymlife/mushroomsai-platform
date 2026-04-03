@@ -125,6 +125,37 @@ def _receipt_error_for_retry(desc_l: str) -> bool:
     )
 
 
+def resolve_yookassa_redirect_receipt_vat(provider_id: str, provider_cfg: dict[str, Any] | None) -> int:
+    """
+    Код НДС для чека в create payment (редирект на оплату).
+    - yookassa (сайт): web_receipt_vat_code ≥ 0 из админки, иначе YOOKASSA_RECEIPT_VAT_CODE.
+    - yookassa_bot (Mini App): telegram_receipt_vat_code ≥ 0, иначе YOOKASSA_TELEGRAM_RECEIPT_VAT_CODE, иначе YOOKASSA_RECEIPT_VAT_CODE.
+    Возвращает 0 (без чека в запросе) или 1–6.
+    """
+    st = provider_cfg or {}
+    pid = (provider_id or "").strip().lower()
+    try:
+        if pid == "yookassa":
+            raw = st.get("web_receipt_vat_code")
+            if raw is not None and int(raw) >= 0:
+                return max(0, min(6, int(raw)))
+        elif pid == "yookassa_bot":
+            raw = st.get("telegram_receipt_vat_code")
+            if raw is not None and int(raw) >= 0:
+                return max(0, min(6, int(raw)))
+            env_tg = getattr(settings, "YOOKASSA_TELEGRAM_RECEIPT_VAT_CODE", None)
+            if env_tg is not None:
+                return max(0, min(6, int(env_tg)))
+    except (TypeError, ValueError):
+        pass
+    v = int(getattr(settings, "YOOKASSA_RECEIPT_VAT_CODE", 1) or 0)
+    if v not in (1, 2, 3, 4, 5, 6):
+        if v:
+            logger.warning("yookassa: unsupported YOOKASSA_RECEIPT_VAT_CODE=%s, treating as 0 for redirect", v)
+        return 0
+    return v
+
+
 def _success_from_response(data: dict[str, Any]) -> tuple[str | None, str | None] | None:
     pay_id = (data.get("id") or "").strip() or None
     conf = data.get("confirmation") or {}
@@ -144,9 +175,11 @@ async def create_yookassa_redirect_payment(
     metadata: dict[str, str],
     customer_email: str | None = None,
     customer_phone: str | None = None,
+    receipt_vat_code: int | None = None,
 ) -> tuple[str | None, str | None, str | None]:
     """
     Создаёт платёж с confirmation.type=redirect.
+    receipt_vat_code: 0 — без чека; 1–6 — код НДС; None — только из settings (совместимость).
     Возвращает (confirmation_url, error_message, payment_id).
     """
     sid = (shop_id or "").strip()
@@ -164,7 +197,10 @@ async def create_yookassa_redirect_payment(
 
     auth = base64.b64encode(f"{sid}:{sec}".encode()).decode("ascii")
 
-    vat_cfg = int(getattr(settings, "YOOKASSA_RECEIPT_VAT_CODE", 0) or 0)
+    if receipt_vat_code is None:
+        vat_cfg = int(getattr(settings, "YOOKASSA_RECEIPT_VAT_CODE", 1) or 0)
+    else:
+        vat_cfg = int(receipt_vat_code)
     if vat_cfg not in (1, 2, 3, 4, 5, 6):
         if vat_cfg:
             logger.warning("yookassa: unsupported vat_code=%s, treating as 0 for web payment", vat_cfg)

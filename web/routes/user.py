@@ -42,7 +42,10 @@ from services.yookassa_bot_offerings import (
 from services.yookassa_pay_channel import detect_yookassa_pay_channel
 from services.subscription_checkout import resolve_active_subscription_checkout
 from services.yookassa_credentials import resolve_yookassa_shop_credentials
-from services.yookassa_hosted_payment import create_yookassa_redirect_payment
+from services.yookassa_hosted_payment import (
+    create_yookassa_redirect_payment,
+    resolve_yookassa_redirect_receipt_vat,
+)
 from services.yookassa_pay_service import (
     apply_yookassa_payment_succeeded,
     fetch_yookassa_payment_with_fallback,
@@ -131,10 +134,12 @@ async def _create_yookassa_redirect_for_channel(
         if not yookassa_redirect_api_ready(yb):
             return None, "tg_shop_not_configured", None
         sid, sec = resolve_yookassa_shop_credentials(yb)
+        receipt_vat = resolve_yookassa_redirect_receipt_vat("yookassa_bot", yb)
     else:
         if not yookassa_redirect_api_ready(yk):
             return None, "web_shop_not_configured", None
         sid, sec = resolve_yookassa_shop_credentials(yk)
+        receipt_vat = resolve_yookassa_redirect_receipt_vat("yookassa", yk)
     return await create_yookassa_redirect_payment(
         shop_id=sid,
         secret_key=sec,
@@ -144,6 +149,7 @@ async def _create_yookassa_redirect_for_channel(
         metadata=metadata,
         customer_email=customer_email,
         customer_phone=customer_phone,
+        receipt_vat_code=receipt_vat,
     )
 
 

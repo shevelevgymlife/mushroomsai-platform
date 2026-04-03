@@ -422,6 +422,14 @@ async def admin_payment_provider_save(request: Request, provider_id: str):
         new_st["enabled"] = str(form.get("enabled") or "").strip().lower() in ("1", "true", "on", "yes")
         new_st["shop_id"] = (form.get("shop_id") or "").strip()
         new_st["secret_key"] = (form.get("secret_key") or "").strip()
+        raw_wrv = (form.get("web_receipt_vat_code") or "").strip()
+        if raw_wrv == "":
+            new_st["web_receipt_vat_code"] = -1
+        else:
+            try:
+                new_st["web_receipt_vat_code"] = max(-1, min(10, int(float(raw_wrv))))
+            except ValueError:
+                pass
         secrets = ("secret_key",)
     elif pid == "yookassa_bot":
         new_st["enabled"] = str(form.get("enabled") or "").strip().lower() in ("1", "true", "on", "yes")
