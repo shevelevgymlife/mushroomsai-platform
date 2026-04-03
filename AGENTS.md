@@ -8,3 +8,9 @@
 - Never start screen recording automatically.
 - Never attach screenshots automatically.
 - Only create video or screenshot artifacts after an explicit user request in the current chat.
+
+## Default deployment behavior
+
+- After each completed code task, deploy by pushing the latest relevant changes to `master` to trigger auto-deploy.
+- Treat deployment as mandatory by default.
+- Skip deployment only if the user explicitly says to stop, delay, or avoid deploy/push to `master`.
