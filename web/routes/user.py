@@ -202,6 +202,14 @@ async def compute_visible_blocks(user_id: int, plan: str) -> list[str]:
         elif al == "maxi" and plan_idx >= 3:
             visible.append(key)
 
+    try:
+        from services.internal_exchange_settings import is_internal_exchange_enabled
+
+        if not await is_internal_exchange_enabled():
+            visible = [k for k in visible if k != "internal_exchange"]
+    except Exception:
+        pass
+
     return visible
 
 

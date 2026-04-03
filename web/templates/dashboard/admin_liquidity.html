@@ -2,11 +2,25 @@
 {% block title %}Ликвидность / биржа — Admin{% endblock %}
 {% block content %}
 {% set tn = exchange_token_name|default('Shevelev') %}
+{% set exch_on = internal_exchange_enabled|default(true) %}
 <div class="pt-24 pb-16 neo-app-surface">
   <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
     {% include "components/admin_nav.html" %}
 
     <h1 class="text-3xl font-light text-text mb-2">Ликвидность / биржа</h1>
+
+    <div class="rounded-2xl border {% if exch_on %}border-cyan-500/35 bg-cyan-500/[0.08]{% else %}border-red-500/40 bg-red-500/[0.08]{% endif %} p-5 mb-6 max-w-3xl">
+      <h2 class="text-base font-semibold text-text mb-2">Биржа для пользователей</h2>
+      <p class="text-sm text-muted leading-relaxed mb-4">
+        <strong>Выкл</strong> — исчезают пункт «Биржа» в меню, страницы <code class="text-[11px]">/exchange</code> и весь API <code class="text-[11px]">/api/exchange</code> (и <code class="text-[11px]">/api/withdraw</code>). Пул и настройки на этой странице доступны всегда, чтобы снова включить сервис.
+      </p>
+      <label class="flex items-center gap-3 cursor-pointer text-sm text-text">
+        <input type="checkbox" id="exchFeatureOn" class="h-5 w-5 rounded border-border" {% if exch_on %}checked{% endif %} />
+        <span>Биржа <strong>включена</strong> для пользователей</span>
+      </label>
+      <button type="button" id="exchFeatureSave" class="mt-3 px-4 py-2.5 rounded-xl bg-white/10 text-text border border-white/15 text-sm font-medium">Сохранить переключатель</button>
+      <p class="text-xs mt-2 min-h-[1.25rem]" id="exchFeatureMsg"></p>
+    </div>
 
     <div class="rounded-2xl border border-emerald-500/35 bg-emerald-500/[0.07] p-5 mb-6 max-w-3xl">
       <h2 class="text-base font-semibold text-emerald-100 mb-2">Где наполнять пул</h2>
@@ -122,6 +136,17 @@
 </div>
 <script>
 var ADM_EXCH_TN = {{ tn|tojson }};
+document.getElementById('exchFeatureSave').onclick = function(){
+  var m = document.getElementById('exchFeatureMsg');
+  m.textContent = '';
+  fetch('/admin/liquidity/settings', { method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ internal_exchange_enabled: document.getElementById('exchFeatureOn').checked }) })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(!d.ok){ m.textContent = d.error || 'Ошибка'; return; }
+      m.textContent = 'Сохранено. Для меню пользователей обновите страницу кабинета.';
+      setTimeout(function(){ location.reload(); }, 600);
+    }).catch(function(){ m.textContent = 'Сеть'; });
+};
 document.getElementById('liqSend').onclick = function(){
   var msg = document.getElementById('liqMsg');
   msg.textContent = '';

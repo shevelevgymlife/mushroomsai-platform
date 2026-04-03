@@ -329,9 +329,15 @@ def register_admin_exchange_routes(admin_router: APIRouter) -> None:
         admin = await require_permission(request, "can_payment")
         if not admin:
             return RedirectResponse("/admin", status_code=302)
+        from services.internal_exchange_settings import is_internal_exchange_enabled
+
+        exch_on = await is_internal_exchange_enabled()
         snap = await admin_pool_snapshot()
-        await maybe_auto_liquidity_on_user_growth()
-        snap2 = await admin_pool_snapshot()
+        if exch_on:
+            await maybe_auto_liquidity_on_user_growth()
+            snap2 = await admin_pool_snapshot()
+        else:
+            snap2 = snap
         from services.internal_exchange_service import (
             SETTINGS_AUTO_GROWTH,
             SETTINGS_GROWTH_BONUS,
@@ -365,6 +371,7 @@ def register_admin_exchange_routes(admin_router: APIRouter) -> None:
                 "growth_bonus": growth_b,
                 "pending_nfi_withdrawals": pending_nfi,
                 "exchange_token_name": exchange_token_display_name(),
+                "internal_exchange_enabled": exch_on,
             },
         )
 
@@ -417,6 +424,12 @@ def register_admin_exchange_routes(admin_router: APIRouter) -> None:
             await upsert_site_setting(SETTINGS_GROWTH_TOKEN, str(data.get("growth_token") or "0"))
         if "growth_bonus" in data:
             await upsert_site_setting(SETTINGS_GROWTH_BONUS, str(data.get("growth_bonus") or "0"))
+        if "internal_exchange_enabled" in data:
+            from services.internal_exchange_settings import set_internal_exchange_enabled
+
+            raw_en = data.get("internal_exchange_enabled")
+            en_on = raw_en is True or str(raw_en).lower() in ("1", "true", "yes", "on")
+            await set_internal_exchange_enabled(en_on)
         return JSONResponse({"ok": True})
 
     @admin_router.post("/exchange-withdrawals/{req_id}/complete")

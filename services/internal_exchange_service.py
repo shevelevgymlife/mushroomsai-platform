@@ -419,6 +419,13 @@ async def admin_pool_snapshot() -> dict[str, Any]:
 async def add_platform_income_to_pool(paid_price_rub: float) -> None:
     if paid_price_rub <= 0:
         return
+    try:
+        from services.internal_exchange_settings import is_internal_exchange_enabled
+
+        if not await is_internal_exchange_enabled():
+            return
+    except Exception:
+        pass
     frac = await get_income_fraction()
     try:
         await asyncio.to_thread(
@@ -433,6 +440,13 @@ async def add_platform_income_to_pool(paid_price_rub: float) -> None:
 
 
 async def maybe_auto_liquidity_on_user_growth() -> dict[str, Any] | None:
+    try:
+        from services.internal_exchange_settings import is_internal_exchange_enabled
+
+        if not await is_internal_exchange_enabled():
+            return None
+    except Exception:
+        pass
     ag = (await _get_setting(SETTINGS_AUTO_GROWTH, "false")).lower() in ("1", "true", "yes", "on")
     if not ag:
         return None
@@ -469,6 +483,13 @@ async def maybe_auto_liquidity_on_user_growth() -> dict[str, Any] | None:
 
 
 async def maybe_notify_low_coverage() -> None:
+    try:
+        from services.internal_exchange_settings import is_internal_exchange_enabled
+
+        if not await is_internal_exchange_enabled():
+            return
+    except Exception:
+        pass
     snap = await admin_pool_snapshot()
     cov = snap.get("coverage")
     if cov is None or cov >= 0.2:

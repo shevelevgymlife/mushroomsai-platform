@@ -160,6 +160,58 @@ class CommunitySubscriptionGateMiddleware(BaseHTTPMiddleware):
         )
 
 
+class InternalExchangeDisabledMiddleware(BaseHTTPMiddleware):
+    """Отключает пользовательскую биржу: /exchange, /api/exchange, POST /api/withdraw. Админ /admin/liquidity/* остаётся."""
+
+    @staticmethod
+    def _blocked_user_path(path: str) -> bool:
+        p = (path or "").split("?")[0]
+        if p.startswith("/exchange"):
+            return True
+        if p.startswith("/api/exchange"):
+            return True
+        if p == "/api/withdraw":
+            return True
+        return False
+
+    @staticmethod
+    def _admin_exchange_path(path: str) -> bool:
+        p = (path or "").split("?")[0]
+        if p.startswith("/admin/liquidity"):
+            return True
+        if p == "/admin/add-liquidity":
+            return True
+        if p.startswith("/admin/exchange-withdrawals"):
+            return True
+        return False
+
+    async def dispatch(self, request: Request, call_next):
+        path = request.url.path or ""
+        if not self._blocked_user_path(path):
+            return await call_next(request)
+        if self._admin_exchange_path(path):
+            return await call_next(request)
+        try:
+            from services.internal_exchange_settings import is_internal_exchange_enabled
+
+            if await is_internal_exchange_enabled():
+                return await call_next(request)
+        except Exception:
+            return await call_next(request)
+        if path.startswith("/api"):
+            return JSONResponse(
+                {
+                    "error": "exchange_disabled",
+                    "message": "Биржа временно отключена администратором.",
+                },
+                status_code=403,
+            )
+        accept = (request.headers.get("accept") or "").lower()
+        if request.method == "GET" and "text/html" in accept:
+            return RedirectResponse("/", status_code=302)
+        return JSONResponse({"error": "exchange_disabled"}, status_code=403)
+
+
 _STARTUP_SKIP_PATHS = frozenset({"/health", "/healthz", "/favicon.ico", "/robots.txt", "/sitemap.xml"})
 
 
@@ -704,6 +756,7 @@ class GlobalSettingsMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 fastapi_app.add_middleware(GlobalSettingsMiddleware)
+fastapi_app.add_middleware(InternalExchangeDisabledMiddleware)
 
 # Static
 fastapi_app.mount("/static", StaticFiles(directory="static"), name="static")
