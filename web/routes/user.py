@@ -1658,14 +1658,6 @@ async def add_comment(
         return JSONResponse({"error": "not found"}, status_code=404)
 
     uid = user.get("primary_user_id") or user["id"]
-    try:
-        await database.execute(
-            sa.text(
-                "ALTER TABLE community_comments ADD COLUMN IF NOT EXISTS reply_to_comment_id INTEGER NULL REFERENCES community_comments(id) ON DELETE SET NULL"
-            )
-        )
-    except Exception:
-        pass
     reply_parent_id: int | None = None
     if (reply_to_comment_id or "").strip().isdigit():
         reply_parent_id = int(reply_to_comment_id.strip())
@@ -1686,7 +1678,7 @@ async def add_comment(
             post_id=post_id,
             user_id=uid,
             content=content.strip(),
-            reply_to_comment_id=reply_parent_id,
+            reply_to_id=reply_parent_id,
             seen_by_post_owner=c_seen,
         )
         .returning(community_comments.c.id)
@@ -1838,9 +1830,9 @@ async def get_comments(request: Request, post_id: int):
             except Exception:
                 liked_set = set()
         parent_ids = [
-            int(c["reply_to_comment_id"])
+            int(c["reply_to_id"])
             for c in rows
-            if c.get("reply_to_comment_id") is not None
+            if c.get("reply_to_id") is not None
         ]
         if parent_ids:
             p_rows = await database.fetch_all(
@@ -1875,7 +1867,7 @@ async def get_comments(request: Request, post_id: int):
             ) or 0
         rep = _reputation(rep_count)
         cid = int(c["id"])
-        rid = c.get("reply_to_comment_id")
+        rid = c.get("reply_to_id")
         result.append({
             "id": cid,
             "content": c["content"],
@@ -1886,7 +1878,7 @@ async def get_comments(request: Request, post_id: int):
             "author_emoji": rep["emoji"],
             "likes_count": int(likes_map.get(cid, c.get("likes_count") or 0)),
             "liked_by_me": cid in liked_set,
-            "reply_to_comment_id": int(rid) if rid is not None else None,
+            "reply_to_id": int(rid) if rid is not None else None,
             "reply_to": parent_map.get(int(rid)) if rid is not None else None,
         })
     return JSONResponse({"comments": result})

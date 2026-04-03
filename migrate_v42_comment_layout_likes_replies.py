@@ -2,6 +2,9 @@
 
 STEPS = [
     "ALTER TABLE community_comments ADD COLUMN IF NOT EXISTS reply_to_id INTEGER REFERENCES community_comments(id) ON DELETE SET NULL",
+    "ALTER TABLE community_comments ADD COLUMN IF NOT EXISTS reply_to_comment_id INTEGER REFERENCES community_comments(id) ON DELETE SET NULL",
+    "UPDATE community_comments SET reply_to_comment_id = reply_to_id WHERE reply_to_comment_id IS NULL AND reply_to_id IS NOT NULL",
+    "UPDATE community_comments SET reply_to_id = reply_to_comment_id WHERE reply_to_id IS NULL AND reply_to_comment_id IS NOT NULL",
     "ALTER TABLE community_comments ADD COLUMN IF NOT EXISTS likes_count INTEGER NOT NULL DEFAULT 0",
     """CREATE TABLE IF NOT EXISTS community_comment_likes (
         id SERIAL PRIMARY KEY,
