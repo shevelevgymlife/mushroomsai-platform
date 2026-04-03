@@ -100,17 +100,12 @@ def merge_profile_public_cards(raw: str | None) -> dict[str, Any]:
     return base
 
 
-def dumps_profile_public_cards(data: dict[str, Any]) -> str:
-    clean = default_profile_public_cards()
-    clean["show_crypto_slide"] = bool(data.get("show_crypto_slide"))
-    clean["show_social_slide"] = bool(data.get("show_social_slide"))
-    clean["slide_order"] = normalize_slide_order(data.get("slide_order"))
-    for k in SOCIAL_KEYS:
-        clean["social"][k] = (str(data.get("social", {}).get(k, "") or "").strip()[:2000]) or ""
-    vals = data.get("validators") or []
-    out_v = []
+def normalize_validators_for_storage(vals: Any) -> list[dict[str, str]]:
+    """Ровно две записи валидаторов для JSON (UI карточек больше нет — поле оставлено для совместимости)."""
+    out_v: list[dict[str, str]] = []
+    vlist = vals if isinstance(vals, list) else []
     for i in range(2):
-        item = vals[i] if i < len(vals) and isinstance(vals[i], dict) else {}
+        item = vlist[i] if i < len(vlist) and isinstance(vlist[i], dict) else {}
         img = (str(item.get("image") or "").strip()[:2000] or DEFAULT_VALIDATOR_IMAGES[i])
         out_v.append(
             {
@@ -119,7 +114,17 @@ def dumps_profile_public_cards(data: dict[str, Any]) -> str:
                 "url": (str(item.get("url") or "").strip()[:2000]),
             }
         )
-    clean["validators"] = out_v
+    return out_v
+
+
+def dumps_profile_public_cards(data: dict[str, Any]) -> str:
+    clean = default_profile_public_cards()
+    clean["show_crypto_slide"] = bool(data.get("show_crypto_slide"))
+    clean["show_social_slide"] = bool(data.get("show_social_slide"))
+    clean["slide_order"] = normalize_slide_order(data.get("slide_order"))
+    for k in SOCIAL_KEYS:
+        clean["social"][k] = (str(data.get("social", {}).get(k, "") or "").strip()[:2000]) or ""
+    clean["validators"] = normalize_validators_for_storage(data.get("validators"))
     return json.dumps(clean, ensure_ascii=False)
 
 
@@ -127,13 +132,9 @@ def profile_public_cards_from_form(
     show_crypto: bool,
     show_social: bool,
     social_raw: dict[str, str],
-    v0_img: str,
-    v0_label: str,
-    v0_url: str,
-    v1_img: str,
-    v1_label: str,
-    v1_url: str,
     slide_order_csv: str = "",
+    *,
+    validators_existing: list[Any] | None = None,
 ) -> str:
     d = default_profile_public_cards()
     d["show_crypto_slide"] = show_crypto
@@ -142,18 +143,9 @@ def profile_public_cards_from_form(
     for k in SOCIAL_KEYS:
         raw = (social_raw.get(k, "") or "").strip()
         d["social"][k] = normalize_social_url(k, raw) if raw else ""
-    d["validators"] = [
-        {
-            "image": (v0_img.strip()[:2000] if v0_img.strip() else DEFAULT_VALIDATOR_IMAGES[0]),
-            "label": (v0_label.strip()[:120] if v0_label.strip() else "Валидатор 1"),
-            "url": v0_url.strip()[:2000],
-        },
-        {
-            "image": (v1_img.strip()[:2000] if v1_img.strip() else DEFAULT_VALIDATOR_IMAGES[1]),
-            "label": (v1_label.strip()[:120] if v1_label.strip() else "Валидатор 2"),
-            "url": v1_url.strip()[:2000],
-        },
-    ]
+    d["validators"] = normalize_validators_for_storage(
+        validators_existing if validators_existing is not None else d["validators"]
+    )
     return json.dumps(d, ensure_ascii=False)
 
 

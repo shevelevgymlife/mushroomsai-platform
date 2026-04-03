@@ -432,7 +432,8 @@
 }
 
 .cp-hero-slide-inner--crypto .cp-crypto-row {
-  justify-content: center;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .cp-hero-slide-inner--crypto .cp-crypto-val {
@@ -465,56 +466,6 @@
   margin: 12px 0 0;
   position: relative;
   z-index: 1;
-}
-
-.cp-validators-row {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 12px;
-  margin-top: 14px;
-  position: relative;
-  z-index: 1;
-}
-
-@media (max-width: 520px) {
-  .cp-validators-row {
-    flex-wrap: wrap;
-  }
-}
-
-.cp-validator-card {
-  flex: 1 1 0;
-  min-width: 0;
-  max-width: none;
-  text-align: center;
-  text-decoration: none;
-  color: inherit;
-  border-radius: 16px;
-  overflow: hidden;
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  transition: transform 0.2s var(--nf-vp-ease), box-shadow 0.2s var(--nf-vp-ease);
-}
-
-.cp-validator-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4), 0 0 24px rgba(0, 240, 255, 0.12);
-}
-
-.cp-validator-card img {
-  width: 100%;
-  aspect-ratio: 2.2 / 1;
-  max-height: 96px;
-  object-fit: cover;
-  object-position: center;
-  display: block;
-}
-
-.cp-validator-label {
-  display: block;
-  font-size: 10px;
-  color: #aeb6c8;
-  padding: 6px 8px 10px;
 }
 
 .cp-social-slide-inner {

@@ -55,7 +55,7 @@
 
     <div style="padding:14px;border-radius:14px;border:1px solid rgba(255,214,0,.22);background:rgba(255,214,0,.06)">
       <div style="font-size:13px;font-weight:800;color:#fde68a;margin-bottom:4px">Свайп-блоки на странице профиля</div>
-      <p style="font-size:11px;color:#a8a29e;margin:0 0 12px;line-height:1.45">Три большие карточки в карусели сверху: «Обо мне», криптоблок с токенами из кошелька, соцсети. Отключённые блоки не показываются гостям.</p>
+      <p style="font-size:11px;color:#a8a29e;margin:0 0 12px;line-height:1.45">Три большие карточки в карусели сверху: «Обо мне», блок с балансами DEL и SHEVELEV, соцсети. Отключённые блоки не показываются гостям.</p>
       <input type="hidden" name="profile_slide_order" id="profileSlideOrderInp" value="{{ profile_cards.slide_order|join(',') }}">
       <div style="margin-bottom:14px">
         <div style="font-size:12px;font-weight:700;color:#9ad8de;margin-bottom:6px">Порядок слайдов (свайп)</div>
@@ -63,7 +63,7 @@
         <div id="profileSlideOrderRows" style="display:flex;flex-direction:column;gap:8px">
           {% for key in profile_cards.slide_order %}
           <div class="pe-slide-row" data-slide-key="{{ key }}" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:10px;background:rgba(0,0,0,.32);border:1px solid rgba(255,255,255,.12)">
-            <span class="pe-slide-label" style="font-size:13px;color:#f5f5f4;font-weight:600">{% if key == 'about' %}Обо мне{% elif key == 'crypto' %}Токены и валидаторы{% else %}Соцсети{% endif %}</span>
+            <span class="pe-slide-label" style="font-size:13px;color:#f5f5f4;font-weight:600">{% if key == 'about' %}Обо мне{% elif key == 'crypto' %}Токены (кошелёк){% else %}Соцсети{% endif %}</span>
             <span style="display:flex;gap:6px;flex-shrink:0">
               <button type="button" class="pe-sbtn" data-dir="up" style="min-width:40px;padding:6px 10px;border-radius:8px;border:1px solid rgba(61,212,224,.45);background:rgba(61,212,224,.1);color:#7ef0f5;font-size:14px;line-height:1;cursor:pointer" title="Выше">↑</button>
               <button type="button" class="pe-sbtn" data-dir="down" style="min-width:40px;padding:6px 10px;border-radius:8px;border:1px solid rgba(61,212,224,.45);background:rgba(61,212,224,.1);color:#7ef0f5;font-size:14px;line-height:1;cursor:pointer" title="Ниже">↓</button>
@@ -75,7 +75,7 @@
       <input type="hidden" name="show_crypto_slide" value="0">
       <label style="display:flex;align-items:center;gap:10px;font-size:13px;color:#e8e8e8;margin-bottom:10px;cursor:pointer">
         <input type="checkbox" name="show_crypto_slide" value="1" {% if profile_cards.show_crypto_slide %}checked{% endif %} style="width:18px;height:18px">
-        Показывать блок «Токены и валидаторы»
+        Показывать блок «Токены»
       </label>
       <input type="hidden" name="show_social_slide" value="0">
       <label style="display:flex;align-items:center;gap:10px;font-size:13px;color:#e8e8e8;margin-bottom:14px;cursor:pointer">
@@ -90,26 +90,6 @@
         <div><label style="font-size:11px;color:#888">VK</label><input name="social_vk" class="sinp" value="{{ profile_cards.social.vk|e }}" placeholder="https://vk.com/…" style="width:100%;box-sizing:border-box;margin-top:4px;padding:10px 12px;border-radius:10px;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.1);color:#e8e8e8"></div>
         <div><label style="font-size:11px;color:#888">TikTok</label><input name="social_tiktok" class="sinp" value="{{ profile_cards.social.tiktok|e }}" placeholder="https://tiktok.com/@…" style="width:100%;box-sizing:border-box;margin-top:4px;padding:10px 12px;border-radius:10px;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.1);color:#e8e8e8"></div>
         <div><label style="font-size:11px;color:#888">Сайт</label><input name="social_website" class="sinp" value="{{ profile_cards.social.website|e }}" placeholder="https://…" style="width:100%;box-sizing:border-box;margin-top:4px;padding:10px 12px;border-radius:10px;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.1);color:#e8e8e8"></div>
-      </div>
-      <div style="margin-top:16px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)">
-        <div style="font-size:12px;font-weight:700;color:#9ad8de;margin-bottom:8px">Валидаторы (2 карточки в блоке токенов)</div>
-        <p style="font-size:11px;color:#666;margin:0 0 10px">URL картинки (можно оставить пустым — подставятся стандартные). При желании — ссылка по клику.</p>
-        {% set v0 = profile_cards.validators[0] if profile_cards.validators|length > 0 else {} %}
-        {% set v1 = profile_cards.validators[1] if profile_cards.validators|length > 1 else {} %}
-        <div style="display:grid;gap:12px">
-          <div style="padding:10px;border-radius:12px;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.08)">
-            <div style="font-size:11px;color:#888;margin-bottom:6px">Валидатор 1</div>
-            <input name="validator0_image" class="sinp" value="{{ v0.image|default('', true)|e }}" placeholder="URL изображения" style="width:100%;box-sizing:border-box;padding:8px 10px;border-radius:8px;margin-bottom:6px;background:#0e0e0e;border:1px solid rgba(255,255,255,.12);color:#ccc">
-            <input name="validator0_label" class="sinp" value="{{ v0.label|default('', true)|e }}" placeholder="Подпись" style="width:100%;box-sizing:border-box;padding:8px 10px;border-radius:8px;margin-bottom:6px;background:#0e0e0e;border:1px solid rgba(255,255,255,.12);color:#ccc">
-            <input name="validator0_url" class="sinp" value="{{ v0.url|default('', true)|e }}" placeholder="Ссылка (необязательно)" style="width:100%;box-sizing:border-box;padding:8px 10px;border-radius:8px;background:#0e0e0e;border:1px solid rgba(255,255,255,.12);color:#ccc">
-          </div>
-          <div style="padding:10px;border-radius:12px;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.08)">
-            <div style="font-size:11px;color:#888;margin-bottom:6px">Валидатор 2</div>
-            <input name="validator1_image" class="sinp" value="{{ v1.image|default('', true)|e }}" placeholder="URL изображения" style="width:100%;box-sizing:border-box;padding:8px 10px;border-radius:8px;margin-bottom:6px;background:#0e0e0e;border:1px solid rgba(255,255,255,.12);color:#ccc">
-            <input name="validator1_label" class="sinp" value="{{ v1.label|default('', true)|e }}" placeholder="Подпись" style="width:100%;box-sizing:border-box;padding:8px 10px;border-radius:8px;margin-bottom:6px;background:#0e0e0e;border:1px solid rgba(255,255,255,.12);color:#ccc">
-            <input name="validator1_url" class="sinp" value="{{ v1.url|default('', true)|e }}" placeholder="Ссылка (необязательно)" style="width:100%;box-sizing:border-box;padding:8px 10px;border-radius:8px;background:#0e0e0e;border:1px solid rgba(255,255,255,.12);color:#ccc">
-          </div>
-        </div>
       </div>
     </div>
 

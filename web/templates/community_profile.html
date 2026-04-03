@@ -378,19 +378,14 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
               <div class="cp-hero-slide cp-hero-slide--crypto nf-vp-carousel__slide">
                 <div class="cp-hero-slide-inner cp-hero-slide-inner--crypto">
                   <div class="cp-crypto-rows">
-                    <div class="cp-crypto-row" aria-label="DEL"><span class="cp-crypto-val" id="pubDelBal">{{ profile.decimal_del_balance if profile.decimal_del_balance is not none else '—' }}</span></div>
-                    <div class="cp-crypto-row" aria-label="SHEVELEV"><span class="cp-crypto-val cp-crypto-val--shev" id="pubShevBal">{{ profile.shevelev_balance_cached if profile.shevelev_balance_cached is not none else '—' }}</span></div>
-                  </div>
-                  <div class="cp-validators-row">
-                    {% for v in profile_cards.validators %}
-                    {% if v.url %}
-                    <a href="{{ v.url }}" target="_blank" rel="noopener noreferrer" class="cp-validator-card" aria-label="{{ v.label }}">
-                    {% else %}
-                    <div class="cp-validator-card" role="img" aria-label="{{ v.label }}">
-                    {% endif %}
-                      <img src="{{ v.image }}" alt="" loading="lazy" width="240" height="110">
-                    {% if v.url %}</a>{% else %}</div>{% endif %}
-                    {% endfor %}
+                    <div class="cp-crypto-row">
+                      <span class="cp-crypto-lbl">DEL</span>
+                      <span class="cp-crypto-val" id="pubDelBal" aria-label="DEL">{{ profile.decimal_del_balance if profile.decimal_del_balance is not none else '—' }}</span>
+                    </div>
+                    <div class="cp-crypto-row">
+                      <span class="cp-crypto-lbl">SHEVELEV</span>
+                      <span class="cp-crypto-val cp-crypto-val--shev" id="pubShevBal" aria-label="SHEVELEV">{{ profile.shevelev_balance_cached if profile.shevelev_balance_cached is not none else '—' }}</span>
+                    </div>
                   </div>
                 </div>
               </div>
