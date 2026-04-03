@@ -43,6 +43,10 @@ def template_context_for_request(request: Request, extra: dict[str, Any] | None 
     )
     ujson = (user.get("notification_prefs_json") if user and isinstance(user, dict) else None)
     ctx.setdefault("notification_prefs", merge_prefs(ujson))
+    # Global dashboard block visibility (used by burger drawer across all pages)
+    vbk = getattr(request.state, "visible_block_keys", None)
+    if vbk is not None:
+        ctx.setdefault("visible_block_keys", vbk)
     return ctx
 
 
@@ -102,6 +106,10 @@ class Jinja2Templates(_Jinja2Templates):
             )
             ujson = (user.get("notification_prefs_json") if user and isinstance(user, dict) else None)
             context.setdefault("notification_prefs", merge_prefs(ujson))
+            # Global dashboard block visibility (used by burger drawer across all pages)
+            vbk = getattr(request.state, "visible_block_keys", None)
+            if vbk is not None:
+                context.setdefault("visible_block_keys", vbk)
 
             path = getattr(request.url, "path", "") or ""
             if path.startswith("/admin"):

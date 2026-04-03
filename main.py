@@ -54,10 +54,21 @@ class AuthUserPrimeMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         try:
-            await get_user_from_request(request)
+            user = await get_user_from_request(request)
+            request.state.visible_block_keys = []
+            if user:
+                try:
+                    from web.routes.user import compute_visible_blocks
+
+                    uid = int(user.get("primary_user_id") or user["id"])
+                    plan = (user.get("effective_subscription_plan") or user.get("subscription_plan") or "free")
+                    request.state.visible_block_keys = await compute_visible_blocks(uid, plan)
+                except Exception:
+                    request.state.visible_block_keys = []
         except Exception:
             request.state._auth_user_resolved = True
             request.state._auth_user = None
+            request.state.visible_block_keys = []
         return await call_next(request)
 
 
