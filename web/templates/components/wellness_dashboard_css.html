@@ -711,6 +711,183 @@
     border-radius:16px; border:1px dashed rgba(61,212,224,0.3); background:rgba(61,212,224,0.07); padding:0.8rem; text-align:center; margin-top:0.6rem;
   }
   .wdx-empty p { margin:0 0 0.6rem; color:#b7c6d1; font-size:0.74rem; line-height:1.48; }
+  .wdx-empty .wdx-btn { display:inline-flex; }
+
+  .wdx-orientation-card,
+  .wdx-psy-card,
+  .wdx-edu-cards,
+  .wdx-training-feed {
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.035);
+    padding: 0.72rem;
+    margin-bottom: 0.72rem;
+  }
+  .wdx-orientation-eyebrow {
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #3dd4e0;
+    font-weight: 700;
+  }
+  .wdx-orientation-disclaimer {
+    margin: 0.28rem 0 0.45rem;
+    color: #d7e8f2;
+    font-size: 0.74rem;
+    line-height: 1.46;
+  }
+  .wdx-orientation-line {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0.2rem;
+    font-size: 0.68rem;
+    color: #c4d2dc;
+  }
+  .wdx-orientation-line strong { color:#ecf5fa; font-weight: 700; }
+
+  .wdx-psy-card h2,
+  .wdx-edu-cards h2,
+  .wdx-training-feed h2 {
+    margin: 0 0 0.42rem;
+    color: #eef5f9;
+    font-size: 0.9rem;
+    font-weight: 700;
+  }
+  .wdx-psy-title {
+    color: #f4fbff;
+    font-size: 0.82rem;
+    font-weight: 680;
+    margin-bottom: 0.32rem;
+  }
+  .wdx-psy-list {
+    margin: 0;
+    padding-left: 1rem;
+    color: #cfdde6;
+    font-size: 0.72rem;
+    line-height: 1.42;
+  }
+  .wdx-psy-list li { margin-bottom: 0.2rem; }
+
+  .wdx-edu-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(235px, 1fr));
+    gap: 0.58rem;
+  }
+  .wdx-edu-card {
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.03);
+    padding: 0.55rem;
+  }
+  .wdx-edu-head {
+    display: grid;
+    grid-template-columns: 52px 1fr;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 0.4rem;
+  }
+  .wdx-edu-head h3 {
+    margin: 0;
+    color: #f2f8fc;
+    font-size: 0.84rem;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .wdx-edu-latin {
+    color: #aebcca;
+    font-size: 0.6rem;
+    margin-top: 0.12rem;
+    font-style: italic;
+  }
+  .wdx-edu-image {
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
+    object-fit: cover;
+    border: 1px solid rgba(255,255,255,0.28);
+    background: rgba(255,255,255,0.86);
+  }
+  .wdx-edu-bars { margin-bottom: 0.35rem; }
+  .wdx-edu-bar {
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.14);
+    overflow: hidden;
+  }
+  .wdx-edu-bar > i {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #3dd4e0, #a78bfa);
+  }
+  .wdx-edu-stat {
+    color: #9fb0be;
+    font-size: 0.62rem;
+    margin-bottom: 0.3rem;
+  }
+  .wdx-edu-card p {
+    margin: 0 0 0.22rem;
+    color: #cedbe5;
+    font-size: 0.68rem;
+    line-height: 1.42;
+  }
+  .wdx-edu-card p strong { color:#eef7fb; font-weight: 650; }
+  .wdx-table-wrap--edu { margin-top: 0.72rem; }
+  .wdx-table-wrap--edu h2 {
+    margin: 0 0 0.42rem;
+    color: #edf4f9;
+    font-size: 0.86rem;
+    font-weight: 680;
+  }
+  .wdx-table--edu { min-width: 960px; }
+
+  .wdx-training-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.55rem;
+  }
+  .wdx-training-card {
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.03);
+    padding: 0.48rem;
+  }
+  .wdx-training-img {
+    width: 100%;
+    height: 118px;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.16);
+    margin-bottom: 0.32rem;
+  }
+  .wdx-training-meta {
+    display: flex;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.2rem;
+  }
+  .wdx-training-meta span {
+    font-size: 0.56rem;
+    color: #d7edf2;
+    border: 1px solid rgba(61,212,224,0.26);
+    border-radius: 999px;
+    padding: 0.14rem 0.34rem;
+    background: rgba(61,212,224,0.1);
+  }
+  .wdx-training-card h3 {
+    margin: 0;
+    color: #eef5fa;
+    font-size: 0.73rem;
+    font-weight: 670;
+    line-height: 1.34;
+  }
+  .wdx-training-card p {
+    margin: 0.24rem 0 0;
+    color: #b6c5d0;
+    font-size: 0.64rem;
+    line-height: 1.42;
+  }
 
   @media (max-width: 760px) {
     .wdx-book-top { grid-template-columns:1fr; }

@@ -5,53 +5,51 @@
 {% endblock %}
 {% block content %}
 {% from "components/stroke_icons.html" import ico %}
-<div class="accneo-wrap wd-root wd-user-shell wd-ios">
-  <div class="wd-head">
-    <div>
-      <h1>Памятка</h1>
-      <p class="wd-sub">Коротко и по делу: что, зачем и как ориентироваться по вашим данным.</p>
-    </div>
+<div class="accneo-wrap wd-root wd-user-shell wd-ios wdx-shell">
+  <div class="wdx-topline">
+    <span class="wd-personal-badge">NEUROFUNGI AI</span>
+    <a href="/account/wellness-results" class="wdx-plan-link">Мои результаты →</a>
+  </div>
+  <div class="wdx-title-row">
+    <h1>Ориентиры по фунготерапии</h1>
   </div>
 
-  <section class="wdx-book-top">
-    <article class="wdx-book-main">
-      <div class="wdx-book-main-k">Ориентир</div>
-      <h2>{{ cluster_label or 'Комбинированный тип / стабилизация' }}</h2>
-      <div class="wdx-book-meta">
-        {% if profile_updated_at %}<span>Обновлено {{ profile_updated_at }}</span>{% endif %}
-        {% if segment_display %}<span>{{ segment_display }}</span>{% endif %}
-      </div>
-    </article>
-    <div class="wdx-book-mini-grid">
-      <article class="wdx-book-mini">
-        <div class="wdx-k">Серия</div>
-        <div class="wdx-v">{{ (goals.physical_symptoms|length) if goals and goals.physical_symptoms else 0 }}</div>
-      </article>
-      <article class="wdx-book-mini">
-        <div class="wdx-k">Триггеры</div>
-        <div class="wdx-v">{{ triggers_fired|length if triggers_fired else 0 }}</div>
-      </article>
-      <article class="wdx-book-mini">
-        <div class="wdx-k">Связки</div>
-        <div class="wdx-v">{{ bundles|length if bundles else 0 }}</div>
-      </article>
-      <article class="wdx-book-mini">
-        <div class="wdx-k">Грибы</div>
-        <div class="wdx-v">{{ memo_cards|length if memo_cards else 0 }}</div>
-      </article>
+  <section class="wdx-orientation-card">
+    <div class="wdx-orientation-eyebrow">ОБРАЗОВАТЕЛЬНО</div>
+    <p class="wdx-orientation-disclaimer">{{ orientation_disclaimer }}</p>
+    <div class="wdx-orientation-line">
+      <strong>Эвристический тип:</strong>
+      <span>{{ cluster_label or 'комбинированный / стабилизация' }}</span>
     </div>
+    {% if profile_updated_at_utc %}
+    <div class="wdx-orientation-line">
+      <strong>обновлено</strong>
+      <span>{{ profile_updated_at_utc }}</span>
+    </div>
+    {% endif %}
+    {% if segment_display %}
+    <div class="wdx-orientation-line">
+      <strong>Сегмент:</strong>
+      <span>{{ segment_display }}</span>
+    </div>
+    {% endif %}
   </section>
 
-  {% if latest_ai_recommendation %}
-  <section class="wdx-ai">
-    <div class="wdx-ai-h">AI фокус</div>
-    <p class="wdx-ai-b">{{ latest_ai_recommendation }}</p>
+  <section class="wdx-psy-card">
+    <h2>Психотип по опросам</h2>
+    <div class="wdx-psy-title">{{ psychotype_label }}</div>
+    {% if psychotype_points and psychotype_points|length > 0 %}
+    <ul class="wdx-psy-list">
+      {% for p in psychotype_points %}
+      <li>{{ p }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
   </section>
-  {% endif %}
 
   {% if bundles and bundles|length > 0 %}
   <section class="wdx-bundles">
-    <h2>Связки</h2>
+    <h2>Связки из профиля</h2>
     <div class="wdx-bundle-grid">
       {% for b in bundles %}
       <article class="wdx-bundle">
@@ -64,92 +62,103 @@
   </section>
   {% endif %}
 
-  {% if memo_cards and memo_cards|length > 0 %}
-  <section class="wdx-memo-grid" aria-label="Карточки грибов">
-    {% for c in memo_cards %}
-    <article class="wdx-memo-card">
-      <div class="wdx-memo-top">
-        <div class="wdx-mush-icon wdx-mush-icon--{{ c.key|replace('_','-') }}" aria-hidden="true">{{ ico('mushroom') }}</div>
-        <div class="wdx-memo-title-wrap">
-          <h3>{{ c.name_ru }}</h3>
-          <div class="wdx-memo-latin">{{ c.latin }}</div>
+  {% if science_table and science_table|length > 0 %}
+  <section class="wdx-edu-cards">
+    <h2>Грибы: эффект · биохимия · фармакодинамика</h2>
+    <div class="wdx-edu-grid">
+      {% for row in science_table %}
+      <article class="wdx-edu-card">
+        <div class="wdx-edu-head">
+          {% if row.image_url %}
+          <img src="{{ row.image_url }}" alt="{{ row.name_ru }}" class="wdx-edu-image" />
+          {% else %}
+          <div class="wdx-mush-icon" aria-hidden="true">{{ ico('mushroom') }}</div>
+          {% endif %}
+          <div>
+            <h3>{{ row.name_ru }}</h3>
+            <div class="wdx-edu-latin">{{ row.latin }}</div>
+          </div>
         </div>
-      </div>
+        <div class="wdx-edu-bars">
+          <div class="wdx-edu-bar"><i style="width: {{ [100, (row.usage_count or 0) * 20] | min }}%"></i></div>
+        </div>
+        <div class="wdx-edu-stat">Упоминаний в ваших ответах: {{ row.usage_count or 0 }}</div>
+        <p><strong>Функция:</strong> {{ row.function_line }}</p>
+        <p><strong>Показания:</strong> {{ row.indications }}</p>
+        <p><strong>Биохимия:</strong> {{ row.biochemistry_line }}</p>
+        <p><strong>Фармакодинамика:</strong> {{ row.pharmacodynamics_line }}</p>
+        <p><strong>Как принимать:</strong> {{ row.intake_line }}</p>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
 
-      <p class="wdx-memo-core">{{ c.core_short }}</p>
-
-      <div class="wdx-pill-row">
-        {% if c.who_for and c.who_for|length > 0 %}
-          {% for p in c.who_for %}
-          <span class="wdx-pill">{{ p }}</span>
-          {% endfor %}
-        {% else %}
-          <span class="wdx-pill">Стабилизация</span>
-        {% endif %}
-      </div>
-
-      <div class="wdx-memo-lines">
-        <div><strong>Доза:</strong> {{ c.dose_short or 'по сопровождению' }}</div>
-        <div><strong>Курс:</strong> {{ c.course_weeks or 'индивидуально' }}</div>
-      </div>
-
-      <div class="wdx-memo-actions">
-        <button type="button" class="wdx-info" data-memo-title="{{ c.name_ru }}" data-memo-text="{{ (c.how_apply_full or c.dose_full or c.contra_full or 'Подробности появятся после новых данных дневника.')|e }}">?</button>
-        <span class="wdx-memo-note">{{ c.contra_short }}</span>
-      </div>
-    </article>
-    {% endfor %}
+  <section class="wdx-table-wrap wdx-table-wrap--edu">
+    <h2>Справочник «гриб → функция → показания» (кратко)</h2>
+    <table class="wdx-table wdx-table--edu">
+      <thead>
+        <tr>
+          <th>Гриб</th>
+          <th>Функция</th>
+          <th>Показания</th>
+          <th>Биохимия</th>
+          <th>Фармакодинамика</th>
+          <th>Приём</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in science_table %}
+        <tr>
+          <td>
+            <strong>{{ row.name_ru }}</strong>
+            <div class="wdx-edu-latin">{{ row.latin }}</div>
+          </td>
+          <td>{{ row.function_line }}</td>
+          <td>{{ row.indications }}</td>
+          <td>{{ row.biochemistry_line }}</td>
+          <td>{{ row.pharmacodynamics_line }}</td>
+          <td>{{ row.intake_line }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </section>
   {% else %}
   <section class="wdx-empty">
-    <p>Пока нет данных для карточек. Ответьте в чате на несколько check-in — памятка заполнится автоматически.</p>
-    <a href="/chats" class="wd-btn">Открыть чаты</a>
+    <p>Пока нет данных для грибной памятки. Ответьте в личке AI на несколько опросов — карточки и таблица наполнятся автоматически.</p>
+    <a href="/chats" class="wdx-btn">Открыть ЛС</a>
   </section>
   {% endif %}
 
-  <div class="wd-actions" style="margin-top:1.4rem">
-    <a href="/account/wellness-results" class="wd-btn secondary">← Мои результаты</a>
-  </div>
-
-  <div id="wdMemoModal" class="wdx-modal" aria-hidden="true">
-    <div class="wdx-modal-bg"></div>
-    <div class="wdx-modal-card">
-      <div class="wdx-modal-head">
-        <h3 id="wdMemoModalTitle">Пояснение</h3>
-        <button type="button" class="wdx-modal-close" data-memo-close>×</button>
-      </div>
-      <p id="wdMemoModalBody"></p>
+  {% if training_source_cards and training_source_cards|length > 0 %}
+  <section class="wdx-training-feed">
+    <h2>Материалы из обучающих постов</h2>
+    <div class="wdx-training-grid">
+      {% for t in training_source_cards %}
+      <article class="wdx-training-card">
+        {% if t.image_url %}<img src="{{ t.image_url }}" alt="{{ t.title }}" class="wdx-training-img" />{% endif %}
+        <div class="wdx-training-meta">
+          <span>{{ t.mushroom }}</span>
+          {% if t.folder %}<span>{{ t.folder }}</span>{% endif %}
+        </div>
+        <h3>{{ t.title }}</h3>
+        <p>{{ t.excerpt }}</p>
+      </article>
+      {% endfor %}
     </div>
+  </section>
+  {% endif %}
+
+  {% if latest_ai_recommendation %}
+  <section class="wdx-ai">
+    <div class="wdx-ai-h">AI фокус по вашим ответам</div>
+    <p class="wdx-ai-b">{{ latest_ai_recommendation }}</p>
+  </section>
+  {% endif %}
+
+  <div class="wdx-actions">
+    <a href="/account/wellness-results" class="wdx-btn wdx-btn--soft">← Мои результаты</a>
   </div>
 </div>
 
-<script>
-(function(){
-  var modal = document.getElementById('wdMemoModal');
-  var title = document.getElementById('wdMemoModalTitle');
-  var body = document.getElementById('wdMemoModalBody');
-  function openMemo(tt, txt){
-    if(!modal || !title || !body) return;
-    title.textContent = tt || 'Пояснение';
-    body.textContent = txt || '';
-    modal.classList.add('is-open');
-    modal.setAttribute('aria-hidden','false');
-  }
-  function closeMemo(){
-    if(!modal) return;
-    modal.classList.remove('is-open');
-    modal.setAttribute('aria-hidden','true');
-  }
-  document.addEventListener('click', function(e){
-    var btn = e.target.closest('[data-memo-title]');
-    if(btn){
-      openMemo(btn.getAttribute('data-memo-title'), btn.getAttribute('data-memo-text'));
-      return;
-    }
-    if(e.target.matches('[data-memo-close]') || e.target === modal){
-      closeMemo();
-    }
-  });
-})();
-</script>
 {% endblock %}
