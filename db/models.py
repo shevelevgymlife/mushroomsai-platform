@@ -499,7 +499,7 @@ community_comments = sqlalchemy.Table(
     sqlalchemy.Column("post_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("community_posts.id"), nullable=False),
     sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=True),
     sqlalchemy.Column(
-        "reply_to_comment_id",
+        "reply_to_id",
         sqlalchemy.Integer,
         sqlalchemy.ForeignKey("community_comments.id", ondelete="SET NULL"),
         nullable=True,
