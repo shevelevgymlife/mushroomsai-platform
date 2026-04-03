@@ -8,6 +8,7 @@ import json
 import logging
 import re
 from typing import Any
+from urllib.parse import parse_qs
 
 from db.database import database
 from db.models import payment_webhook_dedup, users
@@ -48,6 +49,39 @@ def _parse_data_field(raw: Any) -> dict[str, Any]:
 
 
 _SUB_INVOICE_RE = re.compile(r"^sub-(\d+)-([a-z0-9_]+)-", re.IGNORECASE)
+
+
+def _parse_cloudpayments_webhook_body(body: bytes) -> dict[str, Any]:
+    """
+    Pay-уведомление приходит либо JSON, либо (часто) application/x-www-form-urlencoded с полями TransactionId, Amount, Status…
+    См. интеграции CloudPayments: подпись считается по сырому телу, парсим то же тело.
+    """
+    if not body:
+        return {}
+    raw = body[3:] if body.startswith(b"\xef\xbb\xbf") else body
+    text: str | None = None
+    for enc in ("utf-8", "cp1251"):
+        try:
+            text = raw.decode(enc).strip()
+            break
+        except UnicodeDecodeError:
+            continue
+    if not text:
+        return {}
+    if text.startswith("{"):
+        try:
+            obj = json.loads(text)
+            return obj if isinstance(obj, dict) else {}
+        except Exception:
+            logger.warning("cloudpayments webhook: JSON parse failed, len=%s", len(text))
+            return {}
+    pairs = parse_qs(text, keep_blank_values=True, strict_parsing=False)
+    flat: dict[str, Any] = {}
+    for k, vals in pairs.items():
+        if not vals:
+            continue
+        flat[str(k)] = vals[0] if len(vals) == 1 else vals
+    return flat
 
 
 def _flatten_cloudpayments_payload(payload: dict[str, Any]) -> dict[str, Any]:
@@ -126,9 +160,9 @@ async def handle_cloudpayments_notification(
     if not verify_content_hmac(body, content_hmac, api_secret):
         return False, "bad_hmac"
 
-    try:
-        payload = json.loads(body.decode("utf-8"))
-    except Exception:
+    payload = _parse_cloudpayments_webhook_body(body)
+    if not payload:
+        logger.warning("cloudpayments webhook: empty or unparseable body len=%s", len(body or b""))
         return False, "bad_json"
 
     flat = _flatten_cloudpayments_payload(payload)

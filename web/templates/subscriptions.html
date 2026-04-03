@@ -47,7 +47,7 @@
     {% endif %}
     {% if request.query_params.get('paid') %}
     <div class="max-w-3xl mx-auto mb-6 p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 text-sm leading-relaxed text-center">
-      Оплата принята. Подписка активируется в течение минуты после подтверждения банка. Обновите страницу, если статус не обновился.
+      Окно оплаты закрыто успешно. Подписка на сервере включается только после <strong>Pay-уведомления</strong> от CloudPayments на ваш сайт (URL вебхука в личном кабинете, метод <strong>POST</strong>). Обычно это несколько секунд — обновите страницу. Если тариф не сменился, проверьте логи сервера и доставку уведомлений (подпись Content-HMAC и тело: JSON или форма).
     </div>
     {% endif %}
     {% if request.query_params.get('connected') %}

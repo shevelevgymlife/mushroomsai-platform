@@ -96,13 +96,24 @@ async def render_webhook(request: Request):
 
 
 @router.post("/cloudpayments")
-async def cloudpayments_webhook(
-    request: Request,
-    content_hmac: str | None = Header(None, alias="Content-HMAC"),
-):
+async def cloudpayments_webhook(request: Request):
     """Уведомления CloudPayments: проверка HMAC, активация подписки."""
     body = await request.body()
+    h = request.headers
+    content_hmac = (
+        h.get("Content-HMAC")
+        or h.get("content-hmac")
+        or h.get("X-Content-Hmac")
+        or h.get("x-content-hmac")
+    )
     ok, msg = await handle_cloudpayments_notification(body, content_hmac)
+    if ok and msg in ("ok", "ok_gift", "duplicate"):
+        logger.info(
+            "cloudpayments webhook ok: %s body_len=%s ct=%s",
+            msg,
+            len(body or b""),
+            (request.headers.get("content-type") or "").split(";")[0].strip() or "(none)",
+        )
     if not ok:
         logger.warning("cloudpayments webhook rejected: %s", msg)
         if msg in (
