@@ -4392,7 +4392,7 @@ function openCommunityPostPage(event, postId){
 }
 function openCommunityPostDirect(postId){
   const back=encodeURIComponent(location.href);
-  location.href='/community/post/'+postId+'?back='+back+'#comments';
+  location.href='/community/post/'+postId+'/comments?back='+back;
 }
 function closeFeedPostPreview(){
   const modal=document.getElementById('feedPostPreviewModal');

@@ -1678,7 +1678,6 @@ async def add_comment(
             post_id=post_id,
             user_id=uid,
             content=content.strip(),
-            parent_comment_id=reply_parent_id,
             seen_by_post_owner=c_seen,
         )
         .returning(community_comments.c.id)
@@ -1792,7 +1791,6 @@ async def get_comments(request: Request, post_id: int):
         .where(community_comments.c.post_id == post_id)
         .order_by(community_comments.c.created_at.asc())
     )
-    by_id = {int(r["id"]): r for r in rows}
     result = []
     for c in rows:
         author = None
@@ -1805,24 +1803,9 @@ async def get_comments(request: Request, post_id: int):
                 .where(community_posts.c.user_id == author["id"])
             ) or 0
         rep = _reputation(rep_count)
-        parent_id = c.get("parent_comment_id")
-        reply_to_name = None
-        reply_to_snippet = None
-        if parent_id:
-            pr = by_id.get(int(parent_id))
-            if pr:
-                pa = None
-                if pr["user_id"]:
-                    pa = await database.fetch_one(users.select().where(users.c.id == pr["user_id"]))
-                reply_to_name = (pa["name"] if pa and pa["name"] else "Участник")
-                pc = (pr.get("content") or "").strip()
-                reply_to_snippet = (pc[:120] + "…") if len(pc) > 120 else pc
         result.append({
             "id": c["id"],
             "content": c["content"],
-            "parent_comment_id": int(parent_id) if parent_id else None,
-            "reply_to_name": reply_to_name,
-            "reply_to_snippet": reply_to_snippet,
             "created_at": c["created_at"].strftime("%d.%m.%Y %H:%M") if c["created_at"] else "",
             "author_name": (author["name"] if author and author["name"] else "Участник"),
             "author_avatar": author["avatar"] if author else None,
