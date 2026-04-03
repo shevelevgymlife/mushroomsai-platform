@@ -1,14 +1,26 @@
 {% extends "base.html" %}
 {% block title %}Ликвидность / биржа — Admin{% endblock %}
 {% block content %}
+{% set tn = exchange_token_name|default('Shevelev') %}
 <div class="pt-24 pb-16 neo-app-surface">
   <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
     {% include "components/admin_nav.html" %}
 
     <h1 class="text-3xl font-light text-text mb-2">Ликвидность / биржа</h1>
+
+    <div class="rounded-2xl border border-emerald-500/35 bg-emerald-500/[0.07] p-5 mb-6 max-w-3xl">
+      <h2 class="text-base font-semibold text-emerald-100 mb-2">Где наполнять пул</h2>
+      <p class="text-sm text-emerald-50/90 leading-relaxed mb-2">
+        <strong>Прямо на этой странице</strong>, блок <strong>«Добавить ликвидность»</strong> ниже: поле «+ {{ tn }}» увеличивает резерв токена в пуле, «+ бонусы» — резерв бонусов (рублёвый учёт). Кнопка «Отправить» вызывает <code class="text-[11px] opacity-90">POST /admin/add-liquidity</code>.
+      </p>
+      <p class="text-xs text-emerald-100/75 leading-relaxed">
+        Дополнительно часть выручки от <strong>оплаченных подписок</strong> автоматически увеличивает <code class="text-[11px]">bonus_reserve</code> (настраивается через <code class="text-[11px]">internal_exchange_income_fraction</code> в site_settings). Блок <strong>«Автодолив при росте пользователей»</strong> при росте числа аккаунтов может добавлять и токен, и бонусы по вашим числам.
+      </p>
+    </div>
+
     <p class="text-sm text-muted mb-6 max-w-3xl leading-relaxed">
-      Пул внутренней биржи (NFI ↔ бонусы). Курс: <code class="text-xs">bonus_reserve / token_reserve</code>.
-      Coverage = token_reserve / сумма бонусов по всем пользователям. При росте числа аккаунтов можно автоматически докидывать ликвидность (ниже).
+      Пул внутренней биржи (<strong>{{ tn }}</strong> ↔ бонусы). Курс: <code class="text-xs">bonus_reserve / token_reserve</code>.
+      Coverage = token_reserve / сумма бонусов по всем пользователям.
     </p>
 
     <div class="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.06] p-5 mb-6">
@@ -22,7 +34,7 @@
           <div class="text-2xl font-bold text-text font-mono">{{ '%.4f'|format(snap.bonus_reserve) }}</div>
         </div>
         <div>
-          <div class="text-xs text-muted uppercase tracking-wider">Текущая цена (бонус/NFI)</div>
+          <div class="text-xs text-muted uppercase tracking-wider">Текущая цена (бонус / {{ tn }})</div>
           <div class="text-2xl font-bold text-gold font-mono">{{ '%.8f'|format(snap.price) }}</div>
         </div>
         <div>
@@ -43,11 +55,11 @@
     </div>
 
     <div class="rounded-2xl border border-gold/25 bg-gold/[0.04] p-5 mb-6">
-      <h2 class="text-lg font-semibold text-text mb-3">Добавить ликвидность</h2>
-      <p class="text-xs text-muted mb-4">POST <code class="text-[11px]">/admin/add-liquidity</code> — увеличивает резервы пула (маркет-мейкер).</p>
+      <h2 class="text-lg font-semibold text-text mb-3">Добавить ликвидность (наполнение пула)</h2>
+      <p class="text-xs text-muted mb-4">POST <code class="text-[11px]">/admin/add-liquidity</code> — увеличивает резервы пула (маркет-мейкер). Это основное место ручного пополнения.</p>
       <div class="flex flex-wrap gap-3 items-end">
         <div>
-          <label class="block text-xs text-muted mb-1">+ NFI</label>
+          <label class="block text-xs text-muted mb-1">+ {{ tn }} (token_reserve)</label>
           <input type="text" id="liqTok" class="w-40 px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono" value="0" inputmode="decimal" />
         </div>
         <div>
@@ -68,7 +80,7 @@
       </label>
       <div class="flex flex-wrap gap-3">
         <div>
-          <label class="block text-xs text-muted mb-1">NFI за шаг</label>
+          <label class="block text-xs text-muted mb-1">{{ tn }} за шаг</label>
           <input type="text" id="agTok" class="w-36 px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono" value="{{ growth_token }}" />
         </div>
         <div>
@@ -81,13 +93,13 @@
     </div>
 
     <div class="rounded-2xl border border-amber-500/30 bg-amber-500/[0.06] p-5 mb-8">
-      <h2 class="text-lg font-semibold text-text mb-2">Заявки на вывод NFI (Decimal)</h2>
-      <p class="text-xs text-muted mb-4 leading-relaxed">Пользователь сохранил адрес в Decimal Wallet и создал заявку: NFI уже списаны с биржевого баланса. После отправки в сеть укажите хеш транзакции. При отклонении токены вернутся пользователю.</p>
+      <h2 class="text-lg font-semibold text-text mb-2">Заявки на вывод {{ tn }} (Decimal)</h2>
+      <p class="text-xs text-muted mb-4 leading-relaxed">Пользователь сохранил адрес в Decimal Wallet и создал заявку: {{ tn }} уже списаны с биржевого баланса. После отправки в сеть укажите хеш транзакции. При отклонении токены вернутся пользователю.</p>
       {% if pending_nfi_withdrawals and pending_nfi_withdrawals|length > 0 %}
       <div class="space-y-4">
         {% for w in pending_nfi_withdrawals %}
         <div class="rounded-xl border border-white/10 bg-bg/80 p-4" data-nfi-wid="{{ w.id }}">
-          <div class="text-sm text-text font-semibold">#{{ w.id }} · user_id {{ w.user_id }} · {{ '%.8f'|format(w.amount_token) }} NFI</div>
+          <div class="text-sm text-text font-semibold">#{{ w.id }} · user_id {{ w.user_id }} · {{ '%.8f'|format(w.amount_token) }} {{ tn }}</div>
           <div class="text-[11px] text-muted mt-1">{{ w.user_name or '—' }} · {{ w.user_email or '—' }}{% if w.tg_id %} · tg {{ w.tg_id }}{% endif %}</div>
           <div class="text-xs font-mono text-gold break-all mt-2 select-all">{{ w.to_address }}</div>
           <div class="text-[11px] text-muted mt-1">{{ w.created_at }}</div>
@@ -105,10 +117,11 @@
       {% endif %}
     </div>
 
-    <p class="text-xs text-muted">Уведомления в Telegram (ops) при coverage &lt; 0.2 — не чаще раза в час; при новой заявке на вывод NFI — отдельное сообщение.</p>
+    <p class="text-xs text-muted">Уведомления в Telegram (ops) при coverage &lt; 0.2 — не чаще раза в час; при новой заявке на вывод {{ tn }} — отдельное сообщение.</p>
   </div>
 </div>
 <script>
+var ADM_EXCH_TN = {{ tn|tojson }};
 document.getElementById('liqSend').onclick = function(){
   var msg = document.getElementById('liqMsg');
   msg.textContent = '';
@@ -118,7 +131,7 @@ document.getElementById('liqSend').onclick = function(){
     .then(function(r){ return r.json().then(function(j){ return { ok:r.ok, j:j }; }); })
     .then(function(x){
       if(!x.ok){ msg.textContent = x.j.message || x.j.error || 'Ошибка'; return; }
-      msg.textContent = 'Ок. Новый пул: NFI '+x.j.token_reserve+' · бонусы '+x.j.bonus_reserve;
+      msg.textContent = 'Ок. Новый пул: '+ADM_EXCH_TN+' '+x.j.token_reserve+' · бонусы '+x.j.bonus_reserve;
       setTimeout(function(){ location.reload(); }, 800);
     }).catch(function(){ msg.textContent = 'Сеть'; });
 };

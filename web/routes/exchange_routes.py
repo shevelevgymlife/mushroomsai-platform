@@ -9,6 +9,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel, Field
 
 from auth.session import get_user_from_request, attach_subscription_effective
+from config import exchange_token_display_name, shevelev_token_address
 from db.database import database
 from db.models import users
 from services.exchange_withdraw_service import (
@@ -64,6 +65,50 @@ async def _require_start_plus(request: Request) -> tuple[dict, int] | None:
     return user, uid
 
 
+def _exchange_token_name() -> str:
+    return exchange_token_display_name()
+
+
+@exchange_page_router.get("/exchange/help", response_class=HTMLResponse)
+async def exchange_help_page(request: Request):
+    """Краткая справка: смысл биржи, зачем, как пользоваться и заработать."""
+    user = await get_user_from_request(request)
+    if not user:
+        return RedirectResponse("/login?next=/exchange/help")
+    leg = await legal_acceptance_redirect(request, user)
+    if leg:
+        return leg
+    uid = _eff_uid(user)
+    plan = await check_subscription(uid)
+    if plan == "free":
+        from urllib.parse import quote
+
+        return RedirectResponse(
+            "/subscriptions?locked=1&next=" + quote("/exchange/help", safe=""),
+            status_code=302,
+        )
+    display_user = user
+    if user.get("primary_user_id"):
+        primary = await database.fetch_one(users.select().where(users.c.id == uid))
+        if primary:
+            display_user = dict(primary)
+            attach_screen_rim_prefs(display_user)
+            await attach_subscription_effective(display_user)
+    visible_block_keys = await compute_visible_blocks(uid, plan)
+    tok = _exchange_token_name()
+    shev = (shevelev_token_address() or "").strip()
+    return templates.TemplateResponse(
+        "exchange_help.html",
+        {
+            "request": request,
+            "user": display_user,
+            "visible_block_keys": visible_block_keys,
+            "exchange_token_name": tok,
+            "shevelev_contract_address": shev,
+        },
+    )
+
+
 @exchange_page_router.get("/exchange", response_class=HTMLResponse)
 async def exchange_page(request: Request):
     user = await get_user_from_request(request)
@@ -93,6 +138,7 @@ async def exchange_page(request: Request):
     bal = await fetch_user_balances(uid)
     chart = await fetch_price_chart_points(72)
     decimal_wallet = await fetch_user_wallet_row(uid)
+    tok = _exchange_token_name()
     return templates.TemplateResponse(
         "exchange.html",
         {
@@ -103,6 +149,7 @@ async def exchange_page(request: Request):
             "exchange_bal_initial": bal,
             "exchange_chart_initial": chart,
             "decimal_wallet": decimal_wallet,
+            "exchange_token_name": tok,
         },
     )
 
@@ -136,7 +183,7 @@ async def api_exchange_buy(request: Request, body: AmountBody):
     await notify_user_exchange_trade(
         uid,
         "buy",
-        f"Куплено ~{res.get('token_out')} NFI за {res.get('bonus_spent')} бонусов.",
+        f"Куплено ~{res.get('token_out')} {_exchange_token_name()} за {res.get('bonus_spent')} бонусов.",
     )
     return JSONResponse({"ok": True, **res})
 
@@ -157,7 +204,7 @@ async def api_exchange_sell(request: Request, body: AmountBody):
     await notify_user_exchange_trade(
         uid,
         "sell",
-        f"Продано {res.get('token_sold')} NFI, получено ~{res.get('bonus_out')} бонусов.",
+        f"Продано {res.get('token_sold')} {_exchange_token_name()}, получено ~{res.get('bonus_out')} бонусов.",
     )
     return JSONResponse({"ok": True, **res})
 
@@ -229,7 +276,10 @@ async def _exchange_withdraw_handler(request: Request) -> JSONResponse:
             raise ValueError("amount")
     except (TypeError, ValueError):
         return JSONResponse(
-            {"error": "bad_body", "message": "Укажите положительный amount (количество NFI)"},
+            {
+                "error": "bad_body",
+                "message": f"Укажите положительный amount (количество {_exchange_token_name()})",
+            },
             status_code=400,
         )
     try:
@@ -250,7 +300,7 @@ async def _exchange_withdraw_handler(request: Request) -> JSONResponse:
     await notify_user_exchange_trade(
         uid,
         "withdraw",
-        f"Заявка #{res.get('request_id')}: вывод {res.get('amount_token')} NFI на {res.get('to_address_masked')}. После отправки в сети Decimal хеш появится в истории.",
+        f"Заявка #{res.get('request_id')}: вывод {res.get('amount_token')} {_exchange_token_name()} на {res.get('to_address_masked')}. После отправки в сети Decimal хеш появится в истории.",
     )
     return JSONResponse({"ok": True, "status": "pending", **res})
 
@@ -262,7 +312,7 @@ async def api_exchange_withdraw(request: Request):
 
 @withdraw_alias_router.post("/api/withdraw")
 async def api_withdraw_alias(request: Request):
-    """Совместимость с POST /api/withdraw: тело { \"amount\": NFI }."""
+    """Совместимость с POST /api/withdraw: тело {\"amount\": токен биржи}."""
     return await _exchange_withdraw_handler(request)
 
 
@@ -314,6 +364,7 @@ def register_admin_exchange_routes(admin_router: APIRouter) -> None:
                 "growth_token": growth_t,
                 "growth_bonus": growth_b,
                 "pending_nfi_withdrawals": pending_nfi,
+                "exchange_token_name": exchange_token_display_name(),
             },
         )
 
@@ -396,7 +447,7 @@ def register_admin_exchange_routes(admin_router: APIRouter) -> None:
             await notify_user_exchange_trade(
                 int(row["user_id"]),
                 "withdraw_done",
-                f"Заявка #{req_id}: NFI отправлены в сети Decimal. Tx: {tx_short or '—'}",
+                f"Заявка #{req_id}: {exchange_token_display_name()} отправлены в сети Decimal. Tx: {tx_short or '—'}",
             )
         return JSONResponse({"ok": True})
 
@@ -428,7 +479,7 @@ def register_admin_exchange_routes(admin_router: APIRouter) -> None:
             await notify_user_exchange_trade(
                 int(row["user_id"]),
                 "withdraw_reject",
-                f"Заявка #{req_id} отклонена, NFI возвращены на баланс биржи. "
+                f"Заявка #{req_id} отклонена, {exchange_token_display_name()} возвращены на баланс биржи. "
                 + ((note or "")[:200] if note else ""),
             )
         return JSONResponse({"ok": True})

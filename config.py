@@ -100,6 +100,8 @@ class Settings(BaseSettings):
     REFERRAL_WITHDRAW_MOSCOW_DAY_TO: int = 5
     REFERRAL_CLIENT_INN: str = "775105884367"
     REFERRAL_CLIENT_NAME_LEGAL: str = "ИП Шевелёв Евгений Алексеевич"
+    # Внутренняя биржа: подпись токена в интерфейсе (бонусы ↔ token_balance). Env EXCHANGE_TOKEN_DISPLAY_NAME.
+    EXCHANGE_TOKEN_DISPLAY_NAME: str = "Shevelev"
 
     model_config = SettingsConfigDict(env_file=_env_file_for_settings(), extra="ignore")
 
@@ -125,6 +127,12 @@ def _shevelev_address_from_file() -> str:
 
 # Публичный адрес контракта ERC-20 SHEVELEV (Decimal Smart Chain). Используется, если не заданы env и файл.
 DEFAULT_SHEVELEV_TOKEN_ADDRESS = "0xb5c1933b1fa015818ac2c53812f67611c48e6b56"
+
+
+def exchange_token_display_name() -> str:
+    """Имя токена на внутренней бирже (по умолчанию Shevelev)."""
+    s = (settings.EXCHANGE_TOKEN_DISPLAY_NAME or "").strip()
+    return s or "Shevelev"
 
 
 def shevelev_token_address() -> str:

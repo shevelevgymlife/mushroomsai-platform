@@ -1,4 +1,4 @@
-"""Вывод NFI на сохранённый адрес Decimal Wallet: заявки, удержание баланса, админ complete/reject."""
+"""Вывод токена биржи (Shevelev) на сохранённый адрес Decimal Wallet: заявки, удержание баланса."""
 from __future__ import annotations
 
 import asyncio
@@ -11,8 +11,13 @@ from typing import Any
 import sqlalchemy as sa
 from sqlalchemy import text
 
+from config import exchange_token_display_name
 from db.database import database, get_engine
 from services.internal_exchange_service import ExchangeError, _d, _q_token
+
+
+def _xtok() -> str:
+    return exchange_token_display_name()
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +84,7 @@ def request_nfi_withdrawal_sync(user_id: int, amount_raw: Decimal) -> dict[str, 
             if amt < min_w:
                 raise ExchangeError(
                     "below_minimum",
-                    f"Минимальная сумма вывода {float(min_w)} NFI",
+                    f"Минимальная сумма вывода {float(min_w)} {_xtok()}",
                 )
             urow = conn.execute(
                 text(
@@ -100,7 +105,7 @@ def request_nfi_withdrawal_sync(user_id: int, amount_raw: Decimal) -> dict[str, 
                 )
             tb = _q_token(_d(urow[1]))
             if tb < amt:
-                raise ExchangeError("insufficient_token", "Недостаточно NFI на балансе")
+                raise ExchangeError("insufficient_token", f"Недостаточно {_xtok()} на балансе")
             new_tb = _q_token(tb - amt)
             conn.execute(
                 text("UPDATE users SET token_balance = :tb WHERE id = :id"),
@@ -293,7 +298,10 @@ async def notify_admin_new_nfi_withdrawal(req: dict) -> None:
         details = json.dumps(req, ensure_ascii=False)
         await notify_status(
             stage="task_done",
-            summary=f"🔔 NFI: заявка на вывод #{req.get('request_id')} · {req.get('amount_token')} NFI",
+            summary=(
+                f"🔔 Биржа: заявка на вывод #{req.get('request_id')} · "
+                f"{req.get('amount_token')} {_xtok()}"
+            ),
             details=details[:3500],
             include_email=False,
         )

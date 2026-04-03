@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Справка: биржа — NEUROFUNGI AI{% endblock %}
+{% block extra_head %}
+<style>
+.exh-wrap{max-width:560px;margin:0 auto}
+.exh-card{border-radius:20px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);padding:18px;margin-bottom:14px}
+.exh-h{font-size:17px;font-weight:700;color:#e8e8e8;margin:0 0 10px}
+.exh-p{font-size:13px;color:#9fb0b8;line-height:1.55;margin:0 0 10px}
+.exh-p:last-child{margin-bottom:0}
+.exh-ul{margin:8px 0 0;padding-left:18px;font-size:13px;color:#c8d4da;line-height:1.5}
+.exh-back{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#3dd4e0;text-decoration:none;margin-bottom:16px}
+.exh-back:hover{text-decoration:underline}
+</style>
+{% endblock %}
+{% block content %}
+<div class="neo-app-surface min-h-screen bg-bg pt-6 pb-28 px-4 sm:px-6 lg:px-8">
+  <div class="exh-wrap">
+    <a href="/exchange" class="exh-back">← К бирже</a>
+    <h1 class="text-2xl font-bold text-text mb-1">Биржа: кратко</h1>
+    <p class="text-sm text-muted mb-5">Токен обмена: <strong class="text-gold">{{ exchange_token_name }}</strong> (внутренний учёт на платформе; вывод — в сеть Decimal на ваш кошелёк).</p>
+
+    <div class="exh-card">
+      <h2 class="exh-h">Зачем это</h2>
+      <p class="exh-p">Биржа связывает <strong>реферальные бонусы</strong> (рубли на балансе в кабинете) и токен <strong>{{ exchange_token_name }}</strong>. Вы можете копить бонусы за приглашения и подписки друзей, обменивать их на {{ exchange_token_name }} по курсу из пула и при желании вывести токен в свой <strong>Decimal Wallet</strong> на блокчейне.</p>
+    </div>
+
+    <div class="exh-card">
+      <h2 class="exh-h">Как устроено</h2>
+      <ul class="exh-ul">
+        <li>Есть <strong>пул ликвидности</strong>: резерв токена {{ exchange_token_name }} и резерв бонусов. <strong>Курс</strong> = бонусы в пуле ÷ токены в пуле (сколько бонусов за 1 {{ exchange_token_name }}).</li>
+        <li><strong>Купить</strong> — списываются бонусы, на баланс начисляется {{ exchange_token_name }}.</li>
+        <li><strong>Продать</strong> — списывается {{ exchange_token_name }}, начисляются бонусы.</li>
+        <li>Комиссия сделки <strong>2%</strong>, за одну операцию нельзя забрать больше <strong>10%</strong> соответствующей стороны пула (защита от «пробоя» ликвидности).</li>
+      </ul>
+    </div>
+
+    <div class="exh-card">
+      <h2 class="exh-h">Как пользоваться</h2>
+      <ol class="exh-ul" style="list-style:decimal">
+        <li>Получайте <strong>бонусы</strong> по реферальной программе (подписки приглашённых и т.д.).</li>
+        <li>На странице <a href="/exchange" class="text-gold underline">«Биржа»</a> введите сумму и нажмите <strong>Купить</strong> (бонусы → {{ exchange_token_name }}) или <strong>Продать</strong> ({{ exchange_token_name }} → бонусы).</li>
+        <li>Для вывода в блокчейн установите <strong>Decimal Wallet</strong> (ссылки на бирже), сохраните <strong>публичный адрес</strong> и создайте заявку на вывод. Платформа обработает перевод; в истории появится хеш транзакции.</li>
+      </ol>
+    </div>
+
+    <div class="exh-card">
+      <h2 class="exh-h">Как заработать и зачем {{ exchange_token_name }}</h2>
+      <p class="exh-p"><strong>Заработок бонусов</strong> — через реферальную программу: делитесь ссылкой, когда люди оформляют подписку, на ваш баланс начисляются бонусы. Их можно тратить в экосистеме или <strong>конвертировать в {{ exchange_token_name }}</strong> на бирже.</p>
+      <p class="exh-p"><strong>Зачем токен</strong> — фиксировать участие в экосистеме, выводить на свой некастодиальный кошелёк в сети Decimal, дальше распоряжаться им по правилам сети (переводы, DeFi и т.д. — на вашу ответственность).</p>
+      {% if shevelev_contract_address %}
+      <p class="exh-p text-[11px] text-muted font-mono break-all">Контракт SHEVELEV в сети Decimal (справочно): {{ shevelev_contract_address }}</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

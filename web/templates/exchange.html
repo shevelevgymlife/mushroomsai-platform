@@ -17,13 +17,28 @@
 .exch-store a{display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border-radius:12px;font-size:12px;font-weight:700;text-decoration:none;border:1px solid rgba(61,212,224,.35);color:#3dd4e0;background:rgba(61,212,224,.08)}
 .exch-store a:hover{border-color:#3dd4e0;background:rgba(61,212,224,.14)}
 .exch-wd-msg{font-size:12px;margin-top:10px;line-height:1.45}
+.exch-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:4px}
+.exch-help{
+  flex-shrink:0;width:40px;height:40px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;font-weight:800;color:#0a0c12;
+  background:linear-gradient(135deg,#3dd4e0,#c8a84b);
+  text-decoration:none;border:none;box-shadow:0 4px 16px rgba(61,212,224,.2);
+}
+.exch-help:hover{filter:brightness(1.08)}
 </style>
 {% endblock %}
 {% block content %}
 <div class="neo-app-surface min-h-screen bg-bg exch-page pt-6 pb-28 px-4 sm:px-6 lg:px-8">
   <div class="max-w-lg mx-auto">
-    <h1 class="text-2xl font-bold text-text mb-1">Биржа</h1>
-    <p class="text-sm text-muted mb-5 leading-relaxed">Внутренний обмен: <strong>бонусы</strong> ↔ токен <strong>NFI</strong>. Курс из пула ликвидности. Комиссия 2%, максимум 10% пула за сделку.</p>
+    <div class="exch-head">
+      <div style="min-width:0">
+        <h1 class="text-2xl font-bold text-text mb-1">Биржа</h1>
+        <p class="text-sm text-muted leading-relaxed">Внутренний обмен: <strong>бонусы</strong> ↔ <strong>{{ exchange_token_name }}</strong>. Курс из пула. Комиссия 2%, макс. 10% пула за сделку.</p>
+      </div>
+      <a href="/exchange/help" class="exch-help" title="Как работает биржа, зачем и как заработать" aria-label="Справка по бирже">?</a>
+    </div>
+    <p class="text-xs text-muted mb-5"><a href="/exchange/help" class="text-gold/90 underline">Справка: смысл биржи и как пользоваться</a></p>
 
     <div class="grid grid-cols-2 gap-3 mb-4">
       <div class="card-x">
@@ -31,15 +46,15 @@
         <div class="big-num" id="exchBalBonus">{{ '%.2f'|format(exchange_bal_initial.bonus) }}</div>
       </div>
       <div class="card-x">
-        <div class="lbl">Токен NFI</div>
+        <div class="lbl">Токен {{ exchange_token_name }}</div>
         <div class="big-num" id="exchBalTok">{{ '%.8f'|format(exchange_bal_initial.token) }}</div>
       </div>
     </div>
 
     <div class="card-x mb-4">
-      <div class="lbl">Курс (бонус за 1 NFI)</div>
+      <div class="lbl">Курс (бонус за 1 {{ exchange_token_name }})</div>
       <div class="big-num text-gold" id="exchPrice">{{ '%.6f'|format(exchange_pool_initial.price) }}</div>
-      <div class="text-xs text-muted mt-2">Пул: <span id="exchPoolT">{{ '%.2f'|format(exchange_pool_initial.token_reserve) }}</span> NFI · <span id="exchPoolB">{{ '%.2f'|format(exchange_pool_initial.bonus_reserve) }}</span> бонусов</div>
+      <div class="text-xs text-muted mt-2">Пул: <span id="exchPoolT">{{ '%.2f'|format(exchange_pool_initial.token_reserve) }}</span> {{ exchange_token_name }} · <span id="exchPoolB">{{ '%.2f'|format(exchange_pool_initial.bonus_reserve) }}</span> бонусов</div>
     </div>
 
     <div class="card-x mb-4">
@@ -55,8 +70,8 @@
       <input type="text" inputmode="decimal" class="exch-inp" id="exchAmt" placeholder="0" autocomplete="off" />
       <div class="exch-est" id="exchEst"></div>
       <div class="exch-warn" id="exchErr"></div>
-      <button type="button" class="exch-btn exch-btn-buy" id="exchBuyBtn">Купить NFI за бонусы</button>
-      <button type="button" class="exch-btn exch-btn-sell" id="exchSellBtn">Продать NFI за бонусы</button>
+      <button type="button" class="exch-btn exch-btn-buy" id="exchBuyBtn">Купить {{ exchange_token_name }} за бонусы</button>
+      <button type="button" class="exch-btn exch-btn-sell" id="exchSellBtn">Продать {{ exchange_token_name }} за бонусы</button>
     </div>
 
     <div class="card-x mb-4">
@@ -70,8 +85,8 @@
     </div>
 
     <div class="card-x mb-4">
-      <div class="lbl mb-2">Ваш адрес для вывода NFI</div>
-      <p class="text-xs text-muted leading-relaxed mb-2">Сохранённый адрес — единственный, на который мы отправим NFI после обработки заявки. Сменить можно в любой момент до вывода.</p>
+      <div class="lbl mb-2">Ваш адрес для вывода {{ exchange_token_name }}</div>
+      <p class="text-xs text-muted leading-relaxed mb-2">Сохранённый адрес — единственный, на который мы отправим {{ exchange_token_name }} после обработки заявки. Сменить можно в любой момент до вывода.</p>
       <p class="text-sm text-gold mb-2" id="exchSavedAddr">{% if decimal_wallet.saved %}Сохранён: {{ decimal_wallet.masked }}{% else %}Адрес ещё не сохранён{% endif %}</p>
       <input type="text" class="exch-inp font-mono text-sm" id="exchWalletInp" placeholder="0x… (42 символа)" autocomplete="off" autocapitalize="off" spellcheck="false" />
       <button type="button" class="exch-btn" style="background:rgba(61,212,224,.15);color:#bfeff3;border:1px solid rgba(61,212,224,.35)" id="exchSaveWalletBtn">Сохранить адрес</button>
@@ -79,9 +94,9 @@
     </div>
 
     <div class="card-x mb-4">
-      <div class="lbl mb-2">Вывод NFI на ваш Decimal Wallet</div>
-      <p class="text-xs text-muted leading-relaxed mb-2">Укажите сумму не больше баланса NFI. При создании заявки токены <strong>резервируются</strong> (списываются с биржевого баланса). После отправки в блокчейн в истории появится хеш транзакции. Если заявку отклонят — NFI вернутся на баланс.</p>
-      <input type="text" inputmode="decimal" class="exch-inp" id="exchWdAmt" placeholder="Сколько NFI вывести" autocomplete="off" />
+      <div class="lbl mb-2">Вывод {{ exchange_token_name }} на Decimal Wallet</div>
+      <p class="text-xs text-muted leading-relaxed mb-2">Укажите сумму не больше баланса. При создании заявки токены <strong>резервируются</strong> (списываются с биржевого баланса). После отправки в блокчейн в истории появится хеш транзакции. Если заявку отклонят — {{ exchange_token_name }} вернутся на баланс.</p>
+      <input type="text" inputmode="decimal" class="exch-inp" id="exchWdAmt" placeholder="Сколько {{ exchange_token_name }} вывести" autocomplete="off" />
       <button type="button" class="exch-btn" style="background:rgba(255,255,255,.06);color:#e8e8e8;border:1px solid rgba(255,255,255,.12)" id="exchWithdrawBtn">Создать заявку на вывод</button>
       <div class="exch-wd-msg" id="exchWdStatus"></div>
     </div>
@@ -107,6 +122,7 @@
 </div>
 <script>
 (function(){
+  var EXCH_TOK = {{ exchange_token_name|tojson }};
   var pool = {{ exchange_pool_initial|tojson }};
   var FEE = 0.98, MAXP = 0.1;
   function num(x){ var n = parseFloat(String(x).replace(',','.')); return isFinite(n) ? n : 0; }
@@ -139,7 +155,7 @@
       if(d.error) return;
       pool = d;
       document.getElementById('exchPrice').textContent = (d.price||0).toFixed(6);
-      document.getElementById('exchPoolT').textContent = fmt2(d.token_reserve||0);
+      document.getElementById('exchPoolT').textContent = fmt2(d.token_reserve||0) + ' ' + EXCH_TOK;
       document.getElementById('exchPoolB').textContent = fmt2(d.bonus_reserve||0);
       recalc();
     }).catch(function(){});
@@ -154,8 +170,8 @@
     var buyTok = (raw/price)*FEE;
     var sellBon = (raw*price)*FEE;
     var lines = [];
-    lines.push('Купить: при списании '+fmt2(raw)+' бонусов вы получите ~'+fmt8(buyTok)+' NFI'+(buyTok>tr*MAXP?' — превышает лимит 10% пула':'')+'.');
-    lines.push('Продать: при продаже '+fmt8(raw)+' NFI вы получите ~'+fmt2(sellBon)+' бонусов'+(sellBon>br*MAXP?' — превышает лимит 10% пула':'')+'.');
+    lines.push('Купить: при списании '+fmt2(raw)+' бонусов вы получите ~'+fmt8(buyTok)+' '+EXCH_TOK+(buyTok>tr*MAXP?' — превышает лимит 10% пула':'')+'.');
+    lines.push('Продать: при продаже '+fmt8(raw)+' '+EXCH_TOK+' вы получите ~'+fmt2(sellBon)+' бонусов'+(sellBon>br*MAXP?' — превышает лимит 10% пула':'')+'.');
     est.innerHTML = lines.join('<br/>');
   }
   document.getElementById('exchAmt').addEventListener('input', recalc);
@@ -170,7 +186,7 @@
     if(!rows.length){ h.textContent='Пока пусто.'; return; }
     h.innerHTML = rows.slice(0,20).map(function(r){
       var t = (r.created_at||'').replace('T',' ').slice(0,19);
-      return '<div class="border-b border-white/5 pb-2">'+(r.type==='buy'?'Купля':'Продажа')+' · '+t+' · бонус '+fmt2(r.amount_bonus)+' · NFI '+fmt8(r.amount_token)+' · курс '+r.price+'</div>';
+      return '<div class="border-b border-white/5 pb-2">'+(r.type==='buy'?'Купля':'Продажа')+' · '+t+' · бонус '+fmt2(r.amount_bonus)+' · '+EXCH_TOK+' '+fmt8(r.amount_token)+' · курс '+r.price+'</div>';
     }).join('');
   }
   fetch('/api/exchange/history',{credentials:'same-origin'}).then(function(r){ return r.json(); }).then(function(d){
@@ -191,7 +207,7 @@
   document.getElementById('exchSellBtn').onclick = function(){
     setErr('');
     var a = num(document.getElementById('exchAmt').value);
-    if(a<=0){ setErr('Укажите количество NFI.'); return; }
+    if(a<=0){ setErr('Укажите количество '+EXCH_TOK+'.'); return; }
     fetch('/api/exchange/sell',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:a})})
       .then(function(r){ return r.json().then(function(j){ return {r:r,j:j}; }); })
       .then(function(x){
@@ -208,7 +224,7 @@
       var st = w.status==='pending'?'ожидает':(w.status==='completed'?'выполнено':'отклонено');
       var tx = w.tx_hash ? (' · tx '+String(w.tx_hash).slice(0,14)+'…') : '';
       var note = w.admin_note ? (' · '+String(w.admin_note).slice(0,80)) : '';
-      return '<div class="border-b border-white/5 pb-2">#'+w.id+' · '+fmt8(w.amount_token)+' NFI → '+w.to_masked+' · '+st+' · '+t+tx+note+'</div>';
+      return '<div class="border-b border-white/5 pb-2">#'+w.id+' · '+fmt8(w.amount_token)+' '+EXCH_TOK+' → '+w.to_masked+' · '+st+' · '+t+tx+note+'</div>';
     }).join('');
   }
   fetch('/api/exchange/withdrawals',{credentials:'same-origin'}).then(function(r){ return r.json(); }).then(function(d){
@@ -239,12 +255,12 @@
     st.textContent='';
     st.className='exch-wd-msg';
     var a = num(document.getElementById('exchWdAmt').value);
-    if(a<=0){ st.textContent='Укажите сумму NFI.'; st.className='exch-wd-msg text-red-300'; return; }
+    if(a<=0){ st.textContent='Укажите сумму '+EXCH_TOK+'.'; st.className='exch-wd-msg text-red-300'; return; }
     fetch('/api/exchange/withdraw',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:a})})
       .then(function(r){ return r.json().then(function(j){ return {r:r,j:j}; }); })
       .then(function(x){
         if(!x.r.ok){ st.textContent=x.j.message||x.j.error||'Ошибка'; st.className='exch-wd-msg text-red-300'; return; }
-        st.textContent='Заявка #'+x.j.request_id+' создана. NFI зарезервированы. Ожидайте перевод в сеть Decimal.';
+        st.textContent='Заявка #'+x.j.request_id+' создана. '+EXCH_TOK+' зарезервированы. Ожидайте перевод в сеть Decimal.';
         st.className='exch-wd-msg text-emerald-300';
         setTimeout(function(){ location.reload(); }, 600);
       }).catch(function(){ st.textContent='Ошибка сети'; st.className='exch-wd-msg text-red-300'; });
