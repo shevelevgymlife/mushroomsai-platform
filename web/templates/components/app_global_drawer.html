@@ -83,7 +83,7 @@
     <a href="/account/wellness-personal-plan" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('file') }}</span><span class="lbl">Памятка по грибам</span></a>
     {% endif %}
     {% endif %}
-    {% if drawer_on('seller_marketplace') == '1' and (user.get('marketplace_seller')) %}
+    {% if 'seller_marketplace' in vbk and drawer_on('seller_marketplace') == '1' and (user.get('marketplace_seller')) %}
     <a href="/seller/shop" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('shop') }}</span><span class="lbl">Магазин-кабинет</span></a>
     {% endif %}
     {% if not is_locked_free and drawer_on('wallet') == '1' %}
