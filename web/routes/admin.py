@@ -1138,7 +1138,9 @@ async def change_subscription(request: Request, user_id: int, plan: str = Form(.
     try:
         from services.closed_telegram_access import sync_user_telegram_closed_chats
 
-        await sync_user_telegram_closed_chats(int(user_id))
+        await sync_user_telegram_closed_chats(
+            int(user_id), notify_reentry=(str(plan).lower() != "free")
+        )
     except Exception:
         logger.debug("sync closed tg after admin subscription uid=%s", user_id, exc_info=True)
     return JSONResponse({"ok": True, "plan": plan})
@@ -1224,7 +1226,9 @@ async def patch_user_plan(request: Request, user_id: int):
     try:
         from services.closed_telegram_access import sync_user_telegram_closed_chats
 
-        await sync_user_telegram_closed_chats(int(user_id))
+        await sync_user_telegram_closed_chats(
+            int(user_id), notify_reentry=(str(plan).lower() != "free")
+        )
     except Exception:
         logger.debug("sync closed tg after admin patch plan uid=%s", user_id, exc_info=True)
     return JSONResponse({"ok": True, "plan": plan})

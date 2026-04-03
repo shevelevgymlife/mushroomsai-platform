@@ -383,7 +383,9 @@ async def activate_subscription(
     try:
         from services.closed_telegram_access import sync_user_telegram_closed_chats
 
-        await sync_user_telegram_closed_chats(int(user_id))
+        await sync_user_telegram_closed_chats(
+            int(user_id), notify_reentry=(str(plan).lower() != "free")
+        )
     except Exception:
         logger.debug("sync closed tg after activate uid=%s", user_id, exc_info=True)
     return True
@@ -599,7 +601,7 @@ async def claim_start_trial(user_id: int) -> dict:
     try:
         from services.closed_telegram_access import sync_user_telegram_closed_chats
 
-        await sync_user_telegram_closed_chats(int(user_id))
+        await sync_user_telegram_closed_chats(int(user_id), notify_reentry=True)
     except Exception:
         pass
     return {"ok": True, "until": until.isoformat() + "Z"}

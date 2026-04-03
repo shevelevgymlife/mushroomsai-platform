@@ -4,6 +4,7 @@
 """
 from __future__ import annotations
 
+import html as html_module
 import json
 import logging
 from typing import Any
@@ -193,6 +194,47 @@ async def attach_closed_telegram_to_user(u: dict) -> None:
         logger.debug("attach_closed_telegram_to_user failed uid=%s", uid, exc_info=True)
 
 
+_REENTRY_LABELS = {
+    "channel": "Закрытый канал (библиотека)",
+    "group": "Закрытая группа",
+    "consult": "Закрытый чат консультаций",
+}
+
+
+async def _send_closed_chats_reentry_dm(tg_user_id: int, items: list[tuple[str, str]]) -> None:
+    """Личка: сняли бан — ссылки для повторного входа."""
+    from config import settings
+
+    token = (getattr(settings, "TELEGRAM_TOKEN", None) or "").strip()
+    if not token or not items:
+        return
+    lines: list[str] = []
+    for key, url in items:
+        label = _REENTRY_LABELS.get(key, key)
+        u = (url or "").strip()
+        if not u:
+            continue
+        safe_href = html_module.escape(u, quote=True)
+        safe_lbl = html_module.escape(label)
+        lines.append(f"• {safe_lbl} — <a href=\"{safe_href}\">войти по ссылке</a>")
+    if not lines:
+        return
+    body = (
+        "✅ <b>Ограничения сняты</b>\n\n"
+        "По вашей подписке бот снял блокировку в закрытых чатах. "
+        "Зайдите <b>с этого же аккаунта Telegram</b> по ссылке:\n\n"
+        + "\n".join(lines)
+        + "\n\nЕсли откроется заявка на вступление — бот может одобрить её автоматически."
+    )
+    try:
+        from telegram import Bot
+
+        bot = Bot(token=token)
+        await bot.send_message(chat_id=int(tg_user_id), text=body, parse_mode="HTML", disable_web_page_preview=True)
+    except Exception as e:
+        logger.info("closed chats reentry DM failed tg_id=%s: %s", tg_user_id, e)
+
+
 def _tg_id_for_user_row(row: dict | None) -> int | None:
     if not row:
         return None
@@ -206,10 +248,13 @@ def _tg_id_for_user_row(row: dict | None) -> int | None:
     return None
 
 
-async def sync_user_telegram_closed_chats(user_id: int) -> None:
+async def sync_user_telegram_closed_chats(user_id: int, *, notify_reentry: bool = False) -> None:
     """
     Выдать/забрать доступ: ban при отсутствии права, unban при появлении (супергруппа/канал).
     Нужны chat_id в настройках и права бота (бан участников / одобрение заявок).
+
+    notify_reentry: после успешного unban отправить в личку ссылки для входа
+    (включать при активации/продлении подписки, не при истечении).
     """
     from config import settings
 
@@ -256,6 +301,8 @@ async def sync_user_telegram_closed_chats(user_id: int) -> None:
     except Exception:
         return
 
+    reentry_links: list[tuple[str, str]] = []
+
     for key in ("channel", "group", "consult"):
         chat_id = _parse_chat_id(cfg.get(f"{key}_chat_id"))
         if chat_id is None:
@@ -269,9 +316,12 @@ async def sync_user_telegram_closed_chats(user_id: int) -> None:
                 ca.get(key)
                 and (cfg.get(f"{key}_invite_url") or "").strip()
             )
+        invite = (cfg.get(f"{key}_invite_url") or "").strip()
         try:
             if should_member:
                 await bot.unban_chat_member(chat_id, tg_user_id, only_if_banned=True)
+                if notify_reentry and invite:
+                    reentry_links.append((key, invite))
             else:
                 await bot.ban_chat_member(chat_id, tg_user_id)
         except Exception as e:
@@ -283,6 +333,9 @@ async def sync_user_telegram_closed_chats(user_id: int) -> None:
                 should_member,
                 e,
             )
+
+    if notify_reentry and reentry_links and tg_user_id:
+        await _send_closed_chats_reentry_dm(int(tg_user_id), reentry_links)
 
 
 async def approve_chat_join_request_if_entitled(chat_id: int, from_user_id: int) -> bool:
