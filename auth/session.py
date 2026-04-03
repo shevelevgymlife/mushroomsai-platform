@@ -13,7 +13,11 @@ from services.payment_plans_catalog import (
     get_effective_plans,
     plan_drawer_lines,
 )
-from services.subscription_service import check_subscription, paid_subscription_for_referral_program
+from services.subscription_service import (
+    check_subscription,
+    paid_subscription_for_referral_program,
+    user_ineligible_for_start_trial_offer,
+)
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
@@ -67,7 +71,7 @@ async def get_current_user(token: str) -> Optional[dict]:
 
 
 async def attach_subscription_effective(u: dict) -> None:
-    """effective_subscription_plan — для шаблонов и paywall; can_claim_start_trial — акция 3 дня."""
+    """effective_subscription_plan — для шаблонов и paywall; can_claim_start_trial — акция 3 дня (один раз навсегда)."""
     uid = u.get("id")
     if uid is None:
         return
@@ -99,7 +103,6 @@ async def attach_subscription_effective(u: dict) -> None:
     now = datetime.utcnow()
     tu = row.get("start_trial_until")
     u["start_trial_active"] = bool(tu and tu > now)
-    claimed = row.get("start_trial_claimed_at")
     sp = (row.get("subscription_plan") or "free").lower()
     admin_granted = bool(row.get("subscription_admin_granted"))
     sub_end = row.get("subscription_end")
@@ -109,7 +112,11 @@ async def attach_subscription_effective(u: dict) -> None:
         or (sub_end and sub_end > now)
         or (admin_granted and sub_end is None)
     )
-    u["can_claim_start_trial"] = role not in ("admin", "moderator") and not claimed and not paid_active
+    try:
+        trial_offer_used = await user_ineligible_for_start_trial_offer(int(uid))
+    except Exception:
+        trial_offer_used = True
+    u["can_claim_start_trial"] = role not in ("admin", "moderator") and not trial_offer_used
 
     trial_active = bool(tu and tu > now and not paid_active)
 

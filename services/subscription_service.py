@@ -3,6 +3,8 @@ import logging
 import time
 from datetime import datetime, timedelta, date
 
+import sqlalchemy as sa
+
 from config import settings
 
 logger = logging.getLogger(__name__)
@@ -19,6 +21,45 @@ from services.payment_plans_catalog import (
 PLANS = DEFAULT_PLANS
 
 START_TRIAL_DAYS = 3
+
+
+async def user_ineligible_for_start_trial_offer(user_id: int) -> bool:
+    """
+    True — нельзя показывать «Пробовать бесплатно 3 дня» и нельзя вызвать claim_start_trial:
+    уже нажимали (start_trial_claimed_at) или когда-либо была не-free подписка (история в БД).
+    """
+    row = await database.fetch_one(users.select().where(users.c.id == int(user_id)))
+    if not row:
+        return True
+    uid = int(row.get("primary_user_id") or row["id"])
+    if uid != int(user_id):
+        row = await database.fetch_one(users.select().where(users.c.id == uid))
+        if not row:
+            return True
+    if row.get("start_trial_claimed_at"):
+        return True
+    r = await database.fetch_one(
+        sa.text(
+            """
+            SELECT (
+                EXISTS (
+                    SELECT 1 FROM subscriptions
+                    WHERE user_id = :u AND LOWER(TRIM(plan)) <> 'free'
+                )
+                OR EXISTS (
+                    SELECT 1 FROM subscription_events
+                    WHERE subject_user_id = :u
+                      AND LOWER(TRIM(plan)) <> 'free'
+                      AND LOWER(TRIM(kind)) <> 'trial_start'
+                )
+            ) AS blocked
+            """
+        ),
+        {"u": uid},
+    )
+    if not r:
+        return False
+    return bool(r.get("blocked"))
 
 
 async def format_admin_subscription_assigned_message(
@@ -511,13 +552,9 @@ async def claim_start_trial(user_id: int) -> dict:
     role = (row.get("role") or "user").lower()
     if role in ("admin", "moderator"):
         return {"ok": False, "error": "staff"}
-    if row.get("start_trial_claimed_at"):
+    if await user_ineligible_for_start_trial_offer(int(user_id)):
         return {"ok": False, "error": "already_used"}
     now = datetime.utcnow()
-    if row.get("subscription_end") and row["subscription_end"] > now:
-        p = (row.get("subscription_plan") or "free").lower()
-        if p != "free":
-            return {"ok": False, "error": "has_paid"}
     until = now + timedelta(days=START_TRIAL_DAYS)
     await database.execute(
         users.update()
