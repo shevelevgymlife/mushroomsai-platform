@@ -167,8 +167,8 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 .cp-circles-row::-webkit-scrollbar-track{background:transparent}
 .cp-circles-row::-webkit-scrollbar-thumb{background:rgba(61,212,224,.35);border-radius:6px}
 .cp-circle-item,.cp-circle-add-btn{flex-shrink:0;scroll-snap-align:start}
-.cp-circle-item{display:flex;flex-direction:column;align-items:flex-start;gap:5px;text-decoration:none;color:inherit;min-width:96px}
-.cp-circle-avatar{width:96px;height:46px;border-radius:14px;border:1px solid rgba(61,212,224,.55);overflow:hidden;background:linear-gradient(165deg,#10131a,#181f2c);display:flex;align-items:center;justify-content:center}
+.cp-circle-item{display:flex;flex-direction:column;align-items:flex-start;gap:5px;text-decoration:none;color:inherit;min-width:72px}
+.cp-circle-avatar{width:72px;height:40px;border-radius:12px;border:1px solid rgba(61,212,224,.55);overflow:hidden;background:linear-gradient(165deg,#10131a,#181f2c);display:flex;align-items:center;justify-content:center;box-shadow:0 0 18px rgba(61,212,224,.22),0 0 32px rgba(184,95,163,.12),inset 0 0 20px rgba(255,255,255,.04)}
 .cp-circle-avatar img{width:100%;height:100%;object-fit:cover;display:block}
 .cp-circle-name{max-width:98px;font-size:10px;color:#c7d0dd;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25;letter-spacing:.02em}
 .cp-circle-count{font-size:10px;color:#7dd9e5;background:rgba(61,212,224,.12);border:1px solid rgba(61,212,224,.35);padding:1px 7px;border-radius:999px}
@@ -240,8 +240,15 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
 .cp-chaos-toggle input::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#8a90a0;transition:all .2s ease}
 .cp-chaos-toggle input:checked{background:rgba(61,212,224,.35);border-color:rgba(61,212,224,.62)}
 .cp-chaos-toggle input:checked::after{left:16px;background:#d8fbff}
+.ig-feed-shell.profile-posts-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:8px;align-items:start}
+@media(max-width:520px){.ig-feed-shell.profile-posts-grid{gap:5px}}
+.cp-about-crypto-strip{margin-top:10px;width:100%;max-width:100%;padding:10px 12px;border-radius:14px;border:1px solid rgba(61,212,224,.32);background:linear-gradient(165deg,rgba(61,212,224,.1),rgba(10,12,20,.9));box-shadow:0 0 26px rgba(61,212,224,.14),inset 0 1px 0 rgba(255,255,255,.06)}
+.cp-about-crypto-strip__lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(200,220,230,.78);font-weight:600;margin-bottom:8px}
+.cp-crypto-rows--inline{display:flex;flex-direction:column;gap:6px}
+.cp-crypto-rows--inline .cp-crypto-row{font-size:clamp(13px,3.2vw,16px);font-weight:800;color:#eaf6ff;font-variant-numeric:tabular-nums;line-height:1.35}
+.cp-crypto-rows--inline .cp-crypto-val--shev{color:#ff7be0}
 @media(max-width:768px){
-  .ig-feed-shell{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .ig-feed-shell:not(.profile-posts-grid){grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .ig-post:nth-child(6n+1){transform:translateY(0) rotate(-2.2deg)}
   .ig-post:nth-child(6n+2){transform:translateY(0) rotate(2deg)}
   .ig-post:nth-child(6n+3){transform:translateY(0) rotate(1.1deg)}
@@ -304,7 +311,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
               <button type="button" class="nf-vp-carousel__arrow nf-vp-carousel__arrow--prev" aria-label="Назад">‹</button>
               <button type="button" class="nf-vp-carousel__arrow nf-vp-carousel__arrow--next" aria-label="Вперёд">›</button>
               <div class="nf-vp-carousel__viewport">
-                <div id="profileCirclesRow" class="cp-circles-row cp-circles-chaos nf-vp-carousel__track" data-max-circles="{{ max_profile_circles|default(6) }}">
+                <div id="profileCirclesRow" class="cp-circles-row nf-vp-carousel__track" data-max-circles="{{ max_profile_circles|default(6) }}">
               {% for c in circles %}
               <a class="cp-circle-item nf-vp-carousel__slide" href="/community/profile/{{ profile_id }}/circle/{{ c.id }}">
                 <div class="cp-circle-avatar">
@@ -353,6 +360,15 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
               <span class="cp-plan-badge cp-plan-badge--xl">{{ profile_plan_name }}</span>
               {% endif %}
             </div>
+            {% if show_crypto_in_about %}
+            <div class="cp-about-crypto-strip" aria-label="Токены">
+              <div class="cp-about-crypto-strip__lbl">Токены</div>
+              <div class="cp-crypto-rows cp-crypto-rows--inline">
+                <div class="cp-crypto-row" aria-label="DEL"><span class="cp-crypto-val" id="pubDelBal">{{ profile.decimal_del_balance if profile.decimal_del_balance is not none else '—' }}</span></div>
+                <div class="cp-crypto-row" aria-label="SHEVELEV"><span class="cp-crypto-val cp-crypto-val--shev" id="pubShevBal">{{ profile.shevelev_balance_cached if profile.shevelev_balance_cached is not none else '—' }}</span></div>
+              </div>
+            </div>
+            {% endif %}
             {% if not is_own %}
             <div class="cp-hero-actions">
               <button type="button" class="btn-subscribe-hero{% if is_following %} subscribed{% endif %}" id="followBtn" onclick="doFollow()">
@@ -373,26 +389,6 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
               </div>
             </div>
           </div>
-              </div>
-              {% elif slide == 'crypto' %}
-              <div class="cp-hero-slide cp-hero-slide--crypto nf-vp-carousel__slide">
-                <div class="cp-hero-slide-inner cp-hero-slide-inner--crypto">
-                  <div class="cp-crypto-rows">
-                    <div class="cp-crypto-row" aria-label="DEL"><span class="cp-crypto-val" id="pubDelBal">{{ profile.decimal_del_balance if profile.decimal_del_balance is not none else '—' }}</span></div>
-                    <div class="cp-crypto-row" aria-label="SHEVELEV"><span class="cp-crypto-val cp-crypto-val--shev" id="pubShevBal">{{ profile.shevelev_balance_cached if profile.shevelev_balance_cached is not none else '—' }}</span></div>
-                  </div>
-                  <div class="cp-validators-row">
-                    {% for v in profile_cards.validators %}
-                    {% if v.url %}
-                    <a href="{{ v.url }}" target="_blank" rel="noopener noreferrer" class="cp-validator-card" aria-label="{{ v.label }}">
-                    {% else %}
-                    <div class="cp-validator-card" role="img" aria-label="{{ v.label }}">
-                    {% endif %}
-                      <img src="{{ v.image }}" alt="" loading="lazy" width="240" height="110">
-                    {% if v.url %}</a>{% else %}</div>{% endif %}
-                    {% endfor %}
-                  </div>
-                </div>
               </div>
               {% elif slide == 'social' %}
               <div class="cp-hero-slide cp-hero-slide--social nf-vp-carousel__slide">
@@ -420,28 +416,22 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
         </div>
       </div>
 
-      <div class="cp-chaos-wrap">
-        <label class="cp-chaos-toggle" for="cpChaosToggle">
-          <span>Хаос</span>
-          <input id="cpChaosToggle" type="checkbox" checked onchange="setProfileChaos(this.checked)">
-        </label>
-      </div>
-      <link rel="stylesheet" href="/static/css/nf-community-posts.css?v=3" />
+      <link rel="stylesheet" href="/static/css/nf-community-posts.css?v=4" />
       <script src="/static/js/nf-community-star-like.js?v=1"></script>
-      <div class="ig-feed-shell cp-chaos-on" id="profilePostsGrid" style="margin-top:16px">
+      <div class="ig-feed-shell profile-posts-grid" id="profilePostsGrid" style="margin-top:16px">
   {% for item in feed %}
   {% set p = item.post %}
   {% set cimgs = p|post_image_urls %}
-  <div class="ig-post" id="pc-{{ p.id }}" data-pid="{{ p.id }}" data-author="{{ (profile.name or 'Участник')|e }}" data-title="{{ (p.title or '')|e }}" data-content="{{ (p.content or '')|e }}" data-image="{{ (p.image_url or '')|e }}" data-created="{{ (p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '')|e }}" data-likes="{{ p.likes_count or 0 }}" data-comments="{{ p.comments_count or 0 }}" data-saves="{{ p.saves_count or 0 }}" onclick="openCommunityPostPage(event, {{ p.id }})">
-    <div class="ig-post-header">
+  <article class="nf-social-post-card" id="pc-{{ p.id }}" data-pid="{{ p.id }}" data-author="{{ (profile.name or 'Участник')|e }}" data-title="{{ (p.title or '')|e }}" data-content="{{ (p.content or '')|e }}" data-image="{{ (p.image_url or '')|e }}" data-created="{{ (p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '')|e }}" data-likes="{{ p.likes_count or 0 }}" data-comments="{{ p.comments_count or 0 }}" data-saves="{{ p.saves_count or 0 }}" onclick="openCommunityPostPage(event, {{ p.id }})" style="cursor:pointer">
+    <div class="nf-social-post-card__head">
       <a href="/community/profile/{{ profile_id }}" onclick="event.stopPropagation()" style="text-decoration:none;color:inherit;flex-shrink:0">
-      <div style="width:36px;height:36px;border-radius:50%;border:2px solid #3dd4e0;overflow:hidden">
-        {% if profile.avatar %}<img src="{{ profile.avatar }}" style="width:100%;height:100%;object-fit:cover" alt="">{% else %}<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px">🍄</div>{% endif %}
+      <div style="width:32px;height:32px;border-radius:50%;border:2px solid #3dd4e0;overflow:hidden">
+        {% if profile.avatar %}<img src="{{ profile.avatar }}" style="width:100%;height:100%;object-fit:cover" alt="">{% else %}<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:12px">🍄</div>{% endif %}
       </div>
       </a>
       <div style="flex:1;min-width:0">
-        <a href="/community/profile/{{ profile_id }}" onclick="event.stopPropagation()" style="font-size:14px;font-weight:700;color:#e8e8e8;text-decoration:none;display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="overflow:hidden;text-overflow:ellipsis">{{ profile.name or 'Участник' }}</span><span class="cp-user-id-pill" style="font-size:9px;padding:2px 7px;flex-shrink:0;cursor:default;text-decoration:none" title="Упоминание: @{{ profile_id }}">@{{ profile_id }}</span>{% if p.from_telegram %}<span class="cp-tg-badge" title="Импорт из Telegram-канала">✓ TG</span>{% endif %}</a>
-        <div style="font-size:11px;color:#888">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}{% if p.pinned %} · 📌{% endif %}{% if item.folder_name %} · 📁 {{ item.folder_name }}{% endif %}</div>
+        <a href="/community/profile/{{ profile_id }}" onclick="event.stopPropagation()" style="font-size:13px;font-weight:700;color:#e8e8e8;text-decoration:none;display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="overflow:hidden;text-overflow:ellipsis">{{ profile.name or 'Участник' }}</span><span class="cp-user-id-pill" style="font-size:9px;padding:2px 7px;flex-shrink:0;cursor:default;text-decoration:none" title="Упоминание: @{{ profile_id }}">@{{ profile_id }}</span>{% if p.from_telegram %}<span class="cp-tg-badge" title="Импорт из Telegram-канала">✓ TG</span>{% endif %}</a>
+        <div style="font-size:10px;color:#888">{{ p.created_at.strftime('%d.%m.%Y %H:%M') if p.created_at else '' }}{% if p.pinned %} · 📌{% endif %}{% if item.folder_name %} · 📁 {{ item.folder_name }}{% endif %}</div>
       </div>
       {% if is_own %}
       <div class="ig-pm" onclick="event.stopPropagation()">
@@ -454,24 +444,29 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
       {% endif %}
     </div>
     {% if cimgs %}
-    <div class="nf-post-gallery" onclick="event.stopPropagation()">{% for u in cimgs %}<img src="{{ u }}" class="nf-post-gallery__slide" loading="lazy" alt="">{% endfor %}</div>
+    <div class="nf-social-post-card__visual">
+      {% if cimgs|length > 1 %}<span class="nf-social-post-card__gallery-hint" title="Ещё фото в посте">+{{ cimgs|length - 1 }}</span>{% endif %}
+      <img src="{{ cimgs[0] }}" loading="lazy" alt="">
+      <div class="nf-social-post-card__fog"></div>
+      <div class="nf-social-post-card__overlay">
+        {% if p.title %}<div class="nf-social-post-card__title">{{ p.title | linkify_mentions | safe }}</div>{% endif %}
+        {% if p.content %}<div class="nf-social-post-card__excerpt">{{ (p.content or '') | linkify_mentions | safe }}</div>{% endif %}
+      </div>
+    </div>
     {% elif p.content %}
-    <div class="ig-post-textonly">{{ p.content | linkify_mentions(2000) | safe }}</div>
+    <div class="nf-social-post-card__textonly">{{ (p.content or '') | linkify_mentions | safe }}</div>
     {% endif %}
-    <div class="ig-post-metrics">
-      <button type="button" class="ig-post-metric ig-post-metric-star" id="lk-{{ p.id }}" onclick="cpStarLike({{ p.id }},this)">
+    <div class="nf-social-post-card__metrics">
+      <button type="button" class="comm-ig-met comm-ig-met--star" id="lk-{{ p.id }}" onclick="event.stopPropagation();cpStarLike({{ p.id }},this)">
         <span>{{ '⭐' if item.liked else '✩' }}</span><span class="n" id="lkc-{{ p.id }}">{{ p.likes_count }}</span>
       </button>
-      <button type="button" class="ig-post-metric ig-post-metric-chat" onclick="event.stopPropagation();openCommunityPostDirect({{ p.id }})">
+      <button type="button" class="comm-ig-met comm-ig-met--cmt" onclick="event.stopPropagation();openCommunityPostDirect({{ p.id }})">
         <span>💬</span><span class="n" id="cmc-{{ p.id }}">{{ p.comments_count }}</span>
       </button>
-      <button type="button" class="ig-post-metric ig-post-metric-share" onclick="event.stopPropagation();NF_openPostReposts({{ p.id }}, location.href)">
+      <button type="button" class="comm-ig-met comm-ig-met--share" onclick="event.stopPropagation();NF_openPostReposts({{ p.id }}, location.href)">
         <span>↗</span><span class="n" id="rpc-{{ p.id }}">{{ p.reposts_count|default(0) }}</span>
       </button>
     </div>
-    {% if cimgs and p.content %}
-    <div class="ig-post-body"><span class="ig-cap-user">{{ profile.name or '' }}</span>{{ p.content | linkify_mentions | safe }}</div>
-    {% endif %}
     <div class="csec" id="cs-{{ p.id }}" style="display:none;margin:0;padding:12px;border-top:1px solid rgba(255,255,255,.06);overflow:hidden;max-width:100%;box-sizing:border-box">
       <div style="display:flex;gap:8px;margin-bottom:10px;overflow:hidden;max-width:100%;box-sizing:border-box">
         <input type="text" id="ci-{{ p.id }}" class="sinp nf-mention-field" style="flex:1;min-width:0;max-width:100%;width:100%;box-sizing:border-box;font-size:16px" placeholder="Комментарий… @ — подсказки" autocomplete="off">
@@ -479,7 +474,7 @@ button.ig-profile-stat:focus-visible{outline:2px solid rgba(61,212,224,.5);outli
       </div>
       <div id="cl-{{ p.id }}"></div>
     </div>
-  </div>
+  </article>
   {% endfor %}
   {% if not feed %}
   <div style="grid-column:1/-1;text-align:center;padding:28px 16px;color:#555;font-size:14px">Пока нет публикаций</div>
@@ -1194,13 +1189,13 @@ function openProfilePostPreview(event, card){
 }
 function openCommunityPostPage(event, postId){
   const t=event&&event.target;
-  if(t && t.closest('a,button,input,textarea,details,summary,.ig-post-metric,.ig-pm,.nf-post-gallery')) return;
+  if(t && t.closest('a,button,input,textarea,details,summary,.comm-ig-met,.ig-pm,.csec')) return;
   const back=encodeURIComponent(location.href);
   location.href='/community/post/'+postId+'?back='+back;
 }
 function openCommunityPostDirect(postId){
   const back=encodeURIComponent(location.href);
-  location.href='/community/post/'+postId+'/comments?back='+back;
+  location.href='/community/post/'+postId+'?back='+back+'#comments';
 }
 async function submitProfilePreviewComment(){
   const pid=Number(document.getElementById('profilePreviewPostId')&&document.getElementById('profilePreviewPostId').value||0);
@@ -1239,36 +1234,6 @@ document.addEventListener('focusin', function(e){
     }
   }
 });
-function _cpChaosKey(){
-  return 'mushrooms:chaos:' + String(Number(PROFILE_ID||0)||0) + ':profile';
-}
-function _cpLoadChaos(fallback){
-  try{
-    const raw=window.localStorage.getItem(_cpChaosKey());
-    if(raw===null||raw===undefined)return !!fallback;
-    return raw==='1'||raw==='true';
-  }catch(e){
-    return !!fallback;
-  }
-}
-function _cpSaveChaos(isOn){
-  try{ window.localStorage.setItem(_cpChaosKey(), isOn ? '1' : '0'); }catch(e){}
-}
-function setProfileChaos(isOn){
-  const grid=document.getElementById('profilePostsGrid');
-  const sw=document.getElementById('cpChaosToggle');
-  if(sw && sw.checked!==!!isOn) sw.checked=!!isOn;
-  if(!grid) return;
-  if(isOn){
-    grid.classList.remove('cp-chaos-off');
-    grid.classList.add('cp-chaos-on');
-  }else{
-    grid.classList.remove('cp-chaos-on');
-    grid.classList.add('cp-chaos-off');
-  }
-  _cpSaveChaos(!!isOn);
-}
-setProfileChaos(_cpLoadChaos(true));
 {% if shevelev_auto_sync %}
 (function(){
   const SYNC_MS=120000;

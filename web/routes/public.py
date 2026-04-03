@@ -1521,12 +1521,20 @@ async def community_old(request: Request):
         followed_ids = [r["following_id"] for r in followed_ids_rows]
         if followed_ids:
             query = base_query.where(community_posts.c.user_id.in_(followed_ids))
-            query = query.order_by(community_posts.c.pinned.desc(), community_posts.c.created_at.desc()).limit(30)
+            query = query.order_by(community_posts.c.pinned.desc(), community_posts.c.created_at.desc()).limit(120)
             raw_posts = await database.fetch_all(query)
         else:
             raw_posts = []
     elif tab == "popular":
-        query = base_query.order_by(community_posts.c.likes_count.desc(), community_posts.c.created_at.desc()).limit(30)
+        _pop_score = (
+            community_posts.c.likes_count
+            + community_posts.c.comments_count
+            + sa.func.coalesce(community_posts.c.reposts_count, 0)
+        )
+        query = base_query.order_by(
+            _pop_score.desc(),
+            community_posts.c.created_at.desc(),
+        ).limit(120)
         raw_posts = await database.fetch_all(query)
     elif tab == "saved":
         saved_rows_tab = await database.fetch_all(
@@ -1535,12 +1543,12 @@ async def community_old(request: Request):
         saved_post_ids = [r["post_id"] for r in saved_rows_tab]
         if saved_post_ids:
             query = base_query.where(community_posts.c.id.in_(saved_post_ids))
-            query = query.order_by(community_posts.c.pinned.desc(), community_posts.c.created_at.desc()).limit(30)
+            query = query.order_by(community_posts.c.pinned.desc(), community_posts.c.created_at.desc()).limit(120)
             raw_posts = await database.fetch_all(query)
         else:
             raw_posts = []
     else:
-        query = base_query.order_by(community_posts.c.pinned.desc(), community_posts.c.created_at.desc()).limit(30)
+        query = base_query.order_by(community_posts.c.pinned.desc(), community_posts.c.created_at.desc()).limit(120)
         raw_posts = await database.fetch_all(query)
 
     # Get saved post IDs for this user
@@ -1920,14 +1928,12 @@ async def community_profile(request: Request, user_id: int):
 
     profile_cards = merge_profile_public_cards(raw_d.get("profile_public_cards_json"))
     any_social_link = any((profile_cards.get("social") or {}).values())
-    hero_slide_crypto = bool(profile_cards.get("show_crypto_slide"))
+    show_crypto_in_about = bool(profile_cards.get("show_crypto_in_about"))
     hero_slide_social = bool(profile_cards.get("show_social_slide")) and (any_social_link or is_own)
     hero_slides: list[str] = []
     for k in normalize_slide_order(profile_cards.get("slide_order")):
         if k == "about":
             hero_slides.append("about")
-        elif k == "crypto" and hero_slide_crypto:
-            hero_slides.append("crypto")
         elif k == "social" and hero_slide_social:
             hero_slides.append("social")
     if not hero_slides:
@@ -1959,7 +1965,7 @@ async def community_profile(request: Request, user_id: int):
             "profile_plan_name": profile_plan_info.get("name") or "",
             "profile_ui_theme": profile_ui_theme,
             "profile_cards": profile_cards,
-            "hero_slide_crypto": hero_slide_crypto,
+            "show_crypto_in_about": show_crypto_in_about,
             "hero_slide_social": hero_slide_social,
             "hero_slides": hero_slides,
             "profile_has_social_links": any_social_link,

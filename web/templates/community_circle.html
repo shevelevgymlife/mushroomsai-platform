@@ -81,7 +81,7 @@ function openCommunityPostPage(event, postId){
 }
 function openCommunityPostDirect(postId){
   const back=encodeURIComponent(location.href);
-  location.href='/community/post/'+postId+'/comments?back='+back;
+  location.href='/community/post/'+postId+'?back='+back+'#comments';
 }
 function ccLikePost(postId, btn){
   if(typeof NF_communityStarLike!=='function') return;

@@ -550,6 +550,12 @@ community_comments = sqlalchemy.Table(
     sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=True),
     sqlalchemy.Column("content", sqlalchemy.Text, nullable=False),
     sqlalchemy.Column(
+        "parent_comment_id",
+        sqlalchemy.Integer,
+        sqlalchemy.ForeignKey("community_comments.id", ondelete="SET NULL"),
+        nullable=True,
+    ),
+    sqlalchemy.Column(
         "seen_by_post_owner",
         sqlalchemy.Boolean,
         default=True,

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Пост — NEUROFUNGI AI{% endblock %}
 {% block content %}
-<link rel="stylesheet" href="/static/css/nf-community-posts.css?v=3" />
+<link rel="stylesheet" href="/static/css/nf-community-posts.css?v=4" />
 <script src="/static/js/nf-community-star-like.js?v=1"></script>
 <style>
 .cp-share-modal{display:none;position:fixed;inset:0;z-index:10110;align-items:center;justify-content:center;background:rgba(0,0,0,.86);backdrop-filter:blur(8px)}
@@ -60,7 +60,7 @@
       {% endif %}
       <div class="nf-pc-metrics">
         <button type="button" class="nf-pc-metric nf-pc-metric--star" id="likeBtn" onclick="postPageStar()"><span id="likeIcon">{{ '⭐' if is_liked else '✩' }}</span> <span id="likeCnt">{{ post.likes_count or 0 }}</span></button>
-        <button type="button" class="nf-pc-metric nf-pc-metric--cmt" onclick="location.href='/community/post/{{ post.id }}/comments?back='+encodeURIComponent(BACK_URL_JSON)">💬 <span id="cmtCnt">{{ post.comments_count or 0 }}</span></button>
+        <button type="button" class="nf-pc-metric nf-pc-metric--cmt" onclick="document.getElementById('comments')&&document.getElementById('comments').scrollIntoView({behavior:'smooth',block:'start'})">💬 <span id="cmtCnt">{{ post.comments_count or 0 }}</span></button>
         <button type="button" class="nf-pc-metric nf-pc-metric--share" onclick="NF_openPostReposts(POST_ID, BACK_URL_JSON)">↗ <span id="repostCnt">{{ post.reposts_count|default(0) }}</span></button>
       </div>
       {% if is_owner %}
@@ -79,6 +79,7 @@
         <input id="commentInp" class="nf-pc-inp nf-mention-field nf-mention-at-focus" placeholder="Комментарий… @ — подсказки" autocomplete="off">
         <button class="nf-pc-send" type="button" onclick="sendComment()">Отправить</button>
       </div>
+      <div id="comments" class="nf-pc-comments-anchor" style="scroll-margin-top:12px"></div>
       <div id="commentsList" class="nf-pc-comments"></div>
     </article>
   </div>
@@ -221,9 +222,14 @@ function cHtml(c){
   var nm=String(c.author_name||'\u0423\u0447\u0430\u0441\u0442\u043d\u0438\u043a');
   var nameArg=JSON.stringify(nm);
   var body=(typeof linkifyCommunityMentionsPlain==='function')?linkifyCommunityMentionsPlain(c.content||''):(String(c.content||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'));
-  return '<div style="background:rgba(255,255,255,.05);border:1px solid rgba(0,245,212,.12);border-radius:14px;padding:10px 12px"><div style="font-size:11px;color:#8a9a90;display:flex;justify-content:space-between;align-items:center;gap:8px"><span><strong style="color:#e8f0ec">'+nm.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</strong> \u00B7 '+(c.created_at||'')+'</span><button type="button" onclick="setReplyToComment('+c.id+','+nameArg+')" style="background:rgba(0,245,212,.12);border:1px solid rgba(0,245,212,.35);color:#7ee8d8;border-radius:8px;padding:2px 8px;font-size:11px;cursor:pointer">\u21A9</button></div><div style="font-size:13px;color:#dce5df;white-space:pre-wrap;word-break:break-word">'+body+'</div></div>';
+  var replyHint='';
+  if(c.reply_to_name){
+    var sn=String(c.reply_to_snippet||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    replyHint='<div class="nf-pc-comment-item__reply-hint">\u21A9 '+String(c.reply_to_name).replace(/</g,'&lt;').replace(/>/g,'&gt;')+(sn?': '+sn:'')+'</div>';
+  }
+  return '<div class="nf-pc-comment-item"><div class="nf-pc-comment-item__meta"><span><strong>'+nm.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</strong> \u00B7 '+(c.created_at||'')+'</span><button type="button" onclick="setReplyToComment('+c.id+','+nameArg+')" style="background:rgba(0,245,212,.12);border:1px solid rgba(0,245,212,.35);color:#7ee8d8;border-radius:8px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:700">\u041e\u0442\u0432\u0435\u0442\u0438\u0442\u044c</button></div>'+replyHint+'<div class="nf-pc-comment-item__body">'+body+'</div></div>';
 }
-async function loadComments(){ try{ const r=await fetch('/community/comments/'+POST_ID,{credentials:'same-origin'}); const d=await r.json(); const arr=d.comments||[]; document.getElementById('commentsList').innerHTML=arr.length?arr.map(cHtml).join(''):'<div style="font-size:12px;color:#8a9a90">\u041a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0435\u0432 \u043f\u043e\u043a\u0430 \u043d\u0435\u0442</div>'; }catch(e){} }
+async function loadComments(){ try{ const r=await fetch('/community/comments/'+POST_ID,{credentials:'same-origin'}); const d=await r.json(); const arr=d.comments||[]; document.getElementById('commentsList').innerHTML=arr.length?arr.map(cHtml).join(''):'<div style="font-size:12px;color:#8a9a90;padding:4px 2px">\u041a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0435\u0432 \u043f\u043e\u043a\u0430 \u043d\u0435\u0442</div>'; }catch(e){} }
 async function sendComment(){
   const inp=document.getElementById('commentInp');
   const t=(inp.value||'').trim();
@@ -252,5 +258,11 @@ async function saveEdit(){
   if(r.ok&&d.ok){ location.reload(); }
 }
 loadComments();
+if(location.hash==='#comments'){
+  setTimeout(function(){
+    var el=document.getElementById('comments');
+    if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
+  },400);
+}
 </script>
 {% endblock %}
