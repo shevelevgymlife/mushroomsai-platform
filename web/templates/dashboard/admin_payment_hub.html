@@ -108,7 +108,7 @@
       <p class="font-medium text-text mb-1">CloudPayments — вебхук для автоматической активации</p>
       <p>Укажите в личном кабинете CloudPayments URL уведомлений:</p>
       <code class="block mt-2 px-3 py-2 rounded-lg bg-bg border border-border text-gold text-xs break-all">{{ cloudpayments_webhook_url }}</code>
-      <p class="mt-2 text-xs">Проверка подписи: заголовок <code>Content-HMAC</code> (секрет — API Secret из настроек).</p>
+      <p class="mt-2 text-xs">Метод уведомления в кабинете CloudPayments: <strong>POST</strong> (не GET). Проверка подписи: заголовок <code>Content-HMAC</code> — считается от <strong>сырого тела</strong> запроса; в админке укажите <strong>API Secret того же режима</strong>, что и Public ID (тестовый терминал — тестовый секрет).</p>
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

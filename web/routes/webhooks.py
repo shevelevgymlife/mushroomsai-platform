@@ -104,6 +104,7 @@ async def cloudpayments_webhook(
     body = await request.body()
     ok, msg = await handle_cloudpayments_notification(body, content_hmac)
     if not ok:
+        logger.warning("cloudpayments webhook rejected: %s", msg)
         if msg in (
             "bad_hmac",
             "cloudpayments_disabled",

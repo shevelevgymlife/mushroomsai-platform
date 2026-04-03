@@ -6,6 +6,7 @@ import hashlib
 import hmac
 import json
 import logging
+import re
 from typing import Any
 
 from db.database import database
@@ -44,6 +45,50 @@ def _parse_data_field(raw: Any) -> dict[str, Any]:
         except Exception:
             return {}
     return {}
+
+
+_SUB_INVOICE_RE = re.compile(r"^sub-(\d+)-([a-z0-9_]+)-", re.IGNORECASE)
+
+
+def _flatten_cloudpayments_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """
+    Pay-уведомление может приходить плоским JSON или с вложенным Model (как в ответах API).
+    Поля транзакции тогда лежат внутри Model.
+    """
+    model = payload.get("Model")
+    if isinstance(model, dict):
+        merged = {**payload, **model}
+        return merged
+    return dict(payload)
+
+
+def _merge_custom_data(flat: dict[str, Any]) -> dict[str, Any]:
+    """
+    userId/plan из виджета: data → в уведомлении часто Data, JsonData (строка) или metadata (новое имя).
+    """
+    out: dict[str, Any] = {}
+    out.update(_parse_data_field(flat.get("Data")))
+
+    jd = flat.get("JsonData")
+    if isinstance(jd, dict):
+        out.update(jd)
+    elif isinstance(jd, str):
+        out.update(_parse_data_field(jd))
+
+    for mk in ("Metadata", "metadata"):
+        meta = flat.get(mk)
+        if isinstance(meta, dict):
+            out.update(meta)
+            break
+
+    inv = flat.get("InvoiceId")
+    if inv is not None:
+        m = _SUB_INVOICE_RE.match(str(inv).strip())
+        if m:
+            out.setdefault("userId", int(m.group(1)))
+            out.setdefault("plan", m.group(2).lower())
+
+    return out
 
 
 async def _already_processed(provider: str, external_id: str) -> bool:
@@ -86,22 +131,25 @@ async def handle_cloudpayments_notification(
     except Exception:
         return False, "bad_json"
 
-    status = (payload.get("Status") or "").strip()
+    flat = _flatten_cloudpayments_payload(payload)
+    status = (flat.get("Status") or "").strip()
     if status != "Completed":
+        logger.info("cloudpayments webhook: skip status=%s", status or "(empty)")
         return True, f"ignored_status:{status}"
 
-    tx_id = payload.get("TransactionId")
+    tx_id = flat.get("TransactionId")
     if tx_id is None:
+        logger.warning("cloudpayments webhook: no TransactionId keys=%s", list(flat.keys())[:25])
         return False, "no_transaction_id"
     ext = str(tx_id)
 
     if await _already_processed("cloudpayments", ext):
         return True, "duplicate"
 
-    data = _parse_data_field(payload.get("Data"))
+    data = _merge_custom_data(flat)
     gift_raw = str(data.get("gift") or "").strip().lower()
     if gift_raw in ("1", "true", "yes", "on"):
-        giver_raw = data.get("giverId") or data.get("giver_id") or data.get("userId") or payload.get("AccountId")
+        giver_raw = data.get("giverId") or data.get("giver_id") or data.get("userId") or flat.get("AccountId")
         recipient_raw = data.get("recipientId") or data.get("recipient_id")
         plan = (data.get("plan") or "").strip().lower()
         try:
@@ -113,7 +161,7 @@ async def handle_cloudpayments_notification(
         if not is_catalog_paid_checkout_plan(plans, plan):
             return False, "bad_plan"
         try:
-            amount = float(payload.get("Amount") or payload.get("PaymentAmount") or 0)
+            amount = float(flat.get("Amount") or flat.get("PaymentAmount") or 0)
         except (TypeError, ValueError):
             amount = 0.0
         expected = float((plans.get(plan) or {}).get("price") or 0)
@@ -137,19 +185,33 @@ async def handle_cloudpayments_notification(
         await _mark_processed("cloudpayments", ext)
         return True, "ok_gift"
 
-    uid = data.get("userId") or data.get("user_id") or payload.get("AccountId")
+    uid = data.get("userId") or data.get("user_id") or flat.get("AccountId")
     plan = (data.get("plan") or "").strip().lower()
     try:
         uid_int = int(uid)
     except (TypeError, ValueError):
+        logger.warning(
+            "cloudpayments bad_user: uid=%r plan=%r invoiceId=%r data_keys=%s",
+            uid,
+            plan,
+            flat.get("InvoiceId"),
+            list(data.keys()),
+        )
         return False, "bad_user"
 
     plans = await get_effective_plans()
     if not is_catalog_paid_checkout_plan(plans, plan):
+        logger.warning(
+            "cloudpayments bad_plan: plan=%r catalog_ok=%s show=%s price=%s",
+            plan,
+            plan in plans,
+            (plans.get(plan) or {}).get("show_in_catalog"),
+            (plans.get(plan) or {}).get("price"),
+        )
         return False, "bad_plan"
 
     try:
-        amount = float(payload.get("Amount") or payload.get("PaymentAmount") or 0)
+        amount = float(flat.get("Amount") or flat.get("PaymentAmount") or 0)
     except (TypeError, ValueError):
         amount = 0.0
 
@@ -173,6 +235,8 @@ async def handle_cloudpayments_notification(
 
     ok = await activate_subscription(uid_int, plan, months=1)
     if not ok:
+        logger.warning("cloudpayments activate_failed uid=%s plan=%s", uid_int, plan)
         return False, "activate_failed"
+    logger.info("cloudpayments subscription activated uid=%s plan=%s tx=%s", uid_int, plan, ext)
     await _mark_processed("cloudpayments", ext)
     return True, "ok"

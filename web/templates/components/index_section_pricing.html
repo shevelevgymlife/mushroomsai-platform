@@ -278,6 +278,7 @@
     var widget = new cp.CloudPayments();
     var inv = 'sub-' + uid + '-' + planKey + '-' + Date.now();
     var nm = (row && row.name) ? String(row.name) : planKey;
+    var meta = { userId: uid, plan: planKey };
     widget.pay('charge', {
       publicId: pubId,
       description: 'Подписка «' + nm + '»',
@@ -285,7 +286,8 @@
       currency: 'RUB',
       accountId: String(uid),
       invoiceId: inv,
-      data: { userId: uid, plan: planKey }
+      data: meta,
+      metadata: meta
     }, {
       onSuccess: function () {
         window.location.href = '/subscriptions?paid=1';

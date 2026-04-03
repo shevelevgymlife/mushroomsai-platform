@@ -28,6 +28,13 @@
   }
   var widget = new cp.CloudPayments();
   var inv = 'gift-' + uid + '-' + rid + '-' + plan + '-' + Date.now();
+  var gmeta = {
+    userId: uid,
+    giverId: uid,
+    recipientId: rid,
+    plan: plan,
+    gift: true
+  };
   widget.pay('charge', {
     publicId: pubId,
     description: 'Подарок подписки «' + pname + '»',
@@ -35,13 +42,8 @@
     currency: 'RUB',
     accountId: String(uid),
     invoiceId: inv,
-    data: {
-      userId: uid,
-      giverId: uid,
-      recipientId: rid,
-      plan: plan,
-      gift: true
-    }
+    data: gmeta,
+    metadata: gmeta
   }, {
     onSuccess: function () {
       window.location.href = '/subscriptions?paid=1&gifted=1';
