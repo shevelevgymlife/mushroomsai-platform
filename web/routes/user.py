@@ -1658,6 +1658,14 @@ async def add_comment(
         return JSONResponse({"error": "not found"}, status_code=404)
 
     uid = user.get("primary_user_id") or user["id"]
+    try:
+        await database.execute(
+            sa.text(
+                "ALTER TABLE community_comments ADD COLUMN IF NOT EXISTS reply_to_comment_id INTEGER NULL REFERENCES community_comments(id) ON DELETE SET NULL"
+            )
+        )
+    except Exception:
+        pass
     reply_parent_id: int | None = None
     if (reply_to_comment_id or "").strip().isdigit():
         reply_parent_id = int(reply_to_comment_id.strip())
@@ -1678,6 +1686,7 @@ async def add_comment(
             post_id=post_id,
             user_id=uid,
             content=content.strip(),
+            reply_to_comment_id=reply_parent_id,
             seen_by_post_owner=c_seen,
         )
         .returning(community_comments.c.id)
@@ -1786,11 +1795,99 @@ async def add_comment(
 
 @router.get("/community/comments/{post_id}")
 async def get_comments(request: Request, post_id: int):
+    viewer = await require_auth(request)
+    viewer_id = int(viewer.get("primary_user_id") or viewer["id"]) if viewer else None
+    try:
+        await database.execute(
+            sa.text(
+                "ALTER TABLE community_comments ADD COLUMN IF NOT EXISTS reply_to_comment_id INTEGER NULL REFERENCES community_comments(id) ON DELETE SET NULL"
+            )
+        )
+        await database.execute(
+            sa.text(
+                "ALTER TABLE community_comments ADD COLUMN IF NOT EXISTS likes_count INTEGER NOT NULL DEFAULT 0"
+            )
+        )
+        await database.execute(
+            sa.text(
+                """
+                CREATE TABLE IF NOT EXISTS community_comment_likes (
+                    id SERIAL PRIMARY KEY,
+                    comment_id INTEGER NOT NULL REFERENCES community_comments(id) ON DELETE CASCADE,
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    UNIQUE (comment_id, user_id)
+                )
+                """
+            )
+        )
+    except Exception:
+        pass
     rows = await database.fetch_all(
         community_comments.select()
         .where(community_comments.c.post_id == post_id)
         .order_by(community_comments.c.created_at.asc())
     )
+    ids = [int(c["id"]) for c in rows]
+    liked_set: set[int] = set()
+    likes_map: dict[int, int] = {}
+    parent_map: dict[int, dict] = {}
+    if ids:
+        try:
+            likes_rows = await database.fetch_all(
+                sa.text(
+                    """
+                    SELECT comment_id, COUNT(*)::int AS cnt
+                    FROM community_comment_likes
+                    WHERE comment_id = ANY(:ids)
+                    GROUP BY comment_id
+                    """
+                ),
+                {"ids": ids},
+            )
+            likes_map = {int(r["comment_id"]): int(r["cnt"] or 0) for r in likes_rows}
+        except Exception:
+            likes_map = {}
+        if viewer_id:
+            try:
+                my_like_rows = await database.fetch_all(
+                    sa.text(
+                        """
+                        SELECT comment_id
+                        FROM community_comment_likes
+                        WHERE user_id = :u AND comment_id = ANY(:ids)
+                        """
+                    ),
+                    {"u": int(viewer_id), "ids": ids},
+                )
+                liked_set = {int(r["comment_id"]) for r in my_like_rows}
+            except Exception:
+                liked_set = set()
+        parent_ids = [
+            int(c["reply_to_comment_id"])
+            for c in rows
+            if c.get("reply_to_comment_id") is not None
+        ]
+        if parent_ids:
+            p_rows = await database.fetch_all(
+                community_comments.select().where(community_comments.c.id.in_(parent_ids))
+            )
+            p_uid = {
+                int(r["user_id"])
+                for r in p_rows
+                if r.get("user_id") is not None
+            }
+            u_map: dict[int, dict] = {}
+            if p_uid:
+                u_rows = await database.fetch_all(users.select().where(users.c.id.in_(list(p_uid))))
+                u_map = {int(u["id"]): dict(u) for u in u_rows}
+            for pr in p_rows:
+                pu = u_map.get(int(pr["user_id"])) if pr.get("user_id") is not None else None
+                parent_map[int(pr["id"])] = {
+                    "id": int(pr["id"]),
+                    "author_name": (pu.get("name") if pu and pu.get("name") else "Участник"),
+                    "content_preview": str((pr.get("content") or "")).strip()[:120],
+                }
     result = []
     for c in rows:
         author = None
@@ -1803,16 +1900,97 @@ async def get_comments(request: Request, post_id: int):
                 .where(community_posts.c.user_id == author["id"])
             ) or 0
         rep = _reputation(rep_count)
+        cid = int(c["id"])
+        rid = c.get("reply_to_comment_id")
         result.append({
-            "id": c["id"],
+            "id": cid,
             "content": c["content"],
             "created_at": c["created_at"].strftime("%d.%m.%Y %H:%M") if c["created_at"] else "",
             "author_name": (author["name"] if author and author["name"] else "Участник"),
             "author_avatar": author["avatar"] if author else None,
             "author_level": rep["level"],
             "author_emoji": rep["emoji"],
+            "likes_count": int(likes_map.get(cid, c.get("likes_count") or 0)),
+            "liked_by_me": cid in liked_set,
+            "reply_to_comment_id": int(rid) if rid is not None else None,
+            "reply_to": parent_map.get(int(rid)) if rid is not None else None,
         })
     return JSONResponse({"comments": result})
+
+
+@router.post("/community/comment/{comment_id}/like")
+async def like_comment(request: Request, comment_id: int):
+    user = await require_auth(request)
+    if not user:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    uid = int(user.get("primary_user_id") or user["id"])
+    try:
+        await database.execute(
+            sa.text(
+                """
+                CREATE TABLE IF NOT EXISTS community_comment_likes (
+                    id SERIAL PRIMARY KEY,
+                    comment_id INTEGER NOT NULL REFERENCES community_comments(id) ON DELETE CASCADE,
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    UNIQUE (comment_id, user_id)
+                )
+                """
+            )
+        )
+        await database.execute(
+            sa.text(
+                "ALTER TABLE community_comments ADD COLUMN IF NOT EXISTS likes_count INTEGER NOT NULL DEFAULT 0"
+            )
+        )
+    except Exception:
+        pass
+    crow = await database.fetch_one(
+        community_comments.select().where(community_comments.c.id == int(comment_id))
+    )
+    if not crow:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    existing = await database.fetch_one(
+        sa.text(
+            "SELECT id FROM community_comment_likes WHERE comment_id=:c AND user_id=:u"
+        ),
+        {"c": int(comment_id), "u": int(uid)},
+    )
+    if existing:
+        await database.execute(
+            sa.text(
+                "DELETE FROM community_comment_likes WHERE comment_id=:c AND user_id=:u"
+            ),
+            {"c": int(comment_id), "u": int(uid)},
+        )
+        await database.execute(
+            community_comments.update()
+            .where(community_comments.c.id == int(comment_id))
+            .values(
+                likes_count=sa.case(
+                    (community_comments.c.likes_count > 0, community_comments.c.likes_count - 1),
+                    else_=0,
+                )
+            )
+        )
+        liked = False
+    else:
+        await database.execute(
+            sa.text(
+                "INSERT INTO community_comment_likes (comment_id, user_id) VALUES (:c,:u) ON CONFLICT DO NOTHING"
+            ),
+            {"c": int(comment_id), "u": int(uid)},
+        )
+        await database.execute(
+            community_comments.update()
+            .where(community_comments.c.id == int(comment_id))
+            .values(likes_count=community_comments.c.likes_count + 1)
+        )
+        liked = True
+    cnt = await database.fetch_val(
+        sa.select(community_comments.c.likes_count).where(community_comments.c.id == int(comment_id))
+    ) or 0
+    return JSONResponse({"ok": True, "liked": liked, "count": int(cnt)})
 
 
 @router.post("/community/folder")

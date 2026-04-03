@@ -548,7 +548,14 @@ community_comments = sqlalchemy.Table(
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
     sqlalchemy.Column("post_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("community_posts.id"), nullable=False),
     sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=True),
+    sqlalchemy.Column(
+        "reply_to_comment_id",
+        sqlalchemy.Integer,
+        sqlalchemy.ForeignKey("community_comments.id", ondelete="SET NULL"),
+        nullable=True,
+    ),
     sqlalchemy.Column("content", sqlalchemy.Text, nullable=False),
+    sqlalchemy.Column("likes_count", sqlalchemy.Integer, default=0, server_default="0"),
     sqlalchemy.Column(
         "seen_by_post_owner",
         sqlalchemy.Boolean,
@@ -556,6 +563,20 @@ community_comments = sqlalchemy.Table(
         server_default="true",
     ),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+community_comment_likes = sqlalchemy.Table(
+    "community_comment_likes",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column(
+        "comment_id",
+        sqlalchemy.Integer,
+        sqlalchemy.ForeignKey("community_comments.id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=False),
+    sqlalchemy.UniqueConstraint("comment_id", "user_id", name="uq_community_comment_likes_comment_user"),
 )
 
 community_likes = sqlalchemy.Table(

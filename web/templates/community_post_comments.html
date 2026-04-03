@@ -63,6 +63,35 @@
   touch-action:pan-y;
   padding:14px 8px calc(20px + env(safe-area-inset-bottom,0px));
 }
+.cpc-toolbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:8px 12px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+  background:rgba(7,9,14,.92);
+}
+.cpc-toolbar-lbl{font-size:12px;color:#9aa4b5}
+.cpc-view-toggle{
+  display:inline-flex;
+  border:1px solid rgba(61,212,224,.28);
+  border-radius:999px;
+  overflow:hidden;
+  background:rgba(12,16,26,.85);
+}
+.cpc-view-toggle button{
+  border:none;
+  background:transparent;
+  color:#97a4b7;
+  font-size:12px;
+  padding:6px 11px;
+  cursor:pointer;
+}
+.cpc-view-toggle button.on{
+  background:rgba(61,212,224,.22);
+  color:#d3fbff;
+}
 .cpc-card{
   margin:16px auto;
   max-width:min(340px,92vw);
@@ -76,6 +105,47 @@
 .cpc-card-meta{font-size:11px;color:#8a8fa0;margin-bottom:6px}
 .cpc-card-meta b{color:#d8deec;font-weight:700}
 .cpc-card-body{font-size:14px;color:#e6e8ef;white-space:pre-wrap;word-break:break-word;line-height:1.5}
+.cpc-line{
+  margin:0;
+  width:100%;
+  max-width:100%;
+  border-radius:12px;
+  padding:10px 12px;
+  border:1px solid rgba(255,255,255,.1);
+  background:linear-gradient(175deg,rgba(255,255,255,.05),rgba(8,10,18,.95));
+  box-sizing:border-box;
+}
+.cpc-line + .cpc-line{margin-top:8px}
+.cpc-reply-chip{
+  margin-top:6px;
+  border-left:2px solid rgba(61,212,224,.5);
+  padding:4px 8px;
+  background:rgba(61,212,224,.08);
+  border-radius:8px;
+  font-size:11px;
+  color:#a9d9df;
+}
+.cpc-card-actions{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-top:8px;
+}
+.cpc-like-btn,.cpc-reply-btn{
+  border:none;
+  background:transparent;
+  color:#9ab3c2;
+  cursor:pointer;
+  font-size:12px;
+  padding:3px 6px;
+  border-radius:8px;
+}
+.cpc-like-btn:hover,.cpc-reply-btn:hover{
+  background:rgba(61,212,224,.1);
+  color:#c8f7fb;
+}
+.cpc-like-btn.on{color:#7ee8f0}
 .cpc-empty{text-align:center;color:#6b7280;font-size:13px;padding:28px 16px}
 .sinp{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#e8e8e8;border-radius:12px;padding:12px 14px;font-size:16px;outline:none;width:100%;box-sizing:border-box}
 .btn-g{background:#3dd4e0;color:#000;border:none;border-radius:999px;padding:12px 16px;font-weight:700;cursor:pointer;min-height:44px}
@@ -92,11 +162,25 @@
     <input id="cpcInp" class="sinp nf-mention-field" placeholder="Комментарий…" autocomplete="off">
     <button type="button" class="btn-g" onclick="cpcSend()">Отпр.</button>
   </div>
+  <div class="cpc-toolbar">
+    <span class="cpc-toolbar-lbl">Вид комментариев</span>
+    <div class="cpc-view-toggle">
+      <button type="button" id="cpcViewChaosBtn" onclick="setCommentsView('chaos')">Хаос</button>
+      <button type="button" id="cpcViewListBtn" onclick="setCommentsView('list')">Лента</button>
+    </div>
+  </div>
+  <p id="cpcReplyBar" style="display:none;margin:8px 12px 0;font-size:12px;color:#7ee8d8">
+    <span id="cpcReplyLabel">↩ Ответ</span>
+    <button type="button" onclick="clearReplyToCpc()" style="margin-left:8px;background:none;border:none;color:#94a3b8;cursor:pointer;text-decoration:underline">отмена</button>
+  </p>
   <div id="cpcChaos" class="cpc-chaos-scroll" role="region" aria-label="Комментарии"></div>
 </div>
 <script>
 const POST_ID={{ post.id }};
 const BACK_URL={{ back_url|tojson }};
+const CPC_VIEW_KEY='nf_comments_view_mode';
+let cpcViewMode='chaos';
+let cpcReplyToId=null;
 function goBackCpc(){
   if(history.length>1){ history.back(); }
   else { location.href=BACK_URL||'/community'; }
@@ -114,12 +198,71 @@ function chaosTy(id){
   return ((n%9)-4)*2.5;
 }
 function cpcCardHtml(c){
-  var rot=chaosRot(c.id),tx=chaosTx(c.id),ty=chaosTy(c.id);
   var esc=function(s){var d=document.createElement('div');d.textContent=s==null?'':String(s);return d.innerHTML;};
-  return '<div class="cpc-card" style="transform:translate('+tx+'px,'+ty+'px) rotate('+rot+'deg)">'+
-    '<div class="cpc-card-meta"><b>'+esc(c.author_name||'Участник')+'</b> · '+esc(c.created_at||'')+
+  var rot=chaosRot(c.id),tx=chaosTx(c.id),ty=chaosTy(c.id);
+  var nm=esc(c.author_name||'Участник');
+  var body=(typeof linkifyCommunityMentionsPlain==='function'?linkifyCommunityMentionsPlain(c.content||''):esc(c.content||''));
+  var parent=c.parent_comment&&c.parent_comment.id
+    ?('<div class="cpc-reply-chip">↩ <b>'+esc(c.parent_comment.author_name||'Участник')+':</b> '+esc(c.parent_comment.content_preview||'')+'</div>')
+    :'';
+  var likeCls=c.viewer_liked?'cpc-like-btn on':'cpc-like-btn';
+  var likeTxt=c.viewer_liked?'⭐':'✩';
+  var base=''+
+    '<div class="cpc-card-meta"><b>'+nm+'</b> · '+esc(c.created_at||'')+
     (c.author_emoji?(' <span style="opacity:.85">'+esc(c.author_emoji)+'</span>'):'')+'</div>'+
-    '<div class="cpc-card-body">'+(typeof linkifyCommunityMentionsPlain==='function'?linkifyCommunityMentionsPlain(c.content||''):esc(c.content||''))+'</div></div>';
+    '<div class="cpc-card-body">'+body+'</div>'+
+    parent+
+    '<div class="cpc-card-actions">'+
+      '<button type="button" class="'+likeCls+'" onclick="cpcToggleLike('+c.id+')">'+likeTxt+' <span id="cpcLikeCnt_'+c.id+'">'+(Number(c.likes_count)||0)+'</span></button>'+
+      '<button type="button" class="cpc-reply-btn" onclick="setReplyToCpc('+c.id+','+JSON.stringify(c.author_name||'Участник')+')">↩ Ответ</button>'+
+    '</div>';
+  if(cpcViewMode==='list'){
+    return '<div class="cpc-line">'+base+'</div>';
+  }
+  return '<div class="cpc-card" style="transform:translate('+tx+'px,'+ty+'px) rotate('+rot+'deg)">'+
+    base+
+    '</div>';
+}
+function setCommentsView(mode){
+  cpcViewMode=(mode==='list')?'list':'chaos';
+  try{ localStorage.setItem(CPC_VIEW_KEY,cpcViewMode); }catch(e){}
+  var b1=document.getElementById('cpcViewChaosBtn');
+  var b2=document.getElementById('cpcViewListBtn');
+  if(b1) b1.classList.toggle('on',cpcViewMode==='chaos');
+  if(b2) b2.classList.toggle('on',cpcViewMode==='list');
+  cpcLoad();
+}
+function initCommentsView(){
+  var v='chaos';
+  try{
+    var s=localStorage.getItem(CPC_VIEW_KEY);
+    if(s==='list'||s==='chaos') v=s;
+  }catch(e){}
+  setCommentsView(v);
+}
+function setReplyToCpc(cid,name){
+  cpcReplyToId=Number(cid)||null;
+  var b=document.getElementById('cpcReplyBar');
+  var l=document.getElementById('cpcReplyLabel');
+  if(l) l.textContent='↩ Ответ ' + (name||'Участник');
+  if(b) b.style.display='block';
+  var inp=document.getElementById('cpcInp');
+  if(inp) inp.focus();
+}
+function clearReplyToCpc(){
+  cpcReplyToId=null;
+  var b=document.getElementById('cpcReplyBar');
+  if(b) b.style.display='none';
+}
+async function cpcToggleLike(commentId){
+  try{
+    var r=await fetch('/community/comment/'+commentId+'/like',{method:'POST',credentials:'same-origin'});
+    var d=await r.json().catch(function(){return {};});
+    if(!d||!d.ok) return;
+    var cnt=document.getElementById('cpcLikeCnt_'+commentId);
+    if(cnt && typeof d.likes_count==='number') cnt.textContent=String(Math.max(0,d.likes_count));
+    cpcLoad();
+  }catch(e){}
 }
 async function cpcLoad(){
   var el=document.getElementById('cpcChaos');
@@ -144,15 +287,16 @@ async function cpcSend(){
   if(t.length<1)return;
   var fd=new FormData();
   fd.append('content',t);
+  if(cpcReplyToId) fd.append('reply_to_comment_id',String(cpcReplyToId));
   try{
     var r=await fetch('/community/comment/'+POST_ID,{method:'POST',body:fd,credentials:'same-origin'});
     var d=await r.json().catch(function(){return {};});
-    if(d&&d.ok){ inp.value=''; await cpcLoad(); }
+    if(d&&d.ok){ inp.value=''; clearReplyToCpc(); await cpcLoad(); }
   }catch(e){}
 }
 document.getElementById('cpcInp')&&document.getElementById('cpcInp').addEventListener('keydown',function(e){
   if(e.key==='Enter'){ e.preventDefault(); cpcSend(); }
 });
-cpcLoad();
+initCommentsView();
 </script>
 {% endblock %}

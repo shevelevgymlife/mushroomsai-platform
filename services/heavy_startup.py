@@ -809,6 +809,15 @@ async def run_heavy_startup(app: FastAPI) -> None:
             logger.warning("migrate_v50 nfi_decimal_withdraw: %s", e)
 
         try:
+            import migrate_v42_comment_layout_likes_replies as migrate_v42_comments
+
+            for s in migrate_v42_comments.STEPS:
+                await database.execute(sa.text(s))
+            logger.info("community comment likes/replies schema (migrate_v42_comments) OK")
+        except Exception as e:
+            logger.warning("migrate_v42 comment likes/replies: %s", e)
+
+        try:
             from services.merge_neurofungi_ai_chats import merge_all_neurofungi_ai_personal_chats
 
             await merge_all_neurofungi_ai_personal_chats()
