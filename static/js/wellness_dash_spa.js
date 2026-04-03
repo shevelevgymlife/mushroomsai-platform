@@ -135,6 +135,9 @@
         mount.innerHTML = data.html;
         mountWellnessCharts(data.charts || []);
         initWellnessChartCarousel(mount);
+        try {
+          document.dispatchEvent(new CustomEvent("wellness:fragment:mounted", { detail: { mount: mount } }));
+        } catch (e) {}
         if (hrefForTabs) updateTabActive(mount, hrefForTabs);
       });
   }

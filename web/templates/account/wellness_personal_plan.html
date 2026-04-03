@@ -69,7 +69,7 @@
     {% for c in memo_cards %}
     <article class="wdx-memo-card">
       <div class="wdx-memo-top">
-        <div class="wdx-mush-icon" aria-hidden="true">{{ ico('mushroom') }}</div>
+        <div class="wdx-mush-icon wdx-mush-icon--{{ c.key|replace('_','-') }}" aria-hidden="true">{{ ico('mushroom') }}</div>
         <div class="wdx-memo-title-wrap">
           <h3>{{ c.name_ru }}</h3>
           <div class="wdx-memo-latin">{{ c.latin }}</div>

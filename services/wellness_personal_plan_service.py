@@ -49,16 +49,16 @@ def _split_role_points(role_text: str) -> list[str]:
 
 
 def _build_memo_cards(memo_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    icon_map = {
-        "amanita_muscaria": "🍄",
-        "amanita_pantherina": "🍄",
-        "amanita_regalis": "🍄",
-        "hericium": "🦁",
-        "cordyceps": "⚡",
-        "reishi": "🛡️",
-        "trametes": "🧬",
-        "maitake": "⚖️",
-        "shiitake": "🌿",
+    color_map = {
+        "amanita_muscaria": "muscaria",
+        "amanita_pantherina": "panther",
+        "amanita_regalis": "regalis",
+        "hericium": "hericium",
+        "cordyceps": "cordyceps",
+        "reishi": "reishi",
+        "trametes": "trametes",
+        "maitake": "maitake",
+        "shiitake": "shiitake",
     }
     cards: list[dict[str, Any]] = []
     for row in memo_rows:
@@ -67,7 +67,7 @@ def _build_memo_cards(memo_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         cards.append(
             {
                 "key": key,
-                "icon": icon_map.get(key, "🍄"),
+                "color": color_map.get(key, "muscaria"),
                 "name_ru": str(row.get("name_ru") or ""),
                 "latin": str(row.get("latin") or ""),
                 "core_short": _compact_text(str(row.get("core") or ""), 100),
