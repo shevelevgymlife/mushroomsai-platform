@@ -311,7 +311,7 @@
         <input type="number" id="refWithdrawAmount" class="sinp w-full sm:max-w-[200px] text-sm" min="1" step="0.01" placeholder="например {{ ref_min_withdraw }}" value="{{ ref_stats.balance_rub }}" />
         <button type="button" id="refWithdrawBtn" class="btn-g px-5 py-2.5 rounded-xl text-sm font-medium" onclick="requestWithdraw()">Заявка на вывод</button>
       </div>
-      <p class="text-xs text-muted mt-2 leading-relaxed">Укажите сумму от <strong>{{ ref_min_withdraw }}</strong> ₽ до доступного баланса. Заявки принимаются <strong>с {{ ref_wd_from }} по {{ ref_wd_to }} число</strong> (Москва). После заявки сумма уходит в <strong>резерв</strong>; новые бонусы копятся на доступный баланс. Один вывод в месяц. В Telegram придёт напоминание о чеке самозанятого / документе ИП.</p>
+      <p class="text-xs text-muted mt-2 leading-relaxed">Укажите сумму от <strong>{{ ref_min_withdraw }}</strong> ₽ до доступного баланса. Заявки принимаются <strong>с {{ ref_wd_from }} по {{ ref_wd_to }} число</strong> (Москва). <strong>С доступного баланса сумма списывается сразу при подаче заявки</strong> и одновременно попадает в <strong>резерв</strong>; когда админ отмечает выплату, снимается только резерв (доступный баланс второй раз не уменьшается). Новые бонусы копятся на доступный баланс. Один вывод в месяц. В Telegram придёт напоминание о чеке самозанятого / документе ИП.</p>
       <p id="refWithdrawMsg" class="text-xs mt-3 text-muted" style="display:none"></p>
     </div>
 
