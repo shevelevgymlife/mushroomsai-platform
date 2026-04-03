@@ -4,6 +4,7 @@
 {% include "components/wellness_dashboard_css.html" %}
 {% endblock %}
 {% block content %}
+{% from "components/stroke_icons.html" import ico %}
 <div class="accneo-wrap wd-root wd-user-shell wd-ios">
   <div class="wd-head">
     <div>
@@ -68,7 +69,7 @@
     {% for c in memo_cards %}
     <article class="wdx-memo-card">
       <div class="wdx-memo-top">
-        <div class="wdx-mush-icon" aria-hidden="true">{{ c.icon }}</div>
+        <div class="wdx-mush-icon" aria-hidden="true">{{ ico('mushroom') }}</div>
         <div class="wdx-memo-title-wrap">
           <h3>{{ c.name_ru }}</h3>
           <div class="wdx-memo-latin">{{ c.latin }}</div>
