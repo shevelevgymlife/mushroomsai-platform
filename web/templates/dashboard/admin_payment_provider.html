@@ -37,6 +37,23 @@
           URL для уведомлений: <code class="text-gold break-all">{{ cloudpayments_webhook_url }}</code>
         </div>
         {% endif %}
+        <div class="pt-2 border-t border-border/60 space-y-2">
+          <p class="text-xs text-muted leading-relaxed">
+            <strong>СБП, SberPay, T-Pay (Т-Банк), Mir Pay</strong> и другие способы в окне оплаты появляются, если они
+            <strong>подключены по договору в личном кабинете CloudPayments</strong> для вашего терминала (часто отдельная заявка или тариф).
+            Сайт их не «включает» сам: по умолчанию виджет показывает все методы, разрешённые провайдером.
+          </p>
+          <p class="text-xs font-medium text-text">Не показывать в виджете подписок (редко нужно):</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-text">
+            {% for mid, mlabel in cloudpayments_method_choices %}
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" name="cp_restrict_methods" value="{{ mid }}" class="rounded border-border"
+                {% if mid in cloudpayments_restricted_current %}checked{% endif %} />
+              <span>{{ mlabel }} (<code class="text-gold/90">{{ mid }}</code>)</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
       </div>
       {% elif provider.id == 'tinkoff' %}
       <div class="p-6 rounded-2xl border border-border bg-surface space-y-4">

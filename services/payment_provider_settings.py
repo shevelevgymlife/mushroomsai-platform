@@ -16,7 +16,7 @@ PAYMENT_PROVIDERS: list[dict[str, str]] = [
     {
         "id": "cloudpayments",
         "title": "CloudPayments",
-        "subtitle": "Банковские карты, Apple Pay, Google Pay, рекуррентные платежи",
+        "subtitle": "Карты, СБП, SberPay, T-Pay и др. (в виджете — что подключено в личном кабинете CloudPayments)",
     },
     {
         "id": "tinkoff",
@@ -46,6 +46,39 @@ PAYMENT_PROVIDERS: list[dict[str, str]] = [
         "subtitle": "NOWPayments или аналог (API-ключ, валюта)",
     },
 ]
+
+# Идентификаторы для параметра виджета restrictedPaymentMethods (список ОТКЛЮЧАЕМЫХ способов).
+# Документация: developers.cloudpayments.ru (виджет / PaymentBlocks).
+CLOUDPAYMENTS_WIDGET_METHOD_CHOICES: list[tuple[str, str]] = [
+    ("Card", "Банковская карта"),
+    ("Sbp", "СБП"),
+    ("SberPay", "SberPay"),
+    ("TinkoffPay", "T-Pay (Т-Банк)"),
+    ("MirPay", "Mir Pay"),
+    ("ForeignCard", "Иностранные карты"),
+    ("TcsInstallment", "Рассрочка Т-Банк"),
+    ("Dolyame", "Долями"),
+]
+
+CLOUDPAYMENTS_WIDGET_METHOD_IDS = frozenset(m[0] for m in CLOUDPAYMENTS_WIDGET_METHOD_CHOICES)
+
+
+def normalize_cloudpayments_restricted_payment_methods(value: Any) -> list[str]:
+    """Нормализует список методов, которые нужно скрыть в виджете (restrictedPaymentMethods)."""
+    if not value:
+        return []
+    if isinstance(value, list):
+        items = value
+    elif isinstance(value, str):
+        items = [x.strip() for x in value.replace(",", " ").split() if x.strip()]
+    else:
+        return []
+    out: list[str] = []
+    for x in items:
+        s = str(x).strip()
+        if s in CLOUDPAYMENTS_WIDGET_METHOD_IDS and s not in out:
+            out.append(s)
+    return out
 
 
 def _key(provider_id: str) -> str:

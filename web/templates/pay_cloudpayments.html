@@ -31,18 +31,20 @@
   }
   var widget = new cp.CloudPayments();
   var inv = 'sub-' + uid + '-' + plan + '-' + Date.now();
-  widget.pay('charge', {
+  var meta = { userId: uid, plan: plan };
+  var opts = {
     publicId: pubId,
     description: 'Подписка «' + pname + '»',
     amount: Number(amt),
     currency: 'RUB',
     accountId: String(uid),
     invoiceId: inv,
-    data: {
-      userId: uid,
-      plan: plan
-    }
-  }, {
+    data: meta,
+    metadata: meta
+  };
+  var cpRestrict = {{ (cloudpayments_restricted_payment_methods|default([]))|tojson }};
+  if (cpRestrict && cpRestrict.length) opts.restrictedPaymentMethods = cpRestrict;
+  widget.pay('charge', opts, {
     onSuccess: function () {
       window.location.href = '/subscriptions?paid=1';
     },

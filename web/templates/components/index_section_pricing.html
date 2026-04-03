@@ -268,6 +268,7 @@
   var pubId = {{ cloudpayments_public_id|tojson }};
   var uid = {{ payment_user_id|int }};
   var plansPayload = {{ cp_plan_payload|tojson }};
+  var cpRestrict = {{ (subscription_checkout.get('cloudpayments_restricted_payment_methods', []) if subscription_checkout is defined else [])|tojson }};
   function pay(planKey) {
     var row = plansPayload[planKey];
     var amt = row && Number(row.price);
@@ -279,7 +280,7 @@
     var inv = 'sub-' + uid + '-' + planKey + '-' + Date.now();
     var nm = (row && row.name) ? String(row.name) : planKey;
     var meta = { userId: uid, plan: planKey };
-    widget.pay('charge', {
+    var opts = {
       publicId: pubId,
       description: 'Подписка «' + nm + '»',
       amount: amt,
@@ -288,7 +289,9 @@
       invoiceId: inv,
       data: meta,
       metadata: meta
-    }, {
+    };
+    if (cpRestrict && cpRestrict.length) opts.restrictedPaymentMethods = cpRestrict;
+    widget.pay('charge', opts, {
       onSuccess: function () {
         window.location.href = '/subscriptions?paid=1';
       },

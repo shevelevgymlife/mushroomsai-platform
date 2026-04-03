@@ -35,7 +35,7 @@
     plan: plan,
     gift: true
   };
-  widget.pay('charge', {
+  var gopts = {
     publicId: pubId,
     description: 'Подарок подписки «' + pname + '»',
     amount: Number(amt),
@@ -44,7 +44,10 @@
     invoiceId: inv,
     data: gmeta,
     metadata: gmeta
-  }, {
+  };
+  var cpRestrictGift = {{ (cloudpayments_restricted_payment_methods|default([]))|tojson }};
+  if (cpRestrictGift && cpRestrictGift.length) gopts.restrictedPaymentMethods = cpRestrictGift;
+  widget.pay('charge', gopts, {
     onSuccess: function () {
       window.location.href = '/subscriptions?paid=1&gifted=1';
     },

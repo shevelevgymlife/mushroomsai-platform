@@ -21,7 +21,11 @@ from db.database import database
 from db.models import platform_settings
 
 from services.payment_plans_catalog import get_effective_plans, is_catalog_paid_checkout_plan
-from services.payment_provider_settings import PAYMENT_PROVIDERS, get_provider_settings
+from services.payment_provider_settings import (
+    PAYMENT_PROVIDERS,
+    get_provider_settings,
+    normalize_cloudpayments_restricted_payment_methods,
+)
 from services.yookassa_bot_offerings import (
     find_offering_id_for_plan,
     get_merged_bot_offerings,
@@ -347,6 +351,11 @@ async def resolve_active_subscription_checkout() -> dict[str, Any]:
         "kind_telegram": kind_telegram,
         "cloudpayments_enabled": kind_web == "cloudpayments",
         "cloudpayments_public_id": (cp.get("public_id") or "").strip() if cp_ok else "",
+        "cloudpayments_restricted_payment_methods": (
+            normalize_cloudpayments_restricted_payment_methods(cp.get("restricted_payment_methods"))
+            if cp_ok
+            else []
+        ),
         "yookassa_web_pay_enabled": yk_web,
         "yookassa_bot_invoice_enabled": yk_bot,
         "yookassa_browser_redirect_ready": yk_browser,

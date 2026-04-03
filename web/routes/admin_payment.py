@@ -22,9 +22,11 @@ from services.payment_plans_catalog import (
     visible_plan_keys_from,
 )
 from services.payment_provider_settings import (
+    CLOUDPAYMENTS_WIDGET_METHOD_CHOICES,
     PAYMENT_PROVIDERS,
     get_provider_settings,
     merge_secrets,
+    normalize_cloudpayments_restricted_payment_methods,
     save_provider_settings,
 )
 from services.yookassa_bot_offerings import get_merged_bot_offerings
@@ -368,6 +370,14 @@ async def admin_payment_provider_page(request: Request, provider_id: str):
             "raw_overrides": raw_over,
             "plan_order_list": list(plans.keys()),
             "cloudpayments_webhook_url": webhook_url if meta["id"] == "cloudpayments" else "",
+            "cloudpayments_method_choices": (
+                CLOUDPAYMENTS_WIDGET_METHOD_CHOICES if meta["id"] == "cloudpayments" else []
+            ),
+            "cloudpayments_restricted_current": (
+                normalize_cloudpayments_restricted_payment_methods(st.get("restricted_payment_methods"))
+                if meta["id"] == "cloudpayments"
+                else []
+            ),
             "yookassa_http_webhook_url": yk_wh if meta["id"] in ("yookassa_bot", "yookassa") else "",
             "form_action": form_action,
             "bot_offerings_preview": bot_offerings_preview if meta["id"] == "yookassa_bot" else [],
@@ -394,6 +404,13 @@ async def admin_payment_provider_save(request: Request, provider_id: str):
         new_st["enabled"] = str(form.get("enabled") or "").strip().lower() in ("1", "true", "on", "yes")
         new_st["public_id"] = (form.get("public_id") or "").strip()
         new_st["api_secret"] = (form.get("api_secret") or "").strip()
+        try:
+            raw_restrict = form.getlist("cp_restrict_methods")
+        except Exception:
+            raw_restrict = []
+        new_st["restricted_payment_methods"] = normalize_cloudpayments_restricted_payment_methods(
+            raw_restrict
+        )
         secrets = ("api_secret",)
     elif pid == "tinkoff":
         new_st["enabled"] = str(form.get("enabled") or "").strip().lower() in ("1", "true", "on", "yes")

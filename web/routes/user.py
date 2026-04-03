@@ -397,6 +397,10 @@ async def pay_subscription_yookassa(request: Request, offering_id: str = "", pla
                 "pay_amount": int(price),
                 "payment_user_id": uid,
                 "cloudpayments_public_id": cpid,
+                "cloudpayments_restricted_payment_methods": checkout.get(
+                    "cloudpayments_restricted_payment_methods"
+                )
+                or [],
             },
         )
     if kind != "yookassa":
@@ -498,6 +502,10 @@ async def pay_gift_subscription(request: Request, plan: str = "", recipient_id: 
                 "gift_recipient_id": rid,
                 "gift_giver_id": giver_id,
                 "cloudpayments_public_id": cpid,
+                "cloudpayments_restricted_payment_methods": checkout.get(
+                    "cloudpayments_restricted_payment_methods"
+                )
+                or [],
             },
         )
 
