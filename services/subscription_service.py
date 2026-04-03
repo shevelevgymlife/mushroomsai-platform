@@ -626,9 +626,11 @@ async def check_subscription(user_id: int) -> str:
 
 async def paid_subscription_for_referral_program(user_id: int) -> bool:
     """
-    Персональные реферальные ссылки и партнёрство магазина: только активная
-    оплаченная подписка Старт+ (не пробный 3-дневный «Старт»).
-    Администраторы и модераторы — всегда.
+    Реферальная программа (ссылки, партнёрство магазина, бонус за подписки приглашённых):
+    нужна активная платная подписка — любой тариф в users.subscription_plan, кроме «free»
+    (новые платные планы из каталога подходят автоматически, если ключ не free).
+    Чистый пробный «Старт» без оплаты обычно хранится как plan=free + start_trial_until — тогда False.
+    Администраторы и модераторы — всегда True.
     """
     row = await database.fetch_one(users.select().where(users.c.id == int(user_id)))
     if not row:
