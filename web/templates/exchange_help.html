@@ -27,11 +27,32 @@
     <div class="exh-card">
       <h2 class="exh-h">Как устроено</h2>
       <ul class="exh-ul">
-        <li>Есть <strong>пул ликвидности</strong>: резерв токена {{ exchange_token_name }} и резерв бонусов. <strong>Курс</strong> = бонусы в пуле ÷ токены в пуле (сколько бонусов за 1 {{ exchange_token_name }}).</li>
-        <li><strong>Купить</strong> — списываются бонусы, на баланс начисляется {{ exchange_token_name }}.</li>
-        <li><strong>Продать</strong> — списывается {{ exchange_token_name }}, начисляются бонусы.</li>
+        <li>Есть <strong>пул ликвидности</strong>: резерв токена {{ exchange_token_name }} и резерв бонусов. <strong>Курс на экране</strong> = бонусы в пуле ÷ токены в пуле (сколько <strong>бонусов нужно за 1 {{ exchange_token_name }}</strong>).</li>
         <li>Комиссия сделки <strong>2%</strong>, за одну операцию нельзя забрать больше <strong>10%</strong> соответствующей стороны пула (защита от «пробоя» ликвидности).</li>
       </ul>
+    </div>
+
+    <div class="exh-card">
+      <h2 class="exh-h">Если покупаешь — что куда идёт</h2>
+      <p class="exh-p"><strong>Вы отдаёте:</strong> реферальные <strong>бонусы</strong> (рублёвый баланс в кабинете).</p>
+      <p class="exh-p"><strong>Вы получаете:</strong> токены <strong>{{ exchange_token_name }}</strong> на внутренний баланс биржи (потом их можно продать обратно за бонусы или оформить вывод в Decimal Wallet).</p>
+      <p class="exh-p"><strong>Пул:</strong> ваши бонусы <strong>добавляются</strong> в резерв бонусов пула, токены <strong>забираются</strong> из резерва токенов пула. То есть вы меняетесь с пулом: бонусы ↔ токен.</p>
+    </div>
+
+    <div class="exh-card">
+      <h2 class="exh-h">Если продаёшь — что куда идёт</h2>
+      <p class="exh-p"><strong>Вы отдаёте:</strong> токены <strong>{{ exchange_token_name }}</strong> с биржевого баланса.</p>
+      <p class="exh-p"><strong>Вы получаете:</strong> <strong>бонусы</strong> на реферальный баланс.</p>
+      <p class="exh-p"><strong>Пул:</strong> токены <strong>возвращаются</strong> в резерв токенов, бонусы <strong>списываются</strong> из резерва бонусов пула.</p>
+    </div>
+
+    <div class="exh-card">
+      <h2 class="exh-h">Как меняется (и «растёт») цена</h2>
+      <p class="exh-p">Это <strong>не отдельная «биржа как на фондовом»</strong>, а курс из двух чисел в пуле. После каждой сделки резервы меняются — и <strong>следующий</strong> курс пересчитывается заново.</p>
+      <p class="exh-p"><strong>Если много покупают</strong> (все отдают бонусы и забирают токены из пула): в пуле становится <strong>больше бонусов</strong> и <strong>меньше токенов</strong> → дробь «бонусы ÷ токены» обычно <strong>растёт</strong> → за 1 {{ exchange_token_name }} в бонусах на экране просят больше.</p>
+      <p class="exh-p"><strong>Если много продают</strong> (возвращают токены в пул и забирают бонусы): в пуле <strong>больше токенов</strong> и <strong>меньше бонусов</strong> → курс в бонусах за 1 токен обычно <strong>снижается</strong>.</p>
+      <p class="exh-p"><strong>Админ</strong> может вручную <strong>доливать пул</strong> (и токены, и бонусы) — это тоже сдвигает курс. Часть дохода от подписок может автоматически увеличивать бонусный резерв пула по правилам платформы.</p>
+      <p class="exh-p text-[12px] text-muted">Итог: цена «растёт» не сама по себе, а из‑за того, <strong>кто и что делает с пулом</strong> (покупки, продажи, доливки).</p>
     </div>
 
     <div class="exh-card">
