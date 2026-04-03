@@ -745,6 +745,15 @@ async def run_heavy_startup(app: FastAPI) -> None:
             logger.warning("migrate_v43 referral_bonus_percent: %s", e)
 
         try:
+            import migrate_v44_referrals_referrer_sync as migrate_v44
+
+            for s in migrate_v44.STEPS:
+                await database.execute(sa.text(s))
+            logger.info("referrals.referrer_id sync from users.referred_by (migrate_v44) OK")
+        except Exception as e:
+            logger.warning("migrate_v44 referrals_referrer_sync: %s", e)
+
+        try:
             from services.merge_neurofungi_ai_chats import merge_all_neurofungi_ai_personal_chats
 
             await merge_all_neurofungi_ai_personal_chats()

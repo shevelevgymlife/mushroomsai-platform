@@ -436,6 +436,21 @@ async def merge_accounts(primary_id: int, secondary_id: int):
     if updates:
         await database.execute(users.update().where(users.c.id == primary_id).values(**updates))
 
+    try:
+        fin = await database.fetch_one(users.select().where(users.c.id == primary_id))
+        if fin and fin.get("referred_by"):
+            await database.execute(
+                referrals.update()
+                .where(referrals.c.referred_id == primary_id)
+                .values(referrer_id=int(fin["referred_by"]))
+            )
+    except Exception:
+        logger.warning(
+            "merge_accounts: sync referrals.referrer_id failed primary_id=%s",
+            primary_id,
+            exc_info=True,
+        )
+
 
 async def attach_telegram_login(primary_user_id: int, tg_id: int, name: str = "", avatar: str = "") -> tuple[bool, str]:
     primary = await _resolve_primary_row(primary_user_id)

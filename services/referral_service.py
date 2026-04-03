@@ -296,11 +296,12 @@ async def credit_referrer_bonus_for_paid_subscription(
     payment_channel: str | None = None,
 ) -> float:
     """
-    Начислить рефереру 10% от фактической оплаченной суммы подписки.
-    Срабатывает на КАЖДУЮ платную покупку/продление приглашённого (не trial),
-    но только если у реферера в момент оплаты активна платная подписка и он оформил партнёрство
-    (сохранена ссылка магазина), а оплата приглашённого прошла через допустимый канал (рубли, не Stars).
-    Возвращает начисленную сумму или 0.0.
+    Начислить рефереру % от фактической оплаченной суммы подписки приглашённого.
+    Срабатывает на КАЖДУЮ платную покупку/продление (не trial), если у реферера активна любая
+    платная подписка (Старт / Про / Макси, не free) и оплата приглашённого через допустимый канал (₽, не Stars).
+
+    Канонический реферер — users.referred_by (в т.ч. после слияния аккаунтов). Строка referrals
+    синхронизируется с ним, чтобы список приглашённых и начисления не расходились.
     """
     ch = (payment_channel or "").strip().lower()
     if ch not in REFERRAL_BONUS_PAYMENT_CHANNELS:
@@ -311,26 +312,52 @@ async def credit_referrer_bonus_for_paid_subscription(
         return 0.0
     uid = int(row.get("primary_user_id") or row["id"])
 
+    rb = row.get("referred_by")
+    if not rb:
+        return 0.0
+    rid = int(rb)
+    if rid == uid:
+        return 0.0
+
     ref_row = await database.fetch_one(
         referrals.select()
         .where(referrals.c.referred_id == uid)
         .order_by(referrals.c.id.desc())
         .limit(1)
     )
+    if ref_row and int(ref_row["referrer_id"]) != rid:
+        ref_id_fix = int(ref_row["id"])
+        await database.execute(
+            referrals.update().where(referrals.c.id == ref_id_fix).values(referrer_id=rid)
+        )
+        logger.info(
+            "referral bonus: synced referrals.referrer_id to users.referred_by referred=%s -> referrer=%s",
+            uid,
+            rid,
+        )
+        ref_row = await database.fetch_one(referrals.select().where(referrals.c.id == ref_id_fix))
+    elif not ref_row:
+        bonus_est = float(await referral_bonus_per_invite_rub(rid))
+        await database.execute(
+            referrals.insert().values(
+                referrer_id=rid,
+                referred_id=uid,
+                bonus_applied=False,
+                referral_bonus_amount=bonus_est,
+            )
+        )
+        ref_row = await database.fetch_one(
+            referrals.select()
+            .where(referrals.c.referred_id == uid)
+            .order_by(referrals.c.id.desc())
+            .limit(1)
+        )
     if not ref_row:
-        return 0.0
-
-    rid = int(ref_row["referrer_id"])
-    if rid == uid:
         return 0.0
 
     from services.subscription_service import paid_subscription_for_referral_program
 
     if not await paid_subscription_for_referral_program(rid):
-        return 0.0
-
-    rref = await database.fetch_one(users.select().where(users.c.id == rid))
-    if not rref or not bool(rref.get("referral_shop_partner_self")):
         return 0.0
 
     from services.referral_bonus_settings import get_effective_referrer_bonus_percent
