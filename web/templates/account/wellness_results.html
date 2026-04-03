@@ -4,131 +4,87 @@
 {% include "components/wellness_dashboard_css.html" %}
 {% endblock %}
 {% block content %}
-<div class="accneo-wrap wd-root wd-user-shell wd-ios">
-  <span class="wd-personal-badge">Только ваши данные</span>
-  <div class="wd-head">
-    <div>
-      <h1>Моё состояние</h1>
-      <p class="wd-sub">Дашборд по ответам в ЛС с NeuroFungi AI. Графики можно листать свайпом на телефоне.</p>
-    </div>
+<div class="accneo-wrap wd-root wd-user-shell wd-ios wdx-shell">
+  <div class="wdx-topline">
+    <span class="wd-personal-badge">Мои данные</span>
+    <a href="/account/wellness-personal-plan" class="wdx-plan-link">Памятка →</a>
   </div>
-
-  <div class="wd-ios-group wd-ios-group--pad" style="margin-bottom:1rem">
-    <div class="wd-disclaimer" style="margin:0;border:none;padding:0;background:transparent">
-      <strong style="color:#e8d4a8">Не медицина.</strong> Графики и советы AI — только для самонаблюдения, без диагнозов и назначений.
-    </div>
+  <div class="wdx-title-row">
+    <h1>Моё состояние</h1>
   </div>
 
   {% if request.query_params.get('saved') %}
-  <div class="wd-ios-section-h" style="padding-top:0">Сообщение</div>
-  <div class="wd-ios-group wd-ios-group--pad mb-4">
-    <p class="text-sm text-gold m-0">Настройки сохранены.</p>
-  </div>
+  <div class="wdx-alert">Сохранено</div>
   {% endif %}
   {% if request.query_params.get('pdf') == '0' %}
-  <div class="wd-ios-group wd-ios-group--pad mb-4 border-amber-500/30">
-    <p class="text-sm text-amber-100 m-0">Скачивание PDF отключено администратором. Если это ошибка — напишите в поддержку.</p>
-  </div>
+  <div class="wdx-alert wdx-alert--warn">PDF выключен админом</div>
   {% endif %}
   {% if not coach_ok %}
-  <div class="wd-ios-group wd-ios-group--pad mb-4">
-    <p class="text-sm text-amber-200 m-0">Сбор дневника временно отключён на уровне платформы. Ваши сохранённые данные остаются доступны.</p>
-  </div>
+  <div class="wdx-alert wdx-alert--warn">Дневник временно отключён</div>
   {% endif %}
 
   <div id="wd-dash-mount" data-wellness-spa="1">
-  {% include "components/wellness_dashboard_core.html" %}
-  </div>
-
-  <div class="wd-ios-section">
-    <div class="wd-ios-section-h">Сводка за всё время</div>
-    <div class="wd-ios-group">
-      <div class="wd-stat-grid" style="margin:0;padding:0.65rem;gap:0.5rem;border:none;background:transparent">
-        <div class="wd-stat" style="background:rgba(0,0,0,0.2);border:none"><div class="wd-stat-k">Ответов</div><div class="wd-stat-v">{{ agg.reply_count }}</div></div>
-        <div class="wd-stat" style="background:rgba(0,0,0,0.2);border:none"><div class="wd-stat-k">Настроение Ø</div><div class="wd-stat-v">{{ agg.mood_avg if agg.mood_avg is not none else '—' }}</div></div>
-        <div class="wd-stat" style="background:rgba(0,0,0,0.2);border:none"><div class="wd-stat-k">Энергия Ø</div><div class="wd-stat-v">{{ agg.energy_avg if agg.energy_avg is not none else '—' }}</div></div>
-      </div>
-    </div>
-    <p class="wd-ios-footer">По всем ответам в дневнике, включённые в статистику.</p>
+  {% include "components/wellness_dashboard_user_compact.html" %}
   </div>
 
   {% if agg.mushroom_counts and agg.mushroom_counts|length > 0 %}
-  <div class="wd-ios-section">
-    <div class="wd-ios-section-h">Грибы в ответах</div>
-    <div class="wd-ios-group">
-      <div class="wa-scroll" style="flex-direction:column;scroll-snap-type:none;padding:0.5rem 0.75rem;max-height:none">
-        {% for name, cnt in agg.mushroom_counts %}
-        <div class="flex items-center gap-3 py-2 border-b border-white/[0.06] last:border-0">
-          <div class="flex-1 h-2 rounded-full bg-white/10 overflow-hidden min-w-0">
-            <div class="h-full rounded-full" style="width: {{ [100, cnt * 25] | min }}%; background:linear-gradient(90deg,var(--wd-teal),var(--wd-violet))"></div>
-          </div>
-          <span class="text-sm text-text w-40 text-right shrink-0 truncate">{{ name }} · {{ cnt }}</span>
-        </div>
-        {% endfor %}
+  <section class="wdx-mush-top">
+    <h2>Грибы в ответах</h2>
+    <div class="wdx-mush-bars">
+      {% for name, cnt in agg.mushroom_counts %}
+      <div class="wdx-mush-row">
+        <div class="wdx-mush-label">{{ name }}</div>
+        <div class="wdx-mush-track"><i style="width: {{ [100, cnt * 25] | min }}%"></i></div>
+        <div class="wdx-mush-cnt">{{ cnt }}</div>
       </div>
+      {% endfor %}
     </div>
-  </div>
+  </section>
   {% endif %}
 
-  <div class="wd-ios-section">
-    <div class="wd-ios-section-h">Действия</div>
-    <div class="wd-ios-group wd-ios-group--pad">
-      <div class="wd-actions" style="margin:0;flex-direction:column;align-items:stretch">
-        <a href="/account/wellness-personal-plan" class="wd-btn" style="justify-content:center">Личная памятка</a>
-        <a href="/account/wellness-results/pdf" class="wd-btn secondary" style="justify-content:center">Скачать PDF</a>
-        <a href="/chats" class="wd-btn secondary" style="justify-content:center">Открыть чаты</a>
-      </div>
-    </div>
-  </div>
+  <section class="wdx-actions">
+    <a href="/account/wellness-personal-plan" class="wdx-btn">Личная памятка</a>
+    <a href="/account/wellness-results/pdf" class="wdx-btn wdx-btn--soft">Скачать PDF</a>
+  </section>
 
-  <div class="wd-ios-section">
-    <div class="wd-ios-section-h">Напоминания NeuroFungi AI</div>
-    <div class="wd-ios-group wd-ios-group--pad">
-      <form method="post" action="/account/wellness-results" class="space-y-4">
-        <div>
-          <label class="block text-sm text-muted mb-2">Сколько раз в день (UTC)</label>
-          <p class="text-xs text-muted mb-2">Чем чаще отмечаете состояние, тем богаче статистика.</p>
-          <select name="prompts_per_day" class="w-full rounded-xl bg-black/30 border border-white/10 px-3 py-3 text-text text-base">
-            <option value="1" {% if (wrow.wellness_journal_prompts_per_day or 1)|int == 1 %}selected{% endif %}>1 раз — утро</option>
-            <option value="2" {% if (wrow.wellness_journal_prompts_per_day or 1)|int == 2 %}selected{% endif %}>2 раза — утро и день</option>
-            <option value="3" {% if (wrow.wellness_journal_prompts_per_day or 1)|int == 3 %}selected{% endif %}>3 раза — утро, день и вечер</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-sm text-muted mb-2">Интервал «дней опроса»</label>
-          <select name="interval_days" class="w-full rounded-xl bg-black/30 border border-white/10 px-3 py-3 text-text text-base">
-            <option value="1" {% if (wrow.wellness_journal_interval_days or 1)|int == 1 %}selected{% endif %}>Каждый день</option>
-            <option value="3" {% if (wrow.wellness_journal_interval_days or 1)|int == 3 %}selected{% endif %}>Раз в 3 дня</option>
-            <option value="5" {% if (wrow.wellness_journal_interval_days or 1)|int == 5 %}selected{% endif %}>Раз в 5 дней</option>
-            <option value="7" {% if (wrow.wellness_journal_interval_days or 1)|int == 7 %}selected{% endif %}>Раз в неделю</option>
-          </select>
-        </div>
-        <label class="flex items-center gap-3 text-sm text-text cursor-pointer py-1">
-          <input type="checkbox" name="opt_out" value="1" {% if wrow.wellness_journal_opt_out %}checked{% endif %} class="h-5 w-5 rounded" />
-          Полностью отключить дневник и напоминания AI
-        </label>
-        <button type="submit" class="wd-btn w-full" style="cursor:pointer;justify-content:center">Сохранить</button>
-      </form>
-    </div>
-  </div>
+  <details class="wdx-settings">
+    <summary>Настройки</summary>
+    <form method="post" action="/account/wellness-results" class="wdx-settings-form">
+      <label>
+        <span>Опросов в день</span>
+        <select name="prompts_per_day">
+          <option value="1" {% if (wrow.wellness_journal_prompts_per_day or 1)|int == 1 %}selected{% endif %}>1</option>
+          <option value="2" {% if (wrow.wellness_journal_prompts_per_day or 1)|int == 2 %}selected{% endif %}>2</option>
+          <option value="3" {% if (wrow.wellness_journal_prompts_per_day or 1)|int == 3 %}selected{% endif %}>3</option>
+        </select>
+      </label>
+      <label>
+        <span>Интервал дней</span>
+        <select name="interval_days">
+          <option value="1" {% if (wrow.wellness_journal_interval_days or 1)|int == 1 %}selected{% endif %}>1</option>
+          <option value="3" {% if (wrow.wellness_journal_interval_days or 1)|int == 3 %}selected{% endif %}>3</option>
+          <option value="5" {% if (wrow.wellness_journal_interval_days or 1)|int == 5 %}selected{% endif %}>5</option>
+          <option value="7" {% if (wrow.wellness_journal_interval_days or 1)|int == 7 %}selected{% endif %}>7</option>
+        </select>
+      </label>
+      <label class="wdx-opt">
+        <input type="checkbox" name="opt_out" value="1" {% if wrow.wellness_journal_opt_out %}checked{% endif %} />
+        <span>Пауза дневника</span>
+      </label>
+      <button type="submit" class="wdx-btn">Сохранить</button>
+    </form>
+  </details>
 
-  <div class="wd-ios-section">
-    <div class="wd-ios-section-h">Последние записи</div>
-    <div class="wd-ios-group">
-      <div class="divide-y divide-white/[0.06]">
-        {% for e in entries %}
-        <div class="wd-entry text-sm border-0 rounded-none bg-transparent" style="margin:0">
-          <div class="text-xs text-muted mb-1">{{ e.created_at.strftime('%d.%m.%Y %H:%M') if e.created_at else '' }} · {{ e.role }}</div>
-          <div class="text-text whitespace-pre-wrap" style="word-break:break-word">{{ (e.raw_text or '')[:900] }}{% if (e.raw_text or '')|length > 900 %}…{% endif %}</div>
-        </div>
-        {% else %}
-        <div class="p-4 text-muted text-sm">Пока нет записей. Ответьте на напоминание в чате — данные появятся здесь.</div>
-        {% endfor %}
-      </div>
-    </div>
-  </div>
+  <p class="accneo-back" style="margin-top:22px;padding-bottom:max(1rem, env(safe-area-inset-bottom))"><a href="/account/settings">← Настройки</a></p>
+</div>
 
-  <p class="accneo-back" style="margin-top:28px;padding-bottom:max(1rem, env(safe-area-inset-bottom))"><a href="/account/settings">← Настройки</a></p>
+<div class="wdx-help-modal" id="wdxHelpModal" aria-hidden="true">
+  <div class="wdx-help-backdrop" data-wd-help-close></div>
+  <div class="wdx-help-card" role="dialog" aria-modal="true" aria-labelledby="wdxHelpTitle">
+    <button type="button" class="wdx-help-close" data-wd-help-close>×</button>
+    <div class="wdx-help-head" id="wdxHelpTitle">Показатель</div>
+    <div class="wdx-help-body" id="wdxHelpBody"></div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -137,6 +93,36 @@
 document.addEventListener('DOMContentLoaded', function () {
   var charts = {{ (user_charts if user_charts is defined else []) | tojson }};
   if (window.wellnessDashSpaInit) window.wellnessDashSpaInit({ initialCharts: charts });
+
+  function bindMetricHelp(scope){
+    var modal = document.getElementById('wdxHelpModal');
+    var title = document.getElementById('wdxHelpTitle');
+    var body = document.getElementById('wdxHelpBody');
+    if(!modal || !title || !body) return;
+    (scope || document).querySelectorAll('[data-wd-help]').forEach(function(btn){
+      if(btn.dataset.wdHelpBound === '1') return;
+      btn.dataset.wdHelpBound = '1';
+      btn.addEventListener('click', function(){
+        title.textContent = btn.getAttribute('data-wd-help') || 'Показатель';
+        body.textContent = btn.getAttribute('data-wd-help-text') || '';
+        modal.classList.add('is-open');
+        modal.setAttribute('aria-hidden', 'false');
+      });
+    });
+    (scope || document).querySelectorAll('[data-wd-help-close]').forEach(function(el){
+      if(el.dataset.wdHelpBound === '1') return;
+      el.dataset.wdHelpBound = '1';
+      el.addEventListener('click', function(){
+        modal.classList.remove('is-open');
+        modal.setAttribute('aria-hidden', 'true');
+      });
+    });
+  }
+
+  bindMetricHelp(document);
+  document.addEventListener('wellness:fragment:mounted', function(e){
+    bindMetricHelp((e && e.detail && e.detail.mount) ? e.detail.mount : document);
+  });
 });
 </script>
 {% endblock %}
