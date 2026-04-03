@@ -64,18 +64,18 @@ def _referral_bonus_from_paid_price(price_rub: float, bonus_percent: float) -> f
 
 
 async def referral_bonus_per_invite_rub(referrer_id: int | None = None) -> int:
-    """Оценка «со Старт»: процент × цена Старт (для подсказок в UI). referrer_id — персональный % если задан."""
+    """Оценка «со Старт» по 1-й линии: % L1 × цена Старт (для подсказок в UI)."""
     from services.referral_bonus_settings import (
-        get_effective_referrer_bonus_percent,
-        get_referral_bonus_percent_global,
+        get_effective_referrer_bonus_line1_percent,
+        get_referral_bonus_line1_global,
     )
 
     eff = await get_effective_plans()
     base = float((eff.get("start") or DEFAULT_PLANS.get("start") or {}).get("price") or 0)
     if referrer_id is not None:
-        pct = await get_effective_referrer_bonus_percent(int(referrer_id))
+        pct = await get_effective_referrer_bonus_line1_percent(int(referrer_id))
     else:
-        pct = await get_referral_bonus_percent_global()
+        pct = await get_referral_bonus_line1_global()
     hint = float(
         (Decimal(str(base)) * Decimal(str(pct)) / Decimal("100")).quantize(
             Decimal("0.01"), rounding=ROUND_HALF_UP
@@ -127,6 +127,82 @@ async def _notify_referrer_telegram_new_referral(referrer_id: int, referred_user
         await notify_user(int(chat_id), text)
     except Exception:
         logger.debug("referrer new-ref telegram notify failed", exc_info=True)
+
+
+async def notify_second_line_referrer_about_referred_subscription(
+    *,
+    second_line_referrer_id: int,
+    payer_user_id: int,
+    direct_referrer_user_id: int,
+    plan_label: str,
+    bonus_rub: float,
+) -> None:
+    """Уведомление «рефереру 2-й линии»: оплата подписки приглашённым вашего приглашённого."""
+    if bonus_rub <= 0:
+        return
+    grid = int(second_line_referrer_id)
+    payer = int(payer_user_id)
+    mid = int(direct_referrer_user_id)
+    g_row = await database.fetch_one(users.select().where(users.c.id == grid))
+    if not g_row:
+        return
+    notify_uid = int(g_row.get("primary_user_id") or g_row["id"])
+    p_row = await database.fetch_one(users.select().where(users.c.id == payer))
+    m_row = await database.fetch_one(users.select().where(users.c.id == mid))
+    payer_name = ((p_row.get("name") if p_row else None) or f"Участник #{payer}")[:120]
+    mid_name = ((m_row.get("name") if m_row else None) or f"Участник #{mid}")[:120]
+    from config import settings
+
+    site = (settings.SITE_URL or "").strip().rstrip("/") or "https://mushroomsai.ru"
+    profile_url = f"{site}/community/profile/{payer}"
+    plain = (
+        f"Ваша 2-я линия: оплачена подписка.\n"
+        f"Приглашённый вашего приглашённого: {payer_name} (id {payer}).\n"
+        f"Через: {mid_name} (id {mid}).\n"
+        f"Оформлено: {plan_label}.\n"
+        f"Профиль: {profile_url}\n"
+        f"Бонус {bonus_rub:.0f} ₽ начислен на ваш баланс (2-я линия, каждая оплата в ₽).\n"
+    )
+    name_esc = html.escape(payer_name, quote=True)
+    mid_esc = html.escape(mid_name, quote=True)
+    label = html.escape((plan_label or "").strip() or "подписку", quote=True)
+    ref_href = html.escape(f"{site}/referral", quote=True)
+    profile_esc = html.escape(profile_url, quote=True)
+    tg_html = (
+        f"📬 <b>2-я линия: оплата подписки</b>\n\n"
+        f'<a href="{profile_esc}">{name_esc}</a> · id <code>{payer}</code>\n'
+        f"через вашего приглашённого: {mid_esc} (id <code>{mid}</code>)\n"
+        f"· {label}\n\n"
+        f"💰 Бонус <b>{bonus_rub:.0f} ₽</b> (2-я линия). "
+        f'<a href="{ref_href}">Реферальная программа</a>'
+    )
+    try:
+        from services.system_support_delivery import deliver_system_support_notification
+
+        await deliver_system_support_notification(
+            recipient_user_id=notify_uid,
+            body_plain=plain,
+            telegram_html=tg_html,
+        )
+    except Exception:
+        logger.debug("notify_second_line_referrer failed", exc_info=True)
+    try:
+        from services.in_app_notifications import create_notification
+        import time as _t
+
+        await create_notification(
+            recipient_id=notify_uid,
+            actor_id=None,
+            ntype="subscription_update",
+            title="Бонус: 2-я линия",
+            body=f"{payer_name} оплатил через {mid_name}. +{bonus_rub:.0f} ₽."[:500],
+            link_url=f"/community/profile/{payer}",
+            source_kind="referrer_line2_sub",
+            source_id=int(_t.time() * 1000) % (2**31 - 1),
+            skip_prefs=True,
+        )
+    except Exception:
+        logger.debug("second line in_app notify failed", exc_info=True)
 
 
 async def notify_referrer_about_referred_subscription(
@@ -293,30 +369,28 @@ async def credit_referrer_bonus_for_paid_subscription(
     paid_amount_rub: float,
     *,
     payment_channel: str | None = None,
-) -> float:
+) -> tuple[float, float]:
     """
-    Начислить рефереру % от фактической оплаченной суммы подписки приглашённого.
-    Срабатывает на КАЖДУЮ платную покупку/продление (не trial), если у реферера активна любая
-    платная подписка (любой не-free тариф из каталога) и оплата приглашённого через допустимый канал (₽, не Stars).
+    Начисление за подписку приглашённого: 1-я линия (прямой реферер) и 2-я линия (реферер реферера).
+    Срабатывает на каждую оплату в ₽ по допустимому каналу (не trial). Проценты L1/L2 — из настроек.
 
-    Канонический реферер — users.referred_by (в т.ч. после слияния аккаунтов). Строка referrals
-    синхронизируется с ним, чтобы список приглашённых и начисления не расходились.
+    Канонический реферер — users.referred_by. Таблица referrals синхронизируется для 1-й линии.
     """
     ch = (payment_channel or "").strip().lower()
     if ch not in REFERRAL_BONUS_PAYMENT_CHANNELS:
-        return 0.0
+        return (0.0, 0.0)
 
     row = await database.fetch_one(users.select().where(users.c.id == int(referred_user_id)))
     if not row:
-        return 0.0
+        return (0.0, 0.0)
     uid = int(row.get("primary_user_id") or row["id"])
 
     rb = row.get("referred_by")
     if not rb:
-        return 0.0
+        return (0.0, 0.0)
     rid = int(rb)
     if rid == uid:
-        return 0.0
+        return (0.0, 0.0)
 
     ref_row = await database.fetch_one(
         referrals.select()
@@ -352,56 +426,101 @@ async def credit_referrer_bonus_for_paid_subscription(
             .limit(1)
         )
     if not ref_row:
-        return 0.0
+        return (0.0, 0.0)
 
     from services.subscription_service import paid_subscription_for_referral_program
 
-    if not await paid_subscription_for_referral_program(rid):
-        return 0.0
+    from services.referral_bonus_settings import (
+        get_effective_referrer_bonus_line1_percent,
+        get_effective_referrer_bonus_line2_percent,
+    )
 
-    from services.referral_bonus_settings import get_effective_referrer_bonus_percent
+    price = float(paid_amount_rub or 0.0)
 
-    pct = await get_effective_referrer_bonus_percent(rid)
-    bonus = _referral_bonus_from_paid_price(float(paid_amount_rub or 0.0), pct)
-    if bonus <= 0:
-        return 0.0
+    sub = await database.fetch_one(
+        subscriptions.select()
+        .where(subscriptions.c.user_id == uid)
+        .order_by(subscriptions.c.id.desc())
+        .limit(1)
+    )
+    sub_id = int(sub["id"]) if sub and sub.get("id") is not None else None
+    plan_key = str((sub.get("plan") if sub else None) or "start").strip().lower()[:20]
 
+    bonus_l1 = 0.0
+    if await paid_subscription_for_referral_program(rid):
+        pct1 = await get_effective_referrer_bonus_line1_percent(rid)
+        bonus_l1 = _referral_bonus_from_paid_price(price, pct1)
     ref_id = int(ref_row["id"])
-
-    await database.execute(
-        sa.text(
-            "UPDATE users SET referral_balance = COALESCE(referral_balance, 0) + :b "
-            "WHERE id = :uid"
-        ),
-        {"b": bonus, "uid": rid},
-    )
-    await database.execute(
-        referrals.update().where(referrals.c.id == ref_id).values(bonus_applied=True)
-    )
-    try:
-        sub = await database.fetch_one(
-            subscriptions.select()
-            .where(subscriptions.c.user_id == uid)
-            .order_by(subscriptions.c.id.desc())
-            .limit(1)
-        )
-        sub_id = int(sub["id"]) if sub and sub.get("id") is not None else None
-        plan_key = str((sub.get("plan") if sub else None) or "start").strip().lower()[:20]
+    if bonus_l1 > 0:
         await database.execute(
-            referral_bonus_events.insert().values(
-                referral_id=ref_id,
-                referrer_id=rid,
-                referred_id=uid,
-                subscription_id=sub_id,
-                plan_key=plan_key,
-                paid_amount_rub=float(paid_amount_rub or 0.0),
-                bonus_rub=float(bonus),
-                payment_source=ch[:32],
-            )
+            sa.text(
+                "UPDATE users SET referral_balance = COALESCE(referral_balance, 0) + :b "
+                "WHERE id = :uid"
+            ),
+            {"b": bonus_l1, "uid": rid},
         )
-    except Exception:
-        logger.debug("referral bonus event insert skipped", exc_info=True)
-    return bonus
+        await database.execute(
+            referrals.update().where(referrals.c.id == ref_id).values(bonus_applied=True)
+        )
+        try:
+            await database.execute(
+                referral_bonus_events.insert().values(
+                    referral_id=ref_id,
+                    referrer_id=rid,
+                    referred_id=uid,
+                    subscription_id=sub_id,
+                    plan_key=plan_key,
+                    paid_amount_rub=price,
+                    bonus_rub=float(bonus_l1),
+                    payment_source=ch[:32],
+                    line_level=1,
+                )
+            )
+        except Exception:
+            logger.debug("referral bonus L1 event insert skipped", exc_info=True)
+
+    bonus_l2 = 0.0
+    mid_row = await database.fetch_one(users.select().where(users.c.id == rid))
+    grid_raw = mid_row.get("referred_by") if mid_row else None
+    if grid_raw:
+        grid = int(grid_raw)
+        if grid not in (uid, rid) and await paid_subscription_for_referral_program(grid):
+            pct2 = await get_effective_referrer_bonus_line2_percent(grid)
+            bonus_l2 = _referral_bonus_from_paid_price(price, pct2)
+            if bonus_l2 > 0:
+                await database.execute(
+                    sa.text(
+                        "UPDATE users SET referral_balance = COALESCE(referral_balance, 0) + :b "
+                        "WHERE id = :uid"
+                    ),
+                    {"b": bonus_l2, "uid": grid},
+                )
+                ref_l2 = await database.fetch_one(
+                    referrals.select()
+                    .where(referrals.c.referrer_id == grid)
+                    .where(referrals.c.referred_id == rid)
+                    .order_by(referrals.c.id.desc())
+                    .limit(1)
+                )
+                ref_l2_id = int(ref_l2["id"]) if ref_l2 else None
+                try:
+                    await database.execute(
+                        referral_bonus_events.insert().values(
+                            referral_id=ref_l2_id,
+                            referrer_id=grid,
+                            referred_id=uid,
+                            subscription_id=sub_id,
+                            plan_key=plan_key,
+                            paid_amount_rub=price,
+                            bonus_rub=float(bonus_l2),
+                            payment_source=ch[:32],
+                            line_level=2,
+                        )
+                    )
+                except Exception:
+                    logger.debug("referral bonus L2 event insert skipped", exc_info=True)
+
+    return (float(bonus_l1), float(bonus_l2))
 
 
 async def apply_pending_web_invite(request, new_user_id: int) -> None:
@@ -592,6 +711,54 @@ async def get_referral_stats(user_id: int) -> dict:
     }
 
 
+async def get_referral_line_statistics(referrer_id: int) -> dict[str, Any]:
+    """Счётчики приглашённых по линиям и начисления из referral_bonus_events."""
+    rid = int(referrer_id)
+    refs = await database.fetch_all(referrals.select().where(referrals.c.referrer_id == rid))
+    line1_n = len(refs)
+    line2_n = int(
+        await database.fetch_val(
+            sa.text(
+                """
+                SELECT COUNT(*) FROM users AS u
+                INNER JOIN users AS c ON u.referred_by = c.id
+                WHERE c.referred_by = :rid
+                  AND u.primary_user_id IS NULL
+                """
+            ),
+            {"rid": rid},
+        )
+        or 0
+    )
+    rows_ev = await database.fetch_all(
+        sa.text(
+            """
+            SELECT COALESCE(line_level, 1) AS lv, COALESCE(SUM(bonus_rub), 0) AS s
+            FROM referral_bonus_events
+            WHERE referrer_id = :rid
+            GROUP BY COALESCE(line_level, 1)
+            """
+        ),
+        {"rid": rid},
+    )
+    e1 = 0.0
+    e2 = 0.0
+    for r in rows_ev or []:
+        lv = int(r.get("lv") or 1)
+        s = float(r.get("s") or 0)
+        if lv == 2:
+            e2 += s
+        else:
+            e1 += s
+    return {
+        "line1_invites": line1_n,
+        "line2_invites": line2_n,
+        "earned_line1_rub": round(e1, 2),
+        "earned_line2_rub": round(e2, 2),
+        "earned_total_rub": round(e1 + e2, 2),
+    }
+
+
 def _bonus_from_row(r: dict, default_bonus: float) -> float:
     v = r.get("referral_bonus_amount")
     if v is not None:
@@ -646,6 +813,56 @@ async def get_referrer_invites_detailed(referrer_id: int) -> list[dict[str, Any]
     return out
 
 
+async def get_second_line_invites_detailed(referrer_id: int) -> list[dict[str, Any]]:
+    """Пользователи 2-й линии: приглашённые ваших прямых приглашённых."""
+    rows = await database.fetch_all(
+        sa.text(
+            """
+            SELECT u.id AS uid, c.id AS via_id
+            FROM users AS u
+            INNER JOIN users AS c ON u.referred_by = c.id
+            WHERE c.referred_by = :me
+              AND u.primary_user_id IS NULL
+            ORDER BY u.id DESC
+            """
+        ),
+        {"me": int(referrer_id)},
+    )
+    out: list[dict[str, Any]] = []
+    for r in rows or []:
+        uid = int(r["uid"])
+        via = int(r["via_id"])
+        u = await database.fetch_one(users.select().where(users.c.id == uid))
+        v = await database.fetch_one(users.select().where(users.c.id == via))
+        if not u:
+            continue
+        ud = dict(u)
+        plan = (ud.get("subscription_plan") or "free").lower()
+        trial = bool(ud.get("start_trial_until")) and (
+            ud.get("start_trial_until") and ud["start_trial_until"] > datetime.utcnow()
+        )
+        sub_end = ud.get("subscription_end")
+        ch = "web"
+        if ud.get("tg_id") or ud.get("linked_tg_id"):
+            ch = "telegram"
+        elif ud.get("google_id") or ud.get("linked_google_id"):
+            ch = "google"
+        out.append(
+            {
+                "id": uid,
+                "name": ud.get("name") or f"Участник #{uid}",
+                "avatar": ud.get("avatar"),
+                "via_user_id": via,
+                "via_name": (v.get("name") if v else None) or f"Участник #{via}",
+                "subscription_plan": plan,
+                "trial_active": trial,
+                "subscription_end": sub_end,
+                "registration_channel": ch,
+            }
+        )
+    return out
+
+
 async def list_referral_bonus_events_for_referrer(
     referrer_id: int,
     limit: int = 120,
@@ -660,6 +877,7 @@ async def list_referral_bonus_events_for_referrer(
     for r in rows:
         rid = int(r.get("referred_id") or 0)
         u = await database.fetch_one(users.select().where(users.c.id == rid))
+        lv = int(r.get("line_level") or 1)
         out.append(
             {
                 "id": int(r["id"]),
@@ -672,6 +890,8 @@ async def list_referral_bonus_events_for_referrer(
                 "subscription_id": r.get("subscription_id"),
                 "payment_source": (r.get("payment_source") or "").strip().lower(),
                 "payment_source_label": _payment_source_label(r.get("payment_source")),
+                "line_level": lv,
+                "line_label": "2-я линия" if lv == 2 else "1-я линия",
             }
         )
     return out

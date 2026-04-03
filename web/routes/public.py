@@ -53,6 +53,8 @@ from web.community_media import post_image_urls
 from services.referral_service import (
     attach_invite_ref_from_query,
     get_referral_stats,
+    get_referral_line_statistics,
+    get_second_line_invites_detailed,
     ensure_user_referral_code,
     get_referrer_invites_detailed,
     request_referral_withdrawal,
@@ -1223,6 +1225,8 @@ async def referral_program_page(request: Request):
     ref_min_withdraw = await get_referral_min_withdrawal_rub()
     ref_wd_from, ref_wd_to = await get_referral_wd_moscow_days()
     ref_invites = await get_referrer_invites_detailed(uid)
+    ref_invites_line2 = await get_second_line_invites_detailed(int(uid))
+    ref_line_stats = await get_referral_line_statistics(int(uid))
     bonus_events = await list_referral_bonus_events_for_referrer(int(uid), 120)
     display_user = user
     if user.get("primary_user_id"):
@@ -1240,12 +1244,16 @@ async def referral_program_page(request: Request):
 
     partner_shop_link_policy = await get_referral_shop_link_policy()
     from services.referral_bonus_settings import (
-        get_effective_referrer_bonus_percent,
-        get_referral_bonus_percent_global,
+        get_effective_referrer_bonus_line1_percent,
+        get_effective_referrer_bonus_line2_percent,
+        get_referral_bonus_line1_global,
+        get_referral_bonus_line2_global,
     )
 
-    ref_bonus_pct_global = await get_referral_bonus_percent_global()
-    ref_bonus_pct_effective = await get_effective_referrer_bonus_percent(int(uid))
+    ref_bonus_l1_global = await get_referral_bonus_line1_global()
+    ref_bonus_l2_global = await get_referral_bonus_line2_global()
+    ref_bonus_l1_effective = await get_effective_referrer_bonus_line1_percent(int(uid))
+    ref_bonus_l2_effective = await get_effective_referrer_bonus_line2_percent(int(uid))
 
     from services.referral_bonus_program import get_referral_bonus_program_flags
     from services.referral_balance_ops import list_ledger_for_user
@@ -1263,6 +1271,8 @@ async def referral_program_page(request: Request):
             "ref_link_site": ref_link_site,
             "ref_stats": ref_stats,
             "ref_invites": ref_invites,
+            "ref_invites_line2": ref_invites_line2,
+            "ref_line_stats": ref_line_stats,
             "ref_bonus_events": bonus_events,
             "visible_block_keys": visible_block_keys,
             "show_partner_shop": show_partner_shop,
@@ -1274,8 +1284,10 @@ async def referral_program_page(request: Request):
             "ref_min_withdraw": ref_min_withdraw,
             "ref_wd_from": ref_wd_from,
             "ref_wd_to": ref_wd_to,
-            "ref_bonus_pct_global": ref_bonus_pct_global,
-            "ref_bonus_pct_effective": ref_bonus_pct_effective,
+            "ref_bonus_l1_global": ref_bonus_l1_global,
+            "ref_bonus_l2_global": ref_bonus_l2_global,
+            "ref_bonus_l1_effective": ref_bonus_l1_effective,
+            "ref_bonus_l2_effective": ref_bonus_l2_effective,
             "bonus_program_flags": bonus_program_flags,
             "ref_bonus_ledger": ref_bonus_ledger,
             "ref_bonus_plans": ref_bonus_plans,

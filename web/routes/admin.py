@@ -2598,8 +2598,14 @@ async def admin_referral_page(
 
     from services.referral_shop_link_policy import get_referral_shop_link_policy
     from services.referral_bonus_settings import (
-        get_referral_bonus_percent_global,
+        get_referral_bonus_line1_global,
+        get_referral_bonus_line2_global,
         list_users_with_bonus_override,
+    )
+    from services.referral_service import (
+        get_referral_line_statistics,
+        get_referrer_invites_detailed,
+        get_second_line_invites_detailed,
     )
     from services.referral_payout_settings import (
         get_referral_min_withdrawal_rub,
@@ -2607,8 +2613,18 @@ async def admin_referral_page(
     )
 
     partner_shop_policy = await get_referral_shop_link_policy()
-    bonus_pct_global = await get_referral_bonus_percent_global()
+    bonus_line1_global = await get_referral_bonus_line1_global()
+    bonus_line2_global = await get_referral_bonus_line2_global()
     bonus_pct_overrides = await list_users_with_bonus_override(300)
+    ref_explore_raw = (request.query_params.get("ref_explore") or "").strip()
+    ref_explore_uid: Optional[int] = int(ref_explore_raw) if ref_explore_raw.isdigit() else None
+    ref_explore_line_stats = None
+    ref_explore_l1: list = []
+    ref_explore_l2: list = []
+    if ref_explore_uid is not None:
+        ref_explore_line_stats = await get_referral_line_statistics(ref_explore_uid)
+        ref_explore_l1 = await get_referrer_invites_detailed(ref_explore_uid)
+        ref_explore_l2 = await get_second_line_invites_detailed(ref_explore_uid)
     ref_payout_min = await get_referral_min_withdrawal_rub()
     ref_payout_wd_lo, ref_payout_wd_hi = await get_referral_wd_moscow_days()
 
@@ -2632,8 +2648,13 @@ async def admin_referral_page(
             "user_search": user_search or "",
             "ref_uid": ref_uid,
             "partner_shop_policy": partner_shop_policy,
-            "bonus_percent_global": bonus_pct_global,
+            "bonus_line1_global": bonus_line1_global,
+            "bonus_line2_global": bonus_line2_global,
             "bonus_percent_overrides": bonus_pct_overrides,
+            "ref_explore_uid": ref_explore_uid,
+            "ref_explore_line_stats": ref_explore_line_stats,
+            "ref_explore_l1": ref_explore_l1,
+            "ref_explore_l2": ref_explore_l2,
             "ref_payout_min": ref_payout_min,
             "ref_payout_wd_lo": ref_payout_wd_lo,
             "ref_payout_wd_hi": ref_payout_wd_hi,
@@ -2669,28 +2690,34 @@ async def admin_referral_page(
     )
 
 
-@router.post("/referral/bonus-percent-global")
-async def admin_referral_bonus_percent_global(request: Request, percent: str = Form("10")):
+@router.post("/referral/bonus-lines-global")
+async def admin_referral_bonus_lines_global(
+    request: Request,
+    line1_percent: str = Form("5"),
+    line2_percent: str = Form("5"),
+):
     admin = await require_permission(request, "can_users")
     if not admin:
         return RedirectResponse("/login")
     from urllib.parse import quote
 
-    from services.referral_bonus_settings import set_referral_bonus_percent_global
+    from services.referral_bonus_settings import set_referral_bonus_lines_global
 
     try:
-        v = float(str(percent or "10").strip().replace(",", "."))
+        v1 = float(str(line1_percent or "5").strip().replace(",", "."))
+        v2 = float(str(line2_percent or "5").strip().replace(",", "."))
     except ValueError:
         return RedirectResponse("/admin/referral?bonus_pct_err=" + quote("Некорректное число"), status_code=303)
-    await set_referral_bonus_percent_global(v)
+    await set_referral_bonus_lines_global(v1, v2)
     return RedirectResponse("/admin/referral?bonus_pct_saved=global", status_code=303)
 
 
-@router.post("/referral/bonus-percent-user")
-async def admin_referral_bonus_percent_user(
+@router.post("/referral/bonus-lines-user")
+async def admin_referral_bonus_lines_user(
     request: Request,
     user_id: str = Form(""),
-    percent: str = Form(""),
+    line1_percent: str = Form(""),
+    line2_percent: str = Form(""),
     clear_override: str = Form(""),
 ):
     admin = await require_permission(request, "can_users")
@@ -2698,7 +2725,7 @@ async def admin_referral_bonus_percent_user(
         return RedirectResponse("/login")
     from urllib.parse import quote
 
-    from services.referral_bonus_settings import set_user_referral_bonus_percent_override
+    from services.referral_bonus_settings import set_user_referral_bonus_line_overrides
 
     raw_uid = (user_id or "").strip()
     if not raw_uid.isdigit():
@@ -2706,13 +2733,14 @@ async def admin_referral_bonus_percent_user(
     uid = int(raw_uid)
     clear = (clear_override or "").strip().lower() in ("1", "on", "true", "yes")
     if clear:
-        await set_user_referral_bonus_percent_override(uid, None)
+        await set_user_referral_bonus_line_overrides(uid, None, None)
         return RedirectResponse("/admin/referral?bonus_pct_saved=user_clear", status_code=303)
     try:
-        v = float(str(percent or "").strip().replace(",", "."))
+        v1 = float(str(line1_percent or "").strip().replace(",", "."))
+        v2 = float(str(line2_percent or "").strip().replace(",", "."))
     except ValueError:
         return RedirectResponse("/admin/referral?bonus_pct_err=" + quote("Некорректный процент"), status_code=303)
-    await set_user_referral_bonus_percent_override(uid, v)
+    await set_user_referral_bonus_line_overrides(uid, v1, v2)
     return RedirectResponse("/admin/referral?bonus_pct_saved=user", status_code=303)
 
 

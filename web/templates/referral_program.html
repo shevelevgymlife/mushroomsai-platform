@@ -101,29 +101,45 @@
       </div>
       <div style="font-size:12px;color:#9faab0;line-height:1.5">
         <strong class="text-text">Коротко про бонус за подписки приложения:</strong><br/>
-        • Друг регистрируется по вашей ссылке.<br/>
+        • Друг регистрируется по вашей ссылке (1-я линия) или приходит к вам через приглашённого (2-я линия).<br/>
         • Покупает <strong>платный</strong> Старт/Про/Макси <strong>картой в ₽</strong> (ЮKassa / CloudPayments / счёт в Telegram). <strong>Звёзды и крипта не дают бонус.</strong><br/>
-        • У вас активна <strong>любая платная</strong> подписка (Старт / Про / Макси, не free и не только пробный) в момент его оплаты.<br/>
-        • <strong>{{ '%g'|format(ref_bonus_pct_effective) }}%</strong> с каждой такой оплаты (включая продления) — для вас сейчас{% if ref_bonus_pct_effective != ref_bonus_pct_global %} (индивидуально; по умолчанию на платформе {{ '%g'|format(ref_bonus_pct_global) }}%){% endif %}. Пробные 3 дня — без бонуса.<br/>
-        • В магазине Neurotrops: <strong class="text-gold">10%</strong> с ваших продаж и <strong class="text-gold">3%</strong> с продаж рефералов 2-го уровня — см. кабинет Neurotrops.
+        • У вас активна <strong>любая платная</strong> подписка (Старт / Про / Макси, не free и не только пробный) в момент оплаты — иначе бонус за эту оплату не начисляется.<br/>
+        • <strong>{{ '%g'|format(ref_bonus_l1_effective) }}%</strong> с каждой такой оплаты с <strong>1-й линии</strong> и <strong>{{ '%g'|format(ref_bonus_l2_effective) }}%</strong> с оплат <strong>2-й линии</strong> (каждое продление тоже считается){% if ref_bonus_l1_effective != ref_bonus_l1_global or ref_bonus_l2_effective != ref_bonus_l2_global %} — у вас индивидуально; по умолчанию на платформе {{ '%g'|format(ref_bonus_l1_global) }}% + {{ '%g'|format(ref_bonus_l2_global) }}%{% endif %}. Пробные 3 дня — без бонуса.<br/>
+        • В магазине Neurotrops: <strong class="text-gold">10%</strong> с ваших продаж и <strong class="text-gold">3%</strong> с продаж рефералов 2-го уровня — см. кабинет Neurotrops (это отдельно от бонусов за подписку в приложении).
       </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:8px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:10px;margin-bottom:10px">
       <div class="card-sm text-center">
-        <div style="font-size:28px;font-weight:700;color:#3dd4e0">{{ ref_stats.total }}</div>
-        <div class="muted">приглашено</div>
+        <div style="font-size:24px;font-weight:700;color:#3dd4e0">{{ ref_line_stats.line1_invites }}</div>
+        <div class="muted" style="font-size:11px">1-я линия, чел.</div>
       </div>
       <div class="card-sm text-center">
-        <div style="font-size:28px;font-weight:700;color:#3dd4e0">{{ ref_stats.balance_rub }}</div>
-        <div class="muted">доступно к выводу, ₽</div>
+        <div style="font-size:24px;font-weight:700;color:#5eead4">{{ ref_line_stats.line2_invites }}</div>
+        <div class="muted" style="font-size:11px">2-я линия, чел.</div>
       </div>
       <div class="card-sm text-center">
-        <div style="font-size:28px;font-weight:700;color:#fbbf24">{{ ref_stats.reserved_rub }}</div>
-        <div class="muted">в резерве (заявка), ₽</div>
+        <div style="font-size:22px;font-weight:700;color:#a7f3d0">{{ ref_line_stats.earned_line1_rub }}</div>
+        <div class="muted" style="font-size:11px">заработок 1 л., ₽</div>
+      </div>
+      <div class="card-sm text-center">
+        <div style="font-size:22px;font-weight:700;color:#6ee7b7">{{ ref_line_stats.earned_line2_rub }}</div>
+        <div class="muted" style="font-size:11px">заработок 2 л., ₽</div>
+      </div>
+      <div class="card-sm text-center">
+        <div style="font-size:22px;font-weight:700;color:#e8e8e8">{{ ref_line_stats.earned_total_rub }}</div>
+        <div class="muted" style="font-size:11px">всего с подписок, ₽</div>
+      </div>
+      <div class="card-sm text-center">
+        <div style="font-size:24px;font-weight:700;color:#3dd4e0">{{ ref_stats.balance_rub }}</div>
+        <div class="muted" style="font-size:11px">доступно, ₽</div>
+      </div>
+      <div class="card-sm text-center">
+        <div style="font-size:24px;font-weight:700;color:#fbbf24">{{ ref_stats.reserved_rub }}</div>
+        <div class="muted" style="font-size:11px">в резерве, ₽</div>
       </div>
     </div>
-    <p class="text-xs text-muted mb-5 text-center">Новые бонусы от рефералов начисляются на <strong>доступный</strong> баланс, а не в резерв. Резерв — только сумма уже поданной заявки на вывод.</p>
+    <p class="text-xs text-muted mb-5 text-center">«Заработок» по линиям — сумма начислений из истории оплат приглашённых (подписки в ₽). Баланс может включать и другие операции. Новые бонусы идут на <strong>доступный</strong> баланс; резерв — только под активную заявку на вывод.</p>
 
     <div class="card rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-5 mb-5">
       <div style="font-size:15px;font-weight:700;color:#e8e8e8;margin-bottom:6px">Бонусы на платформе</div>
@@ -235,9 +251,10 @@
     </div>
 
     <div class="card rounded-2xl border border-white/10 bg-white/[0.03] p-5 mb-4">
-      <div style="font-size:15px;font-weight:600;color:#ddd;margin-bottom:12px">Ваши приглашённые</div>
+      <div style="font-size:15px;font-weight:600;color:#ddd;margin-bottom:4px">1-я линия</div>
+      <p class="text-xs text-muted mb-3">Пригласили напрямую по вашей ссылке. На карточке справа — ориентир бонуса за оплату «Старт» (ваш % 1-й линии).</p>
       {% if ref_invites and ref_invites|length > 0 %}
-      <div class="space-y-2" style="max-height:320px;overflow-y:auto">
+      <div class="space-y-2" style="max-height:240px;overflow-y:auto">
         {% for inv in ref_invites %}
         <a href="/community/profile/{{ inv.id }}" class="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 hover:border-gold/30 transition-colors" style="text-decoration:none">
           {% if inv.avatar %}
@@ -254,7 +271,31 @@
         {% endfor %}
       </div>
       {% else %}
-      <p class="text-sm text-muted">Пока никого не пригласили — поделитесь ссылкой выше.</p>
+      <p class="text-sm text-muted">Пока никого по прямой ссылке.</p>
+      {% endif %}
+    </div>
+
+    <div class="card rounded-2xl border border-teal-500/20 bg-teal-500/[0.04] p-5 mb-4">
+      <div style="font-size:15px;font-weight:600;color:#ddd;margin-bottom:4px">2-я линия</div>
+      <p class="text-xs text-muted mb-3">Пользователи, которых пригласили <strong>ваши</strong> приглашённые. Бонус с их каждой платной подписки в ₽ — по проценту 2-й линии, если у вас активна платная подписка в момент оплаты.</p>
+      {% if ref_invites_line2 and ref_invites_line2|length > 0 %}
+      <div class="space-y-2" style="max-height:240px;overflow-y:auto">
+        {% for inv in ref_invites_line2 %}
+        <a href="/community/profile/{{ inv.id }}" class="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 hover:border-teal-400/35 transition-colors" style="text-decoration:none">
+          {% if inv.avatar %}
+          <img src="{{ inv.avatar }}" alt="" class="w-10 h-10 rounded-full object-cover border border-white/10 flex-shrink-0" />
+          {% else %}
+          <div class="w-10 h-10 rounded-full bg-teal-500/15 border border-teal-500/30 flex items-center justify-center text-sm text-teal-200 font-medium flex-shrink-0">{{ (inv.name or 'U')[0]|upper }}</div>
+          {% endif %}
+          <div class="min-w-0 flex-1">
+            <div class="text-sm text-text font-medium truncate">{{ inv.name }}</div>
+            <div class="text-xs text-muted">через {{ inv.via_name }} (id {{ inv.via_user_id }}) · {{ inv.subscription_plan }}{% if inv.trial_active %} · пробный{% endif %}</div>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-sm text-muted">Пока нет приглашённых 2-й линии.</p>
       {% endif %}
     </div>
 
@@ -283,7 +324,7 @@
         <div class="rounded-xl border border-border/70 px-3 py-2.5 flex items-start justify-between gap-3">
           <div class="min-w-0">
             <div class="text-sm text-text">
-              +{{ '%.2f'|format(e.bonus_rub) }} ₽ за оплату {{ '%.2f'|format(e.paid_amount_rub) }} ₽
+              +{{ '%.2f'|format(e.bonus_rub) }} ₽ · {{ e.line_label or '1-я линия' }} · оплата {{ '%.2f'|format(e.paid_amount_rub) }} ₽
             </div>
             <div class="text-xs text-muted mt-0.5">
               {{ e.credited_at.strftime('%d.%m.%Y %H:%M') if e.credited_at else '—' }} ·
@@ -304,11 +345,11 @@
       <div style="font-size:14px;font-weight:700;color:#e8e8e8;margin-bottom:12px">Условия</div>
       <div style="font-size:13px;color:#aaa;line-height:1.65">
         <p style="margin:0 0 10px 0"><strong class="text-text">1) Бонусы за подписки (в приложении)</strong></p>
-        <p style="margin:0 0 8px 0">• Начисляется <strong>{{ '%g'|format(ref_bonus_pct_effective) }}% от фактической оплаченной суммы</strong> любой платной подписки приглашённого (Старт / Про / Макси) в момент оплаты. Базовый процент на платформе: {{ '%g'|format(ref_bonus_pct_global) }}% (для вас может быть задан индивидуально).</p>
-        <p style="margin:0 0 8px 0">• Начисление идёт <strong>с каждой платной оплаты</strong> приглашённого, не только с первой.</p>
-        <p style="margin:0 0 8px 0">• <strong>Только оплата в рублях картой/эквайрингом</strong> через ЮKassa, CloudPayments или счёт на карту ₽ в Telegram. <strong>Звёзды Telegram, криптовалюта, подарки и ручная выдача тарифа без такой оплаты — без бонуса.</strong></p>
-        <p style="margin:0 0 8px 0">• У вас должна быть <strong>активная платная подписка</strong> (Старт / Про / Макси — любая, не free; пробный 3 дня у вас не считается) в момент оплаты приглашённого; иначе бонус за эту оплату не начисляется. Ссылка магазина нужна для показа вашего магазина приглашённым, а не для самого начисления процента за подписку.</p>
-        <p style="margin:0 0 8px 0">• Если у вас в момент этой оплаты <strong>нет активной платной подписки</strong> (только free/пробный), бонус за эту оплату <strong>не начисляется</strong>.</p>
+        <p style="margin:0 0 8px 0">• <strong>1-я линия:</strong> {{ '%g'|format(ref_bonus_l1_effective) }}% от каждой фактической оплаты подписки в ₽ у прямого приглашённого. <strong>2-я линия:</strong> {{ '%g'|format(ref_bonus_l2_effective) }}% от каждой такой оплаты у приглашённых ваших приглашённых. Базовые значения на платформе: {{ '%g'|format(ref_bonus_l1_global) }}% + {{ '%g'|format(ref_bonus_l2_global) }}% (для вас может быть задано индивидуально).</p>
+        <p style="margin:0 0 8px 0">• Начисление идёт <strong>с каждой платной оплаты и продления</strong> в допустимом канале, не только с первой покупки.</p>
+        <p style="margin:0 0 8px 0">• <strong>Только оплата в рублях картой/эквайрингом</strong> через ЮKassa, CloudPayments или счёт на карту ₽ в Telegram. <strong>Звёзды Telegram, криптовалюта, подарки и ручная выдача тарифа без такой оплаты — без бонуса.</strong> Оплата подписки с внутреннего бонусного баланса платформы рефереру за эту оплату не начисляется повторно.</p>
+        <p style="margin:0 0 8px 0">• У <strong>получателя бонуса</strong> (вас за 1-ю линию и вас за 2-ю линию) в момент оплаты должна быть <strong>активная платная подписка</strong> (Старт / Про / Макси; пробный 3 дня не считается); иначе соответствующий бонус за эту оплату не начисляется.</p>
+        <p style="margin:0 0 8px 0">• Ссылка магазина нужна для показа вашего магазина приглашённым; правила магазина Neurotrops отдельны.</p>
         <p style="margin:0 0 12px 0">• Пробные 3 дня не считаются платной оплатой. Выплаты с баланса — по <a href="/legal/referral-payouts" class="text-gold hover:underline">правилам для самозанятых и ИП</a>.</p>
 
         <p style="margin:0 0 10px 0"><strong class="text-text">2) Ссылка магазина Neurotrops</strong></p>

@@ -83,6 +83,8 @@ users = sqlalchemy.Table(
     sqlalchemy.Column("referral_partner_inn", sqlalchemy.String(20), nullable=True),
     sqlalchemy.Column("referral_payout_bank_note", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("referral_bonus_percent_override", sqlalchemy.Numeric(5, 2), nullable=True),
+    sqlalchemy.Column("referral_bonus_line1_override", sqlalchemy.Numeric(5, 2), nullable=True),
+    sqlalchemy.Column("referral_bonus_line2_override", sqlalchemy.Numeric(5, 2), nullable=True),
     sqlalchemy.Column("last_seen_at", sqlalchemy.DateTime, nullable=True),
     sqlalchemy.Column("decimal_del_balance", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("decimal_balance_cached_at", sqlalchemy.DateTime, nullable=True),
@@ -245,6 +247,7 @@ referral_bonus_events = sqlalchemy.Table(
     sqlalchemy.Column("paid_amount_rub", sqlalchemy.Numeric(12, 2), nullable=False),
     sqlalchemy.Column("bonus_rub", sqlalchemy.Numeric(12, 2), nullable=False),
     sqlalchemy.Column("payment_source", sqlalchemy.String(32), nullable=True),
+    sqlalchemy.Column("line_level", sqlalchemy.SmallInteger, nullable=False, server_default="1"),
     sqlalchemy.Column("credited_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
 

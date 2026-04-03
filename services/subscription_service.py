@@ -349,25 +349,46 @@ async def activate_subscription(
             end_date,
             None,
         )
-    bonus_rub = 0.0
+    bonus_line1_rub = 0.0
+    bonus_line2_rub = 0.0
     if credit_referrer_bonus and plan != "free":
         from services.referral_service import credit_referrer_bonus_for_paid_subscription
 
-        bonus_rub = await credit_referrer_bonus_for_paid_subscription(
+        bonus_line1_rub, bonus_line2_rub = await credit_referrer_bonus_for_paid_subscription(
             int(user_id),
             float(price or 0.0),
             payment_channel=referral_bonus_payment_channel,
         )
     if plan != "free":
         try:
-            from services.referral_service import notify_referrer_about_referred_subscription
+            from services.referral_service import (
+                notify_referrer_about_referred_subscription,
+                notify_second_line_referrer_about_referred_subscription,
+            )
 
             pname = str((eff.get(plan) or {}).get("name") or plan)
+            plab = f"подписку «{pname}»"
             await notify_referrer_about_referred_subscription(
                 int(user_id),
-                plan_label=f"подписку «{pname}»",
-                bonus_rub=bonus_rub if bonus_rub > 0 else None,
+                plan_label=plab,
+                bonus_rub=bonus_line1_rub if bonus_line1_rub > 0 else None,
             )
+            if bonus_line2_rub > 0:
+                pay_row = await database.fetch_one(users.select().where(users.c.id == int(user_id)))
+                puid = int(pay_row.get("primary_user_id") or user_id) if pay_row else int(user_id)
+                rb = pay_row.get("referred_by") if pay_row else None
+                if rb:
+                    rid = int(rb)
+                    mid_row = await database.fetch_one(users.select().where(users.c.id == rid))
+                    gb = mid_row.get("referred_by") if mid_row else None
+                    if gb:
+                        await notify_second_line_referrer_about_referred_subscription(
+                            second_line_referrer_id=int(gb),
+                            payer_user_id=puid,
+                            direct_referrer_user_id=rid,
+                            plan_label=plab,
+                            bonus_rub=float(bonus_line2_rub),
+                        )
         except Exception:
             logger.debug("notify referrer about referred subscription failed uid=%s", user_id, exc_info=True)
     try:

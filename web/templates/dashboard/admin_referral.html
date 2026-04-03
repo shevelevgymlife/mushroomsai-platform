@@ -39,56 +39,122 @@
       </form>
     </div>
 
-    <div class="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.06] p-5 mb-8 max-w-3xl">
-      <h2 class="text-lg font-semibold text-text mb-1">Процент бонуса за подписки рефералов</h2>
+    <div class="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.06] p-5 mb-8 max-w-4xl">
+      <h2 class="text-lg font-semibold text-text mb-1">Бонусы за подписки: 1-я и 2-я линия</h2>
       <p class="text-xs text-muted mb-4 leading-relaxed">
-        От фактической оплаты подписки приглашённого (карта ₽, см. условия на /referral). Диапазон 0–100%.
-        <strong>Персональный процент</strong> перекрывает общий для выбранного пользователя (по <code class="text-[11px]">users.id</code>).
-        Найти id: поиск ниже на этой странице или список пользователей в админке.
+        <strong>1-я линия</strong> — прямой реферал (пригласили вы). <strong>2-я линия</strong> — приглашённые ваших приглашённых.
+        Начисление с <strong>каждой</strong> оплаты подписки в ₽ (ЮKassa / CloudPayments / карта в Telegram), не только с первой покупки.
+        Магазин Neurotrops и прочие каналы не затрагиваются.
       </p>
       {% if bonus_pct_saved == 'global' %}
-      <div class="mb-3 p-2.5 rounded-xl border border-emerald-500/30 text-emerald-200 text-sm">Общий процент сохранён.</div>
+      <div class="mb-3 p-2.5 rounded-xl border border-emerald-500/30 text-emerald-200 text-sm">Общие проценты сохранены.</div>
       {% elif bonus_pct_saved == 'user' %}
-      <div class="mb-3 p-2.5 rounded-xl border border-emerald-500/30 text-emerald-200 text-sm">Персональный процент сохранён.</div>
+      <div class="mb-3 p-2.5 rounded-xl border border-emerald-500/30 text-emerald-200 text-sm">Персональные проценты сохранены.</div>
       {% elif bonus_pct_saved == 'user_clear' %}
-      <div class="mb-3 p-2.5 rounded-xl border border-emerald-500/30 text-emerald-200 text-sm">Персональный процент сброшен — действует общий.</div>
+      <div class="mb-3 p-2.5 rounded-xl border border-emerald-500/30 text-emerald-200 text-sm">Персональные проценты сброшены.</div>
       {% endif %}
       {% if bonus_pct_err %}
       <div class="mb-3 p-2.5 rounded-xl border border-red-400/35 text-red-200 text-sm">{{ bonus_pct_err }}</div>
       {% endif %}
-      <form method="post" action="/admin/referral/bonus-percent-global" class="flex flex-wrap items-end gap-3 mb-6">
+      <form method="post" action="/admin/referral/bonus-lines-global" class="flex flex-wrap items-end gap-3 mb-6">
         <div>
-          <label class="block text-xs text-muted mb-1">Общий процент для всех (%)</label>
-          <input type="text" name="percent" value="{{ '%g'|format(bonus_percent_global) }}" class="w-28 px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text font-mono" inputmode="decimal" autocomplete="off" />
+          <label class="block text-xs text-muted mb-1">1-я линия (% от оплаты)</label>
+          <input type="text" name="line1_percent" value="{{ '%g'|format(bonus_line1_global) }}" class="w-28 px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text font-mono" inputmode="decimal" autocomplete="off" />
         </div>
-        <button type="submit" class="px-4 py-2.5 rounded-xl bg-cyan-500/20 text-cyan-200 border border-cyan-500/35 text-sm font-medium">Сохранить общий</button>
+        <div>
+          <label class="block text-xs text-muted mb-1">2-я линия (% от оплаты)</label>
+          <input type="text" name="line2_percent" value="{{ '%g'|format(bonus_line2_global) }}" class="w-28 px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text font-mono" inputmode="decimal" autocomplete="off" />
+        </div>
+        <button type="submit" class="px-4 py-2.5 rounded-xl bg-cyan-500/20 text-cyan-200 border border-cyan-500/35 text-sm font-medium">Сохранить общие</button>
       </form>
-      <form method="post" action="/admin/referral/bonus-percent-user" class="space-y-3 border-t border-border/50 pt-5">
+      <form method="post" action="/admin/referral/bonus-lines-user" class="space-y-3 border-t border-border/50 pt-5">
         <div class="flex flex-wrap gap-3">
           <div>
             <label class="block text-xs text-muted mb-1">ID пользователя (users.id)</label>
             <input type="text" name="user_id" id="referral-bonus-user-id" placeholder="напр. 42" class="w-36 px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text font-mono" inputmode="numeric" autocomplete="off" />
           </div>
           <div>
-            <label class="block text-xs text-muted mb-1">Персональный %</label>
-            <input type="text" name="percent" placeholder="15" class="w-28 px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text font-mono" inputmode="decimal" autocomplete="off" />
+            <label class="block text-xs text-muted mb-1">1-я линия %</label>
+            <input type="text" name="line1_percent" placeholder="5" class="w-24 px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text font-mono" inputmode="decimal" autocomplete="off" />
+          </div>
+          <div>
+            <label class="block text-xs text-muted mb-1">2-я линия %</label>
+            <input type="text" name="line2_percent" placeholder="5" class="w-24 px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text font-mono" inputmode="decimal" autocomplete="off" />
           </div>
         </div>
         <div class="flex flex-wrap gap-2">
           <button type="submit" class="px-4 py-2.5 rounded-xl bg-gold/20 text-gold border border-gold/35 text-sm font-medium">Сохранить для пользователя</button>
-          <button type="submit" name="clear_override" value="1" class="px-4 py-2.5 rounded-xl bg-border/40 text-muted border border-border text-sm font-medium">Сбросить персональный</button>
+          <button type="submit" name="clear_override" value="1" class="px-4 py-2.5 rounded-xl bg-border/40 text-muted border border-border text-sm font-medium">Сбросить персональные</button>
         </div>
       </form>
       {% if bonus_percent_overrides and bonus_percent_overrides|length > 0 %}
       <div class="mt-5 text-xs text-muted">
-        <div class="font-medium text-text mb-2">Сейчас с персональным процентом:</div>
+        <div class="font-medium text-text mb-2">Персональные проценты (подписки):</div>
         <ul class="space-y-1 list-disc list-inside">
           {% for o in bonus_percent_overrides %}
-          <li><a href="/community/profile/{{ o.id }}" class="text-gold hover:underline" target="_blank">{{ o.name }}</a> (id {{ o.id }}) — <strong class="text-text">{{ '%g'|format(o.percent) }}%</strong></li>
+          <li><a href="/community/profile/{{ o.id }}" class="text-gold hover:underline" target="_blank">{{ o.name }}</a> (id {{ o.id }}) — L1 <strong class="text-text">{{ '%g'|format(o.line1) }}%</strong>, L2 <strong class="text-text">{{ '%g'|format(o.line2) }}%</strong></li>
           {% endfor %}
         </ul>
       </div>
       {% endif %}
+
+      <div class="mt-8 border-t border-border/50 pt-6">
+        <h3 class="text-sm font-semibold text-text mb-2">Просмотр линий по user id</h3>
+        <p class="text-xs text-muted mb-3">Введите <code class="text-[11px]">users.id</code> амбассадора — увидите счётчики и списки 1-й и 2-й линии (как в кабинете пользователя).</p>
+        <form method="get" action="/admin/referral" class="flex flex-wrap items-end gap-2 mb-4">
+          <input type="hidden" name="segment" value="{{ segment }}" />
+          <input type="text" name="ref_explore" value="{{ ref_explore_uid or '' }}" placeholder="User id" class="w-36 px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono" inputmode="numeric" />
+          <button type="submit" class="px-4 py-2.5 rounded-xl bg-cyan-500/15 text-cyan-100 border border-cyan-500/30 text-sm font-medium">Показать</button>
+          {% if ref_explore_uid %}
+          <a href="/admin/referral" class="text-xs text-muted hover:text-gold px-2 py-2">Сбросить</a>
+          {% endif %}
+        </form>
+        {% if ref_explore_line_stats %}
+        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm mb-4">
+          <div class="rounded-xl border border-border/60 p-3 bg-bg/40">
+            <div class="text-xs text-muted">1-я линия, чел.</div>
+            <div class="text-lg font-semibold text-text">{{ ref_explore_line_stats.line1_invites }}</div>
+          </div>
+          <div class="rounded-xl border border-border/60 p-3 bg-bg/40">
+            <div class="text-xs text-muted">2-я линия, чел.</div>
+            <div class="text-lg font-semibold text-text">{{ ref_explore_line_stats.line2_invites }}</div>
+          </div>
+          <div class="rounded-xl border border-border/60 p-3 bg-bg/40">
+            <div class="text-xs text-muted">Начислено L1, ₽</div>
+            <div class="text-lg font-semibold text-emerald-200">{{ ref_explore_line_stats.earned_line1_rub }}</div>
+          </div>
+          <div class="rounded-xl border border-border/60 p-3 bg-bg/40">
+            <div class="text-xs text-muted">Начислено L2, ₽</div>
+            <div class="text-lg font-semibold text-emerald-200">{{ ref_explore_line_stats.earned_line2_rub }}</div>
+          </div>
+        </div>
+        <p class="text-xs text-muted mb-3">Всего по событиям начислений: <strong class="text-text">{{ ref_explore_line_stats.earned_total_rub }} ₽</strong></p>
+        <div class="grid lg:grid-cols-2 gap-4 text-xs">
+          <div>
+            <div class="font-medium text-text mb-2">1-я линия (прямые)</div>
+            <ul class="space-y-1 max-h-48 overflow-y-auto border border-border/40 rounded-xl p-2">
+              {% for inv in ref_explore_l1 %}
+              <li><a href="/community/profile/{{ inv.id }}" class="text-gold hover:underline" target="_blank">{{ inv.name }}</a> · id {{ inv.id }} · {{ inv.subscription_plan }}</li>
+              {% else %}
+              <li class="text-muted">Нет записей</li>
+              {% endfor %}
+            </ul>
+          </div>
+          <div>
+            <div class="font-medium text-text mb-2">2-я линия (через посредника)</div>
+            <ul class="space-y-1 max-h-48 overflow-y-auto border border-border/40 rounded-xl p-2">
+              {% for inv in ref_explore_l2 %}
+              <li><a href="/community/profile/{{ inv.id }}" class="text-gold hover:underline" target="_blank">{{ inv.name }}</a> · id {{ inv.id }} <span class="text-muted">через {{ inv.via_name }} ({{ inv.via_user_id }})</span></li>
+              {% else %}
+              <li class="text-muted">Нет записей</li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+        {% elif ref_explore_uid %}
+        <p class="text-xs text-amber-200">Не удалось загрузить данные для id {{ ref_explore_uid }}.</p>
+        {% endif %}
+      </div>
     </div>
 
     <div class="rounded-2xl border border-violet-500/30 bg-violet-500/[0.07] p-5 mb-8 max-w-4xl" id="referral-bonus-platform">

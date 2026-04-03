@@ -782,6 +782,15 @@ async def run_heavy_startup(app: FastAPI) -> None:
             logger.warning("migrate_v47 referral_bonus_balance: %s", e)
 
         try:
+            import migrate_v48_referral_two_lines as migrate_v48
+
+            for s in migrate_v48.STEPS:
+                await database.execute(sa.text(s))
+            logger.info("referral two-line bonus percents (migrate_v48) OK")
+        except Exception as e:
+            logger.warning("migrate_v48 referral_two_lines: %s", e)
+
+        try:
             from services.merge_neurofungi_ai_chats import merge_all_neurofungi_ai_personal_chats
 
             await merge_all_neurofungi_ai_personal_chats()
