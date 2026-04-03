@@ -1,21 +1,20 @@
 {% if admin_ui is defined and admin_ui.categories and admin_ui.categories|length > 0 %}
   {% if request.url.path == '/admin' %}
-  <div class="admin-ios-dashboard-nav">
-    <p class="admin-ios-screen-title">Администрирование</p>
-    <p class="admin-ios-screen-sub">Группы разделов ниже можно листать свайпом влево-вправо. У каждого пункта есть «?» — подробная справка, что делает раздел и на что влияет.</p>
-  </div>
+  <header class="admin-ios-root-navbar" role="banner">
+    <h1 class="admin-ios-root-navbar__title">Настройки</h1>
+  </header>
+  <p class="admin-ios-root-sub">Разделы по алфавиту, как в списке приложений iOS. Справа индекс A–Я; у пункта «?» — справка.</p>
   {% else %}
   <div class="admin-ios-sub-nav">
-    <a href="/admin" class="admin-ios-back">‹ Панель</a>
-    <div class="admin-ios-cat-strip" aria-label="Группы разделов">
-      {% for cat in admin_ui.categories %}
-      <a href="/admin#admin-cat-{{ cat.id }}" class="admin-ios-cat-pill">{{ cat.icon }} {{ cat.title }}</a>
-      {% endfor %}
-    </div>
+    <a href="/admin" class="admin-ios-back">‹ Настройки</a>
   </div>
   {% endif %}
 {% else %}
 {# Fallback: список в стиле iOS Settings, если каталог недоступен #}
+<header class="admin-ios-root-navbar" role="banner">
+  <h1 class="admin-ios-root-navbar__title">Настройки</h1>
+</header>
+<p class="admin-ios-root-sub">Список разделов. Полный каталог с алфавитом — когда доступен общий каталог админки.</p>
 {% from 'components/stroke_icons.html' import ico %}
 {% set admin_nav_tile_gradients = [
   'linear-gradient(145deg,#ff375f,#ff6482)',

@@ -7,37 +7,46 @@
 
     {% include "components/admin_nav.html" %}
 
-    {% if request.url.path == '/admin' and admin_ui is defined and admin_ui.categories and admin_ui.categories|length > 0 %}
-    <div class="admin-ios-panels-wrap">
-      <p class="admin-ios-panels-hint">Свайп между группами</p>
-      <div class="admin-ios-panels" id="admin-ios-panels">
-        {% for cat in admin_ui.categories %}
-        <section class="admin-ios-panel admin-ios-anchor" id="admin-cat-{{ cat.id }}" data-admin-cat-idx="{{ loop.index0 }}">
-          <header class="admin-ios-panel-head">
-            <div class="admin-ios-panel-icon" aria-hidden="true">{{ cat.icon }}</div>
-            <h2 class="admin-ios-panel-title">{{ cat.title }}</h2>
-            <p class="admin-ios-panel-sub">{{ cat.subtitle }}</p>
-          </header>
-          <div class="admin-ios-panel-list">
-            {% for it in cat.section_items %}
-            <div class="admin-ios-row">
-              <a class="admin-ios-row-main" href="{{ it.href }}">
-                <div class="admin-ios-row-text">
-                  <span class="admin-ios-row-label">{{ it.label }}</span>
-                  {% if it.subtitle %}
-                  <span class="admin-ios-row-desc">{{ it.subtitle }}</span>
-                  {% endif %}
-                </div>
-                <span class="admin-ios-row-chev" aria-hidden="true">›</span>
-              </a>
-              <button type="button" class="admin-ios-help-btn" data-admin-help="{{ it.id }}" data-admin-help-title="{{ it.label | e }}" title="Подробная справка">?</button>
-            </div>
-            {% endfor %}
-          </div>
-        </section>
-        {% endfor %}
+    {% if request.url.path == '/admin' and admin_ui is defined and admin_ui.alphabet_sections and admin_ui.alphabet_sections|length > 0 %}
+    <div class="admin-ios-settings-page admin-ios-settings-page--apps">
+      <div class="admin-ios-search-wrap">
+        <label class="admin-ios-search-field" for="admin-ios-apps-filter">
+          <span class="admin-ios-search-glyph" aria-hidden="true">🔍</span>
+          <input type="search" id="admin-ios-apps-filter" class="admin-ios-search-input" placeholder="Поиск" autocomplete="off" inputmode="search" />
+        </label>
       </div>
-      <div class="admin-ios-dots" id="admin-ios-dots" hidden></div>
+      <div class="admin-ios-apps-layout">
+        <div class="admin-ios-apps-main" id="admin-ios-apps-main">
+          {% for sec in admin_ui.alphabet_sections %}
+          <section class="admin-ios-alpha-block" data-alpha-block="{{ sec.anchor_id }}">
+            <h2 class="admin-ios-section-letter" id="admin-idx-{{ sec.anchor_id }}">{{ sec.letter }}</h2>
+            <div class="admin-ios-group admin-ios-group--apps">
+              {% for it in sec.items %}
+              <div class="admin-ios-row admin-ios-row--apps"
+                   data-filter-text="{{ ((it.label ~ ' ' ~ (it.subtitle or ''))|lower)|e }}">
+                <a class="admin-ios-row-main" href="{{ it.href }}">
+                  <span class="admin-ios-list-emoji-tile" aria-hidden="true">{{ it.list_icon }}</span>
+                  <div class="admin-ios-row-text">
+                    <span class="admin-ios-row-label">{{ it.label }}</span>
+                    {% if it.subtitle %}
+                    <span class="admin-ios-row-desc">{{ it.subtitle }}</span>
+                    {% endif %}
+                  </div>
+                  <span class="admin-ios-row-chev" aria-hidden="true">›</span>
+                </a>
+                <button type="button" class="admin-ios-help-btn" data-admin-help="{{ it.id }}" data-admin-help-title="{{ it.label | e }}" title="Подробная справка">?</button>
+              </div>
+              {% endfor %}
+            </div>
+          </section>
+          {% endfor %}
+        </div>
+        <nav class="admin-ios-alpha-rail" aria-label="По алфавиту">
+          {% for sec in admin_ui.alphabet_sections %}
+          <a href="#admin-idx-{{ sec.anchor_id }}">{{ sec.letter }}</a>
+          {% endfor %}
+        </nav>
+      </div>
     </div>
     {% endif %}
 
@@ -150,63 +159,27 @@
 {% if request.url.path == '/admin' %}
 <script>
 (function () {
-  var sc = document.getElementById('admin-ios-panels');
-  var dots = document.getElementById('admin-ios-dots');
-  if (!sc || !dots) return;
-  var panels = sc.querySelectorAll('.admin-ios-panel');
-  if (panels.length === 0) return;
-  dots.hidden = false;
-  dots.innerHTML = '';
-  for (var i = 0; i < panels.length; i++) {
-    var b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'admin-ios-dot' + (i === 0 ? ' on' : '');
-    b.setAttribute('aria-label', 'Группа ' + (i + 1));
-    b._idx = i;
-    b.addEventListener('click', function () {
-      var idx = this._idx;
-      var el = panels[idx];
-      if (el) el.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
-    });
-    dots.appendChild(b);
-  }
-  var dotBtns = dots.querySelectorAll('.admin-ios-dot');
-  function syncDots() {
-    var w = sc.clientWidth;
-    if (w < 1) return;
-    var mid = sc.scrollLeft + w * 0.25;
-    var idx = 0;
-    for (var k = 0; k < panels.length; k++) {
-      var p = panels[k];
-      if (p.offsetLeft + p.offsetWidth * 0.2 > mid) {
-        idx = k;
-        break;
+  var inp = document.getElementById('admin-ios-apps-filter');
+  if (!inp) return;
+  function applyFilter() {
+    var q = (inp.value || '').trim().toLowerCase();
+    var blocks = document.querySelectorAll('.admin-ios-alpha-block');
+    for (var i = 0; i < blocks.length; i++) {
+      var block = blocks[i];
+      var rows = block.querySelectorAll('.admin-ios-row--apps');
+      var any = false;
+      for (var j = 0; j < rows.length; j++) {
+        var row = rows[j];
+        var t = (row.getAttribute('data-filter-text') || '').toLowerCase();
+        var show = !q || t.indexOf(q) >= 0;
+        row.style.display = show ? '' : 'none';
+        if (show) any = true;
       }
-      idx = k;
-    }
-    for (var j = 0; j < dotBtns.length; j++) {
-      dotBtns[j].classList.toggle('on', j === idx);
+      block.style.display = any ? '' : 'none';
     }
   }
-  var t;
-  sc.addEventListener('scroll', function () {
-    clearTimeout(t);
-    t = setTimeout(syncDots, 80);
-  });
-  window.addEventListener('resize', syncDots);
-  syncDots();
-
-  function scrollToHash() {
-    var h = (window.location.hash || '').replace(/^#/, '');
-    if (!h || h.indexOf('admin-cat-') !== 0) return;
-    var target = document.getElementById(h);
-    if (target) {
-      sc.scrollTo({ left: target.offsetLeft - sc.offsetLeft, behavior: 'smooth' });
-      setTimeout(syncDots, 400);
-    }
-  }
-  window.addEventListener('hashchange', scrollToHash);
-  if (window.location.hash) setTimeout(scrollToHash, 100);
+  inp.addEventListener('input', applyFilter);
+  inp.addEventListener('search', applyFilter);
 })();
 </script>
 {% endif %}

@@ -4,7 +4,11 @@
 """
 from __future__ import annotations
 
+from collections import defaultdict
 from typing import Any
+
+# Порядок секций в списке «как Приложения» iOS: кириллица, латиница, # в конце
+_RU_LETTER_ORDER = "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ"
 
 # Категории: id, title, subtitle, icon
 ADMIN_UI_CATEGORIES: list[dict[str, str]] = [
@@ -344,6 +348,60 @@ def _visible(perms: dict[str, Any] | None, perm: str) -> bool:
     return bool(perms.get(perm))
 
 
+def _first_alphabet_bucket(label: str) -> str:
+    """Буква секции: кириллица/латиница или '#' для цифр и прочего."""
+    s = (label or "").strip()
+    if not s:
+        return "#"
+    ch0 = s[0]
+    if ch0.isdigit():
+        return "#"
+    ch = ch0.upper()
+    if ch == "Ё":
+        ch = "Е"
+    if len(ch) == 1 and "A" <= ch <= "Z":
+        return ch
+    o = ord(ch)
+    if len(ch) == 1 and 0x0410 <= o <= 0x042F:  # А–Я
+        return ch
+    return "#"
+
+
+def _section_sort_key(letter: str) -> tuple[int, int]:
+    if letter == "#":
+        return (2, 0)
+    if len(letter) == 1 and "A" <= letter <= "Z":
+        return (1, ord(letter))
+    pos = _RU_LETTER_ORDER.find(letter)
+    if pos >= 0:
+        return (0, pos)
+    return (0, 9999)
+
+
+def _build_alphabet_sections(items_out: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    cat_icons = {c["id"]: c["icon"] for c in ADMIN_UI_CATEGORIES}
+    buckets: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for it in items_out:
+        row = dict(it)
+        row["list_icon"] = cat_icons.get(it.get("category_id"), "⚙️")
+        letter = _first_alphabet_bucket(it.get("label") or "")
+        buckets[letter].append(row)
+    for letter in buckets:
+        buckets[letter].sort(key=lambda x: (x.get("label") or "").casefold())
+    ordered = sorted(buckets.keys(), key=_section_sort_key)
+    sections: list[dict[str, Any]] = []
+    for letter in ordered:
+        aid = "sym" if letter == "#" else letter
+        sections.append(
+            {
+                "letter": "#" if letter == "#" else letter,
+                "anchor_id": aid,
+                "items": buckets[letter],
+            }
+        )
+    return sections
+
+
 def build_admin_ui_context(
     user_permissions: dict[str, Any] | None,
     user: dict[str, Any] | None = None,
@@ -375,4 +433,5 @@ def build_admin_ui_context(
         "categories": cats_out,
         "items": items_out,
         "help_registry": help_registry,
+        "alphabet_sections": _build_alphabet_sections(items_out),
     }
