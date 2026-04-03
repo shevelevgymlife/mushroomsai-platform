@@ -19,6 +19,7 @@ from services.payment_plans_catalog import get_effective_plans
 from services.subscription_service import record_subscription_event, format_admin_subscription_assigned_message
 from services.system_support_delivery import deliver_system_support_notification
 from services.shop_catalog import extra_image_lines_from_json, extra_image_urls_from_text
+from services.ai_multichannel_settings import get_ai_multichannel_settings, save_ai_multichannel_settings
 from auth.session import get_user_from_request
 from auth.blocked_identities import block_identities_for_user, unblock_identities_for_user
 from services.user_id_input import normalize_form_user_id, parse_user_ids_bulk
@@ -310,6 +311,7 @@ async def ai_settings_page(request: Request):
     history = await database.fetch_all(
         ai_settings.select().order_by(ai_settings.c.updated_at.desc()).limit(5)
     )
+    ai_multichannel = await get_ai_multichannel_settings()
 
     return templates.TemplateResponse(
         "dashboard/admin_ai.html",
@@ -323,6 +325,7 @@ async def ai_settings_page(request: Request):
             "ai_retrieval_modes": AI_RETRIEVAL_MODES,
             "current_retrieval_mode": (row_d.get("retrieval_mode") or "title_first"),
             "current_retrieval_top_k": int(row_d.get("retrieval_top_k") or 24),
+            "ai_multichannel": ai_multichannel,
         },
     )
 
@@ -365,6 +368,31 @@ async def admin_ai_save_retrieval(
     sp_old, _, _ = await _ai_settings_latest_triple()
     await _ai_settings_persist(sp_old, retrieval_mode, retrieval_top_k, admin["id"])
     return RedirectResponse("/admin/ai?saved=retrieval", status_code=302)
+
+
+@router.post("/ai/multichannel")
+async def admin_ai_save_multichannel(
+    request: Request,
+    dm_prompt: str = Form(""),
+    post_prompt: str = Form(""),
+    comment_prompt: str = Form(""),
+    dm_algorithm_prompt: str = Form(""),
+    dm_interval_enabled: Optional[str] = Form(None),
+    dm_interval_minutes: int = Form(60),
+):
+    admin = await require_permission(request, "can_ai")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    payload = {
+        "dm_prompt": (dm_prompt or "").strip(),
+        "post_prompt": (post_prompt or "").strip(),
+        "comment_prompt": (comment_prompt or "").strip(),
+        "dm_algorithm_prompt": (dm_algorithm_prompt or "").strip(),
+        "dm_interval_enabled": (dm_interval_enabled or "").strip().lower() in ("1", "true", "on", "yes"),
+        "dm_interval_minutes": int(dm_interval_minutes or 60),
+    }
+    await save_ai_multichannel_settings(payload)
+    return RedirectResponse("/admin/ai?saved=multichannel", status_code=302)
 
 
 @router.post("/ai/test")

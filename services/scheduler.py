@@ -71,7 +71,7 @@ def start_scheduler() -> None:
     scheduler.add_job(
         run_wellness_prompts_due_job,
         "interval",
-        minutes=15,
+        minutes=5,
         id="wellness_journal_prompts",
         replace_existing=True,
     )

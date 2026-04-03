@@ -818,6 +818,15 @@ async def run_heavy_startup(app: FastAPI) -> None:
             logger.warning("migrate_v42 comment likes/replies: %s", e)
 
         try:
+            import migrate_v43_ai_multichannel_prompt_settings as migrate_v43
+
+            for s in migrate_v43.STEPS:
+                await database.execute(sa.text(s))
+            logger.info("ai multichannel prompt settings (migrate_v43) OK")
+        except Exception as e:
+            logger.warning("migrate_v43 ai multichannel prompt settings: %s", e)
+
+        try:
             from services.merge_neurofungi_ai_chats import merge_all_neurofungi_ai_personal_chats
 
             await merge_all_neurofungi_ai_personal_chats()

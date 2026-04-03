@@ -21,6 +21,8 @@
     <div class="mb-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-sm text-emerald-200">Системный промпт сохранён. Режим поиска знаний не менялся.</div>
     {% elif sv == 'retrieval' %}
     <div class="mb-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-sm text-emerald-200">Режим поиска и лимит фрагментов сохранены. Текст промпта не менялся.</div>
+{% elif sv == 'multichannel' %}
+<div class="mb-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-sm text-emerald-200">Сохранены настройки AI для ЛС / постов / комментариев и периодичности ЛС.</div>
     {% elif sv == 'all' %}
     <div class="mb-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-sm text-emerald-200">Все поля AI сохранены (комбинированный запрос).</div>
     {% endif %}
@@ -69,6 +71,52 @@
           <button type="submit"
             class="px-6 py-3 rounded-xl bg-surface border border-gold/50 text-gold font-semibold text-sm hover:bg-gold/10 transition-all duration-300">
             Сохранить режим поиска
+          </button>
+        </form>
+
+        <form action="/admin/ai/multichannel" method="post" class="p-6 rounded-2xl bg-surface border border-border space-y-4">
+          <h2 class="font-semibold text-text mb-1">Промпты каналов: ЛС / посты / комментарии</h2>
+          <p class="text-xs text-muted leading-relaxed">
+            Здесь задаётся стиль и алгоритм работы AI по каналам. Для фактов и рекомендаций AI должен опираться только на обучающие посты.
+          </p>
+          <div class="space-y-3">
+            <label class="block text-xs text-muted">Промпт ЛС</label>
+            <textarea name="dm_prompt" rows="8"
+              class="w-full px-4 py-3 rounded-xl bg-bg border border-border text-text text-sm font-mono resize-y focus:outline-none focus:border-gold/60 transition-colors leading-relaxed">{{ ai_multichannel.dm_prompt }}</textarea>
+          </div>
+          <div class="space-y-3">
+            <label class="block text-xs text-muted">Промпт постов</label>
+            <textarea name="post_prompt" rows="7"
+              class="w-full px-4 py-3 rounded-xl bg-bg border border-border text-text text-sm font-mono resize-y focus:outline-none focus:border-gold/60 transition-colors leading-relaxed">{{ ai_multichannel.post_prompt }}</textarea>
+          </div>
+          <div class="space-y-3">
+            <label class="block text-xs text-muted">Промпт комментариев</label>
+            <textarea name="comment_prompt" rows="6"
+              class="w-full px-4 py-3 rounded-xl bg-bg border border-border text-text text-sm font-mono resize-y focus:outline-none focus:border-gold/60 transition-colors leading-relaxed">{{ ai_multichannel.comment_prompt }}</textarea>
+          </div>
+          <div class="space-y-3">
+            <label class="block text-xs text-muted">Алгоритм ЛС: как задавать вопросы и как подтверждать запись в базу</label>
+            <textarea name="dm_algorithm_prompt" rows="8"
+              class="w-full px-4 py-3 rounded-xl bg-bg border border-border text-text text-sm font-mono resize-y focus:outline-none focus:border-gold/60 transition-colors leading-relaxed">{{ ai_multichannel.dm_algorithm_prompt }}</textarea>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label class="flex items-center gap-3 p-3 rounded-xl border border-border/80 cursor-pointer hover:border-gold/30">
+              <input type="checkbox" name="dm_interval_enabled" value="1" class="rounded border-border" {% if ai_multichannel.dm_interval_enabled %}checked{% endif %} />
+              <span class="text-sm text-text">Писать в ЛС по интервалу (минуты)</span>
+            </label>
+            <div>
+              <label class="block text-xs text-muted mb-1">Интервал ЛС, минут (15–1440)</label>
+              <input type="number" name="dm_interval_minutes" min="15" max="1440" step="1"
+                value="{{ ai_multichannel.dm_interval_minutes or 60 }}"
+                class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-text text-sm" />
+            </div>
+          </div>
+          <p class="text-xs text-muted">
+            По умолчанию установлен 1 час. Логика подтверждения «да/нет» для записи в статистику сохраняется в чате.
+          </p>
+          <button type="submit"
+            class="px-6 py-3 rounded-xl bg-surface border border-gold/50 text-gold font-semibold text-sm hover:bg-gold/10 transition-all duration-300">
+            Сохранить канальные промпты и алгоритм
           </button>
         </form>
 
