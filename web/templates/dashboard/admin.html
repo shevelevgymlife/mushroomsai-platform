@@ -5,6 +5,9 @@
 <div class="pt-24 pb-16 neo-app-surface">
   <div class="w-full max-w-none px-4 sm:px-6 lg:px-8">
 
+    {% if request.url.path == '/admin' %}
+    <div class="admin-ios-home-bleed">
+    {% endif %}
     {% include "components/admin_nav.html" %}
 
     {% if request.url.path == '/admin' and admin_ui is defined and admin_ui.alphabet_sections and admin_ui.alphabet_sections|length > 0 %}
@@ -47,6 +50,9 @@
           {% endfor %}
         </nav>
       </div>
+    </div>
+    {% endif %}
+    {% if request.url.path == '/admin' %}
     </div>
     {% endif %}
 

@@ -424,6 +424,19 @@ body.admin-ios-route .grain-overlay {
   }
 }
 
+/* Главная /admin: на всю ширину экрана (вылет за padding main + внутренний контейнер) */
+body.admin-ios-route .admin-ios-home-bleed {
+  width: 100vw;
+  max-width: 100vw;
+  position: relative;
+  left: 50%;
+  margin-left: -50vw;
+  box-sizing: border-box;
+  padding-left: max(10px, env(safe-area-inset-left, 0px));
+  padding-right: max(10px, env(safe-area-inset-right, 0px));
+  margin-bottom: 1.25rem;
+}
+
 /* Главная /admin: центрированный заголовок «Настройки», поиск, вертикальный список, индекс */
 .admin-ios-root-navbar {
   padding: 0.25rem 0 0.5rem;
@@ -499,13 +512,15 @@ body.admin-ios-route .grain-overlay {
 .admin-ios-apps-layout {
   display: flex;
   align-items: flex-start;
-  gap: 0.15rem;
+  gap: 0.35rem;
   position: relative;
+  width: 100%;
 }
 
 .admin-ios-apps-main {
   flex: 1;
   min-width: 0;
+  width: 100%;
 }
 
 .admin-ios-section-letter {
@@ -534,9 +549,24 @@ body.admin-ios-route .grain-overlay {
   line-height: 1;
 }
 
+.admin-ios-group--apps {
+  width: 100%;
+}
+
 .admin-ios-group--apps .admin-ios-row {
   position: relative;
   border-bottom: none;
+  width: 100%;
+  min-height: 3rem;
+}
+
+.admin-ios-group--apps .admin-ios-row-main {
+  flex: 1;
+  min-width: 0;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  padding-left: 1rem;
+  padding-right: 0.5rem;
 }
 
 .admin-ios-group--apps > .admin-ios-row:not(:last-child)::after {
@@ -548,6 +578,11 @@ body.admin-ios-route .grain-overlay {
   height: 1px;
   background: rgba(84, 84, 88, 0.55);
   pointer-events: none;
+}
+
+.admin-ios-group--apps .admin-ios-help-btn {
+  align-self: stretch;
+  min-height: 3rem;
 }
 
 .admin-ios-alpha-rail {

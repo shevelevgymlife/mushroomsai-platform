@@ -45,7 +45,7 @@
   <link rel="stylesheet" href="/static/css/profile-ui-themes.css?v=3" />
   <link rel="stylesheet" href="/static/css/app-mobile-shell.css?v=19" />
   {% if request.url.path.startswith('/admin') %}
-  <link rel="stylesheet" href="/static/css/admin-ios.css?v=13" />
+  <link rel="stylesheet" href="/static/css/admin-ios.css?v=14" />
   {% endif %}
   {% if request.url.path != '/' %}
   <link rel="stylesheet" href="/static/css/social-vision-ui.css?v=6" />
@@ -617,7 +617,7 @@ function closeGuestPopup(){document.getElementById('guest-popup').style.display=
   <script src="/static/js/app.js"></script>
   <script src="/static/js/community-mentions.js?v=6"></script>
   {% if user %}
-  <script src="/static/js/mention-autocomplete.js?v=5"></script>
+  <script src="/static/js/mention-autocomplete.js?v=6"></script>
   <script src="/static/js/user-id-autocomplete.js?v=1"></script>
   {% endif %}
   {% if user and request.url.path != '/' and not request.query_params.get('embed') %}

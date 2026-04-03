@@ -480,7 +480,7 @@
       ban.hidden = true;
       if (el.ta) {
         el.ta.disabled = false;
-        el.ta.placeholder = "Сообщение… @ — подсказки";
+        el.ta.placeholder = "Сообщение…";
       }
       if (el.send) el.send.disabled = false;
       if (el.attach) el.attach.disabled = false;
