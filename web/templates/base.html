@@ -44,6 +44,9 @@
   <link rel="stylesheet" href="/static/css/account-neo-hub.css?v=2" />
   <link rel="stylesheet" href="/static/css/profile-ui-themes.css?v=3" />
   <link rel="stylesheet" href="/static/css/app-mobile-shell.css?v=19" />
+  {% if request.url.path.startswith('/admin') %}
+  <link rel="stylesheet" href="/static/css/admin-ios.css?v=11" />
+  {% endif %}
   {% if request.url.path != '/' %}
   <link rel="stylesheet" href="/static/css/social-vision-ui.css?v=5" />
   {% endif %}
@@ -72,7 +75,7 @@
   </style>
   {% block extra_head %}{% endblock %}
 </head>
-<body data-profile-ui="{{ (user.profile_ui_theme if user and user.profile_ui_theme else 'default') }}" class="bg-bg text-text font-sans antialiased min-h-screen app-mobile-layout{% if user %} app-has-mobile-header{% endif %}{% if user and request.url.path != '/' and not request.query_params.get('embed') %} app-has-mobile-footer{% endif %}{% block body_class %}{% endblock %}">
+<body data-profile-ui="{{ (user.profile_ui_theme if user and user.profile_ui_theme else 'default') }}" class="bg-bg text-text font-sans antialiased min-h-screen app-mobile-layout{% if user %} app-has-mobile-header{% endif %}{% if user and request.url.path != '/' and not request.query_params.get('embed') %} app-has-mobile-footer{% endif %}{% if request.url.path.startswith('/admin') %} admin-ios-route{% endif %}{% block body_class %}{% endblock %}">
 <script>
 (function(){
   try {

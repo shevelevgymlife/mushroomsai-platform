@@ -1,5 +1,24 @@
 /* Админка: стиль «Настройки» iOS — группы, свайп, строки, справка */
 
+/* Маршрут /admin: чистый чёрный фон и системный шрифт (как iOS «Настройки») */
+html:has(body.admin-ios-route) {
+  background: #000000 !important;
+}
+body.admin-ios-route {
+  background: #000000 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+body.admin-ios-route main {
+  background-color: #000000;
+}
+body.admin-ios-route .neo-app-surface {
+  background: transparent !important;
+}
+body.admin-ios-route .grain-overlay {
+  opacity: 0;
+  pointer-events: none;
+}
+
 .admin-ios-link {
   color: inherit;
   text-decoration: none;
@@ -87,14 +106,15 @@
   flex: 0 0 min(100%, 22rem);
   scroll-snap-align: start;
   scroll-snap-stop: always;
-  background: rgba(12, 12, 15, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
+  background: #1c1c1e;
+  border: none;
+  border-radius: 12px;
   overflow: hidden;
   min-height: 12rem;
   max-height: 70vh;
   display: flex;
   flex-direction: column;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset;
 }
 
 @media (min-width: 640px) {
@@ -105,7 +125,7 @@
 
 .admin-ios-panel-head {
   padding: 1rem 1rem 0.65rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(84, 84, 88, 0.55);
   flex-shrink: 0;
 }
 
@@ -139,7 +159,7 @@
   display: flex;
   align-items: stretch;
   gap: 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(84, 84, 88, 0.45);
 }
 
 .admin-ios-row:last-child {
@@ -466,11 +486,12 @@
 }
 
 .admin-ios-group {
-  background: rgba(28, 28, 30, 0.96);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
+  background: #1c1c1e;
+  border: none;
+  border-radius: 10px;
   overflow: hidden;
   margin-bottom: 1.25rem;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05) inset;
 }
 
 .admin-ios-group--note {
@@ -482,12 +503,36 @@
   align-items: center;
   gap: 0.65rem;
   min-height: 2.75rem;
-  padding: 0.55rem 0.85rem 0.55rem 0.75rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 0.6rem 1rem 0.6rem 0.75rem;
+  border-bottom: none;
 }
 
-.admin-ios-cell:last-child {
-  border-bottom: none;
+.admin-ios-group > .admin-ios-cell:not(:last-child) {
+  position: relative;
+}
+
+/* Разделитель как в iOS: не на всю ширину слева (после иконки — шире отступ) */
+.admin-ios-group > .admin-ios-cell:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 1rem;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: rgba(84, 84, 88, 0.55);
+  pointer-events: none;
+}
+
+.admin-ios-group > .admin-ios-cell:not(:last-child):has(> .admin-ios-app-icon:first-child)::after,
+.admin-ios-group > .admin-ios-cell:not(:last-child):has(> .admin-ios-mini-ico-wrap:first-child)::after {
+  left: calc(0.75rem + 29px + 0.65rem);
+}
+
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .admin-ios-group > .admin-ios-cell:not(:last-child)::after {
+    transform: scaleY(0.5);
+    transform-origin: bottom center;
+  }
 }
 
 .admin-ios-cell--stack {
@@ -812,4 +857,65 @@
 
 .sortable-drag {
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}
+
+/* Fallback-навигация: вертикальный список как в «Настройки» / «Приложения» */
+.admin-ios-fallback-nav {
+  margin-bottom: 1.5rem;
+}
+
+.admin-ios-fallback-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 44px;
+  padding: 0.5rem 1rem 0.5rem 0.75rem;
+  text-decoration: none;
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.admin-ios-fallback-row:active {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.admin-ios-fallback-row--on {
+  background: rgba(10, 132, 255, 0.12);
+}
+
+.admin-ios-fallback-row--on .admin-ios-cell__label {
+  color: #fff;
+  font-weight: 500;
+}
+
+.admin-ios-mini-ico-wrap {
+  flex-shrink: 0;
+  width: 29px;
+  height: 29px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.admin-ios-mini-ico-wrap .stroke-ico {
+  width: 17px;
+  height: 17px;
+}
+
+.admin-ios-fallback-row .admin-ios-row-chev {
+  margin-left: auto;
+  opacity: 0.4;
+  font-size: 1.1rem;
+  color: #8e8e93;
+  flex-shrink: 0;
+}
+
+/* Карточки Tailwind на страницах /admin — визуально как группы iOS */
+body.admin-ios-route main .rounded-2xl.bg-surface.border-border,
+body.admin-ios-route main .rounded-2xl.bg-surface.border {
+  background: #1c1c1e !important;
+  border-color: rgba(84, 84, 88, 0.45) !important;
+  border-radius: 12px !important;
 }

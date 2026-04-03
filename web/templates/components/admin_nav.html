@@ -1,5 +1,3 @@
-<link rel="stylesheet" href="/static/css/admin-ios.css?v=3" />
-
 {% if admin_ui is defined and admin_ui.categories and admin_ui.categories|length > 0 %}
   {% if request.url.path == '/admin' %}
   <div class="admin-ios-dashboard-nav">
@@ -17,24 +15,19 @@
   </div>
   {% endif %}
 {% else %}
-{# Fallback: старая сетка чипов, если каталог недоступен #}
+{# Fallback: список в стиле iOS Settings, если каталог недоступен #}
 {% from 'components/stroke_icons.html' import ico %}
-<style>
-.admin-nav-wrap{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:2rem}
-@media(max-width:640px){
-  .admin-nav-wrap{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-}
-.admin-nav-item{
-  display:inline-flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:500;
-  border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.65);text-decoration:none;transition:border-color .2s,color .2s,background .2s;
-  white-space:nowrap
-}
-.admin-nav-item:hover{border-color:rgba(61,212,224,.45);color:#3dd4e0;background:rgba(61,212,224,.06)}
-.admin-nav-item.on{border-color:#3dd4e0;background:rgba(61,212,224,.12);color:#e8e8e8}
-.admin-nav-item .ni-ic{flex-shrink:0;opacity:.9}
-.admin-nav-item.on .ni-ic{color:#3dd4e0}
-</style>
-<div class="admin-nav-wrap">
+{% set admin_nav_tile_gradients = [
+  'linear-gradient(145deg,#ff375f,#ff6482)',
+  'linear-gradient(145deg,#ff9f0a,#ffb340)',
+  'linear-gradient(145deg,#ffd60a,#ffe066)',
+  'linear-gradient(145deg,#30d158,#248a3d)',
+  'linear-gradient(145deg,#64d2ff,#0a84ff)',
+  'linear-gradient(145deg,#bf5af2,#af52de)',
+  'linear-gradient(145deg,#5e5ce6,#5856d6)',
+  'linear-gradient(145deg,#8e8e93,#636366)',
+] %}
+<div class="admin-ios-group admin-ios-fallback-nav" role="navigation" aria-label="Разделы админки">
   {% set nav_items = [
     ('Панель', '/admin', 'can_dashboard', 'layout'),
     ('AI', '/admin/ai', 'can_ai', 'cpu'),
@@ -48,7 +41,7 @@
     ('База знаний', '/admin/knowledge', 'can_knowledge', 'book'),
     ('Сообщество', '/admin/community', 'can_community', 'users'),
     ('Группы / Чаты', '/admin/groups-chats', 'can_groups', 'message_sq'),
-    ('Настройки контента', '/admin/content-settings', 'can_groups', 'book'),
+    ('Настройки контента', '/admin/content-settings', 'can_groups', 'link'),
     ('Видеосвязь', '/admin/video-calls', 'can_groups', 'cpu'),
     ('Главная сайта', '/admin/homepage', 'can_homepage', 'home'),
     ('Блоки кабинета', '/admin/dashboard-blocks', 'can_dashboard_blocks', 'grid'),
@@ -60,10 +53,14 @@
   {% for label, href, perm_key, iname in nav_items %}
   {% if href == '/admin/music' and (not user or user.get('role') != 'admin') %}
   {% elif user_permissions is not defined or user_permissions.get(perm_key, True) %}
+  {% set nav_on = request.url.path == href or (href == '/admin/payment' and request.url.path.startswith('/admin/payment')) %}
   <a href="{{ href }}"
-     class="admin-nav-item {{ 'on' if (request.url.path == href or (href == '/admin/payment' and request.url.path.startswith('/admin/payment'))) else '' }}">
-    <span class="ni-ic">{{ ico(iname) }}</span>
-    <span>{{ label }}</span>
+     class="admin-ios-cell admin-ios-fallback-row {{ 'admin-ios-fallback-row--on' if nav_on else '' }}">
+    <span class="admin-ios-mini-ico-wrap" style="background:{{ admin_nav_tile_gradients[loop.index0 % (admin_nav_tile_gradients|length)] }}">{{ ico(iname) }}</span>
+    <span class="admin-ios-cell__main">
+      <span class="admin-ios-cell__label">{{ label }}</span>
+    </span>
+    <span class="admin-ios-row-chev" aria-hidden="true">›</span>
   </a>
   {% endif %}
   {% endfor %}
