@@ -30,6 +30,7 @@ from services.ai_tg_channel import (
 from services.community_post_publish import publish_community_post
 from services.event_notify import extract_mentioned_numeric_ids, send_event_telegram_html, user_exists
 from services.in_app_notifications import create_notification
+from services.ai_multichannel_settings import get_ai_multichannel_settings
 
 logger = logging.getLogger(__name__)
 
@@ -223,15 +224,32 @@ def _strip_urls_and_md_links(text: str) -> str:
     return t.strip()
 
 
-async def _community_system_prompt(user_message: str, task_suffix: str) -> str:
+async def _community_system_prompt(
+    user_message: str,
+    task_suffix: str,
+    *,
+    channel_kind: str = "comment",
+) -> str:
     """Тот же базовый промт + обучающие посты, что и в чате (`get_system_prompt`)."""
     from ai.openai_client import get_system_prompt
 
     base = await get_system_prompt(user_message=user_message)
+    cfg = await get_ai_multichannel_settings()
+    post_prompt = (cfg.get("post_prompt") or "").strip()
+    comment_prompt = (cfg.get("comment_prompt") or "").strip()
+    style_prompt = post_prompt if channel_kind == "post" else comment_prompt
+    style_block = (
+        "КАНАЛЬНЫЙ СТИЛЬ (строго):\n" + style_prompt
+        if style_prompt
+        else ""
+    )
     return (
         base
         + "\n\n[Режим ленты сообщества NEUROFUNGI] Соблюдай системный промт и блоки знаний выше строго. "
-        "Пиши только связным текстом на русском: без URL, без http/https, без markdown-ссылок, без списков ссылок.\n"
+        "Пиши только связным текстом на русском: без URL, без http/https, без markdown-ссылок, без списков ссылок. "
+        "Факты о грибах/дозах/связках/рекомендациях бери только из обучающих постов, которые подмешаны в промпт; "
+        "если факта нет в обучающих постах, не выдумывай и честно скажи об этом.\n"
+        + (style_block + "\n" if style_block else "")
         + task_suffix
     )
 
@@ -534,6 +552,7 @@ async def run_ai_community_bot_job() -> None:
                 sys = await _community_system_prompt(
                     um,
                     "Без медицинских назначений; можно КПТ/психологию/образование про грибы. До 900 символов, по-русски.",
+                    channel_kind="comment",
                 )
                 reply = await _openai_text(
                     sys,
@@ -570,7 +589,7 @@ async def run_ai_community_bot_job() -> None:
                 " Пост может дублироваться в Telegram-канал: мотивируй присоединиться к соцсети NEUROFUNGI; "
                 "не указывай цены и тарифы; без финансовых обещаний."
             )
-        sys = await _community_system_prompt(um, task_suffix)
+        sys = await _community_system_prompt(um, task_suffix, channel_kind="post")
         body = await _openai_text(
             sys,
             "Сгенерируй текст поста для публикации в ленте.",
@@ -621,7 +640,9 @@ async def run_ai_community_bot_job() -> None:
         if prow:
             excerpt = ((prow.get("title") or "") + "\n" + (prow.get("content") or ""))[:3000]
             um = "Задача: один дружелюбный комментарий к чужому посту в сообществе.\n" + excerpt
-            sys = await _community_system_prompt(um, "По-русски, до 500 символов.")
+            sys = await _community_system_prompt(
+                um, "По-русски, до 500 символов.", channel_kind="comment"
+            )
             ctext = await _openai_text(
                 sys,
                 "Сгенерируй комментарий.",
@@ -709,7 +730,9 @@ async def run_ai_community_bot_job() -> None:
             um = (
                 "Задача: одна короткая строка для блока «мысли» в профиле — настроение и работа с сообществом."
             )
-            sys = await _community_system_prompt(um, "До 200 символов, русский.")
+            sys = await _community_system_prompt(
+                um, "До 200 символов, русский.", channel_kind="comment"
+            )
             thought = await _openai_text(
                 sys,
                 "Сгенерируй статус.",

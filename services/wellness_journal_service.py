@@ -17,6 +17,7 @@ import sqlalchemy as sa
 from config import settings
 from db.database import database
 from db.models import users, wellness_journal_entries, platform_settings, direct_messages, wellness_scheme_effect_stats
+from services.ai_multichannel_settings import get_ai_multichannel_settings
 from services.subscription_service import check_subscription
 from services.system_support_delivery import all_legacy_neurofungi_ai_peer_ids, resolve_wellness_dm_sender_id
 from services.legacy_dm_chat_sync import sync_direct_messages_pair
@@ -346,6 +347,7 @@ def _build_prompt_text(*, include_weekly_nudge: bool, prompt_index: int) -> str:
         "Симптомы: паника сегодня (да/нет); апатия; раздражительность; стресс 0–10; «иммунитет по ощущениям» 0–10.\n"
         "Метаболика: если актуально — акцент на весе/инсулинорезистентности (да/нет).\n"
         "Приём сегодня: да/нет; если да — тип гриба, дозировка, время.\n\n"
+        "Важно: я твой ответ записываю в базу дневника. Подтверждение включения в статистику — отдельно «да/нет», чтобы ничего не перепутать.\n\n"
         f"📊 Сводка и графики: {results_url}\n"
         "Частота: «каждый день», «раз в 3 дня», «раз в 5 дней», «раз в неделю» или «отключить дневник».\n"
         "Если на сегодня достаточно диалога — напишите «хватит на сегодня».\n"
@@ -428,6 +430,18 @@ async def _compose_coach_message_body(
     return _build_prompt_text(include_weekly_nudge=include_weekly_nudge, prompt_index=prompt_index)
 
 
+async def _coach_confirm_phrase() -> str:
+    """Единая фраза-подтверждение для да/нет, как просил админ."""
+    try:
+        cfg = await get_ai_multichannel_settings()
+    except Exception:
+        cfg = {}
+    algo = (cfg.get("dm_algorithm_prompt") or "").lower()
+    if "да/нет" in algo:
+        return "Я твой ответ записываю в базу. Подтверди «да» или «нет», чтобы не перепутать вопрос."
+    return "Подтверди «да» или «нет», чтобы я корректно записал ответ в статистику."
+
+
 async def schedule_wellness_journal_if_paid(user_id: int) -> None:
     """Вызывать при активации платного тарифа или пробного Старт; для admin — тоже."""
     uid = int(user_id)
@@ -442,7 +456,7 @@ async def schedule_wellness_journal_if_paid(user_id: int) -> None:
     if row.get("wellness_next_prompt_at") is not None:
         return
     ppp = _normalize_prompts_per_day(row.get("wellness_journal_prompts_per_day"))
-    nxt = wellness_bootstrap_next_prompt_at(datetime.utcnow(), prompts_per_day=ppp)
+    nxt = await _compute_bootstrap_next_prompt(datetime.utcnow(), prompts_per_day=ppp)
     await database.execute(
         users.update()
         .where(users.c.id == uid)
@@ -468,6 +482,47 @@ def _normalize_prompts_per_day(raw: Any) -> int:
     except (TypeError, ValueError):
         return 1
     return n if n in ALLOWED_PROMPTS_PER_DAY else 1
+
+
+async def _dm_interval_config() -> tuple[bool, int]:
+    """Глобальная периодичность ЛС из админки AI: по умолчанию раз в 60 минут."""
+    try:
+        cfg = await get_ai_multichannel_settings()
+    except Exception:
+        logger.debug("wellness: failed to read ai multichannel settings", exc_info=True)
+        cfg = {}
+    enabled = bool(cfg.get("dm_interval_enabled", True))
+    try:
+        minutes = int(cfg.get("dm_interval_minutes") or 60)
+    except (TypeError, ValueError):
+        minutes = 60
+    minutes = max(15, min(1440, minutes))
+    return enabled, minutes
+
+
+async def _compute_bootstrap_next_prompt(now: datetime, *, prompts_per_day: int) -> datetime:
+    enabled, minutes = await _dm_interval_config()
+    if enabled:
+        return now + timedelta(minutes=minutes)
+    return wellness_bootstrap_next_prompt_at(now, prompts_per_day=prompts_per_day)
+
+
+async def _compute_next_prompt_after_send(
+    *,
+    send_time: datetime,
+    scheduled_fire: datetime,
+    interval_days: int,
+    prompts_per_day: int,
+) -> datetime:
+    enabled, minutes = await _dm_interval_config()
+    if enabled:
+        return send_time + timedelta(minutes=minutes)
+    return next_wellness_prompt_after_send(
+        send_time=send_time,
+        scheduled_fire=scheduled_fire,
+        interval_days=interval_days,
+        prompts_per_day=prompts_per_day,
+    )
 
 
 def _wellness_slot_hours(ppp: int) -> tuple[int, ...]:
@@ -601,6 +656,14 @@ async def parse_frequency_and_opt_out_from_text(user_id: int, text: str) -> None
         )
         return
 
+    if any(x in t for x in ("каждый час", "ежечасно", "раз в час", "1 раз в час", "каждый 1 час")):
+        await database.execute(
+            users.update()
+            .where(users.c.id == uid)
+            .values(wellness_next_prompt_at=datetime.utcnow() + timedelta(hours=1))
+        )
+        return
+
     ppp_new: Optional[int] = None
     if any(
         x in t
@@ -650,7 +713,7 @@ async def parse_frequency_and_opt_out_from_text(user_id: int, text: str) -> None
         p_eff = upd.get("wellness_journal_prompts_per_day")
         if p_eff is None:
             p_eff = _normalize_prompts_per_day(row.get("wellness_journal_prompts_per_day"))
-        upd["wellness_next_prompt_at"] = wellness_bootstrap_next_prompt_at(
+        upd["wellness_next_prompt_at"] = await _compute_bootstrap_next_prompt(
             datetime.utcnow(), prompts_per_day=int(p_eff)
         )
         await database.execute(users.update().where(users.c.id == uid).values(**upd))
@@ -738,7 +801,7 @@ async def send_wellness_prompt_for_user(user_id: int, *, admin_self_test: bool =
         )
         if not admin_self_test:
             fired = _scheduled_fire_datetime(now, nxt, ppp)
-            nxt_after = next_wellness_prompt_after_send(
+            nxt_after = await _compute_next_prompt_after_send(
                 send_time=now,
                 scheduled_fire=fired,
                 interval_days=interval,
@@ -787,7 +850,7 @@ async def run_wellness_prompts_due_job() -> None:
             continue
         if row["wellness_next_prompt_at"] is None:
             ppp = _normalize_prompts_per_day(row.get("wellness_journal_prompts_per_day"))
-            nxt0 = wellness_bootstrap_next_prompt_at(datetime.utcnow(), prompts_per_day=ppp)
+            nxt0 = await _compute_bootstrap_next_prompt(datetime.utcnow(), prompts_per_day=ppp)
             await database.execute(
                 users.update().where(users.c.id == uid).values(wellness_next_prompt_at=nxt0)
             )
