@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Закрытые канал и чаты — Admin{% endblock %}
+{% block content %}
+<div class="pt-24 pb-16 neo-app-surface">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    {% include "components/admin_nav.html" %}
+
+    <h1 class="text-2xl font-light text-text mb-2">Доступ в закрытый канал и закрытые чаты</h1>
+    <p class="text-sm text-muted mb-6 leading-relaxed">
+      Здесь задаются <b>три независимых ресурса</b> (включение, ссылка-приглашение, числовой <code class="text-gold">chat_id</code> для API бота).
+      Какие из них входят в тариф, выбирается в
+      <a href="/admin/payment/subscription-plans" class="text-gold hover:underline">тарифах подписок</a>
+      (три флажка на каждый платный план) и в пунктах бургера для ключа <code class="text-gold">closed_telegram</code>.
+    </p>
+
+    {% if request.query_params.get('saved') %}
+    <div class="mb-4 p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-200 text-sm">Сохранено.</div>
+    {% endif %}
+
+    <div class="p-5 rounded-2xl border border-border bg-surface/80 space-y-4 mb-8 text-sm text-muted leading-relaxed">
+      <h2 class="text-base font-semibold text-text">Как подключить к боту (кратко)</h2>
+      <ol class="list-decimal pl-5 space-y-2">
+        <li>Создайте <b>закрытый</b> канал или группу / супергруппу в Telegram.</li>
+        <li>Добавьте <b>основного бота платформы</b> администратором в этот чат/канал.</li>
+        <li>Для канала и закрытых групп включите <b>заявки на вступление</b> или пригласительные ссылки — бот одобряет заявку, если у пользователя есть активная подписка по правилам тарифа.</li>
+        <li>Выдайте боту право <b>банить пользователей</b> (и при необходимости одобрять заявки): так бот сможет убирать пользователя при окончании подписки.</li>
+        <li>Скопируйте <b>ID чата</b> (число вида <code class="text-gold">-100…</code>) и вставьте в поле ниже.</li>
+        <li>Для <b>теста</b> укажите сначала тестовый канал/группу; после проверки замените ссылки и ID на боевые.</li>
+      </ol>
+    </div>
+
+    <form method="post" action="/admin/payment/closed-telegram-access" class="space-y-8 max-w-3xl">
+      <div class="p-5 rounded-2xl border border-border bg-bg/40 space-y-3">
+        <h3 class="text-sm font-bold text-gold uppercase tracking-wide">1. Закрытый канал</h3>
+        <label class="flex items-center gap-2 text-xs text-text cursor-pointer">
+          <input type="hidden" name="channel_enabled" value="0" />
+          <input type="checkbox" name="channel_enabled" value="1" class="rounded border-border" {% if ct_cfg.channel_enabled %}checked{% endif %} />
+          Включить этот ресурс в логике бота и ссылках
+        </label>
+        <div>
+          <label class="block text-xs text-muted mb-1">Ссылка-приглашение</label>
+          <input type="url" name="channel_invite_url" value="{{ ct_cfg.channel_invite_url or '' }}" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" placeholder="https://t.me/+..." />
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1">Chat ID для API</label>
+          <input type="text" name="channel_chat_id" value="{{ ct_cfg.channel_chat_id or '' }}" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono" placeholder="-1001234567890" autocomplete="off" />
+        </div>
+      </div>
+
+      <div class="p-5 rounded-2xl border border-border bg-bg/40 space-y-3">
+        <h3 class="text-sm font-bold text-gold uppercase tracking-wide">2. Закрытая группа (общий чат)</h3>
+        <label class="flex items-center gap-2 text-xs text-text cursor-pointer">
+          <input type="hidden" name="group_enabled" value="0" />
+          <input type="checkbox" name="group_enabled" value="1" class="rounded border-border" {% if ct_cfg.group_enabled %}checked{% endif %} />
+          Включить этот ресурс в логике бота и ссылках
+        </label>
+        <div>
+          <label class="block text-xs text-muted mb-1">Ссылка-приглашение</label>
+          <input type="url" name="group_invite_url" value="{{ ct_cfg.group_invite_url or '' }}" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" placeholder="https://t.me/+..." />
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1">Chat ID для API</label>
+          <input type="text" name="group_chat_id" value="{{ ct_cfg.group_chat_id or '' }}" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono" placeholder="-1001234567890" autocomplete="off" />
+        </div>
+      </div>
+
+      <div class="p-5 rounded-2xl border border-border bg-bg/40 space-y-3">
+        <h3 class="text-sm font-bold text-gold uppercase tracking-wide">3. Закрытый чат консультаций</h3>
+        <label class="flex items-center gap-2 text-xs text-text cursor-pointer">
+          <input type="hidden" name="consult_enabled" value="0" />
+          <input type="checkbox" name="consult_enabled" value="1" class="rounded border-border" {% if ct_cfg.consult_enabled %}checked{% endif %} />
+          Включить этот ресурс в логике бота и ссылках
+        </label>
+        <div>
+          <label class="block text-xs text-muted mb-1">Ссылка-приглашение</label>
+          <input type="url" name="consult_invite_url" value="{{ ct_cfg.consult_invite_url or '' }}" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" placeholder="https://t.me/+..." />
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1">Chat ID для API</label>
+          <input type="text" name="consult_chat_id" value="{{ ct_cfg.consult_chat_id or '' }}" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono" placeholder="-1001234567890" autocomplete="off" />
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs text-muted mb-1">Текст на странице кабинета (необязательно)</label>
+        <textarea name="instructions" rows="8" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono leading-relaxed">{{ ct_cfg.instructions or '' }}</textarea>
+      </div>
+
+      <div class="flex flex-wrap gap-3">
+        <button type="submit" class="px-6 py-3 rounded-xl bg-gold text-bg font-semibold text-sm">Сохранить</button>
+        <a href="/admin/payment" class="px-6 py-3 rounded-xl border border-border text-text text-sm">Назад к оплате</a>
+        <a href="/admin/payment/subscription-plans" class="px-6 py-3 rounded-xl border border-border text-text text-sm">Тарифы и бургер</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

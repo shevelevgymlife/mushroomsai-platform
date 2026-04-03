@@ -469,6 +469,7 @@ async def run_heavy_startup(app: FastAPI) -> None:
                     )
                 )
             for key, name, pos, al in (
+                ("closed_telegram_access", "Закрытый канал и чаты (Telegram)", 89, "pro"),
                 ("pro_pin_info", "Закреп в ленте (Про)", 91, "pro"),
                 ("seller_marketplace", "Кабинет продавца (Макси)", 92, "maxi"),
             ):
@@ -752,6 +753,15 @@ async def run_heavy_startup(app: FastAPI) -> None:
             logger.info("referrals.referrer_id sync from users.referred_by (migrate_v44) OK")
         except Exception as e:
             logger.warning("migrate_v44 referrals_referrer_sync: %s", e)
+
+        try:
+            import migrate_v45_closed_telegram_access as migrate_v45
+
+            for s in migrate_v45.STEPS:
+                await database.execute(sa.text(s))
+            logger.info("closed telegram access dashboard block (migrate_v45) OK")
+        except Exception as e:
+            logger.warning("migrate_v45 closed_telegram_access: %s", e)
 
         try:
             from services.merge_neurofungi_ai_chats import merge_all_neurofungi_ai_personal_chats

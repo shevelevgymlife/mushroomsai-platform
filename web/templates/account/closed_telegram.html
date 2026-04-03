@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Закрытый канал и чаты — NEUROFUNGI AI{% endblock %}
+{% block content %}
+<div class="neo-app-surface pt-20 pb-24 px-4 max-w-lg mx-auto">
+  <h1 class="text-xl font-semibold text-text mb-2">Закрытый канал и чаты</h1>
+  <p class="text-sm text-muted mb-6 leading-relaxed">
+    Доступ по вашей подписке. Если ссылка неактивна — продлите тариф, в котором включён нужный ресурс, или откройте бота и используйте кнопки под клавиатурой.
+  </p>
+
+  {% if instructions %}
+  <div class="mb-6 p-4 rounded-xl border border-white/10 bg-white/[0.03] text-sm text-muted whitespace-pre-wrap leading-relaxed">{{ instructions }}</div>
+  {% endif %}
+
+  <div class="space-y-4">
+    {% if channel_url %}
+    <a href="{{ channel_url }}" target="_blank" rel="noopener noreferrer" class="block w-full text-center px-4 py-3 rounded-xl bg-gradient-to-r from-cyan-500/20 to-gold/20 border border-cyan-500/30 text-text font-medium no-underline hover:border-cyan-400/50">📢 Закрытый канал</a>
+    {% else %}
+    <div class="px-4 py-3 rounded-xl border border-white/10 bg-white/[0.02] text-sm text-muted text-center">📢 Закрытый канал — приобретите подписку с этой опцией</div>
+    {% endif %}
+
+    {% if group_url %}
+    <a href="{{ group_url }}" target="_blank" rel="noopener noreferrer" class="block w-full text-center px-4 py-3 rounded-xl bg-gradient-to-r from-cyan-500/20 to-gold/20 border border-cyan-500/30 text-text font-medium no-underline hover:border-cyan-400/50">👥 Закрытая группа</a>
+    {% else %}
+    <div class="px-4 py-3 rounded-xl border border-white/10 bg-white/[0.02] text-sm text-muted text-center">👥 Закрытая группа — приобретите подписку с этой опцией</div>
+    {% endif %}
+
+    {% if consult_url %}
+    <a href="{{ consult_url }}" target="_blank" rel="noopener noreferrer" class="block w-full text-center px-4 py-3 rounded-xl bg-gradient-to-r from-cyan-500/20 to-gold/20 border border-cyan-500/30 text-text font-medium no-underline hover:border-cyan-400/50">💬 Закрытый чат консультаций</a>
+    {% else %}
+    <div class="px-4 py-3 rounded-xl border border-white/10 bg-white/[0.02] text-sm text-muted text-center">💬 Закрытый чат консультаций — приобретите подписку с этой опцией</div>
+    {% endif %}
+  </div>
+
+  <p class="mt-8 text-xs text-muted leading-relaxed">
+    После перехода по ссылке бот может одобрить заявку на вступление автоматически. Убедитесь, что вы заходите в Telegram с того же аккаунта, что привязан к NEUROFUNGI AI.
+  </p>
+  <a href="/subscriptions" class="inline-block mt-4 text-sm text-gold hover:underline">Тарифы и подписка →</a>
+</div>
+{% endblock %}

@@ -95,6 +95,30 @@
         Сбросить отдельный текст (будут пункты из карточки тарифа)
       </label>
     </div>
+    {% if pk != 'free' %}
+    {% set ca = p.get('closed_access') if p is defined else none %}
+    {% set ca = ca if ca is mapping else {} %}
+    <div class="p-3 rounded-xl border border-violet-500/25 bg-violet-500/5 space-y-2">
+      <p class="text-xs font-semibold text-text">Закрытый канал и чаты (Telegram)</p>
+      <p class="text-[11px] text-muted leading-relaxed">Что входит в тариф при активной подписке. Сами ссылки и chat_id задаются в
+        <a href="/admin/payment/closed-telegram-access" class="text-gold hover:underline">настройках закрытых чатов</a>.</p>
+      <label class="flex items-center gap-2 text-xs text-text cursor-pointer">
+        <input type="hidden" name="plan_{{ pk }}_closed_access_channel" value="0" />
+        <input type="checkbox" name="plan_{{ pk }}_closed_access_channel" value="1" class="rounded border-border" {% if ca.get('channel') %}checked{% endif %} />
+        Доступ: закрытый канал
+      </label>
+      <label class="flex items-center gap-2 text-xs text-text cursor-pointer">
+        <input type="hidden" name="plan_{{ pk }}_closed_access_group" value="0" />
+        <input type="checkbox" name="plan_{{ pk }}_closed_access_group" value="1" class="rounded border-border" {% if ca.get('group') %}checked{% endif %} />
+        Доступ: закрытая группа (общий чат)
+      </label>
+      <label class="flex items-center gap-2 text-xs text-text cursor-pointer">
+        <input type="hidden" name="plan_{{ pk }}_closed_access_consult" value="0" />
+        <input type="checkbox" name="plan_{{ pk }}_closed_access_consult" value="1" class="rounded border-border" {% if ca.get('consult') %}checked{% endif %} />
+        Доступ: закрытый чат консультаций
+      </label>
+    </div>
+    {% endif %}
   </div>
   {% endfor %}
 

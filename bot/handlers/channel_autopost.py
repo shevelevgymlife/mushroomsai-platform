@@ -206,12 +206,16 @@ async def main_keyboard_with_autopost(site_url: str, ai_active: bool, internal_u
     if extras:
         merged.extend(extras)
     shop_btn = await tg_shop_button_label(internal_user_id)
+    from services.closed_telegram_access import closed_telegram_keyboard_rows
+
+    ct_rows = await closed_telegram_keyboard_rows(internal_user_id)
     return main_keyboard(
         site_url,
         ai_active,
         extra_rows=merged if merged else None,
         shop_button=shop_btn,
         show_community_post=show_cp,
+        closed_tg_rows=ct_rows if ct_rows else None,
     )
 
 

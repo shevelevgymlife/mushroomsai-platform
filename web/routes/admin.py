@@ -1135,6 +1135,12 @@ async def change_subscription(request: Request, user_id: int, plan: str = Form(.
         await deliver_system_support_notification(recipient_user_id=notify_uid, body_plain=notice)
     except Exception:
         logger.exception("subscription admin notify failed user_id=%s", user_id)
+    try:
+        from services.closed_telegram_access import sync_user_telegram_closed_chats
+
+        await sync_user_telegram_closed_chats(int(user_id))
+    except Exception:
+        logger.debug("sync closed tg after admin subscription uid=%s", user_id, exc_info=True)
     return JSONResponse({"ok": True, "plan": plan})
 
 
@@ -1215,6 +1221,12 @@ async def patch_user_plan(request: Request, user_id: int):
         await deliver_system_support_notification(recipient_user_id=notify_uid, body_plain=notice)
     except Exception:
         logger.exception("subscription admin notify (patch) failed user_id=%s", user_id)
+    try:
+        from services.closed_telegram_access import sync_user_telegram_closed_chats
+
+        await sync_user_telegram_closed_chats(int(user_id))
+    except Exception:
+        logger.debug("sync closed tg after admin patch plan uid=%s", user_id, exc_info=True)
     return JSONResponse({"ok": True, "plan": plan})
 
 

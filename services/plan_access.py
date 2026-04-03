@@ -106,6 +106,7 @@ def plan_allowed_block_keys(plan: str | None, user: dict[str, Any] | None) -> fr
                 "referral",
                 "knowledge_base",
                 "pro_pin_info",
+                "closed_telegram_access",
                 "seller_marketplace",
             }
         )

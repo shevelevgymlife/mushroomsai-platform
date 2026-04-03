@@ -99,6 +99,12 @@ async def attach_subscription_effective(u: dict) -> None:
         u["plan_drawer_menu"] = drawer_menu_effective(plans.get("free"))
         u["plan_access_tier"] = "free"
         u["referral_program_unlocked"] = False
+        try:
+            from services.closed_telegram_access import attach_closed_telegram_to_user
+
+            await attach_closed_telegram_to_user(u)
+        except Exception:
+            pass
         return
     now = datetime.utcnow()
     tu = row.get("start_trial_until")
@@ -206,6 +212,13 @@ async def attach_subscription_effective(u: dict) -> None:
         u["referral_program_unlocked"] = await paid_subscription_for_referral_program(int(uid))
     except Exception:
         u["referral_program_unlocked"] = False
+
+    try:
+        from services.closed_telegram_access import attach_closed_telegram_to_user
+
+        await attach_closed_telegram_to_user(u)
+    except Exception:
+        pass
 
 
 async def get_user_from_request(request) -> Optional[dict]:

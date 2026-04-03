@@ -5,6 +5,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, MenuButtonWebAp
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
+    ChatJoinRequestHandler,
     ChatMemberHandler,
     CommandHandler,
     MessageHandler,
@@ -39,6 +40,7 @@ from bot.handlers.yookassa_subscribe import (
     tgstars_plan_callback,
 )
 from bot.handlers.legal_commands import privacy_command, terms_command
+from bot.handlers.closed_telegram import closed_telegram_message_handler, on_chat_join_request
 
 logger = logging.getLogger(__name__)
 
@@ -229,6 +231,7 @@ def create_bot() -> Application:
     application.add_handler(
         ChatMemberHandler(on_my_chat_member, chat_member_types=ChatMemberHandler.MY_CHAT_MEMBER)
     )
+    application.add_handler(ChatJoinRequestHandler(on_chat_join_request))
     application.add_handler(CallbackQueryHandler(ch_link_done_callback, pattern=r"^ch_link_done$"))
     application.add_handler(CallbackQueryHandler(ch_soc_btn_callback, pattern=r"^ch_soc_btn:[01]$"))
 
@@ -258,6 +261,7 @@ def create_bot() -> Application:
 
     # Кнопки клавиатуры (сбрасывают режим AI)
     application.add_handler(MessageHandler(filters.Regex(_SHOP_BUTTONS_RX), _shop_handler))
+    application.add_handler(closed_telegram_message_handler(), group=-2)
     application.add_handler(MessageHandler(filters.Regex(f"^{BTN_COMMUNITY}$"), _community_handler))
     application.add_handler(MessageHandler(filters.Regex(f"^{BTN_WEB}$"), _web_handler))
     application.add_handler(MessageHandler(filters.Regex(f"^{BTN_SECURITY}$"), _security_handler))

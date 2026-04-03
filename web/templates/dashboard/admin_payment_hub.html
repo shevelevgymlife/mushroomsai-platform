@@ -13,7 +13,10 @@
     <div class="mb-8 p-5 rounded-2xl border border-gold/30 bg-gold/[0.06] max-w-3xl">
       <h2 class="text-lg font-semibold text-text mb-2">Тарифы подписок</h2>
       <p class="text-xs text-muted mb-4 leading-relaxed">Главная страница, страница подписок, бургер меню и расчёт сумм при оплате используют эти данные.</p>
-      <a href="/admin/payment/subscription-plans" class="inline-flex px-5 py-2.5 rounded-xl bg-gold text-bg text-sm font-semibold hover:opacity-95">Открыть редактор тарифов</a>
+      <div class="flex flex-wrap gap-3">
+        <a href="/admin/payment/subscription-plans" class="inline-flex px-5 py-2.5 rounded-xl bg-gold text-bg text-sm font-semibold hover:opacity-95">Открыть редактор тарифов</a>
+        <a href="/admin/payment/closed-telegram-access" class="inline-flex px-5 py-2.5 rounded-xl border border-gold/50 text-gold text-sm font-semibold hover:bg-gold/10">Закрытые канал и чаты</a>
+      </div>
     </div>
 
     {% if request.query_params.get('checkout_saved') %}

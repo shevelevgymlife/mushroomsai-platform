@@ -380,6 +380,12 @@ async def activate_subscription(
             await _notify_paid_subscription_activated(user_id, plan, end_date)
         except Exception:
             logger.exception("subscription activated user notify failed uid=%s", user_id)
+    try:
+        from services.closed_telegram_access import sync_user_telegram_closed_chats
+
+        await sync_user_telegram_closed_chats(int(user_id))
+    except Exception:
+        logger.debug("sync closed tg after activate uid=%s", user_id, exc_info=True)
     return True
 
 
@@ -590,6 +596,12 @@ async def claim_start_trial(user_id: int) -> dict:
         await schedule_wellness_journal_if_paid(int(user_id))
     except Exception:
         pass
+    try:
+        from services.closed_telegram_access import sync_user_telegram_closed_chats
+
+        await sync_user_telegram_closed_chats(int(user_id))
+    except Exception:
+        pass
     return {"ok": True, "until": until.isoformat() + "Z"}
 
 
@@ -642,6 +654,12 @@ async def check_subscription(user_id: int) -> str:
                 await _notify_subscription_became_free(int(user_id), prev_plan, reason="expired")
             except Exception:
                 logger.debug("subscription expired notify failed uid=%s", user_id, exc_info=True)
+            try:
+                from services.closed_telegram_access import sync_user_telegram_closed_chats
+
+                await sync_user_telegram_closed_chats(int(user_id))
+            except Exception:
+                logger.debug("sync closed tg after expiry uid=%s", user_id, exc_info=True)
 
     # Пробный «Старт»
     trial_until = row.get("start_trial_until")

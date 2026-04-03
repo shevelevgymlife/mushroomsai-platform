@@ -821,6 +821,37 @@ async def screen_rim_page(request: Request):
     )
 
 
+@router.get("/closed-telegram", response_class=HTMLResponse)
+async def account_closed_telegram_page(request: Request):
+    user = await get_user_from_request(request)
+    if not user:
+        return RedirectResponse("/login?next=/account/closed-telegram")
+    leg = await legal_acceptance_redirect(request, user)
+    if leg:
+        return leg
+    uid = int(user.get("primary_user_id") or user["id"])
+    row = await database.fetch_one(users.select().where(users.c.id == uid))
+    if row:
+        user = dict(row)
+        attach_screen_rim_prefs(user)
+        await attach_subscription_effective(user)
+    from services.closed_telegram_access import load_closed_telegram_config
+
+    cfg = await load_closed_telegram_config()
+    ct = user.get("closed_tg") or {}
+    return templates.TemplateResponse(
+        "account/closed_telegram.html",
+        {
+            "request": request,
+            "user": user,
+            "channel_url": ct.get("channel"),
+            "group_url": ct.get("group"),
+            "consult_url": ct.get("consult"),
+            "instructions": (cfg.get("instructions") or "").strip() or None,
+        },
+    )
+
+
 @router.get("/wallet", response_class=HTMLResponse)
 async def account_wallet_page(request: Request):
     """Экран привязки кошелька Decimal / MetaMask (раньше был в кабинете /dashboard)."""

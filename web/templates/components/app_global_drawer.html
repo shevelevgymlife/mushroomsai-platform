@@ -67,6 +67,9 @@
     {% if 'knowledge_base' in vbk and drawer_on('knowledge') == '1' %}
     <a href="https://t.me/ShevelevVlog" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('book') }}</span><span class="lbl">База знаний</span></a>
     {% endif %}
+    {% if user.get('closed_tg_drawer') and drawer_on('closed_telegram') == '1' %}
+    <a href="/account/closed-telegram" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('shield') }}</span><span class="lbl">Закрытый канал и чаты</span></a>
+    {% endif %}
     {% if 'referral' in vbk %}
     {% if drawer_on('referral') == '1' %}
     <a href="/referral" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('gift') }}</span><span class="lbl">Реферальная программа</span></a>

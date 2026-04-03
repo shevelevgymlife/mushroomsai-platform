@@ -99,6 +99,7 @@ def main_keyboard(
     extra_rows: list | None = None,
     shop_button: str | None = None,
     show_community_post: bool = False,
+    closed_tg_rows: list | None = None,
 ):
     """Клавиатура главного бота. Режим AI — отдельная строка: вход или выход.
     «Пост в сообщество» — только при show_community_post (роль admin)."""
@@ -110,6 +111,8 @@ def main_keyboard(
     keyboard = top + [
         [KeyboardButton(shop_lbl), KeyboardButton("🌐 Сообщество")],
     ]
+    if closed_tg_rows:
+        keyboard += list(closed_tg_rows)
     if show_community_post:
         keyboard.append([KeyboardButton(BTN_COMMUNITY_POST)])
     keyboard += [

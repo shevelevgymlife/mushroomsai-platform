@@ -21,6 +21,7 @@ from services.payment_plans_catalog import (
     save_subscription_overrides_raw,
     visible_plan_keys_from,
 )
+from services.closed_telegram_access import load_closed_telegram_config, save_closed_telegram_config
 from services.payment_provider_settings import (
     CLOUDPAYMENTS_WIDGET_METHOD_CHOICES,
     PAYMENT_PROVIDERS,
@@ -155,6 +156,20 @@ async def _parse_subscription_forms(form: Any) -> dict[str, Any]:
             at = (form.get(f"plan_{pk}_access_tier") or "").strip().lower()
             if at in ("free", "start", "pro", "maxi"):
                 block["access_tier"] = at
+        if pk != "free" and any(f"plan_{pk}_closed_access_{x}" in form_keys for x in ("channel", "group", "consult")):
+
+            def _ca_vals(name: str) -> list:
+                try:
+                    return list(form.getlist(name))
+                except Exception:
+                    v = form.get(name)
+                    return [v] if v is not None else []
+
+            block["closed_access"] = {
+                "channel": "1" in [str(x) for x in _ca_vals(f"plan_{pk}_closed_access_channel")],
+                "group": "1" in [str(x) for x in _ca_vals(f"plan_{pk}_closed_access_group")],
+                "consult": "1" in [str(x) for x in _ca_vals(f"plan_{pk}_closed_access_consult")],
+            }
         if block:
             raw[pk] = block
     return raw
@@ -246,6 +261,57 @@ async def admin_subscription_checkout_bot_save(request: Request):
         telegram_payments_enabled=tg_enabled,
     )
     return RedirectResponse("/admin/payment?checkout_saved=1", status_code=303)
+
+
+@router.get("/payment/closed-telegram-access", response_class=HTMLResponse)
+async def admin_closed_telegram_access_page(request: Request):
+    require_permission, get_user_permissions = _lazy_admin()
+    admin = await require_permission(request, "can_payment")
+    if not admin:
+        return RedirectResponse("/login")
+    perms = await get_user_permissions(admin)
+    cfg = await load_closed_telegram_config()
+    return templates.TemplateResponse(
+        "dashboard/admin_closed_telegram_access.html",
+        {
+            "request": request,
+            "user": admin,
+            "user_permissions": perms,
+            "ct_cfg": cfg,
+        },
+    )
+
+
+@router.post("/payment/closed-telegram-access")
+async def admin_closed_telegram_access_save(request: Request):
+    require_permission, _ = _lazy_admin()
+    admin = await require_permission(request, "can_payment")
+    if not admin:
+        return RedirectResponse("/login")
+    form = await request.form()
+
+    def _on(field: str) -> bool:
+        try:
+            vals = list(form.getlist(field))
+        except Exception:
+            v = form.get(field)
+            vals = [v] if v is not None else []
+        return "1" in [str(x) for x in vals]
+
+    raw = {
+        "channel_enabled": _on("channel_enabled"),
+        "channel_invite_url": (form.get("channel_invite_url") or "").strip(),
+        "channel_chat_id": (form.get("channel_chat_id") or "").strip(),
+        "group_enabled": _on("group_enabled"),
+        "group_invite_url": (form.get("group_invite_url") or "").strip(),
+        "group_chat_id": (form.get("group_chat_id") or "").strip(),
+        "consult_enabled": _on("consult_enabled"),
+        "consult_invite_url": (form.get("consult_invite_url") or "").strip(),
+        "consult_chat_id": (form.get("consult_chat_id") or "").strip(),
+        "instructions": (form.get("instructions") or "").strip(),
+    }
+    await save_closed_telegram_config(raw)
+    return RedirectResponse("/admin/payment/closed-telegram-access?saved=1", status_code=303)
 
 
 @router.get("/payment/subscription-plans", response_class=HTMLResponse)

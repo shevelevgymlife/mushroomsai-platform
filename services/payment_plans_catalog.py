@@ -36,6 +36,7 @@ DEFAULT_PLANS: dict[str, dict[str, Any]] = {
         "questions_per_day": 5,
         "recipes_per_day": 1,
         "description": "",
+        "closed_access": {"channel": False, "group": False, "consult": False},
         "features": [
             "5 вопросов к AI всего (на аккаунт)",
             "Личный кабинет",
@@ -52,6 +53,7 @@ DEFAULT_PLANS: dict[str, dict[str, Any]] = {
         "questions_per_day": -1,
         "recipes_per_day": -1,
         "description": "",
+        "closed_access": {"channel": False, "group": False, "consult": False},
         "features": [
             "Безлимитные консультации",
             "История переписки с AI 1 месяц",
@@ -71,6 +73,7 @@ DEFAULT_PLANS: dict[str, dict[str, Any]] = {
         "questions_per_day": -1,
         "recipes_per_day": -1,
         "description": "",
+        "closed_access": {"channel": True, "group": False, "consult": False},
         "features": [
             "Всё из Старта",
             "Доступ в закрытый Telegram-канал — партнёрство, кейсы, знания",
@@ -87,6 +90,7 @@ DEFAULT_PLANS: dict[str, dict[str, Any]] = {
         "questions_per_day": -1,
         "recipes_per_day": -1,
         "description": "",
+        "closed_access": {"channel": True, "group": True, "consult": True},
         "features": [
             "Всё из Про",
             "Доступ к подаче рекламы на маркетплейсе NEUROFUNGI AI + Админка товаров",
@@ -114,6 +118,7 @@ DRAWER_MENU_ITEM_SPECS: tuple[tuple[str, str], ...] = (
     ("sub_history", "История подписок"),
     ("settings", "Настройки"),
     ("telegram_bot", "Бот в Telegram"),
+    ("closed_telegram", "Закрытый канал и чаты (Telegram)"),
     ("logout", "Выйти из кабинета"),
     ("admin_entry", "Кнопка админки / модерации"),
     ("subscription_banner", "Нижний баннер тарифа и таймер"),
@@ -126,6 +131,7 @@ def plan_seed_new_paid(plan_id: str) -> dict[str, Any]:
     out["name"] = plan_id.replace("_", " ").strip() or plan_id
     out["price"] = 0
     out["access_tier"] = "start"
+    out.setdefault("closed_access", {"channel": False, "group": False, "consult": False})
     return out
 
 
@@ -264,6 +270,12 @@ def _deep_merge_plan(base: dict[str, Any], over: dict[str, Any] | None) -> dict[
                     out["billing_period_value"] = n
             except (TypeError, ValueError):
                 pass
+        elif k == "closed_access" and isinstance(v, dict):
+            ca = dict(out.get("closed_access") or {"channel": False, "group": False, "consult": False})
+            for ck in ("channel", "group", "consult"):
+                if ck in v:
+                    ca[ck] = bool(v[ck])
+            out["closed_access"] = ca
     return out
 
 
