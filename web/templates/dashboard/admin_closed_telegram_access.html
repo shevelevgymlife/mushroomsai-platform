@@ -16,6 +16,106 @@
     {% if request.query_params.get('saved') %}
     <div class="mb-4 p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-200 text-sm">Сохранено.</div>
     {% endif %}
+    {% if request.query_params.get('ct_manual_saved') %}
+    <div class="mb-4 p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-200 text-sm">Правило «кому всегда» сохранено; бот синхронизировал доступ (при настроенном боте и chat_id).</div>
+    {% endif %}
+    {% if request.query_params.get('ct_manual_removed') %}
+    <div class="mb-4 p-3 rounded-xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-100 text-sm">Правило снято; действуют только тариф и общие настройки.</div>
+    {% endif %}
+    {% if request.query_params.get('ct_manual_err') %}
+    <div class="mb-4 p-3 rounded-xl border border-red-400/35 bg-red-500/10 text-red-200 text-sm">{{ request.query_params.get('ct_manual_err') }}</div>
+    {% endif %}
+
+    <div class="p-5 rounded-2xl border border-gold/30 bg-gold/[0.06] space-y-4 mb-8">
+      <h2 class="text-base font-semibold text-text">Кому всегда (вне тарифа)</h2>
+      <p class="text-xs text-muted leading-relaxed">
+        Для выбранного пользователя (<code class="text-gold">users.id</code>) можно <strong>навсегда разрешить</strong> вход в один из трёх ресурсов (если ресурс включён и есть ссылка) или <strong>навсегда запретить</strong> — даже при подходящем тарифе.
+        Администраторы и модераторы по-прежнему не попадают под «запрет» (для них ручной deny не действует). После сохранения вызывается синхронизация бота (ban/unban).
+      </p>
+      <form method="get" class="flex flex-wrap gap-2 items-end mb-4">
+        <div class="flex-1 min-w-[200px]">
+          <label class="block text-xs text-muted mb-1">Поиск пользователя (имя, email, id или tg id)</label>
+          <input type="text" name="ct_search" value="{{ ct_search or '' }}" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" placeholder="например Иван или 12345" autocomplete="off" />
+        </div>
+        <button type="submit" class="px-4 py-2 rounded-xl bg-border text-text text-sm">Найти</button>
+        {% if ct_search %}<a href="/admin/payment/closed-telegram-access" class="text-xs text-muted py-2 hover:text-text">Сбросить поиск</a>{% endif %}
+      </form>
+      {% if ct_search_hits and ct_search_hits|length > 0 %}
+      <div class="text-xs text-muted mb-3">Нажмите id, чтобы подставить в форму ниже:</div>
+      <ul class="space-y-1 text-sm mb-4 max-h-40 overflow-y-auto border border-border/60 rounded-xl p-3 bg-bg/40">
+        {% for u in ct_search_hits %}
+        <li class="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <button type="button" class="text-gold font-mono hover:underline" onclick="document.getElementById('ctManualUserId').value='{{ u.id }}'">{{ u.id }}</button>
+          <span class="text-text">{{ u.name or '—' }}</span>
+          {% if u.email %}<span class="text-muted text-xs">{{ u.email }}</span>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% elif ct_search %}
+      <p class="text-xs text-muted mb-4">Никого не найдено.</p>
+      {% endif %}
+
+      <form method="post" action="/admin/payment/closed-telegram-access/manual-policy" class="flex flex-wrap gap-3 items-end border-t border-border/50 pt-4">
+        <div>
+          <label class="block text-xs text-muted mb-1">ID пользователя</label>
+          <input type="text" id="ctManualUserId" name="user_id" class="w-28 px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono" inputmode="numeric" placeholder="id" autocomplete="off" required />
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1">Ресурс</label>
+          <select name="resource" class="px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text min-w-[200px]">
+            <option value="channel">{{ closed_tg_resource_labels.channel }}</option>
+            <option value="group">{{ closed_tg_resource_labels.group }}</option>
+            <option value="consult">{{ closed_tg_resource_labels.consult }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1">Действие</label>
+          <select name="effect" class="px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text min-w-[220px]">
+            <option value="allow">Разрешить доступ навсегда</option>
+            <option value="deny">Запретить доступ навсегда</option>
+          </select>
+        </div>
+        <button type="submit" class="px-4 py-2.5 rounded-xl bg-gold/25 text-gold border border-gold/40 text-sm font-medium">Применить</button>
+      </form>
+
+      {% if manual_policies_rows and manual_policies_rows|length > 0 %}
+      <div class="border-t border-border/50 pt-4 mt-4">
+        <h3 class="text-sm font-medium text-text mb-2">Текущие правила</h3>
+        <div class="overflow-x-auto rounded-xl border border-border">
+          <table class="w-full text-sm">
+            <thead><tr class="border-b border-border text-left text-muted text-xs">
+              <th class="px-3 py-2">Пользователь</th>
+              <th class="px-3 py-2">Ресурс</th>
+              <th class="px-3 py-2">Правило</th>
+              <th class="px-3 py-2"></th>
+            </tr></thead>
+            <tbody>
+              {% for row in manual_policies_rows %}
+              <tr class="border-b border-border/40">
+                <td class="px-3 py-2">
+                  <a href="/community/profile/{{ row.user_id }}" class="text-gold hover:underline" target="_blank">{{ row.user_name }}</a>
+                  <span class="text-xs text-muted font-mono ml-1">id {{ row.user_id }}</span>
+                  {% if row.tg_id %}<span class="text-xs text-muted font-mono block">tg {{ row.tg_id }}</span>{% endif %}
+                </td>
+                <td class="px-3 py-2">{{ closed_tg_resource_labels.get(row.resource, row.resource) }}</td>
+                <td class="px-3 py-2">{% if row.effect == 'allow' %}<span class="text-emerald-300">разрешено</span>{% else %}<span class="text-red-300">запрещено</span>{% endif %}</td>
+                <td class="px-3 py-2">
+                  <form method="post" action="/admin/payment/closed-telegram-access/manual-policy-remove" class="inline">
+                    <input type="hidden" name="user_id" value="{{ row.user_id }}" />
+                    <input type="hidden" name="resource" value="{{ row.resource }}" />
+                    <button type="submit" class="text-xs text-muted hover:text-red-300 underline">Снять</button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% else %}
+      <p class="text-xs text-muted border-t border-border/50 pt-4 mt-4">Пока нет ручных правил — все идут только по тарифу.</p>
+      {% endif %}
+    </div>
 
     <div class="p-5 rounded-2xl border border-border bg-surface/80 space-y-4 mb-8 text-sm text-muted leading-relaxed">
       <h2 class="text-base font-semibold text-text">Как подключить к боту (кратко)</h2>

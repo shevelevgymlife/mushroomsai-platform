@@ -21,7 +21,14 @@ from services.payment_plans_catalog import (
     save_subscription_overrides_raw,
     visible_plan_keys_from,
 )
-from services.closed_telegram_access import load_closed_telegram_config, save_closed_telegram_config
+from services.closed_telegram_access import (
+    load_closed_telegram_config,
+    list_manual_policies_display,
+    remove_manual_closed_telegram_policy,
+    RESOURCE_LABELS_RU,
+    save_closed_telegram_config,
+    set_manual_closed_telegram_policy,
+)
 from services.payment_provider_settings import (
     CLOUDPAYMENTS_WIDGET_METHOD_CHOICES,
     PAYMENT_PROVIDERS,
@@ -271,6 +278,13 @@ async def admin_closed_telegram_access_page(request: Request):
         return RedirectResponse("/login")
     perms = await get_user_permissions(admin)
     cfg = await load_closed_telegram_config()
+    ct_search = (request.query_params.get("ct_search") or "").strip()
+    search_hits: list = []
+    if ct_search:
+        from services.referral_admin import search_users
+
+        search_hits = await search_users(ct_search, 20)
+    manual_rows = await list_manual_policies_display()
     return templates.TemplateResponse(
         "dashboard/admin_closed_telegram_access.html",
         {
@@ -278,6 +292,10 @@ async def admin_closed_telegram_access_page(request: Request):
             "user": admin,
             "user_permissions": perms,
             "ct_cfg": cfg,
+            "ct_search": ct_search,
+            "ct_search_hits": search_hits,
+            "manual_policies_rows": manual_rows,
+            "closed_tg_resource_labels": RESOURCE_LABELS_RU,
         },
     )
 
@@ -298,6 +316,7 @@ async def admin_closed_telegram_access_save(request: Request):
             vals = [v] if v is not None else []
         return "1" in [str(x) for x in vals]
 
+    cur = await load_closed_telegram_config()
     raw = {
         "channel_enabled": _on("channel_enabled"),
         "channel_invite_url": (form.get("channel_invite_url") or "").strip(),
@@ -309,9 +328,60 @@ async def admin_closed_telegram_access_save(request: Request):
         "consult_invite_url": (form.get("consult_invite_url") or "").strip(),
         "consult_chat_id": (form.get("consult_chat_id") or "").strip(),
         "instructions": (form.get("instructions") or "").strip(),
+        "manual_policies": list(cur.get("manual_policies") or []),
     }
     await save_closed_telegram_config(raw)
     return RedirectResponse("/admin/payment/closed-telegram-access?saved=1", status_code=303)
+
+
+@router.post("/payment/closed-telegram-access/manual-policy")
+async def admin_closed_telegram_manual_policy(request: Request):
+    require_permission, _ = _lazy_admin()
+    admin = await require_permission(request, "can_payment")
+    if not admin:
+        return RedirectResponse("/login")
+    from urllib.parse import quote
+
+    form = await request.form()
+    uid_raw = (form.get("user_id") or "").strip()
+    resource = (form.get("resource") or "").strip().lower()
+    effect = (form.get("effect") or "").strip().lower()
+    if not uid_raw.isdigit():
+        return RedirectResponse(
+            "/admin/payment/closed-telegram-access?ct_manual_err=" + quote("Укажите числовой id пользователя"),
+            status_code=303,
+        )
+    if resource not in ("channel", "group", "consult") or effect not in ("allow", "deny"):
+        return RedirectResponse(
+            "/admin/payment/closed-telegram-access?ct_manual_err=" + quote("Неверный ресурс или действие"),
+            status_code=303,
+        )
+    await set_manual_closed_telegram_policy(int(uid_raw), resource, effect)
+    q = request.query_params.get("ct_search")
+    redir = "/admin/payment/closed-telegram-access?ct_manual_saved=1"
+    if q:
+        redir += "&ct_search=" + quote(q, safe="")
+    return RedirectResponse(redir, status_code=303)
+
+
+@router.post("/payment/closed-telegram-access/manual-policy-remove")
+async def admin_closed_telegram_manual_policy_remove(request: Request):
+    require_permission, _ = _lazy_admin()
+    admin = await require_permission(request, "can_payment")
+    if not admin:
+        return RedirectResponse("/login")
+    from urllib.parse import quote
+
+    form = await request.form()
+    uid_raw = (form.get("user_id") or "").strip()
+    resource = (form.get("resource") or "").strip().lower()
+    if not uid_raw.isdigit() or resource not in ("channel", "group", "consult"):
+        return RedirectResponse(
+            "/admin/payment/closed-telegram-access?ct_manual_err=" + quote("Неверные параметры"),
+            status_code=303,
+        )
+    await remove_manual_closed_telegram_policy(int(uid_raw), resource)
+    return RedirectResponse("/admin/payment/closed-telegram-access?ct_manual_removed=1", status_code=303)
 
 
 @router.get("/payment/subscription-plans", response_class=HTMLResponse)

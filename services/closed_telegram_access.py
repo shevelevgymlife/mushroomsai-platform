@@ -34,7 +34,49 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "consult_invite_url": "",
     "consult_chat_id": "",
     "instructions": "",
+    # Вручную: разрешить или запретить конкретному users.id ресурс вне тарифа.
+    "manual_policies": [],
 }
+
+RESOURCE_LABELS_RU = {
+    "channel": "Закрытый канал",
+    "group": "Закрытая группа",
+    "consult": "Чат консультаций",
+}
+
+
+def _normalize_manual_policies(raw: Any) -> list[dict[str, Any]]:
+    if not isinstance(raw, list):
+        return []
+    seen: dict[tuple[int, str], dict[str, Any]] = {}
+    for it in raw:
+        if not isinstance(it, dict):
+            continue
+        try:
+            uid = int(it.get("user_id"))
+        except (TypeError, ValueError):
+            continue
+        res = str(it.get("resource") or "").strip().lower()
+        if res not in ("channel", "group", "consult"):
+            continue
+        eff = str(it.get("effect") or "").strip().lower()
+        if eff not in ("allow", "deny"):
+            continue
+        seen[(uid, res)] = {"user_id": uid, "resource": res, "effect": eff}
+    return list(seen.values())
+
+
+def manual_effect_for_user_resource(
+    policies: list[dict[str, Any]] | None, user_id: int, resource: str
+) -> str | None:
+    """'allow' | 'deny' | None — None = только правила тарифа."""
+    uid = int(user_id)
+    r = str(resource or "").strip().lower()
+    for p in policies or []:
+        if int(p.get("user_id") or 0) == uid and str(p.get("resource") or "").strip().lower() == r:
+            e = str(p.get("effect") or "").strip().lower()
+            return e if e in ("allow", "deny") else None
+    return None
 
 
 def _parse_chat_id(raw: str | None) -> int | None:
@@ -63,6 +105,8 @@ def normalize_closed_telegram_config(raw: dict[str, Any] | None) -> dict[str, An
             out[k] = str(v).strip()[:2048] if v is not None else ""
         elif k == "instructions":
             out[k] = str(v).strip()[:12000] if v is not None else ""
+        elif k == "manual_policies":
+            out[k] = _normalize_manual_policies(v)
     return out
 
 
@@ -94,6 +138,68 @@ async def save_closed_telegram_config(cfg: dict[str, Any]) -> None:
         await database.execute(platform_settings.insert().values(key=CONFIG_KEY, value=raw))
 
 
+async def list_manual_policies_display() -> list[dict[str, Any]]:
+    """Список ручных правил с именем пользователя для админки."""
+    cfg = await load_closed_telegram_config()
+    policies = list(cfg.get("manual_policies") or [])
+    out: list[dict[str, Any]] = []
+    for p in policies:
+        uid = int(p.get("user_id") or 0)
+        row = await database.fetch_one(users.select().where(users.c.id == uid))
+        ud = dict(row) if row else {}
+        out.append(
+            {
+                "user_id": uid,
+                "resource": str(p.get("resource") or ""),
+                "effect": str(p.get("effect") or ""),
+                "user_name": (ud.get("name") or "").strip() or f"#{uid}",
+                "tg_id": ud.get("tg_id") or ud.get("linked_tg_id"),
+            }
+        )
+    return sorted(out, key=lambda x: (x["user_id"], x["resource"]))
+
+
+async def set_manual_closed_telegram_policy(user_id: int, resource: str, effect: str) -> None:
+    """allow | deny — перезаписывает правило для пары (user, resource)."""
+    r = str(resource or "").strip().lower()
+    e = str(effect or "").strip().lower()
+    if r not in ("channel", "group", "consult") or e not in ("allow", "deny"):
+        return
+    uid = int(user_id)
+    cfg = await load_closed_telegram_config()
+    policies = [
+        p
+        for p in list(cfg.get("manual_policies") or [])
+        if not (int(p.get("user_id") or 0) == uid and str(p.get("resource") or "").lower() == r)
+    ]
+    policies.append({"user_id": uid, "resource": r, "effect": e})
+    cfg["manual_policies"] = _normalize_manual_policies(policies)
+    await save_closed_telegram_config(cfg)
+    try:
+        await sync_user_telegram_closed_chats(uid, notify_reentry=False)
+    except Exception:
+        logger.debug("sync after manual policy set failed uid=%s", uid, exc_info=True)
+
+
+async def remove_manual_closed_telegram_policy(user_id: int, resource: str) -> None:
+    r = str(resource or "").strip().lower()
+    if r not in ("channel", "group", "consult"):
+        return
+    uid = int(user_id)
+    cfg = await load_closed_telegram_config()
+    policies = [
+        p
+        for p in list(cfg.get("manual_policies") or [])
+        if not (int(p.get("user_id") or 0) == uid and str(p.get("resource") or "").lower() == r)
+    ]
+    cfg["manual_policies"] = _normalize_manual_policies(policies)
+    await save_closed_telegram_config(cfg)
+    try:
+        await sync_user_telegram_closed_chats(uid, notify_reentry=False)
+    except Exception:
+        logger.debug("sync after manual policy remove failed uid=%s", uid, exc_info=True)
+
+
 def plan_closed_access(plan_meta: dict[str, Any] | None) -> dict[str, bool]:
     raw = (plan_meta or {}).get("closed_access")
     if not isinstance(raw, dict):
@@ -112,7 +218,7 @@ def closed_resource_invite_ready(cfg: dict[str, Any], key: str) -> bool:
 
 
 async def closed_access_entitlement_for_user(
-    _user_id: int,
+    user_id: int,
     *,
     is_staff: bool,
     plan_meta: dict[str, Any] | None,
@@ -121,14 +227,21 @@ async def closed_access_entitlement_for_user(
     Возвращает для канала / группы / консультаций: entitled (bool), url (str|None).
     """
     cfg = await load_closed_telegram_config()
+    policies: list[dict[str, Any]] = list(cfg.get("manual_policies") or [])
     ca = plan_closed_access(plan_meta)
     keys = ("channel", "group", "consult")
     out: dict[str, dict[str, Any]] = {}
     any_entitled = False
+    uid = int(user_id)
     for k in keys:
         url = ((cfg.get(f"{k}_invite_url") or "").strip() or None)
         ready = closed_resource_invite_ready(cfg, k)
-        if is_staff:
+        manual = manual_effect_for_user_resource(policies, uid, k)
+        if manual == "deny" and not is_staff:
+            ent = False
+        elif manual == "allow" and ready:
+            ent = bool(url)
+        elif is_staff:
             ent = ready and bool(url)
         else:
             ent = bool(ready and url and ca.get(k))
@@ -157,21 +270,27 @@ async def attach_closed_telegram_to_user(u: dict) -> None:
         plans = await get_effective_plans()
         plan_meta = plans.get(eff_plan) or plans.get("free") or {}
         ent = await closed_access_entitlement_for_user(
-            uid,
+            int(uid),
             is_staff=is_staff,
             plan_meta=plan_meta,
         )
         if not is_staff:
-            if eff_plan == "free":
-                ent["any_entitled"] = False
+            cfg_ent = ent["config"]
+            policies_ent = list(cfg_ent.get("manual_policies") or [])
+
+            def _strip_unless_manual_allow() -> None:
                 for k in ent["resources"]:
+                    if manual_effect_for_user_resource(policies_ent, uid, k) == "allow":
+                        continue
                     ent["resources"][k] = {"entitled": False, "url": None}
+                ent["any_entitled"] = any(r["entitled"] for r in ent["resources"].values())
+
+            if eff_plan == "free":
+                _strip_unless_manual_allow()
             else:
                 pdm = drawer_menu_effective(plan_meta)
                 if pdm.get("closed_telegram") is False:
-                    ent["any_entitled"] = False
-                    for k in ent["resources"]:
-                        ent["resources"][k] = {"entitled": False, "url": None}
+                    _strip_unless_manual_allow()
 
         res = ent["resources"]
         u["closed_tg"] = {
@@ -293,6 +412,7 @@ async def sync_user_telegram_closed_chats(user_id: int, *, notify_reentry: bool 
         ca = {"channel": True, "group": True, "consult": True}
 
     cfg = await load_closed_telegram_config()
+    policies: list[dict[str, Any]] = list(cfg.get("manual_policies") or [])
 
     try:
         from telegram import Bot
@@ -307,16 +427,18 @@ async def sync_user_telegram_closed_chats(user_id: int, *, notify_reentry: bool 
         chat_id = _parse_chat_id(cfg.get(f"{key}_chat_id"))
         if chat_id is None:
             continue
+        invite = (cfg.get(f"{key}_invite_url") or "").strip()
+        manual = manual_effect_for_user_resource(policies, uid, key)
         if not cfg.get(f"{key}_enabled"):
             should_member = False
+        elif manual == "deny" and not is_staff:
+            should_member = False
+        elif manual == "allow" and invite:
+            should_member = True
         elif is_staff:
             should_member = True
         else:
-            should_member = bool(
-                ca.get(key)
-                and (cfg.get(f"{key}_invite_url") or "").strip()
-            )
-        invite = (cfg.get(f"{key}_invite_url") or "").strip()
+            should_member = bool(ca.get(key) and invite)
         try:
             if should_member:
                 await bot.unban_chat_member(chat_id, tg_user_id, only_if_banned=True)
@@ -371,6 +493,7 @@ async def approve_chat_join_request_if_entitled(chat_id: int, from_user_id: int)
     plans = await get_effective_plans()
     plan_meta = plans.get(eff_plan) or plans.get("free") or {}
     cfg = await load_closed_telegram_config()
+    policies: list[dict[str, Any]] = list(cfg.get("manual_policies") or [])
 
     key = _which_resource_for_chat(cfg, chat_id)
     if not key:
@@ -380,7 +503,12 @@ async def approve_chat_join_request_if_entitled(chat_id: int, from_user_id: int)
         await _decline_join(token, chat_id, from_user_id)
         return False
 
-    if is_staff:
+    manual = manual_effect_for_user_resource(policies, uid, key)
+    if manual == "deny" and not is_staff:
+        ok = False
+    elif manual == "allow":
+        ok = True
+    elif is_staff:
         ok = True
     elif eff_plan == "free":
         ok = False
