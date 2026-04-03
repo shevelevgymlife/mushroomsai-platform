@@ -171,9 +171,9 @@
                 </label>
               </div>
               <div>
-                <label class="block text-xs text-muted mb-1.5">ID продавцов (через запятую)</label>
-                <textarea name="seller_user_ids" rows="3" placeholder="12, 34, 56"
-                  class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm font-mono resize-none focus:outline-none focus:border-gold/60">{{ shop_hub_selected_ids_text or '' }}</textarea>
+                <label class="block text-xs text-muted mb-1.5">ID продавцов (@id или список — подсказки)</label>
+                <textarea name="seller_user_ids" rows="3" placeholder="@12, @34"
+                  class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm font-mono resize-none focus:outline-none focus:border-gold/60 nf-user-id-field nf-user-id-bulk">{{ shop_hub_selected_ids_text or '' }}</textarea>
                 <p class="text-[11px] text-muted mt-1">Имеет смысл при режиме «Только выбранные id». Пусто = никого.</p>
               </div>
               <button type="submit" class="px-5 py-2.5 rounded-xl bg-gold text-bg font-semibold text-sm hover:opacity-95 transition-all">Сохранить эксклюзивный каталог</button>
@@ -225,9 +225,9 @@
                 </div>
               </div>
               <div>
-                <label class="block text-xs text-muted mb-1.5">ID продавцов для перехода (через запятую)</label>
-                <textarea name="transition_seller_user_ids" rows="2" placeholder="Только при режиме «выбранные id»"
-                  class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm font-mono resize-none focus:outline-none focus:border-gold/60">{{ shop_hub_transition_selected_ids_text or '' }}</textarea>
+                <label class="block text-xs text-muted mb-1.5">ID продавцов для перехода (@id — подсказки)</label>
+                <textarea name="transition_seller_user_ids" rows="2" placeholder="@12, @34"
+                  class="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-text text-sm font-mono resize-none focus:outline-none focus:border-gold/60 nf-user-id-field nf-user-id-bulk">{{ shop_hub_transition_selected_ids_text or '' }}</textarea>
               </div>
               <button type="submit" class="px-5 py-2.5 rounded-xl border border-rose-400/40 text-rose-200 font-semibold text-sm hover:bg-rose-500/10">Сохранить баннер перехода</button>
             </form>

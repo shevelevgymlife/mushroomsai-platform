@@ -21,6 +21,7 @@ from services.payment_plans_catalog import (
     save_subscription_overrides_raw,
     visible_plan_keys_from,
 )
+from services.user_id_input import normalize_form_user_id
 from services.closed_telegram_access import (
     load_closed_telegram_config,
     list_manual_policies_display,
@@ -343,12 +344,12 @@ async def admin_closed_telegram_manual_policy(request: Request):
     from urllib.parse import quote
 
     form = await request.form()
-    uid_raw = (form.get("user_id") or "").strip()
+    uid_raw = normalize_form_user_id(form.get("user_id"))
     resource = (form.get("resource") or "").strip().lower()
     effect = (form.get("effect") or "").strip().lower()
-    if not uid_raw.isdigit():
+    if not uid_raw:
         return RedirectResponse(
-            "/admin/payment/closed-telegram-access?ct_manual_err=" + quote("Укажите числовой id пользователя"),
+            "/admin/payment/closed-telegram-access?ct_manual_err=" + quote("Укажите id пользователя (@id или число)"),
             status_code=303,
         )
     if resource not in ("channel", "group", "consult") or effect not in ("allow", "deny"):
@@ -373,9 +374,9 @@ async def admin_closed_telegram_manual_policy_remove(request: Request):
     from urllib.parse import quote
 
     form = await request.form()
-    uid_raw = (form.get("user_id") or "").strip()
+    uid_raw = normalize_form_user_id(form.get("user_id"))
     resource = (form.get("resource") or "").strip().lower()
-    if not uid_raw.isdigit() or resource not in ("channel", "group", "consult"):
+    if not uid_raw or resource not in ("channel", "group", "consult"):
         return RedirectResponse(
             "/admin/payment/closed-telegram-access?ct_manual_err=" + quote("Неверные параметры"),
             status_code=303,

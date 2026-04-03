@@ -140,7 +140,7 @@
     <!-- Input -->
     {% if chat_partner.id != 0 %}
     <div class="chat-input-wrap">
-      <textarea id="msgInput" class="chat-textarea nf-mention-field" placeholder="Сообщение… @ — подсказки" rows="1"
+      <textarea id="msgInput" class="chat-textarea nf-mention-field nf-mention-at-focus" placeholder="Сообщение… @ — подсказки" rows="1"
         onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"
         oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
       <button class="btn-send" onclick="sendMsg()">→</button>

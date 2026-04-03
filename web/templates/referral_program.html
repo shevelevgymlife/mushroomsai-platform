@@ -145,7 +145,7 @@
       <div style="font-size:15px;font-weight:700;color:#e8e8e8;margin-bottom:6px">Бонусы на платформе</div>
       <p class="text-xs text-muted mb-3 leading-relaxed">
         С <strong>доступного</strong> баланса (без учёта суммы в резерве на вывод) при включённых функциях вы можете перевести бонусы другому пользователю по его <strong>числовому id</strong> (users.id в профиле/админке), оплатить подписку на сервисе или включить автопродление: при окончании оплаченного периода система попробует списать стоимость <strong>следующего такого же</strong> периода текущего тарифа (не действует для тарифа, выданного администратором, бессрочной оплаты и если функции отключены).
-        Каждая операция фиксируется в журнале; вам приходит <strong>внутренний чек</strong> в системных уведомлениях (и в Telegram при привязке). Условия: <a href="/legal/offer" class="text-gold hover:underline">оферта §2.5</a>,
+        Укажите получателя как <strong>@id</strong> (подсказки при фокусе и при вводе). Каждая операция фиксируется в журнале; вам приходит <strong>внутренний чек</strong> в системных уведомлениях (и в Telegram при привязке). Условия: <a href="/legal/offer" class="text-gold hover:underline">оферта §2.5</a>,
         <a href="/legal/referral-payouts" class="text-gold hover:underline">выплаты §2.4</a>,
         <a href="/legal/terms" class="text-gold hover:underline">соглашение §6.4</a>.
       </p>
@@ -166,7 +166,7 @@
         <form method="post" action="/referral/bonus-transfer" class="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-2">
           <div class="text-sm font-semibold text-text">Перевод другому пользователю</div>
           <p class="text-[11px] text-muted">Минимум <strong>{{ bonus_program_flags.min_transfer_rub }}</strong> ₽. Укажите id получателя.</p>
-          <input type="text" name="to_user_id" class="sinp w-full text-sm font-mono" placeholder="ID получателя" inputmode="numeric" autocomplete="off" />
+          <input type="text" name="to_user_id" class="sinp w-full text-sm font-mono nf-user-id-field" placeholder="@id получателя — список при фокусе" autocomplete="off" />
           <input type="text" name="amount_rub" class="sinp w-full text-sm font-mono" placeholder="Сумма ₽" inputmode="decimal" />
           <button type="submit" class="btn-o px-4 py-2 rounded-xl text-sm font-medium">Перевести бонусы</button>
         </form>

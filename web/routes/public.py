@@ -50,6 +50,7 @@ from services.legacy_dm_chat_sync import sync_direct_messages_pair
 from services.messenger_unread import count_chat_unread, count_standalone_direct_unread
 from services.in_app_notifications import create_notification, should_send_telegram_for_event
 from web.community_media import post_image_urls
+from services.user_id_input import normalize_form_user_id
 from services.referral_service import (
     attach_invite_ref_from_query,
     get_referral_stats,
@@ -1354,10 +1355,14 @@ async def referral_bonus_transfer_post(
     uid = int(user.get("primary_user_id") or user["id"])
     from services.referral_balance_ops import user_transfer_bonuses, BonusOpError
 
-    if not (to_user_id or "").strip().isdigit():
-        return RedirectResponse("/referral?ref_bonus_err=" + quote("Укажите ID получателя (число)"), status_code=303)
+    tid = normalize_form_user_id(to_user_id)
+    if not tid:
+        return RedirectResponse(
+            "/referral?ref_bonus_err=" + quote("Укажите ID получателя (@id или число)"),
+            status_code=303,
+        )
     try:
-        await user_transfer_bonuses(uid, int(to_user_id), amount_rub)
+        await user_transfer_bonuses(uid, int(tid), amount_rub)
     except BonusOpError as e:
         return RedirectResponse("/referral?ref_bonus_err=" + quote(e.message, safe=""), status_code=303)
     return RedirectResponse("/referral?ref_bonus_ok=transfer", status_code=303)

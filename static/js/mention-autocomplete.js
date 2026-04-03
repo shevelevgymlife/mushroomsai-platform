@@ -1,6 +1,7 @@
 /**
  * Подсказки @упоминание для всех полей с class="nf-mention-field":
  * сразу после @ — список участников; цифры — сужение по id; буквы — имя / email.
+ * Доп. класс "nf-mention-at-focus": при фокусе на пустом поле вставляется «@» и сразу открывается список.
  */
 (function () {
   var API = "/community/users/mention-suggest";
@@ -398,9 +399,23 @@
     }, 200);
   }
 
+  function onFocusMention(ev) {
+    var el = ev.target;
+    if (!el.classList || !el.classList.contains("nf-mention-field")) return;
+    if (!el.classList.contains("nf-mention-at-focus")) return;
+    var v = el.value || "";
+    if (v.length !== 0) return;
+    el.value = "@";
+    if (typeof el.setSelectionRange === "function") {
+      el.setSelectionRange(1, 1);
+    }
+    checkField(el);
+  }
+
   function bindEl(el) {
     if (!el || _bound.has(el)) return;
     _bound.add(el);
+    el.addEventListener("focus", onFocusMention);
     el.addEventListener("input", onInput);
     el.addEventListener("keyup", onKeyup);
     el.addEventListener("click", function () {

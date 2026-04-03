@@ -46,10 +46,10 @@
       </p>
       <form method="post" action="/admin/ai-community-bot/bind-user" class="flex flex-wrap items-end gap-3">
         <div>
-          <label class="block text-xs text-muted mb-1">Id пользователя (users.id)</label>
-          <input type="number" name="bind_user_id" min="1" step="1" placeholder="например 42"
-            class="w-44 rounded-xl border border-border bg-surface px-3 py-2 text-text text-sm"
-            value="{{ request.query_params.get('bound') or '' }}" />
+          <label class="block text-xs text-muted mb-1">Id пользователя (@id — подсказки)</label>
+          <input type="text" name="bind_user_id" inputmode="numeric" placeholder="@42"
+            class="w-48 rounded-xl border border-border bg-surface px-3 py-2 text-text text-sm font-mono nf-user-id-field"
+            value="{% set _b = request.query_params.get('bound') %}{% if _b %}@{{ _b }}{% endif %}" autocomplete="off" />
         </div>
         <button type="submit" class="px-4 py-2 rounded-xl text-sm font-medium border border-gold/40 text-gold hover:bg-gold/10">
           Привязать этот id

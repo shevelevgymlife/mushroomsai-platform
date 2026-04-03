@@ -21,6 +21,7 @@ from services.system_support_delivery import deliver_system_support_notification
 from services.shop_catalog import extra_image_lines_from_json, extra_image_urls_from_text
 from auth.session import get_user_from_request
 from auth.blocked_identities import block_identities_for_user, unblock_identities_for_user
+from services.user_id_input import normalize_form_user_id, parse_user_ids_bulk
 from services.user_permanent_delete import permanently_delete_user
 from auth.owner import is_platform_owner
 from db.database import database
@@ -417,12 +418,7 @@ async def shop_page(request: Request):
 
 
 def _parse_comma_user_ids(text: str) -> list[int]:
-    raw_ids: list[int] = []
-    for part in (text or "").replace(";", ",").split(","):
-        p = part.strip()
-        if p.isdigit():
-            raw_ids.append(int(p))
-    return raw_ids
+    return parse_user_ids_bulk(text)
 
 
 @router.post("/shop/referral-hub/exclusive")
@@ -2323,6 +2319,59 @@ async def search_users_api(request: Request, q: str = ""):
     return JSONResponse({"users": [{"id": u["id"], "name": u["name"], "email": u["email"]} for u in results]})
 
 
+@router.get("/users/mention-suggest")
+async def admin_users_mention_suggest(request: Request, q: str = ""):
+    """Подсказки @id для админских форм (как /community/users/mention-suggest, все основные аккаунты)."""
+    admin = await require_admin(request)
+    if not admin:
+        return JSONResponse({"error": "auth required"}, status_code=401)
+    raw = ((q or "").strip().replace("\uff20", "@").lstrip("@").strip())
+    if len(raw) > 80:
+        raw = raw[:80]
+    qy = (
+        users.select()
+        .where(users.c.primary_user_id == None)
+        .where(sqlalchemy.or_(users.c.is_banned == False, users.c.is_banned.is_(None)))
+    )
+    lim = 30
+    if not raw:
+        qy = qy.order_by(users.c.followers_count.desc().nullslast(), users.c.id.desc()).limit(lim)
+    elif raw.isdigit():
+        rd = raw[:12]
+        n = int(rd)
+        id_txt = sqlalchemy.cast(users.c.id, sqlalchemy.String)
+        qy = qy.where(sqlalchemy.or_(users.c.id == n, id_txt.like(f"{rd}%")))
+        qy = qy.order_by(
+            sqlalchemy.case((users.c.id == n, 0), else_=1),
+            users.c.followers_count.desc().nullslast(),
+            users.c.id.asc(),
+        ).limit(lim)
+    else:
+        like = f"%{raw}%"
+        qy = qy.where(
+            sqlalchemy.or_(
+                users.c.name.ilike(like),
+                users.c.email.ilike(like),
+                sqlalchemy.cast(users.c.tg_id, sqlalchemy.String).ilike(f"%{raw}%"),
+            )
+        )
+        qy = qy.order_by(users.c.followers_count.desc().nullslast(), users.c.id.asc()).limit(lim)
+    rows = await database.fetch_all(qy)
+    return JSONResponse(
+        {
+            "users": [
+                {
+                    "id": int(r["id"]),
+                    "name": (r.get("name") or "").strip() or "Участник",
+                    "avatar": (r.get("avatar") or "") or "",
+                    "followers_count": int(r.get("followers_count") or 0),
+                }
+                for r in rows
+            ]
+        }
+    )
+
+
 # ─── Настройки контента (кликабельность ссылок) ───────────────────────────────
 
 @router.get("/content-settings", response_class=HTMLResponse)
@@ -2617,8 +2666,8 @@ async def admin_referral_page(
     bonus_line1_global = await get_referral_bonus_line1_global()
     bonus_line2_global = await get_referral_bonus_line2_global()
     bonus_pct_overrides = await list_users_with_bonus_override(300)
-    ref_explore_raw = (request.query_params.get("ref_explore") or "").strip()
-    ref_explore_uid: Optional[int] = int(ref_explore_raw) if ref_explore_raw.isdigit() else None
+    ref_explore_raw = normalize_form_user_id(request.query_params.get("ref_explore"))
+    ref_explore_uid: Optional[int] = int(ref_explore_raw) if ref_explore_raw else None
     ref_explore_line_stats = None
     ref_explore_l1: list = []
     ref_explore_l2: list = []
@@ -2728,8 +2777,8 @@ async def admin_referral_bonus_lines_user(
 
     from services.referral_bonus_settings import set_user_referral_bonus_line_overrides
 
-    raw_uid = (user_id or "").strip()
-    if not raw_uid.isdigit():
+    raw_uid = normalize_form_user_id(user_id)
+    if not raw_uid:
         return RedirectResponse("/admin/referral?bonus_pct_err=" + quote("Укажите числовой user id"), status_code=303)
     uid = int(raw_uid)
     clear = (clear_override or "").strip().lower() in ("1", "on", "true", "yes")
@@ -2849,13 +2898,14 @@ async def admin_referral_bonus_grant(
     from services.referral_balance_ops import admin_grant_bonuses, BonusOpError
 
     aid = int(admin.get("primary_user_id") or admin["id"])
-    if not (user_id or "").strip().isdigit():
+    grant_uid = normalize_form_user_id(user_id)
+    if not grant_uid:
         return RedirectResponse(
             "/admin/referral?ref_bonus_err=" + quote("Укажите user id"),
             status_code=303,
         )
     try:
-        await admin_grant_bonuses(int(user_id), amount_rub, aid, note=(note or "")[:2000])
+        await admin_grant_bonuses(int(grant_uid), amount_rub, aid, note=(note or "")[:2000])
     except BonusOpError as e:
         return RedirectResponse("/admin/referral?ref_bonus_err=" + quote(e.message, safe=""), status_code=303)
     return RedirectResponse("/admin/referral?ref_bonus_saved=grant", status_code=303)
@@ -2876,13 +2926,15 @@ async def admin_referral_bonus_admin_transfer(
     from services.referral_balance_ops import admin_transfer_bonuses, BonusOpError
 
     aid = int(admin.get("primary_user_id") or admin["id"])
-    if not (from_user_id or "").strip().isdigit() or not (to_user_id or "").strip().isdigit():
+    fuid = normalize_form_user_id(from_user_id)
+    tuid = normalize_form_user_id(to_user_id)
+    if not fuid or not tuid:
         return RedirectResponse(
-            "/admin/referral?ref_bonus_err=" + quote("Укажите оба user id"),
+            "/admin/referral?ref_bonus_err=" + quote("Укажите оба user id (@id или цифры)"),
             status_code=303,
         )
     try:
-        await admin_transfer_bonuses(int(from_user_id), int(to_user_id), amount_rub, aid)
+        await admin_transfer_bonuses(int(fuid), int(tuid), amount_rub, aid)
     except BonusOpError as e:
         return RedirectResponse("/admin/referral?ref_bonus_err=" + quote(e.message, safe=""), status_code=303)
     return RedirectResponse("/admin/referral?ref_bonus_saved=transfer", status_code=303)
@@ -2902,13 +2954,14 @@ async def admin_referral_bonus_pay_subscription(
     from services.referral_balance_ops import admin_pay_subscription_with_user_bonuses, BonusOpError
 
     aid = int(admin.get("primary_user_id") or admin["id"])
-    if not (user_id or "").strip().isdigit():
+    puid = normalize_form_user_id(user_id)
+    if not puid:
         return RedirectResponse(
             "/admin/referral?ref_bonus_err=" + quote("Укажите user id"),
             status_code=303,
         )
     try:
-        await admin_pay_subscription_with_user_bonuses(int(user_id), (plan_key or "start").strip().lower(), aid)
+        await admin_pay_subscription_with_user_bonuses(int(puid), (plan_key or "start").strip().lower(), aid)
     except BonusOpError as e:
         return RedirectResponse("/admin/referral?ref_bonus_err=" + quote(e.message, safe=""), status_code=303)
     return RedirectResponse("/admin/referral?ref_bonus_saved=pay", status_code=303)
@@ -2929,7 +2982,7 @@ async def admin_referral_clear_balance(
     from services.referral_service import admin_clear_referral_balance, admin_mark_referral_withdrawal_paid
 
     wid = (withdrawal_id or "").strip()
-    uid = (user_id or "").strip()
+    uid = normalize_form_user_id(user_id)
     if wid.isdigit():
         ok, msg = await admin_mark_referral_withdrawal_paid(int(wid), note)
         if not ok:
@@ -2938,7 +2991,7 @@ async def admin_referral_clear_balance(
                 status_code=303,
             )
         return RedirectResponse("/admin/referral?wd_ok=1", status_code=303)
-    if uid.isdigit():
+    if uid:
         ok, msg = await admin_clear_referral_balance(int(uid), note)
         if not ok:
             err = "no_pending" if msg == "no_pending" else (msg or "error")
@@ -2990,14 +3043,7 @@ async def admin_referral_bulk_message(
     from services.support_delivery import deliver_support_message
 
     aid = admin.get("primary_user_id") or admin["id"]
-    raw = (user_ids or "").replace(",", " ").split()
-    ids = []
-    for x in raw:
-        try:
-            ids.append(int(x.strip()))
-        except ValueError:
-            continue
-    ids = list(dict.fromkeys(ids))[:200]
+    ids = parse_user_ids_bulk(user_ids)[:200]
     sent = 0
     for uid in ids:
         r = await deliver_support_message(
@@ -3595,13 +3641,10 @@ async def admin_ai_community_bot_bind_user(request: Request, bind_user_id: str =
     admin = await require_permission(request, "can_users")
     if not admin:
         return RedirectResponse("/login")
-    raw = (bind_user_id or "").strip()
+    raw = normalize_form_user_id(bind_user_id)
     if not raw:
         return RedirectResponse("/admin/ai-community-bot?bind_err=empty", status_code=303)
-    try:
-        uid = int(raw)
-    except ValueError:
-        return RedirectResponse("/admin/ai-community-bot?bind_err=nan", status_code=303)
+    uid = int(raw)
     ok, err = await bind_ai_community_bot_to_user_id(uid)
     if ok:
         return RedirectResponse(f"/admin/ai-community-bot?bound={uid}", status_code=303)

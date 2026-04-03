@@ -22,7 +22,7 @@
     {% endif %}
     <form id="communityCreateForm" action="/community/post" method="post" enctype="multipart/form-data">
       <input name="title" class="sinp nf-mention-field" maxlength="200" placeholder="Название (необязательно)" style="margin-bottom:10px">
-      <textarea name="content" class="sinp nf-mention-field" maxlength="8000" placeholder="Текст поста" style="min-height:140px;resize:vertical;margin-bottom:10px"></textarea>
+      <textarea name="content" class="sinp nf-mention-field nf-mention-at-focus" maxlength="8000" placeholder="Текст поста" style="min-height:140px;resize:vertical;margin-bottom:10px"></textarea>
       <div class="cp-row" style="margin-bottom:10px">
         <label class="btn-o" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer">
           {{ ico('image') }} До 5 фото

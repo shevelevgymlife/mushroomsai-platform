@@ -212,7 +212,7 @@
       </div>
       <div class="csec" id="cs-{{ p.id }}" style="overflow:hidden;max-width:100%;box-sizing:border-box;border-top:1px solid rgba(255,255,255,.06)" onclick="event.stopPropagation()">
         <div style="display:flex;gap:8px;padding:8px 8px 6px;overflow:hidden;max-width:100%;box-sizing:border-box">
-          <input type="text" id="ci-{{ p.id }}" class="sinp nf-mention-field" style="flex:1;min-width:0;max-width:100%;width:100%;box-sizing:border-box;font-size:16px" placeholder="Комментарий… @ — подсказки" autocomplete="off">
+          <input type="text" id="ci-{{ p.id }}" class="sinp nf-mention-field nf-mention-at-focus" style="flex:1;min-width:0;max-width:100%;width:100%;box-sizing:border-box;font-size:16px" placeholder="Комментарий… @ — подсказки" autocomplete="off">
           <button class="bgold" style="padding:8px 12px;font-size:13px" onclick="submitCmt({{ p.id }})">→</button>
         </div>
         <div id="cl-{{ p.id }}"></div>
@@ -246,7 +246,7 @@
     <button onclick="closeM('postModal')" style="position:absolute;top:14px;right:14px;background:none;border:none;color:#888;font-size:20px;cursor:pointer">✕</button>
     <h3 style="margin:0 0 16px;font-size:18px">Новый пост</h3>
     <form id="communityPostForm" action="/community/post" method="post" enctype="multipart/form-data" onsubmit="return submitCommunityFeedPost(event)">
-      <textarea name="content" class="sinp nf-mention-field" style="resize:vertical;min-height:110px;font-size:15px" placeholder="Поделитесь опытом… @ — подсказки"></textarea>
+      <textarea name="content" class="sinp nf-mention-field nf-mention-at-focus" style="resize:vertical;min-height:110px;font-size:15px" placeholder="Поделитесь опытом… @ — подсказки"></textarea>
       <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <label style="cursor:pointer;color:#3dd4e0;font-size:13px;display:flex;align-items:center;gap:5px">
           📷 До 5 фото <input type="file" name="images" accept="image/*" multiple style="display:none" id="commPostImgs" onchange="prvImgsComm(this)">
@@ -291,7 +291,7 @@
     </div>
     <div id="dmMsgs" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding-right:4px"></div>
     <div style="display:flex;gap:8px;margin-top:10px;flex-shrink:0">
-      <input type="text" id="dmInp" class="sinp nf-mention-field" style="flex:1" placeholder="Сообщение… @ — подсказки" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();sendMsg();}">
+      <input type="text" id="dmInp" class="sinp nf-mention-field nf-mention-at-focus" style="flex:1" placeholder="Сообщение… @ — подсказки" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();sendMsg();}">
       <button type="button" class="bgold" style="padding:10px 14px" onclick="sendMsg()">→</button>
     </div>
   </div>
@@ -650,7 +650,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     </div>
     <div id="chat-messages" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px"></div>
     <div style="padding:12px;border-top:1px solid rgba(255,255,255,.06);display:flex;gap:8px;flex-shrink:0">
-      <textarea id="chat-input" class="nf-mention-field" placeholder="Сообщение… @ — подсказки" rows="1" style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px;color:#e8e8e8;font-size:13px;resize:none;outline:none;font-family:inherit" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();panelSendMsg();}"></textarea>
+      <textarea id="chat-input" class="nf-mention-field nf-mention-at-focus" placeholder="Сообщение… @ — подсказки" rows="1" style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px;color:#e8e8e8;font-size:13px;resize:none;outline:none;font-family:inherit" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();panelSendMsg();}"></textarea>
       <button onclick="panelSendMsg()" style="background:#3dd4e0;border:none;border-radius:12px;padding:10px 16px;color:#080808;cursor:pointer;font-weight:700;font-size:16px">→</button>
     </div>
   </div>

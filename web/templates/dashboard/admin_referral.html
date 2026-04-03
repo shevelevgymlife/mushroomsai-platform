@@ -70,8 +70,8 @@
       <form method="post" action="/admin/referral/bonus-lines-user" class="space-y-3 border-t border-border/50 pt-5">
         <div class="flex flex-wrap gap-3">
           <div>
-            <label class="block text-xs text-muted mb-1">ID пользователя (users.id)</label>
-            <input type="text" name="user_id" id="referral-bonus-user-id" placeholder="напр. 42" class="w-36 px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text font-mono" inputmode="numeric" autocomplete="off" />
+            <label class="block text-xs text-muted mb-1">ID пользователя (@id — подсказки)</label>
+            <input type="text" name="user_id" id="referral-bonus-user-id" placeholder="@id" class="w-44 px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text font-mono nf-user-id-field" autocomplete="off" />
           </div>
           <div>
             <label class="block text-xs text-muted mb-1">1-я линия %</label>
@@ -103,7 +103,7 @@
         <p class="text-xs text-muted mb-3">Введите <code class="text-[11px]">users.id</code> амбассадора — увидите счётчики и списки 1-й и 2-й линии (как в кабинете пользователя).</p>
         <form method="get" action="/admin/referral" class="flex flex-wrap items-end gap-2 mb-4">
           <input type="hidden" name="segment" value="{{ segment }}" />
-          <input type="text" name="ref_explore" value="{{ ref_explore_uid or '' }}" placeholder="User id" class="w-36 px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono" inputmode="numeric" />
+          <input type="text" name="ref_explore" value="{% if ref_explore_uid %}@{{ ref_explore_uid }}{% endif %}" placeholder="@id" class="w-40 px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono nf-user-id-field" autocomplete="off" />
           <button type="submit" class="px-4 py-2.5 rounded-xl bg-cyan-500/15 text-cyan-100 border border-cyan-500/30 text-sm font-medium">Показать</button>
           {% if ref_explore_uid %}
           <a href="/admin/referral" class="text-xs text-muted hover:text-gold px-2 py-2">Сбросить</a>
@@ -197,22 +197,22 @@
       <div class="grid lg:grid-cols-3 gap-6 mb-6">
         <form method="post" action="/admin/referral/bonus-grant" class="space-y-2 rounded-xl border border-border/60 p-4 bg-bg/40">
           <div class="text-sm font-medium text-text">Начислить бонусы</div>
-          <input type="text" name="user_id" placeholder="User id" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono" inputmode="numeric" />
+          <input type="text" name="user_id" placeholder="@id — подсказки" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono nf-user-id-field" autocomplete="off" />
           <input type="text" name="amount_rub" placeholder="Сумма ₽" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono" inputmode="decimal" />
           <textarea name="note" rows="2" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" placeholder="Комментарий в чеке"></textarea>
           <button type="submit" class="w-full px-3 py-2 rounded-xl bg-gold/20 text-gold border border-gold/35 text-sm font-medium">Начислить</button>
         </form>
         <form method="post" action="/admin/referral/bonus-admin-transfer" class="space-y-2 rounded-xl border border-border/60 p-4 bg-bg/40">
           <div class="text-sm font-medium text-text">Перевод (админ)</div>
-          <input type="text" name="from_user_id" placeholder="От (user id)" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono" />
-          <input type="text" name="to_user_id" placeholder="Кому (user id)" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono" />
+          <input type="text" name="from_user_id" placeholder="От — @id" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono nf-user-id-field" autocomplete="off" />
+          <input type="text" name="to_user_id" placeholder="Кому — @id" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono nf-user-id-field" autocomplete="off" />
           <input type="text" name="amount_rub" placeholder="Сумма ₽" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono" />
           <button type="submit" class="w-full px-3 py-2 rounded-xl bg-cyan-500/20 text-cyan-100 border border-cyan-500/35 text-sm font-medium">Перевести</button>
         </form>
         <form method="post" action="/admin/referral/bonus-pay-subscription" class="space-y-2 rounded-xl border border-border/60 p-4 bg-bg/40">
           <div class="text-sm font-medium text-text">Оплата подписки бонусами</div>
           <p class="text-[11px] text-muted leading-relaxed">Списывает с <strong>баланса указанного</strong> пользователя стоимость одного биллингового периода выбранного тарифа.</p>
-          <input type="text" name="user_id" placeholder="User id" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono" />
+          <input type="text" name="user_id" placeholder="@id — подсказки" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono nf-user-id-field" autocomplete="off" />
           <select name="plan_key" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm">
             {% for pk, pm in plans.items() %}
             {% if pk != 'free' %}
@@ -629,8 +629,8 @@
     <p class="text-sm text-muted mb-2">В списке: <strong class="text-text">{{ segment_total }}</strong> (показано до 800 строк)</p>
 
     <form method="post" action="/admin/referral/bulk-message" class="mb-6 p-4 rounded-2xl border border-border bg-surface/20 space-y-3">
-      <div class="text-sm text-muted">Массовое сообщение в бот (как в поддержке): укажите id через запятую или с новой строки.</div>
-      <textarea name="user_ids" rows="2" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono" placeholder="12, 34, 56"></textarea>
+      <div class="text-sm text-muted">Массовое сообщение: id как <strong>@12, @34</strong> или через запятую — подсказки при фокусе.</div>
+      <textarea name="user_ids" rows="2" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono nf-user-id-field nf-user-id-bulk" placeholder="@12, @34 или 12, 34"></textarea>
       <textarea name="text" rows="3" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm" placeholder="Текст сообщения (HTML поддерживается там же, где в рассылках поддержки)" required></textarea>
       <button type="submit" class="px-4 py-2 rounded-xl bg-gold/20 text-gold border border-gold/30 text-sm font-medium">Отправить выбранным id</button>
     </form>
