@@ -1765,32 +1765,6 @@ async def add_comment(
 async def get_comments(request: Request, post_id: int):
     viewer = await require_auth(request)
     viewer_id = int(viewer.get("primary_user_id") or viewer["id"]) if viewer else None
-    try:
-        await database.execute(
-            sa.text(
-                "ALTER TABLE community_comments ADD COLUMN IF NOT EXISTS reply_to_comment_id INTEGER NULL REFERENCES community_comments(id) ON DELETE SET NULL"
-            )
-        )
-        await database.execute(
-            sa.text(
-                "ALTER TABLE community_comments ADD COLUMN IF NOT EXISTS likes_count INTEGER NOT NULL DEFAULT 0"
-            )
-        )
-        await database.execute(
-            sa.text(
-                """
-                CREATE TABLE IF NOT EXISTS community_comment_likes (
-                    id SERIAL PRIMARY KEY,
-                    comment_id INTEGER NOT NULL REFERENCES community_comments(id) ON DELETE CASCADE,
-                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                    created_at TIMESTAMP DEFAULT NOW(),
-                    UNIQUE (comment_id, user_id)
-                )
-                """
-            )
-        )
-    except Exception:
-        pass
     rows = await database.fetch_all(
         community_comments.select()
         .where(community_comments.c.post_id == post_id)

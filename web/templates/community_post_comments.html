@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Комментарии — NEUROFUNGI AI{% endblock %}
+{% block body_class %} cpc-screen{% endblock %}
 {% block content %}
 <style>
 .cpc-root{
@@ -61,7 +62,27 @@
   -webkit-overflow-scrolling:touch;
   overscroll-behavior:contain;
   touch-action:pan-y;
-  padding:14px 8px calc(20px + env(safe-area-inset-bottom,0px));
+  padding:14px 8px calc(84px + env(safe-area-inset-bottom,0px));
+}
+.cpc-thread{
+  margin-top:8px;
+  margin-left:16px;
+  padding-left:10px;
+  border-left:1px solid rgba(61,212,224,.3);
+}
+.cpc-thread-toggle{
+  border:none;
+  background:rgba(61,212,224,.08);
+  color:#9ed8de;
+  cursor:pointer;
+  font-size:11px;
+  border-radius:999px;
+  padding:4px 8px;
+  margin:6px 0 2px;
+}
+.cpc-line .cpc-thread .cpc-line,
+.cpc-card .cpc-thread .cpc-card{
+  margin-top:6px;
 }
 .cpc-toolbar{
   display:flex;
@@ -181,6 +202,9 @@ const BACK_URL={{ back_url|tojson }};
 const CPC_VIEW_KEY='nf_comments_view_mode';
 let cpcViewMode='chaos';
 let cpcReplyToId=null;
+let cpcLastComments=[];
+const cpcCollapsedThreads={};
+let cpcLoading=false;
 function goBackCpc(){
   if(history.length>1){ history.back(); }
   else { location.href=BACK_URL||'/community'; }
@@ -202,16 +226,12 @@ function cpcCardHtml(c){
   var rot=chaosRot(c.id),tx=chaosTx(c.id),ty=chaosTy(c.id);
   var nm=esc(c.author_name||'Участник');
   var body=(typeof linkifyCommunityMentionsPlain==='function'?linkifyCommunityMentionsPlain(c.content||''):esc(c.content||''));
-  var parent=c.parent_comment&&c.parent_comment.id
-    ?('<div class="cpc-reply-chip">↩ <b>'+esc(c.parent_comment.author_name||'Участник')+':</b> '+esc(c.parent_comment.content_preview||'')+'</div>')
-    :'';
   var likeCls=c.viewer_liked?'cpc-like-btn on':'cpc-like-btn';
   var likeTxt=c.viewer_liked?'⭐':'✩';
   var base=''+
     '<div class="cpc-card-meta"><b>'+nm+'</b> · '+esc(c.created_at||'')+
     (c.author_emoji?(' <span style="opacity:.85">'+esc(c.author_emoji)+'</span>'):'')+'</div>'+
     '<div class="cpc-card-body">'+body+'</div>'+
-    parent+
     '<div class="cpc-card-actions">'+
       '<button type="button" class="'+likeCls+'" onclick="cpcToggleLike('+c.id+')">'+likeTxt+' <span id="cpcLikeCnt_'+c.id+'">'+(Number(c.likes_count)||0)+'</span></button>'+
       '<button type="button" class="cpc-reply-btn" onclick="setReplyToCpc('+c.id+','+JSON.stringify(c.author_name||'Участник')+')">↩ Ответ</button>'+
@@ -223,22 +243,79 @@ function cpcCardHtml(c){
     base+
     '</div>';
 }
+function buildCommentTree(items){
+  const map={};
+  const roots=[];
+  (items||[]).forEach(function(x){
+    const n=Object.assign({},x,{children:[]});
+    map[String(n.id)]=n;
+  });
+  Object.keys(map).forEach(function(k){
+    const n=map[k];
+    const pid=n.reply_to_id;
+    if(pid && map[String(pid)]){
+      map[String(pid)].children.push(n);
+    }else{
+      roots.push(n);
+    }
+  });
+  return roots;
+}
+function renderCommentNode(node){
+  let html=cpcCardHtml(node);
+  const ch=node.children||[];
+  if(!ch.length) return html;
+  const key=String(node.id);
+  const collapsed=!!cpcCollapsedThreads[key];
+  const toggleLabel=collapsed?('Показать ответы ('+ch.length+')'):'Скрыть ответы';
+  const threadBody=collapsed?'':ch.map(renderCommentNode).join('');
+  return html+
+    '<div class="cpc-thread">'+
+      '<button type="button" class="cpc-thread-toggle" onclick="toggleThreadCpc('+node.id+')">'+toggleLabel+'</button>'+
+      '<div id="cpcThread_'+node.id+'">'+threadBody+'</div>'+
+    '</div>';
+}
+function toggleThreadCpc(id){
+  const k=String(id);
+  cpcCollapsedThreads[k]=!cpcCollapsedThreads[k];
+  renderCommentsNow();
+}
+function renderCommentsNow(){
+  var el=document.getElementById('cpcChaos');
+  if(!el) return;
+  var arr=cpcLastComments||[];
+  if(!arr.length){
+    el.innerHTML='<div class="cpc-empty">Комментариев пока нет — будьте первым.</div>';
+    return;
+  }
+  const tree=buildCommentTree(arr);
+  el.innerHTML=tree.map(renderCommentNode).join('');
+}
 function setCommentsView(mode){
   cpcViewMode=(mode==='list')?'list':'chaos';
   try{ localStorage.setItem(CPC_VIEW_KEY,cpcViewMode); }catch(e){}
+  saveCommentsViewPreference(cpcViewMode);
   var b1=document.getElementById('cpcViewChaosBtn');
   var b2=document.getElementById('cpcViewListBtn');
   if(b1) b1.classList.toggle('on',cpcViewMode==='chaos');
   if(b2) b2.classList.toggle('on',cpcViewMode==='list');
-  cpcLoad();
+  renderCommentsNow();
 }
 function initCommentsView(){
-  var v='chaos';
+  var v={{ comments_layout_pref|tojson if comments_layout_pref is defined else '"chaos"' }};
+  if(v!=='list'&&v!=='chaos') v='chaos';
   try{
     var s=localStorage.getItem(CPC_VIEW_KEY);
     if(s==='list'||s==='chaos') v=s;
   }catch(e){}
   setCommentsView(v);
+}
+async function saveCommentsViewPreference(mode){
+  try{
+    var fd=new FormData();
+    fd.append('mode',(mode==='list'?'list':'chaos'));
+    await fetch('/community/comments/layout',{method:'POST',credentials:'same-origin',body:fd});
+  }catch(e){}
 }
 function setReplyToCpc(cid,name){
   cpcReplyToId=Number(cid)||null;
@@ -265,20 +342,21 @@ async function cpcToggleLike(commentId){
   }catch(e){}
 }
 async function cpcLoad(){
+  if(cpcLoading) return;
+  cpcLoading=true;
   var el=document.getElementById('cpcChaos');
-  if(!el) return;
+  if(!el){ cpcLoading=false; return; }
   el.innerHTML='<div class="cpc-empty">Загрузка…</div>';
   try{
     var r=await fetch('/community/comments/'+POST_ID,{credentials:'same-origin'});
     var d=await r.json().catch(function(){return {};});
-    var arr=(d&&d.comments)||[];
-    if(!arr.length){
-      el.innerHTML='<div class="cpc-empty">Комментариев пока нет — будьте первым.</div>';
-      return;
-    }
-    el.innerHTML=arr.map(cpcCardHtml).join('');
+    cpcLastComments=(d&&d.comments)||[];
+    renderCommentsNow();
+    try{ el.scrollTop=el.scrollHeight; }catch(e){}
   }catch(e){
     el.innerHTML='<div class="cpc-empty">Не удалось загрузить комментарии</div>';
+  }finally{
+    cpcLoading=false;
   }
 }
 async function cpcSend(){
@@ -291,7 +369,15 @@ async function cpcSend(){
   try{
     var r=await fetch('/community/comment/'+POST_ID,{method:'POST',body:fd,credentials:'same-origin'});
     var d=await r.json().catch(function(){return {};});
-    if(d&&d.ok){ inp.value=''; clearReplyToCpc(); await cpcLoad(); }
+    if(d&&d.ok){
+      inp.value='';
+      clearReplyToCpc();
+      await cpcLoad();
+      try{
+        var el=document.getElementById('cpcChaos');
+        if(el) el.scrollTop=el.scrollHeight;
+      }catch(e){}
+    }
   }catch(e){}
 }
 document.getElementById('cpcInp')&&document.getElementById('cpcInp').addEventListener('keydown',function(e){

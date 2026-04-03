@@ -2198,6 +2198,7 @@ async def community_post_comments_page(request: Request, post_id: int, back: str
             "post": post,
             "author": author,
             "back_url": back_url,
+            "comments_layout_pref": current_user.get("comments_layout_preference") or "chaos",
         },
     )
 
