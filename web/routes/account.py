@@ -394,6 +394,11 @@ async def merge_accounts(primary_id: int, secondary_id: int):
     if not (primary.get("referral_code") or "").strip() and (secondary.get("referral_code") or "").strip():
         updates["referral_code"] = (secondary.get("referral_code") or "").strip().upper()
 
+    pdec = (primary.get("decimal_nfi_wallet_address") or "").strip()
+    sdec = (secondary.get("decimal_nfi_wallet_address") or "").strip()
+    if not pdec and sdec:
+        updates["decimal_nfi_wallet_address"] = sdec
+
     try:
         pb = float(primary.get("referral_balance") or 0)
         sb = float(secondary.get("referral_balance") or 0)
@@ -447,6 +452,7 @@ async def merge_accounts(primary_id: int, secondary_id: int):
             referral_balance=0,
             referral_withdraw_reserved_rub=0,
             token_balance=0,
+            decimal_nfi_wallet_address=None,
         )
     )
 

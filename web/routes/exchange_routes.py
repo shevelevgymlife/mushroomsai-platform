@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import logging
+
+import sqlalchemy as sa
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel, Field
@@ -9,6 +11,16 @@ from pydantic import BaseModel, Field
 from auth.session import get_user_from_request, attach_subscription_effective
 from db.database import database
 from db.models import users
+from services.exchange_withdraw_service import (
+    admin_complete_withdrawal,
+    admin_reject_withdrawal,
+    fetch_user_wallet_row,
+    fetch_user_withdrawals,
+    list_pending_withdrawals_admin,
+    notify_admin_new_nfi_withdrawal,
+    request_nfi_withdrawal,
+    save_user_decimal_wallet,
+)
 from services.internal_exchange_service import (
     ExchangeError,
     admin_pool_snapshot,
@@ -80,6 +92,7 @@ async def exchange_page(request: Request):
     pool = await fetch_pool_public()
     bal = await fetch_user_balances(uid)
     chart = await fetch_price_chart_points(72)
+    decimal_wallet = await fetch_user_wallet_row(uid)
     return templates.TemplateResponse(
         "exchange.html",
         {
@@ -89,6 +102,7 @@ async def exchange_page(request: Request):
             "exchange_pool_initial": pool,
             "exchange_bal_initial": bal,
             "exchange_chart_initial": chart,
+            "decimal_wallet": decimal_wallet,
         },
     )
 
@@ -159,21 +173,97 @@ async def api_exchange_history(request: Request):
     return JSONResponse({"trades": trades, "chart": chart})
 
 
-@exchange_api_router.post("/withdraw")
-async def api_exchange_withdraw_stub(request: Request):
+@exchange_api_router.get("/wallet")
+async def api_exchange_wallet_get(request: Request):
     auth = await _require_start_plus(request)
     if not auth:
         return JSONResponse({"error": "forbidden"}, status_code=403)
-    return JSONResponse({"status": "pending"})
+    _u, uid = auth
+    return JSONResponse(await fetch_user_wallet_row(uid))
+
+
+@exchange_api_router.post("/wallet")
+async def api_exchange_wallet_post(request: Request):
+    auth = await _require_start_plus(request)
+    if not auth:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    _u, uid = auth
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+    addr = str(data.get("address") or "").strip()
+    try:
+        await save_user_decimal_wallet(uid, addr)
+    except ExchangeError as e:
+        return JSONResponse({"error": e.code, "message": e.message}, status_code=400)
+    except Exception:
+        logger.exception("exchange save wallet uid=%s", uid)
+        return JSONResponse({"error": "server"}, status_code=500)
+    row = await fetch_user_wallet_row(uid)
+    return JSONResponse({"ok": True, **row})
+
+
+@exchange_api_router.get("/withdrawals")
+async def api_exchange_user_withdrawals(request: Request):
+    auth = await _require_start_plus(request)
+    if not auth:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    _u, uid = auth
+    items = await fetch_user_withdrawals(uid, 50)
+    return JSONResponse({"withdrawals": items})
+
+
+async def _exchange_withdraw_handler(request: Request) -> JSONResponse:
+    auth = await _require_start_plus(request)
+    if not auth:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    _u, uid = auth
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+    try:
+        amt = float(data.get("amount"))
+        if amt <= 0:
+            raise ValueError("amount")
+    except (TypeError, ValueError):
+        return JSONResponse(
+            {"error": "bad_body", "message": "Укажите положительный amount (количество NFI)"},
+            status_code=400,
+        )
+    try:
+        res = await request_nfi_withdrawal(uid, amt)
+    except ExchangeError as e:
+        return JSONResponse({"error": e.code, "message": e.message}, status_code=400)
+    except Exception:
+        logger.exception("exchange withdraw uid=%s", uid)
+        return JSONResponse({"error": "server"}, status_code=500)
+    await notify_admin_new_nfi_withdrawal(
+        {
+            "request_id": res.get("request_id"),
+            "user_id": uid,
+            "amount_token": res.get("amount_token"),
+            "to_masked": res.get("to_address_masked"),
+        }
+    )
+    await notify_user_exchange_trade(
+        uid,
+        "withdraw",
+        f"Заявка #{res.get('request_id')}: вывод {res.get('amount_token')} NFI на {res.get('to_address_masked')}. После отправки в сети Decimal хеш появится в истории.",
+    )
+    return JSONResponse({"ok": True, "status": "pending", **res})
+
+
+@exchange_api_router.post("/withdraw")
+async def api_exchange_withdraw(request: Request):
+    return await _exchange_withdraw_handler(request)
 
 
 @withdraw_alias_router.post("/api/withdraw")
-async def api_withdraw_stub_alias(request: Request):
-    """Заглушка по ТЗ; реальный вывод на Decimal — позже."""
-    auth = await _require_start_plus(request)
-    if not auth:
-        return JSONResponse({"error": "forbidden"}, status_code=403)
-    return JSONResponse({"status": "pending"})
+async def api_withdraw_alias(request: Request):
+    """Совместимость с POST /api/withdraw: тело { \"amount\": NFI }."""
+    return await _exchange_withdraw_handler(request)
 
 
 class AddLiquidityBody(BaseModel):
@@ -212,6 +302,7 @@ def register_admin_exchange_routes(admin_router: APIRouter) -> None:
         )
         growth_t = await _gv(SETTINGS_GROWTH_TOKEN, "0")
         growth_b = await _gv(SETTINGS_GROWTH_BONUS, "0")
+        pending_nfi = await list_pending_withdrawals_admin(100)
         return templates.TemplateResponse(
             "dashboard/admin_liquidity.html",
             {
@@ -222,6 +313,7 @@ def register_admin_exchange_routes(admin_router: APIRouter) -> None:
                 "auto_growth": auto_growth,
                 "growth_token": growth_t,
                 "growth_bonus": growth_b,
+                "pending_nfi_withdrawals": pending_nfi,
             },
         )
 
@@ -274,4 +366,69 @@ def register_admin_exchange_routes(admin_router: APIRouter) -> None:
             await upsert_site_setting(SETTINGS_GROWTH_TOKEN, str(data.get("growth_token") or "0"))
         if "growth_bonus" in data:
             await upsert_site_setting(SETTINGS_GROWTH_BONUS, str(data.get("growth_bonus") or "0"))
+        return JSONResponse({"ok": True})
+
+    @admin_router.post("/exchange-withdrawals/{req_id}/complete")
+    async def admin_nfi_withdrawal_complete(request: Request, req_id: int):
+        admin = await require_permission(request, "can_payment")
+        if not admin:
+            return JSONResponse({"error": "forbidden"}, status_code=403)
+        aid = int(admin.get("primary_user_id") or admin["id"])
+        try:
+            data = await request.json()
+        except Exception:
+            data = {}
+        tx_hash = str(data.get("tx_hash") or "").strip()
+        try:
+            await admin_complete_withdrawal(int(req_id), aid, tx_hash)
+        except ExchangeError as e:
+            return JSONResponse({"error": e.code, "message": e.message}, status_code=400)
+        except Exception:
+            logger.exception("admin complete nfi withdraw id=%s", req_id)
+            return JSONResponse({"error": "server"}, status_code=500)
+        row = await database.fetch_one(
+            sa.text("SELECT user_id FROM token_withdraw_requests WHERE id = :id"),
+            {"id": int(req_id)},
+        )
+        if row and row.get("user_id"):
+            th = (tx_hash or "").strip()
+            tx_short = (th[:18] + "…") if len(th) > 18 else th
+            await notify_user_exchange_trade(
+                int(row["user_id"]),
+                "withdraw_done",
+                f"Заявка #{req_id}: NFI отправлены в сети Decimal. Tx: {tx_short or '—'}",
+            )
+        return JSONResponse({"ok": True})
+
+    @admin_router.post("/exchange-withdrawals/{req_id}/reject")
+    async def admin_nfi_withdrawal_reject(request: Request, req_id: int):
+        admin = await require_permission(request, "can_payment")
+        if not admin:
+            return JSONResponse({"error": "forbidden"}, status_code=403)
+        aid = int(admin.get("primary_user_id") or admin["id"])
+        try:
+            data = await request.json()
+        except Exception:
+            data = {}
+        note = data.get("note")
+        if note is not None:
+            note = str(note).strip()
+        try:
+            await admin_reject_withdrawal(int(req_id), aid, note)
+        except ExchangeError as e:
+            return JSONResponse({"error": e.code, "message": e.message}, status_code=400)
+        except Exception:
+            logger.exception("admin reject nfi withdraw id=%s", req_id)
+            return JSONResponse({"error": "server"}, status_code=500)
+        row = await database.fetch_one(
+            sa.text("SELECT user_id FROM token_withdraw_requests WHERE id = :id"),
+            {"id": int(req_id)},
+        )
+        if row and row.get("user_id"):
+            await notify_user_exchange_trade(
+                int(row["user_id"]),
+                "withdraw_reject",
+                f"Заявка #{req_id} отклонена, NFI возвращены на баланс биржи. "
+                + ((note or "")[:200] if note else ""),
+            )
         return JSONResponse({"ok": True})

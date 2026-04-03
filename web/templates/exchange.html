@@ -13,6 +13,10 @@
 .exch-btn-sell{background:linear-gradient(120deg,#4a3a1a,#c8a84b);color:#0a0c12}
 .exch-est{font-size:13px;color:#9ad8de;margin-top:8px;min-height:40px;line-height:1.45}
 .exch-warn{font-size:12px;color:#fecaca;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);border-radius:12px;padding:10px;margin-top:10px;display:none}
+.exch-store{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+.exch-store a{display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border-radius:12px;font-size:12px;font-weight:700;text-decoration:none;border:1px solid rgba(61,212,224,.35);color:#3dd4e0;background:rgba(61,212,224,.08)}
+.exch-store a:hover{border-color:#3dd4e0;background:rgba(61,212,224,.14)}
+.exch-wd-msg{font-size:12px;margin-top:10px;line-height:1.45}
 </style>
 {% endblock %}
 {% block content %}
@@ -56,18 +60,42 @@
     </div>
 
     <div class="card-x mb-4">
-      <div class="lbl mb-2">Вывод на кошелёк (Decimal Chain)</div>
-      <p class="text-xs text-muted leading-relaxed mb-3">Сейчас заявка только фиксируется как «ожидает». Подключение on-chain и автоматический вывод — следующий этап.</p>
-      <button type="button" class="exch-btn" style="background:rgba(255,255,255,.06);color:#e8e8e8;border:1px solid rgba(255,255,255,.12)" id="exchWithdrawBtn">Запросить вывод</button>
-      <p class="text-[11px] text-muted mt-3 leading-relaxed" id="exchWdStatus"></p>
+      <div class="lbl mb-2">Приложение Decimal Wallet</div>
+      <p class="text-xs text-muted leading-relaxed mb-2">У каждого пользователя свой адрес в сети Decimal. Скачайте официальное приложение, создайте кошелёк и скопируйте <strong>публичный адрес</strong> (0x…). Seed-фразу храните только у себя — мы её никогда не просим.</p>
+      <div class="exch-store">
+        <a href="https://play.google.com/store/apps/details?id=com.chain.decimal" target="_blank" rel="noopener noreferrer">Скачать для Android</a>
+        <a href="https://apps.apple.com/app/decimal-blockchain-wallet/id1510802073" target="_blank" rel="noopener noreferrer">Скачать для iPhone</a>
+        <a href="https://help.decimalchain.com/docs/wallets/d-wallet" target="_blank" rel="noopener noreferrer">Справка Decimal Wallet</a>
+      </div>
+    </div>
+
+    <div class="card-x mb-4">
+      <div class="lbl mb-2">Ваш адрес для вывода NFI</div>
+      <p class="text-xs text-muted leading-relaxed mb-2">Сохранённый адрес — единственный, на который мы отправим NFI после обработки заявки. Сменить можно в любой момент до вывода.</p>
+      <p class="text-sm text-gold mb-2" id="exchSavedAddr">{% if decimal_wallet.saved %}Сохранён: {{ decimal_wallet.masked }}{% else %}Адрес ещё не сохранён{% endif %}</p>
+      <input type="text" class="exch-inp font-mono text-sm" id="exchWalletInp" placeholder="0x… (42 символа)" autocomplete="off" autocapitalize="off" spellcheck="false" />
+      <button type="button" class="exch-btn" style="background:rgba(61,212,224,.15);color:#bfeff3;border:1px solid rgba(61,212,224,.35)" id="exchSaveWalletBtn">Сохранить адрес</button>
+      <div class="exch-wd-msg text-muted" id="exchWalletMsg"></div>
+    </div>
+
+    <div class="card-x mb-4">
+      <div class="lbl mb-2">Вывод NFI на ваш Decimal Wallet</div>
+      <p class="text-xs text-muted leading-relaxed mb-2">Укажите сумму не больше баланса NFI. При создании заявки токены <strong>резервируются</strong> (списываются с биржевого баланса). После отправки в блокчейн в истории появится хеш транзакции. Если заявку отклонят — NFI вернутся на баланс.</p>
+      <input type="text" inputmode="decimal" class="exch-inp" id="exchWdAmt" placeholder="Сколько NFI вывести" autocomplete="off" />
+      <button type="button" class="exch-btn" style="background:rgba(255,255,255,.06);color:#e8e8e8;border:1px solid rgba(255,255,255,.12)" id="exchWithdrawBtn">Создать заявку на вывод</button>
+      <div class="exch-wd-msg" id="exchWdStatus"></div>
+    </div>
+
+    <div class="card-x mb-4">
+      <div class="lbl mb-2">История выводов</div>
+      <div id="exchWdHist" class="text-xs text-muted space-y-2 max-h-40 overflow-y-auto">Загрузка…</div>
     </div>
 
     <details class="card-x mb-6">
-      <summary class="cursor-pointer text-sm font-semibold text-text">Кошелёк Decimal — что нужно от вас</summary>
+      <summary class="cursor-pointer text-sm font-semibold text-text">Безопасность и лимиты</summary>
       <div class="text-xs text-muted mt-3 space-y-2 leading-relaxed">
-        <p><strong>Создание кошелька:</strong> установите кошелёк с поддержкой сети Decimal (например MetaMask или официальный кошелёк экосистемы), создайте новый адрес и <strong>сохраните seed-фразу только у себя</strong>. Никому её не отправляйте — в том числе поддержке и ботам.</p>
-        <p><strong>Что нужно нам для вывода позже:</strong> только ваш <strong>публичный адрес</strong> (0x…) в нужной сети. Seed, приватный ключ и пароль к кошельку <strong>не нужны</strong> и не должны передаваться.</p>
-        <p><strong>Что я не могу сделать за вас:</strong> установить приложение-кошелёк на вашем устройстве, сгенерировать seed на вашей стороне, войти в вашу учётную запись биржи. Это делаете только вы локально.</p>
+        <p>Минимальная сумма вывода задаётся в админке (по умолчанию очень маленькая). Перевод on-chain выполняет платформа вручную или через подключаемый кошёлёк позже — следите за статусом заявки.</p>
+        <p>Не вводите seed и приватные ключи на сайте. Достаточно публичного адреса из Decimal Wallet.</p>
       </div>
     </details>
 
@@ -171,13 +199,55 @@
         afterTrade();
       }).catch(function(){ setErr('Сеть недоступна'); });
   };
+  function renderWdHist(rows){
+    var el = document.getElementById('exchWdHist');
+    if(!el) return;
+    if(!rows || !rows.length){ el.textContent='Пока нет заявок.'; return; }
+    el.innerHTML = rows.map(function(w){
+      var t = (w.created_at||'').replace('T',' ').slice(0,19);
+      var st = w.status==='pending'?'ожидает':(w.status==='completed'?'выполнено':'отклонено');
+      var tx = w.tx_hash ? (' · tx '+String(w.tx_hash).slice(0,14)+'…') : '';
+      var note = w.admin_note ? (' · '+String(w.admin_note).slice(0,80)) : '';
+      return '<div class="border-b border-white/5 pb-2">#'+w.id+' · '+fmt8(w.amount_token)+' NFI → '+w.to_masked+' · '+st+' · '+t+tx+note+'</div>';
+    }).join('');
+  }
+  fetch('/api/exchange/withdrawals',{credentials:'same-origin'}).then(function(r){ return r.json(); }).then(function(d){
+    renderWdHist(d.withdrawals||[]);
+  }).catch(function(){
+    var el = document.getElementById('exchWdHist');
+    if(el) el.textContent='Не удалось загрузить историю.';
+  });
+
+  document.getElementById('exchSaveWalletBtn').onclick = function(){
+    var msg = document.getElementById('exchWalletMsg');
+    var inp = document.getElementById('exchWalletInp');
+    msg.textContent='';
+    var addr = (inp.value||'').trim();
+    fetch('/api/exchange/wallet',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({address:addr})})
+      .then(function(r){ return r.json().then(function(j){ return {r:r,j:j}; }); })
+      .then(function(x){
+        if(!x.r.ok){ msg.textContent=x.j.message||x.j.error||'Ошибка'; msg.className='exch-wd-msg text-red-300'; return; }
+        msg.textContent='Адрес сохранён.';
+        msg.className='exch-wd-msg text-emerald-300';
+        var lab = document.getElementById('exchSavedAddr');
+        if(lab) lab.textContent='Сохранён: '+(x.j.masked||'');
+      }).catch(function(){ msg.textContent='Сеть недоступна'; msg.className='exch-wd-msg text-red-300'; });
+  };
+
   document.getElementById('exchWithdrawBtn').onclick = function(){
     var st = document.getElementById('exchWdStatus');
     st.textContent='';
-    fetch('/api/exchange/withdraw',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({})})
-      .then(function(r){ return r.json(); })
-      .then(function(d){ st.textContent = 'Статус: '+(d.status||d.error||'?'); })
-      .catch(function(){ st.textContent='Ошибка сети'; });
+    st.className='exch-wd-msg';
+    var a = num(document.getElementById('exchWdAmt').value);
+    if(a<=0){ st.textContent='Укажите сумму NFI.'; st.className='exch-wd-msg text-red-300'; return; }
+    fetch('/api/exchange/withdraw',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:a})})
+      .then(function(r){ return r.json().then(function(j){ return {r:r,j:j}; }); })
+      .then(function(x){
+        if(!x.r.ok){ st.textContent=x.j.message||x.j.error||'Ошибка'; st.className='exch-wd-msg text-red-300'; return; }
+        st.textContent='Заявка #'+x.j.request_id+' создана. NFI зарезервированы. Ожидайте перевод в сеть Decimal.';
+        st.className='exch-wd-msg text-emerald-300';
+        setTimeout(function(){ location.reload(); }, 600);
+      }).catch(function(){ st.textContent='Ошибка сети'; st.className='exch-wd-msg text-red-300'; });
   };
 })();
 </script>

@@ -80,7 +80,32 @@
       <p class="text-[11px] text-muted mt-3" id="agMsg"></p>
     </div>
 
-    <p class="text-xs text-muted">Уведомления в Telegram (ops) при coverage &lt; 0.2 — не чаще раза в час.</p>
+    <div class="rounded-2xl border border-amber-500/30 bg-amber-500/[0.06] p-5 mb-8">
+      <h2 class="text-lg font-semibold text-text mb-2">Заявки на вывод NFI (Decimal)</h2>
+      <p class="text-xs text-muted mb-4 leading-relaxed">Пользователь сохранил адрес в Decimal Wallet и создал заявку: NFI уже списаны с биржевого баланса. После отправки в сеть укажите хеш транзакции. При отклонении токены вернутся пользователю.</p>
+      {% if pending_nfi_withdrawals and pending_nfi_withdrawals|length > 0 %}
+      <div class="space-y-4">
+        {% for w in pending_nfi_withdrawals %}
+        <div class="rounded-xl border border-white/10 bg-bg/80 p-4" data-nfi-wid="{{ w.id }}">
+          <div class="text-sm text-text font-semibold">#{{ w.id }} · user_id {{ w.user_id }} · {{ '%.8f'|format(w.amount_token) }} NFI</div>
+          <div class="text-[11px] text-muted mt-1">{{ w.user_name or '—' }} · {{ w.user_email or '—' }}{% if w.tg_id %} · tg {{ w.tg_id }}{% endif %}</div>
+          <div class="text-xs font-mono text-gold break-all mt-2 select-all">{{ w.to_address }}</div>
+          <div class="text-[11px] text-muted mt-1">{{ w.created_at }}</div>
+          <div class="flex flex-wrap gap-2 mt-3 items-end">
+            <input type="text" id="nfi-tx-{{ w.id }}" placeholder="Хеш транзакции (tx)" class="flex-1 min-w-[200px] px-3 py-2 rounded-xl bg-bg border border-border text-xs font-mono" autocomplete="off" />
+            <button type="button" class="px-3 py-2 rounded-xl bg-emerald-500/20 text-emerald-200 border border-emerald-500/35 text-xs font-medium nfi-wd-complete" data-id="{{ w.id }}">Отправлено в сеть</button>
+            <button type="button" class="px-3 py-2 rounded-xl bg-red-500/15 text-red-200 border border-red-400/35 text-xs nfi-wd-reject" data-id="{{ w.id }}">Отклонить</button>
+          </div>
+          <p class="text-[11px] text-amber-200/80 mt-2 nfi-wd-msg" id="nfi-msg-{{ w.id }}"></p>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-sm text-muted">Нет заявок в статусе «ожидает».</p>
+      {% endif %}
+    </div>
+
+    <p class="text-xs text-muted">Уведомления в Telegram (ops) при coverage &lt; 0.2 — не чаще раза в час; при новой заявке на вывод NFI — отдельное сообщение.</p>
   </div>
 </div>
 <script>
@@ -109,5 +134,34 @@ document.getElementById('agSave').onclick = function(){
     .then(function(d){ m.textContent = d.ok ? 'Сохранено' : (d.error||'Ошибка'); })
     .catch(function(){ m.textContent = 'Сеть'; });
 };
+document.querySelectorAll('.nfi-wd-complete').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var id = btn.getAttribute('data-id');
+    var msg = document.getElementById('nfi-msg-' + id);
+    var txEl = document.getElementById('nfi-tx-' + id);
+    var tx = txEl ? txEl.value.trim() : '';
+    msg.textContent = '';
+    fetch('/admin/exchange-withdrawals/' + id + '/complete', { method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ tx_hash: tx }) })
+      .then(function(r){ return r.json().then(function(j){ return { ok:r.ok, j:j }; }); })
+      .then(function(x){
+        if(!x.ok){ msg.textContent = x.j.message || x.j.error || 'Ошибка'; return; }
+        location.reload();
+      }).catch(function(){ msg.textContent = 'Сеть'; });
+  });
+});
+document.querySelectorAll('.nfi-wd-reject').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var id = btn.getAttribute('data-id');
+    var msg = document.getElementById('nfi-msg-' + id);
+    var note = window.prompt('Комментарий для пользователя (необязательно):') || '';
+    msg.textContent = '';
+    fetch('/admin/exchange-withdrawals/' + id + '/reject', { method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ note: note }) })
+      .then(function(r){ return r.json().then(function(j){ return { ok:r.ok, j:j }; }); })
+      .then(function(x){
+        if(!x.ok){ msg.textContent = x.j.message || x.j.error || 'Ошибка'; return; }
+        location.reload();
+      }).catch(function(){ msg.textContent = 'Сеть'; });
+  });
+});
 </script>
 {% endblock %}

@@ -46,6 +46,7 @@ users = sqlalchemy.Table(
     sqlalchemy.Column("followers_count", sqlalchemy.Integer, default=0, server_default="0"),
     sqlalchemy.Column("following_count", sqlalchemy.Integer, default=0, server_default="0"),
     sqlalchemy.Column("wallet_address", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("decimal_nfi_wallet_address", sqlalchemy.Text, nullable=True),
     sqlalchemy.Column("violations_count", sqlalchemy.Integer, default=0, server_default="0"),
     sqlalchemy.Column("is_banned", sqlalchemy.Boolean, default=False, server_default="false"),
     sqlalchemy.Column("ban_until", sqlalchemy.DateTime, nullable=True),
@@ -1215,6 +1216,21 @@ exchange_trades = sqlalchemy.Table(
     sqlalchemy.Column("amount_token", sqlalchemy.Numeric(18, 8), nullable=False),
     sqlalchemy.Column("price", sqlalchemy.Numeric(36, 18), nullable=False),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+token_withdraw_requests = sqlalchemy.Table(
+    "token_withdraw_requests",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("user_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=False),
+    sqlalchemy.Column("amount_token", sqlalchemy.Numeric(18, 8), nullable=False),
+    sqlalchemy.Column("to_address", sqlalchemy.Text, nullable=False),
+    sqlalchemy.Column("status", sqlalchemy.String(20), nullable=False, server_default="pending"),
+    sqlalchemy.Column("tx_hash", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("admin_note", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+    sqlalchemy.Column("processed_at", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("processed_by_admin_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=True),
 )
 
 # Внутриигровые события (лента /notifications) — не удаляются
