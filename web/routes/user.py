@@ -244,6 +244,58 @@ async def require_auth(request: Request):
     return user
 
 
+async def _ensure_comments_schema_compat() -> None:
+    """
+    Hot-compat для прода: если процесс ещё не применил migrate_v42,
+    гарантируем наличие колонок/таблиц перед чтением комментариев.
+    """
+    try:
+        await database.execute(
+            sa.text(
+                "ALTER TABLE community_comments ADD COLUMN IF NOT EXISTS reply_to_id INTEGER NULL REFERENCES community_comments(id) ON DELETE SET NULL"
+            )
+        )
+    except Exception:
+        pass
+    try:
+        await database.execute(
+            sa.text(
+                "ALTER TABLE community_comments ADD COLUMN IF NOT EXISTS likes_count INTEGER NOT NULL DEFAULT 0"
+            )
+        )
+    except Exception:
+        pass
+    try:
+        await database.execute(
+            sa.text(
+                """
+                CREATE TABLE IF NOT EXISTS community_comment_likes (
+                    id SERIAL PRIMARY KEY,
+                    comment_id INTEGER NOT NULL REFERENCES community_comments(id) ON DELETE CASCADE,
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    UNIQUE (comment_id, user_id)
+                )
+                """
+            )
+        )
+    except Exception:
+        pass
+    # Если ранее использовалось legacy-поле reply_to_comment_id — мягко переносим связи.
+    try:
+        await database.execute(
+            sa.text(
+                """
+                UPDATE community_comments
+                SET reply_to_id = COALESCE(reply_to_id, reply_to_comment_id)
+                WHERE reply_to_comment_id IS NOT NULL
+                """
+            )
+        )
+    except Exception:
+        pass
+
+
 async def _fetch_homepage_blocks_for_pricing() -> dict:
     try:
         blocks_raw = await database.fetch_all(
@@ -1649,6 +1701,7 @@ async def add_comment(
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
+    await _ensure_comments_schema_compat()
 
     if len(content.strip()) < 1:
         return JSONResponse({"error": "empty"}, status_code=400)
@@ -1789,6 +1842,7 @@ async def add_comment(
 async def get_comments(request: Request, post_id: int):
     viewer = await require_auth(request)
     viewer_id = int(viewer.get("primary_user_id") or viewer["id"]) if viewer else None
+    await _ensure_comments_schema_compat()
     rows = await database.fetch_all(
         community_comments.select()
         .where(community_comments.c.post_id == post_id)
@@ -1889,6 +1943,7 @@ async def like_comment(request: Request, comment_id: int):
     user = await require_auth(request)
     if not user:
         return JSONResponse({"error": "auth required"}, status_code=401)
+    await _ensure_comments_schema_compat()
     uid = int(user.get("primary_user_id") or user["id"])
     try:
         await database.execute(
