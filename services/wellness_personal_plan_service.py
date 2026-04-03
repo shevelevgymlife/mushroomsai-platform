@@ -23,6 +23,68 @@ from services.wellness_insights_service import (
 from services.wellness_retention_automation_service import get_user_automation
 
 
+def _compact_text(raw: str, max_len: int = 180) -> str:
+    txt = (raw or "").strip()
+    if not txt:
+        return ""
+    if len(txt) <= max_len:
+        return txt
+    return txt[: max_len - 1].rstrip() + "…"
+
+
+def _split_role_points(role_text: str) -> list[str]:
+    raw = (role_text or "").strip()
+    if not raw:
+        return []
+    work = raw.replace(" • ", "|").replace(" · ", "|").replace(";", "|")
+    parts = [p.strip() for p in work.split("|") if p and p.strip()]
+    uniq: list[str] = []
+    seen: set[str] = set()
+    for p in parts:
+        if p in seen:
+            continue
+        seen.add(p)
+        uniq.append(p)
+    return uniq[:4]
+
+
+def _build_memo_cards(memo_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    icon_map = {
+        "amanita_muscaria": "🍄",
+        "amanita_pantherina": "🍄",
+        "amanita_regalis": "🍄",
+        "hericium": "🦁",
+        "cordyceps": "⚡",
+        "reishi": "🛡️",
+        "trametes": "🧬",
+        "maitake": "⚖️",
+        "shiitake": "🌿",
+    }
+    cards: list[dict[str, Any]] = []
+    for row in memo_rows:
+        key = str(row.get("key") or "")
+        role_points = _split_role_points(str(row.get("role_for_you") or ""))
+        cards.append(
+            {
+                "key": key,
+                "icon": icon_map.get(key, "🍄"),
+                "name_ru": str(row.get("name_ru") or ""),
+                "latin": str(row.get("latin") or ""),
+                "core_short": _compact_text(str(row.get("core") or ""), 100),
+                "role_points": role_points,
+                "who_for": role_points[:2],
+                "dose_short": _compact_text(str(row.get("dose_orientation") or ""), 145),
+                "dose_full": str(row.get("dose_orientation") or ""),
+                "how_apply_short": _compact_text(str(row.get("how_apply") or ""), 145),
+                "how_apply_full": str(row.get("how_apply") or ""),
+                "course_weeks": str(row.get("course_weeks") or ""),
+                "contra_short": _compact_text(str(row.get("contra") or ""), 120),
+                "contra_full": str(row.get("contra") or ""),
+            }
+        )
+    return cards
+
+
 async def _fetch_plan_goals_from_journal(user_id: int) -> dict[str, Any]:
     rows = await database.fetch_all(
         wellness_journal_entries.select()
@@ -129,6 +191,7 @@ async def build_wellness_personal_plan_context(user_id: int) -> dict[str, Any]:
     goals = await _fetch_plan_goals_from_journal(uid)
     rec = await latest_recommendation_text(uid)
     automation = await get_user_automation(uid)
+    memo_cards = _build_memo_cards(memo_rows)
 
     return {
         "profile_source": profile_source,
@@ -139,6 +202,7 @@ async def build_wellness_personal_plan_context(user_id: int) -> dict[str, Any]:
         "segment_display": segment,
         "bundles": (prof.get("bundles") or []) if prof else [],
         "memo_rows": memo_rows,
+        "memo_cards": memo_cards,
         "goals": goals,
         "latest_ai_recommendation": rec,
         "has_plan_content": bool(memo_rows),

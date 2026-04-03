@@ -1,0 +1,126 @@
+{% set iv = insights_view|default('user') %}
+{% if wellness_week_strip is defined and wellness_week_strip and wellness_week_strip|length > 0 %}
+<div class="wdx-week-row" aria-label="Неделя">
+  {% for day in wellness_week_strip %}
+  <div class="wdx-week-day{% if day.is_today %} is-today{% endif %}{% if day.has_data %} has-data{% endif %}">
+    <div class="wdx-week-lbl">{{ day.label }}</div>
+    <div class="wdx-week-num">{{ day.num }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<section class="wdx-summary-grid">
+  <div class="wdx-main-cards">
+    <article class="wdx-card wdx-card--energy">
+      <div class="wdx-k">Энерг</div>
+      <div class="wdx-v">{% if today_energy is not none %}{{ (today_energy | float) | round(1) }}{% else %}—{% endif %}</div>
+      <div class="wdx-bar"><i style="width:{% if today_energy is not none %}{{ ((today_energy | float) / 10 * 100) | round }}{% else %}0{% endif %}%"></i></div>
+    </article>
+    <article class="wdx-card wdx-card--mood">
+      <div class="wdx-k">Настр</div>
+      <div class="wdx-v">{% if today_mood is not none %}{{ (today_mood | float) | round(1) }}{% else %}—{% endif %}</div>
+      <div class="wdx-bar"><i style="width:{% if today_mood is not none %}{{ ((today_mood | float) / 10 * 100) | round }}{% else %}0{% endif %}%"></i></div>
+    </article>
+    <article class="wdx-card wdx-card--anxiety">
+      <div class="wdx-k">Трев</div>
+      <div class="wdx-v">{% if today_anxiety is not none %}{{ (today_anxiety | float) | round(1) }}{% else %}—{% endif %}</div>
+      <div class="wdx-bar"><i style="width:{% if today_anxiety is not none %}{{ ((today_anxiety | float) / 10 * 100) | round }}{% else %}0{% endif %}%"></i></div>
+    </article>
+    <article class="wdx-card wdx-card--index">
+      <div class="wdx-k">Индекс</div>
+      <div class="wdx-ring" style="--p: {{ wellness_index_pct if wellness_index_pct is not none else 0 }}">
+        <span>{% if wellness_index_pct is not none %}{{ wellness_index_pct }}{% else %}—{% endif %}</span>
+      </div>
+    </article>
+  </div>
+
+  <aside class="wdx-help-table" aria-label="Что значит показатель">
+    <div class="wdx-help-title">Что это</div>
+    <button type="button" class="wdx-help-row" data-wd-help="Энергия" data-wd-help-text="Субъективный уровень сил за день по шкале 0-10. Чем выше, тем легче держать ритм, фокус и активность.">
+      <span>Энерг</span><span class="wdx-q">?</span>
+    </button>
+    <button type="button" class="wdx-help-row" data-wd-help="Настроение" data-wd-help-text="Эмоциональный фон за день по шкале 0-10. Показатель помогает увидеть, что стабилизирует состояние.">
+      <span>Настр</span><span class="wdx-q">?</span>
+    </button>
+    <button type="button" class="wdx-help-row" data-wd-help="Тревога" data-wd-help-text="Уровень внутреннего напряжения по шкале 0-10. Здесь важна динамика, а не один день.">
+      <span>Трев</span><span class="wdx-q">?</span>
+    </button>
+    <button type="button" class="wdx-help-row" data-wd-help="Индекс дня" data-wd-help-text="Сводный индекс по базовым шкалам: настроение/энергия повышают индекс, тревога снижает. Это ориентир самонаблюдения, не медицинский диагноз.">
+      <span>Индекс</span><span class="wdx-q">?</span>
+    </button>
+  </aside>
+</section>
+
+{% if wellness_kpi_chips is defined and wellness_kpi_chips|length > 0 %}
+<section class="wdx-chip-strip" aria-label="Показатели окна">
+  {% for chip in wellness_kpi_chips %}
+  <div class="wdx-chip">
+    <div class="wdx-chip-k">{{ chip.label }}</div>
+    <div class="wdx-chip-v">{{ chip.value }}</div>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+{% if wellness_rec_text %}
+<section class="wdx-ai">
+  <div class="wdx-ai-h">AI идея</div>
+  <p class="wdx-ai-b">{{ wellness_rec_text }}</p>
+</section>
+{% endif %}
+
+<section class="wdx-dynamics">
+  <div class="wdx-dyn-head">
+    <h2>Динамика</h2>
+    <nav class="wd-tabs" role="tablist" aria-label="Период">
+      <a role="tab" href="{{ wd_tab_urls['d'] }}" class="wd-tab-spa {% if chart_range == 'day' %}wd-active{% endif %}">День</a>
+      <a role="tab" href="{{ wd_tab_urls['w'] }}" class="wd-tab-spa {% if chart_range == 'week' %}wd-active{% endif %}">Неделя</a>
+      <a role="tab" href="{{ wd_tab_urls['m'] }}" class="wd-tab-spa {% if chart_range == 'month' %}wd-active{% endif %}">30 дн</a>
+    </nav>
+  </div>
+
+  {% if user_charts is defined and user_charts and user_charts|length > 0 %}
+  <div class="wd-chart-carousel-wrap mb-5">
+    <div class="wd-chart-carousel" data-wellness-chart-carousel>
+      <div class="wd-chart-carousel-track">
+        {% for c in user_charts %}
+        <div class="wd-chart-slide">
+          <div class="wd-chart-card"><canvas id="{{ c.canvas_id }}"></canvas></div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="wd-chart-dots" data-carousel-dots role="tablist" aria-label="Навигация графиков"></div>
+  </div>
+  {% else %}
+  <p class="wdx-muted">Пока мало данных для графиков.</p>
+  {% endif %}
+
+  {% if heatmap_rows is defined and heatmap_rows and heatmap_rows|length > 0 %}
+  <div class="wdx-table-wrap">
+    <table class="wdx-table">
+      <thead>
+        <tr>
+          <th>Дата</th>
+          <th>Доза</th>
+          <th>Трев</th>
+          <th>Настр</th>
+          <th>Энерг</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in heatmap_rows %}
+        <tr>
+          <td>{% if row.d and row.d|length >= 10 %}{{ row.d[8:10] }}.{{ row.d[5:7] }}{% else %}{{ row.d }}{% endif %}</td>
+          <td title="{{ row.dose }}">{{ row.dose or '—' }}</td>
+          <td>{{ (row.anxiety | float) | round(1) if row.anxiety is not none else '—' }}</td>
+          <td>{{ (row.mood | float) | round(1) if row.mood is not none else '—' }}</td>
+          <td>{{ (row.energy | float) | round(1) if row.energy is not none else '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</section>
