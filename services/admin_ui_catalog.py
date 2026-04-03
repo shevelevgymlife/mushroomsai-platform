@@ -396,7 +396,8 @@ def _build_alphabet_sections(items_out: list[dict[str, Any]]) -> list[dict[str, 
             {
                 "letter": "#" if letter == "#" else letter,
                 "anchor_id": aid,
-                "items": buckets[letter],
+                # Не ключ «items»: в Jinja sec.items — это dict.items(), а не список.
+                "section_items": buckets[letter],
             }
         )
     return sections

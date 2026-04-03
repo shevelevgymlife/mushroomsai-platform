@@ -21,7 +21,7 @@
           <section class="admin-ios-alpha-block" data-alpha-block="{{ sec.anchor_id }}">
             <h2 class="admin-ios-section-letter" id="admin-idx-{{ sec.anchor_id }}">{{ sec.letter }}</h2>
             <div class="admin-ios-group admin-ios-group--apps">
-              {% for it in sec.items %}
+              {% for it in sec.section_items %}
               <div class="admin-ios-row admin-ios-row--apps"
                    data-filter-text="{{ ((it.label ~ ' ' ~ (it.subtitle or ''))|lower)|e }}">
                 <a class="admin-ios-row-main" href="{{ it.href }}">
