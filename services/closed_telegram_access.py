@@ -5,7 +5,6 @@
 """
 from __future__ import annotations
 
-import html as html_module
 import json
 import logging
 from typing import Any
@@ -316,45 +315,190 @@ async def attach_closed_telegram_to_user(u: dict) -> None:
         logger.debug("attach_closed_telegram_to_user failed uid=%s", uid, exc_info=True)
 
 
-_REENTRY_LABELS = {
-    "channel": "Закрытый канал (библиотека)",
-    "group": "Закрытая группа",
-    "consult": "Закрытый чат консультаций",
+# Callback data для кнопок после подписки (≤64 байта ASCII): ctas:<kind>:<res>
+# kind: u=нужен тариф, a=запрет админа, o=ресурс выкл, x=не настроено
+_CTAS_RES_SUFFIX = {"channel": "c", "group": "g", "consult": "q"}
+CTAS_SUFFIX_TO_RESOURCE = {"c": "channel", "g": "group", "q": "consult"}
+
+_BTN_TITLE = {
+    "channel": "📢 Канал",
+    "group": "👥 Группа",
+    "consult": "💬 Консультации",
 }
 
 
-async def _send_closed_chats_reentry_dm(tg_user_id: int, items: list[tuple[str, str]]) -> None:
-    """Личка: сняли бан — ссылки для повторного входа."""
+def _truncate_tg_alert(text: str, max_len: int = 190) -> str:
+    t = (text or "").strip()
+    if len(t) <= max_len:
+        return t
+    return t[: max(1, max_len - 1)] + "…"
+
+
+async def plan_names_unlocking_resource(resource_key: str) -> str:
+    """Через запятую — названия платных тарифов из каталога, где есть доступ к ресурсу."""
+    from services.payment_plans_catalog import drawer_menu_effective, get_effective_plans
+
+    rk = str(resource_key or "").strip().lower()
+    if rk not in ("channel", "group", "consult"):
+        return "платный тариф с доступом к этому разделу"
+    plans = await get_effective_plans()
+    names: list[str] = []
+    seen: set[str] = set()
+    for pk, meta in plans.items():
+        if pk == "free":
+            continue
+        pdm = drawer_menu_effective(meta)
+        if pdm.get("closed_telegram") is False:
+            continue
+        ca = plan_closed_access(meta)
+        if not ca.get(rk):
+            continue
+        nm = (meta.get("name") or pk).strip()
+        if nm and nm not in seen:
+            seen.add(nm)
+            names.append(nm)
+    if not names:
+        return "тариф с доступом к этому разделу (настройте closed_access в админке)"
+    return ", ".join(names)
+
+
+async def closed_tg_subscribe_hint_alert_text(
+    user_id: int, resource_key: str, kind: str
+) -> str:
+    """Текст для answerCallbackQuery(show_alert) по кнопке «без ссылки»."""
+    rk = str(resource_key or "").strip().lower()
+    label = RESOURCE_LABELS_RU.get(rk, rk)
+    k = (kind or "").strip().lower()
+    if k == "a":
+        return _truncate_tg_alert(f"Доступ к «{label}» закрыт администратором.")
+    if k == "o":
+        return _truncate_tg_alert(f"Раздел «{label}» на платформе не подключён.")
+    if k == "x":
+        return _truncate_tg_alert(
+            f"Для «{label}» не настроены ссылка или ID чата. Напишите в поддержку."
+        )
+    if k == "u":
+        plans = await plan_names_unlocking_resource(rk)
+        return _truncate_tg_alert(
+            f"Чтобы войти в «{label}», нужна подписка: {plans}."
+        )
+    return _truncate_tg_alert("Нет доступа к этому ресурсу.")
+
+
+async def build_post_subscribe_closed_tg_keyboard(user_id: int):
+    """Три кнопки: URL при доступе, иначе callback с подсказкой."""
+    from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
+    uid = int(user_id)
+    row = await database.fetch_one(users.select().where(users.c.id == uid))
+    if not row:
+        return None
+    row_d = dict(row)
+    role = (row_d.get("role") or "user").lower()
+    is_staff = role in ("admin", "moderator")
+
+    from services.subscription_service import check_subscription
+    from services.payment_plans_catalog import drawer_menu_effective, get_effective_plans
+
+    eff_plan = await check_subscription(uid)
+    plans = await get_effective_plans()
+    plan_meta = plans.get(eff_plan) or plans.get("free") or {}
+
+    if not is_staff:
+        if eff_plan == "free":
+            ca = {"channel": False, "group": False, "consult": False}
+        else:
+            ca = plan_closed_access(plan_meta)
+            pdm = drawer_menu_effective(plan_meta)
+            if pdm.get("closed_telegram") is False:
+                ca = {"channel": False, "group": False, "consult": False}
+    else:
+        ca = {"channel": True, "group": True, "consult": True}
+
+    cfg = await load_closed_telegram_config()
+    policies: list[dict[str, Any]] = list(cfg.get("manual_policies") or [])
+    rows_btn: list[list] = []
+
+    for key in ("channel", "group", "consult"):
+        suf = _CTAS_RES_SUFFIX[key]
+        invite = (cfg.get(f"{key}_invite_url") or "").strip()
+        chat_ok = _parse_chat_id(cfg.get(f"{key}_chat_id")) is not None
+        manual = manual_effect_for_user_resource(policies, uid, key)
+        title = _BTN_TITLE.get(key, key)
+
+        if not cfg.get(f"{key}_enabled"):
+            cb = f"ctas:o:{suf}"
+            rows_btn.append(
+                [InlineKeyboardButton(f"{title} · не подключено", callback_data=cb)]
+            )
+            continue
+
+        if manual == "deny" and not is_staff:
+            rows_btn.append(
+                [InlineKeyboardButton(f"{title} · нет доступа", callback_data=f"ctas:a:{suf}")]
+            )
+            continue
+
+        if not invite or not chat_ok:
+            rows_btn.append(
+                [InlineKeyboardButton(f"{title} · настройка", callback_data=f"ctas:x:{suf}")]
+            )
+            continue
+
+        if is_staff:
+            should_open = True
+        elif manual == "allow":
+            should_open = True
+        else:
+            should_open = bool(ca.get(key))
+
+        if should_open:
+            rows_btn.append([InlineKeyboardButton(f"{title} — войти", url=invite)])
+        else:
+            rows_btn.append(
+                [InlineKeyboardButton(f"{title} · какой тариф?", callback_data=f"ctas:u:{suf}")]
+            )
+
+    return InlineKeyboardMarkup(rows_btn)
+
+
+async def send_closed_telegram_post_subscribe_dm(user_id: int) -> None:
+    """После активации подписки / триала: личка с тремя кнопками по закрытым ресурсам."""
     from config import settings
+    from telegram import Bot
 
     token = (getattr(settings, "TELEGRAM_TOKEN", None) or "").strip()
-    if not token or not items:
+    if not token:
         return
-    lines: list[str] = []
-    for key, url in items:
-        label = _REENTRY_LABELS.get(key, key)
-        u = (url or "").strip()
-        if not u:
-            continue
-        safe_href = html_module.escape(u, quote=True)
-        safe_lbl = html_module.escape(label)
-        lines.append(f"• {safe_lbl} — <a href=\"{safe_href}\">войти по ссылке</a>")
-    if not lines:
+
+    uid = int(user_id)
+    row = await database.fetch_one(users.select().where(users.c.id == uid))
+    if not row:
         return
+    tg_user_id = _tg_id_for_user_row(dict(row))
+    if not tg_user_id:
+        return
+
+    kb = await build_post_subscribe_closed_tg_keyboard(uid)
+    if not kb:
+        return
+
     body = (
-        "✅ <b>Ограничения сняты</b>\n\n"
-        "По вашей подписке бот снял блокировку в закрытых чатах. "
-        "Зайдите <b>с этого же аккаунта Telegram</b> по ссылке:\n\n"
-        + "\n".join(lines)
-        + "\n\nЕсли откроется заявка на вступление — бот может одобрить её автоматически."
+        "✅ <b>Для вас открыт доступ</b> по подписке.\n\n"
+        "Три ресурса ниже: нажмите <b>«— войти»</b>, чтобы перейти по приглашению в Telegram. "
+        "Если написано иначе — нажмите кнопку, чтобы увидеть, какой тариф или настройка нужны."
     )
     try:
-        from telegram import Bot
-
         bot = Bot(token=token)
-        await bot.send_message(chat_id=int(tg_user_id), text=body, parse_mode="HTML", disable_web_page_preview=True)
+        await bot.send_message(
+            chat_id=int(tg_user_id),
+            text=body,
+            parse_mode="HTML",
+            reply_markup=kb,
+            disable_web_page_preview=True,
+        )
     except Exception as e:
-        logger.info("closed chats reentry DM failed tg_id=%s: %s", tg_user_id, e)
+        logger.info("post-subscribe closed tg DM failed uid=%s tg=%s: %s", uid, tg_user_id, e)
 
 
 def _tg_id_for_user_row(row: dict | None) -> int | None:
@@ -424,8 +568,6 @@ async def sync_user_telegram_closed_chats(user_id: int, *, notify_reentry: bool 
     except Exception:
         return
 
-    reentry_links: list[tuple[str, str]] = []
-
     for key in ("channel", "group", "consult"):
         chat_id = _parse_chat_id(cfg.get(f"{key}_chat_id"))
         if chat_id is None:
@@ -445,8 +587,6 @@ async def sync_user_telegram_closed_chats(user_id: int, *, notify_reentry: bool 
         try:
             if should_member:
                 await bot.unban_chat_member(chat_id, tg_user_id, only_if_banned=True)
-                if notify_reentry and invite:
-                    reentry_links.append((key, invite))
             else:
                 await bot.ban_chat_member(chat_id, tg_user_id)
         except Exception as e:
@@ -459,8 +599,8 @@ async def sync_user_telegram_closed_chats(user_id: int, *, notify_reentry: bool 
                 e,
             )
 
-    if notify_reentry and reentry_links and tg_user_id:
-        await _send_closed_chats_reentry_dm(int(tg_user_id), reentry_links)
+    if notify_reentry and tg_user_id:
+        await send_closed_telegram_post_subscribe_dm(uid)
 
 
 async def sync_all_linked_users_closed_telegram_chats() -> dict[str, Any]:

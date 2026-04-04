@@ -176,6 +176,47 @@ async def closed_telegram_button_handler(update: Update, context: ContextTypes.D
     await update.message.reply_text("⌨️", reply_markup=await main_keyboard_with_autopost(site, False, uid))
 
 
+async def post_subscribe_closed_tg_hint_callback(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Подсказки по кнопкам из лички после подписки (ctas:…)."""
+    q = update.callback_query
+    if not q or not q.data or not update.effective_user:
+        return
+    m = re.match(r"^ctas:([auox]):([cgq])$", q.data)
+    if not m:
+        return
+    kind, suf = m.group(1), m.group(2)
+    from services.closed_telegram_access import (
+        CTAS_SUFFIX_TO_RESOURCE,
+        closed_tg_subscribe_hint_alert_text,
+    )
+
+    rk = CTAS_SUFFIX_TO_RESOURCE.get(suf)
+    if not rk:
+        try:
+            await q.answer("Неверная кнопка.", show_alert=True)
+        except Exception:
+            pass
+        return
+
+    from bot.handlers.start import ensure_user
+
+    u = await ensure_user(update.effective_user)
+    if not u:
+        try:
+            await q.answer("Сначала откройте бота командой /start.", show_alert=True)
+        except Exception:
+            pass
+        return
+    uid = int(u.get("primary_user_id") or u["id"])
+    text = await closed_tg_subscribe_hint_alert_text(uid, rk, kind)
+    try:
+        await q.answer(text, show_alert=True)
+    except Exception:
+        pass
+
+
 async def on_chat_join_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     cjr = update.chat_join_request
     if not cjr or not cjr.from_user:

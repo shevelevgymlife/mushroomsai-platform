@@ -45,6 +45,7 @@ from bot.handlers.closed_telegram import (
     closed_telegram_hub_handler,
     closed_telegram_message_handler,
     on_chat_join_request,
+    post_subscribe_closed_tg_hint_callback,
 )
 from services.closed_telegram_access import TG_BTN_CLOSED_BACK, TG_BTN_CLOSED_HUB
 
@@ -274,6 +275,9 @@ def create_bot() -> Application:
     application.add_handler(CallbackQueryHandler(ref_copy_tg_callback, pattern=r"^ref_copy_tg$"))
     application.add_handler(CallbackQueryHandler(ref_copy_site_callback, pattern=r"^ref_copy_site$"))
     application.add_handler(CallbackQueryHandler(ref_copy_help_callback, pattern=r"^ref_copy_help$"))
+    application.add_handler(
+        CallbackQueryHandler(post_subscribe_closed_tg_hint_callback, pattern=r"^ctas:[auox]:[cgq]$")
+    )
 
     # Текст: в AI только если включён режим (см. handle_chat_message)
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_chat_message))
