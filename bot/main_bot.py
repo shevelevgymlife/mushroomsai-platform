@@ -14,7 +14,7 @@ from telegram.ext import (
 )
 
 from config import settings
-from bot.handlers.start import BTN_AI, BTN_AI_EXIT, BTN_CONNECT_CHANNEL, main_keyboard, start
+from bot.handlers.start import BTN_AI, BTN_AI_EXIT, main_keyboard, start
 from bot.handlers.link import link_confirm_callback, link_merge_callback
 from bot.handlers.support import get_support_conversation
 from bot.handlers.community_post_wizard import get_community_post_conversation
@@ -181,7 +181,6 @@ def create_bot() -> Application:
     from bot.handlers.channel_autopost import (
         ch_link_done_callback,
         ch_soc_btn_callback,
-        connect_channel_handler,
         get_channel_forward_handler,
         get_toggle_autopost_handler,
         get_toggle_channel_social_button_handler,
@@ -224,13 +223,6 @@ def create_bot() -> Application:
     ch_group = -2
     application.add_handler(MessageHandler(filters.UpdateType.CHANNEL_POST, on_channel_post), group=ch_group)
     application.add_handler(get_channel_forward_handler(), group=ch_group)
-    application.add_handler(
-        MessageHandler(
-            filters.ChatType.PRIVATE & filters.Regex(f"^{re.escape(BTN_CONNECT_CHANNEL)}$"),
-            connect_channel_handler,
-        ),
-        group=ch_group,
-    )
     application.add_handler(get_toggle_autopost_handler(), group=ch_group)
     application.add_handler(get_toggle_channel_social_button_handler(), group=ch_group)
     application.add_handler(

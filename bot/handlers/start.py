@@ -23,7 +23,6 @@ BTN_AI_EXIT = "❌ Выйти из режима AI"
 # Публикация поста в ленту (ConversationHandler; кнопка с клавиатуры убрана — вход только если снова добавят кнопку / команду)
 BTN_COMMUNITY_POST = "📤 Пост в сообщество"
 # Автопост из личного Telegram-канала в ленту сообщества
-BTN_CONNECT_CHANNEL = "📢 Подключить свой канал"
 BTN_PARTNER = "🤝 Стать партнёром"
 BTN_SUBSCRIBE = "💳 Подписка"
 
@@ -133,7 +132,6 @@ def main_keyboard(
     if closed_tg_rows:
         keyboard += list(closed_tg_rows)
     keyboard += [
-        [KeyboardButton(BTN_CONNECT_CHANNEL)],
         [KeyboardButton(BTN_PARTNER)],
         [KeyboardButton(BTN_SUBSCRIBE)],
         [KeyboardButton("🌍 Веб версия"), KeyboardButton("🔒 Безопасность")],
@@ -193,6 +191,20 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             await sync_closed_telegram_after_bot_identity(user)
             await subscribe_menu_handler(update, context)
+            return
+        if ref_code.lower() == "chlink":
+            from bot.handlers.channel_autopost import build_link_instructions_html
+
+            context.user_data["channel_link_awaiting"] = True
+            context.user_data.pop("channel_link_need_forward", None)
+            kb = InlineKeyboardMarkup(
+                [[InlineKeyboardButton("✅ Я подвязал", callback_data="ch_link_done")]]
+            )
+            await update.message.reply_html(
+                build_link_instructions_html(),
+                reply_markup=kb,
+                disable_web_page_preview=True,
+            )
             return
         from services.closed_telegram_access import CLOSED_HUB_DEEPLINK_PREFIX
 

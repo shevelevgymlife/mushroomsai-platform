@@ -36,6 +36,13 @@ async def _attach_tg_closed_hub_url(u: dict) -> None:
         u["tg_closed_hub_url"] = ""
 
 
+def _attach_channel_chlink_url(u: dict) -> None:
+    from config import settings
+
+    bu = (getattr(settings, "TELEGRAM_BOT_USERNAME", None) or "").strip().lstrip("@")
+    u["channel_chlink_url"] = f"https://t.me/{bu}?start=chlink" if bu else ""
+
+
 def create_access_token(user_id: int) -> str:
     expire = datetime.utcnow() + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
     data = {"sub": str(user_id), "exp": expire}
@@ -119,6 +126,7 @@ async def attach_subscription_effective(u: dict) -> None:
         except Exception:
             pass
         await _attach_tg_closed_hub_url(u)
+        _attach_channel_chlink_url(u)
         return
     now = datetime.utcnow()
     tu = row.get("start_trial_until")
@@ -234,6 +242,7 @@ async def attach_subscription_effective(u: dict) -> None:
     except Exception:
         pass
     await _attach_tg_closed_hub_url(u)
+    _attach_channel_chlink_url(u)
 
 
 async def get_user_from_request(request) -> Optional[dict]:

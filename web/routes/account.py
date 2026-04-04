@@ -70,6 +70,13 @@ def _role_is_staff(role: str | None) -> bool:
     return (role or "user").lower() in ("admin", "moderator")
 
 
+def _channel_autopost_plan_ok(user: dict) -> bool:
+    if _role_is_staff(user.get("role")):
+        return True
+    p = (user.get("effective_subscription_plan") or user.get("subscription_plan") or "free").lower()
+    return p != "free"
+
+
 async def _referred_by_points_to_staff(referred_by_id: int | None) -> bool:
     if referred_by_id is None:
         return False
@@ -868,6 +875,131 @@ async def account_closed_telegram_page(request: Request):
             "instructions": (cfg.get("instructions") or "").strip() or None,
         },
     )
+
+
+@router.get("/channel-autopost", response_class=HTMLResponse)
+async def account_channel_autopost_page(request: Request):
+    user = await get_user_from_request(request)
+    if not user:
+        return RedirectResponse("/login?next=/account/channel-autopost")
+    leg = await legal_acceptance_redirect(request, user)
+    if leg:
+        return leg
+    uid = int(user.get("primary_user_id") or user["id"])
+    row = await database.fetch_one(users.select().where(users.c.id == uid))
+    if row:
+        user = dict(row)
+        attach_screen_rim_prefs(user)
+        await attach_subscription_effective(user)
+    if not _channel_autopost_plan_ok(user):
+        return RedirectResponse("/subscriptions?channel_autopost=1")
+    from bot.handlers.channel_autopost import build_link_instructions_html
+    from services.channel_autopost_service import (
+        fetch_autopost_row,
+        user_can_use_channel_partner_social_button,
+        verify_bot_can_edit_channel_messages,
+    )
+    from services.referral_service import social_app_entry_url_for_channel_owner
+
+    ap_row = await fetch_autopost_row(uid)
+    partner_ok = await user_can_use_channel_partner_social_button(uid)
+    preview_url = None
+    if partner_ok:
+        preview_url = await social_app_entry_url_for_channel_owner(uid)
+    can_edit = False
+    if ap_row and ap_row.get("channel_chat_id"):
+        can_edit = await verify_bot_can_edit_channel_messages(int(ap_row["channel_chat_id"]))
+    tg_ok = bool(user.get("tg_id") or user.get("linked_tg_id"))
+    return templates.TemplateResponse(
+        "account/channel_autopost.html",
+        {
+            "request": request,
+            "user": user,
+            "ap_row": ap_row,
+            "instructions_html": build_link_instructions_html(),
+            "partner_ok": partner_ok,
+            "preview_url": preview_url,
+            "can_edit_hint": can_edit,
+            "tg_ok": tg_ok,
+            "chlink_url": (user.get("channel_chlink_url") or "").strip(),
+        },
+    )
+
+
+@router.post("/channel-autopost/verify")
+async def account_channel_autopost_verify(request: Request):
+    user = await get_user_from_request(request)
+    if not user:
+        return JSONResponse({"ok": False, "error": "auth"}, status_code=401)
+    if not _channel_autopost_plan_ok(user):
+        return JSONResponse({"ok": False, "error": "plan"}, status_code=403)
+    uid = int(user.get("primary_user_id") or user["id"])
+    tg = user.get("tg_id") or user.get("linked_tg_id")
+    if not tg:
+        return JSONResponse(
+            {
+                "ok": False,
+                "error": "no_telegram",
+                "message": "Привяжите Telegram в кабинете — без этого мы не сопоставим канал с аккаунтом.",
+            },
+            status_code=400,
+        )
+    from services.channel_autopost_service import fetch_autopost_row, try_finalize_link_from_pending
+
+    if await fetch_autopost_row(uid):
+        return JSONResponse({"ok": True, "already": True, "message": "Канал уже подключён к аккаунту."})
+    ok, msg = await try_finalize_link_from_pending(uid, int(tg), pending_override=None)
+    if not ok:
+        return JSONResponse({"ok": False, "message": msg})
+    return JSONResponse({"ok": True, "message": "Канал подключён. Ниже включите автопост и при необходимости кнопку под постами."})
+
+
+@router.post("/channel-autopost/toggle-autopost")
+async def account_channel_autopost_toggle_autopost(request: Request):
+    user = await get_user_from_request(request)
+    if not user:
+        return JSONResponse({"ok": False}, status_code=401)
+    if not _channel_autopost_plan_ok(user):
+        return JSONResponse({"ok": False, "error": "plan"}, status_code=403)
+    uid = int(user.get("primary_user_id") or user["id"])
+    from services.channel_autopost_service import fetch_autopost_row, set_autopost_enabled
+
+    row = await fetch_autopost_row(uid)
+    if not row:
+        return JSONResponse({"ok": False, "error": "no_channel"}, status_code=400)
+    new_v = not bool(row.get("autopost_enabled"))
+    if not await set_autopost_enabled(uid, new_v):
+        return JSONResponse({"ok": False}, status_code=500)
+    return JSONResponse({"ok": True, "autopost_enabled": new_v})
+
+
+@router.post("/channel-autopost/toggle-social")
+async def account_channel_autopost_toggle_social(request: Request):
+    user = await get_user_from_request(request)
+    if not user:
+        return JSONResponse({"ok": False}, status_code=401)
+    if not _channel_autopost_plan_ok(user):
+        return JSONResponse({"ok": False, "error": "plan"}, status_code=403)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    enabled = bool(body.get("enabled"))
+    uid = int(user.get("primary_user_id") or user["id"])
+    from services.channel_autopost_service import fetch_autopost_row, set_channel_social_button_enabled
+
+    if not await fetch_autopost_row(uid):
+        return JSONResponse({"ok": False, "error": "no_channel"}, status_code=400)
+    ok, err = await set_channel_social_button_enabled(uid, enabled)
+    if not ok:
+        return JSONResponse({"ok": False, "message": err or "forbidden"}, status_code=400)
+    from services.channel_autopost_service import verify_bot_can_edit_channel_messages
+
+    row = await fetch_autopost_row(uid)
+    warn = ""
+    if enabled and row and not await verify_bot_can_edit_channel_messages(int(row["channel_chat_id"])):
+        warn = "У бота нет права «изменять сообщения» в канале — кнопка под постами не появится, пока не выдадите право."
+    return JSONResponse({"ok": True, "social_enabled": enabled, "warn": warn})
 
 
 @router.get("/wallet", response_class=HTMLResponse)

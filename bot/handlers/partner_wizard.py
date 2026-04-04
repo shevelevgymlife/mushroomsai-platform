@@ -21,7 +21,6 @@ from bot.handlers.start import (
     BTN_AI,
     BTN_AI_EXIT,
     BTN_COMMUNITY_POST,
-    BTN_CONNECT_CHANNEL,
     BTN_PARTNER,
     ensure_user_or_blocked_reply,
 )
@@ -60,7 +59,6 @@ _MENU_INTERRUPTS = frozenset(
         BTN_AI,
         BTN_AI_EXIT,
         BTN_COMMUNITY_POST,
-        BTN_CONNECT_CHANNEL,
         TG_BTN_SHOP_MARKETPLACE,
         TG_BTN_SHOP_SIMPLE,
         TG_BTN_CLOSED_HUB,

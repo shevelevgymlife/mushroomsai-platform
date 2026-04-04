@@ -17,6 +17,13 @@ from config import settings
 from db.database import database
 from db.models import users
 from services.channel_ingest_save_image import save_channel_ingest_image
+from services.channel_autopost_service import (
+    get_link_pending,
+    try_finalize_link_from_pending,
+    upsert_link_pending,
+    user_can_use_channel_partner_social_button,
+    verify_bot_can_edit_channel_messages as _svc_verify_bot_can_edit_channel_messages,
+)
 from services.community_post_publish import publish_community_post
 from services.referral_service import social_app_entry_url_for_channel_owner
 from services.telegram_file_download import download_telegram_file_bytes
@@ -137,33 +144,6 @@ def _pop_pending(context: ContextTypes.DEFAULT_TYPE, tg_uid: int) -> dict | None
     return _pending_map(context).pop(int(tg_uid), None)
 
 
-async def _verify_bot_can_edit_channel_messages(bot, channel_chat_id: int) -> bool:
-    me = await bot.get_me()
-    try:
-        m = await bot.get_chat_member(chat_id=channel_chat_id, user_id=me.id)
-    except Exception as e:
-        logger.debug("channel_autopost verify can_edit: %s", e)
-        return False
-    if m.status == ChatMemberStatus.ADMINISTRATOR:
-        return bool(getattr(m, "can_edit_messages", False))
-    return False
-
-
-async def _verify_bot_can_post(bot, channel_chat_id: int) -> bool:
-    me = await bot.get_me()
-    try:
-        m = await bot.get_chat_member(chat_id=channel_chat_id, user_id=me.id)
-    except Exception as e:
-        logger.debug("channel_autopost verify member: %s", e)
-        return False
-    st = m.status
-    if st == ChatMemberStatus.OWNER:
-        return True
-    if st == ChatMemberStatus.ADMINISTRATOR:
-        return bool(getattr(m, "can_post_messages", True))
-    return False
-
-
 async def _row_for_user(internal_user_id: int) -> dict | None:
     r = await database.fetch_one(
         sa.text(
@@ -215,49 +195,6 @@ async def main_keyboard_with_autopost(site_url: str, ai_active: bool, internal_u
     )
 
 
-async def _save_link(
-    internal_user_id: int,
-    channel_chat_id: int,
-    channel_title: str | None,
-    channel_username: str | None,
-) -> tuple[bool, str | None]:
-    other = await database.fetch_one(
-        sa.text(
-            "SELECT user_id FROM user_channel_autopost WHERE channel_chat_id = :c AND user_id <> :u LIMIT 1"
-        ),
-        {"c": int(channel_chat_id), "u": int(internal_user_id)},
-    )
-    if other:
-        return False, "Этот канал уже подключён к другому аккаунту."
-    try:
-        await database.execute(
-            sa.text(
-                """
-                INSERT INTO user_channel_autopost
-                    (user_id, channel_chat_id, channel_title, channel_username, autopost_enabled,
-                     channel_social_button_enabled, linked_at, updated_at)
-                VALUES (:uid, :ccid, :tit, :un, true, false, NOW(), NOW())
-                ON CONFLICT (user_id) DO UPDATE SET
-                    channel_chat_id = EXCLUDED.channel_chat_id,
-                    channel_title = EXCLUDED.channel_title,
-                    channel_username = EXCLUDED.channel_username,
-                    autopost_enabled = true,
-                    updated_at = NOW()
-                """
-            ),
-            {
-                "uid": int(internal_user_id),
-                "ccid": int(channel_chat_id),
-                "tit": channel_title,
-                "un": (channel_username or "").strip() or None,
-            },
-        )
-    except Exception as e:
-        logger.warning("user_channel_autopost upsert: %s", e)
-        return False, "Не удалось сохранить привязку в базе."
-    return True, None
-
-
 async def _delete_by_channel(channel_chat_id: int) -> None:
     try:
         await database.execute(
@@ -276,27 +213,28 @@ async def _try_finalize_link(
     channel_chat_id: int | None,
     channel_title: str | None,
     channel_username: str | None,
+    *,
+    telegram_user_id: int,
 ) -> tuple[bool, str | object]:
     if channel_chat_id is None:
         return False, (
             "Не удалось определить канал. Добавьте бота администратором с правом "
             "<b>публиковать сообщения</b> и снова нажмите «Я подвязал», либо перешлите сообщение из канала."
         )
-    if not await _verify_bot_can_post(context.bot, channel_chat_id):
-        return False, (
-            "Бот не является администратором канала или нет права <b>публиковать сообщения</b>. "
-            "Проверьте настройки и попробуйте снова."
-        )
     tit = channel_title or (pending.get("channel_title") if pending else None)
     un = channel_username or (pending.get("channel_username") if pending else None)
-    ok, err = await _save_link(
+    pend_ov = {
+        "channel_chat_id": int(channel_chat_id),
+        "channel_title": tit,
+        "channel_username": un,
+    }
+    ok, err_msg = await try_finalize_link_from_pending(
         int(user_row["id"]),
-        channel_chat_id,
-        tit,
-        un,
+        int(telegram_user_id),
+        pending_override=pend_ov,
     )
     if not ok:
-        return False, err or "Ошибка при сохранении."
+        return False, err_msg
     site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
     kb = await main_keyboard_with_autopost(site, context.user_data.get("tg_ai_mode"), int(user_row["id"]))
     return True, kb
@@ -309,15 +247,23 @@ async def ch_soc_btn_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     m = re.match(r"^ch_soc_btn:([01])$", q.data)
     if not m:
         return
-    await q.answer()
     user = await ensure_user_or_blocked_reply(update)
     if not user:
         return
     val = m.group(1) == "1"
     row = await _row_for_user(int(user["id"]))
     if not row:
-        await q.message.reply_text("Сначала подключите канал.")
+        await q.answer()
+        await q.message.reply_text("Сначала подключите канал в приложении: меню → «Мой канал в ленту».")
         return
+    if val and not await user_can_use_channel_partner_social_button(int(user["id"])):
+        await q.answer(
+            "Кнопка с вашей реферальной ссылкой доступна партнёрам: укажите магазин в партнёрке "
+            "и/или активируйте платную партнёрку приложения.",
+            show_alert=True,
+        )
+        return
+    await q.answer()
     try:
         await database.execute(
             sa.text(
@@ -334,7 +280,7 @@ async def ch_soc_btn_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     kb = await main_keyboard_with_autopost(site, context.user_data.get("tg_ai_mode"), int(user["id"]))
     warn = ""
     if val:
-        ok_edit = await _verify_bot_can_edit_channel_messages(context.bot, int(row["channel_chat_id"]))
+        ok_edit = await _svc_verify_bot_can_edit_channel_messages(int(row["channel_chat_id"]))
         if not ok_edit:
             warn = (
                 "\n\n⚠️ У бота пока <b>нет права изменять сообщения</b> в канале — "
@@ -382,39 +328,15 @@ async def on_my_chat_member(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             channel_title=chat.title,
             channel_username=chat.username,
         )
-
-
-async def connect_channel_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user = await ensure_user_or_blocked_reply(update)
-    if not user or not update.message:
-        return
-    context.user_data["tg_ai_mode"] = False
-    site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
-    existing = await _row_for_user(int(user["id"]))
-    if existing:
-        ch = existing.get("channel_title") or existing.get("channel_username") or "канал"
-        soc = "включена" if existing.get("channel_social_button_enabled") else "выключена"
-        ap = "включён" if existing.get("autopost_enabled") else "выключен"
-        main_kb = await main_keyboard_with_autopost(site, False, int(user["id"]))
-        await update.message.reply_html(
-            f"Канал уже подключён: <b>{html.escape(str(ch))}</b>.\n"
-            f"Автопост в ленту сообщества: <b>{ap}</b>.\n"
-            f"Кнопка «Войти в социальную сеть» под новыми постами: <b>{soc}</b>.\n\n"
-            "Нужно изменить кнопку под постами? Выберите:",
-            reply_markup=_social_button_choice_markup(),
-        )
-        await update.message.reply_text("⌨️", reply_markup=main_kb)
-        raise ApplicationHandlerStop
-
-    context.user_data["channel_link_awaiting"] = True
-    context.user_data.pop("channel_link_need_forward", None)
-    kb = InlineKeyboardMarkup([[InlineKeyboardButton("✅ Я подвязал", callback_data="ch_link_done")]])
-    await update.message.reply_html(
-        build_link_instructions_html(),
-        reply_markup=kb,
-        disable_web_page_preview=True,
-    )
-    raise ApplicationHandlerStop
+        try:
+            await upsert_link_pending(
+                int(fu.id),
+                int(chat.id),
+                chat.title,
+                chat.username,
+            )
+        except Exception as e:
+            logger.debug("upsert_link_pending from my_chat_member: %s", e)
 
 
 async def ch_link_done_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -427,11 +349,28 @@ async def ch_link_done_callback(update: Update, context: ContextTypes.DEFAULT_TY
         return
     tg_uid = q.from_user.id
     pending = _pending_map(context).get(tg_uid)
+    if not pending:
+        rowp = await get_link_pending(tg_uid)
+        if rowp:
+            pending = {
+                "channel_chat_id": rowp["channel_chat_id"],
+                "channel_title": rowp.get("channel_title"),
+                "channel_username": rowp.get("channel_username"),
+            }
     channel_chat_id = pending["channel_chat_id"] if pending else None
     title = pending.get("channel_title") if pending else None
     username = pending.get("channel_username") if pending else None
 
-    ok, payload = await _try_finalize_link(update, context, user, pending, channel_chat_id, title, username)
+    ok, payload = await _try_finalize_link(
+        update,
+        context,
+        user,
+        pending,
+        channel_chat_id,
+        title,
+        username,
+        telegram_user_id=tg_uid,
+    )
     site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
     if ok:
         _pending_map(context).pop(tg_uid, None)
@@ -488,7 +427,14 @@ async def channel_forward_link_handler(update: Update, context: ContextTypes.DEF
         "channel_username": ch.username,
     }
     ok, payload = await _try_finalize_link(
-        update, context, user, pending, channel_chat_id, ch.title, ch.username
+        update,
+        context,
+        user,
+        pending,
+        channel_chat_id,
+        ch.title,
+        ch.username,
+        telegram_user_id=int(update.effective_user.id),
     )
     site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
     if ok:
@@ -517,8 +463,9 @@ async def toggle_autopost_handler(update: Update, context: ContextTypes.DEFAULT_
     row = await _row_for_user(int(user["id"]))
     if not row:
         site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
-        await update.message.reply_text(
-            "Сначала подключите канал — кнопка «📢 Подключить свой канал».",
+        await update.message.reply_html(
+            "Сначала подключите канал в <b>веб-приложении</b>: меню → «Мой канал в ленту» "
+            "(нужна подписка не «Бесплатный»).",
             reply_markup=main_keyboard(site, context.user_data.get("tg_ai_mode")),
         )
         raise ApplicationHandlerStop
@@ -555,8 +502,8 @@ async def toggle_channel_social_button_handler(update: Update, context: ContextT
     row = await _row_for_user(int(user["id"]))
     site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
     if not row:
-        await update.message.reply_text(
-            "Сначала подключите канал — кнопка «📢 Подключить свой канал».",
+        await update.message.reply_html(
+            "Сначала подключите канал в <b>веб-приложении</b>: меню → «Мой канал в ленту».",
             reply_markup=main_keyboard(site, context.user_data.get("tg_ai_mode")),
         )
         raise ApplicationHandlerStop
@@ -567,6 +514,15 @@ async def toggle_channel_social_button_handler(update: Update, context: ContextT
         new_val = False
     else:
         return
+    if new_val and not await user_can_use_channel_partner_social_button(int(user["id"])):
+        await update.message.reply_html(
+            "Кнопка «В соцсеть» с <b>вашей</b> партнёрской ссылкой доступна партнёрам магазина "
+            "(ссылка в партнёрке) и/или платной партнёрке приложения — настройте это на сайте.",
+            reply_markup=await main_keyboard_with_autopost(
+                site, context.user_data.get("tg_ai_mode"), int(user["id"])
+            ),
+        )
+        raise ApplicationHandlerStop
     try:
         await database.execute(
             sa.text(
@@ -581,9 +537,7 @@ async def toggle_channel_social_button_handler(update: Update, context: ContextT
         raise ApplicationHandlerStop
     kb = await main_keyboard_with_autopost(site, context.user_data.get("tg_ai_mode"), int(user["id"]))
     warn = ""
-    if new_val and not await _verify_bot_can_edit_channel_messages(
-        context.bot, int(row["channel_chat_id"])
-    ):
+    if new_val and not await _svc_verify_bot_can_edit_channel_messages(int(row["channel_chat_id"])):
         warn = (
             "\n\n⚠️ Нужно право бота <b>изменять сообщения</b> в канале — иначе кнопка не появится под постами."
         )
@@ -627,7 +581,9 @@ async def on_channel_post(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if not link:
         return
 
-    if link.get("channel_social_button_enabled"):
+    if link.get("channel_social_button_enabled") and await user_can_use_channel_partner_social_button(
+        int(link["user_id"])
+    ):
         await _attach_social_button_to_post(
             context.bot, chat_id, int(post.message_id), int(link["user_id"])
         )

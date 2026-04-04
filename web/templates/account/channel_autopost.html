@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Мой канал в ленту — NEUROFUNGI AI{% endblock %}
+{% block content %}
+<div class="neo-app-surface pt-20 pb-24 px-4 max-w-lg mx-auto">
+  <h1 class="text-xl font-semibold text-text mb-2">Мой канал в ленту</h1>
+  <p class="text-sm text-muted mb-4 leading-relaxed">
+    Посты из вашего Telegram-канала могут дублироваться в <b>ленту сообщества</b> от вашего профиля (текст и одно фото).
+    Кнопка «Войти в социальную сеть» под постами в канале ведёт на бота/приложение с <b>вашей партнёрской ссылкой</b> — если вы партнёр магазина (ссылка в партнёрке) и/или платной партнёрки приложения.
+  </p>
+
+  <div class="mb-6 p-4 rounded-xl border border-white/10 bg-white/[0.03] text-sm text-muted leading-relaxed prose prose-invert prose-sm max-w-none">
+    <div class="text-text [&_a]:text-gold [&_a]:underline">{{ instructions_html|safe }}</div>
+  </div>
+
+  {% if chlink_url %}
+  <div class="mb-6 flex flex-col gap-2">
+    <a href="{{ chlink_url }}" target="_blank" rel="noopener noreferrer" onclick="event.preventDefault(); if(typeof openTelegramDeepLink==='function'){openTelegramDeepLink('{{ chlink_url|e }}');} else { location.href='{{ chlink_url|e }}'; }" class="block w-full text-center px-4 py-3 rounded-xl bg-gradient-to-r from-cyan-500/20 to-gold/20 border border-cyan-500/30 text-text font-medium no-underline hover:border-cyan-400/50">Открыть инструкцию в боте Telegram</a>
+    <p class="text-xs text-muted">В боте появятся шаги и кнопка «Я подвязал»; можно переслать сообщение из канала.</p>
+  </div>
+  {% endif %}
+
+  {% if not tg_ok %}
+  <div class="mb-6 p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-100 text-sm">
+    Привяжите Telegram в кабинете — иначе проверка привязки канала к аккаунту из приложения не сработает.
+    <a href="/account/link" class="text-gold underline ml-1">Привязать</a>
+  </div>
+  {% endif %}
+
+  <div class="space-y-4 mb-8">
+    <button type="button" id="capVerifyBtn" class="w-full px-4 py-3 rounded-xl bg-gold/20 border border-gold/40 text-gold font-medium disabled:opacity-40" {% if not tg_ok %}disabled{% endif %}>Проверить привязку канала</button>
+    <p id="capVerifyMsg" class="text-sm text-muted min-h-[1.25em]"></p>
+
+    <div id="capToggles" class="space-y-4 {% if not ap_row %}opacity-40 pointer-events-none{% endif %}">
+      <div class="p-4 rounded-xl border border-white/10 bg-white/[0.02]">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <div class="text-sm font-medium text-text">Автопост в ленту</div>
+            <div class="text-xs text-muted mt-1">Дублировать новые посты канала в ленту сообщества</div>
+          </div>
+          <button type="button" id="capApToggle" class="relative w-12 h-7 rounded-full transition-colors {% if ap_row and ap_row.autopost_enabled %}bg-emerald-600/70{% else %}bg-white/15{% endif %}">
+            <span class="absolute top-1 left-1 w-5 h-5 rounded-full bg-white transition-transform {% if ap_row and ap_row.autopost_enabled %}translate-x-5{% endif %}" id="capApKnob"></span>
+          </button>
+        </div>
+      </div>
+
+      <div class="p-4 rounded-xl border border-white/10 bg-white/[0.02] {% if not partner_ok %}opacity-60{% endif %}">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <div class="text-sm font-medium text-text">Кнопка под постами в канале</div>
+            <div class="text-xs text-muted mt-1">«Войти в социальную сеть» с вашей реф-ссылкой (нужны права партнёра)</div>
+          </div>
+          <button type="button" id="capSocToggle" class="relative w-12 h-7 rounded-full transition-colors {% if ap_row and ap_row.channel_social_button_enabled %}bg-emerald-600/70{% else %}bg-white/15{% endif %} {% if not partner_ok %}cursor-not-allowed{% endif %}" {% if not partner_ok %}disabled title="Станьте партнёром магазина и/или платной партнёрки приложения"{% endif %}>
+            <span class="absolute top-1 left-1 w-5 h-5 rounded-full bg-white transition-transform {% if ap_row and ap_row.channel_social_button_enabled %}translate-x-5{% endif %}" id="capSocKnob"></span>
+          </button>
+        </div>
+        {% if not partner_ok %}
+        <p class="text-xs text-amber-200/90 mt-3">Укажите ссылку магазина в <a href="/referral" class="text-gold underline">партнёрке</a> и/или оформите подписку с партнёркой приложения — тогда ссылка на кнопке будет закреплять гостей за вами.</p>
+        {% elif preview_url %}
+        <p class="text-xs text-muted mt-3 break-all">Пример целевой ссылки: <a href="{{ preview_url|e }}" class="text-gold underline" target="_blank" rel="noopener">{{ preview_url }}</a></p>
+        {% endif %}
+        {% if ap_row and not can_edit_hint and partner_ok %}
+        <p class="text-xs text-amber-200/90 mt-2">Выдайте боту в канале право <b>изменять сообщения</b> — иначе Telegram не даст дописать кнопку к посту.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if ap_row %}
+  <p class="text-xs text-muted">Подключено: <span class="text-text font-mono">{{ ap_row.channel_title or ap_row.channel_username or ('#' ~ ap_row.channel_chat_id) }}</span></p>
+  {% if ap_row.channel_social_button_enabled and not partner_ok %}
+  <p class="text-xs text-amber-200/90 mt-2">Кнопка в канале сейчас не будет добавляться: нет статуса партнёра для персональной ссылки. Выключите тумблер выше или настройте партнёрку.</p>
+  {% endif %}
+  {% endif %}
+
+  <a href="/community" class="inline-block mt-6 text-sm text-gold hover:underline">← В ленту</a>
+</div>
+<script>
+(function(){
+  var apOn = {{ 'true' if ap_row and ap_row.autopost_enabled else 'false' }};
+  var socOn = {{ 'true' if ap_row and ap_row.channel_social_button_enabled else 'false' }};
+  var hasRow = {{ 'true' if ap_row else 'false' }};
+  var partnerOk = {{ 'true' if partner_ok else 'false' }};
+
+  function setMsg(el, t, ok) {
+    el.textContent = t || '';
+    el.className = 'text-sm min-h-[1.25em] ' + (ok === true ? 'text-emerald-300' : ok === false ? 'text-red-300' : 'text-muted');
+  }
+
+  document.getElementById('capVerifyBtn').addEventListener('click', async function() {
+    var msg = document.getElementById('capVerifyMsg');
+    setMsg(msg, 'Проверяем…', null);
+    try {
+      var r = await fetch('/account/channel-autopost/verify', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      var d = await r.json().catch(function() { return {}; });
+      if (d.ok) {
+        setMsg(msg, d.message || 'Готово.', true);
+        if (!d.already) location.reload();
+      } else {
+        setMsg(msg, d.message || d.error || 'Не удалось', false);
+      }
+    } catch (e) {
+      setMsg(msg, 'Сеть недоступна', false);
+    }
+  });
+
+  function paintAp() {
+    var b = document.getElementById('capApToggle');
+    var k = document.getElementById('capApKnob');
+    if (!b || !k) return;
+    b.classList.toggle('bg-emerald-600/70', apOn);
+    b.classList.toggle('bg-white/15', !apOn);
+    k.classList.toggle('translate-x-5', apOn);
+  }
+  function paintSoc() {
+    var b = document.getElementById('capSocToggle');
+    var k = document.getElementById('capSocKnob');
+    if (!b || !k) return;
+    b.classList.toggle('bg-emerald-600/70', socOn);
+    b.classList.toggle('bg-white/15', !socOn);
+    k.classList.toggle('translate-x-5', socOn);
+  }
+
+  document.getElementById('capApToggle').addEventListener('click', async function() {
+    if (!hasRow) return;
+    try {
+      var r = await fetch('/account/channel-autopost/toggle-autopost', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      var d = await r.json().catch(function() { return {}; });
+      if (r.ok && d.ok) { apOn = !!d.autopost_enabled; paintAp(); }
+    } catch (e) {}
+  });
+
+  document.getElementById('capSocToggle').addEventListener('click', async function() {
+    if (!hasRow || !partnerOk) return;
+    var next = !socOn;
+    try {
+      var r = await fetch('/account/channel-autopost/toggle-social', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: next })
+      });
+      var d = await r.json().catch(function() { return {}; });
+      if (r.ok && d.ok) {
+        socOn = !!d.social_enabled;
+        paintSoc();
+        if (d.warn) alert(d.warn);
+      } else if (d.message) alert(d.message);
+    } catch (e) {}
+  });
+})();
+</script>
+{% endblock %}

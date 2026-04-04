@@ -1218,6 +1218,17 @@ channel_autopost_log = sqlalchemy.Table(
     sqlalchemy.PrimaryKeyConstraint("channel_chat_id", "message_id"),
 )
 
+# Последний канал, куда пользователь добавил бота админом (для «Проверить» в /account)
+channel_autopost_link_pending = sqlalchemy.Table(
+    "channel_autopost_link_pending",
+    metadata,
+    sqlalchemy.Column("telegram_user_id", sqlalchemy.BigInteger, primary_key=True),
+    sqlalchemy.Column("channel_chat_id", sqlalchemy.BigInteger, nullable=False),
+    sqlalchemy.Column("channel_title", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("channel_username", sqlalchemy.String(255), nullable=True),
+    sqlalchemy.Column("updated_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
 liquidity_pool = sqlalchemy.Table(
     "liquidity_pool",
     metadata,

@@ -807,6 +807,14 @@ async def run_heavy_startup(app: FastAPI) -> None:
             logger.info("NFI Decimal withdraw address + requests (migrate_v50) OK")
         except Exception as e:
             logger.warning("migrate_v50 nfi_decimal_withdraw: %s", e)
+        try:
+            import migrate_v51_channel_autopost_link_pending as migrate_v51
+
+            for s in migrate_v51.STEPS:
+                await database.execute(s)
+            logger.info("channel_autopost_link_pending (migrate_v51) OK")
+        except Exception as e:
+            logger.warning("migrate_v51 channel_autopost_link_pending: %s", e)
 
         try:
             import migrate_v42_comment_layout_likes_replies as migrate_v42_comments

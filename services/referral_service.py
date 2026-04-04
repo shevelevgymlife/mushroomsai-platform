@@ -665,8 +665,9 @@ def default_social_app_entry_url() -> str:
 async def social_app_entry_url_for_channel_owner(user_id: int) -> str:
     """
     URL кнопки «войти в соцсеть» под постами канала владельца user_id.
-    Если у владельца задана реферальная ссылка магазина (referral_shop_url), в ссылку
-    добавляется его referral_code — как на странице /referral (бот ?start= или /login?ref=).
+    1) Партнёр магазина (referral_shop_url) — в ссылку referral_code, как на /referral.
+    2) Иначе платная партнёрка приложения (Старт+ и т.д.) — тот же ref в ?start= у бота.
+    3) Иначе общий вход без персонального кода.
     """
     from config import settings
 
@@ -674,15 +675,28 @@ async def social_app_entry_url_for_channel_owner(user_id: int) -> str:
     if not row:
         return default_social_app_entry_url()
 
-    if not (row.get("referral_shop_url") or "").strip():
+    bot_u = (settings.TELEGRAM_BOT_USERNAME or "").strip().lstrip("@")
+    site = (settings.SITE_URL or "").strip().rstrip("/") or "https://mushroomsai.ru"
+
+    shop_on = bool((row.get("referral_shop_url") or "").strip())
+    paid_app_partner = False
+    try:
+        from services.subscription_service import paid_subscription_for_referral_program
+        from services.shop_referral_hub import maxi_marketplace_can_bind_any_shop_url
+
+        paid_app_partner = await paid_subscription_for_referral_program(
+            int(user_id)
+        ) or await maxi_marketplace_can_bind_any_shop_url(int(user_id))
+    except Exception:
+        paid_app_partner = False
+
+    if not shop_on and not paid_app_partner:
         return default_social_app_entry_url()
 
     code = await invite_referral_code_for_sharing(int(user_id))
     if not code:
         return default_social_app_entry_url()
 
-    bot_u = (settings.TELEGRAM_BOT_USERNAME or "").strip().lstrip("@")
-    site = (settings.SITE_URL or "").strip().rstrip("/") or "https://mushroomsai.ru"
     if bot_u:
         return f"https://t.me/{bot_u}?start={code}"
     return f"{site}/login?ref={code}"
