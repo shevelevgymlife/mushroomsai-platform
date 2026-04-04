@@ -2332,6 +2332,9 @@ async def reorder_dashboard_blocks(request: Request):
                 .where(dashboard_blocks.c.block_key == block_key)
                 .values(position=i)
             )
+        from web.routes.user import invalidate_dashboard_blocks_cache
+
+        invalidate_dashboard_blocks_cache()
         return JSONResponse({"ok": True})
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
@@ -2357,6 +2360,9 @@ async def update_dashboard_block(
             .where(dashboard_blocks.c.block_key == block_key)
             .values(**vals)
         )
+        from web.routes.user import invalidate_dashboard_blocks_cache
+
+        invalidate_dashboard_blocks_cache()
         return JSONResponse({"ok": True})
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)

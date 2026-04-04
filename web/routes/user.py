@@ -1,5 +1,6 @@
 import json
 import os
+import time
 import uuid
 from datetime import date, datetime, timedelta
 from typing import Optional
@@ -155,11 +156,40 @@ async def _create_yookassa_redirect_for_channel(
     )
 
 
-async def compute_visible_blocks(user_id: int, plan: str) -> list[str]:
-    """Return list of block_keys visible for this user, respecting global settings and per-user overrides."""
+_dash_blocks_cache: tuple[float, list] | None = None
+_DASH_BLOCKS_TTL_SEC = 45.0
+
+
+async def _dashboard_blocks_rows_cached():
+    """Список блоков кабинета редко меняется — не дергаем БД на каждый клик по сайту."""
+    global _dash_blocks_cache
+
+    now = time.monotonic()
+    if _dash_blocks_cache is not None:
+        ts, rows = _dash_blocks_cache
+        if now - ts < _DASH_BLOCKS_TTL_SEC:
+            return rows
     blocks_raw = await database.fetch_all(
         dashboard_blocks.select().order_by(dashboard_blocks.c.position, dashboard_blocks.c.id)
     )
+    rows = list(blocks_raw)
+    _dash_blocks_cache = (now, rows)
+    return rows
+
+
+def invalidate_dashboard_blocks_cache() -> None:
+    global _dash_blocks_cache
+    _dash_blocks_cache = None
+
+
+async def compute_visible_blocks(
+    user_id: int,
+    plan: str,
+    *,
+    internal_exchange_enabled: bool | None = None,
+) -> list[str]:
+    """Return list of block_keys visible for this user, respecting global settings and per-user overrides."""
+    blocks_raw = await _dashboard_blocks_rows_cached()
     overrides_raw = await database.fetch_all(
         user_block_overrides.select().where(user_block_overrides.c.user_id == user_id)
     )
@@ -203,10 +233,13 @@ async def compute_visible_blocks(user_id: int, plan: str) -> list[str]:
             visible.append(key)
 
     try:
-        from services.internal_exchange_settings import is_internal_exchange_enabled
-
-        if not await is_internal_exchange_enabled():
+        if internal_exchange_enabled is False:
             visible = [k for k in visible if k != "internal_exchange"]
+        elif internal_exchange_enabled is None:
+            from services.internal_exchange_settings import is_internal_exchange_enabled
+
+            if not await is_internal_exchange_enabled():
+                visible = [k for k in visible if k != "internal_exchange"]
     except Exception:
         pass
 

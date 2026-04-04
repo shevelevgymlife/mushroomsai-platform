@@ -52,7 +52,14 @@ logger = logging.getLogger(__name__)
 class AuthUserPrimeMiddleware(BaseHTTPMiddleware):
     """Один раз за запрос загружает пользователя в request.state — тема/фон в Jinja на всех страницах."""
 
+    _LIGHT_PATH_PREFIXES = ("/static/", "/media/")
+    _LIGHT_PATH_EXACT = frozenset({"/health", "/healthz", "/favicon.ico", "/robots.txt", "/sitemap.xml"})
+
     async def dispatch(self, request: Request, call_next):
+        p = request.url.path or ""
+        if p in self._LIGHT_PATH_EXACT or p.startswith(self._LIGHT_PATH_PREFIXES):
+            request.state.visible_block_keys = []
+            return await call_next(request)
         try:
             user = await get_user_from_request(request)
             request.state.visible_block_keys = []
@@ -62,7 +69,10 @@ class AuthUserPrimeMiddleware(BaseHTTPMiddleware):
 
                     uid = int(user.get("primary_user_id") or user["id"])
                     plan = (user.get("effective_subscription_plan") or user.get("subscription_plan") or "free")
-                    request.state.visible_block_keys = await compute_visible_blocks(uid, plan)
+                    ix = getattr(request.state, "internal_exchange_enabled", True)
+                    request.state.visible_block_keys = await compute_visible_blocks(
+                        uid, plan, internal_exchange_enabled=bool(ix)
+                    )
                 except Exception:
                     request.state.visible_block_keys = []
         except Exception:

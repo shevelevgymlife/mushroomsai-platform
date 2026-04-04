@@ -8,6 +8,7 @@ import copy
 import json
 import logging
 import re
+import time
 from datetime import timedelta
 from typing import Any
 
@@ -15,6 +16,10 @@ from db.database import database
 from db.models import platform_settings
 
 logger = logging.getLogger(__name__)
+
+# Кэш каталога тарифов: снимает лишние чтения platform_settings на каждый HTTP-запрос.
+_EFFECTIVE_PLANS_CACHE_TTL_SEC = 60.0
+_effective_plans_cache: tuple[float, dict[str, dict[str, Any]]] | None = None
 
 SUBSCRIPTION_OVERRIDES_KEY = "subscription_plans_overrides"
 PLAN_ORDER_KEY = "_plan_order"
@@ -306,10 +311,23 @@ async def save_subscription_overrides_raw(data: dict[str, Any]) -> None:
         )
     else:
         await database.execute(platform_settings.insert().values(key=SUBSCRIPTION_OVERRIDES_KEY, value=raw))
+    invalidate_effective_plans_cache()
+
+
+def invalidate_effective_plans_cache() -> None:
+    """Сброс после сохранения тарифов в админке (и для тестов)."""
+    global _effective_plans_cache
+    _effective_plans_cache = None
 
 
 async def get_effective_plans() -> dict[str, dict[str, Any]]:
     """Полные карточки тарифов с учётом админских переопределений и порядка _plan_order."""
+    global _effective_plans_cache
+    now = time.monotonic()
+    if _effective_plans_cache is not None:
+        ts, cached = _effective_plans_cache
+        if now - ts < _EFFECTIVE_PLANS_CACHE_TTL_SEC:
+            return copy.deepcopy(cached)
     raw = await load_subscription_overrides_raw()
     order = extract_plan_order(raw)
     out: dict[str, dict[str, Any]] = {}
@@ -324,6 +342,7 @@ async def get_effective_plans() -> dict[str, dict[str, Any]]:
         merged.setdefault("billing_period_value", 1)
         merged.setdefault("access_tier", (DEFAULT_PLANS.get(pk) or {}).get("access_tier") or ("free" if pk == "free" else "start"))
         out[pk] = merged
+    _effective_plans_cache = (now, copy.deepcopy(out))
     return out
 
 
