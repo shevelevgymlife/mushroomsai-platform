@@ -14,7 +14,7 @@ from telegram.ext import (
     filters,
 )
 
-from bot.handlers.start import BTN_COMMUNITY_POST, BTN_PARTNER, ensure_user, main_keyboard
+from bot.handlers.start import BTN_COMMUNITY_POST, BTN_PARTNER, BTN_REFRESH_BOT, ensure_user, main_keyboard
 from bot.handlers.channel_autopost import main_keyboard_with_autopost
 from config import settings
 from services.channel_ingest_save_image import save_channel_ingest_image
@@ -98,6 +98,17 @@ def _kb_confirm_step() -> InlineKeyboardMarkup:
     )
 
 
+async def _refresh_bot_exit_wizard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    if not update.message:
+        return False
+    if (update.message.text or "").strip() != BTN_REFRESH_BOT:
+        return False
+    from bot.handlers.bot_refresh import execute_bot_refresh
+
+    await execute_bot_refresh(update, context)
+    return True
+
+
 async def _reject_menu_button_during_wizard(
     update: Update,
     reply_markup: InlineKeyboardMarkup,
@@ -173,6 +184,8 @@ async def start_wizard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 async def receive_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not update.message:
         return CP_TITLE
+    if await _refresh_bot_exit_wizard(update, context):
+        return ConversationHandler.END
     if await _reject_menu_button_during_wizard(update, _wizard_exit_markup()):
         return CP_TITLE
     t = (update.message.text or "").strip()
@@ -197,6 +210,8 @@ async def receive_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 async def receive_body(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not update.message:
         return CP_BODY
+    if await _refresh_bot_exit_wizard(update, context):
+        return ConversationHandler.END
     if await _reject_menu_button_during_wizard(update, _wizard_exit_markup()):
         return CP_BODY
     t = (update.message.text or "").strip()
@@ -218,6 +233,8 @@ async def receive_body(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
 async def wrong_in_photo_step(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if update.message:
+        if await _refresh_bot_exit_wizard(update, context):
+            return ConversationHandler.END
         if await _reject_menu_button_during_wizard(update, _kb_photo_step()):
             return CP_PHOTO
         await update.message.reply_text(
@@ -373,6 +390,8 @@ async def exit_to_main_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 async def cp_confirm_stray_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not update.message:
         return CP_CONFIRM
+    if await _refresh_bot_exit_wizard(update, context):
+        return ConversationHandler.END
     if await _reject_menu_button_during_wizard(update, _kb_confirm_step()):
         return CP_CONFIRM
     await update.message.reply_text(

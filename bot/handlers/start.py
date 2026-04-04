@@ -25,6 +25,7 @@ BTN_COMMUNITY_POST = "📤 Пост в сообщество"
 # Автопост из личного Telegram-канала в ленту сообщества
 BTN_PARTNER = "🤝 Стать партнёром"
 BTN_SUBSCRIBE = "💳 Подписка"
+BTN_REFRESH_BOT = "🔄 Обновить бот"
 
 
 async def ensure_user(tg_user) -> dict | None:
@@ -139,11 +140,12 @@ def main_keyboard(
     if hub_btn is not None:
         keyboard.append([hub_btn, KeyboardButton(BTN_PARTNER)])
         keyboard.append([KeyboardButton(BTN_SUBSCRIBE), KeyboardButton("🌍 Веб версия")])
-        keyboard.append([KeyboardButton("🔒 Безопасность"), KeyboardButton("🆘 Тех. поддержка")])
+        keyboard.append([KeyboardButton("🔒 Безопасность"), KeyboardButton(BTN_REFRESH_BOT)])
+        keyboard.append([KeyboardButton("🆘 Тех. поддержка")])
     else:
         keyboard.append([KeyboardButton(BTN_PARTNER), KeyboardButton(BTN_SUBSCRIBE)])
         keyboard.append([KeyboardButton("🌍 Веб версия"), KeyboardButton("🔒 Безопасность")])
-        keyboard.append([KeyboardButton("🆘 Тех. поддержка")])
+        keyboard.append([KeyboardButton("🆘 Тех. поддержка"), KeyboardButton(BTN_REFRESH_BOT)])
 
     if extra_rows:
         keyboard.extend(list(extra_rows))

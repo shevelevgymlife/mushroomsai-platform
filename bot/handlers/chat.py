@@ -95,6 +95,7 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         BTN_AI,
         BTN_AI_EXIT,
         BTN_COMMUNITY_POST,
+        BTN_REFRESH_BOT,
     )
     from services.referral_shop_prefs import TG_BTN_SHOP_MARKETPLACE, TG_BTN_SHOP_SIMPLE
     from services.closed_telegram_access import (
@@ -118,6 +119,7 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         TG_BTN_CLOSED_CHANNEL,
         TG_BTN_CLOSED_GROUP,
         TG_BTN_CLOSED_CONSULT,
+        BTN_REFRESH_BOT,
     ):
         return
 
