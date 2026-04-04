@@ -202,11 +202,26 @@
     window.location.href = u;
   }
 
+  /** Любая t.me-ссылка (в т.ч. с ?start= и рефкодом) из бургера — Mini App или браузер */
+  function openTelegramDeepLink(url) {
+    if (!url || typeof url !== "string") return;
+    closeAppGlobalDrawer();
+    var tw = window.Telegram && window.Telegram.WebApp;
+    if (tw && typeof tw.openTelegramLink === "function") {
+      try {
+        tw.openTelegramLink(url);
+        return;
+      } catch (e) {}
+    }
+    window.location.href = url;
+  }
+
   window.closeAppGlobalDrawer = closeAppGlobalDrawer;
   window.openAppGlobalDrawer = openAppGlobalDrawer;
   window.toggleAppGlobalDrawer = toggleAppGlobalDrawer;
   window.refreshFreeAiDrawerStatus = refreshFreeAiDrawerStatus;
   window.openMainTelegramBot = openMainTelegramBot;
+  window.openTelegramDeepLink = openTelegramDeepLink;
   window.__appMenuClick = function () {
     toggleAppGlobalDrawer();
   };

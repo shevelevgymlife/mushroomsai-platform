@@ -44,6 +44,9 @@
   </div>
   {% endif %}
   <div class="ig-drawer-scroll">
+    {% if user.get('tg_closed_hub_url') %}
+    <a href="{{ user.tg_closed_hub_url }}" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="event.preventDefault();openTelegramDeepLink(this.getAttribute('data-tg-hub'));return false;" data-tg-hub="{{ user.tg_closed_hub_url|e }}" style="text-decoration:none" role="button"><span class="e">{{ ico('send') }}</span><span class="lbl">TG - канал/группа/чат</span></a>
+    {% endif %}
     {% if not is_locked_free %}
     {% if drawer_on('profile') == '1' %}
     <a href="/community/profile/{{ eff_uid|int }}" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('user') }}</span><span class="lbl">Мой профиль</span></a>

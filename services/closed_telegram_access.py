@@ -18,6 +18,9 @@ logger = logging.getLogger(__name__)
 
 CONFIG_KEY = "closed_telegram_access_config"
 
+# Deep link: ?start=cthub_<referral_code> — сразу подменю канал/группа/чат (код как на /referral).
+CLOSED_HUB_DEEPLINK_PREFIX = "cthub_"
+
 # Подписи кнопок главного бота (совпадают с bot/handlers/closed_telegram.py)
 TG_BTN_CLOSED_HUB = "📂 Канал/группа/чат"
 TG_BTN_CLOSED_BACK = "◀️ Главное меню"
@@ -110,6 +113,23 @@ def normalize_closed_telegram_config(raw: dict[str, Any] | None) -> dict[str, An
         elif k == "manual_policies":
             out[k] = _normalize_manual_policies(v)
     return out
+
+
+async def tg_closed_hub_deeplink_for_user(user_id: int) -> str:
+    """
+    Ссылка на главного бота с рефкодом invite_referral_code_for_sharing (как ref_link на /referral)
+    и префиксом cthub_, чтобы в /start открылось подменю трёх закрытых ресурсов.
+    """
+    from config import settings
+    from services.referral_service import default_social_app_entry_url, invite_referral_code_for_sharing
+
+    bot_u = (settings.TELEGRAM_BOT_USERNAME or "").strip().lstrip("@")
+    if not bot_u:
+        return default_social_app_entry_url()
+    code = await invite_referral_code_for_sharing(int(user_id))
+    if not code:
+        return f"https://t.me/{bot_u}"
+    return f"https://t.me/{bot_u}?start={CLOSED_HUB_DEEPLINK_PREFIX}{code}"
 
 
 async def load_closed_telegram_config() -> dict[str, Any]:

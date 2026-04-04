@@ -23,6 +23,19 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
 
 
+async def _attach_tg_closed_hub_url(u: dict) -> None:
+    uid = u.get("id")
+    if uid is None:
+        u["tg_closed_hub_url"] = ""
+        return
+    try:
+        from services.closed_telegram_access import tg_closed_hub_deeplink_for_user
+
+        u["tg_closed_hub_url"] = await tg_closed_hub_deeplink_for_user(int(uid))
+    except Exception:
+        u["tg_closed_hub_url"] = ""
+
+
 def create_access_token(user_id: int) -> str:
     expire = datetime.utcnow() + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
     data = {"sub": str(user_id), "exp": expire}
@@ -105,6 +118,7 @@ async def attach_subscription_effective(u: dict) -> None:
             await attach_closed_telegram_to_user(u)
         except Exception:
             pass
+        await _attach_tg_closed_hub_url(u)
         return
     now = datetime.utcnow()
     tu = row.get("start_trial_until")
@@ -219,6 +233,7 @@ async def attach_subscription_effective(u: dict) -> None:
         await attach_closed_telegram_to_user(u)
     except Exception:
         pass
+    await _attach_tg_closed_hub_url(u)
 
 
 async def get_user_from_request(request) -> Optional[dict]:

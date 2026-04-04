@@ -63,6 +63,23 @@ async def closed_telegram_hub_handler(update: Update, context: ContextTypes.DEFA
     )
 
 
+async def send_closed_telegram_hub_from_start(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, _user: dict
+) -> None:
+    """То же подменю трёх ресурсов, что по кнопке «Канал/группа/чат», после deep link cthub_."""
+    context.user_data["tg_ai_mode"] = False
+    if not update.message:
+        return
+    tg_user = update.effective_user
+    fn = (tg_user.first_name or "").strip() if tg_user else ""
+    greet = f"{fn}, " if fn else ""
+    await update.message.reply_text(
+        f"📂 <b>TG: канал, группа, чат</b>\n\n{greet}выберите ресурс ниже — по подписке и правилам платформы.",
+        parse_mode="HTML",
+        reply_markup=closed_telegram_submenu_markup(),
+    )
+
+
 async def closed_telegram_back_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     context.user_data["tg_ai_mode"] = False
     u = await ensure_user_or_blocked_reply(update)

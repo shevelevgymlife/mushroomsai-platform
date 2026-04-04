@@ -194,6 +194,27 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await sync_closed_telegram_after_bot_identity(user)
             await subscribe_menu_handler(update, context)
             return
+        from services.closed_telegram_access import CLOSED_HUB_DEEPLINK_PREFIX
+
+        _hp = CLOSED_HUB_DEEPLINK_PREFIX
+        if len(ref_code) >= len(_hp) and ref_code[: len(_hp)].lower() == _hp.lower():
+            inner = ref_code[len(_hp) :].strip()
+            ucode = str(user.get("referral_code") or "").strip().upper()
+            if inner and inner.upper() != ucode:
+                from services.referral_service import process_referral
+
+                await process_referral(user["id"], inner)
+            try:
+                from services.referral_service import apply_default_referrer_if_absent
+
+                await apply_default_referrer_if_absent(int(user["id"]))
+            except Exception:
+                pass
+            await sync_closed_telegram_after_bot_identity(user)
+            from bot.handlers.closed_telegram import send_closed_telegram_hub_from_start
+
+            await send_closed_telegram_hub_from_start(update, context, user)
+            return
         if ref_code and ref_code != user.get("referral_code"):
             from services.referral_service import process_referral
             await process_referral(user["id"], ref_code)
