@@ -41,6 +41,9 @@ def template_context_for_request(request: Request, extra: dict[str, Any] | None 
     ctx.setdefault(
         "links_clickable_enabled", getattr(request.state, "links_clickable_enabled", True)
     )
+    ctx.setdefault(
+        "internal_exchange_enabled", getattr(request.state, "internal_exchange_enabled", True)
+    )
     ujson = (user.get("notification_prefs_json") if user and isinstance(user, dict) else None)
     ctx.setdefault("notification_prefs", merge_prefs(ujson))
     # Global dashboard block visibility (used by burger drawer across all pages)
@@ -103,6 +106,10 @@ class Jinja2Templates(_Jinja2Templates):
             context.setdefault("video_calls_enabled", getattr(request.state, "video_calls_enabled", True))
             context.setdefault(
                 "links_clickable_enabled", getattr(request.state, "links_clickable_enabled", True)
+            )
+            context.setdefault(
+                "internal_exchange_enabled",
+                getattr(request.state, "internal_exchange_enabled", True),
             )
             ujson = (user.get("notification_prefs_json") if user and isinstance(user, dict) else None)
             context.setdefault("notification_prefs", merge_prefs(ujson))
