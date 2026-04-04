@@ -334,13 +334,13 @@ def _build_prompt_text(*, include_weekly_nudge: bool, prompt_index: int) -> str:
     site = (settings.SITE_URL or "").rstrip("/") or "https://mushroomsai.ru"
     results_url = f"{site}/account/wellness-results"
     base = (
-        "Привет. Это NeuroFungi AI — продолжаем дневник: и фунготерапия как самонаблюдение, и опора на КПТ и разговор в провокативном, но уважительном ключе "
-        "(ответственность за свои реакции и шаги, а не «виноваты другие»).\n\n"
-        "Коротко ответьте (можно тезисно), а если хотите — развёрнуто:\n"
-        "• Что сегодня с телом и настроением (шкала 1–10 ок)?\n"
-        "• Какие грибы / связки, доза, время суток?\n"
-        "• Какая мысль или триггер сегодня зацепила сильнее всего? Что вы с этим делаете?\n"
-        "• Насколько ваши действия сегодня ведут к той жизни, которую вы выбираете — а не к автопилоту старых программ?\n\n"
+        "Привет, это я — NeuroFungi AI, пишу как подруга в переписке 🙂 Продолжаем дневник: фунготерапия как самонаблюдение + мягкая КПТ и разговор «на равных» "
+        "(ты выбираешь реакции и шаги, без обвинений себя и других).\n\n"
+        "Сегодня хочу спросить по-новому (ответь как удобно — коротко или развёрнуто):\n"
+        "• Что сегодня с телом и настроением (если хочешь — шкала 1–10)?\n"
+        "• Грибы / связки, доза, время — если было что отметить.\n"
+        "• Какая мысль или триггер сегодня зацепил сильнее всего? Что ты с этим делаешь?\n"
+        "• Насколько твои действия сегодня ведут к той жизни, которую ты выбираешь, а не к автопилоту старых программ?\n\n"
         "📋 Чтобы графики в «Мои результаты» были полнее, по возможности в том же ответе отметь (шкалы 0–10, где не знаешь — прочерк):\n"
         "Психика: тревога, настроение, энергия, концентрация, качество сна.\n"
         "Физиология: усталость, напряжение в теле, либидо, аппетит.\n"
@@ -415,6 +415,22 @@ async def _compose_coach_message_body(
     except Exception:
         logger.debug("wellness: therapy context for coach skipped", exc_info=True)
 
+    recent_ai_prompt_excerpts: list[str] = []
+    try:
+        prev_rows = await database.fetch_all(
+            wellness_journal_entries.select()
+            .where(wellness_journal_entries.c.user_id == int(notify_uid))
+            .where(wellness_journal_entries.c.role == "ai_prompt")
+            .order_by(wellness_journal_entries.c.created_at.desc())
+            .limit(10)
+        )
+        for pr in prev_rows:
+            raw_p = (pr.get("raw_text") or "").strip()
+            if raw_p:
+                recent_ai_prompt_excerpts.append(raw_p[:650])
+    except Exception:
+        logger.debug("wellness: recent ai_prompt fetch skipped", exc_info=True)
+
     ai_body = await generate_wellness_coach_message(
         user_name=str(uname),
         thread_snippets=thread,
@@ -422,6 +438,7 @@ async def _compose_coach_message_body(
         stats_summary=stats,
         prompt_index=prompt_index,
         therapy_context=therapy_context,
+        recent_ai_prompt_excerpts=recent_ai_prompt_excerpts,
     )
     if ai_body:
         if not ai_body.lstrip().startswith("🍄"):

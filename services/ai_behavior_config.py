@@ -103,6 +103,14 @@ AI_BEHAVIOR_ASPECTS: list[tuple[str, str, str]] = [
 
 ASPECT_KEYS = frozenset(k for k, _, _ in AI_BEHAVIOR_ASPECTS)
 
+# Если в админке поле «Кто ты» пустое — подмешиваем дружелюбный дефолт (можно переопределить в AI → сценарии).
+TELEGRAM_DM_DEFAULT_ROLE_PREAMBLE = (
+    "Ты — NeuroFungi AI, девушка: общаешься в личке как близкая подруга — тепло, на «ты», по-человечески, без канцелярита. "
+    "Помни контекст переписки и отвечай с учётом того, о чём вы уже говорили. "
+    "По грибам и дозам опирайся только на обучающие материалы в системном промпте; не выдумывай факты. "
+    "Не ставь диагнозы; фунготерапия — в образовательном ключе."
+)
+
 _DEFAULT_TEMPLATE: dict[str, Any] = {
     "enabled": True,
     "refuse_conversation": False,
@@ -391,6 +399,8 @@ async def build_addon_for_aspects(aspect_keys: list[str], user_id: int | None) -
     any_disabled = False
     for key in aspect_keys:
         cfg = await get_merged_behavior_config(key, user_id)
+        if key == "telegram_dm_ai" and not (cfg.get("role_preamble") or "").strip():
+            cfg = normalize_behavior_config(deep_merge_behavior(cfg, {"role_preamble": TELEGRAM_DM_DEFAULT_ROLE_PREAMBLE}))
         if not cfg.get("enabled", True):
             any_disabled = True
             continue
