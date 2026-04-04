@@ -364,6 +364,45 @@ def build_stored_profile_json(merged_metrics: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def build_memo_row_for_key(key: str) -> dict[str, Any] | None:
+    """Одна строка памятки по ключу из KB (без персональных ролей из профиля)."""
+    if key not in MUSHROOMS:
+        return None
+    spec = MUSHROOMS[key]
+    memo = MUSHROOM_PLAN_MEMO.get(key, {})
+    dose_line = (spec.get("dose_hint") or "").strip()
+    if memo.get("dose_addendum"):
+        dose_line = (dose_line + " " + memo["dose_addendum"]).strip()
+    return {
+        "key": key,
+        "name_ru": spec["name_ru"],
+        "latin": spec["latin"],
+        "core": spec["core"],
+        "indications": ", ".join(spec.get("indications") or []),
+        "role_for_you": "",
+        "dose_orientation": dose_line,
+        "how_apply": memo.get("how_apply", ""),
+        "course_weeks": memo.get("course_weeks", ""),
+        "contra": spec.get("contra", ""),
+    }
+
+
+def build_merged_memo_rows(stored: dict[str, Any] | None) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Все грибы из справочника + персональные роли из профиля. Возвращает (полный список, только строки профиля)."""
+    prof_rows = build_memo_rows_from_profile(stored) if stored else []
+    prof_by_key = {str(r["key"]): r for r in prof_rows}
+    merged: list[dict[str, Any]] = []
+    for key in MUSHROOMS.keys():
+        base = build_memo_row_for_key(key)
+        if not base:
+            continue
+        pr = prof_by_key.get(key)
+        if pr:
+            base["role_for_you"] = pr.get("role_for_you") or ""
+        merged.append(base)
+    return merged, prof_rows
+
+
 def build_memo_rows_from_profile(stored: dict[str, Any]) -> list[dict[str, Any]]:
     """Строки для таблицы «личная памятка» по сохранённому или эфемерному профилю."""
     roles: dict[str, list[str]] = defaultdict(list)

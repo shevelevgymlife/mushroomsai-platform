@@ -4,14 +4,38 @@
 {% include "components/wellness_dashboard_css.html" %}
 {% endblock %}
 {% block content %}
-<div class="accneo-wrap wd-root wd-user-shell wd-ios wdx-shell">
+<div class="accneo-wrap wd-root wd-user-shell wd-ios wdx-shell wdx-results-page">
   <div class="wdx-topline">
-    <span class="wd-personal-badge">Мои данные</span>
+    <span class="wd-personal-badge">NEUROFUNGI AI</span>
     <a href="/account/wellness-personal-plan" class="wdx-plan-link">Памятка →</a>
   </div>
-  <div class="wdx-title-row">
+  <header class="wdx-results-hero">
     <h1>Моё состояние</h1>
-  </div>
+    <p>Дневник и шкалы по вашим ответам. Ориентиры самонаблюдения, не медицинский диагноз.</p>
+  </header>
+
+  {% if agg %}
+  <section class="wdx-results-bento" aria-label="Сводка по дневнику">
+    <article class="wdx-results-bento-main">
+      <span class="wdx-results-bento-k">Ответов
+        <button type="button" class="wdx-inline-help" data-wd-help="Ответы в дневнике" data-wd-help-text="Число ваших ответов на опросы дневника (без служебных записей). Чем больше точек, тем богаче графики и ориентиры.">?</button>
+      </span>
+      <span class="wdx-results-bento-v">{{ agg.reply_count or 0 }}</span>
+    </article>
+    <article class="wdx-results-bento-side wdx-results-bento-side--teal">
+      <span class="wdx-results-bento-k">Среднее настроение
+        <button type="button" class="wdx-inline-help" data-wd-help="Среднее настроение" data-wd-help-text="Среднее значение шкалы настроения 0–10 по всем ответам дневника, где она указана. Один день не решает — смотрите динамику.">?</button>
+      </span>
+      <span class="wdx-results-bento-v">{% if agg.mood_avg is not none %}{{ agg.mood_avg }}{% else %}—{% endif %}</span>
+    </article>
+    <article class="wdx-results-bento-side wdx-results-bento-side--violet">
+      <span class="wdx-results-bento-k">Средняя энергия
+        <button type="button" class="wdx-inline-help" data-wd-help="Средняя энергия" data-wd-help-text="Среднее по шкале энергии 0–10 из ответов дневника. Показывает общий ресурс, не диагноз утомляемости.">?</button>
+      </span>
+      <span class="wdx-results-bento-v">{% if agg.energy_avg is not none %}{{ agg.energy_avg }}{% else %}—{% endif %}</span>
+    </article>
+  </section>
+  {% endif %}
 
   {% if request.query_params.get('saved') %}
   <div class="wdx-alert">Сохранено</div>
@@ -42,9 +66,9 @@
   </section>
   {% endif %}
 
-  <section class="wdx-actions">
-    <a href="/account/wellness-personal-plan" class="wdx-btn">Личная памятка</a>
-    <a href="/account/wellness-results/pdf" class="wdx-btn wdx-btn--soft">Скачать PDF</a>
+  <section class="wdx-actions wdx-actions--results">
+    <a href="/account/wellness-personal-plan" class="wdx-btn wdx-btn--soft">Личная памятка</a>
+    <a href="/account/wellness-results/pdf" class="wdx-btn">Скачать PDF</a>
   </section>
 
   <details class="wdx-settings">

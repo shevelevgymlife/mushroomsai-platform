@@ -5,10 +5,12 @@ import json
 from datetime import datetime, timezone
 from typing import Any
 
+import sqlalchemy as sa
+
 from db.database import database
 from db.models import wellness_journal_entries
 from services.mushroom_therapy_kb import (
-    build_memo_rows_from_profile,
+    build_merged_memo_rows,
     build_stored_profile_json,
     format_normalized_metrics_ru,
 )
@@ -311,6 +313,50 @@ async def _fetch_plan_goals_from_journal(user_id: int) -> dict[str, Any]:
     return out
 
 
+def _build_goal_narrative(goals: dict[str, Any]) -> str:
+    """Текст блока «цель + интеграция» (образовательно, не назначение)."""
+    chunks: list[str] = []
+    lg = (goals.get("life_goal_short") or "").strip()
+    if lg:
+        chunks.append(f"Ваш сформулированный ориентир: {lg}")
+    mot = (goals.get("motivation_why_mushrooms") or "").strip()
+    if mot:
+        chunks.append(f"Мотивация к фунготерапии (из ответов): {mot}")
+    trig = (goals.get("trigger_or_distortion") or "").strip()
+    if trig:
+        chunks.append(f"Триггеры / искажения, о которых вы писали: {trig}")
+    phys = goals.get("physical_symptoms") or []
+    ment = goals.get("mental_symptoms") or []
+    if isinstance(phys, list) and phys:
+        chunks.append("Соматические отметки: " + "; ".join(str(x) for x in phys[:6] if x))
+    if isinstance(ment, list) and ment:
+        chunks.append("Психоэмоциональные отметки: " + "; ".join(str(x) for x in ment[:6] if x))
+    summ = (goals.get("free_summary") or "").strip()
+    if summ:
+        chunks.append(summ[:520] + ("…" if len(summ) > 520 else ""))
+    chunks.append(
+        "Интеграция: фунготерапия в образовательном смысле лучше сочетается с режимом сна, нагрузкой, питанием и при необходимости "
+        "психотерапией или телесными практиками — конкретный план согласуйте с врачом и специалистом по фунготерапии."
+    )
+    return "\n\n".join(chunks) if len(chunks) > 1 else (chunks[0] if chunks else "")
+
+
+def _pick_priority_mushroom_key(
+    profile_row_keys: list[str],
+    usage_counts: dict[str, int],
+) -> str | None:
+    if not usage_counts:
+        return profile_row_keys[0] if profile_row_keys else None
+    max_u = max(int(v or 0) for v in usage_counts.values())
+    if max_u <= 0:
+        return profile_row_keys[0] if profile_row_keys else None
+    at_max = [k for k, v in usage_counts.items() if int(v or 0) == max_u]
+    for k in profile_row_keys:
+        if k in at_max:
+            return k
+    return at_max[0]
+
+
 def _snapshot_metrics_nonempty(m: dict[str, Any]) -> bool:
     for v in m.values():
         if v is None or v == "" or v == []:
@@ -341,7 +387,7 @@ async def build_wellness_personal_plan_context(user_id: int) -> dict[str, Any]:
     if not segment:
         segment = await compute_segment_for_user(uid)
 
-    memo_rows = build_memo_rows_from_profile(prof) if prof else []
+    memo_rows, profile_memo_rows = build_merged_memo_rows(prof if isinstance(prof, dict) else None)
     if memo_rows:
         try:
             dmap = await dose_text_map_for_mushroom_keys([str(r["key"]) for r in memo_rows])
@@ -365,6 +411,12 @@ async def build_wellness_personal_plan_context(user_id: int) -> dict[str, Any]:
     )
     usage_counts = await _mushroom_usage_counts(uid, memo_cards)
     usage_max = max([int(v or 0) for v in usage_counts.values()] + [1])
+    profile_mushroom_key_order = [str(r["key"]) for r in profile_memo_rows]
+    priority_mushroom_key = _pick_priority_mushroom_key(profile_mushroom_key_order, usage_counts)
+    goal_narrative = _build_goal_narrative(goals)
+    has_personalization = bool(profile_memo_rows)
+
+    memo_by_key = {str(r.get("key") or ""): r for r in memo_rows}
 
     science_table: list[dict[str, Any]] = []
     training_source_cards: list[dict[str, Any]] = []
@@ -403,12 +455,20 @@ async def build_wellness_personal_plan_context(user_id: int) -> dict[str, Any]:
                 "latin": card.get("latin"),
                 "image_url": card.get("training_image_url"),
                 "function_line": card["effect_line"],
-                "indications": ", ".join(card.get("who_for") or []) or "По текущему профилю",
+                "core_line": _compact_text(str(card.get("core_short") or ""), 200),
+                "indications": ", ".join(card.get("who_for") or [])
+                or str((memo_by_key.get(key) or {}).get("indications") or "По справочнику платформы"),
                 "biochemistry_line": card["biochemistry_line"],
                 "pharmacodynamics_line": card["pharmacodynamics_line"],
                 "intake_line": card.get("dose_short") or card.get("how_apply_short") or "По сопровождению",
+                "intake_full": card.get("dose_full") or "",
+                "how_apply_full": card.get("how_apply_full") or "",
+                "course_weeks": card.get("course_weeks") or "",
+                "contra_full": card.get("contra_full") or "",
+                "role_for_you": str((memo_by_key.get(key) or {}).get("role_for_you") or ""),
                 "usage_count": cnt,
                 "usage_pct": card["usage_pct"],
+                "is_priority": bool(priority_mushroom_key and key == priority_mushroom_key),
             }
         )
 
@@ -445,6 +505,10 @@ async def build_wellness_personal_plan_context(user_id: int) -> dict[str, Any]:
         "survey_mushroom_usage_max": usage_max,
         "goals": goals,
         "latest_ai_recommendation": rec,
-        "has_plan_content": bool(memo_rows),
+        "has_plan_content": bool(profile_memo_rows),
+        "has_personalization": has_personalization,
+        "priority_mushroom_key": priority_mushroom_key,
+        "goal_narrative": goal_narrative,
+        "profile_memo_row_count": len(profile_memo_rows),
         "wellness_automation": automation,
     }

@@ -5,41 +5,55 @@
 {% endblock %}
 {% block content %}
 {% from "components/stroke_icons.html" import ico %}
-<div class="accneo-wrap wd-root wd-user-shell wd-ios wdx-shell">
+<div class="accneo-wrap wd-root wd-user-shell wd-ios wdx-shell wdx-memo-page">
   <div class="wdx-topline">
     <span class="wd-personal-badge">NEUROFUNGI AI</span>
     <a href="/account/wellness-results" class="wdx-plan-link">Мои результаты →</a>
   </div>
-  <div class="wdx-title-row">
-    <h1>Ориентиры по фунготерапии</h1>
-  </div>
 
-  <section class="wdx-orientation-card">
+  <header class="wdx-memo-hero">
+    <div class="wdx-memo-hero-inner">
+      <p class="wdx-memo-hero-k">Ориентиры по фунготерапии</p>
+      <h1 class="wdx-memo-hero-title">{{ cluster_label or psychotype_label or 'Комбинированный / стабилизация' }}</h1>
+      <p class="wdx-memo-hero-sub">Образовательный ориентир. Не медицинское назначение.</p>
+      {% if profile_updated_at_utc %}
+      <p class="wdx-memo-hero-upd">Обновлено {{ profile_updated_at_utc }}</p>
+      {% endif %}
+    </div>
+    <div class="wdx-memo-hero-spark" aria-hidden="true">{{ ico('spark') }}</div>
+  </header>
+
+  <section class="wdx-memo-disclaimer-card">
     <div class="wdx-orientation-eyebrow">ОБРАЗОВАТЕЛЬНО</div>
-    <p class="wdx-orientation-disclaimer">{{ orientation_disclaimer }}</p>
-    <div class="wdx-orientation-line">
-      <strong>Эвристический тип:</strong>
-      <span>{{ cluster_label or 'комбинированный / стабилизация' }}</span>
+    <p class="wdx-memo-disclaimer-text">{{ orientation_disclaimer }}</p>
+    <div class="wdx-memo-meta-grid">
+      <div class="wdx-memo-meta-tile wdx-memo-meta-tile--teal">
+        <span class="wdx-memo-meta-k">Эвристический тип
+          <button type="button" class="wdx-inline-help" data-wd-help="Эвристический тип" data-wd-help-text="Автоматическая ярлыковая оценка по шкалам дневника и ответам, не диагноз. Используется только как язык ориентиров.">?</button>
+        </span>
+        <span class="wdx-memo-meta-v">{{ cluster_label or 'комбинированный / стабилизация' }}</span>
+      </div>
+      <div class="wdx-memo-meta-tile wdx-memo-meta-tile--lavender">
+        <span class="wdx-memo-meta-k">Сегмент
+          <button type="button" class="wdx-inline-help" data-wd-help="Сегмент" data-wd-help-text="Грубая группа по динамике дневника для аналитики платформы, не клиническая классификация.">?</button>
+        </span>
+        <span class="wdx-memo-meta-v">{{ segment_display or '—' }}</span>
+      </div>
+      {% if normalized_metrics_lines and normalized_metrics_lines|length > 0 %}
+      <div class="wdx-memo-meta-tile wdx-memo-meta-tile--pink">
+        <span class="wdx-memo-meta-k">Шкалы
+          <button type="button" class="wdx-inline-help" data-wd-help="Шкалы" data-wd-help-text="Значения 0–10 из последних снимков дневника: чем выше тревога/усталость, тем сильнее сигнал перегруза; энергия и сон — ресурс.">?</button>
+        </span>
+        <span class="wdx-memo-meta-v">{{ normalized_metrics_lines[:3] | join(' · ') }}</span>
+      </div>
+      {% endif %}
+      <div class="wdx-memo-meta-tile wdx-memo-meta-tile--gray">
+        <span class="wdx-memo-meta-k">Психотип по опросам</span>
+        <span class="wdx-memo-meta-v">{{ psychotype_label }}</span>
+      </div>
     </div>
-    {% if profile_updated_at_utc %}
-    <div class="wdx-orientation-line">
-      <strong>обновлено</strong>
-      <span>{{ profile_updated_at_utc }}</span>
-    </div>
-    {% endif %}
-    {% if segment_display %}
-    <div class="wdx-orientation-line">
-      <strong>Сегмент:</strong>
-      <span>{{ segment_display }}</span>
-    </div>
-    {% endif %}
-  </section>
-
-  <section class="wdx-psy-card">
-    <h2>Психотип по опросам</h2>
-    <div class="wdx-psy-title">{{ psychotype_label }}</div>
     {% if psychotype_points and psychotype_points|length > 0 %}
-    <ul class="wdx-psy-list">
+    <ul class="wdx-memo-psy-mini">
       {% for p in psychotype_points %}
       <li>{{ p }}</li>
       {% endfor %}
@@ -47,9 +61,36 @@
     {% endif %}
   </section>
 
+  {% if not has_personalization %}
+  <div class="wdx-memo-nudge">
+    <p>Пока нет данных для персонализации памятки. Ответьте в личке AI на несколько опросов — приоритетный гриб и блок «фокус» уточнятся автоматически.</p>
+    <a href="/chats" class="wdx-btn wdx-btn--soft">Открыть ЛС</a>
+  </div>
+  {% endif %}
+
+  <section class="wdx-memo-goal-card">
+    <h2 class="wdx-memo-sec-title">Цель и интеграция
+      <button type="button" class="wdx-inline-help" data-wd-help="Цель и интеграция" data-wd-help-text="Собрано из ваших ответов в дневнике и ЛС. Фунготерапия здесь только как образовательный контекст рядом с телом, психикой и при необходимости терапией у специалистов.">?</button>
+    </h2>
+    {% if goal_narrative %}
+    <p class="wdx-memo-goal-body wdx-memo-goal-pre">{{ goal_narrative }}</p>
+    {% else %}
+    <p class="wdx-memo-goal-muted">Когда появятся ответы в ЛС и дневнике, здесь отобразится связка вашей цели, симптомов и мягких ориентиров по грибам вместе с психо-соматическим контекстом.</p>
+    {% endif %}
+  </section>
+
+  <section class="wdx-memo-ai-focus">
+    <div class="wdx-memo-ai-focus-h">AI фокус по вашим ответам</div>
+    {% if latest_ai_recommendation %}
+    <p class="wdx-memo-ai-focus-b">{{ latest_ai_recommendation }}</p>
+    {% else %}
+    <p class="wdx-memo-ai-focus-muted">Продолжайте диалог в личке — краткий фокус появится после нескольких осмысленных ответов.</p>
+    {% endif %}
+  </section>
+
   {% if bundles and bundles|length > 0 %}
-  <section class="wdx-bundles">
-    <h2>Связки из профиля</h2>
+  <section class="wdx-bundles wdx-bundles--memo">
+    <h2 class="wdx-memo-sec-title">Связки из профиля</h2>
     <div class="wdx-bundle-grid">
       {% for b in bundles %}
       <article class="wdx-bundle">
@@ -62,81 +103,76 @@
   </section>
   {% endif %}
 
-  {% if science_table and science_table|length > 0 %}
-  <section class="wdx-edu-cards">
-    <h2>Грибы: эффект · биохимия · фармакодинамика</h2>
-    <div class="wdx-edu-grid">
+  <section class="wdx-memo-mushroom-section">
+    <div class="wdx-memo-mush-head">
+      <h2 class="wdx-memo-sec-title">Грибы в справочнике
+        <button type="button" class="wdx-inline-help" data-wd-help="Грибы в справочнике" data-wd-help-text="Карточки из базы платформы и обучающих постов. Полоса — сколько раз гриб фигурировал в ваших ответах. Выделенная карточка — приоритетный ориентир для вас сейчас (по профилю и упоминаниям).">?</button>
+      </h2>
+      <span class="wdx-memo-mush-hint">Нажмите карточку — курс, приём, оговорки</span>
+    </div>
+    <div class="wdx-mush-scroll" role="list">
       {% for row in science_table %}
-      <article class="wdx-edu-card">
-        <div class="wdx-edu-head">
+      <button type="button" class="wdx-mush-tile{% if row.is_priority %} wdx-mush-tile--priority{% endif %}" data-memo-key="{{ row.key }}" role="listitem">
+        <div class="wdx-mush-tile-art">
           {% if row.image_url %}
-          <img src="{{ row.image_url }}" alt="{{ row.name_ru }}" class="wdx-edu-image" />
+          <img src="{{ row.image_url }}" alt="" loading="lazy" />
           {% else %}
-          <div class="wdx-mush-icon" aria-hidden="true">{{ ico('mushroom') }}</div>
+          <span class="wdx-mush-emoji" aria-hidden="true">
+            {% if row.key == 'amanita_muscaria' %}🍄{% elif row.key == 'amanita_pantherina' %}🍄{% elif row.key == 'hericium' %}🦁{% elif row.key == 'cordyceps' %}🐛{% elif row.key == 'reishi' %}🪵{% elif row.key == 'trametes' %}🌈{% elif row.key == 'maitake' %}🌿{% elif row.key == 'shiitake' %}🍂{% else %}🍄{% endif %}
+          </span>
           {% endif %}
-          <div>
-            <h3>{{ row.name_ru }}</h3>
-            <div class="wdx-edu-latin">{{ row.latin }}</div>
-          </div>
         </div>
-        <div class="wdx-edu-bars">
-          <div class="wdx-edu-bar"><i style="width: {{ [100, (row.usage_count or 0) * 20] | min }}%"></i></div>
+        <div class="wdx-mush-tile-body">
+          <div class="wdx-mush-tile-name">{{ row.name_ru }}</div>
+          <div class="wdx-mush-tile-lat">{{ row.latin }}</div>
+          <div class="wdx-mush-tile-bar"><i style="width: {{ row.usage_pct }}%"></i></div>
+          {% if row.is_priority %}<span class="wdx-mush-prio-badge">Ваш фокус</span>{% endif %}
         </div>
-        <div class="wdx-edu-stat">Упоминаний в ваших ответах: {{ row.usage_count or 0 }}</div>
-        <p><strong>Функция:</strong> {{ row.function_line }}</p>
-        <p><strong>Показания:</strong> {{ row.indications }}</p>
-        <p><strong>Биохимия:</strong> {{ row.biochemistry_line }}</p>
-        <p><strong>Фармакодинамика:</strong> {{ row.pharmacodynamics_line }}</p>
-        <p><strong>Как принимать:</strong> {{ row.intake_line }}</p>
-      </article>
+      </button>
       {% endfor %}
     </div>
   </section>
 
-  <section class="wdx-table-wrap wdx-table-wrap--edu">
-    <h2>Справочник «гриб → функция → показания» (кратко)</h2>
-    <table class="wdx-table wdx-table--edu">
-      <thead>
-        <tr>
-          <th>Гриб</th>
-          <th>Функция</th>
-          <th>Показания</th>
-          <th>Биохимия</th>
-          <th>Фармакодинамика</th>
-          <th>Приём</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in science_table %}
-        <tr>
-          <td>
-            <strong>{{ row.name_ru }}</strong>
-            <div class="wdx-edu-latin">{{ row.latin }}</div>
-          </td>
-          <td>{{ row.function_line }}</td>
-          <td>{{ row.indications }}</td>
-          <td>{{ row.biochemistry_line }}</td>
-          <td>{{ row.pharmacodynamics_line }}</td>
-          <td>{{ row.intake_line }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </section>
-  {% else %}
-  <section class="wdx-empty">
-    <p>Пока нет данных для грибной памятки. Ответьте в личке AI на несколько опросов — карточки и таблица наполнятся автоматически.</p>
-    <a href="/chats" class="wdx-btn">Открыть ЛС</a>
-  </section>
-  {% endif %}
+  <details class="wdx-memo-details">
+    <summary>Полная таблица · биохимия · фармакодинамика</summary>
+    <div class="wdx-table-wrap wdx-table-wrap--edu">
+      <table class="wdx-table wdx-table--edu">
+        <thead>
+          <tr>
+            <th>Гриб</th>
+            <th>Функция</th>
+            <th>Показания</th>
+            <th>Биохимия</th>
+            <th>Фармакодинамика</th>
+            <th>Приём</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in science_table %}
+          <tr{% if row.is_priority %} class="wdx-tr-priority"{% endif %}>
+            <td>
+              <strong>{{ row.name_ru }}</strong>
+              <div class="wdx-edu-latin">{{ row.latin }}</div>
+            </td>
+            <td>{{ row.function_line }}</td>
+            <td>{{ row.indications }}</td>
+            <td>{{ row.biochemistry_line }}</td>
+            <td>{{ row.pharmacodynamics_line }}</td>
+            <td>{{ row.intake_line }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </details>
 
   {% if training_source_cards and training_source_cards|length > 0 %}
-  <section class="wdx-training-feed">
-    <h2>Материалы из обучающих постов</h2>
+  <details class="wdx-memo-details">
+    <summary>Фрагменты из обучающих постов</summary>
     <div class="wdx-training-grid">
       {% for t in training_source_cards %}
       <article class="wdx-training-card">
-        {% if t.image_url %}<img src="{{ t.image_url }}" alt="{{ t.title }}" class="wdx-training-img" />{% endif %}
+        {% if t.image_url %}<img src="{{ t.image_url }}" alt="" class="wdx-training-img" loading="lazy" />{% endif %}
         <div class="wdx-training-meta">
           <span>{{ t.mushroom }}</span>
           {% if t.folder %}<span>{{ t.folder }}</span>{% endif %}
@@ -146,19 +182,124 @@
       </article>
       {% endfor %}
     </div>
-  </section>
+  </details>
   {% endif %}
 
-  {% if latest_ai_recommendation %}
-  <section class="wdx-ai">
-    <div class="wdx-ai-h">AI фокус по вашим ответам</div>
-    <p class="wdx-ai-b">{{ latest_ai_recommendation }}</p>
-  </section>
-  {% endif %}
-
-  <div class="wdx-actions">
-    <a href="/account/wellness-results" class="wdx-btn wdx-btn--soft">← Мои результаты</a>
+  <div class="wdx-memo-footer-actions">
+    <a href="/account/wellness-results" class="wdx-btn wdx-btn--soft">Мои результаты</a>
+    <a href="/account/wellness-results/pdf" class="wdx-btn">Скачать PDF</a>
   </div>
 </div>
 
+<div class="wdx-help-modal" id="wdxMemoDetailModal" aria-hidden="true">
+  <div class="wdx-help-backdrop" data-wd-memo-close></div>
+  <div class="wdx-help-card wdx-memo-detail-card" role="dialog" aria-modal="true" aria-labelledby="wdxMemoDetailTitle">
+    <button type="button" class="wdx-help-close" data-wd-memo-close>×</button>
+    <div class="wdx-help-head" id="wdxMemoDetailTitle">Гриб</div>
+    <div class="wdx-memo-detail-body" id="wdxMemoDetailBody"></div>
+  </div>
+</div>
+
+<div class="wdx-help-modal" id="wdxHelpModal" aria-hidden="true">
+  <div class="wdx-help-backdrop" data-wd-help-close></div>
+  <div class="wdx-help-card" role="dialog" aria-modal="true" aria-labelledby="wdxHelpTitle">
+    <button type="button" class="wdx-help-close" data-wd-help-close>×</button>
+    <div class="wdx-help-head" id="wdxHelpTitle">Показатель</div>
+    <div class="wdx-help-body" id="wdxHelpBody"></div>
+  </div>
+</div>
+
+<script type="application/json" id="wdx-memo-catalog-json">{{ science_table | tojson }}</script>
+<script>
+(function () {
+  var catalogEl = document.getElementById('wdx-memo-catalog-json');
+  var catalog = [];
+  try { catalog = catalogEl ? JSON.parse(catalogEl.textContent || '[]') : []; } catch (e) { catalog = []; }
+  var byKey = {};
+  catalog.forEach(function (r) { if (r && r.key) byKey[r.key] = r; });
+
+  function esc(s) {
+    if (!s) return '';
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function rowHtml(r) {
+    if (!r) return '';
+    var parts = [];
+    parts.push('<div class="wdx-md-latin">' + esc(r.latin) + '</div>');
+    parts.push('<p class="wdx-md-p"><strong>Что это:</strong> ' + esc(r.core_line || r.function_line) + '</p>');
+    parts.push('<p class="wdx-md-p"><strong>Чем может помочь (образовательно):</strong> ' + esc(r.indications) + '</p>');
+    if (r.role_for_you) {
+      parts.push('<p class="wdx-md-p"><strong>По вашим ответам:</strong> ' + esc(r.role_for_you) + '</p>');
+    }
+    parts.push('<p class="wdx-md-p"><strong>Биохимия (из постов / базы):</strong> ' + esc(r.biochemistry_line) + '</p>');
+    parts.push('<p class="wdx-md-p"><strong>Фармакодинамика:</strong> ' + esc(r.pharmacodynamics_line) + '</p>');
+    parts.push('<p class="wdx-md-p"><strong>Как принимать — ориентир курса:</strong> ' + esc(r.how_apply_full || r.intake_line) + '</p>');
+    if (r.course_weeks) {
+      parts.push('<p class="wdx-md-p"><strong>Длительность курса (ориентир):</strong> ' + esc(r.course_weeks) + '</p>');
+    }
+    if (r.intake_full && r.intake_full !== r.how_apply_full) {
+      parts.push('<p class="wdx-md-p"><strong>Дозировка / режим:</strong> ' + esc(r.intake_full) + '</p>');
+    }
+    if (r.contra_full) {
+      parts.push('<p class="wdx-md-note"><strong>Оговорки:</strong> ' + esc(r.contra_full) + '</p>');
+    }
+    parts.push('<p class="wdx-md-legal">Информационно. Не медицинское назначение. Решения — с врачом и специалистом по фунготерапии.</p>');
+    return parts.join('');
+  }
+
+  document.querySelectorAll('[data-memo-key]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var key = btn.getAttribute('data-memo-key');
+      var r = byKey[key];
+      var modal = document.getElementById('wdxMemoDetailModal');
+      var title = document.getElementById('wdxMemoDetailTitle');
+      var body = document.getElementById('wdxMemoDetailBody');
+      if (!modal || !title || !body) return;
+      title.textContent = r ? (r.name_ru || 'Гриб') : 'Гриб';
+      body.innerHTML = rowHtml(r);
+      modal.classList.add('is-open');
+      modal.setAttribute('aria-hidden', 'false');
+    });
+  });
+
+  document.querySelectorAll('[data-wd-memo-close]').forEach(function (el) {
+    el.addEventListener('click', function () {
+      var modal = document.getElementById('wdxMemoDetailModal');
+      if (modal) {
+        modal.classList.remove('is-open');
+        modal.setAttribute('aria-hidden', 'true');
+      }
+    });
+  });
+
+  function bindHelp(scope) {
+    var modal = document.getElementById('wdxHelpModal');
+    var title = document.getElementById('wdxHelpTitle');
+    var body = document.getElementById('wdxHelpBody');
+    if (!modal || !title || !body) return;
+    (scope || document).querySelectorAll('.wdx-inline-help').forEach(function (btn) {
+      if (btn.dataset.wdHelpBound === '1') return;
+      btn.dataset.wdHelpBound = '1';
+      btn.addEventListener('click', function () {
+        title.textContent = btn.getAttribute('data-wd-help') || 'Справка';
+        body.textContent = btn.getAttribute('data-wd-help-text') || '';
+        modal.classList.add('is-open');
+        modal.setAttribute('aria-hidden', 'false');
+      });
+    });
+    (scope || document).querySelectorAll('[data-wd-help-close]').forEach(function (el) {
+      if (el.dataset.wdHelpBound === '1') return;
+      el.dataset.wdHelpBound = '1';
+      el.addEventListener('click', function () {
+        modal.classList.remove('is-open');
+        modal.setAttribute('aria-hidden', 'true');
+      });
+    });
+  }
+  bindHelp(document);
+})();
+</script>
 {% endblock %}
