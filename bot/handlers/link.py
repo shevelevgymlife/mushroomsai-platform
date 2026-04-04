@@ -17,6 +17,16 @@ from config import settings
 logger = logging.getLogger(__name__)
 
 
+async def _sync_closed_telegram_after_link(user_id: int) -> None:
+    """После привязки TG к веб-аккаунту — те же правила закрытых чатов, что и после /start."""
+    try:
+        from services.closed_telegram_access import sync_user_telegram_closed_chats
+
+        await sync_user_telegram_closed_chats(int(user_id), notify_reentry=False)
+    except Exception:
+        logger.debug("sync closed tg after link failed uid=%s", user_id, exc_info=True)
+
+
 def _user_row_matches_telegram_id(row: dict, tg_id: int) -> bool:
     """Как find_user_by_telegram_id: совпадение по tg_id или linked_tg_id."""
     for key in ("tg_id", "linked_tg_id"):
@@ -182,6 +192,7 @@ async def link_merge_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
                     parse_mode="HTML",
                 )
                 if query.message:
+                    await _sync_closed_telegram_after_link(int(holder["id"]))
                     await _send_main_reply_keyboard(context, query.message.chat_id, int(holder["id"]))
                 return
             await query.edit_message_text("Ссылка недействительна или устарела. Создайте новую на сайте.")
@@ -268,6 +279,7 @@ async def link_merge_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
             )
         )
         logger.info("link_merge_ok: success pri=%s sec=%s tg=%s", web_user_id, secondary_id, tg_id)
+        await _sync_closed_telegram_after_link(web_user_id)
 
         ok, err = await permanently_delete_user(secondary_id)
         if not ok:
@@ -301,6 +313,7 @@ async def _do_link(query, tg_id: int, user_id: int, token: str, context: Context
             link_merge_secondary_id=None,
         )
     )
+    await _sync_closed_telegram_after_link(user_id)
     await query.edit_message_text(
         "✅ <b>Telegram успешно привязан!</b>\n\n"
         "Теперь вы можете входить на сайт через Telegram.",

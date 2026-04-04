@@ -1,3 +1,4 @@
+import logging
 import secrets
 import string
 from datetime import datetime
@@ -8,6 +9,8 @@ from db.database import database
 from db.models import users
 from config import settings
 from services.referral_shop_prefs import TG_BTN_SHOP_MARKETPLACE
+
+logger = logging.getLogger(__name__)
 
 BLOCKED_BOT_MSG = (
     "🚫 Доступ к аккаунту ограничен администратором. "
@@ -54,6 +57,13 @@ async def ensure_user(tg_user) -> dict | None:
                 sa.or_(users.c.tg_id == tg_user.id, users.c.linked_tg_id == tg_user.id)
             )
         )
+        if row:
+            try:
+                from services.closed_telegram_access import sync_user_telegram_closed_chats
+
+                await sync_user_telegram_closed_chats(int(dict(row)["id"]), notify_reentry=False)
+            except Exception:
+                logger.debug("sync closed tg after new tg user insert failed", exc_info=True)
     else:
         # Backfill canonical tg identifiers on resolved/legacy linked accounts.
         base_row = dict(row)
@@ -73,6 +83,17 @@ async def ensure_user(tg_user) -> dict | None:
     if await login_denied_for_user_row(u):
         return None
     return u
+
+
+async def sync_closed_telegram_after_bot_identity(user: dict) -> None:
+    """После /start или привязки TG: ban/unban в закрытых чатах по текущей подписке и настройкам."""
+    try:
+        from services.closed_telegram_access import sync_user_telegram_closed_chats
+
+        uid = int(user.get("primary_user_id") or user["id"])
+        await sync_user_telegram_closed_chats(uid, notify_reentry=False)
+    except Exception:
+        logger.debug("sync_closed_telegram_after_bot_identity failed", exc_info=True)
 
 
 async def ensure_user_or_blocked_reply(update: Update) -> dict | None:
@@ -170,6 +191,7 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if ref_code in ("subscribe", "stars", "sub"):
             from bot.handlers.yookassa_subscribe import subscribe_menu_handler
 
+            await sync_closed_telegram_after_bot_identity(user)
             await subscribe_menu_handler(update, context)
             return
         if ref_code and ref_code != user.get("referral_code"):
@@ -183,6 +205,8 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await apply_default_referrer_if_absent(int(user["id"]))
     except Exception:
         pass
+
+    await sync_closed_telegram_after_bot_identity(user)
 
     site_url = settings.SITE_URL
 
