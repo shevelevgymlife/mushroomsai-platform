@@ -736,6 +736,15 @@ def invalidate_global_settings_cache() -> None:
     _gsettings_cache["ts"] = 0.0
 
 
+def _register_global_settings_invalidate() -> None:
+    from services.site_settings_runtime import register_global_settings_invalidate
+
+    register_global_settings_invalidate(invalidate_global_settings_cache)
+
+
+_register_global_settings_invalidate()
+
+
 class GlobalSettingsMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         now = _time.time()
@@ -862,7 +871,3 @@ import socketio
 from services.rtc_socketio import sio
 
 app = socketio.ASGIApp(sio, other_asgi_app=fastapi_app)
-
-from services.site_settings_runtime import register_global_settings_invalidate
-
-register_global_settings_invalidate(invalidate_global_settings_cache)
