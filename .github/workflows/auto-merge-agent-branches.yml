@@ -1,9 +1,11 @@
-name: Auto-merge claude branches → master
+# Пуш в claude/** или cursor/** → merge в master → webhook GitHub → Render autodeploy (если ветка сервиса = master).
+name: Auto-merge agent branches → master
 
 on:
   push:
     branches:
       - 'claude/**'
+      - 'cursor/**'
 
 jobs:
   auto-merge:
