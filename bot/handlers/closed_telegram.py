@@ -44,10 +44,8 @@ KEY_BY_BTN = {
 
 def closed_telegram_submenu_markup() -> ReplyKeyboardMarkup:
     rows = [
-        [KeyboardButton(TG_BTN_CLOSED_CHANNEL)],
-        [KeyboardButton(TG_BTN_CLOSED_GROUP)],
-        [KeyboardButton(TG_BTN_CLOSED_CONSULT)],
-        [KeyboardButton(TG_BTN_CLOSED_BACK)],
+        [KeyboardButton(TG_BTN_CLOSED_CHANNEL), KeyboardButton(TG_BTN_CLOSED_GROUP)],
+        [KeyboardButton(TG_BTN_CLOSED_CONSULT), KeyboardButton(TG_BTN_CLOSED_BACK)],
     ]
     return ReplyKeyboardMarkup(rows, resize_keyboard=True, is_persistent=True)
 

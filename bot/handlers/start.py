@@ -122,23 +122,31 @@ def main_keyboard(
 ):
     """Клавиатура главного бота. Режим AI — отдельная строка: вход или выход."""
     shop_lbl = shop_button or TG_BTN_SHOP_MARKETPLACE
-    if ai_active:
-        top = [[KeyboardButton(BTN_AI_EXIT)]]
-    else:
-        top = [[KeyboardButton(BTN_AI)]]
-    keyboard = top + [
-        [KeyboardButton(shop_lbl)],
-    ]
+    ai_btn = BTN_AI_EXIT if ai_active else BTN_AI
+    keyboard: list[list[KeyboardButton]] = [[KeyboardButton(ai_btn), KeyboardButton(shop_lbl)]]
+
+    hub_btn: KeyboardButton | None = None
+    other_closed: list[list[KeyboardButton]] = []
     if closed_tg_rows:
-        keyboard += list(closed_tg_rows)
-    keyboard += [
-        [KeyboardButton(BTN_PARTNER)],
-        [KeyboardButton(BTN_SUBSCRIBE)],
-        [KeyboardButton("🌍 Веб версия"), KeyboardButton("🔒 Безопасность")],
-        [KeyboardButton("🆘 Тех. поддержка")],
-    ]
+        for row in closed_tg_rows:
+            if hub_btn is None and len(row) == 1:
+                hub_btn = row[0]
+            else:
+                other_closed.append(list(row))
+    for row in other_closed:
+        keyboard.append(row)
+
+    if hub_btn is not None:
+        keyboard.append([hub_btn, KeyboardButton(BTN_PARTNER)])
+        keyboard.append([KeyboardButton(BTN_SUBSCRIBE), KeyboardButton("🌍 Веб версия")])
+        keyboard.append([KeyboardButton("🔒 Безопасность"), KeyboardButton("🆘 Тех. поддержка")])
+    else:
+        keyboard.append([KeyboardButton(BTN_PARTNER), KeyboardButton(BTN_SUBSCRIBE)])
+        keyboard.append([KeyboardButton("🌍 Веб версия"), KeyboardButton("🔒 Безопасность")])
+        keyboard.append([KeyboardButton("🆘 Тех. поддержка")])
+
     if extra_rows:
-        keyboard = keyboard + list(extra_rows)
+        keyboard.extend(list(extra_rows))
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, is_persistent=True)
 
 
@@ -146,11 +154,14 @@ def main_inline_keyboard(site_url: str):
     app_url = site_url.strip().rstrip("/")
     if not app_url.startswith("http"):
         app_url = "https://" + app_url
-    return InlineKeyboardMarkup([
+    return InlineKeyboardMarkup(
         [
-            InlineKeyboardButton("📱 Приложение", web_app=WebAppInfo(url=app_url + "/app")),
-        ],
-    ])
+            [
+                InlineKeyboardButton("📱 Приложение", web_app=WebAppInfo(url=app_url + "/app")),
+                InlineKeyboardButton("🌍 Сайт", url=app_url),
+            ],
+        ]
+    )
 
 
 async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -246,13 +257,14 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = (
         f"👋 Добро пожаловать в NEUROFUNGI AI, {tg_user.first_name}.\n\n"
         "Доступ ко всему по одной <b>ПОДПИСКЕ</b>:\n"
-        "• Соцсеть: посты, люди, связи.\n"
-        "• Закрытый канал/группа/чат - консультация, база знаний\n"
-        "• Магазин: рейтинги, отзывы, карточки.\n"
-        "• AI: консультации, анализ, статистика.\n"
-        "• Партнёрка: магазин от 10%\n"
-        "• Партнёрка: соцсеть 5% - 1 линия - 2 линия приглашенных\n"
-        "• Маркетплейс для вашего магазина\n\n"
+        "🌐 <b>Соцсеть</b> — посты, люди, связи.\n"
+        "🔐 <b>Закрытый канал / группа / чат</b> — консультация, база знаний.\n"
+        "🛍 <b>Магазин</b> — рейтинги, отзывы, карточки.\n"
+        "🤖 <b>AI</b> — консультации, анализ, статистика.\n"
+        "💼 <b>Партнёрка</b> — магазин от 10%.\n"
+        "🎁 <b>Партнёрка соцсети</b> — 5%, 1 и 2 линия приглашённых.\n"
+        "🏪 <b>Маркетплейс</b> — для вашего магазина.\n"
+        "✨ И многое другое…\n\n"
         "⚡️ Нажмите <b>«Приложение»</b> (кнопка внизу или в меню чата) и заходите в сервис."
     )
 
