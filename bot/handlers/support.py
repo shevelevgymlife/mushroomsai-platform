@@ -14,8 +14,6 @@ from telegram.ext import (
 from db.database import database
 from db.models import feedback, users
 
-from bot.handlers.start import BTN_REFRESH_BOT
-
 logger = logging.getLogger(__name__)
 
 WAITING_SUPPORT_MSG = 1
@@ -48,12 +46,7 @@ async def support_text_start(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def receive_support_msg(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user = update.effective_user
-    text = (update.message.text or "").strip()
-    if text == BTN_REFRESH_BOT:
-        from bot.handlers.bot_refresh import execute_bot_refresh
-
-        await execute_bot_refresh(update, context)
-        return ConversationHandler.END
+    text = update.message.text
 
     # Найти пользователя в БД по tg_id
     user_row = await database.fetch_one(

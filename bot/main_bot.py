@@ -4,6 +4,7 @@ import re
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, MenuButtonWebApp, WebAppInfo
 from telegram.ext import (
     Application,
+    ApplicationHandlerStop,
     CallbackQueryHandler,
     ChatJoinRequestHandler,
     ChatMemberHandler,
@@ -14,8 +15,7 @@ from telegram.ext import (
 )
 
 from config import settings
-from bot.handlers.bot_refresh import execute_bot_refresh
-from bot.handlers.start import BTN_AI, BTN_AI_EXIT, BTN_REFRESH_BOT, main_keyboard, start
+from bot.handlers.start import BTN_AI, BTN_AI_EXIT, BTN_REFRESH_BOT, main_keyboard, start, start_handler
 from bot.handlers.link import link_confirm_callback, link_merge_callback
 from bot.handlers.support import get_support_conversation
 from bot.handlers.community_post_wizard import get_community_post_conversation
@@ -155,8 +155,9 @@ async def _ai_exit_handler(update, context):
 
 
 async def _refresh_bot_handler(update, context):
-    """Кнопка «Обновить бот» (group 0, после ConversationHandler — см. порядок add_handler)."""
-    await execute_bot_refresh(update, context)
+    """Только повторяет /start без аргументов (тот же текст и клавиатура)."""
+    await start_handler(update, context, _argv=[])
+    raise ApplicationHandlerStop
 
 
 async def _referral_withdraw_handler(update, context):
@@ -216,12 +217,6 @@ def create_bot() -> Application:
     application.add_handler(get_partner_conversation(), group=-1)
     application.add_handler(get_community_post_conversation(), group=-1)
     application.add_handler(get_support_conversation())
-    application.add_handler(
-        MessageHandler(
-            filters.ChatType.PRIVATE & filters.Regex(f"^{re.escape(BTN_REFRESH_BOT)}$"),
-            _refresh_bot_handler,
-        ),
-    )
 
     application.add_handler(
         ChatMemberHandler(on_my_chat_member, chat_member_types=ChatMemberHandler.MY_CHAT_MEMBER)
@@ -237,6 +232,13 @@ def create_bot() -> Application:
         MessageHandler(
             filters.ChatType.PRIVATE & filters.TEXT & filters.Regex(r"^💸 Вывести\s"),
             _referral_withdraw_handler,
+        ),
+        group=ch_group,
+    )
+    application.add_handler(
+        MessageHandler(
+            filters.ChatType.PRIVATE & filters.Regex(f"^{re.escape(BTN_REFRESH_BOT)}$"),
+            _refresh_bot_handler,
         ),
         group=ch_group,
     )

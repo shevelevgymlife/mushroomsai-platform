@@ -22,7 +22,6 @@ from bot.handlers.start import (
     BTN_AI_EXIT,
     BTN_COMMUNITY_POST,
     BTN_PARTNER,
-    BTN_REFRESH_BOT,
     ensure_user_or_blocked_reply,
 )
 from bot.handlers.channel_autopost import main_keyboard_with_autopost
@@ -285,11 +284,6 @@ async def partner_receive_shop_url(update: Update, context: ContextTypes.DEFAULT
     kb = await _reply_kb(update, uid, ai_active=False)
 
     raw = (update.message.text or "").strip()
-    if raw == BTN_REFRESH_BOT:
-        from bot.handlers.bot_refresh import execute_bot_refresh
-
-        await execute_bot_refresh(update, context)
-        return ConversationHandler.END
     if raw == BTN_PARTNER:
         return await partner_start(update, context)
 

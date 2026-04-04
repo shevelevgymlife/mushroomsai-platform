@@ -166,7 +166,13 @@ def main_inline_keyboard(site_url: str):
     )
 
 
-async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def start_handler(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    *,
+    _argv: list[str] | None = None,
+):
+    """Обычный /start из CommandHandler; кнопка «Обновить бот» вызывает с ``_argv=[]`` (как /start без payload)."""
     tg_user = update.effective_user
     user = await ensure_user_or_blocked_reply(update)
     if not user:
@@ -176,8 +182,9 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Однократная подсказка в chat.py при первом тексте без режима AI после /start
     context.user_data["tg_ai_offline_hint_shown"] = False
 
-    if context.args:
-        ref_code = context.args[0]
+    argv = list(_argv) if _argv is not None else list(context.args or [])
+    if argv:
+        ref_code = argv[0]
         if ref_code.startswith("link_"):
             token = ref_code[len("link_"):].strip()
             row = await database.fetch_one(users.select().where(users.c.link_token == token))
