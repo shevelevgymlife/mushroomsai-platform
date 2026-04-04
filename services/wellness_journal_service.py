@@ -1,6 +1,8 @@
 """
 Дневник фунготерапии: напоминания AI в ЛС (аккаунт техподдержки), сбор ответов, статистика.
 Доступно при тарифе Старт / Про / Макси (включая пробный Старт) и у пользователей с role=admin.
+Автонапоминания (run_wellness_prompts_due_job / send_wellness_prompt_for_user) уходят всем с доступом,
+у кого не включены пауза/отключение дневника и наступило время wellness_next_prompt_at (в т.ч. админам).
 Обычные пользователи: ответ в статистику после «да» в чате.
 Админ: авто-включение в статистику + цепочка уточняющих вопросов (тест); опция «тихий режим» — только разбор JSON, без сообщений бота.
 """
@@ -759,8 +761,6 @@ async def send_wellness_prompt_for_user(user_id: int, *, admin_self_test: bool =
         return False
     if not admin_self_test and row.get("wellness_journal_admin_paused"):
         return False
-    if not admin_self_test and _user_row_is_admin(row):
-        return False
     interval = _normalize_interval(row.get("wellness_journal_interval_days"))
     ppp = _normalize_prompts_per_day(row.get("wellness_journal_prompts_per_day"))
     nxt = row.get("wellness_next_prompt_at")
@@ -861,8 +861,6 @@ async def run_wellness_prompts_due_job() -> None:
     n_sent = 0
     for row in rows:
         uid = int(row["primary_user_id"] or row["id"])
-        if (row.get("role") or "").strip().lower() == "admin":
-            continue
         if not await user_has_wellness_journal_access(uid):
             continue
         if row["wellness_next_prompt_at"] is None:
@@ -886,8 +884,6 @@ async def _maybe_send_weekly_digest(user_id: int) -> None:
         return
     row = await database.fetch_one(users.select().where(users.c.id == uid))
     if not row or row.get("wellness_journal_opt_out") or row.get("wellness_journal_admin_paused"):
-        return
-    if _user_row_is_admin(row):
         return
     last = row.get("wellness_weekly_digest_last_at")
     now = datetime.utcnow()
