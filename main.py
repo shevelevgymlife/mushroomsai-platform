@@ -735,6 +735,7 @@ def invalidate_global_settings_cache() -> None:
     """Сброс TTL: следующий запрос перечитает site_settings (радио, видеозвонки, биржа, …)."""
     _gsettings_cache["ts"] = 0.0
 
+
 class GlobalSettingsMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         now = _time.time()
@@ -861,3 +862,7 @@ import socketio
 from services.rtc_socketio import sio
 
 app = socketio.ASGIApp(sio, other_asgi_app=fastapi_app)
+
+from services.site_settings_runtime import register_global_settings_invalidate
+
+register_global_settings_invalidate(invalidate_global_settings_cache)
