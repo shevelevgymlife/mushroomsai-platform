@@ -47,6 +47,13 @@ logger = logging.getLogger(__name__)
 WAITING_SHOP_URL = 1
 
 from services.referral_shop_prefs import TG_BTN_SHOP_MARKETPLACE, TG_BTN_SHOP_SIMPLE
+from services.closed_telegram_access import (
+    TG_BTN_CLOSED_BACK,
+    TG_BTN_CLOSED_CHANNEL,
+    TG_BTN_CLOSED_CONSULT,
+    TG_BTN_CLOSED_GROUP,
+    TG_BTN_CLOSED_HUB,
+)
 
 _MENU_INTERRUPTS = frozenset(
     {
@@ -56,7 +63,11 @@ _MENU_INTERRUPTS = frozenset(
         BTN_CONNECT_CHANNEL,
         TG_BTN_SHOP_MARKETPLACE,
         TG_BTN_SHOP_SIMPLE,
-        "🌐 Сообщество",
+        TG_BTN_CLOSED_HUB,
+        TG_BTN_CLOSED_BACK,
+        TG_BTN_CLOSED_CHANNEL,
+        TG_BTN_CLOSED_GROUP,
+        TG_BTN_CLOSED_CONSULT,
         "🌍 Веб версия",
         "🔒 Безопасность",
         "🆘 Тех. поддержка",

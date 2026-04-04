@@ -27,6 +27,13 @@ from services.channel_ingest_save_image import save_channel_ingest_image
 from services.community_post_publish import publish_community_post
 from services.telegram_file_download import download_telegram_file_bytes
 from services.referral_shop_prefs import TG_BTN_SHOP_MARKETPLACE, TG_BTN_SHOP_SIMPLE
+from services.closed_telegram_access import (
+    TG_BTN_CLOSED_BACK,
+    TG_BTN_CLOSED_CHANNEL,
+    TG_BTN_CLOSED_CONSULT,
+    TG_BTN_CLOSED_GROUP,
+    TG_BTN_CLOSED_HUB,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +55,11 @@ _WIZARD_BLOCK_TEXTS = frozenset(
         BTN_CH_SOC_OFF,
         TG_BTN_SHOP_MARKETPLACE,
         TG_BTN_SHOP_SIMPLE,
-        "🌐 Сообщество",
+        TG_BTN_CLOSED_HUB,
+        TG_BTN_CLOSED_BACK,
+        TG_BTN_CLOSED_CHANNEL,
+        TG_BTN_CLOSED_GROUP,
+        TG_BTN_CLOSED_CONSULT,
         "🌍 Веб версия",
         "🔒 Безопасность",
         "🆘 Тех. поддержка",

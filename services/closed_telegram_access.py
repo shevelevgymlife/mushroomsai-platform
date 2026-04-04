@@ -1,6 +1,7 @@
 """
 Закрытые Telegram-канал и чаты по подписке: настройки в platform_settings,
 флаги по тарифам (closed_access), синхронизация участия через основного бота.
+В боте: одна кнопка «Канал/группа/чат» → подменю из трёх ресурсов (см. bot/handlers/closed_telegram.py).
 """
 from __future__ import annotations
 
@@ -19,6 +20,8 @@ logger = logging.getLogger(__name__)
 CONFIG_KEY = "closed_telegram_access_config"
 
 # Подписи кнопок главного бота (совпадают с bot/handlers/closed_telegram.py)
+TG_BTN_CLOSED_HUB = "📂 Канал/группа/чат"
+TG_BTN_CLOSED_BACK = "◀️ Главное меню"
 TG_BTN_CLOSED_CHANNEL = "📢 Закрытый канал (библиотека)"
 TG_BTN_CLOSED_GROUP = "👥 Закрытая группа"
 TG_BTN_CLOSED_CONSULT = "💬 Закрытый чат (консультации)"
@@ -552,11 +555,7 @@ def _which_resource_for_chat(cfg: dict[str, Any], chat_id: int) -> str | None:
 
 
 async def closed_telegram_keyboard_rows(_internal_user_id: int) -> list[list[Any]]:
-    """Три кнопки закрытых ресурсов — у всех пользователей бота (доступ по подписке проверяется по нажатию)."""
+    """Одна кнопка — подменю с тремя ресурсами (доступ по подписке проверяется по нажатию)."""
     from telegram import KeyboardButton
 
-    return [
-        [KeyboardButton(TG_BTN_CLOSED_CHANNEL)],
-        [KeyboardButton(TG_BTN_CLOSED_GROUP)],
-        [KeyboardButton(TG_BTN_CLOSED_CONSULT)],
-    ]
+    return [[KeyboardButton(TG_BTN_CLOSED_HUB)]]

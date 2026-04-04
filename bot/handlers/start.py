@@ -17,7 +17,7 @@ BLOCKED_BOT_MSG = (
 # Кнопки режима AI (главный бот): нейросеть только после явного нажатия
 BTN_AI = "🤖 Задать вопрос AI"
 BTN_AI_EXIT = "❌ Выйти из режима AI"
-# Публикация поста в ленту сообщества (ConversationHandler в main_bot)
+# Публикация поста в ленту (ConversationHandler; кнопка с клавиатуры убрана — вход только если снова добавят кнопку / команду)
 BTN_COMMUNITY_POST = "📤 Пост в сообщество"
 # Автопост из личного Telegram-канала в ленту сообщества
 BTN_CONNECT_CHANNEL = "📢 Подключить свой канал"
@@ -98,23 +98,19 @@ def main_keyboard(
     ai_active: bool = False,
     extra_rows: list | None = None,
     shop_button: str | None = None,
-    show_community_post: bool = False,
     closed_tg_rows: list | None = None,
 ):
-    """Клавиатура главного бота. Режим AI — отдельная строка: вход или выход.
-    «Пост в сообщество» — только при show_community_post (роль admin)."""
+    """Клавиатура главного бота. Режим AI — отдельная строка: вход или выход."""
     shop_lbl = shop_button or TG_BTN_SHOP_MARKETPLACE
     if ai_active:
         top = [[KeyboardButton(BTN_AI_EXIT)]]
     else:
         top = [[KeyboardButton(BTN_AI)]]
     keyboard = top + [
-        [KeyboardButton(shop_lbl), KeyboardButton("🌐 Сообщество")],
+        [KeyboardButton(shop_lbl)],
     ]
     if closed_tg_rows:
         keyboard += list(closed_tg_rows)
-    if show_community_post:
-        keyboard.append([KeyboardButton(BTN_COMMUNITY_POST)])
     keyboard += [
         [KeyboardButton(BTN_CONNECT_CHANNEL)],
         [KeyboardButton(BTN_PARTNER)],
@@ -133,7 +129,7 @@ def main_inline_keyboard(site_url: str):
         app_url = "https://" + app_url
     return InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("🍄 Открыть приложение", web_app=WebAppInfo(url=app_url + "/app")),
+            InlineKeyboardButton("📱 Приложение", web_app=WebAppInfo(url=app_url + "/app")),
         ],
     ])
 
@@ -198,7 +194,7 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• AI: консультации, анализ, статистика.\n"
         "• Партнёрка: магазин от 10%.\n"
         "• Партнёрка: соцсеть от 10%+.\n\n"
-        "⚡ Нажмите <b>«Вход»</b> и заходите в приложение."
+        "⚡ Нажмите <b>«Приложение»</b> (кнопка внизу или в меню чата) и заходите в сервис."
     )
 
     from bot.handlers.channel_autopost import main_keyboard_with_autopost
@@ -210,7 +206,7 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="HTML",
     )
     await update.message.reply_text(
-        "👇 Открыть приложение:",
+        "👇 Приложение:",
         reply_markup=main_inline_keyboard(site),
         parse_mode="HTML",
     )

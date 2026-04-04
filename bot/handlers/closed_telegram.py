@@ -5,7 +5,14 @@ import html
 import logging
 import re
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
+from telegram import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    KeyboardButton,
+    ReplyKeyboardMarkup,
+    Update,
+    WebAppInfo,
+)
 from telegram.ext import ContextTypes, MessageHandler, filters
 
 from bot.handlers.channel_autopost import main_keyboard_with_autopost
@@ -15,9 +22,11 @@ from config import settings
 logger = logging.getLogger(__name__)
 
 from services.closed_telegram_access import (
+    TG_BTN_CLOSED_BACK,
     TG_BTN_CLOSED_CHANNEL,
     TG_BTN_CLOSED_CONSULT,
     TG_BTN_CLOSED_GROUP,
+    TG_BTN_CLOSED_HUB,
     closed_access_entitlement_for_user,
     closed_resource_invite_ready,
     load_closed_telegram_config,
@@ -31,6 +40,40 @@ KEY_BY_BTN = {
     TG_BTN_CLOSED_GROUP: "group",
     TG_BTN_CLOSED_CONSULT: "consult",
 }
+
+
+def closed_telegram_submenu_markup() -> ReplyKeyboardMarkup:
+    rows = [
+        [KeyboardButton(TG_BTN_CLOSED_CHANNEL)],
+        [KeyboardButton(TG_BTN_CLOSED_GROUP)],
+        [KeyboardButton(TG_BTN_CLOSED_CONSULT)],
+        [KeyboardButton(TG_BTN_CLOSED_BACK)],
+    ]
+    return ReplyKeyboardMarkup(rows, resize_keyboard=True, is_persistent=True)
+
+
+async def closed_telegram_hub_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    context.user_data["tg_ai_mode"] = False
+    u = await ensure_user_or_blocked_reply(update)
+    if not u or not update.message:
+        return
+    await update.message.reply_text(
+        "Выберите: закрытый канал, группу или чат консультаций.",
+        reply_markup=closed_telegram_submenu_markup(),
+    )
+
+
+async def closed_telegram_back_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    context.user_data["tg_ai_mode"] = False
+    u = await ensure_user_or_blocked_reply(update)
+    if not u or not update.message:
+        return
+    uid = int(u.get("primary_user_id") or u["id"])
+    site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
+    await update.message.reply_text(
+        "Главное меню.",
+        reply_markup=await main_keyboard_with_autopost(site, False, uid),
+    )
 
 
 def _sub_markup(site: str) -> InlineKeyboardMarkup:

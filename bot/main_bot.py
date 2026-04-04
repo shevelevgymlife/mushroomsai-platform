@@ -40,7 +40,13 @@ from bot.handlers.yookassa_subscribe import (
     tgstars_plan_callback,
 )
 from bot.handlers.legal_commands import privacy_command, terms_command
-from bot.handlers.closed_telegram import closed_telegram_message_handler, on_chat_join_request
+from bot.handlers.closed_telegram import (
+    closed_telegram_back_handler,
+    closed_telegram_hub_handler,
+    closed_telegram_message_handler,
+    on_chat_join_request,
+)
+from services.closed_telegram_access import TG_BTN_CLOSED_BACK, TG_BTN_CLOSED_HUB
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +70,6 @@ from services.referral_shop_prefs import TG_BTN_SHOP_MARKETPLACE, TG_BTN_SHOP_SI
 
 BTN_SHOP = TG_BTN_SHOP_MARKETPLACE  # обратная совместимость имён
 _SHOP_BUTTONS_RX = "^(" + re.escape(TG_BTN_SHOP_MARKETPLACE) + "|" + re.escape(TG_BTN_SHOP_SIMPLE) + ")$"
-BTN_COMMUNITY = "🌐 Сообщество"
 BTN_WEB = "🌍 Веб версия"
 BTN_SECURITY = "🔒 Безопасность"
 BTN_SUPPORT = "🆘 Тех. поддержка"
@@ -78,7 +83,7 @@ async def _enable_ai_mode_and_notify(update, context) -> None:
         "🤖 <b>Режим AI включён</b>\n\n"
         "Напишите вопрос ниже — ответит консультант.\n\n"
         "После ответа вы сможете выбрать: продолжить с AI или выйти.\n"
-        "Либо нажмите «❌ Выйти из режима AI» или любую кнопку меню (Магазин, Сообщество…), чтобы выйти."
+        "Либо нажмите «❌ Выйти из режима AI» или любую кнопку меню (Магазин и др.), чтобы выйти."
     )
     kb = await _reply_kb(update, context, ai_active=True)
     if update.message:
@@ -108,26 +113,6 @@ async def _shop_handler(update, context):
         reply_markup=InlineKeyboardMarkup(rows),
         parse_mode="HTML",
         disable_web_page_preview=True,
-    )
-    await update.message.reply_text("⌨️", reply_markup=await _reply_kb(update, context, ai_active=False))
-
-
-async def _community_handler(update, context):
-    context.user_data["tg_ai_mode"] = False
-    site = (settings.SITE_URL or "").rstrip("/")
-    await update.message.reply_text(
-        "🌐 <b>Сообщество NEUROFUNGI AI</b>\n\nОткрыть приложение:",
-        reply_markup=InlineKeyboardMarkup(
-            [
-                [
-                    InlineKeyboardButton(
-                        "🍄 Открыть сообщество",
-                        web_app=WebAppInfo(url=site + "/app"),
-                    )
-                ],
-            ]
-        ),
-        parse_mode="HTML",
     )
     await update.message.reply_text("⌨️", reply_markup=await _reply_kb(update, context, ai_active=False))
 
@@ -261,8 +246,21 @@ def create_bot() -> Application:
 
     # Кнопки клавиатуры (сбрасывают режим AI)
     application.add_handler(MessageHandler(filters.Regex(_SHOP_BUTTONS_RX), _shop_handler))
+    application.add_handler(
+        MessageHandler(
+            filters.ChatType.PRIVATE & filters.Regex(f"^{re.escape(TG_BTN_CLOSED_HUB)}$"),
+            closed_telegram_hub_handler,
+        ),
+        group=-2,
+    )
+    application.add_handler(
+        MessageHandler(
+            filters.ChatType.PRIVATE & filters.Regex(f"^{re.escape(TG_BTN_CLOSED_BACK)}$"),
+            closed_telegram_back_handler,
+        ),
+        group=-2,
+    )
     application.add_handler(closed_telegram_message_handler(), group=-2)
-    application.add_handler(MessageHandler(filters.Regex(f"^{BTN_COMMUNITY}$"), _community_handler))
     application.add_handler(MessageHandler(filters.Regex(f"^{BTN_WEB}$"), _web_handler))
     application.add_handler(MessageHandler(filters.Regex(f"^{BTN_SECURITY}$"), _security_handler))
 
@@ -299,10 +297,10 @@ async def setup_bot_menu(application: Application) -> None:
     try:
         await application.bot.set_chat_menu_button(
             menu_button=MenuButtonWebApp(
-                text="Вход",
+                text="Приложение",
                 web_app=WebAppInfo(url=site + "/app"),
             )
         )
-        logger.info("Bot menu button set to WebApp: %s", site)
+        logger.info("Bot menu button «Приложение» WebApp: %s", site)
     except Exception as e:
         logger.warning("Could not set bot menu button: %s", e)

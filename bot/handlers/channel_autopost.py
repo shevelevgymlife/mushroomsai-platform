@@ -195,9 +195,6 @@ async def main_keyboard_with_autopost(site_url: str, ai_active: bool, internal_u
     from services.referral_shop_prefs import tg_shop_button_label
     from services.referral_service import referral_withdraw_keyboard_row
 
-    urow = await database.fetch_one(users.select().where(users.c.id == int(internal_user_id)))
-    show_cp = (urow.get("role") or "").lower() == "admin" if urow else False
-
     extras = await autopost_extra_rows(internal_user_id)
     ref_wd = await referral_withdraw_keyboard_row(internal_user_id)
     merged: list = []
@@ -214,7 +211,6 @@ async def main_keyboard_with_autopost(site_url: str, ai_active: bool, internal_u
         ai_active,
         extra_rows=merged if merged else None,
         shop_button=shop_btn,
-        show_community_post=show_cp,
         closed_tg_rows=ct_rows if ct_rows else None,
     )
 

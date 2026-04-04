@@ -98,6 +98,13 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         BTN_CONNECT_CHANNEL,
     )
     from services.referral_shop_prefs import TG_BTN_SHOP_MARKETPLACE, TG_BTN_SHOP_SIMPLE
+    from services.closed_telegram_access import (
+        TG_BTN_CLOSED_BACK,
+        TG_BTN_CLOSED_CHANNEL,
+        TG_BTN_CLOSED_CONSULT,
+        TG_BTN_CLOSED_GROUP,
+        TG_BTN_CLOSED_HUB,
+    )
     from bot.handlers.channel_autopost import (
         BTN_AUTOPOST_DISABLE,
         BTN_AUTOPOST_ENABLE,
@@ -119,6 +126,11 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         BTN_CH_SOC_OFF,
         TG_BTN_SHOP_MARKETPLACE,
         TG_BTN_SHOP_SIMPLE,
+        TG_BTN_CLOSED_HUB,
+        TG_BTN_CLOSED_BACK,
+        TG_BTN_CLOSED_CHANNEL,
+        TG_BTN_CLOSED_GROUP,
+        TG_BTN_CLOSED_CONSULT,
     ):
         return
 
@@ -217,12 +229,12 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             parse_mode="HTML",
         )
         await update.message.reply_text(
-            "Открыть приложение:",
+            "Приложение:",
             reply_markup=InlineKeyboardMarkup(
                 [
                     [
                         InlineKeyboardButton(
-                            "🍄 Открыть приложение по подписке Старт",
+                            "📱 Приложение (тариф Старт)",
                             web_app=WebAppInfo(url=site),
                         )
                     ],
@@ -270,12 +282,12 @@ async def _send_limit_reached(update: Update, context: ContextTypes.DEFAULT_TYPE
         parse_mode="HTML",
     )
     await update.message.reply_text(
-        "Открыть приложение:",
+        "Приложение:",
         reply_markup=InlineKeyboardMarkup(
             [
                 [
                     InlineKeyboardButton(
-                        "🍄 Открыть приложение по подписке Старт",
+                        "📱 Приложение (тариф Старт)",
                         web_app=WebAppInfo(url=site or "https://mushroomsai.onrender.com"),
                     )
                 ],
