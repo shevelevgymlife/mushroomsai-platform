@@ -17,6 +17,7 @@ from telegram.ext import (
     filters,
 )
 
+from bot.handlers.legal_bundle import BTN_LEGAL_BUNDLE
 from bot.handlers.start import (
     BTN_AI,
     BTN_AI_EXIT,
@@ -69,6 +70,7 @@ _MENU_INTERRUPTS = frozenset(
         "🌍 Веб версия",
         "🔒 Безопасность",
         "🆘 Тех. поддержка",
+        BTN_LEGAL_BUNDLE,
     }
 )
 

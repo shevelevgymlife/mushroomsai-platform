@@ -8,6 +8,7 @@ from telegram.ext import ContextTypes
 from db.database import database
 from db.models import users
 from config import settings
+from bot.handlers.legal_bundle import BTN_LEGAL_BUNDLE
 from services.referral_shop_prefs import TG_BTN_SHOP_MARKETPLACE
 
 logger = logging.getLogger(__name__)
@@ -140,12 +141,13 @@ def main_keyboard(
     if hub_btn is not None:
         keyboard.append([hub_btn, KeyboardButton(BTN_PARTNER)])
         keyboard.append([KeyboardButton(BTN_SUBSCRIBE), KeyboardButton("🌍 Веб версия")])
-        keyboard.append([KeyboardButton("🔒 Безопасность"), KeyboardButton(BTN_REFRESH_BOT)])
-        keyboard.append([KeyboardButton("🆘 Тех. поддержка")])
+        keyboard.append([KeyboardButton(BTN_LEGAL_BUNDLE), KeyboardButton("🔒 Безопасность")])
+        keyboard.append([KeyboardButton(BTN_REFRESH_BOT), KeyboardButton("🆘 Тех. поддержка")])
     else:
         keyboard.append([KeyboardButton(BTN_PARTNER), KeyboardButton(BTN_SUBSCRIBE)])
-        keyboard.append([KeyboardButton("🌍 Веб версия"), KeyboardButton("🔒 Безопасность")])
-        keyboard.append([KeyboardButton("🆘 Тех. поддержка"), KeyboardButton(BTN_REFRESH_BOT)])
+        keyboard.append([KeyboardButton("🌍 Веб версия"), KeyboardButton(BTN_LEGAL_BUNDLE)])
+        keyboard.append([KeyboardButton("🔒 Безопасность"), KeyboardButton(BTN_REFRESH_BOT)])
+        keyboard.append([KeyboardButton("🆘 Тех. поддержка")])
 
     if extra_rows:
         keyboard.extend(list(extra_rows))

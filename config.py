@@ -100,6 +100,8 @@ class Settings(BaseSettings):
     REFERRAL_WITHDRAW_MOSCOW_DAY_TO: int = 5
     REFERRAL_CLIENT_INN: str = "775105884367"
     REFERRAL_CLIENT_NAME_LEGAL: str = "ИП Шевелёв Евгений Алексеевич"
+    # ОГРНИП исполнителя (оферта, политика, бот) — совпадает с legal/*.html
+    LEGAL_OGRNIP: str = "31750530002947"
     # Внутренняя биржа: подпись токена в интерфейсе (бонусы ↔ token_balance). Env EXCHANGE_TOKEN_DISPLAY_NAME.
     EXCHANGE_TOKEN_DISPLAY_NAME: str = "Shevelev"
 

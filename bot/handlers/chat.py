@@ -91,6 +91,7 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     if not text:
         return
 
+    from bot.handlers.legal_bundle import BTN_LEGAL_BUNDLE
     from bot.handlers.start import (
         BTN_AI,
         BTN_AI_EXIT,
@@ -118,6 +119,7 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         TG_BTN_CLOSED_CHANNEL,
         TG_BTN_CLOSED_GROUP,
         TG_BTN_CLOSED_CONSULT,
+        BTN_LEGAL_BUNDLE,
     ):
         return
 

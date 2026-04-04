@@ -15,6 +15,7 @@ from telegram.ext import (
 )
 
 from config import settings
+from bot.handlers.legal_bundle import BTN_LEGAL_BUNDLE, send_legal_bundle
 from bot.handlers.start import BTN_AI, BTN_AI_EXIT, BTN_REFRESH_BOT, main_keyboard, start, start_handler
 from bot.handlers.link import link_confirm_callback, link_merge_callback
 from bot.handlers.support import get_support_conversation
@@ -160,6 +161,11 @@ async def _refresh_bot_handler(update, context):
     raise ApplicationHandlerStop
 
 
+async def _legal_bundle_handler(update, context):
+    await send_legal_bundle(update, context)
+    raise ApplicationHandlerStop
+
+
 async def _referral_withdraw_handler(update, context):
     """Кнопка «💸 Вывести N ₽» — та же заявка, что на сайте /referral/withdraw."""
     from bot.handlers.start import ensure_user
@@ -239,6 +245,13 @@ def create_bot() -> Application:
         MessageHandler(
             filters.ChatType.PRIVATE & filters.Regex(f"^{re.escape(BTN_REFRESH_BOT)}$"),
             _refresh_bot_handler,
+        ),
+        group=ch_group,
+    )
+    application.add_handler(
+        MessageHandler(
+            filters.ChatType.PRIVATE & filters.Regex(f"^{re.escape(BTN_LEGAL_BUNDLE)}$"),
+            _legal_bundle_handler,
         ),
         group=ch_group,
     )
