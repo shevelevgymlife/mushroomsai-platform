@@ -74,7 +74,7 @@
     {% if drawer_on('referral') == '1' %}
     <a href="/referral" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('gift') }}</span><span class="lbl">Реферальная программа</span></a>
     {% endif %}
-    {% if 'internal_exchange' in vbk and drawer_on('internal_exchange') == '1' %}
+    {% if internal_exchange_enabled and 'internal_exchange' in vbk and drawer_on('internal_exchange') == '1' %}
     <a href="/exchange" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('swap') }}</span><span class="lbl">Биржа</span></a>
     {% endif %}
     {% set _draw_w = (user.get('effective_subscription_plan') or user.subscription_plan or 'free')|lower %}

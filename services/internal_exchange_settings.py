@@ -36,3 +36,10 @@ async def set_internal_exchange_enabled(enabled: bool) -> None:
     from services.internal_exchange_service import upsert_site_setting
 
     await upsert_site_setting(SETTINGS_ENABLED_KEY, "true" if enabled else "false")
+    try:
+        import main as _main
+
+        if hasattr(_main, "invalidate_global_settings_cache"):
+            _main.invalidate_global_settings_cache()
+    except Exception:
+        pass

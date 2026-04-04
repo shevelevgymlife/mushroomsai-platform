@@ -726,8 +726,14 @@ _gsettings_cache: dict = {
     "radio_enabled": True,
     "video_calls_enabled": True,
     "links_clickable_enabled": True,
+    "internal_exchange_enabled": True,
     "ts": 0.0,
 }
+
+
+def invalidate_global_settings_cache() -> None:
+    """Сброс TTL: следующий запрос перечитает site_settings (радио, видеозвонки, биржа, …)."""
+    _gsettings_cache["ts"] = 0.0
 
 class GlobalSettingsMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -760,10 +766,24 @@ class GlobalSettingsMiddleware(BaseHTTPMiddleware):
             except Exception as e:
                 logger.warning("links_clickable_enabled: read site_settings failed: %s", e)
                 _gsettings_cache["links_clickable_enabled"] = True
+            try:
+                row_x = await database.fetch_one(
+                    "SELECT value FROM site_settings WHERE key='internal_exchange_enabled'"
+                )
+                raw_x = str((row_x or {}).get("value") or "").strip().lower()
+                # Как в services.internal_exchange_settings.is_internal_exchange_enabled
+                if raw_x in ("0", "false", "no", "off"):
+                    _gsettings_cache["internal_exchange_enabled"] = False
+                else:
+                    _gsettings_cache["internal_exchange_enabled"] = True
+            except Exception as e:
+                logger.warning("internal_exchange_enabled: read site_settings failed: %s", e)
+                _gsettings_cache["internal_exchange_enabled"] = True
             _gsettings_cache["ts"] = now
         request.state.global_radio_enabled = _gsettings_cache["radio_enabled"]
         request.state.video_calls_enabled = _gsettings_cache["video_calls_enabled"]
         request.state.links_clickable_enabled = _gsettings_cache["links_clickable_enabled"]
+        request.state.internal_exchange_enabled = _gsettings_cache["internal_exchange_enabled"]
         return await call_next(request)
 
 fastapi_app.add_middleware(GlobalSettingsMiddleware)
