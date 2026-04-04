@@ -44,13 +44,7 @@
   </div>
   {% endif %}
   <div class="ig-drawer-scroll">
-    {% if user.get('tg_closed_hub_url') %}
-    <a href="{{ user.tg_closed_hub_url }}" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="event.preventDefault();openTelegramDeepLink(this.getAttribute('data-tg-hub'));return false;" data-tg-hub="{{ user.tg_closed_hub_url|e }}" style="text-decoration:none" role="button"><span class="e">{{ ico('send') }}</span><span class="lbl">TG - канал/группа/чат</span></a>
-    {% endif %}
     {% set _caplan = (user.effective_subscription_plan or user.subscription_plan or 'free')|lower %}
-    {% if _staff or _caplan != 'free' %}
-    <a href="/account/channel-autopost" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('feed') }}</span><span class="lbl">Мой канал в ленту</span></a>
-    {% endif %}
     {% if not is_locked_free %}
     {% if drawer_on('profile') == '1' %}
     <a href="/community/profile/{{ eff_uid|int }}" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('user') }}</span><span class="lbl">Мой профиль</span></a>
@@ -60,11 +54,6 @@
     {% endif %}
     {% if drawer_on('chats') == '1' %}
     <a href="/chats" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none;position:relative;padding-right:36px"><span class="e">{{ ico('message_sq') }}</span><span class="lbl">Чаты</span><span id="drawer-chats-badge" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%)">0</span></a>
-    {% endif %}
-    {% endif %}
-    {% if not is_locked_free %}
-    {% if 'shop' in vbk and drawer_on('shop') == '1' %}
-    <a href="/shop" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('shop') }}</span><span class="lbl">Магазин</span></a>
     {% endif %}
     {% endif %}
 
@@ -90,11 +79,22 @@
     <a href="/account/wellness-personal-plan" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('file') }}</span><span class="lbl">Памятка по грибам</span></a>
     {% endif %}
     {% endif %}
+    {% if not is_locked_free and 'shop' in vbk and drawer_on('shop') == '1' %}
+    <a href="/shop" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('shop') }}</span><span class="lbl">Магазин</span></a>
+    {% endif %}
     {% if 'seller_marketplace' in vbk and drawer_on('seller_marketplace') == '1' and (user.get('marketplace_seller')) %}
     <a href="/seller/shop" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('shop') }}</span><span class="lbl">Магазин-кабинет</span></a>
     {% endif %}
-    {% if not is_locked_free and drawer_on('wallet') == '1' %}
+    {% if user.get('tg_closed_hub_url') or _staff or (_caplan != 'free') or (not is_locked_free and drawer_on('wallet') == '1') %}
     <div class="ig-drawer-sep"></div>
+    {% endif %}
+    {% if user.get('tg_closed_hub_url') %}
+    <a href="{{ user.tg_closed_hub_url }}" target="_blank" rel="noopener noreferrer" class="ig-drawer-item" onclick="event.preventDefault();openTelegramDeepLink(this.getAttribute('data-tg-hub'));return false;" data-tg-hub="{{ user.tg_closed_hub_url|e }}" style="text-decoration:none" role="button"><span class="e">{{ ico('send') }}</span><span class="lbl">TG - канал/группа/чат</span></a>
+    {% endif %}
+    {% if _staff or _caplan != 'free' %}
+    <a href="/account/channel-autopost" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('feed') }}</span><span class="lbl">Мой канал в ленту</span></a>
+    {% endif %}
+    {% if not is_locked_free and drawer_on('wallet') == '1' %}
     <a href="/account/wallet" class="ig-drawer-item" onclick="closeAppGlobalDrawer()" style="text-decoration:none"><span class="e">{{ ico('wallet') }}</span><span class="lbl">Мои кошельки</span></a>
     {% endif %}
 
