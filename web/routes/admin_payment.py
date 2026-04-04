@@ -29,6 +29,7 @@ from services.closed_telegram_access import (
     RESOURCE_LABELS_RU,
     save_closed_telegram_config,
     set_manual_closed_telegram_policy,
+    sync_all_linked_users_closed_telegram_chats,
 )
 from services.payment_provider_settings import (
     CLOUDPAYMENTS_WIDGET_METHOD_CHOICES,
@@ -383,6 +384,21 @@ async def admin_closed_telegram_manual_policy_remove(request: Request):
         )
     await remove_manual_closed_telegram_policy(int(uid_raw), resource)
     return RedirectResponse("/admin/payment/closed-telegram-access?ct_manual_removed=1", status_code=303)
+
+
+@router.post("/payment/closed-telegram-access/sync-all-linked")
+async def admin_closed_telegram_sync_all_linked(request: Request):
+    require_permission, _ = _lazy_admin()
+    admin = await require_permission(request, "can_payment")
+    if not admin:
+        return RedirectResponse("/login")
+    res = await sync_all_linked_users_closed_telegram_chats()
+    n = int(res.get("unique_accounts") or 0)
+    err = int(res.get("error_count") or 0)
+    return RedirectResponse(
+        f"/admin/payment/closed-telegram-access?ct_sync_all=1&ct_sync_n={n}&ct_sync_err={err}",
+        status_code=303,
+    )
 
 
 @router.get("/payment/subscription-plans", response_class=HTMLResponse)

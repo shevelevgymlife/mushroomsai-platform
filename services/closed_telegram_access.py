@@ -463,6 +463,45 @@ async def sync_user_telegram_closed_chats(user_id: int, *, notify_reentry: bool 
         await _send_closed_chats_reentry_dm(int(tg_user_id), reentry_links)
 
 
+async def sync_all_linked_users_closed_telegram_chats() -> dict[str, Any]:
+    """
+    Массово: для каждого users.id с привязанным Telegram (tg_id или linked_tg_id)
+    вызывается sync_user_telegram_closed_chats — бан в чатах, где по правилам доступа нельзя.
+
+    Важно: обрабатываются только аккаунты из вашей базы. Подписчики канала «без учётки»
+    на сайте через Bot API не перечисляются — их только вручную в Telegram или иными средствами.
+    """
+    rows = await database.fetch_all(
+        users.select(users.c.id, users.c.primary_user_id).where(
+            sa.or_(users.c.tg_id.isnot(None), users.c.linked_tg_id.isnot(None))
+        )
+    )
+    effective: set[int] = set()
+    for r in rows:
+        d = dict(r)
+        pid = d.get("primary_user_id")
+        uid = int(pid) if pid is not None else int(d["id"])
+        effective.add(uid)
+
+    error_count = 0
+    errors_sample: list[str] = []
+    for uid in sorted(effective):
+        try:
+            await sync_user_telegram_closed_chats(uid, notify_reentry=False)
+        except Exception as e:
+            error_count += 1
+            logger.warning("sync_all closed tg uid=%s: %s", uid, e, exc_info=True)
+            if len(errors_sample) < 20:
+                errors_sample.append(f"#{uid}: {e}")
+
+    return {
+        "unique_accounts": len(effective),
+        "processed": len(effective),
+        "error_count": error_count,
+        "errors_sample": errors_sample,
+    }
+
+
 async def approve_chat_join_request_if_entitled(chat_id: int, from_user_id: int) -> bool:
     """True если одобрили или уже ок; False если отклонили или пропуск."""
     from config import settings

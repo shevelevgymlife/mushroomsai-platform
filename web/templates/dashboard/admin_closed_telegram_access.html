@@ -25,6 +25,14 @@
     {% if request.query_params.get('ct_manual_err') %}
     <div class="mb-4 p-3 rounded-xl border border-red-400/35 bg-red-500/10 text-red-200 text-sm">{{ request.query_params.get('ct_manual_err') }}</div>
     {% endif %}
+    {% if request.query_params.get('ct_sync_all') %}
+    <div class="mb-4 p-3 rounded-xl border {% if request.query_params.get('ct_sync_err') != '0' %}border-amber-500/35 bg-amber-500/10 text-amber-100{% else %}border-emerald-500/30 bg-emerald-500/10 text-emerald-200{% endif %} text-sm">
+      Массовая синхронизация выполнена: обработано аккаунтов с привязанным Telegram — <strong>{{ request.query_params.get('ct_sync_n', '0') }}</strong>.
+      {% if request.query_params.get('ct_sync_err') != '0' %}
+      Ошибок при вызове API: <strong>{{ request.query_params.get('ct_sync_err') }}</strong> (см. логи сервера).
+      {% endif %}
+    </div>
+    {% endif %}
 
     <div class="p-5 rounded-2xl border border-gold/30 bg-gold/[0.06] space-y-4 mb-8">
       <h2 class="text-base font-semibold text-text">Кому всегда (вне тарифа)</h2>
@@ -115,6 +123,20 @@
       {% else %}
       <p class="text-xs text-muted border-t border-border/50 pt-4 mt-4">Пока нет ручных правил — все идут только по тарифу.</p>
       {% endif %}
+    </div>
+
+    <div class="p-5 rounded-2xl border border-border bg-bg/40 space-y-3 mb-8">
+      <h2 class="text-base font-semibold text-text">Синхронизировать всех из базы с чатами</h2>
+      <p class="text-xs text-muted leading-relaxed">
+        По кнопке для <strong>каждого пользователя в вашей базе</strong>, у кого указан Telegram (<code class="text-gold">tg_id</code> или привязка), заново применяются правила доступа: без подписки — бан в тех из трёх ресурсов, где ресурс включён и задан <code class="text-gold">chat_id</code>.
+        Это удобно сразу после смены тарифов или включения закрытого канала.
+      </p>
+      <p class="text-xs text-amber-200/90 leading-relaxed border border-amber-500/25 rounded-xl px-3 py-2 bg-amber-500/5">
+        Людей, которые сидят в канале/группе <strong>без учётной записи на сайте</strong> или без привязки Telegram к профилю, бот так не «увидит» — их нужно убрать вручную в Telegram или отдельным скриптом по списку участников (Bot API не даёт полный список подписчиков закрытого канала).
+      </p>
+      <form method="post" action="/admin/payment/closed-telegram-access/sync-all-linked" onsubmit="return confirm('Запустить массовую синхронизацию? Это вызовет ban/unban по текущим правилам для всех с привязанным Telegram.');">
+        <button type="submit" class="px-4 py-2.5 rounded-xl bg-border text-text text-sm border border-border hover:border-gold/40">Синхронизировать всех с привязанным Telegram</button>
+      </form>
     </div>
 
     <div class="p-5 rounded-2xl border border-border bg-surface/80 space-y-4 mb-8 text-sm text-muted leading-relaxed">
