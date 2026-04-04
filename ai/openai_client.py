@@ -167,7 +167,7 @@ async def _fetch_relevant_training_posts(
     except Exception:
         return []
 
-async def get_system_prompt(user_message: str = "") -> str:
+async def get_system_prompt(user_message: str = "", *, skip_training_context: bool = False) -> str:
     retrieval_mode = "title_first"
     retrieval_top_k = _MAX_RELEVANT_POSTS
     try:
@@ -189,17 +189,19 @@ async def get_system_prompt(user_message: str = "") -> str:
         base_prompt = DEFAULT_SYSTEM_PROMPT
 
     try:
-        posts = await _fetch_relevant_training_posts(
-            user_message=user_message,
-            retrieval_mode=retrieval_mode,
-            top_k=retrieval_top_k,
-        )
-        posts.sort(
-            key=lambda r: (
-                ((r.get("folder") or "").strip().lower()),
-                r["created_at"] or datetime.min,
+        posts = []
+        if not skip_training_context:
+            posts = await _fetch_relevant_training_posts(
+                user_message=user_message,
+                retrieval_mode=retrieval_mode,
+                top_k=retrieval_top_k,
             )
-        )
+            posts.sort(
+                key=lambda r: (
+                    ((r.get("folder") or "").strip().lower()),
+                    r["created_at"] or datetime.min,
+                )
+            )
         if posts:
             blocks = []
             used = 0
@@ -281,10 +283,22 @@ async def chat_with_ai(
     user_id: Optional[int] = None,
     session_key: Optional[str] = None,
     history_limit: int = 20,
+    ai_aspect_keys: Optional[list[str]] = None,
 ) -> str:
-    system_prompt = await get_system_prompt(user_message=user_message)
+    skip_training = False
+    behavior_addon = ""
+    if ai_aspect_keys:
+        from services.ai_behavior_config import build_addon_for_aspects
+
+        behavior_addon, skip_training, refusal, _ = await build_addon_for_aspects(ai_aspect_keys, user_id)
+        if refusal:
+            return refusal
+
+    system_prompt = await get_system_prompt(user_message=user_message, skip_training_context=skip_training)
     if user_id:
         system_prompt += await _shop_links_system_extra(user_id)
+    if behavior_addon.strip():
+        system_prompt += "\n\n═══ НАСТРОЙКИ СЦЕНАРИЯ (админка NEUROFUNGI) ═══\n" + behavior_addon.strip()
 
     history = []
     try:

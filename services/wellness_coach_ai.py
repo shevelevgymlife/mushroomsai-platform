@@ -10,6 +10,7 @@ from typing import Any, Optional
 from config import settings
 from db.database import database
 from db.models import ai_settings
+from services.ai_behavior_config import append_wellness_aspect_addons
 from services.ai_multichannel_settings import get_ai_multichannel_settings
 
 logger = logging.getLogger(__name__)
@@ -78,6 +79,10 @@ async def build_wellness_coach_system_prompt() -> str:
         parts.append("КАНАЛЬНЫЙ ПРОМПТ ЛС (соблюдай строго):\n" + dm_prompt)
     if dm_algo:
         parts.append("АЛГОРИТМ ЛИЧНЫХ СООБЩЕНИЙ (соблюдай строго):\n" + dm_algo)
+    try:
+        await append_wellness_aspect_addons(parts)
+    except Exception:
+        logger.debug("append_wellness_aspect_addons failed", exc_info=True)
     return "\n\n".join(parts)
 
 

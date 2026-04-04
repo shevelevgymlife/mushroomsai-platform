@@ -9,11 +9,14 @@
 
     <div class="flex items-center justify-between mb-8">
       <h1 class="text-3xl font-light text-text">Управление AI</h1>
+      <div class="flex flex-wrap gap-3 items-center">
+      <a href="/admin/ai-behavior" class="text-sm text-gold hover:underline font-medium">Сценарии AI →</a>
       <a href="/admin/ai-posts"
         style="display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:12px;background:rgba(61,212,224,.12);border:1px solid rgba(61,212,224,.3);color:#3dd4e0;font-size:13px;font-weight:600;text-decoration:none;transition:all .2s"
         onmouseover="this.style.background='rgba(61,212,224,.22)'" onmouseout="this.style.background='rgba(61,212,224,.12)'">
         📚 Обучающие посты
       </a>
+      </div>
     </div>
 
     {% set sv = request.query_params.get('saved') %}
@@ -123,6 +126,14 @@
         <div class="p-6 rounded-2xl bg-surface border border-border">
           <h2 class="font-semibold text-text mb-4">Тестировать промт</h2>
           <div class="space-y-3">
+            <label class="block text-xs text-muted">Сценарий (опционально, см. /admin/ai-behavior)</label>
+            <select id="testAspect" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-text text-sm">
+              <option value="">По умолчанию (admin_ai_test + общий промпт)</option>
+              <option value="cabinet_ai_chat">Кабинет: AI-чат</option>
+              <option value="telegram_dm_ai">Telegram: вопрос к AI</option>
+              <option value="guest_ai_preview">Гость без регистрации</option>
+              <option value="wellness_daily_coach">Дневник: ежедневные сообщения</option>
+            </select>
             <textarea id="testQuestion" rows="3" placeholder="Введите тестовый вопрос..."
               class="w-full px-4 py-3 rounded-xl bg-bg border border-border text-text text-sm resize-none focus:outline-none focus:border-gold/60 transition-colors"></textarea>
             <button type="button" onclick="testAI()"
@@ -184,6 +195,8 @@ async function testAI() {
   try {
     const formData = new FormData();
     formData.append('question', question);
+    const asp = document.getElementById('testAspect');
+    if (asp && asp.value) formData.append('aspect_key', asp.value);
     const resp = await fetch('/admin/ai/test', { method: 'POST', body: formData });
     const data = await resp.json();
 

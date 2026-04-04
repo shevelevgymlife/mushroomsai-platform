@@ -232,8 +232,15 @@ async def _community_system_prompt(
 ) -> str:
     """Тот же базовый промт + обучающие посты, что и в чате (`get_system_prompt`)."""
     from ai.openai_client import get_system_prompt
+    from services.ai_behavior_config import build_behavior_system_addon, get_merged_behavior_config
 
-    base = await get_system_prompt(user_message=user_message)
+    aspect = "community_post" if channel_kind == "post" else "community_comment"
+    beh = await get_merged_behavior_config(aspect, None)
+    skip_train = beh.get("knowledge_mode") == "minimal_context"
+    base = await get_system_prompt(user_message=user_message, skip_training_context=skip_train)
+    beh_add = build_behavior_system_addon(beh)
+    if beh_add.strip():
+        base += "\n\n═══ НАСТРОЙКИ СЦЕНАРИЯ (админка) ═══\n" + beh_add.strip()
     cfg = await get_ai_multichannel_settings()
     post_prompt = (cfg.get("post_prompt") or "").strip()
     comment_prompt = (cfg.get("comment_prompt") or "").strip()

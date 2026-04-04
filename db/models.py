@@ -1303,3 +1303,42 @@ telegram_group_ai_widgets = sqlalchemy.Table(
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
     sqlalchemy.Column("updated_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
+
+ai_behavior_global = sqlalchemy.Table(
+    "ai_behavior_global",
+    metadata,
+    sqlalchemy.Column("aspect_key", sqlalchemy.String(64), primary_key=True),
+    sqlalchemy.Column("config_json", sqlalchemy.Text, nullable=False, server_default="{}"),
+    sqlalchemy.Column("updated_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+ai_behavior_user_overrides = sqlalchemy.Table(
+    "ai_behavior_user_overrides",
+    metadata,
+    sqlalchemy.Column(
+        "user_id",
+        sqlalchemy.Integer,
+        sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    sqlalchemy.Column("aspect_key", sqlalchemy.String(64), primary_key=True),
+    sqlalchemy.Column("config_json", sqlalchemy.Text, nullable=False, server_default="{}"),
+    sqlalchemy.Column("updated_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+ai_behavior_admin_feedback = sqlalchemy.Table(
+    "ai_behavior_admin_feedback",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("aspect_key", sqlalchemy.String(64), nullable=False),
+    sqlalchemy.Column("question", sqlalchemy.Text, nullable=False),
+    sqlalchemy.Column("answer", sqlalchemy.Text, nullable=False),
+    sqlalchemy.Column("liked", sqlalchemy.Boolean, nullable=False),
+    sqlalchemy.Column(
+        "admin_user_id",
+        sqlalchemy.Integer,
+        sqlalchemy.ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    ),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)

@@ -168,6 +168,7 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             user_message=text,
             user_id=user_id,
             session_key=session_key,
+            ai_aspect_keys=["telegram_dm_ai"],
         )
     except Exception as e:
         logger.warning("AI chat error: %s", e)

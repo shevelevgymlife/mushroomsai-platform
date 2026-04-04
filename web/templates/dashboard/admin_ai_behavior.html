@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+{% block title %}AI: сценарии — Admin{% endblock %}
+{% block content %}
+<div class="pt-24 pb-16 neo-app-surface">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+    {% include "components/admin_nav.html" %}
+
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
+      <h1 class="text-3xl font-light text-text">Поведение AI по сценариям</h1>
+      <a href="/admin/ai" class="text-sm text-gold hover:underline">← Общие настройки AI</a>
+    </div>
+
+    <p class="text-sm text-muted mb-6 leading-relaxed">
+      Отдельные инструкции для кабинета, Telegram, ленты, дневника и др. Глобальные значения применяются ко всем;
+      для пользователя можно задать JSON-переопределение (deep merge поверх глобального). Сценарий «ЛС по таймеру / посты / комментарии»
+      при сохранении здесь перекрывает блок на странице <a href="/admin/ai" class="text-gold hover:underline">/admin/ai</a>, если поля заполнены.
+    </p>
+
+    {% if request.query_params.get('saved') %}
+    <div class="mb-4 p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-200 text-sm">Сохранено.</div>
+    {% endif %}
+    {% if request.query_params.get('ov_saved') %}
+    <div class="mb-4 p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-200 text-sm">Переопределение для пользователя сохранено.</div>
+    {% endif %}
+    {% if request.query_params.get('ov_deleted') %}
+    <div class="mb-4 p-3 rounded-xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-100 text-sm">Переопределение удалено.</div>
+    {% endif %}
+    {% if request.query_params.get('err') %}
+    <div class="mb-4 p-3 rounded-xl border border-red-400/35 bg-red-500/10 text-red-200 text-sm">Ошибка: {{ request.query_params.get('err') }}</div>
+    {% endif %}
+
+    <div class="mb-6">
+      <label class="block text-xs text-muted mb-2">Сценарий</label>
+      <select class="w-full max-w-xl px-3 py-2 rounded-xl bg-bg border border-border text-text text-sm"
+              onchange="location.href='/admin/ai-behavior?aspect='+encodeURIComponent(this.value)">
+        {% for key, title, _desc in aspects %}
+        <option value="{{ key }}" {% if key == current_aspect %}selected{% endif %}>{{ title }}</option>
+        {% endfor %}
+      </select>
+      {% for key, title, desc in aspects %}
+        {% if key == current_aspect %}
+        <p class="text-xs text-muted mt-2 leading-relaxed">{{ desc }}</p>
+        {% endif %}
+      {% endfor %}
+    </div>
+
+    <form method="post" action="/admin/ai-behavior/save-global" class="space-y-6">
+      <input type="hidden" name="aspect_key" value="{{ current_aspect }}" />
+
+      <div class="p-6 rounded-2xl bg-surface border border-border space-y-4">
+        <h2 class="font-semibold text-text">Режим</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs text-muted mb-1">Сценарий активен</label>
+            <select name="beh_enabled" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text">
+              <option value="1" {% if cfg.enabled %}selected{% endif %}>Да</option>
+              <option value="0" {% if not cfg.enabled %}selected{% endif %}>Нет (без доп. инструкций)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-muted mb-1">Полный отказ от ответа (только этот сценарий)</label>
+            <select name="beh_refuse_conversation" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text">
+              <option value="0" {% if not cfg.refuse_conversation %}selected{% endif %}>Нет</option>
+              <option value="1" {% if cfg.refuse_conversation %}selected{% endif %}>Да — вернуть только текст ниже</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1">Текст при отказе</label>
+          <textarea name="beh_refusal_message" rows="2" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text">{{ cfg.refusal_message }}</textarea>
+        </div>
+      </div>
+
+      <div class="p-6 rounded-2xl bg-surface border border-border space-y-4">
+        <h2 class="font-semibold text-text">Промпты «кто ты» и доп. инструкции</h2>
+        <div>
+          <label class="block text-xs text-muted mb-1">Роль / идентичность (кто ты в этом сценарии)</label>
+          <textarea name="beh_role_preamble" rows="4" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono text-text">{{ cfg.role_preamble }}</textarea>
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1">Дополнительный промпт только для этого действия</label>
+          <textarea name="beh_prompt_extra" rows="6" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono text-text">{{ cfg.prompt_extra }}</textarea>
+        </div>
+      </div>
+
+      <div class="p-6 rounded-2xl bg-surface border border-border space-y-4">
+        <h2 class="font-semibold text-text">Знания, тон, ссылки, статистика</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs text-muted mb-1">Подмешивание обучающих постов (RAG)</label>
+            <select name="beh_knowledge_mode" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text">
+              <option value="inherit" {% if cfg.knowledge_mode == 'inherit' %}selected{% endif %}>Как в общих настройках AI</option>
+              <option value="minimal_context" {% if cfg.knowledge_mode == 'minimal_context' %}selected{% endif %}>Минимум контекста (без большого блока постов)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-muted mb-1">Собирать ответы для статистики / уточнений</label>
+            <select name="beh_collect_client_stats" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text">
+              <option value="0" {% if not cfg.collect_client_stats %}selected{% endif %}>Нет</option>
+              <option value="1" {% if cfg.collect_client_stats %}selected{% endif %}>Да</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-muted mb-1">Тон</label>
+            <select name="beh_tone_preset" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text">
+              <option value="friendly" {% if cfg.tone_preset == 'friendly' %}selected{% endif %}>Дружелюбный</option>
+              <option value="neutral" {% if cfg.tone_preset == 'neutral' %}selected{% endif %}>Нейтральный</option>
+              <option value="formal" {% if cfg.tone_preset == 'formal' %}selected{% endif %}>Формальный</option>
+              <option value="custom" {% if cfg.tone_preset == 'custom' %}selected{% endif %}>Свой (заметки ниже)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-muted mb-1">Концепция подписок в тексте</label>
+            <select name="beh_use_subscription_marketing_copy" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text">
+              <option value="1" {% if cfg.use_subscription_marketing_copy %}selected{% endif %}>Да, мягко по концепции платформы</option>
+              <option value="0" {% if not cfg.use_subscription_marketing_copy %}selected{% endif %}>Нет, только по запросу</option>
+            </select>
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-xs text-muted mb-1">Политика ссылок (магазин / рефералы)</label>
+            <select name="beh_link_policy" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text">
+              <option value="platform_default" {% if cfg.link_policy == 'platform_default' %}selected{% endif %}>Как в системном промпте (URL из платформы)</option>
+              <option value="referral_concept" {% if cfg.link_policy == 'referral_concept' %}selected{% endif %}>Акцент на реферальную концепцию</option>
+              <option value="no_shop_links" {% if cfg.link_policy == 'no_shop_links' %}selected{% endif %}>Не предлагать магазин без запроса</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1">Заметки к тону (для custom или уточнений)</label>
+          <textarea name="beh_tone_custom_notes" rows="2" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text">{{ cfg.tone_custom_notes }}</textarea>
+        </div>
+        <h3 class="text-sm font-medium text-text pt-2">Что показывать в статистике / дневнике (формулировки AI)</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs text-muted mb-1">Календарь / дни</label>
+            <select name="beh_show_stats_calendar" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text">
+              <option value="1" {% if cfg.show_stats_calendar %}selected{% endif %}>Да</option>
+              <option value="0" {% if not cfg.show_stats_calendar %}selected{% endif %}>Нет</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-muted mb-1">Памятки / связки</label>
+            <select name="beh_show_stats_memo_cards" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text">
+              <option value="1" {% if cfg.show_stats_memo_cards %}selected{% endif %}>Да</option>
+              <option value="0" {% if not cfg.show_stats_memo_cards %}selected{% endif %}>Нет</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-muted mb-1">Сводки / агрегаты</label>
+            <select name="beh_show_stats_rollups" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text">
+              <option value="1" {% if cfg.show_stats_rollups %}selected{% endif %}>Да</option>
+              <option value="0" {% if not cfg.show_stats_rollups %}selected{% endif %}>Нет</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs text-muted mb-1">Недельная выгрузка PDF (дневник)</label>
+            <select name="beh_weekly_wellness_pdf" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text">
+              <option value="0" {% if not cfg.weekly_wellness_pdf %}selected{% endif %}>Нет</option>
+              <option value="1" {% if cfg.weekly_wellness_pdf %}selected{% endif %}>Да (упоминать в тексте)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-muted mb-1">Разрешать скачивание PDF</label>
+            <select name="beh_allow_wellness_pdf_download" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text">
+              <option value="1" {% if cfg.allow_wellness_pdf_download %}selected{% endif %}>Да</option>
+              <option value="0" {% if not cfg.allow_wellness_pdf_download %}selected{% endif %}>Нет</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-6 rounded-2xl bg-surface border border-gold/25 space-y-4">
+        <h2 class="font-semibold text-text">Каналы: ЛС / посты / комментарии (для сценариев ленты и таймера)</h2>
+        <p class="text-xs text-muted">Имеет смысл для «ЛС по таймеру», «Посты», «Комментарии». Остальные сценарии эти поля не читают.</p>
+        <div>
+          <label class="block text-xs text-muted mb-1">Промпт ЛС</label>
+          <textarea name="beh_dm_prompt" rows="5" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono text-text">{{ cfg.dm_prompt }}</textarea>
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1">Алгоритм ЛС</label>
+          <textarea name="beh_dm_algorithm_prompt" rows="5" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono text-text">{{ cfg.dm_algorithm_prompt }}</textarea>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs text-muted mb-1">Интервал ЛС (мин)</label>
+            <input type="number" name="beh_dm_interval_min" min="15" max="1440" value="{{ cfg.dm_interval_minutes }}"
+              class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text" />
+          </div>
+          <div>
+            <label class="block text-xs text-muted mb-1">Таймер ЛС включён</label>
+            <select name="beh_dm_interval_enabled" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text">
+              <option value="1" {% if cfg.dm_interval_enabled %}selected{% endif %}>Да</option>
+              <option value="0" {% if not cfg.dm_interval_enabled %}selected{% endif %}>Нет</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1">Промпт постов</label>
+          <textarea name="beh_post_prompt" rows="4" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono text-text">{{ cfg.post_prompt }}</textarea>
+        </div>
+        <div>
+          <label class="block text-xs text-muted mb-1">Промпт комментариев</label>
+          <textarea name="beh_comment_prompt" rows="4" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono text-text">{{ cfg.comment_prompt }}</textarea>
+        </div>
+      </div>
+
+      <button type="submit" class="px-6 py-3 rounded-xl bg-gold text-bg font-semibold text-sm hover:bg-gold-light transition-colors">
+        Сохранить сценарий
+      </button>
+    </form>
+
+    <div class="mt-10 p-6 rounded-2xl bg-surface border border-border space-y-4">
+      <h2 class="font-semibold text-text">Проверка ответа и обратная связь</h2>
+      <p class="text-xs text-muted">Ответ сохраняется с оценкой для последующего анализа (таблица в БД).</p>
+      <textarea id="abTestQ" rows="2" placeholder="Вопрос" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text"></textarea>
+      <button type="button" id="abTestBtn" class="px-4 py-2 rounded-xl border border-gold/40 text-gold text-sm hover:bg-gold/10">Получить ответ</button>
+      <div id="abTestAns" class="hidden p-4 rounded-xl bg-bg border border-border text-sm text-text whitespace-pre-wrap"></div>
+      <div id="abFbRow" class="hidden flex flex-wrap gap-2">
+        <button type="button" id="abLike" class="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-200 text-xs">Понравилось</button>
+        <button type="button" id="abDislike" class="px-3 py-1.5 rounded-lg bg-red-500/15 text-red-200 text-xs">Не понравилось</button>
+      </div>
+      <p id="abErr" class="hidden text-sm text-red-400"></p>
+    </div>
+
+    <div class="mt-10 p-6 rounded-2xl bg-surface border border-border space-y-4">
+      <h2 class="font-semibold text-text">Переопределение для пользователя (JSON)</h2>
+      <p class="text-xs text-muted">Укажите <code class="text-gold">users.id</code> и JSON с полями из глобальной формы (частично). Пример: <code class="text-gold">{"prompt_extra": "...", "refuse_conversation": true}</code></p>
+      <form method="post" action="/admin/ai-behavior/override-json" class="space-y-3">
+        <input type="hidden" name="ov_aspect_key" value="{{ current_aspect }}" />
+        <input type="number" name="ov_user_id" placeholder="ID пользователя" required
+          class="w-full max-w-xs px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text" />
+        <textarea name="ov_json" rows="8" required placeholder='{"prompt_extra": "..."}'
+          class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono text-text"></textarea>
+        <div class="flex flex-wrap gap-2">
+          <button type="submit" class="px-4 py-2 rounded-xl bg-gold/20 text-gold border border-gold/35 text-sm">Сохранить переопределение</button>
+        </div>
+      </form>
+      <form method="post" action="/admin/ai-behavior/override-delete" class="flex flex-wrap gap-2 items-end"
+            onsubmit="return confirm('Удалить переопределение для этого пользователя и сценария?');">
+        <input type="hidden" name="ov_aspect_key" value="{{ current_aspect }}" />
+        <input type="number" name="ov_user_id" placeholder="ID для удаления" required
+          class="w-full max-w-xs px-3 py-2 rounded-xl bg-bg border border-border text-sm text-text" />
+        <button type="submit" class="px-4 py-2 rounded-xl bg-border text-text text-sm">Удалить переопределение</button>
+      </form>
+    </div>
+
+    {% if feedback_rows and feedback_rows|length > 0 %}
+    <div class="mt-10 p-6 rounded-2xl bg-surface border border-border">
+      <h2 class="font-semibold text-text mb-4">Последние оценки по этому сценарию</h2>
+      <ul class="space-y-3 text-xs">
+        {% for f in feedback_rows %}
+        <li class="p-3 rounded-xl bg-bg border border-border/80">
+          <span class="{% if f.liked %}text-emerald-300{% else %}text-red-300{% endif %}">{% if f.liked %}+{% else %}−{% endif %}</span>
+          <span class="text-muted">{{ f.created_at }}</span>
+          <p class="text-muted mt-1 line-clamp-2">Q: {{ f.question[:120] }}{% if f.question|length > 120 %}…{% endif %}</p>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function(){
+  const aspect = {{ current_aspect | tojson }};
+  let lastQ = '', lastA = '';
+  document.getElementById('abTestBtn').onclick = async function() {
+    const q = document.getElementById('abTestQ').value.trim();
+    if (!q) return;
+    document.getElementById('abErr').classList.add('hidden');
+    document.getElementById('abFbRow').classList.add('hidden');
+    document.getElementById('abTestBtn').disabled = true;
+    try {
+      const fd = new FormData();
+      fd.append('question', q);
+      fd.append('aspect_key', aspect);
+      const r = await fetch('/admin/ai-behavior/preview', { method: 'POST', body: fd });
+      const j = await r.json();
+      if (j.answer) {
+        lastQ = q; lastA = j.answer;
+        document.getElementById('abTestAns').textContent = j.answer;
+        document.getElementById('abTestAns').classList.remove('hidden');
+        document.getElementById('abFbRow').classList.remove('hidden');
+      } else {
+        document.getElementById('abErr').textContent = j.error || 'Ошибка';
+        document.getElementById('abErr').classList.remove('hidden');
+      }
+    } catch (e) {
+      document.getElementById('abErr').textContent = e.message;
+      document.getElementById('abErr').classList.remove('hidden');
+    }
+    document.getElementById('abTestBtn').disabled = false;
+  };
+  async function sendFb(liked) {
+    if (!lastA) return;
+    const fd = new FormData();
+    fd.append('aspect_key', aspect);
+    fd.append('question', lastQ);
+    fd.append('answer', lastA);
+    fd.append('liked', liked ? '1' : '0');
+    await fetch('/admin/ai-behavior/feedback', { method: 'POST', body: fd });
+    document.getElementById('abFbRow').classList.add('hidden');
+  }
+  document.getElementById('abLike').onclick = () => sendFb(true);
+  document.getElementById('abDislike').onclick = () => sendFb(false);
+})();
+</script>
+{% endblock %}

@@ -826,6 +826,15 @@ async def run_heavy_startup(app: FastAPI) -> None:
             logger.warning("migrate_v52 telegram_group_ai_widgets: %s", e)
 
         try:
+            import migrate_v53_ai_behavior_config as migrate_v53
+
+            for s in migrate_v53.STEPS:
+                await database.execute(sa.text(s))
+            logger.info("ai_behavior_config (migrate_v53) OK")
+        except Exception as e:
+            logger.warning("migrate_v53 ai_behavior_config: %s", e)
+
+        try:
             import migrate_v42_comment_layout_likes_replies as migrate_v42_comments
 
             for s in migrate_v42_comments.STEPS:

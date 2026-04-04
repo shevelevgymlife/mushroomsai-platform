@@ -1011,7 +1011,14 @@ async def api_chat(request: Request):
                         status_code=429,
                     )
             plan_before = await check_subscription(effective_user_id)
-            answer = await chat_with_ai(user_message=user_message, user_id=effective_user_id)
+            aspect_keys = ["cabinet_ai_chat"]
+            if plan_before == "free":
+                aspect_keys.append("free_tier_cabinet")
+            answer = await chat_with_ai(
+                user_message=user_message,
+                user_id=effective_user_id,
+                ai_aspect_keys=aspect_keys,
+            )
             await increment_question_count(effective_user_id)
             if user and not is_unlimited and plan_before == "free":
                 eff = await get_effective_plans()
@@ -1037,7 +1044,11 @@ async def api_chat(request: Request):
             )
             if len(count_rows) >= 6:  # 3 user + 3 assistant
                 return JSONResponse({"error": "limit", "message": "Зарегистрируйтесь для продолжения диалога."}, status_code=429)
-            answer = await chat_with_ai(user_message=user_message, session_key=session_key)
+            answer = await chat_with_ai(
+                user_message=user_message,
+                session_key=session_key,
+                ai_aspect_keys=["guest_ai_preview"],
+            )
 
         return JSONResponse({"answer": answer})
 

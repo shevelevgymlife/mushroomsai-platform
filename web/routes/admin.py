@@ -50,6 +50,7 @@ templates = Jinja2Templates(directory="web/templates")
 ADMIN_SECTIONS = [
     ("Панель", "/admin", "can_dashboard"),
     ("AI", "/admin/ai", "can_ai"),
+    ("AI: сценарии", "/admin/ai-behavior", "can_ai"),
     ("Обучающие посты", "/admin/ai-posts", "can_ai_posts"),
     ("Магазин", "/admin/shop", "can_shop"),
     ("Оплата", "/admin/payment", "can_payment"),
@@ -397,17 +398,204 @@ async def admin_ai_save_multichannel(
 
 
 @router.post("/ai/test")
-async def test_ai(request: Request, question: str = Form(...)):
+async def test_ai(request: Request, question: str = Form(...), aspect_key: Optional[str] = Form(None)):
     admin = await require_permission(request, "can_ai")
     if not admin:
         return JSONResponse({"error": "forbidden"}, status_code=403)
 
     from ai.openai_client import chat_with_ai
+    from services.ai_behavior_config import ASPECT_KEYS
+
+    keys = None
+    ak = (aspect_key or "").strip()
+    if ak in ASPECT_KEYS:
+        keys = [ak]
+    else:
+        keys = ["admin_ai_test"]
     try:
-        answer = await chat_with_ai(user_message=question, user_id=None)
+        answer = await chat_with_ai(
+            user_message=question,
+            user_id=None,
+            ai_aspect_keys=keys,
+        )
         return JSONResponse({"answer": answer})
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
+
+
+def _ai_behavior_cfg_from_form(form) -> dict:
+    from services.ai_behavior_config import normalize_behavior_config
+
+    def yn(name: str, *, default: bool) -> bool:
+        v = form.get(name)
+        if v is None:
+            return default
+        return str(v).strip() == "1"
+
+    def tx(name: str) -> str:
+        v = form.get(name)
+        return (str(v) if v is not None else "")[:24000]
+
+    try:
+        dm_min = int(form.get("beh_dm_interval_min") or 60)
+    except (TypeError, ValueError):
+        dm_min = 60
+    raw = {
+        "enabled": yn("beh_enabled", default=True),
+        "refuse_conversation": yn("beh_refuse_conversation", default=False),
+        "refusal_message": tx("beh_refusal_message"),
+        "role_preamble": tx("beh_role_preamble"),
+        "prompt_extra": tx("beh_prompt_extra"),
+        "knowledge_mode": (tx("beh_knowledge_mode") or "inherit").strip() or "inherit",
+        "collect_client_stats": yn("beh_collect_client_stats", default=False),
+        "tone_preset": (tx("beh_tone_preset") or "friendly").strip() or "friendly",
+        "tone_custom_notes": tx("beh_tone_custom_notes"),
+        "use_subscription_marketing_copy": yn("beh_use_subscription_marketing_copy", default=True),
+        "link_policy": (tx("beh_link_policy") or "platform_default").strip() or "platform_default",
+        "weekly_wellness_pdf": yn("beh_weekly_wellness_pdf", default=False),
+        "allow_wellness_pdf_download": yn("beh_allow_wellness_pdf_download", default=True),
+        "show_stats_calendar": yn("beh_show_stats_calendar", default=True),
+        "show_stats_memo_cards": yn("beh_show_stats_memo_cards", default=True),
+        "show_stats_rollups": yn("beh_show_stats_rollups", default=True),
+        "dm_prompt": tx("beh_dm_prompt"),
+        "post_prompt": tx("beh_post_prompt"),
+        "comment_prompt": tx("beh_comment_prompt"),
+        "dm_algorithm_prompt": tx("beh_dm_algorithm_prompt"),
+        "dm_interval_enabled": yn("beh_dm_interval_enabled", default=True),
+        "dm_interval_minutes": dm_min,
+    }
+    return normalize_behavior_config(raw)
+
+
+@router.get("/ai-behavior", response_class=HTMLResponse)
+async def admin_ai_behavior_page(request: Request):
+    admin = await require_permission(request, "can_ai")
+    if not admin:
+        return RedirectResponse("/login")
+    from services.ai_behavior_config import AI_BEHAVIOR_ASPECTS, ASPECT_KEYS, get_merged_behavior_config, list_recent_feedback
+
+    aspect = (request.query_params.get("aspect") or "cabinet_ai_chat").strip()
+    if aspect not in ASPECT_KEYS:
+        aspect = "cabinet_ai_chat"
+    cfg = await get_merged_behavior_config(aspect, None)
+    feedback = await list_recent_feedback(aspect, 14)
+    return templates.TemplateResponse(
+        "dashboard/admin_ai_behavior.html",
+        {
+            "request": request,
+            "user": admin,
+            "nav": ADMIN_NAV,
+            "user_permissions": await get_user_permissions(admin),
+            "aspects": AI_BEHAVIOR_ASPECTS,
+            "current_aspect": aspect,
+            "cfg": cfg,
+            "feedback_rows": feedback,
+        },
+    )
+
+
+@router.post("/ai-behavior/save-global")
+async def admin_ai_behavior_save_global(request: Request):
+    admin = await require_permission(request, "can_ai")
+    if not admin:
+        return RedirectResponse("/login")
+    from services.ai_behavior_config import ASPECT_KEYS, save_global_behavior
+
+    form = await request.form()
+    aspect = (form.get("aspect_key") or "").strip()
+    if aspect not in ASPECT_KEYS:
+        return RedirectResponse("/admin/ai-behavior?err=aspect", status_code=302)
+    cfg = _ai_behavior_cfg_from_form(form)
+    await save_global_behavior(aspect, cfg)
+    return RedirectResponse(f"/admin/ai-behavior?aspect={aspect}&saved=1", status_code=303)
+
+
+@router.post("/ai-behavior/override-json")
+async def admin_ai_behavior_override_json(request: Request):
+    admin = await require_permission(request, "can_ai")
+    if not admin:
+        return RedirectResponse("/login")
+    import json
+
+    from services.ai_behavior_config import ASPECT_KEYS, normalize_behavior_config, save_user_behavior_override
+
+    form = await request.form()
+    aspect = (form.get("ov_aspect_key") or "").strip()
+    if aspect not in ASPECT_KEYS:
+        return RedirectResponse("/admin/ai-behavior?err=ov_aspect", status_code=302)
+    try:
+        uid = int((form.get("ov_user_id") or "").strip())
+    except ValueError:
+        return RedirectResponse("/admin/ai-behavior?err=ov_uid", status_code=302)
+    raw = (form.get("ov_json") or "").strip()
+    if not raw:
+        return RedirectResponse(f"/admin/ai-behavior?aspect={aspect}&err=ov_empty", status_code=302)
+    try:
+        data = json.loads(raw)
+        if not isinstance(data, dict):
+            raise ValueError("not an object")
+    except Exception:
+        return RedirectResponse(f"/admin/ai-behavior?aspect={aspect}&err=ov_json", status_code=302)
+    await save_user_behavior_override(uid, aspect, normalize_behavior_config(data))
+    return RedirectResponse(f"/admin/ai-behavior?aspect={aspect}&ov_saved=1", status_code=303)
+
+
+@router.post("/ai-behavior/override-delete")
+async def admin_ai_behavior_override_delete(request: Request):
+    admin = await require_permission(request, "can_ai")
+    if not admin:
+        return RedirectResponse("/login")
+    from services.ai_behavior_config import ASPECT_KEYS, delete_user_behavior_override
+
+    form = await request.form()
+    aspect = (form.get("ov_aspect_key") or "").strip()
+    if aspect not in ASPECT_KEYS:
+        return RedirectResponse("/admin/ai-behavior?err=aspect", status_code=302)
+    try:
+        uid = int((form.get("ov_user_id") or "").strip())
+    except ValueError:
+        return RedirectResponse("/admin/ai-behavior?err=ov_uid", status_code=302)
+    await delete_user_behavior_override(uid, aspect)
+    return RedirectResponse(f"/admin/ai-behavior?aspect={aspect}&ov_deleted=1", status_code=303)
+
+
+@router.post("/ai-behavior/preview")
+async def admin_ai_behavior_preview(request: Request, question: str = Form(...), aspect_key: str = Form(...)):
+    admin = await require_permission(request, "can_ai")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    from ai.openai_client import chat_with_ai
+    from services.ai_behavior_config import ASPECT_KEYS
+
+    ak = (aspect_key or "").strip()
+    if ak not in ASPECT_KEYS:
+        return JSONResponse({"error": "unknown aspect"}, status_code=400)
+    try:
+        answer = await chat_with_ai(user_message=question.strip(), user_id=None, ai_aspect_keys=[ak])
+        return JSONResponse({"answer": answer})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@router.post("/ai-behavior/feedback")
+async def admin_ai_behavior_feedback(
+    request: Request,
+    aspect_key: str = Form(...),
+    question: str = Form(...),
+    answer: str = Form(...),
+    liked: str = Form(...),
+):
+    admin = await require_permission(request, "can_ai")
+    if not admin:
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    from services.ai_behavior_config import ASPECT_KEYS, save_admin_feedback
+
+    ak = (aspect_key or "").strip()
+    if ak not in ASPECT_KEYS:
+        return JSONResponse({"error": "aspect"}, status_code=400)
+    ok = str(liked).strip().lower() in ("1", "true", "yes", "like")
+    await save_admin_feedback(ak, question.strip(), answer.strip(), ok, int(admin["id"]))
+    return JSONResponse({"ok": True})
 
 
 # ─── Shop ─────────────────────────────────────────────────────────────────────

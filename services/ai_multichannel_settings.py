@@ -122,9 +122,17 @@ async def get_ai_multichannel_settings() -> dict[str, Any]:
             platform_settings.select().where(platform_settings.c.key == AI_MULTI_CHANNEL_SETTINGS_KEY)
         )
         if not row or not row.get("value"):
-            return default_ai_multichannel_settings()
-        raw = json.loads(row["value"])
-        return normalize_ai_multichannel_settings(raw if isinstance(raw, dict) else {})
+            base = default_ai_multichannel_settings()
+        else:
+            raw = json.loads(row["value"])
+            base = normalize_ai_multichannel_settings(raw if isinstance(raw, dict) else {})
+        try:
+            from services.ai_behavior_config import overlay_multichannel_from_behavior
+
+            base = await overlay_multichannel_from_behavior(base)
+        except Exception:
+            logger.debug("overlay_multichannel_from_behavior skipped", exc_info=True)
+        return normalize_ai_multichannel_settings(base)
     except Exception:
         logger.debug("get_ai_multichannel_settings failed", exc_info=True)
         return default_ai_multichannel_settings()
