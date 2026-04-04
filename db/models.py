@@ -1282,3 +1282,24 @@ in_app_notifications = sqlalchemy.Table(
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
     sqlalchemy.Column("meta_json", sqlalchemy.Text, nullable=True),
 )
+
+telegram_group_ai_widgets = sqlalchemy.Table(
+    "telegram_group_ai_widgets",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("chat_id", sqlalchemy.BigInteger, nullable=False, unique=True),
+    sqlalchemy.Column("chat_type", sqlalchemy.String(32), nullable=False, server_default="supergroup"),
+    sqlalchemy.Column("chat_title", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("enabled", sqlalchemy.Boolean, nullable=False, server_default="false"),
+    sqlalchemy.Column("pinned_message_id", sqlalchemy.Integer, nullable=True),
+    sqlalchemy.Column(
+        "referral_attribution_user_id",
+        sqlalchemy.Integer,
+        sqlalchemy.ForeignKey("users.id"),
+        nullable=True,
+    ),
+    sqlalchemy.Column("last_error", sqlalchemy.Text, nullable=True),
+    sqlalchemy.Column("last_pin_at", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+    sqlalchemy.Column("updated_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)

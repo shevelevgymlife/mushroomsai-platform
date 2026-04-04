@@ -3,6 +3,7 @@ import math
 import os
 import uuid
 from typing import Optional
+from urllib.parse import quote
 
 logger = logging.getLogger(__name__)
 
@@ -1622,10 +1623,14 @@ async def admin_groups_legacy_redirect(request: Request):
 
 
 @router.get("/groups-chats", response_class=HTMLResponse)
-async def admin_groups_chats_placeholder(request: Request):
+async def admin_groups_chats_page(request: Request):
     admin = await require_permission(request, "can_groups")
     if not admin:
         return RedirectResponse("/login")
+    from services.group_ai_widget_service import get_master_enabled, list_widgets
+
+    master_on = await get_master_enabled()
+    rows = await list_widgets()
     return templates.TemplateResponse(
         "dashboard/admin_groups_chats_placeholder.html",
         {
@@ -1633,8 +1638,112 @@ async def admin_groups_chats_placeholder(request: Request):
             "user": admin,
             "nav": ADMIN_NAV,
             "user_permissions": await get_user_permissions(admin),
+            "gc_master_on": master_on,
+            "gc_widgets": rows,
         },
     )
+
+
+@router.post("/groups-chats/action")
+async def admin_groups_chats_action(
+    request: Request,
+    action: str = Form(...),
+    chat_id: Optional[str] = Form(None),
+    referral_attribution_user_id: Optional[str] = Form(None),
+    master_enabled: Optional[str] = Form(None),
+):
+    admin = await require_permission(request, "can_groups")
+    if not admin:
+        return RedirectResponse("/login")
+
+    base = "/admin/groups-chats"
+    from services.group_ai_widget_delivery import deliver_group_ai_widget, disable_group_ai_widget
+    from services.group_ai_widget_service import (
+        get_master_enabled,
+        get_widget,
+        manual_add_chat,
+        set_attribution_user_id,
+        set_enabled,
+        set_master_enabled,
+    )
+
+    def _back(extra: str = "") -> RedirectResponse:
+        return RedirectResponse(f"{base}{extra}", status_code=303)
+
+    if action == "master":
+        await set_master_enabled(master_enabled == "on")
+        return _back("?gc_saved=1")
+
+    if action == "add_chat":
+        raw = (chat_id or "").strip()
+        if not raw:
+            return _back("?gc_err=" + quote("Укажите chat_id.", safe=""))
+        try:
+            cid = int(raw)
+        except ValueError:
+            return _back("?gc_err=" + quote("chat_id должен быть числом.", safe=""))
+        ok, msg = await manual_add_chat(cid)
+        if ok:
+            return _back("?gc_add_ok=" + quote(msg[:200], safe=""))
+        return _back("?gc_err=" + quote(msg[:500], safe=""))
+
+    cid_s = (chat_id or "").strip()
+    if not cid_s:
+        return _back("?gc_err=" + quote("Не указан чат.", safe=""))
+    try:
+        wcid = int(cid_s)
+    except ValueError:
+        return _back("?gc_err=" + quote("Некорректный chat_id.", safe=""))
+
+    if action == "save_attribution":
+        raw_u = (referral_attribution_user_id or "").strip()
+        uid: int | None
+        if not raw_u:
+            uid = None
+        else:
+            try:
+                uid = int(raw_u)
+            except ValueError:
+                return _back("?gc_err=" + quote("ID пользователя — целое число или пусто.", safe=""))
+        w = await get_widget(wcid)
+        if not w:
+            return _back("?gc_err=" + quote("Чат не в списке. Добавьте бота в группу или вручную.", safe=""))
+        await set_attribution_user_id(wcid, uid)
+        return _back("?gc_att_saved=1")
+
+    if action == "enable_chat":
+        if not await get_master_enabled():
+            return _back("?gc_err=" + quote("Сначала включите глобальный переключатель «Виджет в группах».", safe=""))
+        w = await get_widget(wcid)
+        if not w:
+            return _back("?gc_err=" + quote("Чат не в списке.", safe=""))
+        ref_uid = w.get("referral_attribution_user_id")
+        ref_uid = int(ref_uid) if ref_uid is not None else None
+        await set_enabled(wcid, True)
+        ok, msg = await deliver_group_ai_widget(wcid, ref_uid)
+        if ok:
+            return _back("?gc_enabled=1")
+        await set_enabled(wcid, False, clear_error=False)
+        return _back("?gc_err=" + quote(f"Telegram: {msg}", safe=""))
+
+    if action == "disable_chat":
+        await disable_group_ai_widget(wcid)
+        return _back("?gc_disabled=1")
+
+    if action == "deliver_chat":
+        if not await get_master_enabled():
+            return _back("?gc_err=" + quote("Мастер-переключатель выключен.", safe=""))
+        w = await get_widget(wcid)
+        if not w or not w.get("enabled"):
+            return _back("?gc_err=" + quote("Сначала включите виджет для этого чата.", safe=""))
+        ref_uid = w.get("referral_attribution_user_id")
+        ref_uid = int(ref_uid) if ref_uid is not None else None
+        ok, msg = await deliver_group_ai_widget(wcid, ref_uid)
+        if ok:
+            return _back("?gc_deliver_ok=1")
+        return _back("?gc_err=" + quote(f"Telegram: {msg}", safe=""))
+
+    return _back("?gc_err=" + quote("Неизвестное действие.", safe=""))
 
 
 # ─── Legacy routes ────────────────────────────────────────────────────────────

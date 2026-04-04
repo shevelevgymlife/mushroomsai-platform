@@ -198,6 +198,7 @@ def create_bot() -> Application:
         on_channel_post,
         on_my_chat_member,
     )
+    from bot.handlers.group_ai_widget import on_my_chat_member_group_widget
 
     application.add_handler(CommandHandler("start", start))
     legal_group = -4
@@ -226,6 +227,12 @@ def create_bot() -> Application:
 
     application.add_handler(
         ChatMemberHandler(on_my_chat_member, chat_member_types=ChatMemberHandler.MY_CHAT_MEMBER)
+    )
+    application.add_handler(
+        ChatMemberHandler(
+            on_my_chat_member_group_widget,
+            chat_member_types=ChatMemberHandler.MY_CHAT_MEMBER,
+        )
     )
     application.add_handler(ChatJoinRequestHandler(on_chat_join_request))
     application.add_handler(CallbackQueryHandler(ch_link_done_callback, pattern=r"^ch_link_done$"))

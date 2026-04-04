@@ -3,22 +3,167 @@
 
 {% block content %}
 <div class="pt-20 pb-16 neo-app-surface">
-  <div class="max-w-3xl mx-auto px-4 sm:px-6">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6">
     {% include "components/admin_nav.html" ignore missing %}
 
     <div class="mb-8">
       <h1 class="text-3xl font-light text-text mb-1">Группы / Чаты</h1>
-      <p class="text-sm text-muted">Раздел для администрирования групповых чатов</p>
+      <p class="text-sm text-muted">Виджет NeuroFungi AI в Telegram-группах и супергруппах</p>
     </div>
 
-    <div class="p-8 rounded-2xl bg-surface border border-border">
-      <p class="text-text text-sm leading-relaxed mb-4">
-        Здесь позже появится панель управления группами и чатами. Старый интерфейс с полным CRUD отключён.
+    {% if request.query_params.get('gc_saved') %}
+    <div class="mb-4 p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-200 text-sm">Глобальная настройка сохранена.</div>
+    {% endif %}
+    {% if request.query_params.get('gc_att_saved') %}
+    <div class="mb-4 p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-200 text-sm">Атрибуция для чата сохранена. При необходимости нажмите «Обновить закреп».</div>
+    {% endif %}
+    {% if request.query_params.get('gc_enabled') %}
+    <div class="mb-4 p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-200 text-sm">Виджет для чата включён, сообщение отправлено и закреплено (если права бота позволяют).</div>
+    {% endif %}
+    {% if request.query_params.get('gc_disabled') %}
+    <div class="mb-4 p-3 rounded-xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-100 text-sm">Виджет для чата выключен; закреп снят при возможности.</div>
+    {% endif %}
+    {% if request.query_params.get('gc_deliver_ok') %}
+    <div class="mb-4 p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-200 text-sm">Сообщение обновлено и снова закреплено.</div>
+    {% endif %}
+    {% if request.query_params.get('gc_add_ok') %}
+    <div class="mb-4 p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-200 text-sm">{{ request.query_params.get('gc_add_ok') }}</div>
+    {% endif %}
+    {% if request.query_params.get('gc_err') %}
+    <div class="mb-4 p-3 rounded-xl border border-red-400/35 bg-red-500/10 text-red-200 text-sm whitespace-pre-wrap">{{ request.query_params.get('gc_err') }}</div>
+    {% endif %}
+
+    <div class="p-6 rounded-2xl bg-surface border border-border mb-8 space-y-4 text-sm text-text leading-relaxed">
+      <h2 class="text-lg font-medium text-text">Что это за функция</h2>
+      <p>
+        Это <b>закреплённое сервисное сообщение</b> в обычной Telegram-группе или супергруппе (не в канале).
+        Участники видят короткое объяснение и кнопку <b>«Задать вопрос NeuroFungi AI»</b>: она открывает бота в личных сообщениях.
+        Ответы AI идут в личке, а не в группу — так меньше шума и нагрузки на чат.
       </p>
-      <p class="text-muted text-xs">
-        Пользователи общаются в личных чатах (<a href="/chats" class="text-gold hover:underline">/chats</a>) и в разделе «Чаты» кабинета.
+      <p>
+        <b>По умолчанию функция выключена</b> на всей платформе и для каждого чата отдельно. Пока вы не включите оба уровня, бот не шлёт виджет.
+      </p>
+      <h3 class="text-base font-medium text-text pt-2">Когда имеет смысл включать</h3>
+      <ul class="list-disc pl-5 space-y-1 text-muted">
+        <li>сообществу нужна одна постоянная «точка входа» к AI из группы;</li>
+        <li>хотите закрепить ссылку, чтобы её не утонула в ленте;</li>
+        <li>готовы выдать боту право <b>закреплять сообщения</b> (или закрепите вручную после отправки).</li>
+      </ul>
+      <h3 class="text-base font-medium text-text pt-2">Реферальные ссылки (как у каналов)</h3>
+      <p class="text-muted">
+        В поле <b>Атрибуция (users.id)</b> указывается пользователь платформы — «владелец» реферала для этого чата.
+        Тогда кнопка в бота строится так же, как кнопка «в соцсеть» у <b>владельца канала</b> с автопостом:
+        персональная ссылка при активной партнёрской программе.
+        Вторая кнопка: если у этого пользователя заполнен <b>URL магазина партнёра</b> (<code>referral_shop_url</code>) — ведёт туда;
+        иначе, если есть реферальный код — на страницу входа <code>/login?ref=…</code> на сайте.
+        Если атрибуцию не задавать, в бот ведёт <b>общий</b> вход, без партнёрских кодов и без строки магазина.
+      </p>
+      <h3 class="text-base font-medium text-text pt-2">Как появляется чат в таблице</h3>
+      <p class="text-muted">
+        Добавьте бота в группу — запись создастся автоматически. Либо введите отрицательный <code>chat_id</code> супергруппы вручную (формат <code>-100…</code>).
       </p>
     </div>
+
+    <div class="p-6 rounded-2xl border border-gold/25 bg-gold/[0.04] mb-6">
+      <h2 class="text-base font-semibold text-text mb-3">Глобально: виджет в группах</h2>
+      <p class="text-xs text-muted mb-4">
+        Пока переключатель выключен, включить виджет в отдельном чате нельзя. После включения глобально настраивайте каждый чат ниже.
+      </p>
+      <form method="post" action="/admin/groups-chats/action" class="flex flex-wrap items-center gap-4">
+        <input type="hidden" name="action" value="master" />
+        <label class="flex items-center gap-2 cursor-pointer text-sm text-text">
+          <input type="checkbox" name="master_enabled" value="on" class="rounded border-border" {% if gc_master_on %}checked{% endif %} />
+          Разрешить виджет NeuroFungi AI в Telegram-группах (мастер-переключатель)
+        </label>
+        <button type="submit" class="px-4 py-2 rounded-xl bg-gold/20 text-gold border border-gold/35 text-sm font-medium">Сохранить</button>
+      </form>
+    </div>
+
+    <div class="p-6 rounded-2xl bg-surface border border-border mb-8">
+      <h2 class="text-base font-semibold text-text mb-3">Добавить чат вручную</h2>
+      <form method="post" action="/admin/groups-chats/action" class="flex flex-wrap gap-3 items-end">
+        <input type="hidden" name="action" value="add_chat" />
+        <div class="flex-1 min-w-[200px]">
+          <label class="block text-xs text-muted mb-1">chat_id группы (отрицательное число)</label>
+          <input type="text" name="chat_id" class="w-full px-3 py-2 rounded-xl bg-bg border border-border text-sm font-mono" placeholder="-1001234567890" autocomplete="off" />
+        </div>
+        <button type="submit" class="px-4 py-2 rounded-xl bg-border text-text text-sm">Добавить</button>
+      </form>
+    </div>
+
+    <div class="rounded-2xl border border-border overflow-hidden">
+      <div class="px-4 py-3 bg-bg/60 border-b border-border text-sm font-medium text-text">Чаты</div>
+      {% if not gc_widgets or gc_widgets|length == 0 %}
+      <div class="p-8 text-center text-muted text-sm">Пока нет записей. Добавьте бота в группу или введите chat_id выше.</div>
+      {% else %}
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-border text-left text-muted text-xs">
+              <th class="px-3 py-2 font-normal">chat_id</th>
+              <th class="px-3 py-2 font-normal">Название</th>
+              <th class="px-3 py-2 font-normal">Статус</th>
+              <th class="px-3 py-2 font-normal">Атрибуция</th>
+              <th class="px-3 py-2 font-normal">Действия</th>
+            </tr>
+          </thead>
+          <tbody class="text-text">
+            {% for w in gc_widgets %}
+            <tr class="border-b border-border/60 align-top">
+              <td class="px-3 py-3 font-mono text-xs">{{ w.chat_id }}</td>
+              <td class="px-3 py-3 text-muted">{{ w.chat_title or '—' }}</td>
+              <td class="px-3 py-3">
+                {% if w.enabled %}
+                <span class="text-emerald-300">вкл.</span>
+                {% else %}
+                <span class="text-muted">выкл.</span>
+                {% endif %}
+                {% if not gc_master_on and w.enabled %}
+                <div class="text-amber-200/90 text-xs mt-1">мастер выкл. — доставка заблокирована</div>
+                {% endif %}
+                {% if w.last_error %}
+                <div class="text-red-300/90 text-xs mt-1 max-w-xs break-words" title="{{ w.last_error }}">Ошибка: {{ w.last_error[:120] }}{% if w.last_error|length > 120 %}…{% endif %}</div>
+                {% endif %}
+              </td>
+              <td class="px-3 py-3">
+                <form method="post" action="/admin/groups-chats/action" class="space-y-2">
+                  <input type="hidden" name="action" value="save_attribution" />
+                  <input type="hidden" name="chat_id" value="{{ w.chat_id }}" />
+                  <input type="text" name="referral_attribution_user_id" value="{{ w.referral_attribution_user_id or '' }}" class="w-28 px-2 py-1.5 rounded-lg bg-bg border border-border text-xs font-mono" placeholder="users.id" />
+                  <button type="submit" class="block text-xs text-gold hover:underline">Сохранить атрибуцию</button>
+                </form>
+              </td>
+              <td class="px-3 py-3 space-y-2">
+                {% if not w.enabled %}
+                <form method="post" action="/admin/groups-chats/action">
+                  <input type="hidden" name="action" value="enable_chat" />
+                  <input type="hidden" name="chat_id" value="{{ w.chat_id }}" />
+                  <button type="submit" class="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-200 border border-emerald-500/30 text-xs" {% if not gc_master_on %}disabled title="Включите мастер-переключатель"{% endif %}>Включить виджет</button>
+                </form>
+                {% else %}
+                <form method="post" action="/admin/groups-chats/action">
+                  <input type="hidden" name="action" value="disable_chat" />
+                  <input type="hidden" name="chat_id" value="{{ w.chat_id }}" />
+                  <button type="submit" class="px-3 py-1.5 rounded-lg bg-border text-text text-xs">Выключить</button>
+                </form>
+                <form method="post" action="/admin/groups-chats/action">
+                  <input type="hidden" name="action" value="deliver_chat" />
+                  <input type="hidden" name="chat_id" value="{{ w.chat_id }}" />
+                  <button type="submit" class="px-3 py-1.5 rounded-lg bg-gold/15 text-gold border border-gold/25 text-xs" {% if not gc_master_on %}disabled{% endif %}>Обновить закреп</button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+    </div>
+
+    <p class="text-xs text-muted mt-6">
+      Личные чаты пользователей в кабинете — отдельно: <a href="/chats" class="text-gold hover:underline">/chats</a>.
+    </p>
   </div>
 </div>
 {% endblock %}

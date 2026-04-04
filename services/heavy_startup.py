@@ -817,6 +817,15 @@ async def run_heavy_startup(app: FastAPI) -> None:
             logger.warning("migrate_v51 channel_autopost_link_pending: %s", e)
 
         try:
+            import migrate_v52_telegram_group_ai_widgets as migrate_v52
+
+            for s in migrate_v52.STEPS:
+                await database.execute(sa.text(s))
+            logger.info("telegram_group_ai_widgets (migrate_v52) OK")
+        except Exception as e:
+            logger.warning("migrate_v52 telegram_group_ai_widgets: %s", e)
+
+        try:
             import migrate_v42_comment_layout_likes_replies as migrate_v42_comments
 
             for s in migrate_v42_comments.STEPS:
