@@ -5,6 +5,7 @@ services:
     env: python
     # 3.11.0 на Render часто недоступен → failed build; см. https://render.com/docs/python-version
     # Надёжнее использовать python -m pip, чтобы не попасть на pip от другой версии.
+    # tailwind-app.css собран и лежит в static/css — отдельный шаг npm на Render не обязателен.
     buildCommand: python -m pip install --upgrade pip setuptools wheel && python -m pip install --no-cache-dir -r requirements.txt
     startCommand: python -m uvicorn main:app --host 0.0.0.0 --port $PORT
     # Health Check Path задайте в Dashboard → /health после успешного деплоя (не дублировать startCommand там).

@@ -1,0 +1,10 @@
+{
+  "name": "mushroomsai-platform",
+  "private": true,
+  "scripts": {
+    "build:css": "tailwindcss -i ./static/css/tailwind-input.css -o ./static/css/tailwind-app.css --minify"
+  },
+  "devDependencies": {
+    "tailwindcss": "3.4.17"
+  }
+}
