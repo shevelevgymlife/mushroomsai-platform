@@ -15,13 +15,7 @@ from telegram.ext import (
 )
 
 from bot.handlers.start import BTN_COMMUNITY_POST, BTN_PARTNER, ensure_user, main_keyboard
-from bot.handlers.channel_autopost import (
-    BTN_AUTOPOST_DISABLE,
-    BTN_AUTOPOST_ENABLE,
-    BTN_CH_SOC_OFF,
-    BTN_CH_SOC_ON,
-    main_keyboard_with_autopost,
-)
+from bot.handlers.channel_autopost import main_keyboard_with_autopost
 from config import settings
 from services.channel_ingest_save_image import save_channel_ingest_image
 from services.community_post_publish import publish_community_post
@@ -48,10 +42,6 @@ _WIZARD_BLOCK_TEXTS = frozenset(
         "🤖 Задать вопрос AI",
         "❌ Выйти из режима AI",
         "📤 Пост в сообщество",
-        BTN_AUTOPOST_DISABLE,
-        BTN_AUTOPOST_ENABLE,
-        BTN_CH_SOC_ON,
-        BTN_CH_SOC_OFF,
         TG_BTN_SHOP_MARKETPLACE,
         TG_BTN_SHOP_SIMPLE,
         TG_BTN_CLOSED_HUB,

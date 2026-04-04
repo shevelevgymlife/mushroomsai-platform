@@ -182,8 +182,6 @@ def create_bot() -> Application:
         ch_link_done_callback,
         ch_soc_btn_callback,
         get_channel_forward_handler,
-        get_toggle_autopost_handler,
-        get_toggle_channel_social_button_handler,
         on_channel_post,
         on_my_chat_member,
     )
@@ -223,8 +221,6 @@ def create_bot() -> Application:
     ch_group = -2
     application.add_handler(MessageHandler(filters.UpdateType.CHANNEL_POST, on_channel_post), group=ch_group)
     application.add_handler(get_channel_forward_handler(), group=ch_group)
-    application.add_handler(get_toggle_autopost_handler(), group=ch_group)
-    application.add_handler(get_toggle_channel_social_button_handler(), group=ch_group)
     application.add_handler(
         MessageHandler(
             filters.ChatType.PRIVATE & filters.TEXT & filters.Regex(r"^💸 Вывести\s"),

@@ -104,13 +104,6 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         TG_BTN_CLOSED_GROUP,
         TG_BTN_CLOSED_HUB,
     )
-    from bot.handlers.channel_autopost import (
-        BTN_AUTOPOST_DISABLE,
-        BTN_AUTOPOST_ENABLE,
-        BTN_CH_SOC_OFF,
-        BTN_CH_SOC_ON,
-    )
-
     site = (settings.SITE_URL or "https://mushroomsai.onrender.com").rstrip("/")
 
     # Кнопки обрабатываются отдельными хендлерами в main_bot; на всякий случай не дублируем
@@ -118,10 +111,6 @@ async def handle_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         BTN_AI,
         BTN_AI_EXIT,
         BTN_COMMUNITY_POST,
-        BTN_AUTOPOST_DISABLE,
-        BTN_AUTOPOST_ENABLE,
-        BTN_CH_SOC_ON,
-        BTN_CH_SOC_OFF,
         TG_BTN_SHOP_MARKETPLACE,
         TG_BTN_SHOP_SIMPLE,
         TG_BTN_CLOSED_HUB,
